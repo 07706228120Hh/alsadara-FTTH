@@ -1,0 +1,81 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "com.example.ftth_project" // ضع اسم الحزمة الخاص بك
+    compileSdk = 35 // تأكد من أن هذا متوافق مع مشروعك
+
+    compileOptions {
+        // تعيين توافق Java مع JVM
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        // تعيين JVM Target إلى الإصدار 17
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        applicationId = "com.example.ftth_project" // اسم التطبيق الفريد
+        minSdk = 21 // أقل إصدار لنظام Android مدعوم (Android 5.0 Lollipop)
+        targetSdk = 35 // إصدار النظام المستهدف (Android 14 إذا كان متوفرًا)
+        versionCode = 1
+        versionName = "1.0"
+
+        // تمكين دعم الأذونات في وقت التشغيل (الإعداد الافتراضي يدعم ذلك، لكن يتم تأكيده هنا)
+        multiDexEnabled true
+    }
+
+    signingConfigs {
+        release {
+            keyAlias 'my-key-alias' // اسم المفتاح
+            keyPassword '07727787789'      // كلمة مرور المفتاح
+            storeFile file('release.keystore') // مسار ملف keystore
+            storePassword '07727787789'   // كلمة مرور keystore
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // إضافة JVM Toolchain لضمان إعداد JVM الصحيح
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
+
+    // التحقق من توافقات المكتبات والإصدارات
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    // إضافة مكتبات AndroidX إذا لم تكن موجودة
+    implementation "androidx.core:core-ktx:1.10.1"
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "com.google.android.material:material:1.9.0"
+
+    // مكتبات الموقع الجغرافي
+    implementation "com.google.android.gms:play-services-location:21.0.1"
+
+    // مكتبات أخرى قد تحتاجها
+    implementation "androidx.multidex:multidex:2.0.1"
+}

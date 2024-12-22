@@ -1,0 +1,96 @@
+name: ftth_project
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.19.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # مكتبة لإجراء طلبات HTTP
+  http: ^1.2.2
+  
+  open_file: ^3.2.1
+
+  path_provider: ^2.0.13
+
+  dio: ^5.0.0
+
+  # مكتبة لفتح الروابط
+  url_launcher: ^6.1.7
+
+  # مكتبة لإنشاء الرسوم البيانية
+  fl_chart: ^0.69.2
+
+  # مكتبة لإنشاء الرسوم المتحركة
+  lottie: ^3.2.0
+
+  # مكتبة للتحقق من الإدخالات
+  validators: ^3.0.0
+
+  # مكتبة لتحسين تجربة التصميم
+  provider: ^6.0.5
+
+  # مكتبة للتحقق من الاتصال بالإنترنت
+  connectivity_plus: ^6.1.0
+
+  # مكتبة لتنسيق التصميم حسب الشاشة
+  flutter_screenutil: ^5.6.0
+
+  # مكتبة لدعم اللغات المتعددة
+  flutter_localizations:
+    sdk: flutter
+
+  # مكتبة للتعامل مع Google Sheets باستخدام OAuth
+  googleapis: ^13.2.0
+  googleapis_auth: ^1.6.0
+  
+  # مكتبة للتحقق بالبصمة
+  local_auth: ^2.1.0
+  
+  # مكتبة للتحكم بالموقع الجغرافي
+  geolocator: ^13.0.2
+
+  # مكتبة للتعامل مع الخرائط
+  google_maps_flutter: ^2.2.3
+
+  # مكتبة للتعامل مع التاريخ والوقت
+  intl: ^0.19.0
+
+  # مكتبة لإدارة التصاريح
+  permission_handler: ^11.3.1
+
+  # مكتبة للتعامل مع ملفات Excel و PDF
+  pdf: ^3.10.0
+  syncfusion_flutter_xlsio: ^28.1.33
+
+  # مكتبات إضافية:
+  google_sign_in: ^6.1.6
+  flutter_secure_storage: ^9.2.2 # حل التعارض مع device_info_plus
+  oauth2: ^2.0.2
+
+  # مكتبات جديدة:
+  device_info_plus: ^11.2.0
+  logger: ^2.0.2
+
+  # أيقونات Cupertino
+  cupertino_icons: ^1.0.8
+  android_intent_plus: ^5.2.0
+  shared_preferences: ^2.3.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # إضافة الصور والأصول
+  assets:
+    - assets/1.jpg
+    - assets/service_account.json
