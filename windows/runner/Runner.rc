@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "ftth_project" "\0"
+            VALUE "FileDescription", "Alsadara" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "ftth_project" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "ftth_project.exe" "\0"
-            VALUE "ProductName", "ftth_project" "\0"
+            VALUE "InternalName", "Alsadara" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
+            VALUE "OriginalFilename", "Alsadara.exe" "\0"
+            VALUE "ProductName", "Alsadara" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

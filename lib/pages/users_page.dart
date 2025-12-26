@@ -1,116 +1,217 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+/// اسم الصفحة: المستخدمين
+/// وصف الصفحة: صفحة إدارة المستخدمين والموظفين
+/// المؤلف: تطبيق السدارة
+/// تاريخ الإنشاء: 2024
+library;
+
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // لاستدعاء rootBundle
+import 'package:googleapis/sheets/v4.dart' as sheets;
+import 'package:googleapis_auth/auth_io.dart'; // استخدام clientViaServiceAccount
 
 class UsersPage extends StatefulWidget {
-  const UsersPage({super.key, required String permissions});
+  final String permissions; // إضافة معامل الصلاحيات
 
+  const UsersPage({super.key, required this.permissions});
   @override
-  _UsersPageState createState() => _UsersPageState();
+  State<UsersPage> createState() => _UsersPageState();
 }
 
 class _UsersPageState extends State<UsersPage> {
-  final String apiKey = 'AIzaSyDdwZK0D8uRoPSKS0axA5dQjwMCQJtF1BU';
+  sheets.SheetsApi? _sheetsApi;
+  AuthClient? _client;
   final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
-  final String range = 'المستخدمين!A2:D';
-
-  bool isLoading = true;
-  String? errorMessage;
   List<Map<String, String>> users = [];
   List<Map<String, String>> filteredUsers = [];
+  bool isLoading = true;
+  String? errorMessage;
   TextEditingController searchController = TextEditingController();
 
-  Future<void> fetchUsers() async {
-    final url =
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$range?key=$apiKey';
+  @override
+  void initState() {
+    super.initState();
+    _initializeSheetsAPI();
+  }
 
+  Future<void> _initializeSheetsAPI() async {
     try {
-      final response = await http.get(Uri.parse(url));
+      final jsonString =
+          await rootBundle.loadString('assets/service_account.json');
+      final accountCredentials =
+          ServiceAccountCredentials.fromJson(jsonDecode(jsonString));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final scopes = [sheets.SheetsApi.spreadsheetsScope];
+      _client = await clientViaServiceAccount(accountCredentials, scopes);
+      _sheetsApi = sheets.SheetsApi(_client!);
+      fetchUsers();
 
-        if (data['values'] != null) {
-          List<Map<String, String>> fetchedUsers = [];
-          for (var row in data['values']) {
-            if (row.length >= 4) {
-              fetchedUsers.add({
-                'username': row[0],
-                'phone': row[1],
-                'permissions': row[2],
-                'department': row[3],
-              });
-            }
-          }
-
-          setState(() {
-            users = fetchedUsers;
-            filteredUsers = fetchedUsers;
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            errorMessage = 'لا توجد بيانات.';
-            isLoading = false;
-          });
-        }
-      } else {
-        setState(() {
-          errorMessage = 'خطأ: ${response.statusCode}';
-          isLoading = false;
-        });
+      debugPrint('Google Sheets API initialized successfully!');
+    } catch (e) {
+      debugPrint('Error initializing Sheets API: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ أثناء تهيئة Google Sheets API: $e')),
+        );
       }
+    }
+  }
+
+  Future<void> fetchUsers() async {
+    try {
+      final range = 'المستخدمين!A2:G'; // جلب الأعمدة من A إلى G
+      final response =
+          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
+
+      final rows = response.values ?? [];
+      List<Map<String, String>> fetchedUsers = rows.map((row) {
+        return {
+          'اسم المستخدم': row.isNotEmpty ? row[0]?.toString() ?? '' : '',
+          'رقم الهاتف': row.length > 1 ? row[1]?.toString() ?? '' : '',
+          'الصلاحيات': row.length > 2 ? row[2]?.toString() ?? '' : '',
+          'القسم': row.length > 3 ? row[3]?.toString() ?? '' : '',
+          'المركز': row.length > 4 ? row[4]?.toString() ?? '' : '',
+          'الراتب': row.length > 5 ? row[5]?.toString() ?? '' : '',
+          'الكود': row.length > 6 ? row[6]?.toString() ?? '' : '',
+        };
+      }).toList();
+
+      setState(() {
+        users = fetchedUsers;
+        filteredUsers = fetchedUsers;
+        isLoading = false;
+      });
     } catch (e) {
       setState(() {
-        errorMessage = 'حدث خطأ: $e';
+        errorMessage = 'حدث خطأ أثناء جلب المستخدمين: $e';
         isLoading = false;
       });
     }
   }
 
-  Future<void> addUser(Map<String, String> user) async {
-    final url =
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$range:append?valueInputOption=USER_ENTERED&key=$apiKey';
-    final body = jsonEncode({
-      "values": [
-        [
-          user['username'],
-          user['phone'],
-          user['permissions'],
-          user['department']
-        ]
-      ]
-    });
-
+  Future<void> updateUser(int index, Map<String, String> updatedUser) async {
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
+      final rowIndex = index + 2; // لأن الصفوف تبدأ من 2 في النطاق.
+      final range =
+          'المستخدمين!A$rowIndex:G$rowIndex'; // تعديل النطاق ليشمل الأعمدة A إلى G
+      final values = [
+        [
+          updatedUser['اسم المستخدم'],
+          updatedUser['رقم الهاتف'],
+          updatedUser['الصلاحيات'],
+          updatedUser['القسم'],
+          updatedUser['المركز'],
+          updatedUser['الراتب'],
+          updatedUser['الكود'],
+        ]
+      ];
+      final valueRange = sheets.ValueRange(values: values);
+
+      await _sheetsApi!.spreadsheets.values.update(
+        valueRange,
+        spreadsheetId,
+        range,
+        valueInputOption: 'USER_ENTERED',
       );
 
-      if (response.statusCode == 200) {
-        fetchUsers(); // تحديث البيانات
-      } else {
-        throw 'خطأ في الإضافة: ${response.statusCode}';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديث المستخدم بنجاح!')),
+        );
       }
+
+      fetchUsers(); // جلب البيانات لتحديث الجدول.
     } catch (e) {
-      setState(() {
-        errorMessage = 'حدث خطأ أثناء الإضافة: $e';
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ أثناء تحديث المستخدم: $e')),
+        );
+      }
     }
   }
 
   Future<void> deleteUser(int index) async {
-    setState(() {
-      users.removeAt(index);
-      filteredUsers = users;
-    });
+    try {
+      final rowIndex = index + 2; // الصف الذي سيتم حذفه
+      final range = 'المستخدمين!A$rowIndex:G$rowIndex';
+
+      // حذف المحتوى بإرسال قيم فارغة
+      final emptyValues = sheets.ValueRange(values: [[]]);
+      await _sheetsApi!.spreadsheets.values.update(
+        emptyValues,
+        spreadsheetId,
+        range,
+        valueInputOption: 'USER_ENTERED',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حذف المستخدم بنجاح!')),
+        );
+      }
+
+      fetchUsers(); // تحديث القائمة بعد الحذف
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ أثناء حذف المستخدم: $e')),
+        );
+      }
+    }
+  }
+
+  void _showEditUserDialog(BuildContext context, int index) {
+    final user = users[index];
+    final controllers = {
+      'اسم المستخدم': TextEditingController(text: user['اسم المستخدم']),
+      'رقم الهاتف': TextEditingController(text: user['رقم الهاتف']),
+      'الصلاحيات': TextEditingController(text: user['الصلاحيات']),
+      'القسم': TextEditingController(text: user['القسم']),
+      'المركز': TextEditingController(text: user['المركز']),
+      'الراتب': TextEditingController(text: user['الراتب']),
+      'الكود': TextEditingController(text: user['الكود']),
+    };
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('تعديل بيانات المستخدم'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (String column in controllers.keys)
+                TextField(
+                  controller: controllers[column],
+                  decoration: InputDecoration(labelText: column),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final updatedUser = {
+                  for (String column in controllers.keys)
+                    column: controllers[column]!.text,
+                };
+                updateUser(index, updatedUser);
+                Navigator.pop(context);
+              },
+              child: const Text('تحديث'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void filterUsers(String query) {
     final results = users.where((user) {
-      final username = user['username']!.toLowerCase();
+      final username = user['اسم المستخدم']!.toLowerCase();
       return username.contains(query.toLowerCase());
     }).toList();
 
@@ -120,20 +221,69 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    fetchUsers();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'المستخدمين',
-          style: TextStyle(color: Colors.white),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.blue[900]!,
+                Colors.blue[700]!,
+                Colors.blue[500]!,
+              ],
+            ),
+          ),
         ),
-        backgroundColor: const Color.fromARGB(255, 28, 169, 125),
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.arrow_back_ios,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.people,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'إدارة المستخدمين',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -160,77 +310,57 @@ class _UsersPageState extends State<UsersPage> {
                         onChanged: filterUsers,
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: () => _showAddUserDialog(context),
-                      child: const Text('إضافة مستخدم'),
-                    ),
                     Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          columnSpacing: 20,
-                          border: TableBorder.all(color: Colors.grey),
-                          headingRowColor:
-                              MaterialStateProperty.all(Colors.blue[100]),
-                          columns: const [
-                            DataColumn(
-                              label: CenteredText(
-                                text: 'اسم المستخدم',
-                                fontSize: 14,
-                              ),
-                            ),
-                            DataColumn(
-                              label: CenteredText(
-                                text: 'رقم الهاتف',
-                                fontSize: 14,
-                              ),
-                            ),
-                            DataColumn(
-                              label: CenteredText(
-                                text: 'الصلاحيات',
-                                fontSize: 14,
-                              ),
-                            ),
-                            DataColumn(
-                              label: CenteredText(
-                                text: 'القسم',
-                                fontSize: 14,
-                              ),
-                            ),
-                            DataColumn(
-                              label: CenteredText(
-                                text: 'إجراءات',
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                          rows: filteredUsers.asMap().entries.map((entry) {
-                            int index = entry.key;
-                            Map<String, String> user = entry.value;
-                            return DataRow(
-                              cells: [
-                                DataCell(CenteredText(
-                                    text: user['username']!, fontSize: 12)),
-                                DataCell(CenteredText(
-                                    text: user['phone']!, fontSize: 12)),
-                                DataCell(CenteredText(
-                                    text: user['permissions']!, fontSize: 12)),
-                                DataCell(CenteredText(
-                                    text: user['department']!, fontSize: 12)),
-                                DataCell(
+                      child: _ResponsiveBodyShim(
+                        child: ListView.builder(
+                          itemCount: filteredUsers.length,
+                          itemBuilder: (context, index) {
+                            final user = filteredUsers[index];
+                            return Card(
+                              child: ExpansionTile(
+                                title: Text(user['اسم المستخدم']!),
+                                children: [
+                                  for (var entry in user.entries)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 4.0, horizontal: 16.0),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            entry.key,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          Text(entry.value),
+                                        ],
+                                      ),
+                                    ),
                                   Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.delete,
-                                            color: Colors.red),
+                                      TextButton(
+                                        onPressed: () =>
+                                            _showEditUserDialog(context, index),
+                                        child: const Text(
+                                          'تعديل',
+                                          style: TextStyle(color: Colors.blue),
+                                        ),
+                                      ),
+                                      TextButton(
                                         onPressed: () => deleteUser(index),
+                                        child: const Text(
+                                          'حذف',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             );
-                          }).toList(),
+                          },
                         ),
                       ),
                     ),
@@ -239,79 +369,37 @@ class _UsersPageState extends State<UsersPage> {
     );
   }
 
-  void _showAddUserDialog(BuildContext context) {
-    final usernameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final permissionsController = TextEditingController();
-    final departmentController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('إضافة مستخدم جديد'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: usernameController,
-                decoration: const InputDecoration(labelText: 'اسم المستخدم'),
-              ),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(labelText: 'رقم الهاتف'),
-              ),
-              TextField(
-                controller: permissionsController,
-                decoration: const InputDecoration(labelText: 'الصلاحيات'),
-              ),
-              TextField(
-                controller: departmentController,
-                decoration: const InputDecoration(labelText: 'القسم'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final user = {
-                  'username': usernameController.text,
-                  'phone': phoneController.text,
-                  'permissions': permissionsController.text,
-                  'department': departmentController.text,
-                };
-                addUser(user);
-                Navigator.pop(context);
-              },
-              child: const Text('إضافة'),
-            ),
-          ],
-        );
-      },
-    );
+  @override
+  void dispose() {
+    _client?.close();
+    searchController.dispose();
+    super.dispose();
   }
 }
 
-class CenteredText extends StatelessWidget {
-  final String text;
-  final double fontSize;
-
-  const CenteredText({super.key, required this.text, this.fontSize = 14});
-
+class _ResponsiveBodyShim extends StatelessWidget {
+  final Widget child;
+  const _ResponsiveBodyShim({required this.child});
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.normal,
-          color: Colors.black,
+    final width = MediaQuery.of(context).size.width;
+    double maxWidth;
+    if (width > 1440) {
+      maxWidth = 1200;
+    } else if (width > 1024) {
+      maxWidth = 1000;
+    } else if (width > 600) {
+      maxWidth = 800;
+    } else {
+      maxWidth = double.infinity;
+    }
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: child,
         ),
       ),
     );

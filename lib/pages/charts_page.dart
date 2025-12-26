@@ -1,13 +1,19 @@
+/// اسم الصفحة: الرسوم البيانية
+/// وصف الصفحة: صفحة عرض الرسوم البيانية والمخططات التحليلية
+/// المؤلف: تطبيق السدارة
+/// تاريخ الإنشاء: 2024
+library;
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../widgets/responsive_body.dart';
 
 class ChartsPage extends StatefulWidget {
   const ChartsPage({super.key});
-
   @override
-  _ChartsPageState createState() => _ChartsPageState();
+  State<ChartsPage> createState() => _ChartsPageState();
 }
 
 class _ChartsPageState extends State<ChartsPage> {
@@ -41,12 +47,28 @@ class _ChartsPageState extends State<ChartsPage> {
         if (data['values'] != null) {
           final rows = data['values'] as List;
 
+          final List<String> zonesTmp = [];
+          final List<int> totalUsersTmp = [];
+          final List<int> nonSubscribedTmp = [];
+
+          for (final row in rows) {
+            if (row is List && row.isNotEmpty) {
+              final String zone =
+                  row.isNotEmpty ? row[0].toString() : 'غير معروف';
+              final int users =
+                  row.length > 2 ? int.tryParse(row[2].toString()) ?? 0 : 0;
+              final int nonSub =
+                  row.length > 3 ? int.tryParse(row[3].toString()) ?? 0 : 0;
+              zonesTmp.add(zone);
+              totalUsersTmp.add(users);
+              nonSubscribedTmp.add(nonSub);
+            }
+          }
+
           setState(() {
-            zones = rows.map((row) => row[0].toString()).toList();
-            totalUsersPerZone =
-                rows.map((row) => int.tryParse(row[2]) ?? 0).toList();
-            nonSubscribedUsersPerZone =
-                rows.map((row) => int.tryParse(row[3]) ?? 0).toList();
+            zones = zonesTmp;
+            totalUsersPerZone = totalUsersTmp;
+            nonSubscribedUsersPerZone = nonSubscribedTmp;
             isLoading = false;
           });
         } else {
@@ -94,8 +116,8 @@ class _ChartsPageState extends State<ChartsPage> {
                         fontWeight: FontWeight.bold),
                   ),
                 )
-              : Padding(
-                  padding: const EdgeInsets.all(8.0),
+              : ResponsiveBody(
+                  padding: const EdgeInsets.all(12.0),
                   child: Column(
                     children: [
                       Expanded(
@@ -123,7 +145,9 @@ class _ChartsPageState extends State<ChartsPage> {
 
   Widget _buildChart(String title, List<int> data,
       {required bool isTotalUsers, required double chartWidth}) {
-    final barWidth = chartWidth / (data.length * 3); // ضبط عرض الأعمدة
+    final int count = data.isEmpty ? 1 : data.length;
+    double barWidth = chartWidth / (count * 3); // ضبط عرض الأعمدة
+    barWidth = barWidth.clamp(6.0, 28.0); // تأمين قيمة معقولة للعرض
 
     return Card(
       elevation: 4,
@@ -186,8 +210,12 @@ class _ChartsPageState extends State<ChartsPage> {
                       tooltipPadding: const EdgeInsets.all(6),
                       tooltipRoundedRadius: 8,
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final zoneLabel =
+                            (groupIndex >= 0 && groupIndex < zones.length)
+                                ? zones[groupIndex]
+                                : '#${groupIndex + 1}';
                         return BarTooltipItem(
-                          'الزون: ${zones[groupIndex]}\nعدد: ${rod.toY.toInt()}',
+                          'الزون: $zoneLabel\nعدد: ${rod.toY.toInt()}',
                           const TextStyle(
                             color: Colors.white,
                             fontSize: 14,

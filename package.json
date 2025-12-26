@@ -1,0 +1,12 @@
+{
+  "name": "firebase-data-reader",
+  "version": "1.0.0",
+  "description": "Read Firebase Firestore data using Admin SDK",
+  "main": "read_firebase_data.js",
+  "scripts": {
+    "start": "node read_firebase_data.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

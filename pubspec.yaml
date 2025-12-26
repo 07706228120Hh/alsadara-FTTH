@@ -1,96 +1,130 @@
-name: ftth_project
-description: "A new Flutter project."
+name: alsadara
+description: "Alsadara Flutter application - تطبيق الصدارة لإدارة شبكات FTTH"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.2.8+14
 
 environment:
-  sdk: ">=2.19.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-
-  # مكتبة لإجراء طلبات HTTP
-  http: ^1.2.2
   
-  open_file: ^3.2.1
+  # إدارة متغيرات البيئة بشكل آمن
+  flutter_dotenv: ^5.2.1
 
-  path_provider: ^2.0.13
+  # مكتبات UI ضرورية
+  multiselect_formfield: ^0.1.7
+  multi_select_flutter: ^4.1.3
+  cupertino_icons: ^1.0.8
 
-  dio: ^5.0.0
+  # مكتبات الشبكة والـ API
+  http: ^1.2.2
+  dio: ^5.7.0
+  url_launcher: ^6.3.1
 
-  # مكتبة لفتح الروابط
-  url_launcher: ^6.1.7
+  # مكتبات الملفات والتخزين
+  open_file: ^3.5.8
+  file_picker: ^8.1.7
+  path_provider: ^2.1.5
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
+  excel: ^4.0.6
 
-  # مكتبة لإنشاء الرسوم البيانية
-  fl_chart: ^0.69.2
+  # مكتبات Google Services
+  gsheets: ^0.5.0
+  googleapis: any
+  googleapis_auth: any
+  google_sign_in: ^6.2.2
+  google_fonts: ^6.2.1
+  google_maps_flutter: ^2.12.2
 
-  # مكتبة لإنشاء الرسوم المتحركة
+  # مكتبات الأمان والمصادقة
+  crypto: ^3.0.3  # ✅ للتشفير SHA-256
+  jwt_decoder: ^2.0.1
+  oauth2: ^2.0.2
+  local_auth: ^2.3.0
+  flutter_web_auth_2: ^4.1.0
+
+  # مكتبات الواجهة والتصميم
+  provider: ^6.1.2
+  flutter_screenutil: ^5.9.3
   lottie: ^3.2.0
+  fl_chart: ^0.70.1
 
-  # مكتبة للتحقق من الإدخالات
+  # مكتبات النظام والأجهزة
+  webview_flutter: ^4.10.0
+  webview_windows: ^0.4.0
+  window_manager: ^0.5.1
+  permission_handler: ^11.3.1
+  connectivity_plus: ^6.1.1
+  geolocator: ^13.0.2
+  device_info_plus: ^11.2.0
+  package_info_plus: ^8.1.0  # للحصول على معلومات إصدار التطبيق
+  win32: ^5.9.0
+  ffi: ^2.1.3
+
+  # مكتبات الإشعارات والطباعة
+  flutter_local_notifications: ^18.0.1
+  firebase_messaging: ^15.1.5
+  firebase_core: ^3.8.1
+  firebase_auth: ^5.7.0  # ✅ تحديث لأحدث إصدار متوافق
+  cloud_firestore: ^5.5.0
+  printing: ^5.13.4
+  windows_taskbar: ^1.1.2
+
+  # مكتبات المشاركة والتصدير
+  pdf: ^3.11.1
+  share_plus: ^11.0.0
+  image_picker: ^1.1.2
+
+  # مكتبات الأدوات المساعدة
   validators: ^3.0.0
+  intl: ^0.20.2
+  logger: ^2.5.0
 
-  # مكتبة لتحسين تجربة التصميم
-  provider: ^6.0.5
+  # مكتبات التخزين المحلي
+  path: ^1.9.0
 
-  # مكتبة للتحقق من الاتصال بالإنترنت
-  connectivity_plus: ^6.1.0
-
-  # مكتبة لتنسيق التصميم حسب الشاشة
-  flutter_screenutil: ^5.6.0
-
-  # مكتبة لدعم اللغات المتعددة
+  # دعم اللغات المتعددة
   flutter_localizations:
     sdk: flutter
-
-  # مكتبة للتعامل مع Google Sheets باستخدام OAuth
-  googleapis: ^13.2.0
-  googleapis_auth: ^1.6.0
-  
-  # مكتبة للتحقق بالبصمة
-  local_auth: ^2.1.0
-  
-  # مكتبة للتحكم بالموقع الجغرافي
-  geolocator: ^13.0.2
-
-  # مكتبة للتعامل مع الخرائط
-  google_maps_flutter: ^2.2.3
-
-  # مكتبة للتعامل مع التاريخ والوقت
-  intl: ^0.19.0
-
-  # مكتبة لإدارة التصاريح
-  permission_handler: ^11.3.1
-
-  # مكتبة للتعامل مع ملفات Excel و PDF
-  pdf: ^3.10.0
-  syncfusion_flutter_xlsio: ^28.1.33
-
-  # مكتبات إضافية:
-  google_sign_in: ^6.1.6
-  flutter_secure_storage: ^9.2.2 # حل التعارض مع device_info_plus
-  oauth2: ^2.0.2
-
-  # مكتبات جديدة:
-  device_info_plus: ^11.2.0
-  logger: ^2.0.2
-
-  # أيقونات Cupertino
-  cupertino_icons: ^1.0.8
-  android_intent_plus: ^5.2.0
-  shared_preferences: ^2.3.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+
+# إعداد flutter_launcher_icons لتوليد الأيقونات من نفس صورة شاشة تسجيل الدخول
+flutter_launcher_icons:
+  image_path: assets/app_icon.png # سيتم إنشاؤه تلقائياً من assets/1.jpg عبر سكربت PowerShell
+  android: true
+  adaptive_icon_background: "#FFFFFFFF" # يمكنك وضع لون أو صورة مثل assets/app_icon_bg.png
+  adaptive_icon_foreground: assets/app_icon.png
+  min_sdk_android: 21
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/app_icon.png
+    favicon: true
+  windows:
+    generate: true
+    icon_size: 48
+  macos: true
+  linux: true
 
 flutter:
   uses-material-design: true
 
   # إضافة الصور والأصول
   assets:
-    - assets/1.jpg
-    - assets/service_account.json
+  - assets/1.jpg
+  - assets/service_account.json
+  - assets/users_fallback.json
+  - assets/config.json
+  - assets/fonts/
+  - assets/animations/
+  - .env
