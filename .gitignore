@@ -85,3 +85,7 @@ coverage/
 **/windows/build/
 **/macos/build/
 **/linux/build/
+# Distribution - only keep Installer folder
+Distribution_*/Portable/
+Alsadara_*.zip
+*.Complete.zip

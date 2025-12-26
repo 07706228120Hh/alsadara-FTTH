@@ -84,7 +84,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
       } else {
         _filteredUsers = _allUsers.where((user) {
           return user.username.toLowerCase().contains(query) ||
-              (user.fullName.toLowerCase().contains(query) ?? false) ||
+              user.fullName.toLowerCase().contains(query) ||
               (user.phone?.toLowerCase().contains(query) ?? false) ||
               (user.email?.toLowerCase().contains(query) ?? false);
         }).toList();
@@ -815,7 +815,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                                     ),
                                   ),
                                   title: Text(
-                                    user.fullName ?? user.username,
+                                    user.fullName.isNotEmpty
+                                        ? user.fullName
+                                        : user.username,
                                     style: GoogleFonts.cairo(
                                         fontWeight: FontWeight.bold),
                                   ),
