@@ -1,0 +1,74 @@
+# CI/CD - إصدار التطبيق
+# ينشئ Release تلقائياً مع الملفات
+# تطبيق الصدارة - FTTH
+
+name: 🚀 Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ═══════════════════════════════════════
+  # بناء وإصدار
+  # ═══════════════════════════════════════
+  release:
+    name: 📦 Build & Release
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🎯 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub get
+
+      - name: 🧪 Run tests
+        run: flutter test
+
+      - name: 🏗️ Build Windows
+        run: flutter build windows --release
+
+      - name: 📁 Create ZIP
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "Alsadara-FTTH-Windows-${{ github.ref_name }}.zip"
+
+      - name: 📋 Extract version info
+        id: version
+        run: |
+          $version = "${{ github.ref_name }}" -replace 'v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+      - name: 🚀 Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "الصدارة FTTH ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## 🆕 إصدار جديد - الصدارة FTTH ${{ steps.version.outputs.VERSION }}
+
+            ### 📥 التحميل
+            - **Windows**: `Alsadara-FTTH-Windows-${{ github.ref_name }}.zip`
+
+            ### 📋 التثبيت
+            1. فك ضغط الملف
+            2. شغل `alsadara_ftth.exe`
+
+            ### 🔄 التحديث التلقائي
+            التطبيق يدعم التحديث التلقائي - سيتم إشعارك بالإصدارات الجديدة.
+
+            ---
+            📅 تاريخ الإصدار: ${{ github.event.head_commit.timestamp }}
+          files: |
+            Alsadara-FTTH-Windows-${{ github.ref_name }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

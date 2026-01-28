@@ -1,0 +1,60 @@
+# ===================================
+# ملفات سرية - لا تُنشر أبداً
+# SECRET FILES - NEVER COMMIT
+# ===================================
+
+# Firebase
+secrets/
+*.firebase.json
+*firebase-adminsdk*.json
+firebase-service-account.json
+
+# Environment Files
+.env
+.env.*
+!.env.example
+appsettings.secrets.json
+appsettings.*.secrets.json
+
+# API Keys
+**/api_keys.json
+**/secrets.json
+**/credentials.json
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+*.pfx
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+
+# Logs
+logs/
+*.log
+
+# Build outputs
+bin/
+obj/
+out/
+publish/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp

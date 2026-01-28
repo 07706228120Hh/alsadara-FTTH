@@ -1,0 +1,13 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "profiles": {
+    "Sadara.API": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:5000"
+    }
+  }
+}
