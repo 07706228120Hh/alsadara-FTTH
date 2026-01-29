@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Sadara.Application.DTOs;
+using Sadara.Application.Interfaces;
 using Sadara.Application.Mapping;
 using Sadara.Application.Services;
 using Sadara.Application.Validators;
@@ -11,6 +12,8 @@ using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
 using Sadara.Infrastructure.Identity;
 using Sadara.Infrastructure.Repositories;
+using Sadara.Infrastructure.Services.Firebase;
+using Sadara.Infrastructure.Services.Server;
 using Serilog;
 using System.Text;
 
@@ -54,6 +57,12 @@ builder.Services.AddScoped<IJwtService>(sp => new JwtService(
 // SMS Service (Mock)
 builder.Services.AddScoped<ISmsService, MockSmsService>();
 
+// Firebase Admin Service
+builder.Services.AddHttpClient<IFirebaseAdminService, FirebaseAdminService>();
+
+// VPS Control Service
+builder.Services.AddScoped<IVpsControlService, VpsControlService>();
+
 // Application Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
@@ -93,7 +102,33 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    // مستويات الصلاحيات الهرمية (مطابق لنظام Flutter)
+    
+    // المدير الأعلى فقط - للتحكم الكامل بالسيرفر والنظام
     options.AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
+    options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
+    
+    // مدير الشركة أو أعلى (SuperAdmin, CompanyAdmin)
+    options.AddPolicy("CompanyAdminOrAbove", policy => 
+        policy.RequireRole("SuperAdmin", "CompanyAdmin"));
+    
+    // مدير أو أعلى (SuperAdmin, CompanyAdmin, Manager)
+    options.AddPolicy("ManagerOrAbove", policy => 
+        policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager"));
+    
+    // قائد تقني أو أعلى
+    options.AddPolicy("TechnicalLeaderOrAbove", policy => 
+        policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager", "TechnicalLeader"));
+    
+    // فني أو أعلى
+    options.AddPolicy("TechnicianOrAbove", policy => 
+        policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager", "TechnicalLeader", "Technician"));
+    
+    // موظف شركة (أي موظف داخل شركة)
+    options.AddPolicy("CompanyEmployee", policy => 
+        policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager", "TechnicalLeader", "Technician", "Employee", "Viewer"));
+    
+    // سياسات قديمة للتوافق مع E-commerce
     options.AddPolicy("Admin", policy => policy.RequireRole("SuperAdmin", "Admin"));
     options.AddPolicy("Merchant", policy => policy.RequireRole("SuperAdmin", "Admin", "Merchant"));
 });
@@ -107,7 +142,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Keep original case
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -162,15 +202,13 @@ app.Use(async (context, next) =>
     }
 });
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger in all environments
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sadara API v1");
-        c.RoutePrefix = string.Empty;
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sadara API v1");
+    c.RoutePrefix = string.Empty;
+});
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
@@ -181,12 +219,29 @@ app.UseSerilogRequestLogging();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// Seed test data
-if (app.Environment.IsDevelopment())
+// Apply migrations and seed data
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<SadaraDbContext>();
-    await SeedTestDataAsync(context);
+    
+    // Apply pending migrations (skip for InMemory database)
+    if (!context.Database.IsInMemory())
+    {
+        await context.Database.MigrateAsync();
+    }
+    else
+    {
+        await context.Database.EnsureCreatedAsync();
+    }
+    
+    // Seed core data (permissions, services, operation types, super admin)
+    await SeedData.SeedAsync(context);
+    
+    // Seed test data in development
+    if (app.Environment.IsDevelopment())
+    {
+        await SeedTestDataAsync(context);
+    }
 }
 
 Log.Information("Sadara Platform API starting on http://localhost:5000");

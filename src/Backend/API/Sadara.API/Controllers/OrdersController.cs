@@ -38,7 +38,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateOrderRequest request)
+    public async Task<IActionResult> Create([FromBody] Sadara.Application.DTOs.CreateOrderRequest request)
     {
         var result = await _orderService.CreateAsync(GetMerchantId(), request);
         return result.Success ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result) : BadRequest(result);

@@ -13,6 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../services/organizations_service.dart';
 import '../../services/firestore_permissions_service.dart';
+import '../../citizen_portal/citizen_portal.dart';
 import '../login_page.dart';
 
 class OrganizationsManagementPage extends StatefulWidget {
@@ -33,11 +34,16 @@ class _OrganizationsManagementPageState
   List<Map<String, dynamic>> _orgUsers = [];
   Map<String, dynamic>? _selectedOrg;
 
+  // Citizen Portal linking state
+  String? _linkedCompanyId;
+  bool _isCheckingLinked = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _checkPermissionsAndLoadData();
+    _loadLinkedCompany();
   }
 
   @override
@@ -114,6 +120,145 @@ class _OrganizationsManagementPageState
       }
     } catch (e) {
       debugPrint('❌ خطأ في تحميل المستخدمين: $e');
+    }
+  }
+
+  /// تحميل معلومات الشركة المرتبطة بنظام المواطن
+  Future<void> _loadLinkedCompany() async {
+    setState(() => _isCheckingLinked = true);
+    try {
+      final linkedCompany = await CitizenPortalHelper.getLinkedCompany();
+      if (mounted) {
+        setState(() {
+          _linkedCompanyId = linkedCompany?.id;
+          _isCheckingLinked = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في تحميل الشركة المرتبطة: $e');
+      if (mounted) {
+        setState(() => _isCheckingLinked = false);
+      }
+    }
+  }
+
+  /// ربط شركة بنظام المواطن
+  Future<void> _linkToCitizenPortal(String orgId, String orgName) async {
+    // تأكيد الربط
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('تأكيد الربط',
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        content: Text(
+          'هل أنت متأكد من ربط شركة "$orgName" بنظام المواطن؟\n\n'
+          'ملاحظة: سيتم إلغاء ربط أي شركة أخرى تلقائياً.',
+          style: GoogleFonts.cairo(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('إلغاء', style: GoogleFonts.cairo()),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: Text('تأكيد الربط', style: GoogleFonts.cairo()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isCheckingLinked = true);
+    try {
+      // استدعاء API للربط
+      await CompanyApiService.linkToCitizenPortal(orgId);
+
+      // تحديث حالة الربط
+      await _loadLinkedCompany();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ تم ربط شركة "$orgName" بنظام المواطن بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في ربط الشركة: $e');
+      if (mounted) {
+        setState(() => _isCheckingLinked = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ خطأ: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  /// إلغاء ربط شركة من نظام المواطن
+  Future<void> _unlinkFromCitizenPortal(String orgId, String orgName) async {
+    // تأكيد الإلغاء
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('تأكيد إلغاء الربط',
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        content: Text(
+          'هل أنت متأكد من إلغاء ربط شركة "$orgName" من نظام المواطن؟\n\n'
+          'سيتم إخفاء بوابة المواطن من لوحة تحكم الشركة.',
+          style: GoogleFonts.cairo(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('إلغاء', style: GoogleFonts.cairo()),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('تأكيد الإلغاء', style: GoogleFonts.cairo()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isCheckingLinked = true);
+    try {
+      // استدعاء API لإلغاء الربط
+      await CompanyApiService.unlinkFromCitizenPortal(orgId);
+
+      // تحديث حالة الربط
+      await _loadLinkedCompany();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ تم إلغاء ربط شركة "$orgName" من نظام المواطن'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في إلغاء ربط الشركة: $e');
+      if (mounted) {
+        setState(() => _isCheckingLinked = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ خطأ: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -806,6 +951,75 @@ class _OrganizationsManagementPageState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Citizen Portal Badge and Actions
+                    if (_linkedCompanyId == org['id'])
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green[300]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.verified,
+                                color: Colors.green[700], size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '✅ مرتبطة بنظام المواطن',
+                                style: GoogleFonts.cairo(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[700],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Citizen Portal Link/Unlink Button
+                    if (isActive && !_isCheckingLinked)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        width: double.infinity,
+                        child: _linkedCompanyId == org['id']
+                            ? OutlinedButton.icon(
+                                onPressed: () => _unlinkFromCitizenPortal(
+                                    org['id'], org['name']),
+                                icon: const Icon(Icons.link_off),
+                                label: Text('إلغاء الربط بنظام المواطن',
+                                    style: GoogleFonts.cairo()),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                  side: const BorderSide(color: Colors.red),
+                                ),
+                              )
+                            : ElevatedButton.icon(
+                                onPressed: () => _linkToCitizenPortal(
+                                    org['id'], org['name']),
+                                icon: const Icon(Icons.link),
+                                label: Text('ربط بنظام المواطن',
+                                    style: GoogleFonts.cairo()),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                      ),
+
+                    if (_isCheckingLinked)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+
+                    const Divider(),
+
                     Text('📊 الإحصائيات:',
                         style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),

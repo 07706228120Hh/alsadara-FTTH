@@ -56,6 +56,7 @@ import '../../services/auth/auth_context.dart';
 import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
 import '../widgets/pikachu_overlay.dart';
+import '../../pages/super_admin/super_admin_dashboard.dart'; // ✅ لوحة تحكم Super Admin
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -72,6 +73,10 @@ class HomePage extends StatefulWidget {
   final String? firstSystemCenter; // مركز النظام الأول
   final String? firstSystemSalary; // راتب النظام الأول
   final Map<String, bool>? firstSystemPageAccess; // صلاحيات صفحات النظام الأول
+  // ✅ دعم وضع Super Admin
+  final bool isSuperAdminMode; // هل دخل كـ Super Admin
+  final String? tenantId; // معرف الشركة
+  final String? tenantCode; // كود الشركة
   const HomePage({
     required this.username,
     required this.authToken,
@@ -86,6 +91,9 @@ class HomePage extends StatefulWidget {
     this.firstSystemCenter,
     this.firstSystemSalary,
     this.firstSystemPageAccess,
+    this.isSuperAdminMode = false,
+    this.tenantId,
+    this.tenantCode,
     super.key,
   });
 
@@ -2344,6 +2352,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
       actions: [
+        // ✅ زر العودة للوحة تحكم Super Admin
+        if (widget.isSuperAdminMode)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.amber.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.admin_panel_settings,
+                color: Colors.amber,
+                size: isSmallPhone ? 22.0 : (isTablet ? 28.0 : 26.0),
+              ),
+              onPressed: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => const SuperAdminDashboard(),
+                  ),
+                  (route) => false,
+                );
+              },
+              tooltip: 'العودة للوحة تحكم مدير النظام',
+            ),
+          ),
         IconButton(
           icon: Icon(
             Icons.logout_rounded,

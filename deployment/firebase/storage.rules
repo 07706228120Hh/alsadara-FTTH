@@ -1,0 +1,75 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+             && request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+    
+    function isValidDocument() {
+      return request.resource.contentType.matches('application/pdf')
+             || request.resource.contentType.matches('image/.*')
+             && request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+    
+    // ============================================
+    // User Profile Images
+    // ============================================
+    
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isOwner(userId) && isValidImage();
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // ============================================
+    // Service Request Attachments
+    // ============================================
+    
+    match /serviceRequests/{requestId}/attachments/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidDocument();
+      allow delete: if isAuthenticated();
+    }
+    
+    // ============================================
+    // Company Logos
+    // ============================================
+    
+    match /companies/{companyId}/logo/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isValidImage();
+    }
+    
+    // ============================================
+    // Advertising Images (Public)
+    // ============================================
+    
+    match /advertisings/{adId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isValidImage();
+    }
+    
+    // ============================================
+    // Product Images
+    // ============================================
+    
+    match /products/{productId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isValidImage();
+    }
+  }
+}

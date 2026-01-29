@@ -3,6 +3,13 @@
 # SECRET FILES - NEVER COMMIT
 # ===================================
 
+# Deployment Secrets
+deployment/**/.secrets.json
+deployment/**/*.secrets.json
+deployment/**/google-services.json
+deployment/**/GoogleService-Info.plist
+deployment/**/service-account.json
+
 # Firebase
 secrets/
 *.firebase.json
@@ -58,3 +65,29 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Flutter
+**/ios/.symlinks/
+**/ios/Pods/
+**/android/.gradle/
+**/android/.idea/
+**/android/local.properties
+**/build/
+**/*.log
+
+# Flutter Desktop
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/macos/flutter/ephemeral/
+
+# Flutter App Outputs
+**/alsadara-ftth/*.exe
+**/alsadara-ftth/*.dll
+**/alsadara-ftth/*.so
+**/alsadara-ftth/*.apk
+**/alsadara-ftth/*.ipa
+
+# Windows
+$RECYCLE.BIN/
+Desktop.ini
+

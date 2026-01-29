@@ -20,7 +20,7 @@ public record RegisterRequest(
     string PhoneNumber,
     string Password,
     string? Email = null,
-    UserRole Role = UserRole.Customer);
+    UserRole Role = UserRole.Citizen);
 
 public record RefreshTokenRequest(
     string RefreshToken);
@@ -42,11 +42,17 @@ public record ResetPasswordRequest(
     string VerificationCode,
     string NewPassword,
     string ConfirmPassword);
+
+public record FirebaseAuthRequest(
+    string FirebaseToken,
+    string? PhoneNumber = null,
+    string? DeviceId = null,
+    string? DeviceInfo = null);
 #endregion
 
 #region User DTOs
 public record UserDto(
-    int Id,
+    Guid Id,
     string FullName,
     string PhoneNumber,
     string? Email,

@@ -11,6 +11,21 @@ class GoogleSheetsService {
   static sheets.SheetsApi? _sheetsApi;
   static AuthClient? _client;
 
+  /// تحقق من وجود ملف الخدمة
+  static Future<bool> hasServiceFile() async {
+    try {
+      await rootBundle.loadString('assets/service_account.json');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// الحصول على معرف الجدول
+  static Future<String> getSpreadsheetId() async {
+    return _spreadsheetId;
+  }
+
   /// تهيئة الاتصال بـ Google Sheets
   static Future<void> _initializeSheetsAPI() async {
     try {

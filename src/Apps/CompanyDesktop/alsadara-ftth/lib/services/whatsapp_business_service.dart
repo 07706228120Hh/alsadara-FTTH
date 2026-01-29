@@ -27,6 +27,19 @@ class WhatsAppBusinessService {
   static const String n8nApiToken =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZDFmZTVkNy04OTczLTQ0ZmQtYjQzNi0yNWRhMTUyN2YzOTYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY1OTQ3NjgzfQ.IjycTVGdoGHjM9xvVO1C2xyeaa0f2v09tpwSXOpq298';
 
+  /// الحصول على جميع إعدادات واجهة WhatsApp
+  static Future<Map<String, String>> getConfiguration() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'userToken': prefs.getString(_userTokenKey) ?? '',
+      'appToken': prefs.getString(_appTokenKey) ?? '',
+      'phoneNumberId': prefs.getString(_phoneNumberIdKey) ?? '',
+      'businessAccountId': prefs.getString(_businessAccountIdKey) ?? '',
+      'webhookVerifyToken': prefs.getString(_webhookVerifyTokenKey) ?? '',
+      'n8nApiToken': prefs.getString(_n8nApiTokenKey) ?? '',
+    };
+  }
+
   /// حفظ User Token (Access Token)
   static Future<void> saveUserToken(String token) async {
     try {

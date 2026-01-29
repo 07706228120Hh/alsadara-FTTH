@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: sadara-postgres
+    environment:
+      POSTGRES_DB: SadaraDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_secure_password_here
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d SadaraDB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # pgAdmin (Optional - for database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: sadara-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@sadara.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # API Service (Optional - local development)
+  api:
+    build:
+      context: ../src/Backend/API/Sadara.API
+      dockerfile: Dockerfile
+    container_name: sadara-api
+    ports:
+      - "5000:5000"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=SadaraDB;Username=postgres;Password=your_secure_password_here
+      Jwt__Secret: YourSuperSecretKeyThatIsAtLeast32CharactersLong!
+      Jwt__Issuer: SadaraPlatform
+      Jwt__Audience: SadaraClients
+      Jwt__ExpiryMinutes: 1440
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+# Optional: If using Docker Swarm
+# deploy:
+#   mode: replicated
+#   replicas: 1
+#   placement:
+#     constraints: [node.role == manager]

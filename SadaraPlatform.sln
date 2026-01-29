@@ -7,15 +7,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{8D626EA8-CB54-BC41-363A-217881BEBA6E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.Domain", "src\Core\Sadara.Domain\Sadara.Domain.csproj", "{55E86CED-16E9-439F-B75B-BBCEEE67DC23}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.Domain", "src\Backend\Core\Sadara.Domain\Sadara.Domain.csproj", "{55E86CED-16E9-439F-B75B-BBCEEE67DC23}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.Application", "src\Core\Sadara.Application\Sadara.Application.csproj", "{C07879CE-2D6E-4155-BBD4-397DD49208FF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.Application", "src\Backend\Core\Sadara.Application\Sadara.Application.csproj", "{C07879CE-2D6E-4155-BBD4-397DD49208FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.Infrastructure", "src\Core\Sadara.Infrastructure\Sadara.Infrastructure.csproj", "{4FDCB063-C15C-4B05-BCC7-AB5C4447BBC4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.Infrastructure", "src\Backend\Core\Sadara.Infrastructure\Sadara.Infrastructure.csproj", "{4FDCB063-C15C-4B05-BCC7-AB5C4447BBC4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{984BB9B3-3FA3-BE33-9484-CAC21695A33C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.API", "src\Services\Sadara.API\Sadara.API.csproj", "{4CCF8BB4-9350-4BC3-8000-9B61E1CE5925}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sadara.API", "src\Backend\API\Sadara.API\Sadara.API.csproj", "{4CCF8BB4-9350-4BC3-8000-9B61E1CE5925}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

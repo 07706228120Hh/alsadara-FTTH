@@ -44,6 +44,23 @@ public interface IUnitOfWork : IDisposable
     IRepository<AppVersion, int> AppVersions { get; }
     IRepository<Setting, int> Settings { get; }
 
+    // Company & Multi-tenant entities (نظام الشركات - مطابق لـ Flutter)
+    IRepository<Company, Guid> Companies { get; }
+    IRepository<CompanyService, int> CompanyServices { get; }
+
+    // Permission entities (نظام الصلاحيات المتقدم)
+    IRepository<Permission, int> Permissions { get; }
+    IRepository<UserPermission, long> UserPermissions { get; }
+
+    // Service & Request entities (نظام الخدمات والطلبات)
+    IRepository<Service, int> Services { get; }
+    IRepository<OperationType, int> OperationTypes { get; }
+    IRepository<ServiceOperation, int> ServiceOperations { get; }
+    IRepository<ServiceRequest, Guid> ServiceRequests { get; }
+    IRepository<ServiceRequestComment, long> ServiceRequestComments { get; }
+    IRepository<ServiceRequestAttachment, long> ServiceRequestAttachments { get; }
+    IRepository<ServiceRequestStatusHistory, long> ServiceRequestStatusHistories { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);

@@ -37,23 +37,34 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    public async Task<IActionResult> ForgotPassword([FromBody] Sadara.Application.DTOs.ForgotPasswordRequest request)
     {
         var result = await _authService.ForgotPasswordAsync(request);
         return Ok(result);
     }
 
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    public async Task<IActionResult> ResetPassword([FromBody] Sadara.Application.DTOs.ResetPasswordRequest request)
     {
         var result = await _authService.ResetPasswordAsync(request);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
     [HttpPost("verify-phone")]
-    public async Task<IActionResult> VerifyPhone([FromBody] VerifyPhoneRequest request)
+    public async Task<IActionResult> VerifyPhone([FromBody] Sadara.Application.DTOs.VerifyPhoneRequest request)
     {
         var result = await _authService.VerifyPhoneAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>
+    /// مصادقة عبر Firebase Token
+    /// يستخدم للمستخدمين المسجلين عبر Firebase
+    /// </summary>
+    [HttpPost("firebase")]
+    public async Task<IActionResult> FirebaseAuth([FromBody] FirebaseAuthRequest request)
+    {
+        var result = await _authService.AuthenticateWithFirebaseAsync(request);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 }

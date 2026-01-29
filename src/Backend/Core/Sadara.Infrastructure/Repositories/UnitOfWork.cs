@@ -38,6 +38,23 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<AppVersion, int>? _appVersions;
     private IRepository<Setting, int>? _settings;
 
+    // Company & Multi-tenant repositories (نظام الشركات - مطابق لـ Flutter)
+    private IRepository<Company, Guid>? _companies;
+    private IRepository<CompanyService, int>? _companyServices;
+
+    // Permission repositories (نظام الصلاحيات المتقدم)
+    private IRepository<Permission, int>? _permissions;
+    private IRepository<UserPermission, long>? _userPermissions;
+
+    // Service & Request repositories (نظام الخدمات والطلبات)
+    private IRepository<Service, int>? _services;
+    private IRepository<OperationType, int>? _operationTypes;
+    private IRepository<ServiceOperation, int>? _serviceOperations;
+    private IRepository<ServiceRequest, Guid>? _serviceRequests;
+    private IRepository<ServiceRequestComment, long>? _serviceRequestComments;
+    private IRepository<ServiceRequestAttachment, long>? _serviceRequestAttachments;
+    private IRepository<ServiceRequestStatusHistory, long>? _serviceRequestStatusHistories;
+
     public UnitOfWork(SadaraDbContext context)
     {
         _context = context;
@@ -104,6 +121,42 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<Setting, int> Settings =>
         _settings ??= new Repository<Setting, int>(_context);
+
+    // Company & Multi-tenant entities
+    public IRepository<Company, Guid> Companies =>
+        _companies ??= new Repository<Company, Guid>(_context);
+
+    public IRepository<CompanyService, int> CompanyServices =>
+        _companyServices ??= new Repository<CompanyService, int>(_context);
+
+    // Permission entities
+    public IRepository<Permission, int> Permissions =>
+        _permissions ??= new Repository<Permission, int>(_context);
+
+    public IRepository<UserPermission, long> UserPermissions =>
+        _userPermissions ??= new Repository<UserPermission, long>(_context);
+
+    // Service & Request entities
+    public IRepository<Service, int> Services =>
+        _services ??= new Repository<Service, int>(_context);
+
+    public IRepository<OperationType, int> OperationTypes =>
+        _operationTypes ??= new Repository<OperationType, int>(_context);
+
+    public IRepository<ServiceOperation, int> ServiceOperations =>
+        _serviceOperations ??= new Repository<ServiceOperation, int>(_context);
+
+    public IRepository<ServiceRequest, Guid> ServiceRequests =>
+        _serviceRequests ??= new Repository<ServiceRequest, Guid>(_context);
+
+    public IRepository<ServiceRequestComment, long> ServiceRequestComments =>
+        _serviceRequestComments ??= new Repository<ServiceRequestComment, long>(_context);
+
+    public IRepository<ServiceRequestAttachment, long> ServiceRequestAttachments =>
+        _serviceRequestAttachments ??= new Repository<ServiceRequestAttachment, long>(_context);
+
+    public IRepository<ServiceRequestStatusHistory, long> ServiceRequestStatusHistories =>
+        _serviceRequestStatusHistories ??= new Repository<ServiceRequestStatusHistory, long>(_context);
 
     #endregion
 

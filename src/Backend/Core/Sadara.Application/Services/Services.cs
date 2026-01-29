@@ -16,6 +16,7 @@ public interface IAuthService
     Task<ApiResponse<bool>> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordRequest request);
     Task<ApiResponse<bool>> VerifyPhoneAsync(VerifyPhoneRequest request);
+    Task<ApiResponse<LoginResponse>> AuthenticateWithFirebaseAsync(FirebaseAuthRequest request);
 }
 
 public class AuthService : IAuthService
@@ -211,6 +212,64 @@ public class AuthService : IAuthService
         
         await _unitOfWork.SaveChangesAsync();
         return ApiResponse<bool>.SuccessResponse(true, "Phone verified");
+    }
+
+    /// <summary>
+    /// مصادقة عبر Firebase Token
+    /// إذا كان المستخدم موجوداً يتم إنشاء توكن له
+    /// إذا لم يكن موجوداً يتم إنشاء حساب جديد
+    /// </summary>
+    public async Task<ApiResponse<LoginResponse>> AuthenticateWithFirebaseAsync(FirebaseAuthRequest request)
+    {
+        try
+        {
+            // التحقق من Firebase Token (في الإنتاج يجب التحقق الفعلي من Firebase)
+            if (string.IsNullOrEmpty(request.FirebaseToken))
+                return ApiResponse<LoginResponse>.FailResponse("Firebase token is required");
+
+            // البحث عن المستخدم برقم الهاتف
+            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
+
+            if (user == null)
+            {
+                // إنشاء مستخدم جديد
+                user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    FullName = "مستخدم جديد",
+                    PhoneNumber = request.PhoneNumber ?? "",
+                    Role = UserRole.Citizen,
+                    IsActive = true,
+                    IsPhoneVerified = true, // تم التحقق عبر Firebase
+                    PasswordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString()) // كلمة مرور عشوائية
+                };
+
+                await _unitOfWork.Users.AddAsync(user);
+                _logger.LogInformation("Created new user from Firebase: {Phone}", request.PhoneNumber);
+            }
+
+            // إنشاء التوكنات
+            var accessToken = _jwtService.GenerateAccessToken(user);
+            var refreshToken = _jwtService.GenerateRefreshToken();
+            
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+            user.LastLoginAt = DateTime.UtcNow;
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return ApiResponse<LoginResponse>.SuccessResponse(new LoginResponse(
+                accessToken,
+                refreshToken,
+                DateTime.UtcNow.AddHours(1),
+                _mapper.Map<UserDto>(user)
+            ), "Firebase authentication successful");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Firebase authentication failed");
+            return ApiResponse<LoginResponse>.FailResponse("Firebase authentication failed");
+        }
     }
 }
 

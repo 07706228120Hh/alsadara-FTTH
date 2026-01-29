@@ -122,9 +122,16 @@ flutter:
   # إضافة الصور والأصول
   assets:
   - assets/1.jpg
-  - assets/service_account.json
+  # ⚠️ WARNING: Never commit service_account.json to version control!
+  # This file should be in .gitignore and only exist locally
   - assets/users_fallback.json
   - assets/config.json
   - assets/fonts/
   - assets/animations/
   - .env
+
+# ⚠️ SECURITY WARNING
+# Do NOT commit the following files to Git:
+# - assets/service_account.json (Google Service Account credentials)
+# - .env (environment variables with API keys)
+# - assets/config.json (may contain sensitive data)

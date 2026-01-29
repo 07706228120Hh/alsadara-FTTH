@@ -14,7 +14,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
-import 'pages/tenant_login_page.dart'; // ✅ صفحة تسجيل دخول الشركات
+import 'pages/tenant_login_page.dart'; // ✅ صفحة تسجيل دخول الشركات (Firebase)
+import 'pages/vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول الشركات (VPS API)
+import 'config/data_source_config.dart'; // ✅ إعدادات مصدر البيانات
 // جلسة FTTH الجديدة
 import 'services/auth/session_manager.dart';
 import 'services/auth/session_provider.dart';
@@ -34,6 +36,7 @@ import 'pages/settings_text_scale_page.dart';
 import 'utils/app_typography.dart';
 import 'theme/app_theme.dart';
 import 'services/firebase_auth_service.dart'; // ✅ خدمة Firebase
+// ✅ خدمة VPS API
 import 'services/security/error_reporter_service.dart'; // 📊 خدمة تقارير الأخطاء
 
 Future<void> main() async {
@@ -139,6 +142,21 @@ Future<void> main() async {
   } catch (e) {
     print('⚠️ لم يتم العثور على جلسة Firebase سابقة: $e');
   }
+
+  // ✅ لا نستعيد جلسة VPS تلقائياً - سيقوم المستخدم بتسجيل الدخول
+  // هذا يضمن ظهور صفحة تسجيل الدخول دائماً
+  /*
+  if (DataSourceConfig.useVpsApi) {
+    try {
+      final restored = await VpsAuthService.instance.restoreSession();
+      if (restored) {
+        print('✅ تم استعادة جلسة VPS API');
+      }
+    } catch (e) {
+      print('⚠️ لم يتم العثور على جلسة VPS سابقة: $e');
+    }
+  }
+  */
 
   runApp(WindowCloseHandlerFixed(
     child: const SessionBootstrap(child: MyApp()),
@@ -297,9 +315,14 @@ class _AppInitializerState extends State<AppInitializer> {
             });
 
             // الذهاب إلى صفحة تسجيل دخول الشركات
+            // ✅ التبديل بين Firebase و VPS API حسب الإعدادات
+            final loginPage = DataSourceConfig.useVpsApi
+                ? const VpsTenantLoginPage()
+                : const TenantLoginPage();
+
             return permissionsGranted
-                ? const TenantLoginPage()
-                : PermissionsGate(child: const TenantLoginPage());
+                ? loginPage
+                : PermissionsGate(child: loginPage);
           },
         ),
       );

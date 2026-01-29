@@ -8,15 +8,46 @@ public class User : BaseEntity<Guid>
     public string PhoneNumber { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public string? Email { get; set; }
-    public UserRole Role { get; set; } = UserRole.Customer;
+    public UserRole Role { get; set; } = UserRole.Citizen;
     public string? ProfileImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsPhoneVerified { get; set; } = false;
     
-    // Location
+    // ============ معلومات الموقع ============
     public string? City { get; set; }
     public string? Area { get; set; }
     public string? Address { get; set; }
+    
+    // ============ معلومات الشركة (للموظفين) ============
+    
+    /// <summary>الشركة التي يعمل بها الموظف</summary>
+    public Guid? CompanyId { get; set; }
+    
+    /// <summary>القسم في الشركة</summary>
+    public string? Department { get; set; }
+    
+    /// <summary>كود الموظف</summary>
+    public string? EmployeeCode { get; set; }
+    
+    /// <summary>المركز/الفرع</summary>
+    public string? Center { get; set; }
+    
+    /// <summary>الراتب (اختياري)</summary>
+    public string? Salary { get; set; }
+    
+    /// <summary>
+    /// صلاحيات النظام الأول (JSON)
+    /// مثال: {"attendance":true,"agent":false}
+    /// </summary>
+    public string? FirstSystemPermissions { get; set; }
+    
+    /// <summary>
+    /// صلاحيات النظام الثاني (JSON)
+    /// مثال: {"users":true,"subscriptions":false}
+    /// </summary>
+    public string? SecondSystemPermissions { get; set; }
+    
+    // ============ الأمان والجلسة ============
     
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
@@ -28,5 +59,24 @@ public class User : BaseEntity<Guid>
     public string? LastLoginDeviceId { get; set; }
     public string? LastLoginDeviceInfo { get; set; }
     
+    // ============ Navigation ============
+    
     public virtual Merchant? Merchant { get; set; }
+    public virtual Company? Company { get; set; }
+    public virtual ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
+    
+    // ============ خصائص مساعدة ============
+    
+    /// <summary>هل هو مدير شركة أو أعلى؟</summary>
+    public bool IsCompanyAdminOrAbove => Role >= UserRole.CompanyAdmin;
+    
+    /// <summary>هل هو مشرف أو أعلى؟</summary>
+    public bool IsManagerOrAbove => Role >= UserRole.Manager;
+    
+    /// <summary>هل هو موظف شركة؟</summary>
+    public bool IsCompanyEmployee => CompanyId.HasValue && Role >= UserRole.Employee && Role < UserRole.CompanyAdmin;
+    
+    /// <summary>هل هو مواطن (زبون)؟</summary>
+    public bool IsCitizen => Role == UserRole.Citizen;
 }
+

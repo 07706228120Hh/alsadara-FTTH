@@ -1,10 +1,12 @@
-/// صفحة تعديل بيانات الشركة
-/// تتضمن تعديل بيانات الشركة والاشتراك
+/// صفحة تعديل بيانات الشركة - تستخدم VPS API
 library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../services/api/api_client.dart';
+import '../../services/api/api_config.dart';
 import '../../multi_tenant.dart';
+import 'admin_theme.dart';
 
 class EditCompanyPage extends StatefulWidget {
   final Tenant tenant;
@@ -17,13 +19,15 @@ class EditCompanyPage extends StatefulWidget {
 
 class _EditCompanyPageState extends State<EditCompanyPage> {
   final _formKey = GlobalKey<FormState>();
-  final TenantService _tenantService = TenantService();
+  final ApiClient _apiClient = ApiClient.instance;
 
   // بيانات الشركة
   late final TextEditingController _nameController;
   late final TextEditingController _codeController;
   late final TextEditingController _phoneController;
+  late final TextEditingController _emailController;
   late final TextEditingController _addressController;
+  late final TextEditingController _cityController;
   late final TextEditingController _maxUsersController;
 
   // بيانات الاشتراك
@@ -36,13 +40,13 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
   @override
   void initState() {
     super.initState();
-    // تعبئة البيانات الحالية
     _nameController = TextEditingController(text: widget.tenant.name);
     _codeController = TextEditingController(text: widget.tenant.code);
-
     _phoneController = TextEditingController(text: widget.tenant.phone ?? '');
+    _emailController = TextEditingController(text: widget.tenant.email ?? '');
     _addressController =
         TextEditingController(text: widget.tenant.address ?? '');
+    _cityController = TextEditingController(text: widget.tenant.city ?? '');
     _maxUsersController =
         TextEditingController(text: widget.tenant.maxUsers.toString());
 
@@ -56,7 +60,9 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
     _nameController.dispose();
     _codeController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
     _maxUsersController.dispose();
     super.dispose();
   }
@@ -68,6 +74,16 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
       locale: const Locale('ar'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AdminTheme.primaryColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -79,66 +95,87 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final success = await _tenantService.updateTenant(
-        widget.tenant.id,
+      final response = await _apiClient.put(
+        '${ApiConfig.internalCompanies}/${widget.tenant.id}',
         {
           'name': _nameController.text.trim(),
           'phone': _phoneController.text.trim().isEmpty
               ? null
               : _phoneController.text.trim(),
+          'email': _emailController.text.trim().isEmpty
+              ? null
+              : _emailController.text.trim(),
           'address': _addressController.text.trim().isEmpty
               ? null
               : _addressController.text.trim(),
+          'city': _cityController.text.trim().isEmpty
+              ? null
+              : _cityController.text.trim(),
           'maxUsers': int.tryParse(_maxUsersController.text) ?? 10,
-          'subscriptionPlan': _subscriptionPlan,
+          'subscriptionEndDate': _subscriptionEnd.toIso8601String(),
           'isActive': _isActive,
         },
+        (json) => json,
+        useInternalKey: true,
       );
 
-      // تحديث تاريخ الاشتراك منفصلاً
-      if (success) {
-        await _tenantService.extendSubscription(
-          widget.tenant.id,
-          _subscriptionEnd,
-          _subscriptionPlan,
-        );
-      }
+      setState(() => _isLoading = false);
 
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (success && mounted) {
+      if (response.isSuccess && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم تحديث بيانات الشركة بنجاح'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('تم تحديث بيانات الشركة بنجاح'),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('فشل تحديث بيانات الشركة'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(response.message ?? 'فشل تحديث بيانات الشركة')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ: $e'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('حدث خطأ: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -150,10 +187,12 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
     final dateFormat = DateFormat('yyyy/MM/dd', 'ar');
 
     return Scaffold(
+      backgroundColor: AdminTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('تعديل الشركة'),
-        backgroundColor: const Color(0xFF1a237e),
+        backgroundColor: AdminTheme.primaryColor,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           if (_isLoading)
             const Center(
@@ -170,189 +209,150 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.save),
-              tooltip: 'حفظ',
-              onPressed: _save,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TextButton.icon(
+                onPressed: _save,
+                icon: const Icon(Icons.save_rounded, color: Colors.white),
+                label: const Text('حفظ',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
             ),
         ],
       ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // قسم بيانات الشركة
-              _buildSectionCard(
+              _buildModernCard(
                 title: 'بيانات الشركة',
-                icon: Icons.business,
+                icon: Icons.business_rounded,
+                color: Colors.blue,
                 children: [
-                  TextFormField(
+                  _buildTextField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم الشركة *',
-                      prefixIcon: Icon(Icons.business),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'الرجاء إدخال اسم الشركة';
-                      }
-                      return null;
-                    },
+                    label: 'اسم الشركة',
+                    icon: Icons.business_rounded,
+                    required: true,
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  _buildTextField(
                     controller: _codeController,
+                    label: 'كود الشركة',
+                    icon: Icons.tag_rounded,
                     readOnly: true,
-                    enabled: false,
-                    decoration: InputDecoration(
-                      labelText: 'كود الشركة',
-                      prefixIcon: const Icon(Icons.tag),
-                      border: const OutlineInputBorder(),
-                      helperText: 'الكود يُنشأ تلقائياً ولا يمكن تغييره',
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                    ),
+                    hint: 'الكود يُنشأ تلقائياً ولا يمكن تغييره',
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الهاتف',
-                      prefixIcon: Icon(Icons.phone),
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.phone,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _phoneController,
+                          label: 'رقم الهاتف',
+                          icon: Icons.phone_rounded,
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _emailController,
+                          label: 'البريد الإلكتروني',
+                          icon: Icons.email_rounded,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _addressController,
-                    decoration: const InputDecoration(
-                      labelText: 'العنوان',
-                      prefixIcon: Icon(Icons.location_on),
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 2,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _addressController,
+                          label: 'العنوان',
+                          icon: Icons.location_on_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _cityController,
+                          label: 'المدينة',
+                          icon: Icons.location_city_rounded,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // قسم الاشتراك
-              _buildSectionCard(
+              _buildModernCard(
                 title: 'بيانات الاشتراك',
-                icon: Icons.card_membership,
+                icon: Icons.card_membership_rounded,
+                color: Colors.green,
                 children: [
                   // تاريخ انتهاء الاشتراك
-                  InkWell(
+                  _buildDateField(
+                    label: 'تاريخ انتهاء الاشتراك',
+                    value: dateFormat.format(_subscriptionEnd),
                     onTap: _selectDate,
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'تاريخ انتهاء الاشتراك',
-                        prefixIcon: Icon(Icons.calendar_today),
-                        border: OutlineInputBorder(),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(dateFormat.format(_subscriptionEnd)),
-                          const Icon(Icons.arrow_drop_down),
-                        ],
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 16),
 
-                  // نوع الباقة
-                  DropdownButtonFormField<String>(
-                    value: _subscriptionPlan,
-                    decoration: const InputDecoration(
-                      labelText: 'نوع الباقة',
-                      prefixIcon: Icon(Icons.workspace_premium),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'monthly', child: Text('شهري')),
-                      DropdownMenuItem(
-                          value: 'quarterly', child: Text('ربع سنوي')),
-                      DropdownMenuItem(value: 'yearly', child: Text('سنوي')),
+                  Row(
+                    children: [
+                      // نوع الباقة
+                      Expanded(
+                        child: _buildDropdownField(
+                          label: 'نوع الباقة',
+                          value: _subscriptionPlan,
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'monthly', child: Text('شهري')),
+                            DropdownMenuItem(
+                                value: 'quarterly', child: Text('ربع سنوي')),
+                            DropdownMenuItem(
+                                value: 'yearly', child: Text('سنوي')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _subscriptionPlan = value);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // الحد الأقصى للمستخدمين
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _maxUsersController,
+                          label: 'الحد الأقصى للمستخدمين',
+                          icon: Icons.people_rounded,
+                          keyboardType: TextInputType.number,
+                          required: true,
+                        ),
+                      ),
                     ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _subscriptionPlan = value;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // الحد الأقصى للمستخدمين
-                  TextFormField(
-                    controller: _maxUsersController,
-                    decoration: const InputDecoration(
-                      labelText: 'الحد الأقصى للمستخدمين',
-                      prefixIcon: Icon(Icons.people),
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'الرجاء إدخال عدد المستخدمين';
-                      }
-                      final number = int.tryParse(value);
-                      if (number == null || number < 1) {
-                        return 'الرجاء إدخال رقم صحيح';
-                      }
-                      return null;
-                    },
                   ),
                   const SizedBox(height: 16),
 
                   // حالة الشركة
-                  SwitchListTile(
-                    title: const Text('الشركة نشطة'),
-                    subtitle: Text(_isActive
-                        ? 'الشركة فعالة ويمكن للمستخدمين تسجيل الدخول'
-                        : 'الشركة معلقة ولا يمكن للمستخدمين تسجيل الدخول'),
-                    value: _isActive,
-                    activeColor: Colors.green,
-                    onChanged: (value) {
-                      setState(() {
-                        _isActive = value;
-                      });
-                    },
-                  ),
+                  _buildStatusSwitch(),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
               // زر الحفظ
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _save,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_isLoading ? 'جاري الحفظ...' : 'حفظ التغييرات'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1a237e),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
+              _buildSaveButton(),
             ],
           ),
         ),
@@ -360,36 +360,319 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
     );
   }
 
-  Widget _buildSectionCard({
+  Widget _buildModernCard({
     required String title,
     required IconData icon,
+    required Color color,
     required List<Widget> children,
   }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: AdminTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+              ),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
               children: [
-                Icon(icon, color: const Color(0xFF1a237e)),
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1a237e),
+                    color: color,
                   ),
                 ),
               ],
             ),
-            const Divider(height: 24),
-            ...children,
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(children: children),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool required = false,
+    bool readOnly = false,
+    String? hint,
+    TextInputType? keyboardType,
+  }) {
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: required ? '$label *' : label,
+        hintText: hint,
+        prefixIcon: Icon(icon, color: AdminTheme.primaryColor),
+        filled: true,
+        fillColor: readOnly ? Colors.grey.shade100 : AdminTheme.backgroundColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AdminTheme.borderColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AdminTheme.borderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AdminTheme.primaryColor, width: 2),
+        ),
+      ),
+      validator: required
+          ? (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'هذا الحقل مطلوب';
+              }
+              return null;
+            }
+          : null,
+    );
+  }
+
+  Widget _buildDateField({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: AdminTheme.backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AdminTheme.borderColor),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_month_rounded, color: AdminTheme.primaryColor),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AdminTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: AdminTheme.textSecondary),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required String value,
+    required List<DropdownMenuItem<String>> items,
+    required Function(String?) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AdminTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AdminTheme.borderColor),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          border: InputBorder.none,
+          prefixIcon: Icon(Icons.workspace_premium_rounded,
+              color: AdminTheme.primaryColor),
+        ),
+        items: items,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildStatusSwitch() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _isActive
+            ? Colors.green.withOpacity(0.1)
+            : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isActive
+              ? Colors.green.withOpacity(0.3)
+              : Colors.orange.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _isActive
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.orange.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _isActive
+                  ? Icons.check_circle_rounded
+                  : Icons.pause_circle_rounded,
+              color: _isActive ? Colors.green : Colors.orange,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isActive ? 'الشركة نشطة' : 'الشركة معلقة',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _isActive ? Colors.green : Colors.orange,
+                  ),
+                ),
+                Text(
+                  _isActive
+                      ? 'الشركة فعالة ويمكن للمستخدمين تسجيل الدخول'
+                      : 'الشركة معلقة ولا يمكن للمستخدمين تسجيل الدخول',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AdminTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _isActive,
+            onChanged: (value) => setState(() => _isActive = value),
+            activeColor: Colors.green,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: _isLoading
+              ? [Colors.grey, Colors.grey.shade600]
+              : [AdminTheme.primaryColor, const Color(0xFF3949AB)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: _isLoading
+            ? null
+            : [
+                BoxShadow(
+                  color: AdminTheme.primaryColor.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isLoading ? null : _save,
+          borderRadius: BorderRadius.circular(16),
+          child: Center(
+            child: _isLoading
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'جاري الحفظ...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.save_rounded, color: Colors.white, size: 24),
+                      SizedBox(width: 12),
+                      Text(
+                        'حفظ التغييرات',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

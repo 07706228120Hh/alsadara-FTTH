@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SuperAdmin';
+    }
+    
+    function isCompanyAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SuperAdmin', 'CompanyAdmin'];
+    }
+    
+    function isEmployee() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SuperAdmin', 'CompanyAdmin', 'Manager', 'TechnicalLeader', 'Technician', 'Employee'];
+    }
+    
+    // ============================================
+    // Users Collection
+    // ============================================
+    
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isCompanyAdmin());
+      allow create: if isSuperAdmin();
+      allow update: if isOwner(userId) || isCompanyAdmin();
+      allow delete: if isSuperAdmin();
+    }
+    
+    // ============================================
+    // Companies Collection
+    // ============================================
+    
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+    
+    // ============================================
+    // Service Requests Collection
+    // ============================================
+    
+    match /serviceRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isEmployee();
+      allow delete: if isCompanyAdmin();
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isOwner(resource.data.userId);
+        allow delete: if isCompanyAdmin();
+      }
+      
+      // Attachments subcollection
+      match /attachments/{attachmentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow delete: if isCompanyAdmin();
+      }
+    }
+    
+    // ============================================
+    // Notifications Collection
+    // ============================================
+    
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isEmployee();
+      allow update: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // ============================================
+    // Settings Collection (Public Read)
+    // ============================================
+    
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+    
+    // ============================================
+    // Advertisings Collection (Public Read)
+    // ============================================
+    
+    match /advertisings/{adId} {
+      allow read: if true;
+      allow write: if isCompanyAdmin();
+    }
+  }
+}

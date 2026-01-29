@@ -3,8 +3,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../multi_tenant.dart';
+import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
 import 'edit_company_page.dart';
 import '../home_page.dart';
@@ -23,10 +26,39 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
   String _searchQuery = '';
   SubscriptionStatus? _statusFilter;
 
+  // Citizen Portal linking state
+  String? _linkedCompanyId;
+  bool _isLoadingLinked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLinkedCompany();
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// تحميل معلومات الشركة المرتبطة بنظام المواطن
+  Future<void> _loadLinkedCompany() async {
+    setState(() => _isLoadingLinked = true);
+    try {
+      final linkedCompany = await CitizenPortalHelper.getLinkedCompany();
+      if (mounted) {
+        setState(() {
+          _linkedCompanyId = linkedCompany?.id;
+          _isLoadingLinked = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في تحميل الشركة المرتبطة: $e');
+      if (mounted) {
+        setState(() => _isLoadingLinked = false);
+      }
+    }
   }
 
   @override
@@ -218,6 +250,7 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
                   final tenant = tenants[index];
                   return _CompanyCard(
                     tenant: tenant,
+                    linkedCompanyId: _linkedCompanyId,
                     onTap: () => _showCompanyOptions(context, tenant),
                     onEnterAsCompany: () => _enterAsCompany(context, tenant),
                     onEdit: () => _editCompany(context, tenant),
@@ -384,6 +417,33 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
               },
             ),
             if (tenant.isActive)
+              tenant.isLinkedToCitizenPortal
+                  ? ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Colors.deepOrange,
+                        child: Icon(Icons.link_off, color: Colors.white),
+                      ),
+                      title: const Text('إلغاء الربط بنظام المواطن'),
+                      subtitle: const Text('إزالة الارتباط بنظام المواطن'),
+                      trailing: const Icon(Icons.verified, color: Colors.green),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _unlinkFromCitizenPortal(context, tenant);
+                      },
+                    )
+                  : ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Colors.teal,
+                        child: Icon(Icons.link, color: Colors.white),
+                      ),
+                      title: const Text('ربط بنظام المواطن'),
+                      subtitle: const Text('السماح بإدارة نظام المواطن'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _linkToCitizenPortal(context, tenant);
+                      },
+                    ),
+            if (tenant.isActive)
               ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Colors.orange,
@@ -409,6 +469,24 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
                   _reactivateCompany(context, tenant);
                 },
               ),
+            // إدارة مدير الشركة
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.indigo.shade700,
+                child:
+                    const Icon(Icons.admin_panel_settings, color: Colors.white),
+              ),
+              title: const Text('إدارة مدير الشركة'),
+              subtitle: Text(
+                tenant.adminUsername != null
+                    ? 'المدير: ${tenant.adminFullName ?? tenant.adminUsername}'
+                    : 'لم يتم تعيين مدير',
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _manageCompanyAdmin(context, tenant);
+              },
+            ),
             ListTile(
               leading: const CircleAvatar(
                 backgroundColor: Colors.red,
@@ -631,6 +709,438 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
     }
   }
 
+  /// ربط شركة بنظام المواطن
+  Future<void> _linkToCitizenPortal(BuildContext context, Tenant tenant) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.link, color: Colors.teal),
+            SizedBox(width: 8),
+            Text('ربط بنظام المواطن'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('هل تريد ربط شركة "${tenant.name}" بنظام المواطن؟'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'ملاحظة: سيتم إلغاء ربط أي شركة أخرى تلقائياً',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('تأكيد الربط'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      setState(() => _isLoadingLinked = true);
+      try {
+        // إلغاء ربط أي شركة أخرى أولاً
+        final firestore = FirebaseFirestore.instance;
+        final linkedTenants = await firestore
+            .collection('tenants')
+            .where('isLinkedToCitizenPortal', isEqualTo: true)
+            .get();
+
+        for (final doc in linkedTenants.docs) {
+          await doc.reference.update({
+            'isLinkedToCitizenPortal': false,
+            'linkedToCitizenPortalAt': null,
+          });
+        }
+
+        // ربط الشركة الجديدة
+        await firestore.collection('tenants').doc(tenant.id).update({
+          'isLinkedToCitizenPortal': true,
+          'linkedToCitizenPortalAt': FieldValue.serverTimestamp(),
+        });
+
+        setState(() {
+          _linkedCompanyId = tenant.id;
+          _isLoadingLinked = false;
+        });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('✅ تم ربط شركة "${tenant.name}" بنظام المواطن بنجاح'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('❌ خطأ في ربط الشركة: $e');
+        if (context.mounted) {
+          setState(() => _isLoadingLinked = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ خطأ: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// إلغاء ربط شركة من نظام المواطن
+  Future<void> _unlinkFromCitizenPortal(
+      BuildContext context, Tenant tenant) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.link_off, color: Colors.deepOrange),
+            SizedBox(width: 8),
+            Text('إلغاء الربط بنظام المواطن'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('هل تريد إلغاء ربط شركة "${tenant.name}" من نظام المواطن؟'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_outlined, color: Colors.red),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'سيتم إخفاء بوابة المواطن من لوحة التحكم',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepOrange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('تأكيد الإلغاء'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      setState(() => _isLoadingLinked = true);
+      try {
+        final firestore = FirebaseFirestore.instance;
+        await firestore.collection('tenants').doc(tenant.id).update({
+          'isLinkedToCitizenPortal': false,
+          'linkedToCitizenPortalAt': null,
+        });
+
+        setState(() {
+          _linkedCompanyId = null;
+          _isLoadingLinked = false;
+        });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('✅ تم إلغاء ربط شركة "${tenant.name}" من نظام المواطن'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('❌ خطأ في إلغاء ربط الشركة: $e');
+        if (context.mounted) {
+          setState(() => _isLoadingLinked = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ خطأ: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// إدارة مدير الشركة (عرض/تعديل بيانات الدخول)
+  Future<void> _manageCompanyAdmin(BuildContext context, Tenant tenant) async {
+    final fullNameController =
+        TextEditingController(text: tenant.adminFullName ?? '');
+    final usernameController =
+        TextEditingController(text: tenant.adminUsername ?? '');
+    final passwordController =
+        TextEditingController(text: tenant.adminPassword ?? '');
+    bool showPassword = false;
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.admin_panel_settings, color: Colors.indigo.shade700),
+              const SizedBox(width: 8),
+              const Text('إدارة مدير الشركة'),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // اسم الشركة
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.business, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        tenant.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                // الاسم الكامل
+                TextField(
+                  controller: fullNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'الاسم الكامل للمدير',
+                    prefixIcon: Icon(Icons.person),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // اسم المستخدم
+                TextField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم المستخدم',
+                    prefixIcon: Icon(Icons.account_circle),
+                    border: OutlineInputBorder(),
+                    hintText: 'admin',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // كلمة المرور
+                TextField(
+                  controller: passwordController,
+                  obscureText: !showPassword,
+                  decoration: InputDecoration(
+                    labelText: 'كلمة المرور',
+                    prefixIcon: const Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        showPassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => showPassword = !showPassword),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // ملاحظة
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue.shade700),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'هذه البيانات مرئية فقط لمدير النظام',
+                          style: TextStyle(color: Colors.blue, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, {
+                'fullName': fullNameController.text.trim(),
+                'username': usernameController.text.trim(),
+                'password': passwordController.text,
+              }),
+              icon: const Icon(Icons.save),
+              label: const Text('حفظ'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      try {
+        final firestore = FirebaseFirestore.instance;
+        final username = result['username']!;
+        final password = result['password']!;
+        final fullName = result['fullName']!;
+
+        if (username.isEmpty || password.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ يجب إدخال اسم المستخدم وكلمة المرور'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        // تشفير كلمة المرور
+        final hashedPassword = CustomAuthService.hashPassword(password);
+
+        // البحث عن مدير موجود
+        final existingAdmin = await firestore
+            .collection('tenants')
+            .doc(tenant.id)
+            .collection('users')
+            .where('role', isEqualTo: 'admin')
+            .limit(1)
+            .get();
+
+        if (existingAdmin.docs.isNotEmpty) {
+          // تحديث المدير الموجود
+          await existingAdmin.docs.first.reference.update({
+            'username': username,
+            'passwordHash': hashedPassword,
+            'plainPassword': password,
+            'fullName': fullName,
+          });
+        } else {
+          // إنشاء مدير جديد
+          await firestore
+              .collection('tenants')
+              .doc(tenant.id)
+              .collection('users')
+              .add({
+            'username': username,
+            'passwordHash': hashedPassword,
+            'plainPassword': password,
+            'fullName': fullName,
+            'role': 'admin',
+            'isActive': true,
+            'firstSystemPermissions': {},
+            'secondSystemPermissions': {},
+            'createdAt': FieldValue.serverTimestamp(),
+            'createdBy': 'super_admin',
+          });
+        }
+
+        // تحديث البيانات المرجعية في الشركة
+        await firestore.collection('tenants').doc(tenant.id).update({
+          'adminFullName': fullName,
+          'adminUsername': username,
+          'adminPassword': password,
+        });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('✅ تم حفظ بيانات المدير بنجاح'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'يمكن للمدير تسجيل الدخول باستخدام:\nكود الشركة: ${tenant.code}\nاسم المستخدم: $username',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ خطأ: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   PopupMenuItem<SubscriptionStatus> _buildFilterMenuItem(
     SubscriptionStatus status,
     String label,
@@ -675,6 +1185,7 @@ class _CompanyCard extends StatelessWidget {
   final VoidCallback onEnterAsCompany;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final String? linkedCompanyId;
 
   const _CompanyCard({
     required this.tenant,
@@ -682,6 +1193,7 @@ class _CompanyCard extends StatelessWidget {
     required this.onEnterAsCompany,
     required this.onEdit,
     required this.onDelete,
+    this.linkedCompanyId,
   });
 
   @override
@@ -706,6 +1218,45 @@ class _CompanyCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // شريط الربط بنظام المواطن
+              if (tenant.isLinkedToCitizenPortal)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.teal.shade600, Colors.teal.shade400],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withValues(alpha: 0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.verified,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'مرتبطة بنظام المواطن',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               // الصف الأول: الاسم والحالة
               Row(
                 children: [
@@ -821,6 +1372,71 @@ class _CompanyCard extends StatelessWidget {
                           'سبب التعليق: ${tenant.suspensionReason}',
                           style: TextStyle(color: Colors.red.shade700),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // معلومات مدير الشركة
+              if (tenant.adminUsername != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.indigo.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.admin_panel_settings,
+                            color: Colors.indigo.shade700,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'معلومات مدير الشركة',
+                            style: TextStyle(
+                              color: Colors.indigo.shade700,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _AdminInfoItem(
+                              icon: Icons.person,
+                              label: 'الاسم',
+                              value: tenant.adminFullName ?? 'غير محدد',
+                            ),
+                          ),
+                          Expanded(
+                            child: _AdminInfoItem(
+                              icon: Icons.account_circle,
+                              label: 'اسم المستخدم',
+                              value: tenant.adminUsername!,
+                              canCopy: true,
+                            ),
+                          ),
+                          Expanded(
+                            child: _AdminInfoItem(
+                              icon: Icons.lock,
+                              label: 'كلمة المرور',
+                              value: tenant.adminPassword ?? '••••••',
+                              isPassword: true,
+                              canCopy: tenant.adminPassword != null,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -994,6 +1610,101 @@ class _InfoItem extends StatelessWidget {
         Text(
           value,
           style: TextStyle(fontWeight: FontWeight.bold, color: color),
+        ),
+      ],
+    );
+  }
+}
+
+/// عنصر معلومات المدير مع إمكانية النسخ وإظهار/إخفاء كلمة المرور
+class _AdminInfoItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isPassword;
+  final bool canCopy;
+
+  const _AdminInfoItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.isPassword = false,
+    this.canCopy = false,
+  });
+
+  @override
+  State<_AdminInfoItem> createState() => _AdminInfoItemState();
+}
+
+class _AdminInfoItemState extends State<_AdminInfoItem> {
+  bool _showPassword = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(widget.icon, size: 14, color: Colors.indigo.shade600),
+            const SizedBox(width: 4),
+            Text(
+              widget.label,
+              style: TextStyle(fontSize: 11, color: Colors.indigo.shade600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.isPassword && !_showPassword ? '••••••••' : widget.value,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Colors.indigo.shade900,
+                  fontFamily: widget.isPassword ? 'monospace' : null,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (widget.isPassword)
+              InkWell(
+                onTap: () => setState(() => _showPassword = !_showPassword),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    _showPassword ? Icons.visibility_off : Icons.visibility,
+                    size: 16,
+                    color: Colors.indigo.shade400,
+                  ),
+                ),
+              ),
+            if (widget.canCopy)
+              InkWell(
+                onTap: () {
+                  // نسخ القيمة
+                  final data = ClipboardData(text: widget.value);
+                  Clipboard.setData(data);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم نسخ ${widget.label}'),
+                      duration: const Duration(seconds: 1),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.copy,
+                    size: 16,
+                    color: Colors.indigo.shade400,
+                  ),
+                ),
+              ),
+          ],
         ),
       ],
     );

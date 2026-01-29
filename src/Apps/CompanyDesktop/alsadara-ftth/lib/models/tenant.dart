@@ -12,6 +12,7 @@ class Tenant {
   final String? email;
   final String? phone;
   final String? address;
+  final String? city;
   final String? logo;
   final bool isActive;
   final String? suspensionReason;
@@ -26,6 +27,13 @@ class Tenant {
   // صلاحيات الشركة - ما يمكن لمستخدمي الشركة الوصول إليه
   final Map<String, bool> enabledFirstSystemFeatures;
   final Map<String, bool> enabledSecondSystemFeatures;
+  // ربط نظام المواطن
+  final bool isLinkedToCitizenPortal;
+  final DateTime? linkedToCitizenPortalAt;
+  // معلومات مدير الشركة
+  final String? adminUsername;
+  final String? adminPassword;
+  final String? adminFullName;
 
   Tenant({
     required this.id,
@@ -34,6 +42,7 @@ class Tenant {
     this.email,
     this.phone,
     this.address,
+    this.city,
     this.logo,
     required this.isActive,
     this.suspensionReason,
@@ -47,6 +56,11 @@ class Tenant {
     required this.createdBy,
     required this.enabledFirstSystemFeatures,
     required this.enabledSecondSystemFeatures,
+    this.isLinkedToCitizenPortal = false,
+    this.linkedToCitizenPortalAt,
+    this.adminUsername,
+    this.adminPassword,
+    this.adminFullName,
   });
 
   /// الأيام المتبقية من الاشتراك
@@ -119,6 +133,13 @@ class Tenant {
           _parseFeatures(data['enabledFirstSystemFeatures']),
       enabledSecondSystemFeatures:
           _parseFeatures(data['enabledSecondSystemFeatures']),
+      isLinkedToCitizenPortal: data['isLinkedToCitizenPortal'] ?? false,
+      linkedToCitizenPortalAt: data['linkedToCitizenPortalAt'] != null
+          ? (data['linkedToCitizenPortalAt'] as Timestamp).toDate()
+          : null,
+      adminUsername: data['adminUsername'],
+      adminPassword: data['adminPassword'],
+      adminFullName: data['adminFullName'],
     );
   }
 
@@ -169,6 +190,13 @@ class Tenant {
       'createdBy': createdBy,
       'enabledFirstSystemFeatures': enabledFirstSystemFeatures,
       'enabledSecondSystemFeatures': enabledSecondSystemFeatures,
+      'isLinkedToCitizenPortal': isLinkedToCitizenPortal,
+      'linkedToCitizenPortalAt': linkedToCitizenPortalAt != null
+          ? Timestamp.fromDate(linkedToCitizenPortalAt!)
+          : null,
+      'adminUsername': adminUsername,
+      'adminPassword': adminPassword,
+      'adminFullName': adminFullName,
     };
   }
 
@@ -193,6 +221,11 @@ class Tenant {
     String? createdBy,
     Map<String, bool>? enabledFirstSystemFeatures,
     Map<String, bool>? enabledSecondSystemFeatures,
+    bool? isLinkedToCitizenPortal,
+    DateTime? linkedToCitizenPortalAt,
+    String? adminUsername,
+    String? adminPassword,
+    String? adminFullName,
   }) {
     return Tenant(
       id: id ?? this.id,
@@ -216,6 +249,13 @@ class Tenant {
           enabledFirstSystemFeatures ?? this.enabledFirstSystemFeatures,
       enabledSecondSystemFeatures:
           enabledSecondSystemFeatures ?? this.enabledSecondSystemFeatures,
+      isLinkedToCitizenPortal:
+          isLinkedToCitizenPortal ?? this.isLinkedToCitizenPortal,
+      linkedToCitizenPortalAt:
+          linkedToCitizenPortalAt ?? this.linkedToCitizenPortalAt,
+      adminUsername: adminUsername ?? this.adminUsername,
+      adminPassword: adminPassword ?? this.adminPassword,
+      adminFullName: adminFullName ?? this.adminFullName,
     );
   }
 }

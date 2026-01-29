@@ -1,0 +1,35 @@
+{
+  "server": {
+    "ip": "72.61.183.61",
+    "provider": "Hostinger",
+    "os": "Ubuntu 24.04",
+    "ssh_user": "root"
+  },
+  "services": {
+    "api": {
+      "name": "sadara-api",
+      "port": 5000,
+      "path": "/var/www/sadara-api",
+      "logs": "/var/log/sadara-api"
+    },
+    "nginx": {
+      "config": "/etc/nginx/sites-available/sadara-api",
+      "ports": [80, 443]
+    },
+    "postgresql": {
+      "version": "16",
+      "port": 5432,
+      "database": "sadara_db",
+      "user": "sadara_user"
+    }
+  },
+  "urls": {
+    "api": "https://72.61.183.61/api",
+    "swagger": "https://72.61.183.61/"
+  },
+  "ssl": {
+    "type": "self-signed",
+    "certificate": "/etc/ssl/certs/sadara-selfsigned.crt",
+    "key": "/etc/ssl/private/sadara-selfsigned.key"
+  }
+}

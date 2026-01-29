@@ -1,0 +1,39 @@
+{
+  "projectId": "sadara-platform",
+  "description": "Firebase configuration for Sadara Platform",
+  "services": {
+    "auth": {
+      "enabled": true,
+      "providers": ["phone", "email"],
+      "settings": {
+        "phoneAuth": {
+          "enabled": true,
+          "testPhoneNumbers": {
+            "+9647700000001": "123456"
+          }
+        }
+      }
+    },
+    "firestore": {
+      "enabled": true,
+      "rules": "firestore.rules"
+    },
+    "storage": {
+      "enabled": true,
+      "rules": "storage.rules"
+    },
+    "messaging": {
+      "enabled": true
+    }
+  },
+  "environments": {
+    "development": {
+      "apiKey": "YOUR_DEV_API_KEY",
+      "authDomain": "sadara-platform-dev.firebaseapp.com"
+    },
+    "production": {
+      "apiKey": "YOUR_PROD_API_KEY",
+      "authDomain": "sadara-platform.firebaseapp.com"
+    }
+  }
+}

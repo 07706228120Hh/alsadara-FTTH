@@ -1,0 +1,2 @@
+INSERT INTO "Companies" ("Id", "Name", "Code", "Email", "Phone", "IsActive", "IsDeleted", "CreatedAt", "SubscriptionStartDate", "SubscriptionEndDate", "MaxUsers", "SubscriptionPlan") 
+VALUES (gen_random_uuid(), 'Sadara Company', 'SADARA', 'info@sadara.com', '0500000000', true, false, now(), now(), now() + interval '1 year', 100, 2);
