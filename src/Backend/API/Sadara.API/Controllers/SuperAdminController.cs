@@ -128,7 +128,7 @@ public class SuperAdminController : ControllerBase
                 data = new SuperAdminLoginResponse
                 {
                     Id = user.Id,
-                    Username = user.Email ?? user.PhoneNumber,
+                    Username = user.PhoneNumber ?? user.Email,
                     FullName = user.FullName,
                     Email = user.Email,
                     Token = token,
@@ -267,6 +267,7 @@ public class SuperAdminController : ControllerBase
     /// جلب جميع الشركات
     /// </summary>
     [HttpGet("companies")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetCompanies([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         try
@@ -523,6 +524,7 @@ public class SuperAdminController : ControllerBase
     /// لوحة التحكم الرئيسية - إحصائيات شاملة
     /// </summary>
     [HttpGet("dashboard")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetDashboard()
     {
         var dashboard = new SuperAdminDashboard
@@ -540,6 +542,7 @@ public class SuperAdminController : ControllerBase
     /// إحصائيات النظام التفصيلية
     /// </summary>
     [HttpGet("statistics")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetStatistics()
     {
         var stats = await GetSystemStatistics();

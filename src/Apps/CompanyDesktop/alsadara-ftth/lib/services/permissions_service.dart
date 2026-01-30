@@ -391,4 +391,238 @@ class PermissionsService {
       }
     };
   }
+
+  // ==========================================
+  // V2 - نظام الصلاحيات المفصل (إجراءات)
+  // ==========================================
+  // هذا النظام الجديد يدعم إجراءات مفصلة لكل صلاحية:
+  // view: عرض
+  // add: إضافة
+  // edit: تعديل
+  // delete: حذف
+  // export: تصدير
+  // import: استيراد
+  // print: طباعة
+  // send: إرسال (مثل رسائل واتساب)
+
+  static const String _firstSystemPrefixV2 = 'first_system_permission_v2_';
+  static const String _firstSystemConfigKeyV2 = 'first_system_configured_v2';
+  static const String _secondSystemPrefixV2 = 'second_system_permission_v2_';
+  static const String _secondSystemConfigKeyV2 = 'second_system_configured_v2';
+
+  /// قائمة الإجراءات المتاحة
+  static const List<String> availableActions = [
+    'view', // عرض
+    'add', // إضافة
+    'edit', // تعديل
+    'delete', // حذف
+    'export', // تصدير
+    'import', // استيراد
+    'print', // طباعة
+    'send', // إرسال
+  ];
+
+  /// أسماء الإجراءات بالعربي
+  static const Map<String, String> actionNamesAr = {
+    'view': 'عرض',
+    'add': 'إضافة',
+    'edit': 'تعديل',
+    'delete': 'حذف',
+    'export': 'تصدير',
+    'import': 'استيراد',
+    'print': 'طباعة',
+    'send': 'إرسال',
+  };
+
+  /// الحصول على صلاحيات V2 للنظام الأول
+  static Future<Map<String, Map<String, bool>>>
+      getFirstSystemPermissionsV2() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isConfiguredV2 = prefs.getBool(_firstSystemConfigKeyV2) ?? false;
+
+    Map<String, Map<String, bool>> permissions = {};
+
+    for (String key in firstSystemPermissions) {
+      Map<String, bool> actions = {};
+      for (String action in availableActions) {
+        if (isConfiguredV2) {
+          // جلب من V2 المحفوظ
+          actions[action] =
+              prefs.getBool('$_firstSystemPrefixV2${key}_$action') ?? false;
+        } else {
+          // Fallback للنظام القديم (V1)
+          // إذا كانت الصلاحية مفعلة في V1، نفعل view فقط
+          final v1Permission = prefs.getBool('$_firstSystemPrefix$key') ??
+              firstSystemDefaults[key] ??
+              false;
+          actions[action] = action == 'view' ? v1Permission : false;
+        }
+      }
+      permissions[key] = actions;
+    }
+
+    return permissions;
+  }
+
+  /// حفظ صلاحيات V2 للنظام الأول
+  static Future<void> saveFirstSystemPermissionsV2(
+      Map<String, Map<String, bool>> permissions) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    try {
+      for (String key in firstSystemPermissions) {
+        if (permissions.containsKey(key)) {
+          for (String action in availableActions) {
+            final value = permissions[key]?[action] ?? false;
+            await prefs.setBool('$_firstSystemPrefixV2${key}_$action', value);
+          }
+        }
+      }
+
+      await prefs.setBool(_firstSystemConfigKeyV2, true);
+    } catch (e) {
+      throw Exception('فشل في حفظ صلاحيات V2 للنظام الأول: $e');
+    }
+  }
+
+  /// الحصول على صلاحيات V2 للنظام الثاني
+  static Future<Map<String, Map<String, bool>>>
+      getSecondSystemPermissionsV2() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isConfiguredV2 = prefs.getBool(_secondSystemConfigKeyV2) ?? false;
+
+    Map<String, Map<String, bool>> permissions = {};
+
+    for (String key in secondSystemPermissions) {
+      Map<String, bool> actions = {};
+      for (String action in availableActions) {
+        if (isConfiguredV2) {
+          // جلب من V2 المحفوظ
+          actions[action] =
+              prefs.getBool('$_secondSystemPrefixV2${key}_$action') ?? false;
+        } else {
+          // Fallback للنظام القديم (V1)
+          // إذا كانت الصلاحية مفعلة في V1، نفعل view فقط
+          final v1Permission = prefs.getBool('$_secondSystemPrefix$key') ??
+              secondSystemDefaults[key] ??
+              false;
+          actions[action] = action == 'view' ? v1Permission : false;
+        }
+      }
+      permissions[key] = actions;
+    }
+
+    return permissions;
+  }
+
+  /// حفظ صلاحيات V2 للنظام الثاني
+  static Future<void> saveSecondSystemPermissionsV2(
+      Map<String, Map<String, bool>> permissions) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    try {
+      for (String key in secondSystemPermissions) {
+        if (permissions.containsKey(key)) {
+          for (String action in availableActions) {
+            final value = permissions[key]?[action] ?? false;
+            await prefs.setBool('$_secondSystemPrefixV2${key}_$action', value);
+          }
+        }
+      }
+
+      await prefs.setBool(_secondSystemConfigKeyV2, true);
+    } catch (e) {
+      throw Exception('فشل في حفظ صلاحيات V2 للنظام الثاني: $e');
+    }
+  }
+
+  /// التحقق من صلاحية وإجراء معين في النظام الأول (V2)
+  /// الدالة القديمة hasFirstSystemPermission تبقى تعمل
+  static Future<bool> hasFirstSystemPermissionAction(
+      String permission, String action) async {
+    final prefs = await SharedPreferences.getInstance();
+    final isConfiguredV2 = prefs.getBool(_firstSystemConfigKeyV2) ?? false;
+
+    if (isConfiguredV2) {
+      return prefs.getBool('$_firstSystemPrefixV2${permission}_$action') ??
+          false;
+    } else {
+      // Fallback: إذا V2 غير مكون، نستخدم V1 للـ view فقط
+      if (action == 'view') {
+        return await hasFirstSystemPermission(permission);
+      }
+      return false;
+    }
+  }
+
+  /// التحقق من صلاحية وإجراء معين في النظام الثاني (V2)
+  /// الدالة القديمة hasSecondSystemPermission تبقى تعمل
+  static Future<bool> hasSecondSystemPermissionAction(
+      String permission, String action) async {
+    final prefs = await SharedPreferences.getInstance();
+    final isConfiguredV2 = prefs.getBool(_secondSystemConfigKeyV2) ?? false;
+
+    if (isConfiguredV2) {
+      return prefs.getBool('$_secondSystemPrefixV2${permission}_$action') ??
+          false;
+    } else {
+      // Fallback: إذا V2 غير مكون، نستخدم V1 للـ view فقط
+      if (action == 'view') {
+        return await hasSecondSystemPermission(permission);
+      }
+      return false;
+    }
+  }
+
+  /// إعادة تعيين صلاحيات V2 للنظام الأول
+  static Future<void> resetFirstSystemPermissionsV2() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    for (String key in firstSystemPermissions) {
+      for (String action in availableActions) {
+        await prefs.remove('$_firstSystemPrefixV2${key}_$action');
+      }
+    }
+    await prefs.remove(_firstSystemConfigKeyV2);
+  }
+
+  /// إعادة تعيين صلاحيات V2 للنظام الثاني
+  static Future<void> resetSecondSystemPermissionsV2() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    for (String key in secondSystemPermissions) {
+      for (String action in availableActions) {
+        await prefs.remove('$_secondSystemPrefixV2${key}_$action');
+      }
+    }
+    await prefs.remove(_secondSystemConfigKeyV2);
+  }
+
+  /// التحقق هل تم إعداد V2
+  static Future<bool> isV2Configured() async {
+    final prefs = await SharedPreferences.getInstance();
+    final firstV2 = prefs.getBool(_firstSystemConfigKeyV2) ?? false;
+    final secondV2 = prefs.getBool(_secondSystemConfigKeyV2) ?? false;
+    return firstV2 || secondV2;
+  }
+
+  /// الحصول على تقرير حالة النظامين بما فيها V2
+  static Future<Map<String, dynamic>> getSystemsStatusV2() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    return {
+      'first_system': {
+        'configured_v1': prefs.getBool(_firstSystemConfigKey) ?? false,
+        'configured_v2': prefs.getBool(_firstSystemConfigKeyV2) ?? false,
+        'permissions_v1': await getFirstSystemPermissions(),
+        'permissions_v2': await getFirstSystemPermissionsV2(),
+      },
+      'second_system': {
+        'configured_v1': prefs.getBool(_secondSystemConfigKey) ?? false,
+        'configured_v2': prefs.getBool(_secondSystemConfigKeyV2) ?? false,
+        'permissions_v1': await getSecondSystemPermissions(),
+        'permissions_v2': await getSecondSystemPermissionsV2(),
+      }
+    };
+  }
 }

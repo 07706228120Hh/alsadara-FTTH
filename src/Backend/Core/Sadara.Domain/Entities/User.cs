@@ -4,6 +4,9 @@ namespace Sadara.Domain.Entities;
 
 public class User : BaseEntity<Guid>
 {
+    /// <summary>اسم المستخدم للدخول (للموظفين ومدير النظام)</summary>
+    public string? Username { get; set; }
+    
     public string FullName { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
@@ -46,6 +49,20 @@ public class User : BaseEntity<Guid>
     /// مثال: {"users":true,"subscriptions":false}
     /// </summary>
     public string? SecondSystemPermissions { get; set; }
+    
+    // ============ V2 - صلاحيات مفصلة (إجراءات) ============
+    
+    /// <summary>
+    /// صلاحيات النظام الأول V2 (JSON) - مع إجراءات مفصلة
+    /// مثال: {"attendance":{"view":true,"add":false,"edit":false,"delete":false}}
+    /// </summary>
+    public string? FirstSystemPermissionsV2 { get; set; }
+    
+    /// <summary>
+    /// صلاحيات النظام الثاني V2 (JSON) - مع إجراءات مفصلة
+    /// مثال: {"users":{"view":true,"add":true,"edit":false,"delete":false,"export":false}}
+    /// </summary>
+    public string? SecondSystemPermissionsV2 { get; set; }
     
     // ============ الأمان والجلسة ============
     

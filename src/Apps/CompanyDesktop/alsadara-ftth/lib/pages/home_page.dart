@@ -13,6 +13,7 @@ import 'attendance_page.dart';
 import 'search_users_page.dart';
 import 'users_page.dart';
 import 'users_page_firebase.dart';
+import 'users_page_vps.dart';
 import '../ftth/auth/login_page.dart' as ftth_login;
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -24,6 +25,7 @@ import '../utils/breakpoints.dart';
 import '../widgets/maintenance_messages_dialog.dart'; // إضافة حوار إعدادات الرسائل
 import '../ftth/whatsapp/whatsapp_bottom_window.dart'; // WhatsApp floating button
 import 'super_admin/super_admin_dashboard.dart'; // لوحة تحكم Super Admin
+import 'company_diagnostics_page.dart'; // صفحة تشخيص الشركة
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -1161,13 +1163,19 @@ class _HomePageState extends State<HomePage>
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => widget.tenantId != null
-                              ? UsersPageFirebase(
-                                  tenantId: widget.tenantId!,
-                                  permissions: widget.permissions,
-                                  pageAccess: widget.pageAccess,
+                          builder: (context) => widget.tenantId != null && widget.tenantCode != null
+                              ? UsersPageVPS(
+                                  companyId: widget.tenantId!,
+                                  companyName: widget.department,
+                                  permissions: {'users': true},
                                 )
-                              : UsersPage(permissions: widget.permissions),
+                              : widget.tenantId != null
+                                  ? UsersPageFirebase(
+                                      tenantId: widget.tenantId!,
+                                      permissions: widget.permissions,
+                                      pageAccess: widget.pageAccess,
+                                    )
+                                  : UsersPage(permissions: widget.permissions),
                         ),
                       );
                     },
@@ -1261,6 +1269,64 @@ class _HomePageState extends State<HomePage>
               ),
               const SizedBox(height: 12),
             ],
+
+            // زر تشخيص النظام
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer first
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CompanyDiagnosticsPage(
+                          tenantId: widget.tenantId,
+                          tenantCode: widget.tenantCode,
+                          pageAccess: widget.pageAccess,
+                        ),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(15),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.orange[500]!, Colors.orange[700]!],
+                      ),
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.orange.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.bug_report, color: Colors.white, size: 24),
+                        SizedBox(width: 12),
+                        Text(
+                          'تشخيص النظام',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Spacer(),
+                        Icon(Icons.arrow_forward_ios,
+                            color: Colors.white, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
 
             // Logout button with enhanced styling
             Container(

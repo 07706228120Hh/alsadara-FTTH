@@ -1,4 +1,3 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/company_model.dart';
 import '../services/company_api_service.dart';
 

@@ -781,7 +781,13 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("EnabledFirstSystemFeatures")
                         .HasColumnType("text");
 
+                    b.Property<string>("EnabledFirstSystemFeaturesV2")
+                        .HasColumnType("text");
+
                     b.Property<string>("EnabledSecondSystemFeatures")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EnabledSecondSystemFeaturesV2")
                         .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
@@ -3003,6 +3009,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("FirstSystemPermissions")
                         .HasColumnType("text");
 
+                    b.Property<string>("FirstSystemPermissionsV2")
+                        .HasColumnType("text");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -3057,8 +3066,14 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("SecondSystemPermissions")
                         .HasColumnType("text");
 
+                    b.Property<string>("SecondSystemPermissionsV2")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Username")
+                        .HasColumnType("text");
 
                     b.Property<string>("VerificationCode")
                         .HasColumnType("text");

@@ -156,7 +156,9 @@ public class CompaniesController : ControllerBase
                         Department = user.Department,
                         EmployeeCode = user.EmployeeCode,
                         FirstSystemPermissions = user.FirstSystemPermissions,
-                        SecondSystemPermissions = user.SecondSystemPermissions
+                        SecondSystemPermissions = user.SecondSystemPermissions,
+                        FirstSystemPermissionsV2 = user.FirstSystemPermissionsV2,
+                        SecondSystemPermissionsV2 = user.SecondSystemPermissionsV2
                     },
                     Company = new CompanyInfoResponse
                     {
@@ -268,6 +270,37 @@ public class CompaniesController : ControllerBase
         using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
+    }
+
+    /// <summary>
+    /// الحصول على قائمة الشركات النشطة للاختيار عند تسجيل الدخول
+    /// متاح للجميع بدون مصادقة
+    /// </summary>
+    [HttpGet("list")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCompanyList()
+    {
+        try
+        {
+            var companies = await _unitOfWork.Companies.AsQueryable()
+                .Where(c => !c.IsDeleted && c.IsActive)
+                .OrderBy(c => c.Name)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Code,
+                    c.LogoUrl
+                })
+                .ToListAsync();
+
+            return Ok(new { success = true, data = companies });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب قائمة الشركات");
+            return StatusCode(500, new { success = false, message = "حدث خطأ في النظام" });
+        }
     }
 
     #endregion
@@ -1054,6 +1087,8 @@ public class CompanyUserResponse
     public string? EmployeeCode { get; set; }
     public string? FirstSystemPermissions { get; set; }
     public string? SecondSystemPermissions { get; set; }
+    public string? FirstSystemPermissionsV2 { get; set; }
+    public string? SecondSystemPermissionsV2 { get; set; }
 }
 
 public class CompanyInfoResponse

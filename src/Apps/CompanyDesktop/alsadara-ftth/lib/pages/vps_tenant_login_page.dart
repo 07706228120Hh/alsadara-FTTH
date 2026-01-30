@@ -2,12 +2,87 @@
 /// تستخدم VpsAuthService بدلاً من Firebase
 library;
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/vps_auth_service.dart';
+import '../services/api/api_client.dart';
+import '../services/api/api_config.dart';
 import 'home_page.dart';
 import 'super_admin/super_admin_dashboard.dart';
+
+/// نموذج بيانات تسجيل الدخول المحفوظة
+class SavedCredential {
+  final String companyCode;
+  final String companyName;
+  final String username;
+  final String password;
+  final DateTime savedAt;
+
+  SavedCredential({
+    required this.companyCode,
+    required this.companyName,
+    required this.username,
+    required this.password,
+    required this.savedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'companyCode': companyCode,
+        'companyName': companyName,
+        'username': username,
+        'password': password,
+        'savedAt': savedAt.toIso8601String(),
+      };
+
+  factory SavedCredential.fromJson(Map<String, dynamic> json) =>
+      SavedCredential(
+        companyCode: json['companyCode'] ?? '',
+        companyName: json['companyName'] ?? '',
+        username: json['username'] ?? '',
+        password: json['password'] ?? '',
+        savedAt: json['savedAt'] != null
+            ? DateTime.parse(json['savedAt'])
+            : DateTime.now(),
+      );
+
+  String get displayName => '$username - $companyName';
+}
+
+/// نموذج الشركة للقائمة المنسدلة
+class CompanyListItem {
+  final String id;
+  final String name;
+  final String code;
+  final String? logoUrl;
+
+  CompanyListItem({
+    required this.id,
+    required this.name,
+    required this.code,
+    this.logoUrl,
+  });
+
+  factory CompanyListItem.fromJson(Map<String, dynamic> json) =>
+      CompanyListItem(
+        id: json['Id']?.toString() ?? json['id']?.toString() ?? '',
+        name: json['Name'] ?? json['name'] ?? '',
+        code: json['Code'] ?? json['code'] ?? '',
+        logoUrl: json['LogoUrl'] ?? json['logoUrl'],
+      );
+
+  /// مقارنة الشركات بناءً على الكود
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CompanyListItem &&
+          runtimeType == other.runtimeType &&
+          code == other.code;
+
+  @override
+  int get hashCode => code.hashCode;
+}
 
 class VpsTenantLoginPage extends StatefulWidget {
   const VpsTenantLoginPage({super.key});
@@ -19,7 +94,6 @@ class VpsTenantLoginPage extends StatefulWidget {
 class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _companyCodeController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = VpsAuthService.instance;
@@ -28,6 +102,16 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
   bool _obscurePassword = true;
   String? _errorMessage;
   bool _rememberMe = false;
+
+  // قائمة الشركات
+  List<CompanyListItem> _companies = [];
+  CompanyListItem? _selectedCompany;
+  bool _loadingCompanies = true;
+  String? _companiesLoadError; // رسالة خطأ تحميل الشركات
+
+  // بيانات الدخول المحفوظة
+  List<SavedCredential> _savedCredentials = [];
+  SavedCredential? _selectedCredential;
 
   late AnimationController _animationController;
 
@@ -38,63 +122,280 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
+    _loadCompanies();
     _loadSavedCredentials();
-    // لا نفحص الجلسة تلقائياً - المستخدم يختار الدخول
-    // _checkExistingSession();
   }
 
-  /// التحقق من وجود جلسة سابقة - تم تعطيله للسماح بعرض صفحة تسجيل الدخول
-  Future<void> _checkExistingSession() async {
+  /// جلب قائمة الشركات من API
+  Future<void> _loadCompanies() async {
     try {
-      final restored = await _authService.restoreSession();
-      if (restored && mounted) {
-        _navigateAfterLogin();
-      }
-    } catch (e) {
-      // تجاهل الأخطاء
-    }
-  }
+      debugPrint('🔄 جاري جلب قائمة الشركات من API...');
 
-  Future<void> _loadSavedCredentials() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedCompanyCode = prefs.getString('vps_company_code');
-      final savedUsername = prefs.getString('vps_username');
-      final rememberMe = prefs.getBool('vps_remember_me') ?? false;
+      final response = await ApiClient.instance.get(
+        '/companies/list',
+        (json) => json,
+      );
 
-      if (rememberMe && savedCompanyCode != null && savedUsername != null) {
+      debugPrint(
+          '📥 استجابة API: success=${response.isSuccess}, statusCode=${response.statusCode}');
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data;
+        List<dynamic> companiesList = [];
+
+        if (data is List) {
+          companiesList = data;
+        } else if (data is Map && data['data'] != null) {
+          companiesList = data['data'] as List;
+        } else if (data is Map && data['success'] == true) {
+          final innerData = data['data'];
+          if (innerData is List) {
+            companiesList = innerData;
+          }
+        }
+
+        debugPrint('✅ تم جلب ${companiesList.length} شركة');
+        for (var c in companiesList) {
+          debugPrint(
+              '   - ${c['Name'] ?? c['name']} (${c['Code'] ?? c['code']})');
+        }
+
         setState(() {
-          _companyCodeController.text = savedCompanyCode;
-          _usernameController.text = savedUsername;
-          _rememberMe = rememberMe;
+          _companies = companiesList
+              .map((c) => CompanyListItem.fromJson(c as Map<String, dynamic>))
+              .toList();
+          _loadingCompanies = false;
+          _companiesLoadError =
+              _companies.isEmpty ? 'لا توجد شركات مسجلة' : null;
+        });
+      } else {
+        debugPrint('⚠️ فشل جلب الشركات: ${response.message}');
+        setState(() {
+          _loadingCompanies = false;
+          _companiesLoadError = response.message ?? 'فشل في جلب قائمة الشركات';
         });
       }
     } catch (e) {
-      debugPrint('خطأ في تحميل بيانات تسجيل الدخول: $e');
+      debugPrint('❌ خطأ في جلب قائمة الشركات: $e');
+      setState(() {
+        _loadingCompanies = false;
+        _companiesLoadError = 'خطأ في الاتصال: $e';
+      });
     }
   }
 
-  Future<void> _saveCredentials() async {
+  /// تحميل بيانات الدخول المحفوظة
+  Future<void> _loadSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (_rememberMe) {
-        await prefs.setString(
-            'vps_company_code', _companyCodeController.text.trim());
-        await prefs.setString('vps_username', _usernameController.text.trim());
-        await prefs.setBool('vps_remember_me', true);
-      } else {
-        await prefs.remove('vps_company_code');
-        await prefs.remove('vps_username');
-        await prefs.setBool('vps_remember_me', false);
+      final savedJson = prefs.getString('vps_saved_credentials');
+
+      if (savedJson != null) {
+        final List<dynamic> savedList = jsonDecode(savedJson);
+        setState(() {
+          _savedCredentials = savedList
+              .map((item) =>
+                  SavedCredential.fromJson(item as Map<String, dynamic>))
+              .toList();
+        });
       }
     } catch (e) {
-      debugPrint('خطأ في حفظ بيانات تسجيل الدخول: $e');
+      debugPrint('خطأ في تحميل بيانات الدخول المحفوظة: $e');
     }
+  }
+
+  /// حفظ بيانات الدخول
+  Future<void> _saveCredential() async {
+    if (!_rememberMe || _selectedCompany == null) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // إزالة البيانات القديمة لنفس المستخدم والشركة
+      _savedCredentials.removeWhere((c) =>
+          c.companyCode == _selectedCompany!.code &&
+          c.username == _usernameController.text.trim());
+
+      // إضافة البيانات الجديدة
+      _savedCredentials.insert(
+        0,
+        SavedCredential(
+          companyCode: _selectedCompany!.code,
+          companyName: _selectedCompany!.name,
+          username: _usernameController.text.trim(),
+          password: _passwordController.text,
+          savedAt: DateTime.now(),
+        ),
+      );
+
+      // الاحتفاظ بأحدث 10 بيانات فقط
+      if (_savedCredentials.length > 10) {
+        _savedCredentials = _savedCredentials.sublist(0, 10);
+      }
+
+      // حفظ في SharedPreferences
+      await prefs.setString(
+        'vps_saved_credentials',
+        jsonEncode(_savedCredentials.map((c) => c.toJson()).toList()),
+      );
+    } catch (e) {
+      debugPrint('خطأ في حفظ بيانات الدخول: $e');
+    }
+  }
+
+  /// حذف بيانات دخول محفوظة
+  Future<void> _deleteCredential(SavedCredential credential) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      setState(() {
+        _savedCredentials.removeWhere((c) =>
+            c.companyCode == credential.companyCode &&
+            c.username == credential.username);
+        _selectedCredential = null;
+      });
+
+      await prefs.setString(
+        'vps_saved_credentials',
+        jsonEncode(_savedCredentials.map((c) => c.toJson()).toList()),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم حذف بيانات الدخول'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('خطأ في حذف بيانات الدخول: $e');
+    }
+  }
+
+  /// اختيار بيانات دخول محفوظة
+  void _selectCredential(SavedCredential credential) {
+    setState(() {
+      _selectedCredential = credential;
+      _usernameController.text = credential.username;
+      _passwordController.text = credential.password;
+
+      // البحث عن الشركة في القائمة
+      // استخدام indexWhere للتحقق من وجود الشركة
+      final companyIndex = _companies.indexWhere(
+        (c) => c.code == credential.companyCode,
+      );
+
+      if (companyIndex != -1) {
+        // الشركة موجودة في القائمة
+        _selectedCompany = _companies[companyIndex];
+      } else if (credential.companyCode == '1') {
+        // مدير النظام
+        _selectedCompany = CompanyListItem(
+          id: '1',
+          name: 'مدير النظام',
+          code: '1',
+        );
+      } else {
+        // الشركة غير موجودة - إعادة تعيين
+        _selectedCompany = null;
+        debugPrint('⚠️ الشركة ${credential.companyCode} غير موجودة في القائمة');
+      }
+    });
+  }
+
+  /// بناء عناصر القائمة المنسدلة للشركات
+  List<DropdownMenuItem<CompanyListItem>> _buildCompanyDropdownItems() {
+    final List<DropdownMenuItem<CompanyListItem>> items = [];
+
+    // إضافة خيار مدير النظام
+    items.add(
+      DropdownMenuItem(
+        value: CompanyListItem(
+          id: '1',
+          name: 'مدير النظام',
+          code: '1',
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.admin_panel_settings,
+                color: Colors.amber[700], size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'مدير النظام',
+              style: GoogleFonts.cairo(
+                fontWeight: FontWeight.bold,
+                color: Colors.amber[700],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // إضافة فاصل
+    items.add(
+      const DropdownMenuItem(
+        enabled: false,
+        child: Divider(),
+      ),
+    );
+
+    // إضافة الشركات (باستثناء الشركة ذات الكود '1' لتجنب التكرار)
+    for (final company in _companies) {
+      if (company.code == '1') continue; // تخطي إذا كان الكود '1'
+
+      items.add(
+        DropdownMenuItem(
+          value: company,
+          child: Row(
+            children: [
+              if (company.logoUrl != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.network(
+                    '${ApiConfig.baseUrl.replaceAll('/api', '')}${company.logoUrl}',
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Icon(Icons.business,
+                        size: 20, color: Colors.indigo[400]),
+                  ),
+                )
+              else
+                Icon(Icons.business, size: 20, color: Colors.indigo[400]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      company.name,
+                      style: GoogleFonts.cairo(fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      company.code,
+                      style: GoogleFonts.cairo(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return items;
   }
 
   @override
   void dispose() {
-    _companyCodeController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     _animationController.dispose();
@@ -104,6 +405,13 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedCompany == null) {
+      setState(() {
+        _errorMessage = 'يرجى اختيار الشركة';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -111,7 +419,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
 
     try {
       final result = await _authService.login(
-        companyCodeOrType: _companyCodeController.text.trim(),
+        companyCodeOrType: _selectedCompany!.code,
         username: _usernameController.text.trim(),
         password: _passwordController.text,
       );
@@ -119,7 +427,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       if (!mounted) return;
 
       if (result.success) {
-        await _saveCredentials();
+        await _saveCredential();
         _navigateAfterLogin();
       } else {
         setState(() {
@@ -152,11 +460,18 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       for (final permission in user.permissions) {
         pageAccess[permission] = true;
       }
+      // إضافة صلاحيات النظام الأول والثاني
+      user.firstSystemPermissions.forEach((key, value) {
+        if (value) pageAccess[key] = true;
+      });
+      user.secondSystemPermissions.forEach((key, value) {
+        if (value) pageAccess[key] = true;
+      });
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => HomePage(
-            username: user.username,
+            username: user.fullName.isNotEmpty ? user.fullName : user.username,
             permissions: user.isAdmin ? 'مدير' : user.role,
             department: company.name,
             center: company.code,
@@ -197,7 +512,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 420),
+                  constraints: const BoxConstraints(maxWidth: 450),
                   padding: const EdgeInsets.all(32),
                   child: Form(
                     key: _formKey,
@@ -282,7 +597,89 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                             ],
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 24),
+
+                        // قسم بيانات الدخول المحفوظة
+                        if (_savedCredentials.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.blue[200]!),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.bookmark,
+                                        color: Colors.blue[700], size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'حسابات محفوظة',
+                                      style: GoogleFonts.cairo(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                DropdownButtonFormField<SavedCredential>(
+                                  value: _selectedCredential,
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'اختر حساب محفوظ',
+                                    hintStyle: GoogleFonts.cairo(),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                  ),
+                                  items: _savedCredentials.map((credential) {
+                                    return DropdownMenuItem(
+                                      value: credential,
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              credential.displayName,
+                                              style: GoogleFonts.cairo(
+                                                  fontSize: 14),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete,
+                                                size: 18, color: Colors.red),
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              _deleteCredential(credential);
+                                            },
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _selectCredential(value);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 16),
+                        ],
 
                         // رسالة الخطأ
                         if (_errorMessage != null)
@@ -312,30 +709,103 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                             ),
                           ),
 
-                        // كود الشركة
-                        TextFormField(
-                          controller: _companyCodeController,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.center,
-                          decoration: InputDecoration(
-                            labelText: 'كود الشركة',
-                            labelStyle: GoogleFonts.cairo(),
-                            hintText: 'أدخل كود الشركة (1 لمدير النظام)',
-                            hintStyle: GoogleFonts.cairo(fontSize: 12),
-                            prefixIcon: const Icon(Icons.business),
-                            border: OutlineInputBorder(
+                        // رسالة خطأ تحميل الشركات
+                        if (_companiesLoadError != null && !_loadingCompanies)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[50],
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange[200]!),
                             ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning_amber,
+                                    color: Colors.orange[700]),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _companiesLoadError!,
+                                    style: GoogleFonts.cairo(
+                                      color: Colors.orange[700],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _loadingCompanies = true;
+                                      _companiesLoadError = null;
+                                    });
+                                    _loadCompanies();
+                                  },
+                                  child: Text(
+                                    'إعادة المحاولة',
+                                    style: GoogleFonts.cairo(
+                                      color: Colors.orange[700],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'يرجى إدخال كود الشركة';
-                            }
-                            return null;
-                          },
-                        ),
+
+                        // قائمة الشركات المنسدلة
+                        _loadingCompanies
+                            ? Container(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'جاري تحميل قائمة الشركات...',
+                                      style: GoogleFonts.cairo(
+                                          color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : DropdownButtonFormField<CompanyListItem>(
+                                value: _selectedCompany,
+                                isExpanded: true,
+                                decoration: InputDecoration(
+                                  labelText: 'اختر الشركة',
+                                  labelStyle: GoogleFonts.cairo(),
+                                  hintText: _companies.isEmpty
+                                      ? 'لا توجد شركات (اختر مدير النظام)'
+                                      : 'اختر الشركة من القائمة',
+                                  hintStyle: GoogleFonts.cairo(fontSize: 12),
+                                  prefixIcon: const Icon(Icons.business),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
+                                ),
+                                items: _buildCompanyDropdownItems(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedCompany = value;
+                                    _selectedCredential = null;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null) {
+                                    return 'يرجى اختيار الشركة';
+                                  }
+                                  return null;
+                                },
+                              ),
                         const SizedBox(height: 16),
 
                         // اسم المستخدم
@@ -343,7 +813,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                           controller: _usernameController,
                           textDirection: TextDirection.ltr,
                           decoration: InputDecoration(
-                            labelText: 'اسم المستخدم',
+                            labelText: 'اسم المستخدم / رقم الهاتف',
                             labelStyle: GoogleFonts.cairo(),
                             prefixIcon: const Icon(Icons.person),
                             border: OutlineInputBorder(
@@ -357,6 +827,9 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                               return 'يرجى إدخال اسم المستخدم';
                             }
                             return null;
+                          },
+                          onChanged: (_) {
+                            setState(() => _selectedCredential = null);
                           },
                         ),
                         const SizedBox(height: 16),
@@ -407,10 +880,17 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                               },
                               activeColor: Colors.indigo[700],
                             ),
-                            Text(
-                              'تذكرني',
-                              style: GoogleFonts.cairo(
-                                color: Colors.grey[700],
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() => _rememberMe = !_rememberMe);
+                                },
+                                child: Text(
+                                  'تذكرني (حفظ بيانات الدخول)',
+                                  style: GoogleFonts.cairo(
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -458,22 +938,15 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                         ),
                         const SizedBox(height: 16),
 
-                        // تسجيل الدخول كمدير نظام
-                        TextButton.icon(
-                          onPressed: () {
-                            // ملء كود الشركة بـ 1 للتوجه لتسجيل دخول المدير
-                            _companyCodeController.text = '1';
-                          },
-                          icon:
-                              const Icon(Icons.admin_panel_settings, size: 18),
-                          label: Text(
-                            'تسجيل الدخول كمدير النظام',
+                        // معلومات إضافية
+                        if (_savedCredentials.isNotEmpty)
+                          Text(
+                            '${_savedCredentials.length} حسابات محفوظة',
                             style: GoogleFonts.cairo(
-                              color: Colors.indigo[600],
-                              fontSize: 14,
+                              fontSize: 12,
+                              color: Colors.grey[500],
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),

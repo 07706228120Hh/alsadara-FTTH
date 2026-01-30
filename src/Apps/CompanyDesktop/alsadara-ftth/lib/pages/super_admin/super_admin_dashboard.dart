@@ -19,6 +19,8 @@ import '../vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول VPS
 import '../home_page.dart';
 import 'admin_theme.dart';
 import '../diagnostics/system_diagnostics_page.dart'; // 🔧 صفحة التشخيص
+import '../account/account_info_page.dart'; // ✅ صفحة معلومات الحساب
+import '../admin/database_admin_page.dart'; // ✅ صفحة إدارة قاعدة البيانات
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -32,7 +34,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   final CustomAuthService _authService = CustomAuthService();
   final SuperAdminApi _superAdminApi = SuperAdminApi(); // ✅ VPS API
   late AnimationController _animationController;
-  int _selectedIndex = 0;
+  int _selectedIndex = 1; // ✅ البدء في شاشة إدارة الشركات مباشرة
+  bool _isSidebarCollapsed = false; // ✅ حالة إخفاء/إظهار الشريط الجانبي
 
   // ✅ بيانات الشركات من VPS
   List<Tenant> _vpsTenants = [];
@@ -163,18 +166,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         child: SafeArea(
           child: Row(
             children: [
-              // القائمة الجانبية العصرية
-              _buildSidebar(),
+              // القائمة الجانبية العصرية مع إمكانية الإخفاء
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: _isSidebarCollapsed ? 80 : 250,
+                child: _buildSidebar(),
+              ),
               // المحتوى الرئيسي
               Expanded(
-                child: Column(
-                  children: [
-                    _buildTopBar(),
-                    Expanded(
-                      child: _buildMainContent(),
-                    ),
-                  ],
-                ),
+                child: _buildMainContent(),
               ),
             ],
           ),
@@ -186,17 +186,30 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   /// ✅ بناء المحتوى الرئيسي حسب التبويب المحدد
   Widget _buildMainContent() {
     switch (_selectedIndex) {
-      case 0:
-        // ✅ لوحة التحكم الرئيسية مع الإحصائيات
-        return _buildDashboardContent();
       case 1:
         // ✅ إدارة الشركات
         return const UnifiedCompaniesPage();
+      case 3:
+        // ✅ بيانات Firebase
+        return const FirebaseDataManagerPage();
+      case 4:
+        // ✅ بيانات VPS
+        return const VpsDataManagerPage();
       case 5:
         // ✅ بوابة المواطن
         return _buildCitizenPortalContent();
+      case 6:
+        // ✅ تشخيص النظام
+        return const SystemDiagnosticsPage();
+      case 7:
+        // ✅ حسابي
+        return const AccountInfoPage();
+      case 8:
+        // ✅ إدارة قاعدة البيانات
+        return const DatabaseAdminPage();
       default:
-        return _buildDashboardContent();
+        // ✅ الافتراضي: إدارة الشركات
+        return const UnifiedCompaniesPage();
     }
   }
 
@@ -205,7 +218,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       animation: _animationController,
       builder: (context, child) {
         return Container(
-          width: 280,
           decoration: BoxDecoration(
             color: AdminTheme.surfaceColor,
             border: const Border(
@@ -223,29 +235,39 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             children: [
               // رأس القائمة مع الشعار
               _buildSidebarHeader(),
-              const SizedBox(height: 10),
               // عناصر القائمة في حاوية قابلة للتمرير
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      _buildNavItem(0, Icons.dashboard_rounded, 'لوحة التحكم'),
                       _buildNavItem(1, Icons.business_rounded, 'إدارة الشركات'),
-                      const Divider(color: Colors.white24, height: 20),
                       _buildNavItem(
                           5, Icons.people_alt_rounded, 'بوابة المواطن'),
-                      const Divider(color: Colors.white24, height: 20),
+                      if (!_isSidebarCollapsed)
+                        const Divider(
+                            color: Colors.white24,
+                            height: 8,
+                            indent: 16,
+                            endIndent: 16),
                       _buildNavItem(3, Icons.cloud, 'بيانات Firebase'),
                       _buildNavItem(4, Icons.dns, 'بيانات VPS'),
+                      _buildNavItem(8, Icons.storage, 'إدارة قاعدة البيانات'),
                       _buildNavItem(
                           6, Icons.medical_services_rounded, 'تشخيص النظام'),
+                      if (!_isSidebarCollapsed)
+                        const Divider(
+                            color: Colors.white24,
+                            height: 8,
+                            indent: 16,
+                            endIndent: 16),
+                      _buildNavItem(7, Icons.person, 'حسابي'),
                     ],
                   ),
                 ),
               ),
               // زر تسجيل الخروج
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(_isSidebarCollapsed ? 8 : 12),
                 child: _buildLogoutButton(),
               ),
             ],
@@ -257,12 +279,32 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
 
   Widget _buildSidebarHeader() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(_isSidebarCollapsed ? 12 : 16),
       child: Column(
         children: [
+          // زر إخفاء/إظهار الشريط الجانبي
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              onPressed: () =>
+                  setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
+              icon: Icon(
+                _isSidebarCollapsed ? Icons.menu_open : Icons.menu,
+                color: AdminTheme.textMuted,
+                size: 22,
+              ),
+              tooltip: _isSidebarCollapsed ? 'توسيع القائمة' : 'تصغير القائمة',
+              style: IconButton.styleFrom(
+                backgroundColor: AdminTheme.backgroundColor,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+          SizedBox(height: _isSidebarCollapsed ? 8 : 12),
           // شعار عصري
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: const LinearGradient(
@@ -271,13 +313,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               boxShadow: [
                 BoxShadow(
                   color: AdminTheme.primaryColor.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 2,
+                  blurRadius: 15,
+                  spreadRadius: 1,
                 ),
               ],
             ),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(_isSidebarCollapsed ? 10 : 14),
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
@@ -286,54 +328,60 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [AdminTheme.primaryColor, AdminTheme.accentColor],
                 ).createShader(bounds),
-                child: const Icon(
+                child: Icon(
                   Icons.admin_panel_settings,
-                  size: 45,
+                  size: _isSidebarCollapsed ? 24 : 36,
                   color: Colors.white,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            CustomAuthService.currentSuperAdmin?.name ?? 'مدير النظام',
-            style: const TextStyle(
-              color: AdminTheme.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          if (!_isSidebarCollapsed) ...[
+            const SizedBox(height: 12),
+            Text(
+              CustomAuthService.currentSuperAdmin?.name ?? 'مدير النظام',
+              style: const TextStyle(
+                color: AdminTheme.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AdminTheme.primaryColor.withOpacity(0.1),
-                  AdminTheme.accentColor.withOpacity(0.1),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AdminTheme.primaryColor.withOpacity(0.1),
+                    AdminTheme.accentColor.withOpacity(0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AdminTheme.primaryColor.withOpacity(0.3),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified,
+                      color: AdminTheme.primaryColor, size: 12),
+                  SizedBox(width: 4),
+                  Text(
+                    'Super Admin',
+                    style: TextStyle(
+                      color: AdminTheme.primaryColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AdminTheme.primaryColor.withOpacity(0.3),
-              ),
             ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.verified, color: AdminTheme.primaryColor, size: 14),
-                SizedBox(width: 6),
-                Text(
-                  'Super Admin',
-                  style: TextStyle(
-                    color: AdminTheme.primaryColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -342,110 +390,103 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   Widget _buildNavItem(int index, IconData icon, String title) {
     final isSelected = _selectedIndex == index;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: EdgeInsets.symmetric(
+          horizontal: _isSidebarCollapsed ? 10 : 10, vertical: 2),
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            if (index == 2) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddCompanyPage()),
-              );
-            } else if (index == 3) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const FirebaseDataManagerPage()),
-              );
-            } else if (index == 4) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const VpsDataManagerPage()),
-              );
-            } else if (index == 5) {
-              // ✅ بوابة المواطن - التحقق من VPS فقط
-              if (DataSourceConfig.useVpsApi) {
-                setState(() => _selectedIndex = index);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('بوابة المواطن متاحة فقط مع VPS API'),
-                    backgroundColor: AdminTheme.dangerColor,
-                  ),
+        child: Tooltip(
+          message: _isSidebarCollapsed ? title : '',
+          preferBelow: false,
+          child: InkWell(
+            onTap: () {
+              if (index == 2) {
+                // إضافة شركة - فتح صفحة جديدة
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddCompanyPage()),
                 );
+              } else if (index == 5) {
+                // ✅ بوابة المواطن - التحقق من VPS فقط
+                if (DataSourceConfig.useVpsApi) {
+                  setState(() => _selectedIndex = index);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('بوابة المواطن متاحة فقط مع VPS API'),
+                      backgroundColor: AdminTheme.dangerColor,
+                    ),
+                  );
+                }
+              } else {
+                // ✅ جميع الشاشات الأخرى تظهر في المحتوى الرئيسي
+                setState(() => _selectedIndex = index);
               }
-            } else if (index == 6) {
-              // 🔧 فتح صفحة تشخيص النظام
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const SystemDiagnosticsPage()),
-              );
-            } else {
-              setState(() => _selectedIndex = index);
-            }
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color:
-                  isSelected ? AdminTheme.primaryColor.withOpacity(0.1) : null,
-              border: isSelected
-                  ? Border.all(color: AdminTheme.primaryColor.withOpacity(0.3))
-                  : null,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AdminTheme.primaryColor.withOpacity(0.15)
-                        : AdminTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.symmetric(
+                horizontal: _isSidebarCollapsed ? 8 : 12,
+                vertical: _isSidebarCollapsed ? 10 : 10,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: isSelected
+                    ? AdminTheme.primaryColor.withOpacity(0.1)
+                    : null,
+                border: isSelected
+                    ? Border.all(
+                        color: AdminTheme.primaryColor.withOpacity(0.3))
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: _isSidebarCollapsed
+                    ? MainAxisAlignment.center
+                    : MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
                     icon,
                     color: isSelected
                         ? AdminTheme.primaryColor
                         : AdminTheme.textMuted,
-                    size: 20,
+                    size: _isSidebarCollapsed ? 22 : 18,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: isSelected
-                          ? AdminTheme.primaryColor
-                          : AdminTheme.textSecondary,
-                      fontSize: 14,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (isSelected)
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AdminTheme.primaryColor,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AdminTheme.primaryColor.withOpacity(0.4),
-                          blurRadius: 8,
+                  if (!_isSidebarCollapsed) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          color: isSelected
+                              ? AdminTheme.primaryColor
+                              : AdminTheme.textSecondary,
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
                         ),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-              ],
+                    if (isSelected)
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AdminTheme.primaryColor,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AdminTheme.primaryColor.withOpacity(0.4),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
@@ -454,33 +495,42 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   }
 
   Widget _buildLogoutButton() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _logout,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: AdminTheme.dangerColor.withOpacity(0.1),
-            border: Border.all(color: AdminTheme.dangerColor.withOpacity(0.3)),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.logout_rounded,
-                  color: AdminTheme.dangerColor, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'تسجيل الخروج',
-                style: TextStyle(
-                  color: AdminTheme.dangerColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ],
+    return Tooltip(
+      message: _isSidebarCollapsed ? 'تسجيل الخروج' : '',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _logout,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              vertical: _isSidebarCollapsed ? 12 : 10,
+              horizontal: _isSidebarCollapsed ? 12 : 0,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: AdminTheme.dangerColor.withOpacity(0.1),
+              border:
+                  Border.all(color: AdminTheme.dangerColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.logout_rounded,
+                    color: AdminTheme.dangerColor, size: 18),
+                if (!_isSidebarCollapsed) ...[
+                  const SizedBox(width: 6),
+                  const Text(
+                    'تسجيل الخروج',
+                    style: TextStyle(
+                      color: AdminTheme.dangerColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),

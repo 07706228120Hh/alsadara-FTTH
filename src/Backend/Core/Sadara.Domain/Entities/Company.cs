@@ -75,6 +75,20 @@ public class Company : BaseEntity<Guid>
     /// </summary>
     public string? EnabledSecondSystemFeatures { get; set; }
     
+    // ============ V2 - صلاحيات مفصلة (إجراءات) ============
+    
+    /// <summary>
+    /// ميزات النظام الأول V2 (JSON) - مع إجراءات مفصلة
+    /// مثال: {"attendance":{"view":true,"add":false,"edit":false,"delete":false}}
+    /// </summary>
+    public string? EnabledFirstSystemFeaturesV2 { get; set; }
+    
+    /// <summary>
+    /// ميزات النظام الثاني V2 (JSON) - مع إجراءات مفصلة
+    /// مثال: {"users":{"view":true,"add":true,"edit":false,"delete":false,"export":false}}
+    /// </summary>
+    public string? EnabledSecondSystemFeaturesV2 { get; set; }
+    
     // ============ معرف المدير ============
     
     /// <summary>معرف مدير الشركة (المستخدم الأول)</summary>

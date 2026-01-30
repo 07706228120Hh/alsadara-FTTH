@@ -16,6 +16,7 @@ import '../../services/api/api_config.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
 import 'edit_company_page.dart';
+import 'company_details_page.dart';
 import 'admin_theme.dart';
 import '../home_page.dart';
 import '../../multi_tenant.dart';
@@ -251,89 +252,278 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     );
   }
 
-  /// شريط الأدوات العلوي
+  /// شريط الأدوات العلوي الموحد
   Widget _buildToolbar() {
+    final stats = _statistics;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         color: AdminTheme.surfaceColor,
         border: Border(
           bottom: BorderSide(color: AdminTheme.borderColor),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // عنوان الصفحة
-          const Row(
+          // الصف الأول: العنوان والأزرار
+          Row(
             children: [
-              Icon(Icons.business_rounded,
-                  color: AdminTheme.primaryColor, size: 24),
-              SizedBox(width: 8),
-              Text(
-                'إدارة الشركات',
-                style: TextStyle(
-                  color: AdminTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              // عنوان الصفحة
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AdminTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: Colors.black.withOpacity(0.3), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.business_rounded,
+                        color: AdminTheme.primaryColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'إدارة الشركات',
+                        style: TextStyle(
+                          color: AdminTheme.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'عرض وإدارة جميع الشركات المسجلة',
+                        style: TextStyle(
+                          color: AdminTheme.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const Spacer(),
+
+              // شارة VPS
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green.shade50, Colors.green.shade100],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: Colors.black.withOpacity(0.3), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_done_rounded,
+                        size: 16, color: Colors.green.shade700),
+                    const SizedBox(width: 6),
+                    Text(
+                      'VPS متصل',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // زر التحديث
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _loadCompanies,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AdminTheme.backgroundColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: Colors.black.withOpacity(0.3), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.refresh_rounded,
+                        size: 20, color: AdminTheme.textSecondary),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // زر إضافة شركة
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: Colors.black.withOpacity(0.3), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AdminTheme.primaryColor.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: () => _navigateToAddCompany(),
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                  label: const Text('إضافة شركة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AdminTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ],
           ),
 
-          const Spacer(),
+          const SizedBox(height: 16),
 
-          // شارة VPS
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          // الصف الثاني: بطاقات الإحصائيات
+          Row(
+            children: [
+              _buildStatChip('الكل', stats['total']!, Icons.apps_rounded,
+                  const Color(0xFF6366F1), null),
+              const SizedBox(width: 10),
+              _buildStatChip(
+                  'نشطة',
+                  stats['active']!,
+                  Icons.check_circle_rounded,
+                  const Color(0xFF10B981),
+                  CompanyStatus.active),
+              const SizedBox(width: 10),
+              _buildStatChip('تحذير', stats['warning']!, Icons.schedule_rounded,
+                  const Color(0xFFf59e0b), CompanyStatus.warning),
+              const SizedBox(width: 10),
+              _buildStatChip('حرج', stats['critical']!, Icons.warning_rounded,
+                  const Color(0xFFef4444), CompanyStatus.critical),
+              const SizedBox(width: 10),
+              _buildStatChip('منتهية', stats['expired']!, Icons.cancel_rounded,
+                  const Color(0xFFdc2626), CompanyStatus.expired),
+              const SizedBox(width: 10),
+              _buildStatChip(
+                  'معلقة',
+                  stats['suspended']!,
+                  Icons.pause_circle_rounded,
+                  const Color(0xFF64748b),
+                  CompanyStatus.suspended),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// بطاقة إحصائية جميلة
+  Widget _buildStatChip(String label, int value, IconData icon, Color color,
+      CompanyStatus? filterStatus) {
+    final isSelected = _statusFilter == filterStatus;
+
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => setState(() => _statusFilter = filterStatus),
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
+              color: isSelected
+                  ? color.withOpacity(0.15)
+                  : AdminTheme.backgroundColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? color : Colors.black.withOpacity(0.3),
+                width: isSelected ? 2 : 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? color.withOpacity(0.2)
+                      : Colors.black.withOpacity(0.08),
+                  blurRadius: isSelected ? 8 : 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.cloud_done, size: 14, color: Colors.green[700]),
-                const SizedBox(width: 4),
-                Text(
-                  'VPS API',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.green[700],
-                    fontWeight: FontWeight.bold,
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: Icon(icon, size: 16, color: color),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value.toString(),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: isSelected ? color : AdminTheme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-
-          const SizedBox(width: 12),
-
-          // زر التحديث
-          IconButton(
-            onPressed: _loadCompanies,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'تحديث',
-            color: AdminTheme.textSecondary,
-          ),
-
-          const SizedBox(width: 8),
-
-          // زر إضافة شركة
-          ElevatedButton.icon(
-            onPressed: () => _navigateToAddCompany(),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('إضافة شركة'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AdminTheme.primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -348,11 +538,6 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // بطاقات الإحصائيات
-            _buildStatisticsSection(),
-
-            const SizedBox(height: 24),
-
             // البحث والفلترة
             _buildSearchAndFilter(),
 
@@ -628,38 +813,35 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // حساب عدد الأعمدة بناءً على العرض
-        final columns = constraints.maxWidth > 1200
-            ? 3
-            : (constraints.maxWidth > 800 ? 2 : 1);
-
-        return Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: companies.map((company) {
-            return SizedBox(
-              width: (constraints.maxWidth - (columns - 1) * 16) / columns,
-              child: _UnifiedCompanyCard(
-                company: company,
-                status: _getCompanyStatus(company),
-                statusColor: _getStatusColor(_getCompanyStatus(company)),
-                statusText: _getStatusText(_getCompanyStatus(company)),
-                isLinkedToCitizen: _linkedCompanyId == company.id,
-                onEdit: () => _editCompany(company),
-                onDelete: () => _deleteCompany(company),
-                onToggleStatus: () => _toggleCompanyStatus(company),
-                onRenew: () => _renewSubscription(company),
-                onLinkCitizen: () => _linkToCitizenPortal(company),
-                onUnlinkCitizen: () => _unlinkFromCitizenPortal(company),
-                onEnterAsCompany: () => _enterAsCompany(company),
-                onManagePermissions: () => _managePermissions(company),
-              ),
-            );
-          }).toList(),
+    // ✅ عرض البطاقات بشكل مستطيل بعرض الشاشة الكامل
+    return Column(
+      children: companies.map((company) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _UnifiedCompanyCard(
+            company: company,
+            status: _getCompanyStatus(company),
+            statusColor: _getStatusColor(_getCompanyStatus(company)),
+            statusText: _getStatusText(_getCompanyStatus(company)),
+            isLinkedToCitizen: _linkedCompanyId == company.id,
+            onTap: () => _openCompanyDetails(company),
+          ),
         );
-      },
+      }).toList(),
+    );
+  }
+
+  /// فتح شاشة تفاصيل الشركة
+  void _openCompanyDetails(Company company) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CompanyDetailsPage(
+          company: company,
+          isLinkedToCitizen: _linkedCompanyId == company.id,
+          onRefresh: _loadCompanies,
+        ),
+      ),
     );
   }
 
@@ -1156,14 +1338,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
   final Color statusColor;
   final String statusText;
   final bool isLinkedToCitizen;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onToggleStatus;
-  final VoidCallback onRenew;
-  final VoidCallback onLinkCitizen;
-  final VoidCallback onUnlinkCitizen;
-  final VoidCallback onEnterAsCompany;
-  final VoidCallback onManagePermissions;
+  final VoidCallback onTap;
 
   const _UnifiedCompanyCard({
     required this.company,
@@ -1171,424 +1346,285 @@ class _UnifiedCompanyCard extends StatelessWidget {
     required this.statusColor,
     required this.statusText,
     required this.isLinkedToCitizen,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onToggleStatus,
-    required this.onRenew,
-    required this.onLinkCitizen,
-    required this.onUnlinkCitizen,
-    required this.onEnterAsCompany,
-    required this.onManagePermissions,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd', 'ar');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isLinkedToCitizen ? Colors.teal : AdminTheme.borderColor,
-          width: isLinkedToCitizen ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // الترويسة مع شريط الحالة الملون
-          Stack(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      statusColor.withOpacity(0.08),
-                      statusColor.withOpacity(0.02),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(15)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        // أيقونة الشركة مع تأثير
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AdminTheme.primaryColor.withOpacity(0.15),
-                                AdminTheme.primaryColor.withOpacity(0.05),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AdminTheme.primaryColor.withOpacity(0.2),
-                            ),
-                          ),
-                          child: company.logoUrl != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(14),
-                                  child: Image.network(
-                                    company.logoUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.business_rounded,
-                                      color: AdminTheme.primaryColor,
-                                      size: 28,
-                                    ),
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.business_rounded,
-                                  color: AdminTheme.primaryColor,
-                                  size: 28,
-                                ),
-                        ),
-                        const SizedBox(width: 14),
-
-                        // اسم الشركة والكود
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                company.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 17,
-                                  color: AdminTheme.textPrimary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: AdminTheme.primaryColor
-                                          .withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      company.code,
-                                      style: const TextStyle(
-                                        color: AdminTheme.primaryColor,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  if (company.email != null) ...[
-                                    const SizedBox(width: 8),
-                                    Icon(Icons.email_outlined,
-                                        size: 14,
-                                        color: AdminTheme.textSecondary),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        company.email!,
-                                        style: TextStyle(
-                                          color: AdminTheme.textSecondary,
-                                          fontSize: 11,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // شارة الحالة
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: statusColor),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: statusColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                statusText,
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // شارات الربط إذا كانت مرتبطة
-                    if (isLinkedToCitizen) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.teal.withOpacity(0.15),
-                              Colors.teal.withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(color: Colors.teal.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.teal.withOpacity(0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.people_alt_rounded,
-                                  size: 16, color: Colors.teal),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'مرتبطة بنظام المواطن',
-                              style: TextStyle(
-                                color: Colors.teal,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.check_circle,
-                                size: 16, color: Colors.teal),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              // شريط ملون في الأعلى
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(15)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // معلومات الاشتراك
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AdminTheme.backgroundColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AdminTheme.borderColor),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildInfoItem(
-                  Icons.calendar_month_rounded,
-                  'ينتهي في',
-                  dateFormat.format(company.subscriptionEndDate),
-                  color: company.daysRemaining <= 30 ? Colors.orange : null,
-                ),
-                Container(
-                  height: 40,
-                  width: 1,
-                  color: AdminTheme.borderColor,
-                ),
-                _buildInfoItem(
-                  Icons.hourglass_bottom_rounded,
-                  'متبقي',
-                  '${company.daysRemaining} يوم',
-                  color: company.daysRemaining <= 7
-                      ? Colors.red
-                      : company.daysRemaining <= 30
-                          ? Colors.orange
-                          : Colors.green,
-                ),
-                Container(
-                  height: 40,
-                  width: 1,
-                  color: AdminTheme.borderColor,
-                ),
-                _buildInfoItem(
-                  Icons.groups_rounded,
-                  'المستخدمين',
-                  '${company.employeeCount}/${company.maxUsers}',
-                  color: company.employeeCount >= company.maxUsers
-                      ? Colors.red
-                      : null,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // أزرار الإجراءات الرئيسية
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildMainActionButton(
-                    icon: Icons.login_rounded,
-                    label: 'الدخول للشركة',
-                    color: const Color(0xFF1a237e),
-                    onPressed: onEnterAsCompany,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildMainActionButton(
-                    icon: Icons.edit_rounded,
-                    label: 'تعديل',
-                    color: Colors.blue,
-                    onPressed: onEdit,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // أزرار الإجراءات الثانوية
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildActionButton(
-                  icon: Icons.security_rounded,
-                  label: 'الصلاحيات',
-                  color: Colors.purple,
-                  onPressed: onManagePermissions,
-                ),
-                _buildActionButton(
-                  icon: isLinkedToCitizen
-                      ? Icons.person_off_rounded
-                      : Icons.person_add_alt_1_rounded,
-                  label: isLinkedToCitizen
-                      ? 'إلغاء ربط نظام المواطن'
-                      : 'ربط نظام المواطن',
-                  color: isLinkedToCitizen ? Colors.orange : Colors.teal,
-                  onPressed:
-                      isLinkedToCitizen ? onUnlinkCitizen : onLinkCitizen,
-                ),
-                _buildActionButton(
-                  icon: Icons.autorenew_rounded,
-                  label: 'تجديد الاشتراك',
-                  color: Colors.green,
-                  onPressed: onRenew,
-                ),
-                _buildActionButton(
-                  icon: company.isActive
-                      ? Icons.pause_circle_rounded
-                      : Icons.play_circle_rounded,
-                  label: company.isActive ? 'تعطيل' : 'تفعيل',
-                  color: company.isActive ? Colors.orange : Colors.green,
-                  onPressed: onToggleStatus,
-                ),
-                _buildActionButton(
-                  icon: Icons.delete_rounded,
-                  label: 'حذف',
-                  color: Colors.red,
-                  onPressed: onDelete,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color, color.withOpacity(0.8)],
+            color: AdminTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isLinkedToCitizen
+                  ? Colors.teal
+                  : Colors.black.withOpacity(0.4),
+              width: isLinkedToCitizen ? 2 : 1.5,
             ),
-            borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 8,
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
             children: [
-              Icon(icon, size: 18, color: Colors.white),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+              // شريط الحالة الملون في الأعلى
+              Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(11)),
+                ),
+              ),
+
+              // المحتوى الرئيسي - صف أفقي
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // 1️⃣ أيقونة الشركة
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AdminTheme.primaryColor.withOpacity(0.15),
+                            AdminTheme.primaryColor.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AdminTheme.primaryColor.withOpacity(0.2),
+                        ),
+                      ),
+                      child: company.logoUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                company.logoUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.business_rounded,
+                                  color: AdminTheme.primaryColor,
+                                  size: 24,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.business_rounded,
+                              color: AdminTheme.primaryColor,
+                              size: 24,
+                            ),
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // 2️⃣ معلومات الشركة
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  company.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: AdminTheme.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              // شارة الحالة
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: statusColor.withOpacity(0.5)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: statusColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      statusText,
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AdminTheme.primaryColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  company.code,
+                                  style: const TextStyle(
+                                    color: AdminTheme.primaryColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              if (company.email != null) ...[
+                                const SizedBox(width: 12),
+                                Icon(Icons.email_outlined,
+                                    size: 14, color: AdminTheme.textMuted),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    company.email!,
+                                    style: TextStyle(
+                                      color: AdminTheme.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                              if (isLinkedToCitizen) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                        color: Colors.teal.withOpacity(0.3)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.people_alt_rounded,
+                                          size: 12, color: Colors.teal),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'مرتبطة',
+                                        style: TextStyle(
+                                          color: Colors.teal,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 20),
+
+                    // 3️⃣ معلومات الاشتراك
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AdminTheme.backgroundColor,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AdminTheme.borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildCompactInfo(
+                            Icons.calendar_month_rounded,
+                            dateFormat.format(company.subscriptionEndDate),
+                            color: company.daysRemaining <= 30
+                                ? Colors.orange
+                                : null,
+                          ),
+                          Container(
+                            height: 30,
+                            width: 1,
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                            color: AdminTheme.borderColor,
+                          ),
+                          _buildCompactInfo(
+                            Icons.hourglass_bottom_rounded,
+                            '${company.daysRemaining} يوم',
+                            color: company.daysRemaining <= 7
+                                ? Colors.red
+                                : company.daysRemaining <= 30
+                                    ? Colors.orange
+                                    : Colors.green,
+                          ),
+                          Container(
+                            height: 30,
+                            width: 1,
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                            color: AdminTheme.borderColor,
+                          ),
+                          _buildCompactInfo(
+                            Icons.groups_rounded,
+                            '${company.employeeCount}/${company.maxUsers}',
+                            color: company.employeeCount >= company.maxUsers
+                                ? Colors.red
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // أيقونة السهم للدخول
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AdminTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: AdminTheme.primaryColor,
+                        size: 18,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1598,66 +1634,21 @@ class _UnifiedCompanyCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String label, String value,
-      {Color? color}) {
-    return Column(
+  Widget _buildCompactInfo(IconData icon, String value, {Color? color}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: color ?? AdminTheme.textSecondary),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: AdminTheme.textMuted,
-          ),
-        ),
+        Icon(icon, size: 16, color: color ?? AdminTheme.textSecondary),
+        const SizedBox(width: 6),
         Text(
           value,
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
             color: color ?? AdminTheme.textPrimary,
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

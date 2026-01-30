@@ -21,7 +21,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   late TabController _tabController;
 
   // يمكنك تغيير هذا الرابط حسب بيئة العمل
-  static const String baseUrl = 'https://72.61.183.61/api/internal';
+  static const String baseUrl = 'http://72.61.183.61/api/internal';
 
   // API Key للوصول الداخلي
   static const String apiKey = 'sadara-internal-2024-secure-key';
@@ -56,7 +56,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     super.initState();
     _tabController = TabController(length: _tables.length, vsync: this);
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
+      if (!_tabController.indexIsChanging && mounted) {
         setState(() {
           _selectedTableIndex = _tabController.index;
           _selectedItem = null;
@@ -74,6 +74,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   }
 
   Future<void> _fetchData(String endpoint) async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -94,6 +95,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
 
       if (response.statusCode == 200) {
         final decoded = json.decode(responseBody);
+        if (!mounted) return;
         setState(() {
           if (decoded is List) {
             _currentData = decoded;
@@ -130,6 +132,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             break;
         }
 
+        if (!mounted) return;
         setState(() {
           _errorMessage = errorMsg;
           _errorDetails = details;
@@ -137,6 +140,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = '❌ فشل الاتصال بالخادم';
         _errorDetails =
@@ -291,31 +295,72 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: AdminTheme.borderColor),
               ),
             ),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              indicatorColor: AdminTheme.primaryColor,
-              indicatorWeight: 3,
-              labelColor: AdminTheme.primaryColor,
-              unselectedLabelColor: AdminTheme.textMuted,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-              tabs: _tables
-                  .map((t) => Tab(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(t.icon, size: 18),
-                            const SizedBox(width: 8),
-                            Text(t.displayName),
-                          ],
+            child: Row(
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: _tables.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final t = entry.value;
+                      final isSelected = _selectedTableIndex == index;
+                      return GestureDetector(
+                        onTap: () {
+                          _tabController.animateTo(index);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AdminTheme.primaryColor.withOpacity(0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AdminTheme.primaryColor.withOpacity(0.3)
+                                  : AdminTheme.borderColor,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(t.icon,
+                                  size: 14,
+                                  color: isSelected
+                                      ? AdminTheme.primaryColor
+                                      : AdminTheme.textMuted),
+                              const SizedBox(width: 4),
+                              Text(
+                                t.displayName
+                                    .replaceAll(
+                                        RegExp(r'[^\w\s\u0600-\u06FF]'), '')
+                                    .trim(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? AdminTheme.primaryColor
+                                      : AdminTheme.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ))
-                  .toList(),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

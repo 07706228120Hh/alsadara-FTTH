@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'vps_auth_service.dart';
 
 /// خدمة الاتصال بـ Sadara Platform API الجديد
 /// تعمل مع Firebase Auth للمصادقة
@@ -14,7 +15,7 @@ class SadaraApiService {
   static const String _devBaseUrl = 'http://localhost:5000/api';
 
   /// رابط API للإنتاج (VPS)
-  static const String _prodBaseUrl = 'https://72.61.183.61/api';
+  static const String _prodBaseUrl = 'http://72.61.183.61/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
   static const bool _isProduction = true;
@@ -208,8 +209,10 @@ class SadaraApiService {
       'Accept': 'application/json',
     };
 
-    if (_jwtToken != null) {
-      headers['Authorization'] = 'Bearer $_jwtToken';
+    // استخدام التوكن من VpsAuthService إذا لم يكن موجوداً
+    final token = _jwtToken ?? VpsAuthService.instance.accessToken;
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
     }
 
     return headers;

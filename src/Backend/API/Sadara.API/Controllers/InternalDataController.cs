@@ -5,6 +5,7 @@ using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace Sadara.API.Controllers;
 
@@ -217,6 +218,117 @@ public class InternalDataController : ControllerBase
     }
 
     /// <summary>
+    /// تحديث صلاحيات شركة
+    /// </summary>
+    [HttpPut("companies/{id}/permissions")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateCompanyPermissions(Guid id, [FromBody] InternalUpdatePermissionsRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        // تحديث صلاحيات النظام الأول
+        if (request.EnabledFirstSystemFeatures != null)
+            company.EnabledFirstSystemFeatures = System.Text.Json.JsonSerializer.Serialize(request.EnabledFirstSystemFeatures);
+
+        // تحديث صلاحيات النظام الثاني
+        if (request.EnabledSecondSystemFeatures != null)
+            company.EnabledSecondSystemFeatures = System.Text.Json.JsonSerializer.Serialize(request.EnabledSecondSystemFeatures);
+
+        company.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Companies.Update(company);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { 
+            success = true, 
+            message = "تم تحديث صلاحيات الشركة بنجاح",
+            data = new {
+                company.Id,
+                company.Name,
+                company.EnabledFirstSystemFeatures,
+                company.EnabledSecondSystemFeatures
+            }
+        });
+    }
+
+    // ==========================================
+    // V2 - صلاحيات الشركة المفصلة (إجراءات)
+    // ==========================================
+
+    /// <summary>
+    /// الحصول على صلاحيات V2 للشركة (مع إجراءات مفصلة)
+    /// </summary>
+    [HttpGet("companies/{id}/permissions-v2")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCompanyPermissionsV2(Guid id)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        return Ok(new { 
+            success = true, 
+            data = new {
+                company.Id,
+                company.Name,
+                // V1 - للتوافق العكسي
+                company.EnabledFirstSystemFeatures,
+                company.EnabledSecondSystemFeatures,
+                // V2 - الجديد
+                company.EnabledFirstSystemFeaturesV2,
+                company.EnabledSecondSystemFeaturesV2
+            }
+        });
+    }
+
+    /// <summary>
+    /// تحديث صلاحيات V2 للشركة (مع إجراءات مفصلة)
+    /// </summary>
+    [HttpPut("companies/{id}/permissions-v2")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateCompanyPermissionsV2(Guid id, [FromBody] InternalUpdatePermissionsV2Request request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        // تحديث صلاحيات V2 للنظام الأول
+        if (request.EnabledFirstSystemFeaturesV2 != null)
+            company.EnabledFirstSystemFeaturesV2 = System.Text.Json.JsonSerializer.Serialize(request.EnabledFirstSystemFeaturesV2);
+
+        // تحديث صلاحيات V2 للنظام الثاني
+        if (request.EnabledSecondSystemFeaturesV2 != null)
+            company.EnabledSecondSystemFeaturesV2 = System.Text.Json.JsonSerializer.Serialize(request.EnabledSecondSystemFeaturesV2);
+
+        company.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Companies.Update(company);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { 
+            success = true, 
+            message = "تم تحديث صلاحيات V2 للشركة بنجاح",
+            data = new {
+                company.Id,
+                company.Name,
+                company.EnabledFirstSystemFeaturesV2,
+                company.EnabledSecondSystemFeaturesV2
+            }
+        });
+    }
+
+    /// <summary>
     /// تجديد اشتراك شركة
     /// </summary>
     [HttpPatch("companies/{id}/renew")]
@@ -276,6 +388,399 @@ public class InternalDataController : ControllerBase
 
         return Ok(new { success = true, message = "تم حذف الشركة بنجاح" });
     }
+
+
+
+    /// <summary>
+    /// الحصول على موظفي شركة معينة
+    /// </summary>
+    [HttpGet("companies/{id}/employees")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCompanyEmployees(Guid id)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        var employees = await _unitOfWork.Users.AsQueryable()
+            .Where(u => u.CompanyId == id && !u.IsDeleted)
+            .OrderBy(u => u.FullName)
+            .Select(u => new
+            {
+                u.Id,
+                u.FullName,
+                u.PhoneNumber,
+                u.Email,
+                Role = u.Role.ToString(),
+                u.Department,
+                u.EmployeeCode,
+                u.Center,
+                u.Salary,
+                u.IsActive,
+                u.FirstSystemPermissions,
+                u.SecondSystemPermissions,
+                u.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { success = true, data = employees, total = employees.Count });
+    }
+
+    /// <summary>
+    /// الحصول على موظف بالمعرف
+    /// </summary>
+    [HttpGet("companies/{id}/employees/{employeeId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCompanyEmployeeById(Guid id, Guid employeeId)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                employee.Id,
+                employee.FullName,
+                employee.PhoneNumber,
+                employee.Email,
+                Role = employee.Role.ToString(),
+                employee.Department,
+                employee.EmployeeCode,
+                employee.Center,
+                employee.Salary,
+                employee.IsActive,
+                employee.FirstSystemPermissions,
+                employee.SecondSystemPermissions,
+                employee.CreatedAt
+            }
+        });
+    }
+
+    /// <summary>
+    /// تحديث بيانات موظف
+    /// </summary>
+    [HttpPut("companies/{id}/employees/{employeeId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateCompanyEmployee(Guid id, Guid employeeId, [FromBody] InternalUpdateEmployeeRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        // تحديث البيانات
+        if (!string.IsNullOrEmpty(request.FullName))
+            employee.FullName = request.FullName;
+        if (!string.IsNullOrEmpty(request.PhoneNumber))
+            employee.PhoneNumber = request.PhoneNumber;
+        if (!string.IsNullOrEmpty(request.Email))
+            employee.Email = request.Email;
+        if (!string.IsNullOrEmpty(request.Department))
+            employee.Department = request.Department;
+        if (!string.IsNullOrEmpty(request.EmployeeCode))
+            employee.EmployeeCode = request.EmployeeCode;
+        if (!string.IsNullOrEmpty(request.Center))
+            employee.Center = request.Center;
+        if (!string.IsNullOrEmpty(request.Salary))
+            employee.Salary = request.Salary;
+        if (request.IsActive.HasValue)
+            employee.IsActive = request.IsActive.Value;
+
+        employee.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(employee);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم تحديث بيانات الموظف بنجاح" });
+    }
+
+    /// <summary>
+    /// تغيير كلمة مرور موظف
+    /// </summary>
+    [HttpPatch("companies/{id}/employees/{employeeId}/password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateEmployeePassword(Guid id, Guid employeeId, [FromBody] InternalUpdatePasswordRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        if (string.IsNullOrEmpty(request.NewPassword) || request.NewPassword.Length < 6)
+            return BadRequest(new { success = false, message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+
+        employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        employee.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(employee);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم تغيير كلمة المرور بنجاح" });
+    }
+
+    /// <summary>
+    /// تحديث صلاحيات موظف
+    /// </summary>
+    [HttpPut("companies/{id}/employees/{employeeId}/permissions")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateEmployeePermissions(Guid id, Guid employeeId, [FromBody] InternalUpdateEmployeePermissionsRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        // تحديث صلاحيات النظام الأول
+        if (request.FirstSystemPermissions != null)
+            employee.FirstSystemPermissions = System.Text.Json.JsonSerializer.Serialize(request.FirstSystemPermissions);
+
+        // تحديث صلاحيات النظام الثاني
+        if (request.SecondSystemPermissions != null)
+            employee.SecondSystemPermissions = System.Text.Json.JsonSerializer.Serialize(request.SecondSystemPermissions);
+
+        employee.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(employee);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { 
+            success = true, 
+            message = "تم تحديث صلاحيات الموظف بنجاح",
+            data = new {
+                employee.Id,
+                employee.FullName,
+                employee.FirstSystemPermissions,
+                employee.SecondSystemPermissions
+            }
+        });
+    }
+
+    // ==========================================
+    // V2 - صلاحيات الموظف المفصلة (إجراءات)
+    // ==========================================
+
+    /// <summary>
+    /// الحصول على صلاحيات V2 للموظف
+    /// </summary>
+    [HttpGet("companies/{id}/employees/{employeeId}/permissions-v2")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetEmployeePermissionsV2(Guid id, Guid employeeId)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        return Ok(new { 
+            success = true, 
+            data = new {
+                employee.Id,
+                employee.FullName,
+                // V1 - للتوافق العكسي
+                employee.FirstSystemPermissions,
+                employee.SecondSystemPermissions,
+                // V2 - الجديد
+                employee.FirstSystemPermissionsV2,
+                employee.SecondSystemPermissionsV2
+            }
+        });
+    }
+
+    /// <summary>
+    /// تحديث صلاحيات V2 للموظف (مع إجراءات مفصلة)
+    /// </summary>
+    [HttpPut("companies/{id}/employees/{employeeId}/permissions-v2")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateEmployeePermissionsV2(Guid id, Guid employeeId, [FromBody] InternalUpdateEmployeePermissionsV2Request request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        // تحديث صلاحيات V2 للنظام الأول
+        if (request.FirstSystemPermissionsV2 != null)
+            employee.FirstSystemPermissionsV2 = System.Text.Json.JsonSerializer.Serialize(request.FirstSystemPermissionsV2);
+
+        // تحديث صلاحيات V2 للنظام الثاني
+        if (request.SecondSystemPermissionsV2 != null)
+            employee.SecondSystemPermissionsV2 = System.Text.Json.JsonSerializer.Serialize(request.SecondSystemPermissionsV2);
+
+        employee.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(employee);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { 
+            success = true, 
+            message = "تم تحديث صلاحيات V2 للموظف بنجاح",
+            data = new {
+                employee.Id,
+                employee.FullName,
+                employee.FirstSystemPermissionsV2,
+                employee.SecondSystemPermissionsV2
+            }
+        });
+    }
+
+    /// <summary>
+    /// حذف موظف
+    /// </summary>
+    [HttpDelete("companies/{id}/employees/{employeeId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DeleteCompanyEmployee(Guid id, Guid employeeId)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        employee.IsDeleted = true;
+        employee.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(employee);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم حذف الموظف بنجاح" });
+    }
+
+    /// <summary>
+    /// إضافة موظف جديد للشركة
+    /// </summary>
+    [HttpPost("companies/{id}/employees")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CreateCompanyEmployee(Guid id, [FromBody] InternalCreateEmployeeRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        // التحقق من الحد الأقصى للموظفين
+        var currentCount = await _unitOfWork.Users.AsQueryable()
+            .CountAsync(u => u.CompanyId == id && !u.IsDeleted);
+        if (currentCount >= company.MaxUsers)
+            return BadRequest(new { success = false, message = $"تم الوصول للحد الأقصى للموظفين ({company.MaxUsers})" });
+
+        // التحقق من رقم الهاتف
+        var existingPhone = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber && !u.IsDeleted);
+        if (existingPhone != null)
+            return BadRequest(new { success = false, message = "رقم الهاتف مستخدم بالفعل" });
+
+        // التحقق من البريد الإلكتروني
+        if (!string.IsNullOrEmpty(request.Email))
+        {
+            var existingEmail = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
+            if (existingEmail != null)
+                return BadRequest(new { success = false, message = "البريد الإلكتروني مستخدم بالفعل" });
+        }
+
+        var employee = new Sadara.Domain.Entities.User
+        {
+            Id = Guid.NewGuid(),
+            FullName = request.FullName,
+            PhoneNumber = request.PhoneNumber,
+            Email = request.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "123456"),
+            Role = ParseUserRole(request.Role ?? "Employee"),
+            CompanyId = id,
+            Department = request.Department,
+            EmployeeCode = request.EmployeeCode ?? GenerateEmployeeCode(),
+            Center = request.Center,
+            Salary = request.Salary,
+            IsActive = true,
+            IsPhoneVerified = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.Users.AddAsync(employee);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = "تم إضافة الموظف بنجاح",
+            data = new
+            {
+                employee.Id,
+                employee.FullName,
+                employee.PhoneNumber,
+                employee.Email,
+                Role = employee.Role.ToString(),
+                employee.Department,
+                employee.EmployeeCode,
+                employee.Center,
+                employee.Salary,
+                employee.IsActive,
+                employee.CreatedAt
+            }
+        });
+    }
+
+    private Sadara.Domain.Enums.UserRole ParseUserRole(string role)
+    {
+        return role?.ToLower() switch
+        {
+            "admin" or "companyadmin" => Sadara.Domain.Enums.UserRole.CompanyAdmin,
+            "manager" => Sadara.Domain.Enums.UserRole.Manager,
+            "technician" => Sadara.Domain.Enums.UserRole.Technician,
+            "technicalleader" or "leader" => Sadara.Domain.Enums.UserRole.TechnicalLeader,
+            "viewer" => Sadara.Domain.Enums.UserRole.Viewer,
+            _ => Sadara.Domain.Enums.UserRole.Employee
+        };
+    }
+
+    private string GenerateEmployeeCode()
+    {
+        return $"EMP-{DateTime.UtcNow:yyMMdd}-{new Random().Next(1000, 9999)}";
+    }
+
+
 
     /// <summary>
     /// الحصول على جميع المستخدمين
@@ -1165,10 +1670,105 @@ public class SuspendCompanyRequest
 }
 
 /// <summary>
+/// طلب تحديث صلاحيات الشركة (Internal API)
+/// </summary>
+public class InternalUpdatePermissionsRequest
+{
+    public Dictionary<string, bool>? EnabledFirstSystemFeatures { get; set; }
+    public Dictionary<string, bool>? EnabledSecondSystemFeatures { get; set; }
+}
+
+/// <summary>
 /// طلب تجديد الاشتراك (Internal API)
 /// </summary>
 public class InternalRenewSubscriptionRequest
 {
     public int? Months { get; set; }
     public DateTime? NewEndDate { get; set; }
+}
+
+/// <summary>
+/// طلب إنشاء موظف جديد (Internal API)
+/// </summary>
+public class InternalCreateEmployeeRequest
+{
+    public string FullName { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? Password { get; set; }
+    public string? Role { get; set; }
+    public string? Department { get; set; }
+    public string? EmployeeCode { get; set; }
+    public string? Center { get; set; }
+    public string? Salary { get; set; }
+}
+
+/// <summary>
+/// طلب تحديث بيانات موظف (Internal API)
+/// </summary>
+public class InternalUpdateEmployeeRequest
+{
+    public string? FullName { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? Email { get; set; }
+    public string? Department { get; set; }
+    public string? EmployeeCode { get; set; }
+    public string? Center { get; set; }
+    public string? Salary { get; set; }
+    public bool? IsActive { get; set; }
+}
+
+/// <summary>
+/// طلب تغيير كلمة المرور (Internal API)
+/// </summary>
+public class InternalUpdatePasswordRequest
+{
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// طلب تحديث صلاحيات الموظف (Internal API)
+/// </summary>
+public class InternalUpdateEmployeePermissionsRequest
+{
+    public Dictionary<string, bool>? FirstSystemPermissions { get; set; }
+    public Dictionary<string, bool>? SecondSystemPermissions { get; set; }
+}
+
+// ==========================================
+// V2 - نظام الصلاحيات المفصل (إجراءات)
+// ==========================================
+
+/// <summary>
+/// طلب تحديث صلاحيات V2 للشركة (مع إجراءات مفصلة)
+/// </summary>
+public class InternalUpdatePermissionsV2Request
+{
+    /// <summary>
+    /// صلاحيات النظام الأول V2
+    /// مثال: {"attendance":{"view":true,"add":false,"edit":false,"delete":false}}
+    /// </summary>
+    public Dictionary<string, Dictionary<string, bool>>? EnabledFirstSystemFeaturesV2 { get; set; }
+    
+    /// <summary>
+    /// صلاحيات النظام الثاني V2
+    /// مثال: {"users":{"view":true,"add":true,"edit":false,"delete":false,"export":false}}
+    /// </summary>
+    public Dictionary<string, Dictionary<string, bool>>? EnabledSecondSystemFeaturesV2 { get; set; }
+}
+
+/// <summary>
+/// طلب تحديث صلاحيات V2 للموظف (مع إجراءات مفصلة)
+/// </summary>
+public class InternalUpdateEmployeePermissionsV2Request
+{
+    /// <summary>
+    /// صلاحيات النظام الأول V2
+    /// </summary>
+    public Dictionary<string, Dictionary<string, bool>>? FirstSystemPermissionsV2 { get; set; }
+    
+    /// <summary>
+    /// صلاحيات النظام الثاني V2
+    /// </summary>
+    public Dictionary<string, Dictionary<string, bool>>? SecondSystemPermissionsV2 { get; set; }
 }

@@ -57,6 +57,16 @@ class ApiConfig {
   static const String internalCompanies = '/internal/companies';
   static const String internalSubscriptions = '/internal/subscriptions';
   static const String internalPayments = '/internal/payments';
+  static String internalCompanyEmployees(String id) =>
+      '/internal/companies/$id/employees';
+  static String internalEmployeeById(String companyId, String empId) =>
+      '/internal/companies/$companyId/employees/$empId';
+  static String internalEmployeePassword(String companyId, String empId) =>
+      '/internal/companies/$companyId/employees/$empId/password';
+  static String internalCompanyPermissionsV2(String companyId) =>
+      '/internal/companies/$companyId/permissions-v2';
+  static String internalEmployeePermissionsV2(String companyId, String empId) =>
+      '/internal/companies/$companyId/employees/$empId/permissions-v2';
 
   // ============================================
   // API Keys

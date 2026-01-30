@@ -292,15 +292,16 @@ class SuperAdminLoginResponse {
   });
 
   factory SuperAdminLoginResponse.fromJson(Map<String, dynamic> json) {
+    // API يرجع أسماء الحقول بـ PascalCase
     return SuperAdminLoginResponse(
-      id: json['id']?.toString() ?? '',
-      username: json['username'] ?? '',
-      fullName: json['fullName'] ?? '',
-      email: json['email'],
-      token: json['token'] ?? '',
-      refreshToken: json['refreshToken'] ?? '',
-      expiresAt: json['expiresAt'] != null
-          ? DateTime.parse(json['expiresAt'])
+      id: (json['Id'] ?? json['id'])?.toString() ?? '',
+      username: json['Username'] ?? json['username'] ?? '',
+      fullName: json['FullName'] ?? json['fullName'] ?? '',
+      email: json['Email'] ?? json['email'],
+      token: json['Token'] ?? json['token'] ?? '',
+      refreshToken: json['RefreshToken'] ?? json['refreshToken'] ?? '',
+      expiresAt: (json['ExpiresAt'] ?? json['expiresAt']) != null
+          ? DateTime.parse(json['ExpiresAt'] ?? json['expiresAt'])
           : DateTime.now().add(const Duration(hours: 24)),
     );
   }

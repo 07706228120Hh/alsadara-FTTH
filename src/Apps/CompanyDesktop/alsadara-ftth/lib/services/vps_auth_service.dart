@@ -106,10 +106,18 @@ class VpsAuthService {
   Future<VpsAuthResult> loginSuperAdmin(
       String username, String password) async {
     try {
+      debugPrint('🔐 VpsAuthService.loginSuperAdmin - بدء تسجيل الدخول...');
       final response = await _superAdminApi.login(username, password);
 
       return response.fold(
         onSuccess: (data) async {
+          debugPrint('✅ VpsAuthService.loginSuperAdmin - نجاح!');
+          debugPrint('   - id: ${data.id}');
+          debugPrint('   - username: ${data.username}');
+          debugPrint('   - fullName: ${data.fullName}');
+          debugPrint(
+              '   - token: ${data.token.length > 20 ? "${data.token.substring(0, 20)}..." : data.token}');
+
           // حفظ التوكنات
           await _saveTokens(
             accessToken: data.token,
@@ -131,6 +139,11 @@ class VpsAuthService {
           currentUser = null;
           currentCompany = null;
 
+          debugPrint(
+              '✅ VpsAuthService - تم تعيين currentSuperAdmin: ${currentSuperAdmin?.username}');
+          debugPrint(
+              '✅ VpsAuthService - تم تعيين currentUserType: $currentUserType');
+
           await _saveUserData(admin: admin);
 
           return VpsAuthResult.success(
@@ -139,12 +152,15 @@ class VpsAuthService {
           );
         },
         onError: (error, statusCode) {
+          debugPrint(
+              '❌ VpsAuthService.loginSuperAdmin - فشل: $error (statusCode: $statusCode)');
           // ترجمة رسائل الخطأ
           String message = _translateError(error, statusCode);
           return VpsAuthResult.failure(message);
         },
       );
     } catch (e) {
+      debugPrint('❌ VpsAuthService.loginSuperAdmin - استثناء: $e');
       return VpsAuthResult.failure('حدث خطأ في الاتصال بالخادم: $e');
     }
   }
@@ -171,18 +187,7 @@ class VpsAuthService {
             expiresAt: data.expiresAt,
           );
 
-          // إنشاء كائنات المستخدم والشركة
-          final user = VpsCompanyUser(
-            id: data.user.id,
-            username: data.user.username,
-            fullName: data.user.fullName,
-            email: data.user.email,
-            phone: data.user.phone,
-            role: data.user.role,
-            permissions: data.user.permissions,
-            isActive: data.user.isActive,
-          );
-
+          // إنشاء كائن الشركة مع صلاحياتها
           final company = VpsCompanyInfo(
             id: data.company.id,
             name: data.company.name,
@@ -192,6 +197,51 @@ class VpsAuthService {
             daysRemaining: data.company.daysRemaining,
             isExpired: data.company.isExpired,
             subscriptionStatus: data.company.subscriptionStatus,
+            enabledFirstSystemFeatures: data.company.enabledFirstSystemFeatures,
+            enabledSecondSystemFeatures:
+                data.company.enabledSecondSystemFeatures,
+          );
+
+          // إعداد صلاحيات المستخدم
+          Map<String, bool> finalFirstPerms =
+              Map.from(data.user.firstSystemPermissions);
+          Map<String, bool> finalSecondPerms =
+              Map.from(data.user.secondSystemPermissions);
+          List<String> finalPermissions = List.from(data.user.permissions);
+
+          // إذا كان مدير الشركة (CompanyAdmin)، يحصل على صلاحيات الشركة
+          if (data.user.isAdmin) {
+            company.enabledFirstSystemFeatures.forEach((key, value) {
+              if (value == true) {
+                finalFirstPerms[key] = true;
+                if (!finalPermissions.contains(key)) {
+                  finalPermissions.add(key);
+                }
+              }
+            });
+
+            company.enabledSecondSystemFeatures.forEach((key, value) {
+              if (value == true) {
+                finalSecondPerms[key] = true;
+                if (!finalPermissions.contains(key)) {
+                  finalPermissions.add(key);
+                }
+              }
+            });
+          }
+
+          // إنشاء كائن المستخدم بالصلاحيات النهائية
+          final user = VpsCompanyUser(
+            id: data.user.id,
+            username: data.user.username,
+            fullName: data.user.fullName,
+            email: data.user.email,
+            phone: data.user.phone,
+            role: data.user.role,
+            permissions: finalPermissions,
+            firstSystemPermissions: finalFirstPerms,
+            secondSystemPermissions: finalSecondPerms,
+            isActive: data.user.isActive,
           );
 
           // حفظ البيانات
@@ -259,6 +309,86 @@ class VpsAuthService {
     _accessToken = null;
     _refreshToken = null;
     _tokenExpiresAt = null;
+  }
+
+  /// تحديث بيانات الملف الشخصي
+  Future<Map<String, dynamic>> updateProfile({
+    String? username,
+    String? fullName,
+    String? email,
+    String? city,
+    String? area,
+    String? address,
+  }) async {
+    try {
+      final response = await _authApi.updateProfile(
+        username: username,
+        fullName: fullName,
+        email: email,
+        city: city,
+        area: area,
+        address: address,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        // تحديث البيانات المحلية
+        if (_currentUser != null) {
+          _currentUser = VpsCompanyUser(
+            id: _currentUser!.id,
+            fullName: fullName ?? _currentUser!.fullName,
+            username: username ?? _currentUser!.username,
+            email: email ?? _currentUser!.email,
+            phone: _currentUser!.phone,
+            role: _currentUser!.role,
+            permissions: _currentUser!.permissions,
+            firstSystemPermissions: _currentUser!.firstSystemPermissions,
+            secondSystemPermissions: _currentUser!.secondSystemPermissions,
+            isActive: _currentUser!.isActive,
+          );
+        }
+
+        return {
+          'success': true,
+          'message': response.message ?? 'تم تحديث البيانات بنجاح',
+        };
+      }
+
+      return {
+        'success': false,
+        'message': response.message ?? 'فشل في تحديث البيانات',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'خطأ: ${e.toString()}',
+      };
+    }
+  }
+
+  /// تغيير كلمة المرور
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _authApi.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+
+      return {
+        'success': response.isSuccess,
+        'message': response.message ??
+            (response.isSuccess
+                ? 'تم تغيير كلمة المرور بنجاح'
+                : 'فشل في تغيير كلمة المرور'),
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'خطأ: ${e.toString()}',
+      };
+    }
   }
 
   /// تحديث التوكن
@@ -527,6 +657,8 @@ class VpsCompanyUser {
   final String? phone;
   final String role;
   final List<String> permissions;
+  final Map<String, bool> firstSystemPermissions;
+  final Map<String, bool> secondSystemPermissions;
   final bool isActive;
 
   VpsCompanyUser({
@@ -537,19 +669,149 @@ class VpsCompanyUser {
     this.phone,
     required this.role,
     required this.permissions,
+    this.firstSystemPermissions = const {},
+    this.secondSystemPermissions = const {},
     required this.isActive,
   });
 
   factory VpsCompanyUser.fromJson(Map<String, dynamic> json) {
+    // استخراج الصلاحيات من JSON strings
+    Map<String, bool> firstPerms = {};
+    Map<String, bool> secondPerms = {};
+    List<String> permissionsList = [];
+
+    // ============ قراءة صلاحيات V1 أو V2 للنظام الأول ============
+    final firstSystemStr =
+        json['firstSystemPermissions'] ?? json['FirstSystemPermissions'];
+    final firstSystemV2Str =
+        json['firstSystemPermissionsV2'] ?? json['FirstSystemPermissionsV2'];
+
+    // أولوية V2 إذا كان V1 فارغ
+    final firstSourceStr = (firstSystemStr != null &&
+            firstSystemStr.toString().isNotEmpty &&
+            firstSystemStr.toString() != 'null')
+        ? firstSystemStr
+        : firstSystemV2Str;
+
+    if (firstSourceStr != null &&
+        firstSourceStr is String &&
+        firstSourceStr.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(firstSourceStr) as Map<String, dynamic>;
+        // التعامل مع V2 format: {"feature": {"view": true, "add": true, ...}}
+        decoded.forEach((feature, value) {
+          if (value is Map) {
+            // V2 format - نحول إلى V1 (إذا view=true يعني الميزة مفعلة)
+            final hasViewPermission = value['view'] == true;
+            firstPerms[feature] = hasViewPermission;
+            if (hasViewPermission) permissionsList.add(feature);
+          } else if (value == true) {
+            // V1 format
+            firstPerms[feature] = true;
+            permissionsList.add(feature);
+          }
+        });
+      } catch (_) {}
+    } else if (firstSourceStr is Map) {
+      firstSourceStr.forEach((feature, value) {
+        if (value is Map) {
+          final hasViewPermission = value['view'] == true;
+          firstPerms[feature.toString()] = hasViewPermission;
+          if (hasViewPermission) permissionsList.add(feature.toString());
+        } else if (value == true) {
+          firstPerms[feature.toString()] = true;
+          permissionsList.add(feature.toString());
+        }
+      });
+    }
+
+    // ============ قراءة صلاحيات V1 أو V2 للنظام الثاني ============
+    final secondSystemStr =
+        json['secondSystemPermissions'] ?? json['SecondSystemPermissions'];
+    final secondSystemV2Str =
+        json['secondSystemPermissionsV2'] ?? json['SecondSystemPermissionsV2'];
+
+    // أولوية V2 إذا كان V1 فارغ
+    final secondSourceStr = (secondSystemStr != null &&
+            secondSystemStr.toString().isNotEmpty &&
+            secondSystemStr.toString() != 'null')
+        ? secondSystemStr
+        : secondSystemV2Str;
+
+    if (secondSourceStr != null &&
+        secondSourceStr is String &&
+        secondSourceStr.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(secondSourceStr) as Map<String, dynamic>;
+        // التعامل مع V2 format: {"feature": {"view": true, "add": true, ...}}
+        decoded.forEach((feature, value) {
+          if (value is Map) {
+            // V2 format - نحول إلى V1 (إذا view=true يعني الميزة مفعلة)
+            final hasViewPermission = value['view'] == true;
+            secondPerms[feature] = hasViewPermission;
+            if (hasViewPermission && !permissionsList.contains(feature)) {
+              permissionsList.add(feature);
+            }
+          } else if (value == true) {
+            // V1 format
+            secondPerms[feature] = true;
+            if (!permissionsList.contains(feature)) {
+              permissionsList.add(feature);
+            }
+          }
+        });
+      } catch (_) {}
+    } else if (secondSourceStr is Map) {
+      secondSourceStr.forEach((feature, value) {
+        if (value is Map) {
+          final hasViewPermission = value['view'] == true;
+          secondPerms[feature.toString()] = hasViewPermission;
+          if (hasViewPermission &&
+              !permissionsList.contains(feature.toString())) {
+            permissionsList.add(feature.toString());
+          }
+        } else if (value == true) {
+          secondPerms[feature.toString()] = true;
+          if (!permissionsList.contains(feature.toString())) {
+            permissionsList.add(feature.toString());
+          }
+        }
+      });
+    }
+
+    // قراءة permissions القديمة إن وجدت
+    if (json['permissions'] is List) {
+      for (final p in json['permissions']) {
+        if (!permissionsList.contains(p.toString())) {
+          permissionsList.add(p.toString());
+        }
+      }
+    }
+
+    // ملاحظة: مدير الشركة (CompanyAdmin) سيحصل على صلاحيات الشركة
+    // في مرحلة تسجيل الدخول وليس هنا
+    final role = json['role'] ?? json['Role'] ?? 'Employee';
+
+    // استخراج الحقول (دعم camelCase و PascalCase)
+    final id = json['id']?.toString() ?? json['Id']?.toString() ?? '';
+    final phoneNumber = json['phoneNumber'] ?? json['PhoneNumber'];
+    final username = json['username'] ?? json['Username'];
+    final fullName = json['fullName'] ?? json['FullName'] ?? '';
+    final email = json['email'] ?? json['Email'];
+    final phone = phoneNumber ?? json['phone'] ?? json['Phone'];
+    final isActive = json['isActive'] ?? json['IsActive'] ?? true;
+
     return VpsCompanyUser(
-      id: json['id']?.toString() ?? '',
-      username: json['username'] ?? '',
-      fullName: json['fullName'] ?? '',
-      email: json['email'],
-      phone: json['phone'],
-      role: json['role'] ?? 'Employee',
-      permissions: (json['permissions'] as List?)?.cast<String>() ?? [],
-      isActive: json['isActive'] ?? true,
+      id: id,
+      username: phoneNumber ?? username ?? '',
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      role: role,
+      permissions: permissionsList,
+      firstSystemPermissions: firstPerms,
+      secondSystemPermissions: secondPerms,
+      isActive: isActive,
     );
   }
 
@@ -561,16 +823,20 @@ class VpsCompanyUser {
         'phone': phone,
         'role': role,
         'permissions': permissions,
+        'firstSystemPermissions': firstSystemPermissions,
+        'secondSystemPermissions': secondSystemPermissions,
         'isActive': isActive,
       };
 
   /// التحقق من صلاحية معينة
   bool hasPermission(String permission) {
-    return permissions.contains(permission) || role == 'Admin';
+    return permissions.contains(permission) ||
+        firstSystemPermissions[permission] == true ||
+        secondSystemPermissions[permission] == true;
   }
 
   /// هل هو مدير الشركة
-  bool get isAdmin => role == 'Admin';
+  bool get isAdmin => role == 'CompanyAdmin' || role == 'Admin';
 }
 
 /// نموذج معلومات الشركة
@@ -583,6 +849,8 @@ class VpsCompanyInfo {
   final int daysRemaining;
   final bool isExpired;
   final String subscriptionStatus;
+  final Map<String, bool> enabledFirstSystemFeatures;
+  final Map<String, bool> enabledSecondSystemFeatures;
 
   VpsCompanyInfo({
     required this.id,
@@ -593,20 +861,68 @@ class VpsCompanyInfo {
     required this.daysRemaining,
     required this.isExpired,
     required this.subscriptionStatus,
+    this.enabledFirstSystemFeatures = const {},
+    this.enabledSecondSystemFeatures = const {},
   });
 
   factory VpsCompanyInfo.fromJson(Map<String, dynamic> json) {
+    // قراءة صلاحيات الشركة (دعم camelCase و PascalCase)
+    Map<String, bool> firstFeatures = {};
+    Map<String, bool> secondFeatures = {};
+
+    final firstFeaturesStr = json['enabledFirstSystemFeatures'] ??
+        json['EnabledFirstSystemFeatures'];
+    if (firstFeaturesStr != null &&
+        firstFeaturesStr is String &&
+        firstFeaturesStr.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(firstFeaturesStr) as Map<String, dynamic>;
+        firstFeatures = decoded.map((k, v) => MapEntry(k, v == true));
+      } catch (_) {}
+    } else if (firstFeaturesStr is Map) {
+      firstFeatures = Map<String, bool>.from(
+          firstFeaturesStr.map((k, v) => MapEntry(k.toString(), v == true)));
+    }
+
+    final secondFeaturesStr = json['enabledSecondSystemFeatures'] ??
+        json['EnabledSecondSystemFeatures'];
+    if (secondFeaturesStr != null &&
+        secondFeaturesStr is String &&
+        secondFeaturesStr.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(secondFeaturesStr) as Map<String, dynamic>;
+        secondFeatures = decoded.map((k, v) => MapEntry(k, v == true));
+      } catch (_) {}
+    } else if (secondFeaturesStr is Map) {
+      secondFeatures = Map<String, bool>.from(
+          secondFeaturesStr.map((k, v) => MapEntry(k.toString(), v == true)));
+    }
+
+    // استخراج الحقول (دعم camelCase و PascalCase)
+    final id = json['id']?.toString() ?? json['Id']?.toString() ?? '';
+    final name = json['name'] ?? json['Name'] ?? '';
+    final code = json['code'] ?? json['Code'] ?? '';
+    final logoUrl = json['logoUrl'] ?? json['LogoUrl'];
+    final subscriptionEndDateStr =
+        json['subscriptionEndDate'] ?? json['SubscriptionEndDate'];
+    final daysRemaining = json['daysRemaining'] ?? json['DaysRemaining'] ?? 0;
+    final isExpired = json['isExpired'] ?? json['IsExpired'] ?? false;
+    final subscriptionStatus =
+        json['subscriptionStatus'] ?? json['SubscriptionStatus'] ?? 'Active';
+
     return VpsCompanyInfo(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      code: json['code'] ?? '',
-      logoUrl: json['logoUrl'],
-      subscriptionEndDate: json['subscriptionEndDate'] != null
-          ? DateTime.parse(json['subscriptionEndDate'])
+      id: id,
+      name: name,
+      code: code,
+      logoUrl: logoUrl,
+      subscriptionEndDate: subscriptionEndDateStr != null
+          ? DateTime.parse(subscriptionEndDateStr)
           : DateTime.now(),
-      daysRemaining: json['daysRemaining'] ?? 0,
-      isExpired: json['isExpired'] ?? false,
-      subscriptionStatus: json['subscriptionStatus'] ?? 'Active',
+      daysRemaining: daysRemaining,
+      isExpired: isExpired,
+      subscriptionStatus: subscriptionStatus,
+      enabledFirstSystemFeatures: firstFeatures,
+      enabledSecondSystemFeatures: secondFeatures,
     );
   }
 
@@ -619,6 +935,8 @@ class VpsCompanyInfo {
         'daysRemaining': daysRemaining,
         'isExpired': isExpired,
         'subscriptionStatus': subscriptionStatus,
+        'enabledFirstSystemFeatures': enabledFirstSystemFeatures,
+        'enabledSecondSystemFeatures': enabledSecondSystemFeatures,
       };
 
   /// هل الاشتراك سينتهي قريباً
