@@ -133,12 +133,27 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Merchant", policy => policy.RequireRole("SuperAdmin", "Admin", "Merchant"));
 });
 
-// CORS
+// CORS - تم تقييده للأمان
+var allowedOrigins = builder.Configuration.GetSection("Security:AllowedOrigins").Get<string[]>() 
+    ?? new[] { "http://localhost:5000" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        // في بيئة التطوير: السماح لأي origin
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
+        else
+        {
+            // في بيئة الإنتاج: فقط الـ origins المحددة
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
     });
 });
 

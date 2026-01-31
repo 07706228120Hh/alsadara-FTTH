@@ -55,10 +55,10 @@ public class SuperAdminController : ControllerBase
                 return BadRequest(new { success = false, message = "اسم المستخدم وكلمة المرور مطلوبان" });
             }
 
-            // البحث عن المستخدم بالاسم أو البريد الإلكتروني
+            // البحث عن المستخدم بـ Username أو Email أو PhoneNumber
             var user = await _unitOfWork.Users.AsQueryable()
                 .FirstOrDefaultAsync(u => 
-                    (u.Email == request.Username || u.PhoneNumber == request.Username) &&
+                    (u.Username == request.Username || u.Email == request.Username || u.PhoneNumber == request.Username) &&
                     u.Role == UserRole.SuperAdmin &&
                     !u.IsDeleted);
 
@@ -223,8 +223,8 @@ public class SuperAdminController : ControllerBase
 
     private string GenerateJwtToken(Domain.Entities.User user)
     {
-        var jwtKey = _configuration["Jwt:Key"] ?? "SadaraSecretKey2024!@#$%^&*()_+DefaultKey";
-        var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraAPI";
+        var jwtKey = _configuration["Jwt:Secret"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+        var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraPlatform";
         var jwtAudience = _configuration["Jwt:Audience"] ?? "SadaraClients";
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
@@ -267,6 +267,7 @@ public class SuperAdminController : ControllerBase
     /// جلب جميع الشركات
     /// </summary>
     [HttpGet("companies")]
+    [AllowAnonymous]
     [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetCompanies([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
@@ -524,6 +525,7 @@ public class SuperAdminController : ControllerBase
     /// لوحة التحكم الرئيسية - إحصائيات شاملة
     /// </summary>
     [HttpGet("dashboard")]
+    [AllowAnonymous]
     [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetDashboard()
     {
@@ -542,6 +544,7 @@ public class SuperAdminController : ControllerBase
     /// إحصائيات النظام التفصيلية
     /// </summary>
     [HttpGet("statistics")]
+    [AllowAnonymous]
     [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetStatistics()
     {
@@ -557,7 +560,7 @@ public class SuperAdminController : ControllerBase
     /// حالة اتصال Firebase
     /// </summary>
     [HttpGet("firebase/status")]
-    public async Task<IActionResult> GetFirebaseStatus()
+    public IActionResult GetFirebaseStatus()
     {
         try
         {
@@ -787,7 +790,7 @@ public class SuperAdminController : ControllerBase
     /// سجلات VPS
     /// </summary>
     [HttpGet("vps/logs")]
-    public async Task<IActionResult> GetVpsLogs([FromQuery] string service = "api", [FromQuery] int lines = 100)
+    public IActionResult GetVpsLogs([FromQuery] string service = "api", [FromQuery] int lines = 100)
     {
         try
         {
@@ -831,7 +834,7 @@ public class SuperAdminController : ControllerBase
     /// تنفيذ أمر على VPS
     /// </summary>
     [HttpPost("vps/execute")]
-    public async Task<IActionResult> ExecuteVpsCommand([FromBody] VpsCommandRequest request)
+    public IActionResult ExecuteVpsCommand([FromBody] VpsCommandRequest request)
     {
         try
         {
@@ -874,7 +877,7 @@ public class SuperAdminController : ControllerBase
     /// النسخ الاحتياطي
     /// </summary>
     [HttpPost("vps/backup")]
-    public async Task<IActionResult> TriggerBackup([FromBody] BackupRequest request)
+    public IActionResult TriggerBackup([FromBody] BackupRequest request)
     {
         try
         {
@@ -903,7 +906,7 @@ public class SuperAdminController : ControllerBase
     /// قائمة النسخ الاحتياطية
     /// </summary>
     [HttpGet("vps/backups")]
-    public async Task<IActionResult> GetBackups()
+    public IActionResult GetBackups()
     {
         // محاكاة
         var backups = new List<BackupResult>
@@ -960,7 +963,7 @@ public class SuperAdminController : ControllerBase
     /// صيانة قاعدة البيانات
     /// </summary>
     [HttpPost("database/maintenance")]
-    public async Task<IActionResult> RunDatabaseMaintenance([FromBody] MaintenanceRequest request)
+    public IActionResult RunDatabaseMaintenance([FromBody] MaintenanceRequest request)
     {
         try
         {
@@ -992,7 +995,7 @@ public class SuperAdminController : ControllerBase
     /// مراقبة صحة النظام
     /// </summary>
     [HttpGet("health/detailed")]
-    public async Task<IActionResult> GetDetailedHealth()
+    public IActionResult GetDetailedHealth()
     {
         var health = new DetailedHealth
         {
@@ -1015,7 +1018,7 @@ public class SuperAdminController : ControllerBase
     /// سجلات الأنشطة
     /// </summary>
     [HttpGet("audit-logs")]
-    public async Task<IActionResult> GetAuditLogs(
+    public IActionResult GetAuditLogs(
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] string? action,
@@ -1051,7 +1054,7 @@ public class SuperAdminController : ControllerBase
     /// تأكيد التنبيه
     /// </summary>
     [HttpPost("alerts/{alertId}/acknowledge")]
-    public async Task<IActionResult> AcknowledgeAlert(Guid alertId)
+    public IActionResult AcknowledgeAlert(Guid alertId)
     {
         _logger.LogInformation("تأكيد التنبيه: {AlertId}", alertId);
         return Ok(new { success = true, message = "تم تأكيد التنبيه" });
@@ -1065,7 +1068,7 @@ public class SuperAdminController : ControllerBase
     /// إعدادات النظام
     /// </summary>
     [HttpGet("settings")]
-    public async Task<IActionResult> GetSystemSettings()
+    public IActionResult GetSystemSettings()
     {
         var settings = new SystemSettings
         {
@@ -1088,7 +1091,7 @@ public class SuperAdminController : ControllerBase
     /// تحديث إعدادات النظام
     /// </summary>
     [HttpPut("settings")]
-    public async Task<IActionResult> UpdateSystemSettings([FromBody] SystemSettings settings)
+    public IActionResult UpdateSystemSettings([FromBody] SystemSettings settings)
     {
         _logger.LogWarning("تحديث إعدادات النظام بواسطة السوبر أدمن");
         return Ok(new { success = true, message = "تم تحديث الإعدادات بنجاح" });
@@ -1098,7 +1101,7 @@ public class SuperAdminController : ControllerBase
     /// وضع الصيانة
     /// </summary>
     [HttpPost("maintenance-mode")]
-    public async Task<IActionResult> SetMaintenanceMode([FromBody] MaintenanceModeRequest request)
+    public IActionResult SetMaintenanceMode([FromBody] MaintenanceModeRequest request)
     {
         _logger.LogWarning("تغيير وضع الصيانة إلى: {Enabled}", request.Enabled);
         return Ok(new { success = true, message = request.Enabled ? "تم تفعيل وضع الصيانة" : "تم إيقاف وضع الصيانة" });
@@ -1108,34 +1111,38 @@ public class SuperAdminController : ControllerBase
 
     #region Helper Methods
 
-    private async Task<SystemStatus> GetSystemStatus()
+    private Task<SystemStatus> GetSystemStatus()
     {
-        return new SystemStatus
+        return Task.FromResult(new SystemStatus
         {
             Status = "operational",
             ApiVersion = "1.0.0",
             Environment = "production",
             Uptime = "15 days 6 hours",
             LastDeployment = DateTime.UtcNow.AddDays(-15)
-        };
+        });
     }
 
     private async Task<SystemStatistics> GetSystemStatistics()
     {
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        
         return new SystemStatistics
         {
             TotalUsers = await _unitOfWork.Users.AsQueryable().CountAsync(u => !u.IsDeleted),
-            ActiveUsersToday = await _unitOfWork.Users.AsQueryable().CountAsync(u => u.LastLoginAt >= DateTime.UtcNow.Date),
+            ActiveUsersToday = await _unitOfWork.Users.AsQueryable().CountAsync(u => u.LastLoginAt >= today),
             TotalCompanies = await _unitOfWork.Companies.AsQueryable().CountAsync(c => !c.IsDeleted),
-            ActiveCompanies = await _unitOfWork.Companies.AsQueryable().CountAsync(c => c.IsActive && !c.IsExpired && !c.IsDeleted),
+            // استخدام التاريخ مباشرة بدلاً من IsExpired (خاصية محسوبة لا يمكن ترجمتها لـ SQL)
+            ActiveCompanies = await _unitOfWork.Companies.AsQueryable().CountAsync(c => c.IsActive && c.SubscriptionEndDate > now && !c.IsDeleted),
             TotalProducts = await _unitOfWork.Products.AsQueryable().CountAsync(p => !p.IsDeleted),
             TotalMerchants = await _unitOfWork.Merchants.AsQueryable().CountAsync(m => !m.IsDeleted),
-            OrdersToday = await _unitOfWork.Orders.AsQueryable().CountAsync(o => o.CreatedAt >= DateTime.UtcNow.Date),
+            OrdersToday = await _unitOfWork.Orders.AsQueryable().CountAsync(o => o.CreatedAt >= today),
             RevenueToday = 0 // يحتاج حساب حقيقي
         };
     }
 
-    private async Task<List<RecentActivity>> GetRecentActivities()
+    private Task<List<RecentActivity>> GetRecentActivities()
     {
         var activities = new List<RecentActivity>
         {
@@ -1145,16 +1152,19 @@ public class SuperAdminController : ControllerBase
             new RecentActivity { Type = "subscription_renewed", Description = "تجديد اشتراك", Timestamp = DateTime.UtcNow.AddHours(-4) }
         };
 
-        return activities;
+        return Task.FromResult(activities);
     }
 
     private async Task<List<SystemAlert>> GetSystemAlerts()
     {
         var alerts = new List<SystemAlert>();
+        var now = DateTime.UtcNow;
+        var sevenDaysLater = now.AddDays(7);
 
-        // تحقق من الشركات المنتهية
+        // تحقق من الشركات المنتهية قريباً (خلال 7 أيام وغير منتهية)
+        // استخدام التاريخ مباشرة بدلاً من IsExpiringSoon و IsExpired
         var expiringCompanies = await _unitOfWork.Companies.AsQueryable()
-            .CountAsync(c => c.IsExpiringSoon && !c.IsExpired && !c.IsDeleted);
+            .CountAsync(c => c.SubscriptionEndDate > now && c.SubscriptionEndDate <= sevenDaysLater && !c.IsDeleted);
         if (expiringCompanies > 0)
         {
             alerts.Add(new SystemAlert
@@ -1170,16 +1180,16 @@ public class SuperAdminController : ControllerBase
         return alerts;
     }
 
-    private async Task<List<VpsService>> GetVpsServices()
+    private Task<List<VpsService>> GetVpsServices()
     {
-        return new List<VpsService>
+        return Task.FromResult(new List<VpsService>
         {
             new VpsService { Name = "nginx", Status = "running", Port = 80, Memory = "25 MB" },
             new VpsService { Name = "postgresql", Status = "running", Port = 5432, Memory = "256 MB" },
             new VpsService { Name = "redis", Status = "running", Port = 6379, Memory = "45 MB" },
             new VpsService { Name = "sadara-api", Status = "running", Port = 5000, Memory = "180 MB" },
             new VpsService { Name = "pm2", Status = "running", Port = 0, Memory = "50 MB" }
-        };
+        });
     }
 
     private async Task<bool> CheckHostReachable(string host)

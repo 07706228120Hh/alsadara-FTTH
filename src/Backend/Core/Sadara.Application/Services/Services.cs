@@ -309,7 +309,7 @@ public class CustomerService : ICustomerService
         return ApiResponse<CustomerDto>.SuccessResponse(_mapper.Map<CustomerDto>(customer));
     }
 
-    public async Task<ApiResponse<CustomerListResponse>> GetAllAsync(Guid merchantId, CustomerFilterRequest filter)
+    public Task<ApiResponse<CustomerListResponse>> GetAllAsync(Guid merchantId, CustomerFilterRequest filter)
     {
         var query = _unitOfWork.Customers.AsQueryable().Where(c => c.MerchantId == merchantId);
 
@@ -334,13 +334,13 @@ public class CustomerService : ICustomerService
             .Take(filter.PageSize)
             .ToList();
 
-        return ApiResponse<CustomerListResponse>.SuccessResponse(new CustomerListResponse(
+        return Task.FromResult(ApiResponse<CustomerListResponse>.SuccessResponse(new CustomerListResponse(
             _mapper.Map<IEnumerable<CustomerDto>>(customers),
             totalCount,
             filter.PageNumber,
             filter.PageSize,
             totalPages
-        ));
+        )));
     }
 
     public async Task<ApiResponse<CustomerDto>> CreateAsync(Guid merchantId, CreateCustomerRequest request)
@@ -429,7 +429,7 @@ public class OrderService : IOrderService
         return ApiResponse<OrderDto>.SuccessResponse(_mapper.Map<OrderDto>(order));
     }
 
-    public async Task<ApiResponse<PagedResponse<OrderDto>>> GetAllAsync(Guid merchantId, OrderFilterRequest filter)
+    public Task<ApiResponse<PagedResponse<OrderDto>>> GetAllAsync(Guid merchantId, OrderFilterRequest filter)
     {
         var query = _unitOfWork.Orders.AsQueryable().Where(o => o.MerchantId == merchantId);
 
@@ -448,13 +448,13 @@ public class OrderService : IOrderService
             .Take(filter.PageSize)
             .ToList();
 
-        return ApiResponse<PagedResponse<OrderDto>>.SuccessResponse(new PagedResponse<OrderDto>(
+        return Task.FromResult(ApiResponse<PagedResponse<OrderDto>>.SuccessResponse(new PagedResponse<OrderDto>(
             _mapper.Map<IEnumerable<OrderDto>>(orders),
             totalCount,
             filter.PageNumber,
             filter.PageSize,
             totalPages
-        ));
+        )));
     }
 
     public async Task<ApiResponse<OrderDto>> CreateAsync(Guid merchantId, CreateOrderRequest request)

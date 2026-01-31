@@ -1,7 +1,5 @@
 using Sadara.Domain.Enums;
 
-using Sadara.Domain.Enums;
-
 namespace Sadara.Domain.Entities;
 
 /// <summary>

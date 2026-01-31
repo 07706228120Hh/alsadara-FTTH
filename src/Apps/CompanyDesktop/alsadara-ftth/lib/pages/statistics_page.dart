@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/app_secrets.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -17,7 +18,8 @@ class StatisticsPage extends StatefulWidget {
 }
 
 class _StatisticsPageState extends State<StatisticsPage> {
-  final String apiKey = 'AIzaSyDdwZK0D8uRoPSKS0axA5dQjwMCQJtF1BU';
+  // 🔒 تم نقل المفتاح إلى AppSecrets
+  String get apiKey => appSecrets.googleSheetsApiKey;
   final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
   final String statisticsRange = 'Sheet1!A2:F';
   final String agentsRange = 'الوكلاء!A2:AE';
@@ -653,7 +655,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.red.withValues(alpha: 0.1),
+                                          color:
+                                              Colors.red.withValues(alpha: 0.1),
                                           blurRadius: 10,
                                           offset: const Offset(0, 3),
                                         ),

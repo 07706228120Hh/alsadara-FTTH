@@ -91,3 +91,7 @@ temp/
 $RECYCLE.BIN/
 Desktop.ini
 
+
+# Secrets folder - DO NOT COMMIT
+.secrets/
+*.credentials*

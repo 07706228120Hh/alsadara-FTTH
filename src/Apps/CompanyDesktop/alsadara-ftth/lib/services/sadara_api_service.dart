@@ -14,8 +14,8 @@ class SadaraApiService {
   /// رابط API للتطوير المحلي
   static const String _devBaseUrl = 'http://localhost:5000/api';
 
-  /// رابط API للإنتاج (VPS)
-  static const String _prodBaseUrl = 'http://72.61.183.61/api';
+  /// رابط API للإنتاج (VPS) - HTTPS مع دومين
+  static const String _prodBaseUrl = 'https://api.ramzalsadara.tech/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
   static const bool _isProduction = true;

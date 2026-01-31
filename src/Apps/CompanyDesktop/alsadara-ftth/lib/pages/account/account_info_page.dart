@@ -109,7 +109,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
             _isLoggedIn = true;
             _isSuperAdmin = false;
             _userId = user.id.toString();
-            _fullName = user.fullName ?? '';
+            _fullName = user.fullName;
             _username = user.username;
             _usernameController.text = user.username;
             _role = _getTenantRoleName(user.role);

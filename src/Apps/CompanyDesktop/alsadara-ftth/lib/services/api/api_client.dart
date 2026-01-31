@@ -5,6 +5,7 @@ import 'package:http/io_client.dart';
 import 'package:flutter/foundation.dart';
 import 'api_config.dart';
 import 'api_response.dart';
+import '../../config/app_secrets.dart';
 
 /// العميل الأساسي للاتصال بـ API
 class ApiClient {
@@ -74,7 +75,7 @@ class ApiClient {
   Map<String, String> get _internalHeaders => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Api-Key': ApiConfig.internalApiKey,
+        'X-Api-Key': appSecrets.internalApiKey, // 🔒 تم نقله إلى AppSecrets
       };
 
   // ============================================
@@ -296,9 +297,21 @@ class ApiClient {
           }
         }
 
-        return ApiResponse.error(
-          body['message']?.toString() ?? 'خطأ غير معروف',
+        // 4. استجابة من InternalDataController التي تحتوي على { data: [...], total: ... }
+        // بدون success wrapper
+        if (body['data'] != null) {
+          return ApiResponse.success(
+            parser(body['data']),
+            statusCode: response.statusCode,
+            message: 'تم استلام البيانات بنجاح',
+          );
+        }
+
+        // 5. استجابة مباشرة بدون أي wrapper
+        return ApiResponse.success(
+          parser(body),
           statusCode: response.statusCode,
+          message: 'تم استلام البيانات بنجاح',
         );
       } else {
         // فشل

@@ -152,10 +152,10 @@ public class FirebaseAdminService : IFirebaseAdminService
         }
     }
 
-    public async Task<List<FirebaseUserInfo>> ListUsersAsync(int maxResults = 100)
+    public Task<List<FirebaseUserInfo>> ListUsersAsync(int maxResults = 100)
     {
         _logger.LogWarning("ListUsers requires Firebase Admin SDK with service account credentials");
-        return new List<FirebaseUserInfo>();
+        return Task.FromResult(new List<FirebaseUserInfo>());
     }
 
     public async Task<bool> SendVerificationCodeAsync(string phoneNumber)

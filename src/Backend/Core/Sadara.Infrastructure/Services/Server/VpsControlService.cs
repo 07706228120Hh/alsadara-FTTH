@@ -315,20 +315,20 @@ public class VpsControlService : IVpsControlService
         return logs;
     }
 
-    private async Task<string> CheckDatabaseConnectionAsync()
+    private Task<string> CheckDatabaseConnectionAsync()
     {
         try
         {
             var connectionString = _configuration.GetConnectionString("DefaultConnection");
             if (string.IsNullOrEmpty(connectionString))
             {
-                return "InMemory";
+                return Task.FromResult("InMemory");
             }
-            return "Connected";
+            return Task.FromResult("Connected");
         }
         catch
         {
-            return "Disconnected";
+            return Task.FromResult("Disconnected");
         }
     }
 }

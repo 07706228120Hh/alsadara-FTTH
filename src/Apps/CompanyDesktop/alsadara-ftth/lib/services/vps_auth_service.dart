@@ -125,6 +125,10 @@ class VpsAuthService {
             expiresAt: data.expiresAt,
           );
 
+          // تحديث ApiClient مع التوكن
+          ApiClient.instance.setAuthToken(data.token,
+              refreshToken: data.refreshToken, expiresAt: data.expiresAt);
+
           // إنشاء كائن المدير
           final admin = VpsSuperAdmin(
             id: data.id,
@@ -186,6 +190,10 @@ class VpsAuthService {
             refreshToken: data.refreshToken,
             expiresAt: data.expiresAt,
           );
+
+          // تحديث ApiClient مع التوكن
+          ApiClient.instance.setAuthToken(data.token,
+              refreshToken: data.refreshToken, expiresAt: data.expiresAt);
 
           // إنشاء كائن الشركة مع صلاحياتها
           final company = VpsCompanyInfo(

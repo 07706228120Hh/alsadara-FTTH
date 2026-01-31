@@ -60,6 +60,11 @@ app.*.map.json
 firebase-service-account.json
 *firebase-adminsdk*.json
 
+# 🔒 ملفات المفاتيح السرية - لا ترفع إلى Git
+lib/config/app_secrets_local.dart
+**/secrets_local.dart
+**/.env.local
+
 # Local database files
 *.db
 *.sqlite

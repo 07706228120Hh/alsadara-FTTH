@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
+import '../config/app_secrets.dart';
 
 class SearchUsersPage extends StatefulWidget {
   const SearchUsersPage({super.key});
@@ -17,7 +18,8 @@ class SearchUsersPage extends StatefulWidget {
 }
 
 class _SearchUsersPageState extends State<SearchUsersPage> {
-  final String apiKey = 'AIzaSyDdwZK0D8uRoPSKS0axA5dQjwMCQJtF1BU';
+  // 🔒 تم نقل المفتاح إلى AppSecrets
+  String get apiKey => appSecrets.googleSheetsApiKey;
   final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
 
   final _formKey = GlobalKey<FormState>();

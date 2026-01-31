@@ -72,11 +72,11 @@ public class CompaniesController : ControllerBase
                 return Unauthorized(new { success = false, message = "انتهى اشتراك الشركة" });
             }
 
-            // البحث عن المستخدم
+            // البحث عن المستخدم بـ Username أو PhoneNumber أو Email أو EmployeeCode
             var user = await _unitOfWork.Users.AsQueryable()
                 .FirstOrDefaultAsync(u => 
                     u.CompanyId == company.Id &&
-                    (u.PhoneNumber == request.Username || u.Email == request.Username || u.EmployeeCode == request.Username) &&
+                    (u.Username == request.Username || u.PhoneNumber == request.Username || u.Email == request.Username || u.EmployeeCode == request.Username) &&
                     u.Role >= UserRole.Employee &&
                     !u.IsDeleted);
 

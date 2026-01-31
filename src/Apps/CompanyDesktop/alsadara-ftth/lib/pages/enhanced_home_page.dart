@@ -7,7 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import '../services/unified_auth_manager.dart';
 import '../widgets/auth_status_monitor.dart';
-import 'login_page.dart';
+import 'vps_tenant_login_page.dart';
 
 /// صفحة رئيسية محسنة مع نظام المصادقة الموحد
 class EnhancedHomePage extends StatefulWidget {
@@ -423,7 +423,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
       await UnifiedAuthManager.instance.logout();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginPage()),
+          MaterialPageRoute(builder: (context) => const VpsTenantLoginPage()),
           (route) => false,
         );
       }
@@ -432,7 +432,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
 
   void _handleSessionExpired() {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPage()),
+      MaterialPageRoute(builder: (context) => const VpsTenantLoginPage()),
       (route) => false,
     );
   }

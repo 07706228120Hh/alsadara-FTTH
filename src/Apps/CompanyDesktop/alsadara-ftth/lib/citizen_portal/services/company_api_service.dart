@@ -7,7 +7,7 @@ import '../models/company_model.dart';
 /// خدمة API للتعامل مع الشركات
 class CompanyApiService {
   // TODO: قراءة من ملف .env أو تكوين
-  static const String baseUrl = 'https://72.61.183.61/api';
+  static const String baseUrl = 'https://api.ramzalsadara.tech/api';
 
   /// الحصول على جميع الشركات
   static Future<List<CompanyModel>> getAllCompanies({String? token}) async {

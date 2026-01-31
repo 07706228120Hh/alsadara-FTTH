@@ -9,6 +9,7 @@ import 'charts_page.dart';
 import '../widgets/responsive_body.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../config/app_secrets.dart';
 
 class AnalysisPage extends StatefulWidget {
   const AnalysisPage({super.key});
@@ -17,7 +18,8 @@ class AnalysisPage extends StatefulWidget {
 }
 
 class _AnalysisPageState extends State<AnalysisPage> {
-  final String apiKey = 'AIzaSyDdwZK0D8uRoPSKS0axA5dQjwMCQJtF1BU';
+  // 🔒 تم نقل المفتاح إلى AppSecrets
+  String get apiKey => appSecrets.googleSheetsApiKey;
   final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
   final String range = 'Sheet1!A2:E';
 
@@ -599,7 +601,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                     Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: const Icon(Icons.insights,
@@ -830,7 +833,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                     Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: const Icon(

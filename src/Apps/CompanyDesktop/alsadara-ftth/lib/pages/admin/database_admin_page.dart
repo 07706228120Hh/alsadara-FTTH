@@ -16,7 +16,7 @@ class DatabaseAdminPage extends StatefulWidget {
 
 class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   // إعدادات الاتصال - نفس طريقة vps_data_manager_page
-  static const String baseUrl = 'http://72.61.183.61/api';
+  static const String baseUrl = 'https://api.ramzalsadara.tech/api';
   static const String apiKey = 'sadara-internal-2024-secure-key';
 
   List<Map<String, dynamic>> _tables = [];
@@ -480,8 +480,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                       _buildGeneralTab(),
                       // باقي التبويبات
                       ..._getAllCategories()
-                          .map((category) => _buildCategoryDropdown(category))
-                          .toList(),
+                          .map((category) => _buildCategoryDropdown(category)),
                     ],
                   ),
           ),
@@ -601,8 +600,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
           // بطاقات الجداول مقسمة حسب الفئات
           ..._getAllCategories()
-              .map((category) => _buildCategorySection(category))
-              .toList(),
+              .map((category) => _buildCategorySection(category)),
         ],
       ),
     );
@@ -1101,67 +1099,78 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
     final columns = _tableData.first.keys.toList();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(AdminTheme.surfaceColor),
-          dataRowColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.hovered)) {
-              return AdminTheme.primaryColor.withOpacity(0.05);
-            }
-            return Colors.transparent;
-          }),
-          columns: [
-            const DataColumn(
-                label: Text('إجراءات',
-                    style: TextStyle(
-                        color: AdminTheme.textPrimary,
-                        fontWeight: FontWeight.bold))),
-            ...columns.map((col) => DataColumn(
-                  label: Text(
-                    col,
-                    style: const TextStyle(
-                        color: AdminTheme.textPrimary,
-                        fontWeight: FontWeight.bold),
-                  ),
-                )),
-          ],
-          rows: _tableData.map((row) {
-            return DataRow(
-              cells: [
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 18),
-                        color: AdminTheme.primaryColor,
-                        tooltip: 'تعديل',
-                        onPressed: () =>
-                            _showEditDialog(_selectedTable!['name'], row),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(AdminTheme.surfaceColor),
+              dataRowColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.hovered)) {
+                  return AdminTheme.primaryColor.withOpacity(0.05);
+                }
+                return Colors.transparent;
+              }),
+              columnSpacing: 20,
+              horizontalMargin: 12,
+              columns: [
+                const DataColumn(
+                    label: Text('إجراءات',
+                        style: TextStyle(
+                            color: AdminTheme.textPrimary,
+                            fontWeight: FontWeight.bold))),
+                ...columns.map((col) => DataColumn(
+                      label: Text(
+                        col,
+                        style: const TextStyle(
+                            color: AdminTheme.textPrimary,
+                            fontWeight: FontWeight.bold),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, size: 18),
-                        color: Colors.red,
-                        tooltip: 'حذف',
-                        onPressed: () => _deleteRecord(
-                            _selectedTable!['name'], row['id'].toString()),
-                      ),
-                    ],
-                  ),
-                ),
-                ...columns.map((col) {
-                  final value = row[col];
-                  return DataCell(
-                    _buildCellContent(col, value),
-                  );
-                }),
+                    )),
               ],
-            );
-          }).toList(),
-        ),
-      ),
+              rows: _tableData.map((row) {
+                final rowId = row['id'] ?? row['Id'] ?? '';
+                return DataRow(
+                  cells: [
+                    DataCell(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 18),
+                            color: AdminTheme.primaryColor,
+                            tooltip: 'تعديل',
+                            onPressed: () =>
+                                _showEditDialog(_selectedTable!['name'], row),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, size: 18),
+                            color: Colors.red,
+                            tooltip: 'حذف',
+                            onPressed: () => _deleteRecord(
+                                _selectedTable!['name'], rowId.toString()),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ...columns.map((col) {
+                      final value = row[col];
+                      return DataCell(
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 200),
+                          child: _buildCellContent(col, value),
+                        ),
+                      );
+                    }),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 

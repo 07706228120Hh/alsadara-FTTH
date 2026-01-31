@@ -99,7 +99,7 @@ dev_dependencies:
 
 # إعداد flutter_launcher_icons لتوليد الأيقونات من نفس صورة شاشة تسجيل الدخول
 flutter_launcher_icons:
-  image_path: assets/app_icon.png # سيتم إنشاؤه تلقائياً من assets/1.jpg عبر سكربت PowerShell
+  image_path: assets/app_icon.png # سيتم إنشاؤه تلقائياً من assets/splash_background.jpg عبر سكربت PowerShell
   android: true
   adaptive_icon_background: "#FFFFFFFF" # يمكنك وضع لون أو صورة مثل assets/app_icon_bg.png
   adaptive_icon_foreground: assets/app_icon.png
@@ -121,7 +121,7 @@ flutter:
 
   # إضافة الصور والأصول
   assets:
-  - assets/1.jpg
+  - assets/splash_background.jpg
   # ⚠️ WARNING: Never commit service_account.json to version control!
   # This file should be in .gitignore and only exist locally
   - assets/users_fallback.json

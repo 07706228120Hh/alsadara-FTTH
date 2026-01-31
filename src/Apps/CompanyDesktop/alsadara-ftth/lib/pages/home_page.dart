@@ -23,6 +23,8 @@ import 'dart:math' as math; // NEW: for rotations
 import 'aria_page.dart';
 import '../utils/breakpoints.dart';
 import '../widgets/maintenance_messages_dialog.dart'; // إضافة حوار إعدادات الرسائل
+import '../services/vps_auth_service.dart'; // ✅ خدمة VPS لتسجيل الخروج
+import 'vps_tenant_login_page.dart'; // ✅ صفحة تسجيل الدخول
 import '../ftth/whatsapp/whatsapp_bottom_window.dart'; // WhatsApp floating button
 import 'super_admin/super_admin_dashboard.dart'; // لوحة تحكم Super Admin
 import 'company_diagnostics_page.dart'; // صفحة تشخيص الشركة
@@ -196,7 +198,20 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _logout() async {
-    SystemNavigator.pop();
+    // تسجيل الخروج من VPS API
+    try {
+      await VpsAuthService.instance.logout();
+    } catch (e) {
+      debugPrint('⚠️ خطأ في تسجيل الخروج: $e');
+    }
+
+    // الانتقال لصفحة تسجيل الدخول
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const VpsTenantLoginPage()),
+        (route) => false,
+      );
+    }
   }
 
   void _showUserInfo(BuildContext context) {
@@ -828,7 +843,7 @@ class _HomePageState extends State<HomePage>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(60),
                     child: Image.asset(
-                      'assets/1.jpg',
+                      'assets/splash_background.jpg',
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -1056,7 +1071,7 @@ class _HomePageState extends State<HomePage>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(32),
                       child: Image.asset(
-                        'assets/1.jpg',
+                        'assets/splash_background.jpg',
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
@@ -1163,7 +1178,8 @@ class _HomePageState extends State<HomePage>
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => widget.tenantId != null && widget.tenantCode != null
+                          builder: (context) => widget.tenantId != null &&
+                                  widget.tenantCode != null
                               ? UsersPageVPS(
                                   companyId: widget.tenantId!,
                                   companyName: widget.department,
@@ -1667,7 +1683,7 @@ class _HomePageState extends State<HomePage>
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(25),
                                 child: Image.asset(
-                                  'assets/1.jpg',
+                                  'assets/splash_background.jpg',
                                   width: 46,
                                   height: 46,
                                   fit: BoxFit.cover,

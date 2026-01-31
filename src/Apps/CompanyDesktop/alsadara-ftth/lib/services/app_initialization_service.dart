@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'config_manager.dart';
 import '../pages/client_setup_page.dart';
-import '../pages/login_page.dart';
+import '../pages/vps_tenant_login_page.dart';
 
 /// خدمة تهيئة التطبيق والتحقق من الإعداد
 class AppInitializationService {
@@ -37,7 +37,7 @@ class AppInitializationService {
 
     // إذا تم الإعداد، توجيه لصفحة تسجيل الدخول
     debugPrint('✅ التطبيق مُعَدّ - توجيه لصفحة تسجيل الدخول');
-    return const LoginPage();
+    return const VpsTenantLoginPage();
   }
 
   /// فحص صحة الإعدادات

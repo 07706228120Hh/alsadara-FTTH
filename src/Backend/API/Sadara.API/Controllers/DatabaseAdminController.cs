@@ -9,18 +9,24 @@ namespace Sadara.API.Controllers;
 
 /// <summary>
 /// فلتر للتحقق من API Key أو JWT Token
+/// يقرأ API Key من الإعدادات (Security:InternalApiKey) أو Environment Variable
 /// </summary>
 public class ApiKeyOrJwtAuthAttribute : Attribute, IAuthorizationFilter
 {
     private const string ApiKeyHeader = "X-Api-Key";
-    private const string ValidApiKey = "sadara-internal-2024-secure-key";
 
     public void OnAuthorization(AuthorizationFilterContext context)
     {
+        // قراءة API Key من الإعدادات أو Environment Variable
+        var configuration = context.HttpContext.RequestServices.GetService<IConfiguration>();
+        var validApiKey = configuration?["Security:InternalApiKey"] 
+            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
+            ?? "sadara-internal-2024-secure-key"; // fallback للتطوير فقط
+
         // تحقق من API Key أولاً
         if (context.HttpContext.Request.Headers.TryGetValue(ApiKeyHeader, out var apiKey))
         {
-            if (apiKey == ValidApiKey)
+            if (apiKey == validApiKey)
             {
                 return; // مصرح
             }
@@ -501,6 +507,86 @@ public class DatabaseAdminController : ControllerBase
                     _context.Companies.Update(company);
                     break;
 
+                case "categories":
+                    var category = await _context.Categories.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (category == null) return NotFound(new { success = false, message = "التصنيف غير موجود" });
+                    
+                    if (data.TryGetProperty("name", out var catName)) category.Name = catName.GetString()!;
+                    else if (data.TryGetProperty("Name", out var catName2)) category.Name = catName2.GetString()!;
+                    
+                    if (data.TryGetProperty("nameAr", out var catNameAr)) category.NameAr = catNameAr.GetString()!;
+                    else if (data.TryGetProperty("NameAr", out var catNameAr2)) category.NameAr = catNameAr2.GetString()!;
+                    
+                    if (data.TryGetProperty("isActive", out var catIsActive)) category.IsActive = catIsActive.GetBoolean();
+                    else if (data.TryGetProperty("IsActive", out var catIsActive2)) category.IsActive = catIsActive2.GetBoolean();
+                    
+                    category.UpdatedAt = DateTime.UtcNow;
+                    _context.Categories.Update(category);
+                    break;
+
+                case "products":
+                    var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (product == null) return NotFound(new { success = false, message = "المنتج غير موجود" });
+                    
+                    if (data.TryGetProperty("name", out var prodName)) product.Name = prodName.GetString()!;
+                    else if (data.TryGetProperty("Name", out var prodName2)) product.Name = prodName2.GetString()!;
+                    
+                    if (data.TryGetProperty("nameAr", out var prodNameAr)) product.NameAr = prodNameAr.GetString()!;
+                    else if (data.TryGetProperty("NameAr", out var prodNameAr2)) product.NameAr = prodNameAr2.GetString()!;
+                    
+                    if (data.TryGetProperty("price", out var prodPrice)) product.Price = prodPrice.GetDecimal();
+                    else if (data.TryGetProperty("Price", out var prodPrice2)) product.Price = prodPrice2.GetDecimal();
+                    
+                    if (data.TryGetProperty("isActive", out var prodIsActive)) product.IsActive = prodIsActive.GetBoolean();
+                    else if (data.TryGetProperty("IsActive", out var prodIsActive2)) product.IsActive = prodIsActive2.GetBoolean();
+                    
+                    product.UpdatedAt = DateTime.UtcNow;
+                    _context.Products.Update(product);
+                    break;
+
+                case "internetplans":
+                    var plan = await _context.InternetPlans.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (plan == null) return NotFound(new { success = false, message = "الباقة غير موجودة" });
+                    
+                    if (data.TryGetProperty("name", out var planName)) plan.Name = planName.GetString()!;
+                    else if (data.TryGetProperty("Name", out var planName2)) plan.Name = planName2.GetString()!;
+                    
+                    if (data.TryGetProperty("nameAr", out var planNameAr)) plan.NameAr = planNameAr.GetString()!;
+                    else if (data.TryGetProperty("NameAr", out var planNameAr2)) plan.NameAr = planNameAr2.GetString()!;
+                    
+                    if (data.TryGetProperty("monthlyPrice", out var planPrice)) plan.MonthlyPrice = planPrice.GetDecimal();
+                    else if (data.TryGetProperty("MonthlyPrice", out var planPrice2)) plan.MonthlyPrice = planPrice2.GetDecimal();
+                    
+                    if (data.TryGetProperty("speedMbps", out var planSpeed)) plan.SpeedMbps = planSpeed.GetInt32();
+                    else if (data.TryGetProperty("SpeedMbps", out var planSpeed2)) plan.SpeedMbps = planSpeed2.GetInt32();
+                    
+                    if (data.TryGetProperty("isActive", out var planIsActive)) plan.IsActive = planIsActive.GetBoolean();
+                    else if (data.TryGetProperty("IsActive", out var planIsActive2)) plan.IsActive = planIsActive2.GetBoolean();
+                    
+                    plan.UpdatedAt = DateTime.UtcNow;
+                    _context.InternetPlans.Update(plan);
+                    break;
+
+                case "citizens":
+                    var citizen = await _context.Citizens.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (citizen == null) return NotFound(new { success = false, message = "المواطن غير موجود" });
+                    
+                    if (data.TryGetProperty("fullName", out var citizenName)) citizen.FullName = citizenName.GetString()!;
+                    else if (data.TryGetProperty("FullName", out var citizenName2)) citizen.FullName = citizenName2.GetString()!;
+                    
+                    if (data.TryGetProperty("phoneNumber", out var citizenPhone)) citizen.PhoneNumber = citizenPhone.GetString()!;
+                    else if (data.TryGetProperty("PhoneNumber", out var citizenPhone2)) citizen.PhoneNumber = citizenPhone2.GetString()!;
+                    
+                    if (data.TryGetProperty("email", out var citizenEmail)) citizen.Email = citizenEmail.GetString();
+                    else if (data.TryGetProperty("Email", out var citizenEmail2)) citizen.Email = citizenEmail2.GetString();
+                    
+                    if (data.TryGetProperty("isActive", out var citizenIsActive)) citizen.IsActive = citizenIsActive.GetBoolean();
+                    else if (data.TryGetProperty("IsActive", out var citizenIsActive2)) citizen.IsActive = citizenIsActive2.GetBoolean();
+                    
+                    citizen.UpdatedAt = DateTime.UtcNow;
+                    _context.Citizens.Update(citizen);
+                    break;
+
                 default:
                     return BadRequest(new { success = false, message = $"تحديث الجدول '{tableName}' غير مدعوم حالياً" });
             }
@@ -561,6 +647,48 @@ public class DatabaseAdminController : ControllerBase
                     var category = await _context.Categories.FirstOrDefaultAsync(x => x.Id == guidId);
                     if (category == null) return NotFound(new { success = false, message = "التصنيف غير موجود" });
                     _context.Categories.Remove(category);
+                    break;
+
+                case "products":
+                    var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (product == null) return NotFound(new { success = false, message = "المنتج غير موجود" });
+                    if (hardDelete)
+                        _context.Products.Remove(product);
+                    else
+                    {
+                        product.IsDeleted = true;
+                        product.UpdatedAt = DateTime.UtcNow;
+                    }
+                    break;
+
+                case "companies":
+                    var company = await _context.Companies.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (company == null) return NotFound(new { success = false, message = "الشركة غير موجودة" });
+                    if (hardDelete)
+                        _context.Companies.Remove(company);
+                    else
+                    {
+                        company.IsDeleted = true;
+                        company.UpdatedAt = DateTime.UtcNow;
+                    }
+                    break;
+
+                case "internetplans":
+                    var plan = await _context.InternetPlans.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (plan == null) return NotFound(new { success = false, message = "الباقة غير موجودة" });
+                    _context.InternetPlans.Remove(plan);
+                    break;
+
+                case "citizens":
+                    var citizen = await _context.Citizens.FirstOrDefaultAsync(x => x.Id == guidId);
+                    if (citizen == null) return NotFound(new { success = false, message = "المواطن غير موجود" });
+                    if (hardDelete)
+                        _context.Citizens.Remove(citizen);
+                    else
+                    {
+                        citizen.IsDeleted = true;
+                        citizen.UpdatedAt = DateTime.UtcNow;
+                    }
                     break;
 
                 default:

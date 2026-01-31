@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import '../config/app_secrets.dart';
 
 class GoogleDriveFilesPage extends StatefulWidget {
   const GoogleDriveFilesPage({super.key});
@@ -21,7 +22,8 @@ class GoogleDriveFilesPage extends StatefulWidget {
 class _GoogleDriveFilesPageState extends State<GoogleDriveFilesPage> {
   final String folderId =
       '1HWckEov1vjxyRZcCVpUX8YzJJCyWRsQP'; // معرف المجلد الرئيسي
-  final String apiKey = 'AIzaSyD43g0P8yiwnELcZRoThWCjWejiHLEBPNw'; // مفتاح API
+  // 🔒 تم نقل المفتاح إلى AppSecrets
+  String get apiKey => appSecrets.googleDriveApiKey;
 
   String searchQuery = '';
   List<Map<String, String>> allFiles = [];

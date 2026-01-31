@@ -23,9 +23,6 @@ public class InternalDataController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly SadaraDbContext _context;
 
-    // API Key ثابت للتطبيق الداخلي - يجب تغييره في الإنتاج
-    private const string INTERNAL_API_KEY = "sadara-internal-2024-secure-key";
-
     public InternalDataController(IUnitOfWork unitOfWork, IConfiguration configuration, SadaraDbContext context)
     {
         _unitOfWork = unitOfWork;
@@ -34,13 +31,18 @@ public class InternalDataController : ControllerBase
     }
 
     /// <summary>
-    /// التحقق من API Key
+    /// التحقق من API Key - يقرأ من الإعدادات أو Environment Variable
     /// </summary>
     private bool ValidateApiKey()
     {
         var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["InternalApiKey"] ?? INTERNAL_API_KEY;
-        return apiKey == configKey;
+        
+        // قراءة من الإعدادات أولاً، ثم Environment Variable
+        var configKey = _configuration["Security:InternalApiKey"] 
+            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
+            ?? "sadara-internal-2024-secure-key"; // fallback للتطوير فقط - يجب إزالته في الإنتاج
+        
+        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
     }
 
     /// <summary>
@@ -55,7 +57,8 @@ public class InternalDataController : ControllerBase
 
         var now = DateTime.UtcNow;
         
-        var companiesFromDb = await _unitOfWork.Companies.AsQueryable()
+        // جلب الشركات مع عدد الموظفين الفعلي
+        var companiesWithEmployees = await _context.Companies
             .Where(c => !c.IsDeleted)
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => new
@@ -73,12 +76,14 @@ public class InternalDataController : ControllerBase
                 c.MaxUsers,
                 c.CreatedAt,
                 c.EnabledFirstSystemFeatures,
-                c.EnabledSecondSystemFeatures
+                c.EnabledSecondSystemFeatures,
+                // حساب عدد الموظفين الفعلي من قاعدة البيانات
+                EmployeeCount = _context.Users.Count(u => u.CompanyId == c.Id && !u.IsDeleted)
             })
             .ToListAsync();
 
         // حساب الحقول المشتقة في الذاكرة
-        var companies = companiesFromDb.Select(c => new
+        var companies = companiesWithEmployees.Select(c => new
         {
             c.Id,
             c.Name,
@@ -94,7 +99,7 @@ public class InternalDataController : ControllerBase
             c.CreatedAt,
             c.EnabledFirstSystemFeatures,
             c.EnabledSecondSystemFeatures,
-            EmployeeCount = 0,
+            c.EmployeeCount,
             DaysRemaining = c.SubscriptionEndDate >= now ? (c.SubscriptionEndDate - now).Days : 0,
             IsExpired = c.SubscriptionEndDate < now,
             SubscriptionStatus = c.SubscriptionEndDate < now ? "expired" 

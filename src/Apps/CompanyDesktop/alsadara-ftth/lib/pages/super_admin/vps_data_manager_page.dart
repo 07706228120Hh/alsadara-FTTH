@@ -21,7 +21,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   late TabController _tabController;
 
   // يمكنك تغيير هذا الرابط حسب بيئة العمل
-  static const String baseUrl = 'http://72.61.183.61/api/internal';
+  static const String baseUrl = 'https://api.ramzalsadara.tech/api/internal';
 
   // API Key للوصول الداخلي
   static const String apiKey = 'sadara-internal-2024-secure-key';

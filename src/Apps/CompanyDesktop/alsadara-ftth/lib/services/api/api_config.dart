@@ -7,8 +7,8 @@ class ApiConfig {
   /// رابط API للتطوير المحلي
   static const String devBaseUrl = 'http://localhost:5000/api';
 
-  /// رابط API للإنتاج (VPS)
-  static const String prodBaseUrl = 'https://72.61.183.61/api';
+  /// رابط API للإنتاج (VPS) - HTTPS مع دومين
+  static const String prodBaseUrl = 'https://api.ramzalsadara.tech/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
   static const bool isProduction = true;
@@ -72,6 +72,9 @@ class ApiConfig {
   // API Keys
   // ============================================
 
+  /// ⚠️ تم نقل المفاتيح إلى AppSecrets للأمان
+  /// استخدم: AppSecrets.instance.internalApiKey
+  @Deprecated('استخدم AppSecrets.instance.internalApiKey بدلاً من هذا')
   static const String internalApiKey = 'sadara-internal-2024-secure-key';
 
   // ============================================

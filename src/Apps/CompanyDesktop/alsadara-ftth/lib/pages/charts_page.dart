@@ -9,6 +9,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../widgets/responsive_body.dart';
+import '../config/app_secrets.dart';
 
 class ChartsPage extends StatefulWidget {
   const ChartsPage({super.key});
@@ -17,7 +18,8 @@ class ChartsPage extends StatefulWidget {
 }
 
 class _ChartsPageState extends State<ChartsPage> {
-  final String apiKey = 'AIzaSyDdwZK0D8uRoPSKS0axA5dQjwMCQJtF1BU';
+  // 🔒 تم نقل المفتاح إلى AppSecrets
+  String get apiKey => appSecrets.googleSheetsApiKey;
   final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
   final String range = 'Sheet1!A2:E';
 

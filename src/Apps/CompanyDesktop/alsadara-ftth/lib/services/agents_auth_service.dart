@@ -87,32 +87,10 @@ class AgentsAuthService {
     } catch (e) {
       debugPrint('❌ خطأ في تسجيل الدخول: $e');
 
-      // في حالة فشل الاتصال، استخدم بيانات اختبار للتطوير
-      if (username == 'sa' && password == 'Ss123456123456') {
-        debugPrint('🧪 استخدام بيانات اختبار للتطوير');
-
-        final mockAccessToken =
-            'demo_access_token_${DateTime.now().millisecondsSinceEpoch}';
-        final mockRefreshToken =
-            'demo_refresh_token_${DateTime.now().millisecondsSinceEpoch}';
-
-        await _saveTokens(mockAccessToken, mockRefreshToken, 3600);
-
-        final mockUserInfo = UserInfo(
-          username: 'sa',
-          accountId: '2261175',
-          roles: ['SuperAdminMember', 'ContractorMember'],
-          groups: ['/Team_Contractor_2261175_Members'],
-          email: 'sa@ftth.iq',
-        );
-
-        await _saveUserInfo(mockUserInfo);
-
-        return LoginResult.success(
-            mockAccessToken, mockRefreshToken, mockUserInfo);
-      }
-
-      return LoginResult.failure('خطأ في الاتصال: ${e.toString()}');
+      // 🔒 تم إزالة بيانات الاختبار لأسباب أمنية
+      // في حالة فشل الاتصال، يتم إرجاع رسالة خطأ فقط
+      return LoginResult.failure(
+          'خطأ في الاتصال بالخادم. تأكد من اتصالك بالإنترنت.');
     }
   }
 

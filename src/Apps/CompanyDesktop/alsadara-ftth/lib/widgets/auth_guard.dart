@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../pages/login_page.dart';
+import '../pages/vps_tenant_login_page.dart';
 
 class AuthGuard extends StatefulWidget {
   final Widget child;
@@ -30,7 +30,8 @@ class _AuthGuardState extends State<AuthGuard> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
+                MaterialPageRoute(
+                    builder: (context) => const VpsTenantLoginPage()),
                 (route) => false,
               );
             }

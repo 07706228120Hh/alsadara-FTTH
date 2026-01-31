@@ -14,7 +14,6 @@ import 'edit_company_page.dart';
 import 'tenant_features_page.dart';
 import 'firebase_data_manager_page.dart';
 import 'vps_data_manager_page.dart';
-import '../tenant_login_page.dart';
 import '../vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول VPS
 import '../home_page.dart';
 import 'admin_theme.dart';
@@ -143,12 +142,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       }
 
       if (mounted) {
-        // الانتقال لصفحة تسجيل الدخول المناسبة
+        // الانتقال لصفحة تسجيل الدخول
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (_) => DataSourceConfig.useVpsApi
-                ? const VpsTenantLoginPage()
-                : const TenantLoginPage(),
+            builder: (_) => const VpsTenantLoginPage(),
           ),
           (route) => false,
         );

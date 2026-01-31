@@ -412,7 +412,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(50),
                                 child: Image.asset(
-                                  'assets/1.jpg',
+                                  'assets/splash_background.jpg',
                                   width: 80,
                                   height: 80,
                                   fit: BoxFit.cover,

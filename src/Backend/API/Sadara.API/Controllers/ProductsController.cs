@@ -26,7 +26,10 @@ public class ProductsController : ControllerBase
             query = query.Where(p => p.MerchantId == merchantId.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(p => p.Name.Contains(search) || p.NameAr.Contains(search));
+        {
+            var searchTerm = search!; // search is not null here due to the check above
+            query = query.Where(p => p.Name.Contains(searchTerm) || p.NameAr.Contains(searchTerm));
+        }
 
         var total = await query.CountAsync();
         var products = await query
@@ -76,10 +79,10 @@ public class ProductsController : ControllerBase
             Id = Guid.NewGuid(),
             MerchantId = request.MerchantId,
             Name = request.Name,
-            NameAr = request.NameAr,
-            Description = request.Description,
-            DescriptionAr = request.DescriptionAr,
-            SKU = request.SKU,
+            NameAr = request.NameAr ?? request.Name,
+            Description = request.Description ?? string.Empty,
+            DescriptionAr = request.DescriptionAr ?? string.Empty,
+            SKU = request.SKU ?? string.Empty,
             Price = request.Price,
             DiscountPrice = request.DiscountPrice,
             CostPrice = request.CostPrice ?? 0,
