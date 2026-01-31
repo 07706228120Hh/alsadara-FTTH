@@ -14,7 +14,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
-import 'pages/vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول الشركات
+import 'pages/vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول الشركات (القديمة)
+import 'pages/login/premium_login_page.dart'; // ✨ صفحة تسجيل دخول فخمة ومتجاوبة
 // جلسة FTTH الجديدة
 import 'services/auth/session_manager.dart';
 import 'services/auth/session_provider.dart';
@@ -38,6 +39,7 @@ import 'services/unified_auth_manager.dart'; // ✅ نظام مصادقة موح
 // ✅ خدمة VPS API
 import 'services/security/error_reporter_service.dart'; // 📊 خدمة تقارير الأخطاء
 import 'config/app_secrets.dart'; // 🔒 إدارة المفاتيح السرية
+import 'services/logger_service.dart'; // 📝 خدمة التسجيل
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -89,23 +91,23 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('✅ Firebase initialized');
+    logSuccess('Firebase initialized', tag: 'Init');
     // تسجيل معالج رسائل الخلفية (يجب قبل استقبال أي رسالة في الخلفية)
     try {
       FirebaseMessaging.onBackgroundMessage(
           NotificationService.firebaseMessagingBackgroundHandler);
-      print('✅ تم تسجيل معالج رسائل الخلفية FCM');
+      logSuccess('تم تسجيل معالج رسائل الخلفية FCM', tag: 'FCM');
     } catch (e) {
-      print('⚠️ تعذر تسجيل معالج الخلفية: $e');
+      logWarning('تعذر تسجيل معالج الخلفية: $e', tag: 'FCM');
     }
   } catch (e) {
-    print('❌ فشل تهيئة Firebase: $e');
+    logFailure('فشل تهيئة Firebase: $e', tag: 'Init');
   }
 
   // تهيئة خدمة الإشعارات (محلية + FCM)
   try {
     await NotificationService.initialize();
-    print('✅ تم تهيئة خدمة الإشعارات (محلي + FCM) بنجاح');
+    logSuccess('تم تهيئة خدمة الإشعارات', tag: 'Notifications');
     // تشغيل خدمة التذاكر الخلفية (Polling) لبيئة Windows فقط بدون انتظار
     TicketUpdatesService.instance.start();
     // تهيئة شارة الأيقونة
@@ -119,15 +121,15 @@ Future<void> main() async {
       }
     });
   } catch (notificationError) {
-    print('⚠️ فشل في تهيئة الإشعارات: $notificationError');
+    logWarning('فشل في تهيئة الإشعارات: $notificationError', tag: 'Notifications');
   }
 
   // تحميل متغيرات البيئة بشكل آمن
   try {
     await dotenv.load(fileName: ".env");
-    print('✅ تم تحميل متغيرات البيئة');
+    logSuccess('تم تحميل متغيرات البيئة', tag: 'Init');
   } catch (e) {
-    print('⚠️ فشل في تحميل متغيرات البيئة: $e');
+    logWarning('فشل في تحميل متغيرات البيئة: $e', tag: 'Init');
   }
 
   // تحميل الجلسة (إن وُجدت) مبكراً للاستفادة من سياق الهوية لاحقاً
@@ -135,19 +137,18 @@ Future<void> main() async {
     await SessionManager.instance.loadFromStorage();
     // تهيئة نظام المصادقة الموحد
     await UnifiedAuthManager.instance.initialize();
-    print('✅ تم تهيئة UnifiedAuthManager بنجاح');
+    logSuccess('تم تهيئة UnifiedAuthManager', tag: 'Auth');
   } catch (e) {
     // عدم إيقاف التطبيق إذا فشل التحميل
-    // ignore: avoid_print
-    print('⚠️ فشل تحميل الجلسة الأولية: $e');
+    logWarning('فشل تحميل الجلسة الأولية: $e', tag: 'Auth');
   }
 
   // ✅ استعادة جلسة Firebase إن وجدت
   try {
     await FirebaseAuthService.restoreSession();
-    print('✅ تم استعادة جلسة Firebase');
+    logSuccess('تم استعادة جلسة Firebase', tag: 'Auth');
   } catch (e) {
-    print('⚠️ لم يتم العثور على جلسة Firebase سابقة: $e');
+    logDebug('لم يتم العثور على جلسة Firebase سابقة: $e', tag: 'Auth');
   }
 
   // ✅ لا نستعيد جلسة VPS تلقائياً - سيقوم المستخدم بتسجيل الدخول
@@ -322,7 +323,10 @@ class _AppInitializerState extends State<AppInitializer> {
             });
 
             // الذهاب إلى صفحة تسجيل دخول الشركات
-            const loginPage = VpsTenantLoginPage();
+            // 📌 للتبديل بين التصميم القديم والجديد، غيّر السطر أدناه:
+            // - PremiumLoginPage() = التصميم الفخم الجديد (متجاوب)
+            // - VpsTenantLoginPage() = التصميم الكلاسيكي القديم
+            const loginPage = PremiumLoginPage(); // ✨ التصميم الفخم
 
             return permissionsGranted
                 ? loginPage
