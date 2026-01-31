@@ -139,21 +139,21 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     return Scaffold(
       backgroundColor: PremiumAdminTheme.bgLight,
       appBar: _buildPremiumAppBar(statusColor, statusText, isCompact),
-      body: Padding(
-        padding: EdgeInsets.all(isCompact ? 12 : 16),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(isCompact ? 16 : 24),
         child: Column(
           children: [
             // الصف الأول: معلومات الشركة + الاشتراك
-            Expanded(
-              flex: isCompact ? 4 : 5,
+            IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // بطاقة معلومات الشركة
                   Expanded(
                     flex: 3,
                     child: _buildCompactInfoCard(dateFormat, isCompact),
                   ),
-                  SizedBox(width: isCompact ? 10 : 16),
+                  SizedBox(width: isCompact ? 12 : 20),
                   // بطاقة الاشتراك
                   Expanded(
                     flex: 2,
@@ -163,13 +163,10 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               ),
             ),
 
-            SizedBox(height: isCompact ? 10 : 16),
+            SizedBox(height: isCompact ? 16 : 24),
 
             // الصف الثاني: جميع الأزرار
-            Expanded(
-              flex: isCompact ? 6 : 5,
-              child: _buildAllActionsGrid(isCompact),
-            ),
+            _buildAllActionsGrid(isCompact),
           ],
         ),
       ),
@@ -559,7 +556,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     const Color redText = PremiumAdminTheme.danger;
 
     return Container(
-      padding: EdgeInsets.all(isCompact ? 14 : 20),
+      padding: EdgeInsets.all(isCompact ? 16 : 20),
       decoration: BoxDecoration(
         color: PremiumAdminTheme.bgLightCard,
         borderRadius: BorderRadius.circular(20),
@@ -567,6 +564,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // العنوان
           Row(
@@ -599,89 +597,72 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             ],
           ),
 
-          SizedBox(height: isCompact ? 14 : 20),
+          SizedBox(height: isCompact ? 16 : 20),
 
-          // إحصائيات الاشتراك - Grid 2x2
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      // البداية
-                      Expanded(
-                        child: _buildSubscriptionStatCard(
-                          icon: Icons.calendar_month_rounded,
-                          label: 'البداية',
-                          value:
-                              dateFormat.format(_company.subscriptionStartDate),
-                          backgroundColor: subscriptionBlue,
-                          foregroundColor: blueText,
-                          isCompact: isCompact,
-                        ),
-                      ),
-                      SizedBox(width: isCompact ? 8 : 10),
-                      // النهاية
-                      Expanded(
-                        child: _buildSubscriptionStatCard(
-                          icon: Icons.event_rounded,
-                          label: 'النهاية',
-                          value:
-                              dateFormat.format(_company.subscriptionEndDate),
-                          backgroundColor: subscriptionGreen,
-                          foregroundColor: _company.daysRemaining <= 30
-                              ? orangeText
-                              : greenText,
-                          isCompact: isCompact,
-                        ),
-                      ),
-                    ],
-                  ),
+          // إحصائيات الاشتراك - Grid 2x2 بحجم ثابت
+          Row(
+            children: [
+              // البداية
+              Expanded(
+                child: _buildSubscriptionStatCard(
+                  icon: Icons.calendar_month_rounded,
+                  label: 'البداية',
+                  value: dateFormat.format(_company.subscriptionStartDate),
+                  backgroundColor: subscriptionBlue,
+                  foregroundColor: blueText,
+                  isCompact: isCompact,
                 ),
-                SizedBox(height: isCompact ? 8 : 10),
-                Expanded(
-                  child: Row(
-                    children: [
-                      // الأيام المتبقية
-                      Expanded(
-                        child: _buildSubscriptionStatCard(
-                          icon: Icons.emoji_events_rounded,
-                          label: 'متبقي',
-                          value: '${_company.daysRemaining} يوم',
-                          backgroundColor: subscriptionGreen,
-                          foregroundColor: _company.daysRemaining <= 7
-                              ? redText
-                              : _company.daysRemaining <= 30
-                                  ? orangeText
-                                  : greenText,
-                          isCompact: isCompact,
-                          showBadge: _company.daysRemaining <= 30,
-                          badgeColor: _company.daysRemaining <= 7
-                              ? redText
-                              : orangeText,
-                        ),
-                      ),
-                      SizedBox(width: isCompact ? 8 : 10),
-                      // الموظفين
-                      Expanded(
-                        child: _buildSubscriptionStatCard(
-                          icon: Icons.groups_rounded,
-                          label: 'الموظفين',
-                          value:
-                              '${_company.employeeCount}/${_company.maxUsers}',
-                          backgroundColor: subscriptionBlue,
-                          foregroundColor:
-                              _company.employeeCount >= _company.maxUsers
-                                  ? redText
-                                  : blueText,
-                          isCompact: isCompact,
-                        ),
-                      ),
-                    ],
-                  ),
+              ),
+              SizedBox(width: isCompact ? 8 : 12),
+              // النهاية
+              Expanded(
+                child: _buildSubscriptionStatCard(
+                  icon: Icons.event_rounded,
+                  label: 'النهاية',
+                  value: dateFormat.format(_company.subscriptionEndDate),
+                  backgroundColor: subscriptionGreen,
+                  foregroundColor:
+                      _company.daysRemaining <= 30 ? orangeText : greenText,
+                  isCompact: isCompact,
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          SizedBox(height: isCompact ? 10 : 12),
+          Row(
+            children: [
+              // الأيام المتبقية
+              Expanded(
+                child: _buildSubscriptionStatCard(
+                  icon: Icons.timer_rounded,
+                  label: 'متبقي',
+                  value: '${_company.daysRemaining} يوم',
+                  backgroundColor: subscriptionGreen,
+                  foregroundColor: _company.daysRemaining <= 7
+                      ? redText
+                      : _company.daysRemaining <= 30
+                          ? orangeText
+                          : greenText,
+                  isCompact: isCompact,
+                  showBadge: _company.daysRemaining <= 30,
+                  badgeColor: _company.daysRemaining <= 7 ? redText : orangeText,
+                ),
+              ),
+              SizedBox(width: isCompact ? 8 : 12),
+              // الموظفين
+              Expanded(
+                child: _buildSubscriptionStatCard(
+                  icon: Icons.groups_rounded,
+                  label: 'الموظفين',
+                  value: '${_company.employeeCount}/${_company.maxUsers}',
+                  backgroundColor: subscriptionBlue,
+                  foregroundColor: _company.employeeCount >= _company.maxUsers
+                      ? redText
+                      : blueText,
+                  isCompact: isCompact,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -700,7 +681,10 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     Color? badgeColor,
   }) {
     return Container(
-      padding: EdgeInsets.all(isCompact ? 10 : 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 10 : 14,
+        vertical: isCompact ? 12 : 16,
+      ),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
@@ -708,347 +692,320 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           color: foregroundColor.withOpacity(0.2),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: foregroundColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
-      child: Stack(
+      child: Row(
         children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(isCompact ? 6 : 8),
-                decoration: BoxDecoration(
-                  color: foregroundColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child:
-                    Icon(icon, color: foregroundColor, size: isCompact ? 20 : 26),
-              ),
-              SizedBox(height: isCompact ? 6 : 8),
-              Text(
-                value,
-                style: TextStyle(
-                  color: foregroundColor,
-                  fontSize: isCompact ? 13 : 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: isCompact ? 2 : 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: PremiumAdminTheme.textMedium,
-                  fontSize: isCompact ? 10 : 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          if (showBadge)
-            Positioned(
-              top: 0,
-              left: 0,
-              child: Container(
-                width: isCompact ? 10 : 12,
-                height: isCompact ? 10 : 12,
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (badgeColor ?? foregroundColor).withOpacity(0.5),
-                      blurRadius: 6,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// شبكة جميع الأزرار - تصميم جديد مع بطاقة حذف جانبية
-  Widget _buildAllActionsGrid(bool isCompact) {
-    // ألوان التصميم الفخم
-    const Color primaryBlue = PremiumAdminTheme.primary; // الدخول للشركة
-    const Color lightBlue = Color(0xFF54A0FF); // تعديل البيانات
-    const Color lightBlueBg = Color(0xFFEDE9FE);
-    const Color purple = Color(0xFFA855F7); // إدارة الصلاحيات
-    const Color purpleBg = Color(0xFFF3E8FF);
-    const Color green = PremiumAdminTheme.success; // تجديد الاشتراك
-    const Color greenBg = Color(0xFFD1FAE5);
-    const Color orange = Color(0xFFF59E0B); // إلغاء ربط / تعطيل
-    const Color orangeLightBg = Color(0xFFFEF3C7);
-    const Color orangeBg = Color(0xFFFDE68A);
-    const Color teal = Color(0xFF14B8A6); // ربط بوابة المواطن
-    const Color indigo = Color(0xFF6366F1); // المستخدمين
-    const Color indigoBg = Color(0xFFE0E7FF);
-    const Color dangerRed = PremiumAdminTheme.danger; // حذف
-    const Color dangerBg = Color(0xFFFEE2E2);
-    const Color dangerBorder = Color(0xFFFECACA);
-
-    return Row(
-      children: [
-        // القسم الرئيسي: الإجراءات (7 أزرار)
-        Expanded(
-          flex: 4,
-          child: Container(
-            padding: EdgeInsets.all(isCompact ? 16 : 20),
+          // أيقونة
+          Container(
+            padding: EdgeInsets.all(isCompact ? 8 : 10),
             decoration: BoxDecoration(
-              color: PremiumAdminTheme.bgLightCard,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: PremiumAdminTheme.cardShadow,
+              color: foregroundColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(icon,
+                color: foregroundColor, size: isCompact ? 18 : 22),
+          ),
+          SizedBox(width: isCompact ? 10 : 14),
+          // النص
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // عنوان القسم
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: PremiumAdminTheme.textMedium,
+                    fontSize: isCompact ? 10 : 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: isCompact ? 2 : 4),
                 Row(
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(isCompact ? 8 : 10),
-                      decoration: BoxDecoration(
-                        gradient: PremiumAdminTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryBlue.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Icon(Icons.settings_rounded,
-                          color: Colors.white, size: isCompact ? 18 : 22),
-                    ),
-                    SizedBox(width: isCompact ? 10 : 14),
-                    Text(
-                      'الإجراءات',
-                      style: TextStyle(
-                        color: PremiumAdminTheme.textDark,
-                        fontSize: isCompact ? 14 : 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: isCompact ? 16 : 20),
-                // شبكة الأزرار 4x2
-                Expanded(
-                  child: Column(
-                    children: [
-                      // الصف الأول
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // الدخول للشركة
-                            Expanded(
-                              child: _buildStyledActionButton(
-                                icon: Icons.login_rounded,
-                                label: 'الدخول للشركة',
-                                backgroundColor: primaryBlue,
-                                foregroundColor: Colors.white,
-                                onPressed: _enterAsCompany,
-                                isCompact: isCompact,
-                                isPrimary: true,
-                              ),
-                            ),
-                            SizedBox(width: isCompact ? 6 : 10),
-                            // المستخدمين - جديد
-                            Expanded(
-                              child: _buildStyledActionButton(
-                                icon: Icons.people_rounded,
-                                label: 'المستخدمين',
-                                backgroundColor: indigoBg,
-                                foregroundColor: indigo,
-                                onPressed: _showCompanyUsers,
-                                isCompact: isCompact,
-                              ),
-                            ),
-                            SizedBox(width: isCompact ? 6 : 10),
-                            // تعديل البيانات
-                            Expanded(
-                              child: _buildStyledActionButton(
-                                icon: Icons.edit_rounded,
-                                label: 'تعديل البيانات',
-                                backgroundColor: lightBlueBg,
-                                foregroundColor: lightBlue,
-                                onPressed: _editCompany,
-                                isCompact: isCompact,
-                              ),
-                            ),
-                            SizedBox(width: isCompact ? 6 : 10),
-                            // إدارة الصلاحيات
-                            Expanded(
-                              child: _buildStyledActionButton(
-                                icon: Icons.shield_rounded,
-                                label: 'إدارة الصلاحيات',
-                                backgroundColor: purpleBg,
-                                foregroundColor: purple,
-                                onPressed: _managePermissions,
-                                isCompact: isCompact,
-                              ),
-                            ),
-                          ],
+                    Flexible(
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          color: foregroundColor,
+                          fontSize: isCompact ? 13 : 15,
+                          fontWeight: FontWeight.bold,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: isCompact ? 8 : 12),
-                      // الصف الثاني
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // تجديد الاشتراك
-                            Expanded(
-                              child: _buildStyledActionButton(
-                                icon: Icons.autorenew_rounded,
-                                label: 'تجديد الاشتراك',
-                                backgroundColor: greenBg,
-                                foregroundColor: green,
-                                onPressed: _renewSubscription,
-                                isCompact: isCompact,
-                              ),
+                    ),
+                    if (showBadge) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: badgeColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (badgeColor ?? foregroundColor)
+                                  .withOpacity(0.5),
+                              blurRadius: 4,
                             ),
-                            SizedBox(width: isCompact ? 6 : 10),
-                            // ربط/إلغاء ربط المواطن
-                            Expanded(
-                              child: _buildStyledActionButton(
-                                icon: _isLinkedToCitizen
-                                    ? Icons.person_off_rounded
-                                    : Icons.person_add_alt_1_rounded,
-                                label: _isLinkedToCitizen
-                                    ? 'إلغاء ربط المواطن'
-                                    : 'ربط بوابة المواطن',
-                                backgroundColor: _isLinkedToCitizen
-                                    ? orangeLightBg
-                                    : const Color(0xFFE0F2F1),
-                                foregroundColor:
-                                    _isLinkedToCitizen ? orange : teal,
-                                onPressed: _isLinkedToCitizen
-                                    ? _unlinkFromCitizenPortal
-                                    : _linkToCitizenPortal,
-                                isCompact: isCompact,
-                              ),
-                            ),
-                            SizedBox(width: isCompact ? 6 : 10),
-                            // تعطيل/تفعيل الشركة
-                            Expanded(
-                              child: _buildStyledActionButton(
-                                icon: _company.isActive
-                                    ? Icons.pause_circle_rounded
-                                    : Icons.play_circle_rounded,
-                                label: _company.isActive
-                                    ? 'تعطيل الشركة'
-                                    : 'تفعيل الشركة',
-                                backgroundColor:
-                                    _company.isActive ? orangeBg : greenBg,
-                                foregroundColor: _company.isActive
-                                    ? const Color(0xFFE65100)
-                                    : green,
-                                onPressed: _toggleCompanyStatus,
-                                isCompact: isCompact,
-                              ),
-                            ),
-                            // مكان فارغ للتناسق
-                            SizedBox(width: isCompact ? 6 : 10),
-                            const Expanded(child: SizedBox()),
                           ],
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ],
             ),
           ),
-        ),
-        SizedBox(width: isCompact ? 10 : 16),
-        // بطاقة الحذف الجانبية
-        SizedBox(
-          width: isCompact ? 100 : 130,
-          child: _buildDeleteCard(isCompact, dangerRed, dangerBg, dangerBorder),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  /// بطاقة حذف الشركة الجانبية - أصغر ومتناسقة
-  Widget _buildDeleteCard(
-      bool isCompact, Color dangerRed, Color dangerBg, Color dangerBorder) {
+  /// شبكة جميع الأزرار - تصميم جديد منسق
+  Widget _buildAllActionsGrid(bool isCompact) {
+    // ألوان التصميم الفخم
+    const Color primaryBlue = PremiumAdminTheme.primary;
+    const Color lightBlue = Color(0xFF54A0FF);
+    const Color lightBlueBg = Color(0xFFEDE9FE);
+    const Color purple = Color(0xFFA855F7);
+    const Color purpleBg = Color(0xFFF3E8FF);
+    const Color green = PremiumAdminTheme.success;
+    const Color greenBg = Color(0xFFD1FAE5);
+    const Color orange = Color(0xFFF59E0B);
+    const Color orangeLightBg = Color(0xFFFEF3C7);
+    const Color orangeBg = Color(0xFFFDE68A);
+    const Color teal = Color(0xFF14B8A6);
+    const Color indigo = Color(0xFF6366F1);
+    const Color indigoBg = Color(0xFFE0E7FF);
+    const Color dangerRed = PremiumAdminTheme.danger;
+    const Color dangerBg = Color(0xFFFEE2E2);
+    const Color dangerBorder = Color(0xFFFECACA);
+
     return Container(
+      padding: EdgeInsets.all(isCompact ? 16 : 24),
       decoration: BoxDecoration(
-        color: dangerBg,
+        color: PremiumAdminTheme.bgLightCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: dangerBorder, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: dangerRed.withOpacity(0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: PremiumAdminTheme.cardShadow,
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _deleteCompany,
-          borderRadius: BorderRadius.circular(18),
-          hoverColor: dangerRed.withOpacity(0.1),
-          splashColor: dangerRed.withOpacity(0.2),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // عنوان القسم
+          Row(
             children: [
-              // أيقونة الحذف في دائرة
               Container(
-                padding: EdgeInsets.all(isCompact ? 12 : 16),
+                padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [dangerRed, dangerRed.withOpacity(0.8)],
-                  ),
-                  shape: BoxShape.circle,
+                  gradient: PremiumAdminTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: dangerRed.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: primaryBlue.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-                child: Icon(
-                  Icons.delete_forever_rounded,
-                  color: Colors.white,
-                  size: isCompact ? 22 : 28,
-                ),
+                child: Icon(Icons.settings_rounded,
+                    color: Colors.white, size: isCompact ? 18 : 22),
               ),
-              SizedBox(height: isCompact ? 10 : 14),
-              // النص
+              SizedBox(width: isCompact ? 10 : 14),
               Text(
-                'حذف الشركة',
+                'الإجراءات',
                 style: TextStyle(
-                  color: dangerRed,
-                  fontSize: isCompact ? 11 : 13,
+                  color: PremiumAdminTheme.textDark,
+                  fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
-                textAlign: TextAlign.center,
               ),
-              SizedBox(height: isCompact ? 4 : 6),
+            ],
+          ),
+          SizedBox(height: isCompact ? 20 : 24),
+
+          // الصف الأول: 4 أزرار
+          Row(
+            children: [
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: Icons.login_rounded,
+                  label: 'الدخول للشركة',
+                  backgroundColor: primaryBlue,
+                  foregroundColor: Colors.white,
+                  onPressed: _enterAsCompany,
+                  isCompact: isCompact,
+                  isPrimary: true,
+                ),
+              ),
+              SizedBox(width: isCompact ? 10 : 14),
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: Icons.people_rounded,
+                  label: 'المستخدمين',
+                  backgroundColor: indigoBg,
+                  foregroundColor: indigo,
+                  onPressed: _showCompanyUsers,
+                  isCompact: isCompact,
+                ),
+              ),
+              SizedBox(width: isCompact ? 10 : 14),
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: Icons.edit_rounded,
+                  label: 'تعديل البيانات',
+                  backgroundColor: lightBlueBg,
+                  foregroundColor: lightBlue,
+                  onPressed: _editCompany,
+                  isCompact: isCompact,
+                ),
+              ),
+              SizedBox(width: isCompact ? 10 : 14),
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: Icons.shield_rounded,
+                  label: 'إدارة الصلاحيات',
+                  backgroundColor: purpleBg,
+                  foregroundColor: purple,
+                  onPressed: _managePermissions,
+                  isCompact: isCompact,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: isCompact ? 12 : 16),
+
+          // الصف الثاني: 4 أزرار
+          Row(
+            children: [
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: Icons.autorenew_rounded,
+                  label: 'تجديد الاشتراك',
+                  backgroundColor: greenBg,
+                  foregroundColor: green,
+                  onPressed: _renewSubscription,
+                  isCompact: isCompact,
+                ),
+              ),
+              SizedBox(width: isCompact ? 10 : 14),
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: _isLinkedToCitizen
+                      ? Icons.person_off_rounded
+                      : Icons.person_add_alt_1_rounded,
+                  label: _isLinkedToCitizen ? 'إلغاء ربط المواطن' : 'ربط بوابة المواطن',
+                  backgroundColor: _isLinkedToCitizen ? orangeLightBg : const Color(0xFFE0F2F1),
+                  foregroundColor: _isLinkedToCitizen ? orange : teal,
+                  onPressed: _isLinkedToCitizen ? _unlinkFromCitizenPortal : _linkToCitizenPortal,
+                  isCompact: isCompact,
+                ),
+              ),
+              SizedBox(width: isCompact ? 10 : 14),
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: _company.isActive
+                      ? Icons.pause_circle_rounded
+                      : Icons.play_circle_rounded,
+                  label: _company.isActive ? 'تعطيل الشركة' : 'تفعيل الشركة',
+                  backgroundColor: _company.isActive ? orangeBg : greenBg,
+                  foregroundColor: _company.isActive ? const Color(0xFFE65100) : green,
+                  onPressed: _toggleCompanyStatus,
+                  isCompact: isCompact,
+                ),
+              ),
+              SizedBox(width: isCompact ? 10 : 14),
+              // زر الحذف
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: Icons.delete_forever_rounded,
+                  label: 'حذف الشركة',
+                  backgroundColor: dangerBg,
+                  foregroundColor: dangerRed,
+                  onPressed: _deleteCompany,
+                  isCompact: isCompact,
+                  isDanger: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// زر إجراء بتصميم جديد ومنسق
+  Widget _buildNewActionButton({
+    required IconData icon,
+    required String label,
+    required Color backgroundColor,
+    required Color foregroundColor,
+    required VoidCallback onPressed,
+    required bool isCompact,
+    bool isPrimary = false,
+    bool isDanger = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        hoverColor: foregroundColor.withOpacity(0.1),
+        splashColor: foregroundColor.withOpacity(0.2),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 12 : 16,
+            vertical: isCompact ? 14 : 18,
+          ),
+          decoration: BoxDecoration(
+            color: isPrimary ? null : backgroundColor,
+            gradient: isPrimary ? PremiumAdminTheme.primaryGradient : null,
+            borderRadius: BorderRadius.circular(16),
+            border: isDanger
+                ? Border.all(color: foregroundColor.withOpacity(0.3), width: 1.5)
+                : null,
+            boxShadow: isPrimary
+                ? [
+                    BoxShadow(
+                      color: PremiumAdminTheme.primary.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // أيقونة
+              Container(
+                padding: EdgeInsets.all(isCompact ? 10 : 12),
+                decoration: BoxDecoration(
+                  color: isPrimary
+                      ? Colors.white.withOpacity(0.2)
+                      : foregroundColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: isPrimary ? Colors.white : foregroundColor,
+                  size: isCompact ? 22 : 26,
+                ),
+              ),
+              SizedBox(height: isCompact ? 10 : 12),
+              // النص
               Text(
-                'إجراء لا يمكن التراجع عنه',
+                label,
                 style: TextStyle(
-                  color: dangerRed.withOpacity(0.6),
-                  fontSize: isCompact ? 8 : 9,
+                  color: isPrimary ? Colors.white : foregroundColor,
+                  fontSize: isCompact ? 11 : 13,
+                  fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
