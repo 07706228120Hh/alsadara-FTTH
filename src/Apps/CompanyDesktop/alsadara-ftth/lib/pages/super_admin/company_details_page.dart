@@ -11,6 +11,7 @@ import '../../services/api/api_config.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'edit_company_page.dart';
 import 'admin_theme.dart';
+import 'premium_admin_theme.dart';
 import '../home_page.dart';
 import '../../multi_tenant.dart';
 import 'permissions_management_v2_page.dart';
@@ -136,119 +137,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     final isCompact = screenHeight < 800;
 
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: AdminTheme.surfaceColor,
-        elevation: 0,
-        toolbarHeight: isCompact ? 50 : 60,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded,
-              color: AdminTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(isCompact ? 6 : 8),
-              decoration: BoxDecoration(
-                color: AdminTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.business_rounded,
-                  color: AdminTheme.primaryColor, size: isCompact ? 18 : 20),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                _company.name,
-                style: TextStyle(
-                  color: AdminTheme.textPrimary,
-                  fontSize: isCompact ? 14 : 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // زر التصدير
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _exportCompanyData,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: isCompact ? 12 : 16,
-                    vertical: isCompact ? 6 : 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF4CAF50).withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.file_download_outlined,
-                        color: Colors.white, size: isCompact ? 16 : 18),
-                    SizedBox(width: isCompact ? 4 : 6),
-                    Text(
-                      'تصدير',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isCompact ? 11 : 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // شارة الحالة
-          Container(
-            margin: const EdgeInsets.only(left: 12),
-            padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 8 : 12, vertical: isCompact ? 4 : 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: statusColor.withOpacity(0.5)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: isCompact ? 10 : 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
+      backgroundColor: PremiumAdminTheme.bgLight,
+      appBar: _buildPremiumAppBar(statusColor, statusText, isCompact),
       body: Padding(
         padding: EdgeInsets.all(isCompact ? 12 : 16),
         child: Column(
@@ -286,24 +176,208 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     );
   }
 
-  /// بطاقة معلومات الشركة المضغوطة
-  Widget _buildCompactInfoCard(DateFormat dateFormat, bool isCompact) {
-    const Color cardBorder = Color(0xFFE0E0E0);
-    const Color infoIconColor = Color(0xFF2196F3);
-
-    return Container(
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cardBorder, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  /// AppBar فخم مع تصميم عصري
+  PreferredSizeWidget _buildPremiumAppBar(
+      Color statusColor, String statusText, bool isCompact) {
+    return AppBar(
+      backgroundColor: PremiumAdminTheme.bgLightCard,
+      elevation: 0,
+      toolbarHeight: isCompact ? 60 : 70,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          color: PremiumAdminTheme.bgLightCard,
+          boxShadow: [
+            BoxShadow(
+              color: PremiumAdminTheme.primary.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+      ),
+      leading: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Material(
+          color: PremiumAdminTheme.bgLightSurface,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(12),
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              color: PremiumAdminTheme.textDark,
+            ),
+          ),
+        ),
+      ),
+      title: Row(
+        children: [
+          // أيقونة الشركة مع تدرج
+          Container(
+            padding: EdgeInsets.all(isCompact ? 8 : 10),
+            decoration: BoxDecoration(
+              gradient: PremiumAdminTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: PremiumAdminTheme.glowShadow(
+                  PremiumAdminTheme.primary.withOpacity(0.3)),
+            ),
+            child: Icon(
+              Icons.business_rounded,
+              color: Colors.white,
+              size: isCompact ? 18 : 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          // اسم الشركة
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _company.name,
+                  style: TextStyle(
+                    color: PremiumAdminTheme.textDark,
+                    fontSize: isCompact ? 15 : 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'كود: ${_company.code}',
+                  style: TextStyle(
+                    color: PremiumAdminTheme.textMedium,
+                    fontSize: isCompact ? 11 : 12,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
+      ),
+      actions: [
+        // زر التصدير
+        _buildPremiumExportButton(isCompact),
+        const SizedBox(width: 10),
+        // شارة الحالة
+        _buildPremiumStatusBadge(statusColor, statusText, isCompact),
+        const SizedBox(width: 16),
+      ],
+    );
+  }
+
+  /// زر تصدير فخم
+  Widget _buildPremiumExportButton(bool isCompact) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _exportCompanyData,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 14 : 18,
+            vertical: isCompact ? 8 : 10,
+          ),
+          decoration: BoxDecoration(
+            gradient: PremiumAdminTheme.accentGradient,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: PremiumAdminTheme.accent.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.file_download_outlined,
+                color: Colors.white,
+                size: isCompact ? 16 : 18,
+              ),
+              SizedBox(width: isCompact ? 6 : 8),
+              Text(
+                'تصدير',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: isCompact ? 12 : 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// شارة الحالة الفخمة
+  Widget _buildPremiumStatusBadge(
+      Color statusColor, String statusText, bool isCompact) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 12 : 16,
+        vertical: isCompact ? 6 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(
+          color: statusColor.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: statusColor.withOpacity(0.5),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: statusColor,
+              fontWeight: FontWeight.bold,
+              fontSize: isCompact ? 11 : 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// بطاقة معلومات الشركة المضغوطة
+  Widget _buildCompactInfoCard(DateFormat dateFormat, bool isCompact) {
+    const Color infoIconColor = PremiumAdminTheme.primary;
+
+    return Container(
+      padding: EdgeInsets.all(isCompact ? 14 : 20),
+      decoration: BoxDecoration(
+        color: PremiumAdminTheme.bgLightCard,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: PremiumAdminTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,20 +386,27 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(isCompact ? 6 : 8),
+                padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  color: infoIconColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: PremiumAdminTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: infoIconColor.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Icon(Icons.business_rounded,
-                    color: infoIconColor, size: isCompact ? 16 : 20),
+                    color: Colors.white, size: isCompact ? 18 : 22),
               ),
-              SizedBox(width: isCompact ? 8 : 10),
+              SizedBox(width: isCompact ? 10 : 14),
               Text(
                 'معلومات الشركة',
                 style: TextStyle(
-                  color: const Color(0xFF212121),
-                  fontSize: isCompact ? 13 : 15,
+                  color: PremiumAdminTheme.textDark,
+                  fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -333,26 +414,30 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 const Spacer(),
                 Container(
                   padding: EdgeInsets.symmetric(
-                      horizontal: isCompact ? 8 : 12,
-                      vertical: isCompact ? 4 : 6),
+                      horizontal: isCompact ? 10 : 14,
+                      vertical: isCompact ? 5 : 7),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: const Color(0xFF4CAF50).withOpacity(0.3)),
+                    gradient: PremiumAdminTheme.accentGradient,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: PremiumAdminTheme.accent.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.link_rounded,
-                          size: isCompact ? 12 : 14,
-                          color: const Color(0xFF4CAF50)),
-                      SizedBox(width: isCompact ? 4 : 6),
+                          size: isCompact ? 14 : 16, color: Colors.white),
+                      SizedBox(width: isCompact ? 5 : 7),
                       Text(
-                        'مرتبطة',
+                        'مرتبطة بالمواطن',
                         style: TextStyle(
-                          color: const Color(0xFF4CAF50),
-                          fontSize: isCompact ? 10 : 12,
+                          color: Colors.white,
+                          fontSize: isCompact ? 11 : 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -363,7 +448,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             ],
           ),
 
-          SizedBox(height: isCompact ? 12 : 16),
+          SizedBox(height: isCompact ? 14 : 20),
 
           // شبكة المعلومات بتصميم أفقي
           Expanded(
@@ -420,30 +505,39 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     required bool isCompact,
   }) {
     return Container(
-      padding: EdgeInsets.all(isCompact ? 8 : 12),
+      padding: EdgeInsets.all(isCompact ? 10 : 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        color: PremiumAdminTheme.bgLightSurface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: PremiumAdminTheme.border.withOpacity(0.5)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: isCompact ? 18 : 22, color: const Color(0xFF757575)),
-          SizedBox(height: isCompact ? 6 : 8),
+          Container(
+            padding: EdgeInsets.all(isCompact ? 6 : 8),
+            decoration: BoxDecoration(
+              color: PremiumAdminTheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon,
+                size: isCompact ? 18 : 22, color: PremiumAdminTheme.primary),
+          ),
+          SizedBox(height: isCompact ? 8 : 10),
           Text(
             label,
             style: TextStyle(
-              color: const Color(0xFF757575),
-              fontSize: isCompact ? 9 : 10,
+              color: PremiumAdminTheme.textLight,
+              fontSize: isCompact ? 10 : 11,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: isCompact ? 2 : 4),
+          SizedBox(height: isCompact ? 3 : 5),
           Text(
             value,
             style: TextStyle(
-              color: const Color(0xFF212121),
-              fontSize: isCompact ? 11 : 13,
+              color: PremiumAdminTheme.textDark,
+              fontSize: isCompact ? 12 : 14,
               fontWeight: FontWeight.w600,
             ),
             overflow: TextOverflow.ellipsis,
@@ -456,28 +550,20 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   /// بطاقة الاشتراك المضغوطة - تصميم جديد
   Widget _buildCompactSubscriptionCard(DateFormat dateFormat, bool isCompact) {
-    // ألوان بطاقات الاشتراك حسب التصميم
-    const Color subscriptionBlue = Color(0xFFE3F2FD); // البداية - الموظفين
-    const Color subscriptionGreen =
-        Color(0xFFE8F5E9); // النهاية - الأيام المتبقية
-    const Color blueText = Color(0xFF1976D2);
-    const Color greenText = Color(0xFF388E3C);
-    const Color orangeText = Color(0xFFF57C00);
-    const Color redText = Color(0xFFD32F2F);
+    // ألوان بطاقات الاشتراك حسب التصميم - فخم
+    const Color subscriptionBlue = Color(0xFFEDE9FE); // بنفسجي فاتح
+    const Color subscriptionGreen = Color(0xFFD1FAE5); // زمردي فاتح
+    const Color blueText = PremiumAdminTheme.primary;
+    const Color greenText = PremiumAdminTheme.success;
+    const Color orangeText = Color(0xFFF59E0B);
+    const Color redText = PremiumAdminTheme.danger;
 
     return Container(
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
+      padding: EdgeInsets.all(isCompact ? 14 : 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: PremiumAdminTheme.bgLightCard,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: PremiumAdminTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,27 +572,34 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(isCompact ? 6 : 8),
+                padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: PremiumAdminTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: greenText.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Icon(Icons.receipt_long_rounded,
-                    color: greenText, size: isCompact ? 16 : 20),
+                    color: Colors.white, size: isCompact ? 18 : 22),
               ),
-              SizedBox(width: isCompact ? 8 : 10),
+              SizedBox(width: isCompact ? 10 : 14),
               Text(
                 'الاشتراك',
                 style: TextStyle(
-                  color: const Color(0xFF212121),
-                  fontSize: isCompact ? 13 : 15,
+                  color: PremiumAdminTheme.textDark,
+                  fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
 
-          SizedBox(height: isCompact ? 12 : 16),
+          SizedBox(height: isCompact ? 14 : 20),
 
           // إحصائيات الاشتراك - Grid 2x2
           Expanded(
@@ -607,15 +700,19 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     Color? badgeColor,
   }) {
     return Container(
-      padding: EdgeInsets.all(isCompact ? 8 : 12),
+      padding: EdgeInsets.all(isCompact ? 10 : 14),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: foregroundColor.withOpacity(0.2),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: foregroundColor.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -624,13 +721,21 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: foregroundColor, size: isCompact ? 20 : 26),
-              SizedBox(height: isCompact ? 4 : 6),
+              Container(
+                padding: EdgeInsets.all(isCompact ? 6 : 8),
+                decoration: BoxDecoration(
+                  color: foregroundColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child:
+                    Icon(icon, color: foregroundColor, size: isCompact ? 20 : 26),
+              ),
+              SizedBox(height: isCompact ? 6 : 8),
               Text(
                 value,
                 style: TextStyle(
                   color: foregroundColor,
-                  fontSize: isCompact ? 12 : 15,
+                  fontSize: isCompact ? 13 : 16,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -639,8 +744,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Text(
                 label,
                 style: TextStyle(
-                  color: const Color(0xFF757575),
-                  fontSize: isCompact ? 9 : 11,
+                  color: PremiumAdminTheme.textMedium,
+                  fontSize: isCompact ? 10 : 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -650,15 +756,16 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               top: 0,
               left: 0,
               child: Container(
-                width: isCompact ? 8 : 10,
-                height: isCompact ? 8 : 10,
+                width: isCompact ? 10 : 12,
+                height: isCompact ? 10 : 12,
                 decoration: BoxDecoration(
                   color: badgeColor,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: (badgeColor ?? foregroundColor).withOpacity(0.4),
-                      blurRadius: 4,
+                      color: (badgeColor ?? foregroundColor).withOpacity(0.5),
+                      blurRadius: 6,
+                      spreadRadius: 1,
                     ),
                   ],
                 ),
@@ -671,23 +778,23 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   /// شبكة جميع الأزرار - تصميم جديد مع بطاقة حذف جانبية
   Widget _buildAllActionsGrid(bool isCompact) {
-    // ألوان التصميم المطلوبة
-    const Color primaryBlue = Color(0xFF2E3192); // الدخول للشركة
-    const Color lightBlue = Color(0xFF2196F3); // تعديل البيانات
-    const Color lightBlueBg = Color(0xFFE3F2FD);
-    const Color purple = Color(0xFF9C27B0); // إدارة الصلاحيات
-    const Color purpleBg = Color(0xFFF3E5F5);
-    const Color green = Color(0xFF4CAF50); // تجديد الاشتراك
-    const Color greenBg = Color(0xFFE8F5E9);
-    const Color orange = Color(0xFFFF9800); // إلغاء ربط / تعطيل
-    const Color orangeLightBg = Color(0xFFFFF3E0);
-    const Color orangeBg = Color(0xFFFFE0B2);
-    const Color teal = Color(0xFF009688); // ربط بوابة المواطن
-    const Color indigo = Color(0xFF3F51B5); // المستخدمين
-    const Color indigoBg = Color(0xFFE8EAF6);
-    const Color dangerRed = Color(0xFFF44336); // حذف
-    const Color dangerBg = Color(0xFFFFF5F5);
-    const Color dangerBorder = Color(0xFFFFCDD2);
+    // ألوان التصميم الفخم
+    const Color primaryBlue = PremiumAdminTheme.primary; // الدخول للشركة
+    const Color lightBlue = Color(0xFF54A0FF); // تعديل البيانات
+    const Color lightBlueBg = Color(0xFFEDE9FE);
+    const Color purple = Color(0xFFA855F7); // إدارة الصلاحيات
+    const Color purpleBg = Color(0xFFF3E8FF);
+    const Color green = PremiumAdminTheme.success; // تجديد الاشتراك
+    const Color greenBg = Color(0xFFD1FAE5);
+    const Color orange = Color(0xFFF59E0B); // إلغاء ربط / تعطيل
+    const Color orangeLightBg = Color(0xFFFEF3C7);
+    const Color orangeBg = Color(0xFFFDE68A);
+    const Color teal = Color(0xFF14B8A6); // ربط بوابة المواطن
+    const Color indigo = Color(0xFF6366F1); // المستخدمين
+    const Color indigoBg = Color(0xFFE0E7FF);
+    const Color dangerRed = PremiumAdminTheme.danger; // حذف
+    const Color dangerBg = Color(0xFFFEE2E2);
+    const Color dangerBorder = Color(0xFFFECACA);
 
     return Row(
       children: [
@@ -695,19 +802,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         Expanded(
           flex: 4,
           child: Container(
-            padding: EdgeInsets.all(isCompact ? 12 : 16),
+            padding: EdgeInsets.all(isCompact ? 16 : 20),
             decoration: BoxDecoration(
-              color: AdminTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: Colors.black.withOpacity(0.3), width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              color: PremiumAdminTheme.bgLightCard,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: PremiumAdminTheme.cardShadow,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,26 +815,33 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.all(isCompact ? 6 : 8),
+                      padding: EdgeInsets.all(isCompact ? 8 : 10),
                       decoration: BoxDecoration(
-                        color: primaryBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        gradient: PremiumAdminTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryBlue.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: Icon(Icons.settings_rounded,
-                          color: primaryBlue, size: isCompact ? 16 : 20),
+                          color: Colors.white, size: isCompact ? 18 : 22),
                     ),
-                    SizedBox(width: isCompact ? 8 : 10),
+                    SizedBox(width: isCompact ? 10 : 14),
                     Text(
                       'الإجراءات',
                       style: TextStyle(
-                        color: AdminTheme.textPrimary,
-                        fontSize: isCompact ? 13 : 15,
+                        color: PremiumAdminTheme.textDark,
+                        fontSize: isCompact ? 14 : 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: isCompact ? 12 : 16),
+                SizedBox(height: isCompact ? 16 : 20),
                 // شبكة الأزرار 4x2
                 Expanded(
                   child: Column(
@@ -864,10 +970,10 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             ),
           ),
         ),
-        SizedBox(width: isCompact ? 8 : 12),
+        SizedBox(width: isCompact ? 10 : 16),
         // بطاقة الحذف الجانبية
         SizedBox(
-          width: isCompact ? 90 : 120,
+          width: isCompact ? 100 : 130,
           child: _buildDeleteCard(isCompact, dangerRed, dangerBg, dangerBorder),
         ),
       ],
@@ -880,13 +986,13 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     return Container(
       decoration: BoxDecoration(
         color: dangerBg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: dangerBorder, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: dangerRed.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: dangerRed.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -894,7 +1000,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: _deleteCompany,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(18),
           hoverColor: dangerRed.withOpacity(0.1),
           splashColor: dangerRed.withOpacity(0.2),
           child: Column(
@@ -902,32 +1008,45 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             children: [
               // أيقونة الحذف في دائرة
               Container(
-                padding: EdgeInsets.all(isCompact ? 10 : 14),
+                padding: EdgeInsets.all(isCompact ? 12 : 16),
                 decoration: BoxDecoration(
-                  color: dangerRed,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [dangerRed, dangerRed.withOpacity(0.8)],
+                  ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: dangerRed.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      color: dangerRed.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Icon(
                   Icons.delete_forever_rounded,
                   color: Colors.white,
-                  size: isCompact ? 20 : 26,
+                  size: isCompact ? 22 : 28,
                 ),
               ),
-              SizedBox(height: isCompact ? 8 : 12),
+              SizedBox(height: isCompact ? 10 : 14),
               // النص
               Text(
                 'حذف الشركة',
                 style: TextStyle(
                   color: dangerRed,
-                  fontSize: isCompact ? 10 : 12,
+                  fontSize: isCompact ? 11 : 13,
                   fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: isCompact ? 4 : 6),
+              Text(
+                'إجراء لا يمكن التراجع عنه',
+                style: TextStyle(
+                  color: dangerRed.withOpacity(0.6),
+                  fontSize: isCompact ? 8 : 9,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -952,30 +1071,31 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(14),
         hoverColor: foregroundColor.withOpacity(0.1),
         splashColor: foregroundColor.withOpacity(0.2),
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 8 : 12,
-            vertical: isCompact ? 6 : 8,
+            horizontal: isCompact ? 10 : 14,
+            vertical: isCompact ? 8 : 10,
           ),
           decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(10),
+            color: isPrimary ? null : backgroundColor,
+            gradient: isPrimary ? PremiumAdminTheme.primaryGradient : null,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isPrimary
-                  ? backgroundColor
-                  : foregroundColor.withOpacity(0.25),
+                  ? Colors.transparent
+                  : foregroundColor.withOpacity(0.2),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
                 color: isPrimary
-                    ? backgroundColor.withOpacity(0.3)
+                    ? PremiumAdminTheme.primary.withOpacity(0.3)
                     : Colors.black.withOpacity(0.04),
-                blurRadius: isPrimary ? 6 : 3,
-                offset: const Offset(0, 2),
+                blurRadius: isPrimary ? 10 : 4,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -984,27 +1104,27 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             children: [
               // أيقونة
               Container(
-                padding: EdgeInsets.all(isCompact ? 6 : 8),
+                padding: EdgeInsets.all(isCompact ? 7 : 9),
                 decoration: BoxDecoration(
                   color: isPrimary
                       ? Colors.white.withOpacity(0.2)
                       : foregroundColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
                   color: isPrimary ? Colors.white : foregroundColor,
-                  size: isCompact ? 16 : 20,
+                  size: isCompact ? 17 : 21,
                 ),
               ),
-              SizedBox(width: isCompact ? 6 : 10),
+              SizedBox(width: isCompact ? 8 : 12),
               // النص
               Flexible(
                 child: Text(
                   label,
                   style: TextStyle(
                     color: isPrimary ? Colors.white : foregroundColor,
-                    fontSize: isCompact ? 10 : 12,
+                    fontSize: isCompact ? 11 : 13,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
