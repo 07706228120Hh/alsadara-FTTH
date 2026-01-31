@@ -18,6 +18,7 @@ import 'add_company_page.dart';
 import 'edit_company_page.dart';
 import 'company_details_page.dart';
 import 'admin_theme.dart';
+import 'premium_admin_theme.dart'; // 🎨 الثيم الفخم
 import '../home_page.dart';
 import '../../multi_tenant.dart';
 
@@ -233,18 +234,23 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
+      backgroundColor: PremiumAdminTheme.bgLight,
       body: Column(
         children: [
-          // شريط الأدوات العلوي
-          _buildToolbar(),
+          // شريط الأدوات العلوي الفخم
+          _buildPremiumToolbar(),
 
           // المحتوى
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? PremiumAdminTheme.loadingIndicator(
+                    message: 'جاري تحميل الشركات...')
                 : _errorMessage != null
-                    ? _buildErrorWidget()
+                    ? PremiumAdminTheme.errorWidget(
+                        message: 'حدث خطأ',
+                        details: _errorMessage,
+                        onRetry: _loadCompanies,
+                      )
                     : _buildContent(),
           ),
         ],
@@ -252,7 +258,208 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     );
   }
 
-  /// شريط الأدوات العلوي الموحد
+  /// شريط الأدوات الفخم الجديد
+  Widget _buildPremiumToolbar() {
+    final stats = _statistics;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: PremiumAdminTheme.bgLightCard,
+        boxShadow: PremiumAdminTheme.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // الصف الأول: العنوان والأزرار
+          Row(
+            children: [
+              // أيقونة العنوان
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: PremiumAdminTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: PremiumAdminTheme.glowShadow(
+                      PremiumAdminTheme.primary.withOpacity(0.3)),
+                ),
+                child: const Icon(Icons.business_rounded,
+                    color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 16),
+
+              // العنوان
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'إدارة الشركات',
+                    style: TextStyle(
+                      color: PremiumAdminTheme.textDark,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'عرض وإدارة ${_companies.length} شركة مسجلة',
+                    style: TextStyle(
+                      color: PremiumAdminTheme.textMedium,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+
+              const Spacer(),
+
+              // شارة الاتصال
+              PremiumAdminTheme.statusBadge(
+                text: 'VPS متصل',
+                color: PremiumAdminTheme.success,
+                icon: Icons.cloud_done_rounded,
+              ),
+
+              const SizedBox(width: 12),
+
+              // زر التحديث
+              IconButton(
+                onPressed: _loadCompanies,
+                icon: const Icon(Icons.refresh_rounded),
+                style: PremiumAdminTheme.iconButtonStyle(
+                    PremiumAdminTheme.textMedium),
+                tooltip: 'تحديث',
+              ),
+
+              const SizedBox(width: 8),
+
+              // زر إضافة شركة
+              ElevatedButton.icon(
+                onPressed: () => _navigateToAddCompany(),
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text('إضافة شركة'),
+                style: PremiumAdminTheme.primaryButton,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // الصف الثاني: بطاقات الإحصائيات الفخمة
+          Row(
+            children: [
+              _buildPremiumStatChip('الكل', stats['total']!, Icons.apps_rounded,
+                  PremiumAdminTheme.primary, null),
+              const SizedBox(width: 10),
+              _buildPremiumStatChip(
+                  'نشطة',
+                  stats['active']!,
+                  Icons.check_circle_rounded,
+                  PremiumAdminTheme.success,
+                  CompanyStatus.active),
+              const SizedBox(width: 10),
+              _buildPremiumStatChip(
+                  'تحذير',
+                  stats['warning']!,
+                  Icons.schedule_rounded,
+                  PremiumAdminTheme.warning,
+                  CompanyStatus.warning),
+              const SizedBox(width: 10),
+              _buildPremiumStatChip(
+                  'حرج',
+                  stats['critical']!,
+                  Icons.warning_rounded,
+                  PremiumAdminTheme.danger,
+                  CompanyStatus.critical),
+              const SizedBox(width: 10),
+              _buildPremiumStatChip(
+                  'منتهية',
+                  stats['expired']!,
+                  Icons.cancel_rounded,
+                  const Color(0xFFdc2626),
+                  CompanyStatus.expired),
+              const SizedBox(width: 10),
+              _buildPremiumStatChip(
+                  'معلقة',
+                  stats['suspended']!,
+                  Icons.pause_circle_rounded,
+                  PremiumAdminTheme.textLight,
+                  CompanyStatus.suspended),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// بطاقة إحصائية فخمة
+  Widget _buildPremiumStatChip(String label, int value, IconData icon,
+      Color color, CompanyStatus? filterStatus) {
+    final isSelected = _statusFilter == filterStatus;
+
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => setState(() => _statusFilter = filterStatus),
+          borderRadius: BorderRadius.circular(14),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? color.withOpacity(0.12)
+                  : PremiumAdminTheme.bgLightSurface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected ? color : PremiumAdminTheme.border,
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: isSelected
+                  ? PremiumAdminTheme.glowShadow(color.withOpacity(0.2))
+                  : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 18, color: color),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$value',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? color : PremiumAdminTheme.textDark,
+                      ),
+                    ),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: PremiumAdminTheme.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// شريط الأدوات العلوي الموحد (القديم - للمرجع)
   Widget _buildToolbar() {
     final stats = _statistics;
 

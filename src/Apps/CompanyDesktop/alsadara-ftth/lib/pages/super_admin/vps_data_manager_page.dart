@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'admin_theme.dart';
+import 'premium_admin_theme.dart'; // 🎨 الثيم الفخم
 
 class VpsDataManagerPage extends StatefulWidget {
   const VpsDataManagerPage({super.key});
@@ -262,40 +263,55 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
+      backgroundColor: PremiumAdminTheme.bgLight,
       appBar: AppBar(
-        backgroundColor: AdminTheme.surfaceColor,
+        backgroundColor: PremiumAdminTheme.bgLightCard,
         elevation: 0,
         scrolledUnderElevation: 1,
         surfaceTintColor: Colors.transparent,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: PremiumAdminTheme.glowShadow(
+                    const Color(0xFF3B82F6).withOpacity(0.3)),
               ),
-              child: const Icon(Icons.dns, color: Colors.white, size: 20),
+              child:
+                  const Icon(Icons.dns_rounded, color: Colors.white, size: 22),
             ),
-            const SizedBox(width: 12),
-            const Text(
-              'إدارة بيانات VPS/API',
-              style: TextStyle(
-                color: AdminTheme.textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+            const SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'إدارة بيانات VPS',
+                  style: TextStyle(
+                    color: PremiumAdminTheme.textDark,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                Text(
+                  'عرض وتعديل بيانات الخادم',
+                  style: TextStyle(
+                    color: PremiumAdminTheme.textMedium,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        iconTheme: const IconThemeData(color: AdminTheme.textPrimary),
+        iconTheme: IconThemeData(color: PremiumAdminTheme.textDark),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
+          preferredSize: const Size.fromHeight(56),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: AdminTheme.borderColor),

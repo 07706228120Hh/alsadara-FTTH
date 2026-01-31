@@ -17,6 +17,7 @@ import 'vps_data_manager_page.dart';
 import '../vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول VPS
 import '../home_page.dart';
 import 'admin_theme.dart';
+import 'premium_admin_theme.dart'; // 🎨 الثيم الفخم الجديد
 import '../diagnostics/system_diagnostics_page.dart'; // 🔧 صفحة التشخيص
 import '../account/account_info_page.dart'; // ✅ صفحة معلومات الحساب
 import '../admin/database_admin_page.dart'; // ✅ صفحة إدارة قاعدة البيانات
@@ -158,16 +159,17 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          color: AdminTheme.backgroundColor,
+          color: PremiumAdminTheme.bgLight,
         ),
         child: SafeArea(
           child: Row(
             children: [
-              // القائمة الجانبية العصرية مع إمكانية الإخفاء
+              // 🎨 القائمة الجانبية الفخمة
               AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                width: _isSidebarCollapsed ? 80 : 250,
-                child: _buildSidebar(),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                width: _isSidebarCollapsed ? 80 : 260,
+                child: _buildPremiumSidebar(),
               ),
               // المحتوى الرئيسي
               Expanded(
@@ -209,6 +211,392 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         return const UnifiedCompaniesPage();
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🎨 القائمة الجانبية الفخمة الجديدة
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildPremiumSidebar() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: PremiumAdminTheme.sidebarGradient,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 30,
+            offset: const Offset(5, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // رأس القائمة الفخم
+          _buildPremiumSidebarHeader(),
+
+          // الفاصل
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: _isSidebarCollapsed ? 16 : 24,
+              vertical: 8,
+            ),
+            child: Divider(
+              color: Colors.white.withOpacity(0.1),
+              thickness: 1,
+            ),
+          ),
+
+          // عناصر القائمة
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: _isSidebarCollapsed ? 8 : 16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!_isSidebarCollapsed)
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(right: 12, bottom: 8, top: 8),
+                      child: Text(
+                        'الرئيسية',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  _buildPremiumNavItem(
+                      1, Icons.business_rounded, 'إدارة الشركات'),
+                  _buildPremiumNavItem(
+                      5, Icons.people_alt_rounded, 'بوابة المواطن'),
+                  const SizedBox(height: 16),
+                  if (!_isSidebarCollapsed)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12, bottom: 8),
+                      child: Text(
+                        'البيانات',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  _buildPremiumNavItem(
+                      3, Icons.cloud_rounded, 'بيانات Firebase'),
+                  _buildPremiumNavItem(4, Icons.dns_rounded, 'بيانات VPS'),
+                  _buildPremiumNavItem(
+                      8, Icons.storage_rounded, 'قاعدة البيانات'),
+                  const SizedBox(height: 16),
+                  if (!_isSidebarCollapsed)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12, bottom: 8),
+                      child: Text(
+                        'الأدوات',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  _buildPremiumNavItem(
+                      6, Icons.monitor_heart_rounded, 'تشخيص النظام'),
+                  _buildPremiumNavItem(
+                      7, Icons.account_circle_rounded, 'حسابي'),
+                ],
+              ),
+            ),
+          ),
+
+          // الفاصل السفلي
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: _isSidebarCollapsed ? 16 : 24,
+            ),
+            child: Divider(
+              color: Colors.white.withOpacity(0.1),
+              thickness: 1,
+            ),
+          ),
+
+          // زر تسجيل الخروج
+          Padding(
+            padding: EdgeInsets.all(_isSidebarCollapsed ? 12 : 16),
+            child: _buildPremiumLogoutButton(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumSidebarHeader() {
+    return Container(
+      padding: EdgeInsets.all(_isSidebarCollapsed ? 16 : 24),
+      child: Column(
+        children: [
+          // زر إخفاء/إظهار
+          Row(
+            mainAxisAlignment: _isSidebarCollapsed
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.spaceBetween,
+            children: [
+              if (!_isSidebarCollapsed)
+                // الشعار النصي
+                ShaderMask(
+                  shaderCallback: (bounds) =>
+                      PremiumAdminTheme.primaryGradient.createShader(bounds),
+                  child: const Text(
+                    'SADARA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                ),
+              IconButton(
+                onPressed: () =>
+                    setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
+                icon: Icon(
+                  _isSidebarCollapsed
+                      ? Icons.keyboard_double_arrow_left
+                      : Icons.keyboard_double_arrow_right,
+                  color: Colors.white.withOpacity(0.6),
+                  size: 20,
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.05),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: _isSidebarCollapsed ? 16 : 24),
+
+          // الشعار والمعلومات
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: PremiumAdminTheme.primaryGradient,
+              boxShadow:
+                  PremiumAdminTheme.glowShadow(PremiumAdminTheme.primary),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(_isSidebarCollapsed ? 12 : 16),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: PremiumAdminTheme.bgDark,
+              ),
+              child: Icon(
+                Icons.shield_rounded,
+                size: _isSidebarCollapsed ? 24 : 32,
+                color: Colors.white,
+              ),
+            ),
+          ),
+
+          if (!_isSidebarCollapsed) ...[
+            const SizedBox(height: 16),
+            Text(
+              VpsAuthService.instance.currentSuperAdmin?.fullName ??
+                  CustomAuthService.currentSuperAdmin?.name ??
+                  'مدير النظام',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: PremiumAdminTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.verified_rounded,
+                    color: Colors.white.withOpacity(0.9),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Super Admin',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumNavItem(int index, IconData icon, String title) {
+    final isSelected = _selectedIndex == index;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: Tooltip(
+          message: _isSidebarCollapsed ? title : '',
+          preferBelow: false,
+          child: InkWell(
+            onTap: () {
+              if (index == 5 && !DataSourceConfig.useVpsApi) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('بوابة المواطن متاحة فقط مع VPS API'),
+                    backgroundColor: PremiumAdminTheme.danger,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              } else {
+                setState(() => _selectedIndex = index);
+              }
+            },
+            borderRadius: BorderRadius.circular(14),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              padding: EdgeInsets.symmetric(
+                horizontal: _isSidebarCollapsed ? 12 : 16,
+                vertical: 14,
+              ),
+              decoration: isSelected
+                  ? PremiumAdminTheme.sidebarActiveDecoration
+                  : BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.transparent,
+                    ),
+              child: Row(
+                mainAxisAlignment: _isSidebarCollapsed
+                    ? MainAxisAlignment.center
+                    : MainAxisAlignment.start,
+                children: [
+                  Icon(
+                    icon,
+                    color: isSelected
+                        ? Colors.white
+                        : Colors.white.withOpacity(0.6),
+                    size: 22,
+                  ),
+                  if (!_isSidebarCollapsed) ...[
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isSelected)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.5),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumLogoutButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _logout,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            vertical: 14,
+            horizontal: _isSidebarCollapsed ? 12 : 16,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: PremiumAdminTheme.danger.withOpacity(0.15),
+            border: Border.all(
+              color: PremiumAdminTheme.danger.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: _isSidebarCollapsed
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.logout_rounded,
+                color: PremiumAdminTheme.danger,
+                size: 20,
+              ),
+              if (!_isSidebarCollapsed) ...[
+                const SizedBox(width: 10),
+                const Text(
+                  'تسجيل الخروج',
+                  style: TextStyle(
+                    color: PremiumAdminTheme.danger,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // القائمة الجانبية القديمة (للمرجع)
+  // ═══════════════════════════════════════════════════════════════
 
   Widget _buildSidebar() {
     return AnimatedBuilder(
