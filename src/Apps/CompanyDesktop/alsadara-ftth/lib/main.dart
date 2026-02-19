@@ -14,8 +14,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
-import 'pages/vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول الشركات (القديمة)
+// ✅ صفحات تسجيل دخول الشركات
 import 'pages/login/premium_login_page.dart'; // ✨ صفحة تسجيل دخول فخمة ومتجاوبة
+// 🔄 صفحة تسجيل الدخول الكلاسيكية
 // جلسة FTTH الجديدة
 import 'services/auth/session_manager.dart';
 import 'services/auth/session_provider.dart';
@@ -121,7 +122,8 @@ Future<void> main() async {
       }
     });
   } catch (notificationError) {
-    logWarning('فشل في تهيئة الإشعارات: $notificationError', tag: 'Notifications');
+    logWarning('فشل في تهيئة الإشعارات: $notificationError',
+        tag: 'Notifications');
   }
 
   // تحميل متغيرات البيئة بشكل آمن
@@ -233,6 +235,7 @@ class MyApp extends StatelessWidget {
                     Locale('ar'),
                     Locale('en'),
                   ],
+                  locale: const Locale('ar'),
                   home: const AppInitializer(),
                   routes: {
                     '/settings/text-scale': (_) =>
@@ -323,9 +326,7 @@ class _AppInitializerState extends State<AppInitializer> {
             });
 
             // الذهاب إلى صفحة تسجيل دخول الشركات
-            // 📌 للتبديل بين التصميم القديم والجديد، غيّر السطر أدناه:
-            // - PremiumLoginPage() = التصميم الفخم الجديد (متجاوب)
-            // - VpsTenantLoginPage() = التصميم الكلاسيكي القديم
+            // 📌 صفحة تسجيل الدخول الفخمة
             const loginPage = PremiumLoginPage(); // ✨ التصميم الفخم
 
             return permissionsGranted

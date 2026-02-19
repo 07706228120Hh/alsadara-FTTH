@@ -33,9 +33,6 @@ dependencies:
   excel: ^4.0.6
 
   # مكتبات Google Services
-  gsheets: ^0.5.0
-  googleapis: any
-  googleapis_auth: any
   google_sign_in: ^6.2.2
   google_fonts: ^6.2.1
   google_maps_flutter: ^2.12.2
@@ -122,8 +119,6 @@ flutter:
   # إضافة الصور والأصول
   assets:
   - assets/splash_background.jpg
-  # ⚠️ WARNING: Never commit service_account.json to version control!
-  # This file should be in .gitignore and only exist locally
   - assets/users_fallback.json
   - assets/config.json
   - assets/fonts/
@@ -132,6 +127,5 @@ flutter:
 
 # ⚠️ SECURITY WARNING
 # Do NOT commit the following files to Git:
-# - assets/service_account.json (Google Service Account credentials)
 # - .env (environment variables with API keys)
 # - assets/config.json (may contain sensitive data)

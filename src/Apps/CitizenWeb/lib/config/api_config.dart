@@ -1,7 +1,16 @@
 class ApiConfig {
-  // Use HTTP for development (browser doesn't accept self-signed SSL)
-  // For production, use proper SSL certificate
-  static const String baseUrl = 'http://72.61.183.61';
+  // ═══════════════════════════════════════════════════════════════
+  // تبديل بين الخادم المحلي والإنتاج
+  // غيّر إلى true للاختبار المحلي
+  // ═══════════════════════════════════════════════════════════════
+  static const bool useLocalApi = false;
+
+  // Production API server
+  static const String _productionUrl = 'https://api.ramzalsadara.tech';
+  // Local development API server
+  static const String _localUrl = 'http://localhost:5000';
+
+  static const String baseUrl = useLocalApi ? _localUrl : _productionUrl;
   static const String apiVersion = '/api';
 
   // Citizen Endpoints
@@ -30,6 +39,37 @@ class ApiConfig {
   static const String storeCategories = '$apiVersion/citizen/store/categories';
   static const String storeProducts = '$apiVersion/citizen/store/products';
   static const String storeOrders = '$apiVersion/citizen/store/orders';
+
+  // Agent Endpoints
+  static const String agentLogin = '$apiVersion/agents/login';
+  static const String agentProfile = '$apiVersion/agents/me';
+  static const String agentMyTransactions =
+      '$apiVersion/agents/me/transactions';
+  static const String agentCreateServiceRequest =
+      '$apiVersion/agents/me/service-request';
+  static const String agentMyServiceRequests =
+      '$apiVersion/agents/me/service-requests';
+  static const String agentTransactions =
+      '$apiVersion/agents'; // /{id}/transactions
+  static const String agentCharge = '$apiVersion/agents'; // /{id}/charge
+  static const String agentPayment =
+      '$apiVersion/agents'; // /{id}/payment (admin)
+  static const String agentSelfPayment =
+      '$apiVersion/agents/me/payment'; // agent self-payment
+  static const String agentBalanceRequest =
+      '$apiVersion/agents/me/balance-request';
+  static const String agentChangePassword =
+      '$apiVersion/agents/me/change-password';
+  static const String agentAccountingSummary =
+      '$apiVersion/agents/me/accounting';
+
+  // Internet Plans (public)
+  static const String publicInternetPlans = '$apiVersion/citizen/plans';
+
+  // Service Requests
+  static const String serviceRequests = '$apiVersion/servicerequests';
+  static const String serviceRequestServices =
+      '$apiVersion/servicerequests/services';
 
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 30);

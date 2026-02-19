@@ -7,13 +7,15 @@ import 'dart:convert';
 import '../models/task.dart';
 
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _notifications =
+      FlutterLocalNotificationsPlugin();
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   static String? _fcmToken; // آخر توكن FCM
 
   // معرف قناة أندرويد ثابت
-  static const AndroidNotificationChannel _mainChannel = AndroidNotificationChannel(
+  static const AndroidNotificationChannel _mainChannel =
+      AndroidNotificationChannel(
     'tasks_channel',
     'إشعارات المهام',
     description: 'إشعارات خاصة بالمهام والتحديثات',
@@ -23,7 +25,8 @@ class NotificationService {
 
   /// معالج رسائل الخلفية (يجب أن يكون top-level لكن نبقي التعريف هنا ونمرره في main عند الحاجة)
   @pragma('vm:entry-point')
-  static Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  static Future<void> firebaseMessagingBackgroundHandler(
+      RemoteMessage message) async {
     // ملاحظة: Firebase.initializeApp() تم في main
     try {
       await _showRemoteAsLocal(message, fromBackground: true);
@@ -35,11 +38,11 @@ class NotificationService {
   /// تهيئة خدمة الإشعارات
   static Future<void> initialize() async {
     try {
-  // تهيئة الإشعارات المحلية + القناة
-  await _initializeLocalNotifications();
-  // تهيئة FCM
-  await _initializeFirebaseMessaging();
-  print('✅ تم تهيئة الإشعارات (محلية + FCM)');
+      // تهيئة الإشعارات المحلية + القناة
+      await _initializeLocalNotifications();
+      // تهيئة FCM
+      await _initializeFirebaseMessaging();
+      print('✅ تم تهيئة الإشعارات (محلية + FCM)');
     } catch (e) {
       print('❌ خطأ في تهيئة الإشعارات: $e');
       // الاستمرار حتى لو فشلت التهيئة
@@ -53,7 +56,8 @@ class NotificationService {
 
   /// تهيئة الإشعارات المحلية
   static Future<void> _initializeLocalNotifications() async {
-  const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
@@ -73,7 +77,8 @@ class NotificationService {
     );
 
     // إنشاء القناة (أندرويد فقط)
-    final androidImpl = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     if (androidImpl != null) {
       await androidImpl.createNotificationChannel(_mainChannel);
       await androidImpl.requestNotificationsPermission();
@@ -81,7 +86,8 @@ class NotificationService {
 
     // طلب الصلاحيات للأندرويد 13+
     final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-        _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        _notifications.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidImplementation != null) {
       await androidImplementation.requestNotificationsPermission();
@@ -91,7 +97,8 @@ class NotificationService {
   /// تهيئة FCM: صلاحيات + توكن + مستمعين
   static Future<void> _initializeFirebaseMessaging() async {
     // طلب الصلاحيات (iOS + Android 13+)
-    final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true, provisional: false);
+    final settings = await _messaging.requestPermission(
+        alert: true, badge: true, sound: true, provisional: false);
     debugPrint('🔐 FCM permission: ${settings.authorizationStatus}');
 
     // الحصول على التوكن
@@ -133,7 +140,8 @@ class NotificationService {
     String? payload,
     int? id,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'tasks_channel',
       'إشعارات المهام',
       channelDescription: 'إشعارات خاصة بالمهام والتحديثات',
@@ -173,13 +181,14 @@ class NotificationService {
     required List<String> notifyUsers,
   }) async {
     // تحضير نص الإشعار مع رقم هاتف الفني
-    String notificationBody = 'تم إضافة مهمة جديدة: ${task.title}\nمكلف بها: $assignedTo';
+    String notificationBody =
+        'تم إضافة مهمة جديدة: ${task.title}\nمكلف بها: $assignedTo';
     if (task.technicianPhone.isNotEmpty) {
       notificationBody += '\nهاتف الفني: ${task.technicianPhone}';
     }
 
     // إشعار محلي
-  await showLocalNotification(
+    await showLocalNotification(
       title: '🆕 مهمة جديدة',
       body: notificationBody,
       payload: jsonEncode({
@@ -218,12 +227,13 @@ class NotificationService {
     String statusEmoji = _getStatusEmoji(newStatus);
 
     // تحضير نص الإشعار مع رقم هاتف الفني
-    String notificationBody = 'المهمة: ${task.title}\nالحالة: من "$oldStatus" إلى "$newStatus"';
+    String notificationBody =
+        'المهمة: ${task.title}\nالحالة: من "$oldStatus" إلى "$newStatus"';
     if (task.technicianPhone.isNotEmpty) {
       notificationBody += '\nهاتف الفني: ${task.technicianPhone}';
     }
 
-  await showLocalNotification(
+    await showLocalNotification(
       title: '$statusEmoji تحديث حالة المهمة',
       body: notificationBody,
       payload: jsonEncode({
@@ -259,7 +269,7 @@ class NotificationService {
   }) async {
     if (overdueTasks.isEmpty) return;
 
-  await showLocalNotification(
+    await showLocalNotification(
       title: '⚠️ مهام متأخرة',
       body: 'لديك ${overdueTasks.length} مهام متأخرة تحتاج متابعة عاجلة',
       payload: jsonEncode({
@@ -331,7 +341,7 @@ class NotificationService {
   /// الحصول على FCM Token للمستخدم
   static Future<String?> _getUserFCMToken(String userId) async {
     // هذه الدالة يجب أن تجلب الـ token من قاعدة البيانات
-    // يمكن تنفيذها باستخدام Google Sheets API أو قاعدة بيانات أخرى
+    // يمكن تنفيذها باستخدام VPS API أو قاعدة بيانات أخرى
 
     // مثال مؤقت - يجب استبداله بالتنفيذ الحقيقي
     return null;
@@ -343,7 +353,7 @@ class NotificationService {
       // هنا يجب حفظ الـ token في قاعدة البيانات مع معرف المستخدم
       print('Saving FCM Token for user $userId: $_fcmToken');
 
-      // يمكن إضافة الكود لحفظ الـ token في Google Sheets أو قاعدة بيانات أخرى
+      // يمكن إضافة الكود لحفظ الـ token في قاعدة البيانات
     }
   }
 
@@ -385,15 +395,19 @@ class NotificationService {
   }
 
   /// تحويل رسالة FCM إلى إشعار محلي
-  static Future<void> _showRemoteAsLocal(RemoteMessage message, {bool fromBackground = false}) async {
+  static Future<void> _showRemoteAsLocal(RemoteMessage message,
+      {bool fromBackground = false}) async {
     try {
       final data = message.data;
       final notif = message.notification;
       final title = notif?.title ?? data['title'] ?? 'إشعار جديد';
-      final body = notif?.body ?? data['body'] ?? (data['ticketTitle'] ?? 'تم استلام تحديث');
+      final body = notif?.body ??
+          data['body'] ??
+          (data['ticketTitle'] ?? 'تم استلام تحديث');
       final payload = jsonEncode(data.isEmpty ? {'raw': true} : data);
       await showLocalNotification(title: title, body: body, payload: payload);
-      debugPrint('✅ تم عرض إشعار محلي (${fromBackground ? 'خلفية' : 'Foreground'})');
+      debugPrint(
+          '✅ تم عرض إشعار محلي (${fromBackground ? 'خلفية' : 'Foreground'})');
     } catch (e) {
       debugPrint('❌ فشل تحويل رسالة FCM لإشعار محلي: $e');
     }

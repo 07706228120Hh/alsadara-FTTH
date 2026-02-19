@@ -4,7 +4,8 @@ import '../models/task.dart';
 import '../services/notification_service.dart';
 
 class TaskManagementService {
-  static const String baseUrl = 'YOUR_API_BASE_URL'; // يجب استبدالها بالرابط الحقيقي
+  static const String baseUrl =
+      'YOUR_API_BASE_URL'; // يجب استبدالها بالرابط الحقيقي
 
   /// إضافة مهمة جديدة مع إرسال إشعارات
   static Future<bool> addNewTask({
@@ -14,7 +15,7 @@ class TaskManagementService {
     String? assignedTo,
   }) async {
     try {
-      // 1. حفظ المهمة في قاعدة البيانات/Google Sheets
+      // 1. حفظ المهمة في قاعدة البيانات
       bool taskSaved = await _saveTaskToDatabase(task);
 
       if (taskSaved) {
@@ -87,7 +88,8 @@ class TaskManagementService {
 
       if (updateSaved) {
         // 4. تحديد المستخدمين للإشعار
-        List<String> notifyUsers = await _getUsersToNotifyForUpdate(updatedTask);
+        List<String> notifyUsers =
+            await _getUsersToNotifyForUpdate(updatedTask);
 
         // 5. إرسال إشعارات التحديث
         await NotificationService.notifyTaskStatusUpdate(
@@ -98,7 +100,8 @@ class TaskManagementService {
         );
 
         // 6. إشعارات خاصة حسب نوع التحديث
-        await _handleSpecialStatusNotifications(updatedTask, oldStatus, newStatus);
+        await _handleSpecialStatusNotifications(
+            updatedTask, oldStatus, newStatus);
 
         print('✅ تم تحديث المهمة وإرسال الإشعارات بنجاح');
         return true;
@@ -121,7 +124,8 @@ class TaskManagementService {
         Map<String, List<Task>> tasksByUser = {};
 
         for (Task task in overdueTasks) {
-          String assignee = task.technician.isNotEmpty ? task.technician : task.leader;
+          String assignee =
+              task.technician.isNotEmpty ? task.technician : task.leader;
           if (!tasksByUser.containsKey(assignee)) {
             tasksByUser[assignee] = [];
           }
@@ -161,7 +165,7 @@ class TaskManagementService {
   /// حفظ المهمة في قاعدة البيانات
   static Future<bool> _saveTaskToDatabase(Task task) async {
     try {
-      // هنا يجب تنفيذ الحفظ في Google Sheets أو قاعدة البيانات
+      // هنا يجب تنفيذ الحفظ في قاعدة البيانات
       // مثال مبسط:
 
       final response = await http.post(
@@ -255,7 +259,8 @@ class TaskManagementService {
       'closedAt': task.closedAt?.toIso8601String(),
       'agents': task.agents,
       'createdBy': task.createdBy,
-      'statusHistory': task.statusHistory.map((status) => status.toString()).toList(),
+      'statusHistory':
+          task.statusHistory.map((status) => status.toString()).toList(),
     };
   }
 
@@ -278,7 +283,8 @@ class TaskManagementService {
       priority: json['priority'] ?? '',
       amount: json['amount'] ?? '',
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      closedAt: json['closedAt'] != null ? DateTime.tryParse(json['closedAt']) : null,
+      closedAt:
+          json['closedAt'] != null ? DateTime.tryParse(json['closedAt']) : null,
       agents: List<String>.from(json['agents'] ?? []),
       createdBy: json['createdBy'] ?? '',
       statusHistory: [], // تم إصلاحها - قائمة فارغة من StatusHistory
@@ -292,7 +298,8 @@ class TaskManagementService {
   }) async {
     await NotificationService.showLocalNotification(
       title: '🎯 مهمة جديدة مكلف بها',
-      body: 'تم تكليفك بمهمة جديدة: ${task.title}\nالقسم: ${task.department}\nالأولوية: ${task.priority}',
+      body:
+          'تم تكليفك بمهمة جديدة: ${task.title}\nالقسم: ${task.department}\nالأولوية: ${task.priority}',
       payload: jsonEncode({
         'type': 'assigned_task',
         'taskId': task.id,
@@ -309,7 +316,8 @@ class TaskManagementService {
       String managerName = managers[i];
       await NotificationService.showLocalNotification(
         title: '📋 مهمة جديدة في القسم',
-        body: 'تم إضافة مهمة جديدة في قسم ${task.department}: ${task.title}\nمدير: $managerName',
+        body:
+            'تم إضافة مهمة جديدة في قسم ${task.department}: ${task.title}\nمدير: $managerName',
         payload: jsonEncode({
           'type': 'department_task',
           'taskId': task.id,

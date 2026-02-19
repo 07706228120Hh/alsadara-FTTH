@@ -639,7 +639,7 @@ public class CitizenAuthController : ControllerBase
 
     private string GenerateJwtToken(Citizen citizen)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "YourDefaultSecretKey123456789012345678901234"));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!"));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>
@@ -657,8 +657,8 @@ public class CitizenAuthController : ControllerBase
         }
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"] ?? "SadaraAPI",
-            audience: _configuration["Jwt:Audience"] ?? "SadaraCitizen",
+            issuer: _configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+            audience: _configuration["Jwt:Audience"] ?? "SadaraClients",
             claims: claims,
             expires: DateTime.UtcNow.AddDays(30),
             signingCredentials: credentials

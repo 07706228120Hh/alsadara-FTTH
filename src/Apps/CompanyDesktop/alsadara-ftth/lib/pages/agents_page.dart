@@ -4,13 +4,10 @@
 /// تاريخ الإنشاء: 2024
 library;
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:googleapis/sheets/v4.dart' as sheets;
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/smart_text_color.dart';
+import '../services/task_api_service.dart';
 
 class AgentsPage extends StatefulWidget {
   final String fbg;
@@ -21,9 +18,6 @@ class AgentsPage extends StatefulWidget {
 }
 
 class _AgentsPageState extends State<AgentsPage> {
-  sheets.SheetsApi? _sheetsApi;
-  AuthClient? _client;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
   List<Map<String, dynamic>> agents = [];
   List<Map<String, dynamic>> filteredAgents = [];
   String? selectedGroup;
@@ -35,88 +29,46 @@ class _AgentsPageState extends State<AgentsPage> {
   void initState() {
     super.initState();
     debugPrint('تهيئة صفحة الوكلاء للمجموعة: ${widget.fbg}');
-    _initializeSheetsAPI();
+    _fetchAgentsData();
   }
 
-  Future<void> _initializeSheetsAPI() async {
+  Future<void> _fetchAgentsData() async {
     try {
       setState(() {
         isLoading = true;
         errorMessage = null;
       });
 
-      // محاولة تحميل ملف service account
-      String jsonString;
-      try {
-        jsonString = await rootBundle.loadString('assets/service_account.json');
-      } catch (e) {
-        debugPrint('تعذر العثور على ملف service_account.json: $e');
-        setState(() {
-          errorMessage =
-              'ملف الاعتماد مفقود. يرجى التحقق من ملف service_account.json';
-          isLoading = false;
-        });
-        return;
-      }
-
-      final accountCredentials =
-          ServiceAccountCredentials.fromJson(jsonDecode(jsonString));
-      final scopes = [sheets.SheetsApi.spreadsheetsScope];
-      _client = await clientViaServiceAccount(accountCredentials, scopes);
-      _sheetsApi = sheets.SheetsApi(_client!);
-
-      debugPrint('تم تهيئة Google Sheets API بنجاح!');
-      await _fetchAgentsData();
-    } catch (e) {
-      debugPrint('خطأ في تهيئة Sheets API: $e');
-      setState(() {
-        errorMessage = 'خطأ في الاتصال بقاعدة البيانات: ${e.toString()}';
-        isLoading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ أثناء تهيئة Google Sheets API: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _fetchAgentsData() async {
-    try {
       debugPrint('جلب بيانات الوكلاء للمجموعة: ${widget.fbg}');
 
-      final range = 'الوكلاء!A2:AE'; // تعديل النطاق لجلب الأعمدة من 1 إلى 31
-      final response =
-          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-      final rows = response.values ?? [];
+      final staffData = await TaskApiService.instance.getTaskStaff();
+      final List<dynamic> staffList =
+          staffData['staff'] ?? staffData['Staff'] ?? [];
 
-      if (rows.isEmpty) {
-        setState(() {
-          errorMessage = 'لم يتم العثور على أي بيانات وكلاء';
-          isLoading = false;
-        });
-        return;
+      // تجميع الموظفين حسب القسم
+      Map<String, List<Map<String, String>>> groupedByDept = {};
+      for (var staff in staffList) {
+        final name =
+            (staff['FullName'] ?? staff['fullName'] ?? '').toString().trim();
+        final phone = (staff['PhoneNumber'] ?? staff['phoneNumber'] ?? '')
+            .toString()
+            .trim();
+        final dept = (staff['Department'] ?? staff['department'] ?? 'غير محدد')
+            .toString()
+            .trim();
+
+        if (name.isNotEmpty) {
+          groupedByDept.putIfAbsent(dept, () => []);
+          groupedByDept[dept]!.add({'name': name, 'phone': phone});
+        }
       }
 
-      final List<Map<String, dynamic>> fetchedAgents = rows.map((row) {
-        final Map<String, dynamic> agentData = {
-          'group': row.isNotEmpty ? row[0].toString() : '', // اسم المجموعة
-        };
-        for (int i = 1; i < row.length; i += 2) {
-          if (i + 1 < row.length) {
-            final name = row[i]?.toString() ?? '';
-            final phone = row[i + 1]?.toString() ?? '';
-            if (name.isNotEmpty && phone.isNotEmpty) {
-              agentData['agent${(i + 1) ~/ 2}'] = {
-                'name': name,
-                'phone': phone
-              };
-            }
-          }
+      // تحويل إلى البنية المتوقعة من الواجهة (group + agent1, agent2, ...)
+      final List<Map<String, dynamic>> fetchedAgents =
+          groupedByDept.entries.map((entry) {
+        final Map<String, dynamic> agentData = {'group': entry.key};
+        for (int i = 0; i < entry.value.length; i++) {
+          agentData['agent${i + 1}'] = entry.value[i];
         }
         return agentData;
       }).toList();
@@ -352,7 +304,7 @@ class _AgentsPageState extends State<AgentsPage> {
                               ),
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
-                                onPressed: _initializeSheetsAPI,
+                                onPressed: _fetchAgentsData,
                                 icon: const Icon(Icons.refresh),
                                 label: const Text('إعادة المحاولة'),
                                 style: ElevatedButton.styleFrom(
@@ -540,7 +492,6 @@ class _AgentsPageState extends State<AgentsPage> {
 
   @override
   void dispose() {
-    _client?.close();
     searchController.dispose();
     super.dispose();
   }

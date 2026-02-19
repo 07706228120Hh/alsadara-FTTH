@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
 using System.Security.Cryptography;
@@ -43,6 +44,93 @@ public class InternalDataController : ControllerBase
             ?? "sadara-internal-2024-secure-key"; // fallback للتطوير فقط - يجب إزالته في الإنتاج
         
         return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // مساعدات فلترة الصلاحيات حسب صلاحيات الشركة
+    // ═══════════════════════════════════════════════════════
+
+    /// <summary>
+    /// تحويل JSON string إلى Dictionary&lt;string, bool&gt;
+    /// </summary>
+    private static Dictionary<string, bool> DeserializeBoolDict(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try { return JsonSerializer.Deserialize<Dictionary<string, bool>>(json) ?? new(); }
+        catch { return new(); }
+    }
+
+    /// <summary>
+    /// تحويل JSON string إلى Dictionary&lt;string, Dictionary&lt;string, bool&gt;&gt;
+    /// </summary>
+    private static Dictionary<string, Dictionary<string, bool>> DeserializeV2Dict(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try { return JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, bool>>>(json) ?? new(); }
+        catch { return new(); }
+    }
+
+    /// <summary>
+    /// فلترة صلاحيات V1 للموظف: يُسمح فقط بالصلاحيات المفعلة للشركة
+    /// </summary>
+    private static Dictionary<string, bool> FilterPermissionsByCompany(
+        Dictionary<string, bool> requested,
+        Dictionary<string, bool> companyFeatures)
+    {
+        var result = new Dictionary<string, bool>();
+        foreach (var kvp in requested)
+        {
+            // إذا الشركة لديها هذه الميزة مفعلة → نقبل قيمة الموظف
+            // إذا الشركة ليس لديها هذه الميزة → نفرض false
+            if (companyFeatures.TryGetValue(kvp.Key, out var companyHas) && companyHas)
+                result[kvp.Key] = kvp.Value;
+            else
+                result[kvp.Key] = false;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// فلترة صلاحيات V2 للموظف: يُسمح فقط بالإجراءات المفعلة للشركة
+    /// إذا الشركة ليس لديها V2 لكن لديها V1 مفعل، نسمح بالإجراءات
+    /// </summary>
+    private static Dictionary<string, Dictionary<string, bool>> FilterPermissionsV2ByCompany(
+        Dictionary<string, Dictionary<string, bool>> requested,
+        Dictionary<string, Dictionary<string, bool>> companyV2,
+        Dictionary<string, bool> companyV1)
+    {
+        var result = new Dictionary<string, Dictionary<string, bool>>();
+        foreach (var module in requested)
+        {
+            var filteredActions = new Dictionary<string, bool>();
+
+            // هل الشركة لديها V2 لهذه الوحدة؟
+            if (companyV2.TryGetValue(module.Key, out var companyActions))
+            {
+                // فلترة كل إجراء حسب ما هو مفعل للشركة
+                foreach (var action in module.Value)
+                {
+                    if (companyActions.TryGetValue(action.Key, out var allowed) && allowed)
+                        filteredActions[action.Key] = action.Value;
+                    else
+                        filteredActions[action.Key] = false;
+                }
+            }
+            // fallback: إذا الشركة لديها V1 مفعل لهذه الوحدة، نسمح
+            else if (companyV1.TryGetValue(module.Key, out var v1Enabled) && v1Enabled)
+            {
+                filteredActions = new Dictionary<string, bool>(module.Value);
+            }
+            else
+            {
+                // الشركة ليس لديها هذه الميزة أصلاً → كل الإجراءات false
+                foreach (var action in module.Value)
+                    filteredActions[action.Key] = false;
+            }
+
+            result[module.Key] = filteredActions;
+        }
+        return result;
     }
 
     /// <summary>
@@ -490,7 +578,10 @@ public class InternalDataController : ControllerBase
 
         // تحديث البيانات
         if (!string.IsNullOrEmpty(request.FullName))
+        {
             employee.FullName = request.FullName;
+            employee.Username = request.FullName;
+        }
         if (!string.IsNullOrEmpty(request.PhoneNumber))
             employee.PhoneNumber = request.PhoneNumber;
         if (!string.IsNullOrEmpty(request.Email))
@@ -501,8 +592,21 @@ public class InternalDataController : ControllerBase
             employee.EmployeeCode = request.EmployeeCode;
         if (!string.IsNullOrEmpty(request.Center))
             employee.Center = request.Center;
-        if (!string.IsNullOrEmpty(request.Salary))
+        if (request.Salary.HasValue)
             employee.Salary = request.Salary;
+        if (!string.IsNullOrEmpty(request.Role))
+        {
+            employee.Role = request.Role?.ToLower() switch
+            {
+                "admin" or "companyadmin" => UserRole.CompanyAdmin,
+                "manager" => UserRole.Manager,
+                "technicalleader" => UserRole.TechnicalLeader,
+                "technician" => UserRole.Technician,
+                "viewer" => UserRole.Viewer,
+                "employee" => UserRole.Employee,
+                _ => employee.Role // keep current if unknown
+            };
+        }
         if (request.IsActive.HasValue)
             employee.IsActive = request.IsActive.Value;
 
@@ -562,13 +666,23 @@ public class InternalDataController : ControllerBase
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
 
-        // تحديث صلاحيات النظام الأول
-        if (request.FirstSystemPermissions != null)
-            employee.FirstSystemPermissions = System.Text.Json.JsonSerializer.Serialize(request.FirstSystemPermissions);
+        // ═══ فلترة الصلاحيات: لا يمكن منح صلاحية غير ممنوحة للشركة ═══
+        var companyFirstFeatures = DeserializeBoolDict(company.EnabledFirstSystemFeatures);
+        var companySecondFeatures = DeserializeBoolDict(company.EnabledSecondSystemFeatures);
 
-        // تحديث صلاحيات النظام الثاني
+        // تحديث صلاحيات النظام الأول (مفلترة)
+        if (request.FirstSystemPermissions != null)
+        {
+            var filtered = FilterPermissionsByCompany(request.FirstSystemPermissions, companyFirstFeatures);
+            employee.FirstSystemPermissions = JsonSerializer.Serialize(filtered);
+        }
+
+        // تحديث صلاحيات النظام الثاني (مفلترة)
         if (request.SecondSystemPermissions != null)
-            employee.SecondSystemPermissions = System.Text.Json.JsonSerializer.Serialize(request.SecondSystemPermissions);
+        {
+            var filtered = FilterPermissionsByCompany(request.SecondSystemPermissions, companySecondFeatures);
+            employee.SecondSystemPermissions = JsonSerializer.Serialize(filtered);
+        }
 
         employee.UpdatedAt = DateTime.UtcNow;
 
@@ -642,13 +756,25 @@ public class InternalDataController : ControllerBase
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
 
-        // تحديث صلاحيات V2 للنظام الأول
-        if (request.FirstSystemPermissionsV2 != null)
-            employee.FirstSystemPermissionsV2 = System.Text.Json.JsonSerializer.Serialize(request.FirstSystemPermissionsV2);
+        // ═══ فلترة الصلاحيات V2: لا يمكن منح إجراء غير مفعل للشركة ═══
+        var companyFirstV2 = DeserializeV2Dict(company.EnabledFirstSystemFeaturesV2);
+        var companySecondV2 = DeserializeV2Dict(company.EnabledSecondSystemFeaturesV2);
+        var companyFirstV1 = DeserializeBoolDict(company.EnabledFirstSystemFeatures);
+        var companySecondV1 = DeserializeBoolDict(company.EnabledSecondSystemFeatures);
 
-        // تحديث صلاحيات V2 للنظام الثاني
+        // تحديث صلاحيات V2 للنظام الأول (مفلترة)
+        if (request.FirstSystemPermissionsV2 != null)
+        {
+            var filtered = FilterPermissionsV2ByCompany(request.FirstSystemPermissionsV2, companyFirstV2, companyFirstV1);
+            employee.FirstSystemPermissionsV2 = JsonSerializer.Serialize(filtered);
+        }
+
+        // تحديث صلاحيات V2 للنظام الثاني (مفلترة)
         if (request.SecondSystemPermissionsV2 != null)
-            employee.SecondSystemPermissionsV2 = System.Text.Json.JsonSerializer.Serialize(request.SecondSystemPermissionsV2);
+        {
+            var filtered = FilterPermissionsV2ByCompany(request.SecondSystemPermissionsV2, companySecondV2, companySecondV1);
+            employee.SecondSystemPermissionsV2 = JsonSerializer.Serialize(filtered);
+        }
 
         employee.UpdatedAt = DateTime.UtcNow;
 
@@ -729,6 +855,7 @@ public class InternalDataController : ControllerBase
         {
             Id = Guid.NewGuid(),
             FullName = request.FullName,
+            Username = request.FullName,
             PhoneNumber = request.PhoneNumber,
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "123456"),
@@ -1434,6 +1561,200 @@ public class InternalDataController : ControllerBase
     /// <summary>
     /// الحصول على جميع المواطنين
     /// </summary>
+    /// <summary>
+    /// الحصول على سجلات الاشتراكات
+    /// </summary>
+    [HttpGet("subscriptionlogs")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetSubscriptionLogs()
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var logs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new
+            {
+                l.Id,
+                l.CustomerId,
+                l.CustomerName,
+                l.PhoneNumber,
+                l.SubscriptionId,
+                l.PlanName,
+                l.PlanPrice,
+                l.CommitmentPeriod,
+                l.BundleId,
+                l.CurrentStatus,
+                l.OperationType,
+                l.ActivatedBy,
+                l.ActivationDate,
+                l.ZoneId,
+                l.ZoneName,
+                l.WalletBalanceBefore,
+                l.WalletBalanceAfter,
+                l.PartnerName,
+                l.CompanyId,
+                l.IsPrinted,
+                l.IsWhatsAppSent,
+                l.StartDate,
+                l.EndDate,
+                l.CreatedAt
+            })
+            .Take(500)
+            .ToListAsync();
+
+        return Ok(logs);
+    }
+
+    /// <summary>
+    /// تحديث حالة سجل اشتراك (طباعة/واتساب/ملاحظات)
+    /// </summary>
+    [HttpPut("subscriptionlogs/{id}")]
+    [AllowAnonymous]
+    [Consumes("application/json")]
+    public async Task<IActionResult> UpdateSubscriptionLog(long id, [FromBody] JsonElement request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        if (log == null)
+            return NotFound(new { success = false, message = "السجل غير موجود" });
+
+        // تحديث الحقول المرسلة فقط
+        if (request.TryGetProperty("isPrinted", out var pp) && pp.ValueKind == JsonValueKind.True)
+            log.IsPrinted = true;
+        if (request.TryGetProperty("isPrinted", out var ppf) && ppf.ValueKind == JsonValueKind.False)
+            log.IsPrinted = false;
+        if (request.TryGetProperty("isWhatsAppSent", out var pw) && pw.ValueKind == JsonValueKind.True)
+            log.IsWhatsAppSent = true;
+        if (request.TryGetProperty("isWhatsAppSent", out var pwf) && pwf.ValueKind == JsonValueKind.False)
+            log.IsWhatsAppSent = false;
+        if (request.TryGetProperty("subscriptionNotes", out var pn) && pn.ValueKind == JsonValueKind.String)
+            log.SubscriptionNotes = pn.GetString();
+
+        log.LastUpdateDate = DateTime.UtcNow;
+        log.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.SubscriptionLogs.Update(log);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم تحديث السجل بنجاح" });
+    }
+
+    /// <summary>
+    /// البحث عن سجل بواسطة SessionId
+    /// </summary>
+    [HttpGet("subscriptionlogs/by-session/{sessionId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetSubscriptionLogBySession(string sessionId)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var log = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.SessionId == sessionId)
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new { l.Id, l.SessionId, l.IsPrinted, l.IsWhatsAppSent })
+            .FirstOrDefaultAsync();
+
+        if (log == null)
+            return NotFound(new { success = false, message = "السجل غير موجود" });
+
+        return Ok(log);
+    }
+
+    /// <summary>
+    /// حذف سجل اشتراك
+    /// </summary>
+    [HttpDelete("subscriptionlogs/{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DeleteSubscriptionLog(long id)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        if (log == null)
+            return NotFound(new { success = false, message = "السجل غير موجود" });
+
+        _unitOfWork.SubscriptionLogs.Delete(log);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم حذف السجل بنجاح" });
+    }
+
+    /// <summary>
+    /// إضافة سجل اشتراك جديد (يُستخدم من Flutter بعد كل عملية تجديد/شراء)
+    /// </summary>
+    [HttpPost("subscriptionlogs")]
+    [AllowAnonymous]
+    [Consumes("application/json")]
+    public async Task<IActionResult> CreateSubscriptionLog([FromBody] JsonElement request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        try
+        {
+            var log = new Sadara.Domain.Entities.SubscriptionLog
+            {
+                CustomerId = request.TryGetProperty("customerId", out var p1) ? p1.GetString() : null,
+                CustomerName = request.TryGetProperty("customerName", out var p2) ? p2.GetString() : null,
+                PhoneNumber = request.TryGetProperty("phoneNumber", out var p3) ? p3.GetString() : null,
+                SubscriptionId = request.TryGetProperty("subscriptionId", out var p4) ? p4.GetString() : null,
+                PlanName = request.TryGetProperty("planName", out var p5) ? p5.GetString() : null,
+                PlanPrice = request.TryGetProperty("planPrice", out var p6) && p6.ValueKind == JsonValueKind.Number ? p6.GetDecimal() : null,
+                CommitmentPeriod = request.TryGetProperty("commitmentPeriod", out var p7) && p7.ValueKind == JsonValueKind.Number ? p7.GetInt32() : null,
+                BundleId = request.TryGetProperty("bundleId", out var p8) ? p8.GetString() : null,
+                CurrentStatus = request.TryGetProperty("currentStatus", out var p9) ? p9.GetString() : null,
+                DeviceUsername = request.TryGetProperty("deviceUsername", out var p10) ? p10.GetString() : null,
+                OperationType = request.TryGetProperty("operationType", out var p11) ? p11.GetString() : null,
+                ActivatedBy = request.TryGetProperty("activatedBy", out var p12) ? p12.GetString() : null,
+                ActivationDate = request.TryGetProperty("activationDate", out var p13) && p13.ValueKind == JsonValueKind.String
+                    ? (DateTime.TryParse(p13.GetString(), out var dt) ? DateTime.SpecifyKind(dt, DateTimeKind.Utc) : DateTime.UtcNow)
+                    : DateTime.UtcNow,
+                ActivationTime = request.TryGetProperty("activationTime", out var p14) ? p14.GetString() : null,
+                SessionId = request.TryGetProperty("sessionId", out var p15) ? p15.GetString() : null,
+                LastUpdateDate = DateTime.UtcNow,
+                ZoneId = request.TryGetProperty("zoneId", out var p16) ? p16.GetString() : null,
+                ZoneName = request.TryGetProperty("zoneName", out var p17) ? p17.GetString() : null,
+                FbgInfo = request.TryGetProperty("fbgInfo", out var p18) ? p18.GetString() : null,
+                FatInfo = request.TryGetProperty("fatInfo", out var p19) ? p19.GetString() : null,
+                FdtInfo = request.TryGetProperty("fdtInfo", out var p20) ? p20.GetString() : null,
+                WalletBalanceBefore = request.TryGetProperty("walletBalanceBefore", out var p21) && p21.ValueKind == JsonValueKind.Number ? p21.GetDecimal() : null,
+                WalletBalanceAfter = request.TryGetProperty("walletBalanceAfter", out var p22) && p22.ValueKind == JsonValueKind.Number ? p22.GetDecimal() : null,
+                PartnerWalletBalanceBefore = request.TryGetProperty("partnerWalletBalanceBefore", out var p23) && p23.ValueKind == JsonValueKind.Number ? p23.GetDecimal() : null,
+                CustomerWalletBalanceBefore = request.TryGetProperty("customerWalletBalanceBefore", out var p24) && p24.ValueKind == JsonValueKind.Number ? p24.GetDecimal() : null,
+                Currency = request.TryGetProperty("currency", out var p25) ? p25.GetString() : null,
+                PaymentMethod = request.TryGetProperty("paymentMethod", out var p26) ? p26.GetString() : null,
+                PartnerName = request.TryGetProperty("partnerName", out var p27) ? p27.GetString() : null,
+                PartnerId = request.TryGetProperty("partnerId", out var p28) ? p28.GetString() : null,
+                IsPrinted = request.TryGetProperty("isPrinted", out var p29) && p29.ValueKind == JsonValueKind.True,
+                IsWhatsAppSent = request.TryGetProperty("isWhatsAppSent", out var p30) && p30.ValueKind == JsonValueKind.True,
+                SubscriptionNotes = request.TryGetProperty("subscriptionNotes", out var p31) ? p31.GetString() : null,
+                StartDate = request.TryGetProperty("startDate", out var p32) ? p32.GetString() : null,
+                EndDate = request.TryGetProperty("endDate", out var p33) ? p33.GetString() : null,
+                ApiResponse = request.TryGetProperty("apiResponse", out var p34) ? p34.GetString() : null,
+            };
+
+            // معالجة userId و companyId كـ Guid
+            if (request.TryGetProperty("userId", out var uid) && uid.ValueKind == JsonValueKind.String && Guid.TryParse(uid.GetString(), out var userGuid))
+                log.UserId = userGuid;
+            if (request.TryGetProperty("companyId", out var cid) && cid.ValueKind == JsonValueKind.String && Guid.TryParse(cid.GetString(), out var companyGuid))
+                log.CompanyId = companyGuid;
+
+            await _unitOfWork.SubscriptionLogs.AddAsync(log);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, data = new { log.Id }, message = "تم حفظ السجل بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = "خطأ في حفظ السجل", error = ex.Message });
+        }
+    }
+
     [HttpGet("citizens")]
     [AllowAnonymous]
     public async Task<IActionResult> GetCitizens()
@@ -1705,7 +2026,7 @@ public class InternalCreateEmployeeRequest
     public string? Department { get; set; }
     public string? EmployeeCode { get; set; }
     public string? Center { get; set; }
-    public string? Salary { get; set; }
+    public decimal? Salary { get; set; }
 }
 
 /// <summary>
@@ -1716,10 +2037,11 @@ public class InternalUpdateEmployeeRequest
     public string? FullName { get; set; }
     public string? PhoneNumber { get; set; }
     public string? Email { get; set; }
+    public string? Role { get; set; }
     public string? Department { get; set; }
     public string? EmployeeCode { get; set; }
     public string? Center { get; set; }
-    public string? Salary { get; set; }
+    public decimal? Salary { get; set; }
     public bool? IsActive { get; set; }
 }
 

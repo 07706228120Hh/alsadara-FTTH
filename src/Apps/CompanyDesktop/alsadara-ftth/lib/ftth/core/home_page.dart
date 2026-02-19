@@ -47,6 +47,7 @@ import '../reports/data_page.dart'; // صفحة البيانات الموحدة 
 import '../users/quick_search_users_page.dart';
 import '../transactions/account_records_page.dart';
 import '../../pages/local_storage_page.dart'; // صفحة التخزين الداخلي
+import '../../pages/ftth/fetch_server_data_page.dart'; // صفحة جلب بيانات الموقع
 import '../../services/background_sync_service.dart'; // خدمة المزامنة في الخلفية
 import '../subscriptions/expiring_soon_page.dart';
 import '../transactions/transactions_page.dart';
@@ -57,6 +58,9 @@ import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
 import '../widgets/pikachu_overlay.dart';
 import '../../pages/super_admin/super_admin_dashboard.dart'; // ✅ لوحة تحكم Super Admin
+import '../../test_webview_standalone.dart'; // صفحة اختبار WebView للتقارير
+import '../../pages/server_data_page.dart'; // صفحة بيانات السيرفر
+import '../../services/permission_checker.dart'; // فاحص الصلاحيات V2
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -66,7 +70,7 @@ class HomePage extends StatefulWidget {
   final String? center; // إضافة المركز
   final String? salary; // إضافة الراتب
   final Map<String, bool>? pageAccess; // إضافة صلاحيات الصفحات
-  // معلومات النظام الأول (Google Sheets)
+  // معلومات النظام الأول
   final String? firstSystemUsername; // اسم المستخدم في النظام الأول
   final String? firstSystemPermissions; // صلاحيات النظام الأول
   final String? firstSystemDepartment; // قسم النظام الأول
@@ -150,7 +154,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     'account_records': false, // منع سجلات الحسابات افتراضياً (مستقلة)
     'export': false, // منع ترحيل البيانات افتراضياً (للمديرين فقط)
     'agents': false, // تعطيل افتراضياً وإظهاره عبر زر الصلاحيات
-    'google_sheets': false, // منع إرسال المعلومات إلى Google Sheets افتراضياً
+    'google_sheets': false, // منع حفظ البيانات في الخادم افتراضياً
     'whatsapp': false, // منع إرسال رسائل WhatsApp افتراضياً
     'wallet_balance': false, // السماح بمشاهدة رصيد المحفظة للجميع
     'expiring_soon':
@@ -169,6 +173,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     'whatsapp_conversations_fab': false, // الزر العائم لمحادثات الواتساب
     'local_storage': false, // التخزين المحلي للمشتركين
     'local_storage_import': false, // زر استيراد البيانات في التخزين المحلي
+    'superset_reports': false, // تقارير Superset
+    'server_data': false, // بيانات السيرفر
+    'dashboard_project': false, // مشروع Dashboard
+    'fetch_server_data': false, // جلب بيانات الموقع
   };
 
   Map<String, bool> _userPermissions = {};
@@ -273,11 +281,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
-  // فحص صلاحيات المدير من النظا�� الأول فقط
+  // فحص صلاحيات المدير من النظام الأول فقط
   bool _isAdminByUsername() {
-    // فحص الصلاحيات الجديدة من pageAccess (نظام Firebase متعدد المستأجرين)
-    if (widget.pageAccess != null && widget.pageAccess!['users'] == true) {
-      debugPrint('✅ تم تحديد المدير من pageAccess - صلاحية users: true');
+    // V2: فحص صلاحية المستخدمين من PermissionManager
+    if (PermissionManager.instance.canView('users')) {
+      debugPrint('✅ تم تحديد المدير من V2 - صلاحية users: view=true');
       return true;
     }
 
@@ -293,7 +301,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    // الأولوية الثالثة: فحص الصلاحيات من النظام الأول (Google Sheets)
+    // الأولوية الثالثة: فحص الصلاحيات من النظام الأول
     if (widget.firstSystemPermissions != null &&
         widget.firstSystemPermissions!.isNotEmpty) {
       final permissionsToCheck = widget.firstSystemPermissions!.toLowerCase();
@@ -352,6 +360,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             final tmw = cachedWallet['teamMemberWallet'];
             hasTeamMemberWallet = tmw['hasWallet'] == true;
             teamMemberWalletBalance = (tmw['balance'] ?? 0.0) * 1.0;
+          }
+        });
+      }
+
+      // حد أقصى لشاشة التحميل: 10 ثوانٍ ثم نعرض المحتوى حتى لو لم تكتمل البيانات
+      if (isLoadingDashboard) {
+        Future.delayed(const Duration(seconds: 10), () {
+          if (mounted && isLoadingDashboard) {
+            setState(() => isLoadingDashboard = false);
           }
         });
       }
@@ -420,6 +437,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  @override
+  void deactivate() {
+    // إيقاف المؤقتات والأنيميشن عند مغادرة الصفحة (Navigator.push فوقها)
+    _timer?.cancel();
+    _timer = null;
+    _walletTimer?.cancel();
+    _walletTimer = null;
+    _fiberLightController.stop();
+    _cardAnimationController.stop();
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    // إعادة تشغيل المؤقتات والأنيميشن عند العودة للصفحة
+    startAutoRefresh();
+    startWalletAutoRefresh();
+    _fiberLightController.repeat();
+    _cardAnimationController.forward();
+  }
+
   /// معالجة خطأ 401 - توجيه إلى صفحة تسجيل الدخول
   void _handle401Error() {
     AuthErrorHandler.handle401Error(
@@ -440,9 +479,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   List<Map<String, dynamic>> userRoles = [];
   Future<void> fetchCurrentUser() async {
     // إضافة إعادة محاولة لتقليل الأخطاء المؤقتة (شبكة / استجابة بطيئة)
-    const int maxRetries = 3; // الحد الأقصى للمحاولات
+    const int maxRetries = 2; // الحد الأقصى للمحاولات
     int attempt = 0;
-    Duration delay = const Duration(milliseconds: 400);
+    Duration delay = const Duration(milliseconds: 300);
     Object? lastError;
     httpResponseLoop:
     while (attempt < maxRetries && mounted) {
@@ -540,9 +579,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   } // نظام محدود لتحديد الصلاحيات الإدارية - النظام الأول فقط
 
   bool _checkAdminPermissions() {
-    // فحص الصلاحيات الجديدة من pageAccess (نظام Firebase متعدد المستأجرين)
-    if (widget.pageAccess != null && widget.pageAccess!['users'] == true) {
-      print('✅ مدير معتمد من pageAccess - صلاحية users: true');
+    // V2: فحص صلاحية المستخدمين من PermissionManager
+    if (PermissionManager.instance.canView('users')) {
+      print('✅ مدير معتمد من V2 - صلاحية users: view=true');
       return true;
     }
 
@@ -558,7 +597,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    // المعيار الثالث: صلاحيات النظام الأول (Google Sheets)
+    // المعيار الثالث: صلاحيات النظام الأول
     if (widget.firstSystemPermissions != null &&
         widget.firstSystemPermissions!.isNotEmpty) {
       final permissionsToCheck = widget.firstSystemPermissions!.toLowerCase();
@@ -745,10 +784,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
       _showErrorMessage('فشل في تحديث البيانات: $e');
     } finally {
-      _refreshAnimationController.stop();
-      setState(() {
-        isRefreshing = false;
-      });
+      if (mounted) {
+        _refreshAnimationController.stop();
+        setState(() {
+          isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -776,8 +817,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
       _showErrorMessage('فشل في التحديث الكامل: $e');
     } finally {
-      _refreshAnimationController.stop();
       if (mounted) {
+        _refreshAnimationController.stop();
         setState(() {
           isRefreshing = false;
         });
@@ -804,19 +845,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // دوال إدارة الصلاحيات مع الحفظ الدائم للجميع (بما في ذلك المديرين)
   Future<void> _loadUserPermissions() async {
-    // استخدام الصلاحيات المُمررة من صفحة تسجيل الدخول (مفلترة حسب صلاحيات الشركة)
-    print('تحميل الصلاحيات - مدير النظام الأول: ${_isFirstSystemAdmin()}');
-    print('صلاحيات النظام الأول: ${widget.firstSystemPermissions}');
+    // V2: استخدام PermissionManager كمصدر وحيد للصلاحيات
+    final pm = PermissionManager.instance;
+    if (!pm.isLoaded) {
+      await pm.loadPermissions();
+    }
+    print('تحميل الصلاحيات V2 - مدير النظام الأول: ${_isFirstSystemAdmin()}');
     print('اسم المستخدم: ${widget.username}');
-    print('pageAccess من تسجيل الدخول: ${widget.pageAccess}');
 
-    // تحويل الصلاحيات المُمررة إلى صلاحيات الصفحة المحلية
+    // تحويل صلاحيات V2 إلى صلاحيات الصفحة المحلية
     final permissions = <String, bool>{};
     for (var key in _defaultPermissions.keys) {
-      // الصلاحية من pageAccess (تحتوي على فلترة الشركة) أو القيمة الافتراضية
-      permissions[key] = widget.pageAccess?[key] ?? _defaultPermissions[key]!;
-      print(
-          'صلاحية $key: ${permissions[key]} (${_isFirstSystemAdmin() ? "مدير" : "مستخدم عادي"})');
+      permissions[key] = pm.canView(key);
+      print('صلاحية $key: ${permissions[key]} (V2 canView)');
     }
 
     setState(() => _userPermissions = permissions);
@@ -1043,13 +1084,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   bool _hasPermission(String permissionKey) {
-    // التأكد من أن الصلاحيات محملة، وإلا استخدم القيم الافتراضية
-    if (_userPermissions.isEmpty) {
-      return _defaultPermissions[permissionKey] ?? false;
-    }
-    return _userPermissions[permissionKey] ??
-        _defaultPermissions[permissionKey] ??
-        false;
+    // V2: مصدر وحيد — PermissionManager
+    return PermissionManager.instance.canView(permissionKey);
+  }
+
+  /// فحص صلاحية V2 بإجراء محدد
+  /// مثال: _hasAction('users', 'add') → هل يمكن إضافة مستخدم؟
+  bool _hasAction(String feature, String action) {
+    return PermissionManager.instance.hasAction(feature, action);
   }
 
   String _getPermissionTitle(String key) {
@@ -1071,7 +1113,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       case 'agents':
         return 'تفاصيل الوكلاء';
       case 'google_sheets':
-        return 'Google Sheets';
+        return 'حفظ في الخادم';
       case 'whatsapp':
         return 'رسائل WhatsApp';
       case 'wallet_balance':
@@ -1108,7 +1150,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // دوال مساعدة للتحقق من الصلاحيات ال��يدة
-  bool hasGoogleSheetsPermission() {
+  bool hasServerSavePermission() {
     return _hasPermission('google_sheets');
   }
 
@@ -1486,7 +1528,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // معلومات النظام الأول (Google Sheets) إذا كانت متوفرة
+                  // معلومات النظام الأول إذا كانت متوفرة
                   if (widget.firstSystemUsername != null)
                     Container(
                       width: double.infinity,
@@ -1507,7 +1549,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               Icon(Icons.table_chart, color: Colors.green[700]),
                               const SizedBox(width: 8),
                               Text(
-                                'نظام Google Sheets',
+                                'النظام الأول',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -2484,6 +2526,45 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 📊 قسم البيانات والإدارة
                   // ═══════════════════════════════════════════════════════════════════
 
+                  // 0 تقارير Superset (WebView)
+                  if (_hasPermission('superset_reports'))
+                    _buildDrawerItem(
+                      icon: Icons.dashboard_rounded,
+                      title: 'تقارير Superset',
+                      isTablet: isTablet,
+                      isSmallPhone: isSmallPhone,
+                      color: Colors.blue,
+                      onTap: () => navigateToPage(
+                        const TestWebViewPage(),
+                      ),
+                    ),
+
+                  // 0.5 بيانات السيرفر (ملفات JSON المحلية)
+                  if (_hasPermission('server_data'))
+                    _buildDrawerItem(
+                      icon: Icons.storage_rounded,
+                      title: 'بيانات السيرفر',
+                      isTablet: isTablet,
+                      isSmallPhone: isSmallPhone,
+                      color: Colors.indigo,
+                      onTap: () => navigateToPage(
+                        ServerDataPage(authToken: currentToken),
+                      ),
+                    ),
+
+                  // 0.6 مشروع Dashboard (جلب بيانات الشارتات)
+                  if (_hasPermission('dashboard_project'))
+                    _buildDrawerItem(
+                      icon: Icons.dashboard_customize_rounded,
+                      title: 'مشروع Dashboard',
+                      isTablet: isTablet,
+                      isSmallPhone: isSmallPhone,
+                      color: Colors.deepPurple,
+                      onTap: () => navigateToPage(
+                        DashboardProjectPage(authToken: currentToken),
+                      ),
+                    ),
+
                   // 1 بيانات (تفاصيل الوكلاء + بيانات المستخدمين)
                   if (_hasPermission('agents'))
                     _buildDrawerItem(
@@ -2621,6 +2702,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           LocalStoragePage(authToken: currentToken)),
                     ),
 
+                  // 12 جلب بيانات الموقع
+                  if (_hasPermission('fetch_server_data'))
+                    _buildDrawerItem(
+                      icon: Icons.cloud_download_rounded,
+                      title: 'جلب بيانات الموقع',
+                      isTablet: isTablet,
+                      isSmallPhone: isSmallPhone,
+                      color: Colors.teal,
+                      onTap: () => navigateToPage(const FetchServerDataPage()),
+                    ),
+
                   // تمت إزالة زر معلومات الشريك من القائمة الجانبية بناءً على الطلب
 
                   // رسالة في حالة عدم وجود صلاحيات
@@ -2642,7 +2734,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       !_hasPermission('whatsapp_settings') &&
                       !_hasPermission('plans_bundles') &&
                       !_hasPermission('technicians') &&
-                      !_hasPermission('local_storage'))
+                      !_hasPermission('local_storage') &&
+                      !_hasPermission('superset_reports') &&
+                      !_hasPermission('server_data') &&
+                      !_hasPermission('dashboard_project') &&
+                      !_hasPermission('fetch_server_data'))
                     Container(
                       margin: const EdgeInsets.all(16),
                       padding: const EdgeInsets.all(16),
@@ -3690,7 +3786,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         () => navigateToPage(QuickSearchUsersPage(
           authToken: currentToken,
           activatedBy: widget.username,
-          hasGoogleSheetsPermission: hasGoogleSheetsPermission(),
+          hasServerSavePermission: hasServerSavePermission(),
           hasWhatsAppPermission: hasWhatsAppPermission(),
           firstSystemPermissions: widget.firstSystemPermissions,
           isAdminFlag: isAdmin,
@@ -3708,7 +3804,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         () => navigateToPage(UsersPage(
           authToken: currentToken,
           activatedBy: widget.username,
-          hasGoogleSheetsPermission: hasGoogleSheetsPermission(),
+          hasServerSavePermission: hasServerSavePermission(),
           hasWhatsAppPermission: hasWhatsAppPermission(),
           firstSystemPermissions: widget.firstSystemPermissions,
           isAdminFlag: isAdmin,
@@ -3735,7 +3831,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         Colors.red,
         () => navigateToPage(ExpiringSoonPage(
           activatedBy: widget.username,
-          hasGoogleSheetsPermission: hasGoogleSheetsPermission(),
+          hasServerSavePermission: hasServerSavePermission(),
           hasWhatsAppPermission: hasWhatsAppPermission(),
           firstSystemPermissions: widget.firstSystemPermissions,
           importantFtthApiPermissions: _getImportantPermissions(),

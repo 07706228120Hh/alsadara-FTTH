@@ -315,11 +315,25 @@ class ApiClient {
         );
       } else {
         // فشل
+        // استخراج رسائل الأخطاء - دعم Map (ASP.NET validation) و List
+        List<String>? errorsList;
+        if (body['errors'] != null) {
+          if (body['errors'] is List) {
+            errorsList = List<String>.from(body['errors']);
+          } else if (body['errors'] is Map) {
+            errorsList = (body['errors'] as Map)
+                .values
+                .expand((v) =>
+                    v is List ? v.map((e) => e.toString()) : [v.toString()])
+                .toList();
+          }
+        }
         return ApiResponse.error(
-          body['message']?.toString() ?? _getErrorMessage(response.statusCode),
+          body['message']?.toString() ??
+              errorsList?.firstOrNull ??
+              _getErrorMessage(response.statusCode),
           statusCode: response.statusCode,
-          errors:
-              body['errors'] != null ? List<String>.from(body['errors']) : null,
+          errors: errorsList,
         );
       }
     } catch (e) {

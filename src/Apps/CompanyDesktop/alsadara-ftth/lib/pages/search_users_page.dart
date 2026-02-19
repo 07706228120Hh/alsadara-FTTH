@@ -5,10 +5,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:math';
-import '../config/app_secrets.dart';
+import '../services/isp_subscribers_api_service.dart';
 
 class SearchUsersPage extends StatefulWidget {
   const SearchUsersPage({super.key});
@@ -18,9 +16,8 @@ class SearchUsersPage extends StatefulWidget {
 }
 
 class _SearchUsersPageState extends State<SearchUsersPage> {
-  // 🔒 تم نقل المفتاح إلى AppSecrets
-  String get apiKey => appSecrets.googleSheetsApiKey;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
+  final ISPSubscribersApiService _ispService =
+      ISPSubscribersApiService.instance;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -59,6 +56,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
 
   @override
   void dispose() {
+    _regionSearchController.removeListener(_filterRegions);
     _nameController.dispose();
     _regionSearchController.dispose();
     _motherNameController.dispose();
@@ -289,58 +287,27 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   // (1) تحميل المناطق
   //============================================================================
   Future<void> _loadRegions() async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       hasError = false;
     });
 
     try {
-      debugPrint('🔄 Loading regions from Google Sheets...');
-      // شيت المستخدمين - جلب المناطق من العمود الثاني
-      final regionsUrl =
-          'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/users!B2:B?key=$apiKey';
+      debugPrint('🔄 Loading regions from VPS API...');
+      final regions = await _ispService.getRegions();
 
-      debugPrint('📡 Regions URL: $regionsUrl');
-      final response = await http.get(Uri.parse(regionsUrl));
-
-      debugPrint('📊 Regions Response Status: ${response.statusCode}');
-      debugPrint('📊 Regions Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint('📋 Parsed data: $data');
-
-        final values = data['values'] as List?;
-        debugPrint('📋 Values from sheet: $values');
-
-        if (values != null) {
-          debugPrint('📋 Processing ${values.length} rows');
-          for (int i = 0; i < values.length; i++) {
-            var row = values[i];
-            debugPrint('📋 Row $i: $row');
-            if (row.isNotEmpty) {
-              String region = row[0]?.toString() ?? '';
-              debugPrint('📋 Adding region: "$region"');
-              if (region.isNotEmpty) {
-                uniqueRegions.add(region);
-              }
-            }
-          }
-        } else {
-          debugPrint('⚠️ No values found in response');
-        }
-
-        debugPrint('✅ Loaded ${uniqueRegions.length} regions successfully');
-        debugPrint('📋 All regions: ${uniqueRegions.toList()}');
-        setState(() {
-          filteredRegions = uniqueRegions.toList()..sort();
-          isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load regions');
-      }
+      debugPrint('✅ Loaded ${regions.length} regions successfully');
+      debugPrint('📋 All regions: $regions');
+      if (!mounted) return;
+      setState(() {
+        uniqueRegions = regions.toSet();
+        filteredRegions = uniqueRegions.toList()..sort();
+        isLoading = false;
+      });
     } catch (e) {
       debugPrint('❌ Error loading regions: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         hasError = true;
@@ -353,6 +320,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   // (2) تصفية المناطق عند البحث
   //============================================================================
   void _filterRegions() {
+    if (!mounted) return;
     final query = _regionSearchController.text.toLowerCase();
     setState(() {
       filteredRegions = uniqueRegions
@@ -363,7 +331,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   }
 
   //============================================================================
-  // (3) جلب بيانات المستخدمين للمنطقة المحددة مع التصفية المباشرة
+  // (3) جلب بيانات المستخدمين للمنطقة المحددة
   //============================================================================
   Future<void> fetchUsers(String region) async {
     setState(() {
@@ -374,59 +342,26 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
     });
 
     try {
-      debugPrint('🔄 Loading users for region: $region with direct filtering');
+      debugPrint('🔄 Loading users for region: $region from VPS API');
 
-      // جلب البيانات المحددة فقط - نحدد نطاق أصغر لتوفير البيانات
-      final usersUrl =
-          'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/users!A2:E?key=$apiKey';
+      final result = await _ispService.getByRegion(region);
 
-      debugPrint('📡 Users URL: $usersUrl');
-      debugPrint('🔍 Will filter for region: "$region"');
-
-      final response = await http.get(Uri.parse(usersUrl));
-
-      debugPrint('📊 Users Response Status: ${response.statusCode}');
-      debugPrint('📊 Users Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final values = data['values'] as List?;
-
-        debugPrint('📋 Found ${values?.length ?? 0} total rows in users sheet');
-
-        if (values != null) {
-          int matchedUsers = 0;
-          for (int i = 0; i < values.length; i++) {
-            var row = values[i];
-            debugPrint('📋 User row $i: $row');
-
-            if (row.isNotEmpty && row.length > 1) {
-              final userRegion = row[1]?.toString() ?? '';
-
-              // تطبيق التصفية هنا حيث أن Google Sheets API لا يدعم WHERE clause مباشرة
-              if (userRegion == region) {
-                matchedUsers++;
-                users.add({
-                  'name':
-                      row[0]?.toString() ?? '', // العمود الأول: اسم المستخدم
-                  'region': userRegion, // العمود الثاني: المنطقة
-                  'agent': row[2]?.toString() ?? '', // العمود الثالث: الوكيل
-                  'dash': row[3]?.toString() ?? '', // العمود الرابع: الداش
-                  'mother': row[4]?.toString() ?? '', // العمود الخامس: اسم الأم
-                });
-                debugPrint('✅ Added user: ${row[0]?.toString() ?? ""}');
-              }
-            }
-          }
-          debugPrint('✅ Found $matchedUsers users for region "$region"');
-        }
-
-        setState(() => isLoading = false);
-      } else {
-        throw Exception('Failed to load users');
+      for (var item in result) {
+        users.add({
+          'name': item['Name']?.toString() ?? '',
+          'region': item['Region']?.toString() ?? '',
+          'agent': item['Agent']?.toString() ?? '',
+          'dash': item['Dash']?.toString() ?? '',
+          'mother': item['MotherName']?.toString() ?? '',
+        });
       }
+
+      debugPrint('✅ Found ${users.length} users for region "$region"');
+      if (!mounted) return;
+      setState(() => isLoading = false);
     } catch (e) {
       debugPrint('❌ Error loading users: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         hasError = true;
@@ -436,82 +371,10 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   }
 
   //============================================================================
-  // (3.1) جلب بيانات المستخدمين باستخدام Google Sheets Query API (التصفية المباشرة)
+  // (3.1) جلب بيانات المستخدمين (يستخدم نفس fetchUsers)
   //============================================================================
   Future<void> fetchUsersWithQuery(String region) async {
-    setState(() {
-      isLoading = true;
-      hasError = false;
-      users.clear();
-      matches.clear();
-    });
-
-    try {
-      debugPrint('🔄 Loading users for region: $region using Query API');
-
-      // استخدام Google Visualization API للتصفية المباشرة
-      final query =
-          Uri.encodeComponent('SELECT A, B, C, D, E WHERE B = "$region"');
-      final queryUrl =
-          'https://docs.google.com/spreadsheets/d/$spreadsheetId/gviz/tq?tqx=out:json&tq=$query&sheet=users';
-
-      debugPrint('📡 Query URL: $queryUrl');
-
-      final response = await http.get(Uri.parse(queryUrl));
-
-      debugPrint('📊 Query Response Status: ${response.statusCode}');
-      debugPrint('📊 Query Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        // معالجة استجابة Google Visualization API
-        String responseBody = response.body;
-
-        // إزالة البادئة من الاستجابة
-        if (responseBody
-            .startsWith('/*O_o*/\ngoogle.visualization.Query.setResponse(')) {
-          responseBody = responseBody.substring(
-              '/*O_o*/\ngoogle.visualization.Query.setResponse('.length);
-          responseBody =
-              responseBody.substring(0, responseBody.length - 2); // إزالة ");"
-        }
-
-        final data = json.decode(responseBody);
-        final table = data['table'];
-        final rows = table['rows'] as List?;
-
-        debugPrint(
-            '📋 Found ${rows?.length ?? 0} filtered rows for region "$region"');
-
-        if (rows != null) {
-          for (int i = 0; i < rows.length; i++) {
-            final row = rows[i];
-            final cells = row['c'] as List?;
-
-            if (cells != null && cells.length >= 5) {
-              users.add({
-                'name': cells[0]?['v']?.toString() ?? '', // اسم المستخدم
-                'region': cells[1]?['v']?.toString() ?? '', // المنطقة
-                'agent': cells[2]?['v']?.toString() ?? '', // الوكيل
-                'dash': cells[3]?['v']?.toString() ?? '', // الداش
-                'mother': cells[4]?['v']?.toString() ?? '', // اسم الأم
-              });
-              debugPrint('✅ Added user: ${cells[0]?['v']?.toString() ?? ""}');
-            }
-          }
-          debugPrint(
-              '✅ Loaded ${users.length} users for region "$region" using direct filtering');
-        }
-
-        setState(() => isLoading = false);
-      } else {
-        throw Exception('Failed to load users with query');
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading users with query: $e');
-      debugPrint('📋 Falling back to regular method...');
-      // في حالة فشل Query API، استخدم الطريقة العادية
-      await fetchUsers(region);
-    }
+    await fetchUsers(region);
   }
 
   //============================================================================
@@ -559,7 +422,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   }
 
   //============================================================================
-  // البحث المباشر في Google Sheets مع تحديد وجه القرابة
+  // البحث المباشر في الخادم مع تحديد وجه القرابة
   //============================================================================
   Future<void> searchInSheetDirectly() async {
     if (!_formKey.currentState!.validate()) return;
@@ -609,11 +472,13 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         });
       }
 
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
     } catch (e) {
       debugPrint('❌ خطأ في البحث المباشر: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         hasError = true;
@@ -630,13 +495,28 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
     try {
       debugPrint('🔍 البحث عن التطابق المباشر...');
 
-      // البحث بالاسم الكامل أولاً
-      String query = 'SELECT A, B, C, D, E WHERE A = "$fullName"';
-      if (selectedRegion != null) {
-        query += ' AND B = "$selectedRegion"';
-      }
+      // البحث في البيانات المحملة محلياً
+      for (var user in users) {
+        String userName = user['name'] ?? '';
+        if (userName.isEmpty) continue;
 
-      await _executeQuery(query, 'الشخص نفسه (تطابق كامل)');
+        // التطابق التام
+        if (_normalizeText(userName) == _normalizeText(fullName)) {
+          bool alreadyExists =
+              matches.any((match) => match['name'] == userName);
+          if (!alreadyExists) {
+            matches.add({
+              'relation': 'الشخص نفسه (تطابق كامل)',
+              'name': userName,
+              'region': user['region'] ?? '',
+              'agent': user['agent'] ?? '',
+              'dash': user['dash'] ?? '',
+              'mother': user['mother'] ?? '',
+            });
+            debugPrint('✅ تم إضافة: $userName - الشخص نفسه');
+          }
+        }
+      }
 
       // إذا لم نجد تطابق كامل، نبحث بأجزاء الاسم
       if (matches.isEmpty && enableSmartMatching) {
@@ -653,88 +533,32 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   Future<void> _searchWithSmartMatching(List<String> nameParts) async {
     try {
       debugPrint('🧠 البحث الذكي بأجزاء الاسم...');
+      String searchName = nameParts.join(' ');
 
-      // البحث بأول 3 أجزاء من الاسم
-      if (nameParts.length >= 3) {
-        String searchPattern =
-            '${nameParts[0]} ${nameParts[1]} ${nameParts[2]}';
-        String query = 'SELECT A, B, C, D, E WHERE A LIKE "%$searchPattern%"';
-        if (selectedRegion != null) {
-          query += ' AND B = "$selectedRegion"';
-        }
+      for (var user in users) {
+        String userName = user['name'] ?? '';
+        if (userName.isEmpty) continue;
 
-        List<Map<String, String>> results =
-            await _executeQueryAndReturnData(query);
-
-        // فلترة النتائج حسب نسبة التشابه 75% وما فوق
-        for (var user in results) {
-          String userName = user['name'] ?? '';
-          if (userName.isNotEmpty) {
-            double similarity =
-                _calculateSimilarity(nameParts.join(' '), userName);
-            if (similarity >= 0.75) {
-              // تحقق من عدم وجود نفس الشخص مسبقاً
-              bool alreadyExists =
-                  matches.any((match) => match['name'] == userName);
-              if (!alreadyExists) {
-                matches.add({
-                  'relation':
-                      'الشخص نفسه (تطابق ذكي ${(similarity * 100).toStringAsFixed(1)}%)',
-                  'name': userName,
-                  'region': user['region'] ?? '',
-                  'agent': user['agent'] ?? '',
-                  'dash': user['dash'] ?? '',
-                  'mother': user['mother'] ?? '',
-                });
-                debugPrint(
-                    '✅ تم إضافة: $userName - تشابه ${(similarity * 100).toStringAsFixed(1)}%');
-              } else {
-                debugPrint('⚠️ تم تجاهل: $userName - موجود مسبقاً');
-              }
-            }
+        double similarity = _calculateSimilarity(searchName, userName);
+        if (similarity >= 0.75) {
+          bool alreadyExists =
+              matches.any((match) => match['name'] == userName);
+          if (!alreadyExists) {
+            matches.add({
+              'relation':
+                  'الشخص نفسه (تطابق ذكي ${(similarity * 100).toStringAsFixed(1)}%)',
+              'name': userName,
+              'region': user['region'] ?? '',
+              'agent': user['agent'] ?? '',
+              'dash': user['dash'] ?? '',
+              'mother': user['mother'] ?? '',
+            });
+            debugPrint(
+                '✅ تم إضافة: $userName - تشابه ${(similarity * 100).toStringAsFixed(1)}%');
           }
         }
-      }
 
-      // البحث بالأجزاء المنفصلة
-      for (int i = 0; i < nameParts.length && matches.length < 5; i++) {
-        if (nameParts[i].length >= 3) {
-          // تجاهل الأجزاء القصيرة
-          String query =
-              'SELECT A, B, C, D, E WHERE A LIKE "%${nameParts[i]}%" ';
-          if (selectedRegion != null) {
-            query += ' AND B = "$selectedRegion"';
-          }
-
-          List<Map<String, String>> results =
-              await _executeQueryAndReturnData(query);
-
-          // فلترة النتائج حسب نسبة التشابه 75% وما فوق
-          for (var user in results) {
-            String userName = user['name'] ?? '';
-            if (userName.isNotEmpty) {
-              double similarity =
-                  _calculateSimilarity(nameParts.join(' '), userName);
-              if (similarity >= 0.75) {
-                bool alreadyExists =
-                    matches.any((match) => match['name'] == userName);
-                if (!alreadyExists) {
-                  matches.add({
-                    'relation':
-                        'تطابق جزئي (${nameParts[i]}) - ${(similarity * 100).toStringAsFixed(1)}%',
-                    'name': userName,
-                    'region': user['region'] ?? '',
-                    'agent': user['agent'] ?? '',
-                    'dash': user['dash'] ?? '',
-                    'mother': user['mother'] ?? '',
-                  });
-                  debugPrint(
-                      '✅ تم إضافة: $userName - تطابق جزئي ${(similarity * 100).toStringAsFixed(1)}%');
-                }
-              }
-            }
-          }
-        }
+        if (matches.length >= 5) break;
       }
     } catch (e) {
       debugPrint('❌ خطأ في البحث الذكي: $e');
@@ -748,15 +572,24 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
     try {
       debugPrint('👨‍👩‍👧‍👦 البحث عن الأقارب في منطقة: $region');
 
-      // جلب جميع المستخدمين في المنطقة للمقارنة
-      String query = 'SELECT A, B, C, D, E WHERE B = "$region"';
-      List<Map<String, String>> regionUsers =
-          await _executeQueryAndReturnData(query);
+      // التأكد من تحميل بيانات المنطقة
+      if (users.isEmpty) {
+        final result = await _ispService.getByRegion(region);
+        for (var item in result) {
+          users.add({
+            'name': item['Name']?.toString() ?? '',
+            'region': item['Region']?.toString() ?? '',
+            'agent': item['Agent']?.toString() ?? '',
+            'dash': item['Dash']?.toString() ?? '',
+            'mother': item['MotherName']?.toString() ?? '',
+          });
+        }
+      }
 
-      debugPrint('📋 تم جلب ${regionUsers.length} مستخدم من المنطقة للمقارنة');
+      debugPrint('📋 فحص ${users.length} مستخدم في المنطقة');
 
       // فحص العلاقات مع كل مستخدم
-      for (var user in regionUsers) {
+      for (var user in users) {
         String userName = user['name'] ?? '';
         if (userName.isEmpty) continue;
 
@@ -767,7 +600,6 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
             _determineRelationships(myParts, otherParts);
 
         for (String relation in foundRelations) {
-          // تجنب إضافة نفس الشخص مرتين (فحص بالاسم فقط)
           bool alreadyExists =
               matches.any((match) => match['name'] == userName);
 
@@ -798,17 +630,15 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
     try {
       debugPrint('🌍 البحث عن الأقارب في جميع المناطق...');
 
-      // جلب عينة من البيانات للمقارنة (أول 1000 صف مثلاً)
-      String query = 'SELECT A, B, C, D, E LIMIT 1000';
-      List<Map<String, String>> allUsers =
-          await _executeQueryAndReturnData(query);
+      // جلب عينة من البيانات للمقارنة من VPS API
+      final result = await _ispService.getAll(pageSize: 1000);
+      final items = result['items'] as List? ?? [];
 
-      debugPrint(
-          '📋 تم جلب ${allUsers.length} مستخدم من جميع المناطق للمقارنة');
+      debugPrint('📋 تم جلب ${items.length} مستخدم من جميع المناطق للمقارنة');
 
       // فحص العلاقات مع كل مستخدم
-      for (var user in allUsers) {
-        String userName = user['name'] ?? '';
+      for (var item in items) {
+        String userName = item['Name']?.toString() ?? '';
         if (userName.isEmpty) continue;
 
         List<String> otherParts = userName.split(' ');
@@ -825,10 +655,10 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
             matches.add({
               'relation': relation,
               'name': userName,
-              'region': user['region'] ?? '',
-              'agent': user['agent'] ?? '',
-              'dash': user['dash'] ?? '',
-              'mother': user['mother'] ?? '',
+              'region': item['Region']?.toString() ?? '',
+              'agent': item['Agent']?.toString() ?? '',
+              'dash': item['Dash']?.toString() ?? '',
+              'mother': item['MotherName']?.toString() ?? '',
             });
             debugPrint('✅ تم العثور على: $userName - $relation');
           } else {
@@ -906,109 +736,6 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
     }
 
     return relations;
-  }
-
-  //============================================================================
-  // تنفيذ استعلام Google Sheets
-  //============================================================================
-  Future<void> _executeQuery(String query, String relationType) async {
-    try {
-      debugPrint('📊 تنفيذ الاستعلام: $query');
-
-      List<Map<String, String>> results =
-          await _executeQueryAndReturnData(query);
-
-      for (var user in results) {
-        String userName = user['name'] ?? '';
-        // تحقق من عدم وجود نفس الشخص مسبقاً
-        bool alreadyExists = matches.any((match) => match['name'] == userName);
-
-        if (!alreadyExists) {
-          matches.add({
-            'relation': relationType,
-            'name': userName,
-            'region': user['region'] ?? '',
-            'agent': user['agent'] ?? '',
-            'dash': user['dash'] ?? '',
-            'mother': user['mother'] ?? '',
-          });
-          debugPrint('✅ تم إضافة: $userName - $relationType');
-        } else {
-          debugPrint('⚠️ تم تجاهل: $userName - $relationType (موجود مسبقاً)');
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ خطأ في تنفيذ الاستعلام: $e');
-    }
-  }
-
-  //============================================================================
-  // تنفيذ استعلام وإرجاع البيانات
-  //============================================================================
-  Future<List<Map<String, String>>> _executeQueryAndReturnData(
-      String query) async {
-    List<Map<String, String>> results = [];
-
-    try {
-      final encodedQuery = Uri.encodeComponent(query);
-      final queryUrl =
-          'https://docs.google.com/spreadsheets/d/$spreadsheetId/gviz/tq?tqx=out:json&tq=$encodedQuery&sheet=users';
-
-      debugPrint('📡 Query URL: $queryUrl');
-
-      final response = await http.get(Uri.parse(queryUrl));
-
-      if (response.statusCode == 200) {
-        String responseBody = response.body;
-
-        // إزالة البادئة من الاستجابة
-        if (responseBody
-            .startsWith('/*O_o*/\ngoogle.visualization.Query.setResponse(')) {
-          responseBody = responseBody.substring(
-              '/*O_o*/\ngoogle.visualization.Query.setResponse('.length);
-          responseBody = responseBody.substring(0, responseBody.length - 2);
-        }
-
-        final data = json.decode(responseBody);
-
-        // التحقق من وجود أخطاء في الاستعلام
-        if (data['status'] == 'error') {
-          debugPrint('❌ خطأ في الاستعلام: ${data['errors']}');
-          return results;
-        }
-
-        final table = data['table'];
-        final rows = table['rows'] as List?;
-
-        debugPrint('📋 تم العثور على ${rows?.length ?? 0} نتيجة');
-
-        if (rows != null) {
-          for (var row in rows) {
-            final cells = row['c'] as List?;
-            if (cells != null && cells.isNotEmpty) {
-              results.add({
-                'name': cells[0]?['v']?.toString() ?? '',
-                'region':
-                    cells.length > 1 ? (cells[1]?['v']?.toString() ?? '') : '',
-                'agent':
-                    cells.length > 2 ? (cells[2]?['v']?.toString() ?? '') : '',
-                'dash':
-                    cells.length > 3 ? (cells[3]?['v']?.toString() ?? '') : '',
-                'mother':
-                    cells.length > 4 ? (cells[4]?['v']?.toString() ?? '') : '',
-              });
-            }
-          }
-        }
-      } else {
-        debugPrint('❌ فشل الاستعلام - Status: ${response.statusCode}');
-        debugPrint('❌ Response: ${response.body}');
-      }
-    } catch (e) {
-      debugPrint('❌ خطأ في تنفيذ الاستعلام: $e');
-    }
-
-    return results;
   }
 
   //============================================================================
@@ -1131,59 +858,38 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   }
 
   //============================================================================
-  // (4) اختبار الاتصال بـ Google Sheets
+  // (4) اختبار الاتصال بـ VPS API
   //============================================================================
-  Future<void> testGoogleSheetsConnection() async {
+  Future<void> testApiConnection() async {
     try {
-      debugPrint('🔍 Testing connection to Google Sheets...');
+      debugPrint('🔍 Testing connection to VPS API...');
 
-      // اختبار الاتصال الأساسي
-      final testUrl =
-          'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId?key=$apiKey';
+      final regions = await _ispService.getRegions();
 
-      final response = await http.get(Uri.parse(testUrl));
-
-      if (response.statusCode == 200) {
-        debugPrint('✅ Basic connection successful!');
-
-        // اختبار جلب المناطق
-        final regionsUrl =
-            'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/users!B2:B?key=$apiKey';
-
-        final regionsResponse = await http.get(Uri.parse(regionsUrl));
-        debugPrint('📊 Regions test - Status: ${regionsResponse.statusCode}');
-        debugPrint('📊 Regions test - Body: ${regionsResponse.body}');
-
-        // اختبار جلب المستخدمين
-        final usersUrl =
-            'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/users!A2:Z?key=$apiKey';
-
-        final usersResponse = await http.get(Uri.parse(usersUrl));
-        debugPrint('📊 Users test - Status: ${usersResponse.statusCode}');
-        debugPrint('📊 Users test - Body: ${usersResponse.body}');
+      if (regions.isNotEmpty) {
+        debugPrint('✅ Connection successful! Found ${regions.length} regions');
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'الاتصال ناجح! المناطق: ${regionsResponse.statusCode}, المستخدمين: ${usersResponse.statusCode}'),
+            content:
+                Text('الاتصال ناجح! تم العثور على ${regions.length} منطقة'),
             backgroundColor: Colors.green,
           ),
         );
       } else {
-        debugPrint('❌ Connection failed. Status code: ${response.statusCode}');
+        debugPrint('⚠️ Connected but no regions found');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'فشل الاتصال بـ Google Sheets. الكود: ${response.statusCode}'),
-            backgroundColor: Colors.red,
+          const SnackBar(
+            content: Text('تم الاتصال ولكن لا توجد مناطق'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
     } catch (e) {
-      debugPrint('❌ Error testing connection: $e');
+      debugPrint('❌ Connection test failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ أثناء اختبار الاتصال: $e'),
+          content: Text('فشل الاتصال: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -1310,7 +1016,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
       child: ElevatedButton.icon(
         onPressed: isLoading ? null : searchInSheetDirectly,
         icon: const Icon(Icons.search),
-        label: const Text('بحث مباشر في الشيت'),
+        label: const Text('بحث عن الأقارب'),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
@@ -1367,7 +1073,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'تم العثور على ${matches.length} نتيجة من البحث المباشر في الشيت',
+                        'تم العثور على ${matches.length} نتيجة',
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ),

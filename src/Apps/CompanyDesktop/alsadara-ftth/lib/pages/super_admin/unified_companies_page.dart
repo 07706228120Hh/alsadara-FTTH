@@ -17,9 +17,9 @@ import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
 import 'edit_company_page.dart';
 import 'company_details_page.dart';
-import 'admin_theme.dart';
-import 'premium_admin_theme.dart'; // 🎨 الثيم الفخم
+import '../../theme/energy_dashboard_theme.dart';
 import '../home_page.dart';
+import '../../services/permission_checker.dart';
 import '../../multi_tenant.dart';
 
 /// حالة الاشتراك
@@ -234,7 +234,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: PremiumAdminTheme.bgLight,
+      backgroundColor: EnergyDashboardTheme.bgLight,
       body: Column(
         children: [
           // شريط الأدوات العلوي الفخم
@@ -243,10 +243,10 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           // المحتوى
           Expanded(
             child: _isLoading
-                ? PremiumAdminTheme.loadingIndicator(
+                ? EnergyDashboardTheme.loadingIndicator(
                     message: 'جاري تحميل الشركات...')
                 : _errorMessage != null
-                    ? PremiumAdminTheme.errorWidget(
+                    ? EnergyDashboardTheme.errorWidget(
                         message: 'حدث خطأ',
                         details: _errorMessage,
                         onRetry: _loadCompanies,
@@ -263,10 +263,16 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     final stats = _statistics;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
       decoration: BoxDecoration(
-        color: PremiumAdminTheme.bgLightCard,
-        boxShadow: PremiumAdminTheme.softShadow,
+        color: EnergyDashboardTheme.bgLightCard,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,17 +282,17 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             children: [
               // أيقونة العنوان
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  gradient: PremiumAdminTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: PremiumAdminTheme.glowShadow(
-                      PremiumAdminTheme.primary.withOpacity(0.3)),
+                  gradient: EnergyDashboardTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: EnergyDashboardTheme.glowShadow(
+                      EnergyDashboardTheme.primary.withOpacity(0.2)),
                 ),
                 child: const Icon(Icons.business_rounded,
-                    color: Colors.white, size: 26),
+                    color: Colors.white, size: 22),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
 
               // العنوان
               Column(
@@ -295,17 +301,16 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   Text(
                     'إدارة الشركات',
                     style: TextStyle(
-                      color: PremiumAdminTheme.textDark,
-                      fontSize: 24,
+                      color: EnergyDashboardTheme.textDark,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
                   Text(
-                    'عرض وإدارة ${_companies.length} شركة مسجلة',
+                    '${_companies.length} شركة مسجلة',
                     style: TextStyle(
-                      color: PremiumAdminTheme.textMedium,
-                      fontSize: 14,
+                      color: EnergyDashboardTheme.textMedium,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -314,21 +319,66 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               const Spacer(),
 
               // شارة الاتصال
-              PremiumAdminTheme.statusBadge(
-                text: 'VPS متصل',
-                color: PremiumAdminTheme.success,
-                icon: Icons.cloud_done_rounded,
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: EnergyDashboardTheme.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: EnergyDashboardTheme.success.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: EnergyDashboardTheme.success,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                EnergyDashboardTheme.success.withOpacity(0.5),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'VPS متصل',
+                      style: TextStyle(
+                        color: EnergyDashboardTheme.success,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
 
               // زر التحديث
-              IconButton(
-                onPressed: _loadCompanies,
-                icon: const Icon(Icons.refresh_rounded),
-                style: PremiumAdminTheme.iconButtonStyle(
-                    PremiumAdminTheme.textMedium),
-                tooltip: 'تحديث',
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _loadCompanies,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: EnergyDashboardTheme.bgSecondary,
+                      borderRadius: BorderRadius.circular(10),
+                      border:
+                          Border.all(color: EnergyDashboardTheme.borderColor),
+                    ),
+                    child: Icon(Icons.refresh_rounded,
+                        size: 20, color: EnergyDashboardTheme.textMuted),
+                  ),
+                ),
               ),
 
               const SizedBox(width: 8),
@@ -336,54 +386,63 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               // زر إضافة شركة
               ElevatedButton.icon(
                 onPressed: () => _navigateToAddCompany(),
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text('إضافة شركة'),
-                style: PremiumAdminTheme.primaryButton,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('إضافة شركة', style: TextStyle(fontSize: 13)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EnergyDashboardTheme.primary,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
-          // الصف الثاني: بطاقات الإحصائيات الفخمة
+          // الصف الثاني: بطاقات الإحصائيات المدمجة
           Row(
             children: [
               _buildPremiumStatChip('الكل', stats['total']!, Icons.apps_rounded,
-                  PremiumAdminTheme.primary, null),
-              const SizedBox(width: 10),
+                  EnergyDashboardTheme.primary, null),
+              const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'نشطة',
                   stats['active']!,
                   Icons.check_circle_rounded,
-                  PremiumAdminTheme.success,
+                  EnergyDashboardTheme.success,
                   CompanyStatus.active),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'تحذير',
                   stats['warning']!,
                   Icons.schedule_rounded,
-                  PremiumAdminTheme.warning,
+                  EnergyDashboardTheme.warning,
                   CompanyStatus.warning),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'حرج',
                   stats['critical']!,
                   Icons.warning_rounded,
-                  PremiumAdminTheme.danger,
+                  EnergyDashboardTheme.danger,
                   CompanyStatus.critical),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'منتهية',
                   stats['expired']!,
                   Icons.cancel_rounded,
                   const Color(0xFFdc2626),
                   CompanyStatus.expired),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'معلقة',
                   stats['suspended']!,
                   Icons.pause_circle_rounded,
-                  PremiumAdminTheme.textLight,
+                  EnergyDashboardTheme.textLight,
                   CompanyStatus.suspended),
             ],
           ),
@@ -402,54 +461,52 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => setState(() => _statusFilter = filterStatus),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
                   ? color.withOpacity(0.12)
-                  : PremiumAdminTheme.bgLightSurface,
-              borderRadius: BorderRadius.circular(14),
+                  : EnergyDashboardTheme.bgLightCard,
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isSelected ? color : PremiumAdminTheme.border,
+                color: isSelected ? color : color.withOpacity(0.2),
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: isSelected
-                  ? PremiumAdminTheme.glowShadow(color.withOpacity(0.2))
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
                   : null,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  '$value',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? color : EnergyDashboardTheme.textDark,
                   ),
-                  child: Icon(icon, size: 18, color: color),
                 ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$value',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? color : PremiumAdminTheme.textDark,
-                      ),
-                    ),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: PremiumAdminTheme.textMedium,
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected
+                        ? color.withOpacity(0.8)
+                        : EnergyDashboardTheme.textMedium,
+                  ),
                 ),
               ],
             ),
@@ -466,9 +523,9 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.surfaceColor,
         border: Border(
-          bottom: BorderSide(color: AdminTheme.borderColor),
+          bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
         ),
       ),
       child: Column(
@@ -483,7 +540,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AdminTheme.primaryColor.withOpacity(0.1),
+                      color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                           color: Colors.black.withOpacity(0.3), width: 1.5),
@@ -496,7 +553,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       ],
                     ),
                     child: const Icon(Icons.business_rounded,
-                        color: AdminTheme.primaryColor, size: 22),
+                        color: EnergyDashboardTheme.primaryColor, size: 22),
                   ),
                   const SizedBox(width: 12),
                   const Column(
@@ -505,7 +562,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       Text(
                         'إدارة الشركات',
                         style: TextStyle(
-                          color: AdminTheme.textPrimary,
+                          color: EnergyDashboardTheme.textPrimary,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -513,7 +570,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       Text(
                         'عرض وإدارة جميع الشركات المسجلة',
                         style: TextStyle(
-                          color: AdminTheme.textMuted,
+                          color: EnergyDashboardTheme.textMuted,
                           fontSize: 12,
                         ),
                       ),
@@ -572,7 +629,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AdminTheme.backgroundColor,
+                      color: EnergyDashboardTheme.backgroundColor,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                           color: Colors.black.withOpacity(0.3), width: 1.5),
@@ -585,7 +642,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       ],
                     ),
                     child: const Icon(Icons.refresh_rounded,
-                        size: 20, color: AdminTheme.textSecondary),
+                        size: 20, color: EnergyDashboardTheme.textSecondary),
                   ),
                 ),
               ),
@@ -600,7 +657,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       color: Colors.black.withOpacity(0.3), width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: AdminTheme.primaryColor.withOpacity(0.3),
+                      color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -611,7 +668,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   icon: const Icon(Icons.add_rounded, size: 20),
                   label: const Text('إضافة شركة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.primaryColor,
+                    backgroundColor: EnergyDashboardTheme.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 14),
@@ -679,7 +736,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             decoration: BoxDecoration(
               color: isSelected
                   ? color.withOpacity(0.15)
-                  : AdminTheme.backgroundColor,
+                  : EnergyDashboardTheme.backgroundColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected ? color : Colors.black.withOpacity(0.3),
@@ -721,7 +778,9 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                     Text(
                       label,
                       style: TextStyle(
-                        color: isSelected ? color : AdminTheme.textSecondary,
+                        color: isSelected
+                            ? color
+                            : EnergyDashboardTheme.textSecondary,
                         fontSize: 11,
                       ),
                     ),
@@ -741,14 +800,14 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       onRefresh: _loadCompanies,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // البحث والفلترة
             _buildSearchAndFilter(),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // قائمة الشركات
             _buildCompaniesGrid(),
@@ -768,12 +827,12 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
         Row(
           children: [
             Icon(Icons.analytics_outlined,
-                color: AdminTheme.primaryColor, size: 20),
+                color: EnergyDashboardTheme.primaryColor, size: 20),
             const SizedBox(width: 8),
             const Text(
               'الإحصائيات',
               style: TextStyle(
-                color: AdminTheme.textPrimary,
+                color: EnergyDashboardTheme.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -865,10 +924,11 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           decoration: BoxDecoration(
             color: isSelected
                 ? gradient[0].withOpacity(0.1)
-                : AdminTheme.surfaceColor,
+                : EnergyDashboardTheme.surfaceColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? gradient[0] : AdminTheme.borderColor,
+              color:
+                  isSelected ? gradient[0] : EnergyDashboardTheme.borderColor,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -900,7 +960,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               Text(
                 title,
                 style: TextStyle(
-                  color: AdminTheme.textSecondary,
+                  color: EnergyDashboardTheme.textSecondary,
                   fontSize: 11,
                 ),
               ),
@@ -913,66 +973,131 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
 
   /// البحث والفلترة
   Widget _buildSearchAndFilter() {
-    return Row(
-      children: [
-        // حقل البحث
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'البحث بالاسم أو الكود...',
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: AdminTheme.surfaceColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AdminTheme.borderColor),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: EnergyDashboardTheme.bgLightCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: EnergyDashboardTheme.borderColor.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          // حقل البحث
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'البحث بالاسم أو الكود...',
+                hintStyle: TextStyle(
+                  color: EnergyDashboardTheme.textMuted,
+                  fontSize: 13,
+                ),
+                prefixIcon: Icon(Icons.search_rounded,
+                    color: EnergyDashboardTheme.primary, size: 20),
+                filled: true,
+                fillColor: EnergyDashboardTheme.bgSecondary.withOpacity(0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: EnergyDashboardTheme.primary.withOpacity(0.5),
+                    width: 1.5,
+                  ),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                isDense: true,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AdminTheme.borderColor),
+              style: const TextStyle(fontSize: 13),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          // زر مسح الفلتر
+          if (_statusFilter != null)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => _statusFilter = null),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: EnergyDashboardTheme.danger.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: EnergyDashboardTheme.danger.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.clear_rounded,
+                          size: 14, color: EnergyDashboardTheme.danger),
+                      const SizedBox(width: 4),
+                      Text(
+                        'مسح',
+                        style: TextStyle(
+                          color: EnergyDashboardTheme.danger,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value.toLowerCase();
-              });
-            },
-          ),
-        ),
 
-        const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
-        // زر مسح الفلتر
-        if (_statusFilter != null)
-          TextButton.icon(
-            onPressed: () => setState(() => _statusFilter = null),
-            icon: const Icon(Icons.clear, size: 18),
-            label: const Text('مسح الفلتر'),
-            style: TextButton.styleFrom(
-              foregroundColor: AdminTheme.textSecondary,
+          // عدد النتائج
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  EnergyDashboardTheme.primary.withOpacity(0.08),
+                  EnergyDashboardTheme.neonPurple.withOpacity(0.15),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: EnergyDashboardTheme.primary.withOpacity(0.15)),
             ),
-          ),
-
-        // عدد النتائج
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AdminTheme.borderColor),
-          ),
-          child: Text(
-            '${_filteredCompanies.length} شركة',
-            style: TextStyle(
-              color: AdminTheme.textSecondary,
-              fontSize: 13,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.business_rounded,
+                    size: 14, color: EnergyDashboardTheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  '${_filteredCompanies.length} شركة',
+                  style: TextStyle(
+                    color: EnergyDashboardTheme.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1009,7 +1134,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   icon: const Icon(Icons.add),
                   label: const Text('إضافة شركة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.primaryColor,
+                    backgroundColor: EnergyDashboardTheme.primaryColor,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -1301,7 +1426,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     return ElevatedButton(
       onPressed: () => Navigator.pop(context, days),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AdminTheme.primaryColor,
+        backgroundColor: EnergyDashboardTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       child: Text(label),
@@ -1500,20 +1625,33 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     );
 
     if (confirm == true && context.mounted) {
-      final Map<String, bool> fullPermissions = {
-        'attendance': true,
-        'agent': true,
-        'tasks': true,
-        'zones': true,
-        'ai_search': true,
-        'users_management': true,
-        'reports': true,
-        'settings': true,
-        'dashboard': true,
-        'tickets': true,
-        'notifications': true,
-        'maintenance': true,
-      };
+      // V2: منح جميع الصلاحيات للسوبر أدمن
+      PermissionManager.instance.grantAll([
+        'attendance',
+        'agent',
+        'tasks',
+        'zones',
+        'ai_search',
+        'users_management',
+        'reports',
+        'settings',
+        'dashboard',
+        'tickets',
+        'notifications',
+        'maintenance',
+        'users',
+        'subscriptions',
+        'accounts',
+        'account_records',
+        'export',
+        'technicians',
+        'transactions',
+        'local_storage',
+        'sadara_portal',
+        'accounting',
+        'diagnostics',
+      ]);
+      final fullPermissions = PermissionManager.instance.buildPageAccess();
 
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -1567,19 +1705,19 @@ class _UnifiedCompanyCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
+            color: EnergyDashboardTheme.bgLightCard,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isLinkedToCitizen
-                  ? Colors.teal
-                  : Colors.black.withOpacity(0.4),
-              width: isLinkedToCitizen ? 2 : 1.5,
+                  ? const Color(0xFF0D9488)
+                  : statusColor.withOpacity(0.25),
+              width: isLinkedToCitizen ? 2 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -1587,9 +1725,11 @@ class _UnifiedCompanyCard extends StatelessWidget {
             children: [
               // شريط الحالة الملون في الأعلى
               Container(
-                height: 4,
+                height: 3,
                 decoration: BoxDecoration(
-                  color: statusColor,
+                  gradient: LinearGradient(
+                    colors: [statusColor, statusColor.withOpacity(0.5)],
+                  ),
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(11)),
                 ),
@@ -1597,47 +1737,49 @@ class _UnifiedCompanyCard extends StatelessWidget {
 
               // المحتوى الرئيسي - صف أفقي
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // 1️⃣ أيقونة الشركة
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AdminTheme.primaryColor.withOpacity(0.15),
-                            AdminTheme.primaryColor.withOpacity(0.05),
+                            statusColor.withOpacity(0.15),
+                            statusColor.withOpacity(0.15),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: AdminTheme.primaryColor.withOpacity(0.2),
+                          color: statusColor.withOpacity(0.2),
+                          width: 1,
                         ),
                       ),
                       child: company.logoUrl != null
                           ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(9),
                               child: Image.network(
                                 company.logoUrl!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, __, ___) => Icon(
                                   Icons.business_rounded,
-                                  color: AdminTheme.primaryColor,
-                                  size: 24,
+                                  color: statusColor,
+                                  size: 22,
                                 ),
                               ),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.business_rounded,
-                              color: AdminTheme.primaryColor,
-                              size: 24,
+                              color: statusColor,
+                              size: 22,
                             ),
                     ),
 
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
 
                     // 2️⃣ معلومات الشركة
                     Expanded(
@@ -1652,8 +1794,8 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                   company.name,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: AdminTheme.textPrimary,
+                                    fontSize: 14,
+                                    color: EnergyDashboardTheme.textPrimary,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1700,14 +1842,14 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color:
-                                      AdminTheme.primaryColor.withOpacity(0.1),
+                                  color: EnergyDashboardTheme.primaryColor
+                                      .withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   company.code,
                                   style: const TextStyle(
-                                    color: AdminTheme.primaryColor,
+                                    color: EnergyDashboardTheme.primaryColor,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -1716,13 +1858,14 @@ class _UnifiedCompanyCard extends StatelessWidget {
                               if (company.email != null) ...[
                                 const SizedBox(width: 12),
                                 Icon(Icons.email_outlined,
-                                    size: 14, color: AdminTheme.textMuted),
+                                    size: 14,
+                                    color: EnergyDashboardTheme.textMuted),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     company.email!,
                                     style: TextStyle(
-                                      color: AdminTheme.textSecondary,
+                                      color: EnergyDashboardTheme.textSecondary,
                                       fontSize: 12,
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -1764,16 +1907,19 @@ class _UnifiedCompanyCard extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 14),
 
                     // 3️⃣ معلومات الاشتراك
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AdminTheme.backgroundColor,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AdminTheme.borderColor),
+                        color:
+                            EnergyDashboardTheme.bgSecondary.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: EnergyDashboardTheme.borderColor
+                                .withOpacity(0.5)),
                       ),
                       child: Row(
                         children: [
@@ -1788,7 +1934,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
                             height: 30,
                             width: 1,
                             margin: const EdgeInsets.symmetric(horizontal: 12),
-                            color: AdminTheme.borderColor,
+                            color: EnergyDashboardTheme.borderColor,
                           ),
                           _buildCompactInfo(
                             Icons.hourglass_bottom_rounded,
@@ -1803,7 +1949,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
                             height: 30,
                             width: 1,
                             margin: const EdgeInsets.symmetric(horizontal: 12),
-                            color: AdminTheme.borderColor,
+                            color: EnergyDashboardTheme.borderColor,
                           ),
                           _buildCompactInfo(
                             Icons.groups_rounded,
@@ -1816,19 +1962,19 @@ class _UnifiedCompanyCard extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
 
                     // أيقونة السهم للدخول
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AdminTheme.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        color: EnergyDashboardTheme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
                         Icons.arrow_forward_ios_rounded,
-                        color: AdminTheme.primaryColor,
-                        size: 18,
+                        color: EnergyDashboardTheme.primaryColor,
+                        size: 14,
                       ),
                     ),
                   ],
@@ -1845,14 +1991,15 @@ class _UnifiedCompanyCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: color ?? AdminTheme.textSecondary),
+        Icon(icon,
+            size: 16, color: color ?? EnergyDashboardTheme.textSecondary),
         const SizedBox(width: 6),
         Text(
           value,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: color ?? AdminTheme.textPrimary,
+            color: color ?? EnergyDashboardTheme.textPrimary,
           ),
         ),
       ],
@@ -2230,7 +2377,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
       ),
       child: TabBar(
@@ -2371,7 +2518,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
         gradient: LinearGradient(
           colors: [
             accentColor.withOpacity(0.1),
-            accentColor.withOpacity(0.05),
+            accentColor.withOpacity(0.15),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
@@ -2474,7 +2621,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                     ],
                   )
                 : null,
-            color: isEnabled ? null : Colors.white.withOpacity(0.03),
+            color: isEnabled ? null : Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isEnabled
@@ -2504,7 +2651,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                     decoration: BoxDecoration(
                       color: isEnabled
                           ? accentColor.withOpacity(0.2)
-                          : Colors.white.withOpacity(0.05),
+                          : Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -2578,7 +2725,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(

@@ -10,6 +10,7 @@ import 'api/api_response.dart';
 import 'api/auth/auth_models.dart';
 import 'api/auth/super_admin_api.dart';
 import 'api/auth/company_auth_api.dart';
+import 'permission_checker.dart';
 
 /// نوع المستخدم المسجل
 enum VpsAuthUserType {
@@ -249,7 +250,19 @@ class VpsAuthService {
             permissions: finalPermissions,
             firstSystemPermissions: finalFirstPerms,
             secondSystemPermissions: finalSecondPerms,
+            rawFirstSystemV1: data.user.rawFirstSystemV1,
+            rawFirstSystemV2: data.user.rawFirstSystemV2,
+            rawSecondSystemV1: data.user.rawSecondSystemV1,
+            rawSecondSystemV2: data.user.rawSecondSystemV2,
             isActive: data.user.isActive,
+          );
+
+          // 🔐 حفظ صلاحيات V2 في PermissionManager
+          await PermissionManager.instance.updateFromRawJson(
+            firstSystemV1Json: data.user.rawFirstSystemV1,
+            firstSystemV2Json: data.user.rawFirstSystemV2,
+            secondSystemV1Json: data.user.rawSecondSystemV1,
+            secondSystemV2Json: data.user.rawSecondSystemV2,
           );
 
           // حفظ البيانات
@@ -309,6 +322,9 @@ class VpsAuthService {
 
     // مسح البيانات المحلية
     await _clearAllData();
+
+    // مسح صلاحيات V2
+    PermissionManager.instance.clear();
 
     currentSuperAdmin = null;
     currentUser = null;
@@ -667,6 +683,12 @@ class VpsCompanyUser {
   final List<String> permissions;
   final Map<String, bool> firstSystemPermissions;
   final Map<String, bool> secondSystemPermissions;
+
+  /// صلاحيات V2 الخام — لحفظها في PermissionManager
+  final String? rawFirstSystemV1;
+  final String? rawFirstSystemV2;
+  final String? rawSecondSystemV1;
+  final String? rawSecondSystemV2;
   final bool isActive;
 
   VpsCompanyUser({
@@ -679,6 +701,10 @@ class VpsCompanyUser {
     required this.permissions,
     this.firstSystemPermissions = const {},
     this.secondSystemPermissions = const {},
+    this.rawFirstSystemV1,
+    this.rawFirstSystemV2,
+    this.rawSecondSystemV1,
+    this.rawSecondSystemV2,
     required this.isActive,
   });
 
@@ -819,6 +845,10 @@ class VpsCompanyUser {
       permissions: permissionsList,
       firstSystemPermissions: firstPerms,
       secondSystemPermissions: secondPerms,
+      rawFirstSystemV1: firstSystemStr?.toString(),
+      rawFirstSystemV2: firstSystemV2Str?.toString(),
+      rawSecondSystemV1: secondSystemStr?.toString(),
+      rawSecondSystemV2: secondSystemV2Str?.toString(),
       isActive: isActive,
     );
   }
@@ -833,6 +863,8 @@ class VpsCompanyUser {
         'permissions': permissions,
         'firstSystemPermissions': firstSystemPermissions,
         'secondSystemPermissions': secondSystemPermissions,
+        'rawFirstSystemV2': rawFirstSystemV2,
+        'rawSecondSystemV2': rawSecondSystemV2,
         'isActive': isActive,
       };
 

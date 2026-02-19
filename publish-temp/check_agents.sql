@@ -1,0 +1,1 @@
+﻿SELECT "Id", "AgentCode", "Name", "PhoneNumber", "Status" FROM "Agents" WHERE "IsDeleted" = false LIMIT 5;

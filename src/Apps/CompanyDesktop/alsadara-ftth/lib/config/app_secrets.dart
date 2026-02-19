@@ -31,8 +31,6 @@ class AppSecrets {
     // محاولة تحميل من Environment Variables أولاً
     _internalApiKey = Platform.environment['SADARA_INTERNAL_API_KEY'] ??
         _defaultInternalApiKey;
-    _googleSheetsApiKey = Platform.environment['GOOGLE_SHEETS_API_KEY'] ??
-        _defaultGoogleSheetsApiKey;
     _googleDriveApiKey = Platform.environment['GOOGLE_DRIVE_API_KEY'] ??
         _defaultGoogleDriveApiKey;
 
@@ -46,7 +44,6 @@ class AppSecrets {
 
   static const String _defaultInternalApiKey =
       'sadara-internal-2024-secure-key';
-  static const String _defaultGoogleSheetsApiKey = ''; // فارغ - يجب تعيينه
   static const String _defaultGoogleDriveApiKey = ''; // فارغ - يجب تعيينه
 
   // ============================================
@@ -54,7 +51,6 @@ class AppSecrets {
   // ============================================
 
   String _internalApiKey = _defaultInternalApiKey;
-  String _googleSheetsApiKey = _defaultGoogleSheetsApiKey;
   String _googleDriveApiKey = _defaultGoogleDriveApiKey;
 
   // ============================================
@@ -63,9 +59,6 @@ class AppSecrets {
 
   /// مفتاح API الداخلي للاتصال بـ Sadara Backend
   String get internalApiKey => _internalApiKey;
-
-  /// مفتاح Google Sheets API
-  String get googleSheetsApiKey => _googleSheetsApiKey;
 
   /// مفتاح Google Drive API
   String get googleDriveApiKey => _googleDriveApiKey;

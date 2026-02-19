@@ -628,7 +628,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'صلاحيات النظام الأول (Google Sheets)',
+          'صلاحيات النظام الأول',
           style: GoogleFonts.cairo(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -754,7 +754,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
       'account_records': 'سجلات الحسابات',
       'export': 'تصدير البيانات',
       'agents': 'الوكلاء',
-      'google_sheets': 'Google Sheets',
+      'google_sheets': 'حفظ في الخادم',
       'whatsapp': 'واتساب',
       'wallet_balance': 'رصيد المحفظة',
       'expiring_soon': 'الاشتراكات المنتهية قريباً',

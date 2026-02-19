@@ -111,6 +111,14 @@ public class DatabaseAdminController : ControllerBase
                 new { name = "InternetPlans", displayName = "باقات الإنترنت", icon = "wifi", category = "CitizenPortal" },
                 new { name = "CitizenSubscriptions", displayName = "اشتراكات المواطنين", icon = "subscriptions", category = "CitizenPortal" },
                 new { name = "SupportTickets", displayName = "تذاكر الدعم", icon = "support_agent", category = "CitizenPortal" },
+                new { name = "TicketMessages", displayName = "رسائل التذاكر", icon = "message", category = "CitizenPortal" },
+                new { name = "CitizenPayments", displayName = "مدفوعات المواطنين", icon = "account_balance_wallet", category = "CitizenPortal" },
+                
+                // Store entities (متجر المواطن)
+                new { name = "ProductCategories", displayName = "تصنيفات المنتجات", icon = "folder", category = "Store" },
+                new { name = "StoreProducts", displayName = "منتجات المتجر", icon = "shopping_bag", category = "Store" },
+                new { name = "StoreOrders", displayName = "طلبات المتجر", icon = "receipt_long", category = "Store" },
+                new { name = "StoreOrderItems", displayName = "عناصر الطلبات", icon = "list_alt", category = "Store" },
             };
 
             return Ok(new { success = true, data = tables });
@@ -316,6 +324,52 @@ public class DatabaseAdminController : ControllerBase
                     totalCount = await ticketsQuery.CountAsync();
                     data = await ticketsQuery.OrderByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize)
                         .Select(x => new { x.Id, x.TicketNumber, x.Subject, x.Status, x.Priority, x.CitizenId, x.CreatedAt }).ToListAsync();
+                    break;
+
+                case "ticketmessages":
+                    var messagesQuery = _context.TicketMessages.AsQueryable();
+                    totalCount = await messagesQuery.CountAsync();
+                    data = await messagesQuery.OrderByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize)
+                        .Select(x => new { x.Id, x.TicketId, x.Content, x.UserId, x.CitizenId, x.IsRead, x.CreatedAt }).ToListAsync();
+                    break;
+
+                case "citizenpayments":
+                    var citizenPaymentsQuery = _context.CitizenPayments.AsQueryable();
+                    totalCount = await citizenPaymentsQuery.CountAsync();
+                    data = await citizenPaymentsQuery.OrderByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize)
+                        .Select(x => new { x.Id, x.CitizenId, x.Amount, x.Method, x.Status, x.ExternalTransactionId, x.TransactionNumber, x.CreatedAt }).ToListAsync();
+                    break;
+
+                case "productcategories":
+                    var prodCatsQuery = _context.ProductCategories.AsQueryable();
+                    if (!string.IsNullOrEmpty(search))
+                        prodCatsQuery = prodCatsQuery.Where(x => x.Name.Contains(search) || x.NameAr.Contains(search));
+                    totalCount = await prodCatsQuery.CountAsync();
+                    data = await prodCatsQuery.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize)
+                        .Select(x => new { x.Id, x.Name, x.NameAr, x.IsActive, x.CreatedAt }).ToListAsync();
+                    break;
+
+                case "storeproducts":
+                    var storeProductsQuery = _context.StoreProducts.AsQueryable();
+                    if (!string.IsNullOrEmpty(search))
+                        storeProductsQuery = storeProductsQuery.Where(x => x.Name.Contains(search) || x.NameAr.Contains(search));
+                    totalCount = await storeProductsQuery.CountAsync();
+                    data = await storeProductsQuery.OrderByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize)
+                        .Select(x => new { x.Id, x.Name, x.NameAr, x.Price, x.StockQuantity, x.IsActive, x.CreatedAt }).ToListAsync();
+                    break;
+
+                case "storeorders":
+                    var storeOrdersQuery = _context.StoreOrders.AsQueryable();
+                    totalCount = await storeOrdersQuery.CountAsync();
+                    data = await storeOrdersQuery.OrderByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize)
+                        .Select(x => new { x.Id, x.OrderNumber, x.CitizenId, x.TotalAmount, x.Status, x.PaymentStatus, x.CreatedAt }).ToListAsync();
+                    break;
+
+                case "storeorderitems":
+                    var storeItemsQuery = _context.StoreOrderItems.AsQueryable();
+                    totalCount = await storeItemsQuery.CountAsync();
+                    data = await storeItemsQuery.OrderByDescending(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize)
+                        .Select(x => new { x.Id, x.StoreOrderId, x.ProductId, x.Quantity, x.UnitPrice, x.TotalPrice }).ToListAsync();
                     break;
 
                 case "coupons":

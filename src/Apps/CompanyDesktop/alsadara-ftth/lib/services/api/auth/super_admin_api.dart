@@ -66,6 +66,7 @@ class SuperAdminApi {
     return _client.get(
       ApiConfig.superAdminDashboard,
       (json) => DashboardStats.fromJson(json),
+      useInternalKey: true,
     );
   }
 
@@ -74,6 +75,7 @@ class SuperAdminApi {
     return _client.get(
       ApiConfig.superAdminStatistics,
       (json) => SystemStatistics.fromJson(json),
+      useInternalKey: true,
     );
   }
 
@@ -89,6 +91,7 @@ class SuperAdminApi {
     return _client.get(
       '${ApiConfig.companies}?page=$page&pageSize=$pageSize',
       (json) => CompaniesListResponse.fromJson(json),
+      useInternalKey: true,
     );
   }
 
@@ -97,6 +100,7 @@ class SuperAdminApi {
     return _client.get(
       ApiConfig.companyById(id),
       (json) => Company.fromJson(json),
+      useInternalKey: true,
     );
   }
 
@@ -382,15 +386,19 @@ class SystemStatistics {
   });
 
   factory SystemStatistics.fromJson(Map<String, dynamic> json) {
+    // التعامل مع البيانات المغلفة في 'data' أو مباشرة
+    final data = json['data'] ?? json;
     return SystemStatistics(
-      totalUsers: json['totalUsers'] ?? 0,
-      activeUsersToday: json['activeUsersToday'] ?? 0,
-      totalCompanies: json['totalCompanies'] ?? 0,
-      activeCompanies: json['activeCompanies'] ?? 0,
-      totalProducts: json['totalProducts'] ?? 0,
-      totalMerchants: json['totalMerchants'] ?? 0,
-      ordersToday: json['ordersToday'] ?? 0,
-      revenueToday: (json['revenueToday'] ?? 0).toDouble(),
+      totalUsers: data['TotalUsers'] ?? data['totalUsers'] ?? 0,
+      activeUsersToday:
+          data['ActiveUsersToday'] ?? data['activeUsersToday'] ?? 0,
+      totalCompanies: data['TotalCompanies'] ?? data['totalCompanies'] ?? 0,
+      activeCompanies: data['ActiveCompanies'] ?? data['activeCompanies'] ?? 0,
+      totalProducts: data['TotalProducts'] ?? data['totalProducts'] ?? 0,
+      totalMerchants: data['TotalMerchants'] ?? data['totalMerchants'] ?? 0,
+      ordersToday: data['OrdersToday'] ?? data['ordersToday'] ?? 0,
+      revenueToday:
+          (data['RevenueToday'] ?? data['revenueToday'] ?? 0).toDouble(),
     );
   }
 }

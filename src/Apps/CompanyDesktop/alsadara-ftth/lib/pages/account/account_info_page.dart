@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/custom_auth_service.dart';
 import '../../config/data_source_config.dart';
-import '../super_admin/admin_theme.dart';
+import '../../theme/energy_dashboard_theme.dart';
 
 class AccountInfoPage extends StatefulWidget {
   const AccountInfoPage({super.key});
@@ -185,11 +185,11 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   Widget build(BuildContext context) {
     if (!_isLoggedIn) {
       return Scaffold(
-        backgroundColor: AdminTheme.backgroundColor,
+        backgroundColor: EnergyDashboardTheme.backgroundColor,
         appBar: AppBar(
           title: const Text('حسابي'),
-          backgroundColor: AdminTheme.surfaceColor,
-          foregroundColor: AdminTheme.textPrimary,
+          backgroundColor: EnergyDashboardTheme.surfaceColor,
+          foregroundColor: EnergyDashboardTheme.textPrimary,
           elevation: 0,
         ),
         body: Center(
@@ -199,12 +199,13 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               Icon(
                 Icons.account_circle_outlined,
                 size: 80,
-                color: AdminTheme.textMuted.withOpacity(0.5),
+                color: EnergyDashboardTheme.textMuted.withOpacity(0.5),
               ),
               const SizedBox(height: 16),
               const Text(
                 'لم يتم تسجيل الدخول بعد',
-                style: TextStyle(color: AdminTheme.textMuted, fontSize: 18),
+                style: TextStyle(
+                    color: EnergyDashboardTheme.textMuted, fontSize: 18),
               ),
             ],
           ),
@@ -213,11 +214,11 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     }
 
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
+      backgroundColor: EnergyDashboardTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('معلومات الحساب'),
-        backgroundColor: AdminTheme.surfaceColor,
-        foregroundColor: AdminTheme.textPrimary,
+        backgroundColor: EnergyDashboardTheme.surfaceColor,
+        foregroundColor: EnergyDashboardTheme.textPrimary,
         elevation: 0,
         actions: [
           IconButton(
@@ -354,14 +355,19 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
         gradient: LinearGradient(
           colors: _isSuperAdmin
               ? [Colors.purple.shade700, Colors.deepPurple.shade900]
-              : [AdminTheme.primaryColor, AdminTheme.accentColor],
+              : [
+                  EnergyDashboardTheme.primaryColor,
+                  EnergyDashboardTheme.accentColor
+                ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (_isSuperAdmin ? Colors.purple : AdminTheme.primaryColor)
+            color: (_isSuperAdmin
+                    ? Colors.purple
+                    : EnergyDashboardTheme.primaryColor)
                 .withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
@@ -458,9 +464,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,7 +483,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(width: 10),
               Text(title,
                   style: const TextStyle(
-                      color: AdminTheme.textPrimary,
+                      color: EnergyDashboardTheme.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.bold)),
             ],
@@ -494,19 +500,19 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(item.icon, color: AdminTheme.textMuted, size: 16),
+          Icon(item.icon, color: EnergyDashboardTheme.textMuted, size: 16),
           const SizedBox(width: 10),
           Text('${item.label}:',
-              style:
-                  const TextStyle(color: AdminTheme.textMuted, fontSize: 12)),
+              style: const TextStyle(
+                  color: EnergyDashboardTheme.textMuted, fontSize: 12)),
           const SizedBox(width: 8),
           Expanded(
             child: SelectableText(
               item.value.isNotEmpty ? item.value : 'غير محدد',
               style: TextStyle(
                 color: item.value.isNotEmpty
-                    ? AdminTheme.textPrimary
-                    : AdminTheme.textMuted,
+                    ? EnergyDashboardTheme.textPrimary
+                    : EnergyDashboardTheme.textMuted,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -514,7 +520,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
           ),
           IconButton(
             icon: const Icon(Icons.copy, size: 14),
-            color: AdminTheme.textMuted,
+            color: EnergyDashboardTheme.textMuted,
             onPressed: () {
               Clipboard.setData(ClipboardData(text: item.value));
               ScaffoldMessenger.of(context).showSnackBar(
@@ -538,9 +544,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,13 +563,13 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(width: 10),
               const Text('رمز الجلسة (Token)',
                   style: TextStyle(
-                      color: AdminTheme.textPrimary,
+                      color: EnergyDashboardTheme.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.bold)),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.copy, size: 18),
-                color: AdminTheme.textMuted,
+                color: EnergyDashboardTheme.textMuted,
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: _token));
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -580,11 +586,11 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-                color: AdminTheme.backgroundColor,
+                color: EnergyDashboardTheme.backgroundColor,
                 borderRadius: BorderRadius.circular(8)),
             child: SelectableText(shortToken,
                 style: const TextStyle(
-                    color: AdminTheme.textMuted,
+                    color: EnergyDashboardTheme.textMuted,
                     fontSize: 11,
                     fontFamily: 'monospace')),
           ),
@@ -597,9 +603,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,7 +622,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(width: 10),
               const Text('الصلاحيات الممنوحة',
                   style: TextStyle(
-                      color: AdminTheme.textPrimary,
+                      color: EnergyDashboardTheme.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.bold)),
               const SizedBox(width: 8),
@@ -642,13 +648,13 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AdminTheme.backgroundColor,
+                  color: EnergyDashboardTheme.backgroundColor,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AdminTheme.borderColor),
+                  border: Border.all(color: EnergyDashboardTheme.borderColor),
                 ),
                 child: Text(permission,
                     style: const TextStyle(
-                        color: AdminTheme.textPrimary, fontSize: 11)),
+                        color: EnergyDashboardTheme.textPrimary, fontSize: 11)),
               );
             }).toList(),
           ),
@@ -661,9 +667,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,7 +686,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(width: 10),
               const Text('تعديل البيانات',
                   style: TextStyle(
-                      color: AdminTheme.textPrimary,
+                      color: EnergyDashboardTheme.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.bold)),
             ],
@@ -706,7 +712,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                   : const Icon(Icons.save, size: 18),
               label: Text(_isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.primaryColor,
+                backgroundColor: EnergyDashboardTheme.primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -765,26 +771,32 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(color: AdminTheme.textMuted, fontSize: 12)),
+            style: const TextStyle(
+                color: EnergyDashboardTheme.textMuted, fontSize: 12)),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
-          style: const TextStyle(color: AdminTheme.textPrimary, fontSize: 14),
+          style: const TextStyle(
+              color: EnergyDashboardTheme.textPrimary, fontSize: 14),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: AdminTheme.textMuted, size: 20),
+            prefixIcon:
+                Icon(icon, color: EnergyDashboardTheme.textMuted, size: 20),
             filled: true,
-            fillColor: AdminTheme.backgroundColor,
+            fillColor: EnergyDashboardTheme.backgroundColor,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AdminTheme.borderColor)),
+                borderSide:
+                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AdminTheme.borderColor)),
+                borderSide:
+                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AdminTheme.primaryColor)),
+                borderSide:
+                    const BorderSide(color: EnergyDashboardTheme.primaryColor)),
           ),
         ),
       ],
@@ -796,38 +808,43 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('كلمة المرور الجديدة',
-            style: TextStyle(color: AdminTheme.textMuted, fontSize: 12)),
+            style:
+                TextStyle(color: EnergyDashboardTheme.textMuted, fontSize: 12)),
         const SizedBox(height: 6),
         TextField(
           controller: _passwordController,
           obscureText: !_showPassword,
-          style: const TextStyle(color: AdminTheme.textPrimary, fontSize: 14),
+          style: const TextStyle(
+              color: EnergyDashboardTheme.textPrimary, fontSize: 14),
           decoration: InputDecoration(
             hintText: 'اتركه فارغاً لعدم التغيير',
-            hintStyle:
-                const TextStyle(color: AdminTheme.textMuted, fontSize: 12),
-            prefixIcon:
-                const Icon(Icons.lock, color: AdminTheme.textMuted, size: 20),
+            hintStyle: const TextStyle(
+                color: EnergyDashboardTheme.textMuted, fontSize: 12),
+            prefixIcon: const Icon(Icons.lock,
+                color: EnergyDashboardTheme.textMuted, size: 20),
             suffixIcon: IconButton(
               icon: Icon(
                   _showPassword ? Icons.visibility : Icons.visibility_off,
-                  color: AdminTheme.textMuted,
+                  color: EnergyDashboardTheme.textMuted,
                   size: 20),
               onPressed: () => setState(() => _showPassword = !_showPassword),
             ),
             filled: true,
-            fillColor: AdminTheme.backgroundColor,
+            fillColor: EnergyDashboardTheme.backgroundColor,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AdminTheme.borderColor)),
+                borderSide:
+                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AdminTheme.borderColor)),
+                borderSide:
+                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AdminTheme.primaryColor)),
+                borderSide:
+                    const BorderSide(color: EnergyDashboardTheme.primaryColor)),
           ),
         ),
       ],

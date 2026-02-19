@@ -11,8 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../subscriptions/subscription_details_page.dart';
 // إضافة زر فتح نافذة إضافة مهمة
-import '../../task/add_task_dialog.dart';
-import '../../models/task.dart';
+import '../../task/add_task_api_dialog.dart';
 import '../tickets/customer_tickets_page.dart';
 import '../reports/audit_log_page.dart';
 
@@ -30,7 +29,7 @@ class UserDetailsPage extends StatefulWidget {
   final String userPhone;
   final String authToken;
   final String activatedBy;
-  final bool hasGoogleSheetsPermission;
+  final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
   // صلاحيات النظام الأول (للتأكد من إظهار زر إضافة مهمة فقط للمدير/ليدر)
   final String? firstSystemPermissions;
@@ -54,7 +53,7 @@ class UserDetailsPage extends StatefulWidget {
       required this.userPhone,
       required this.authToken,
       required this.activatedBy,
-      this.hasGoogleSheetsPermission = false,
+      this.hasServerSavePermission = false,
       this.hasWhatsAppPermission = false,
       this.firstSystemPermissions,
       this.isAdminFlag,
@@ -323,8 +322,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         highlightBg ? color.withValues(alpha: 0.16) : Colors.grey.shade50;
     final Color brColor =
         highlightBg ? color.withValues(alpha: 0.40) : Colors.grey.shade200;
-    final Color iconBg =
-        highlightBg ? color.withValues(alpha: 0.22) : color.withValues(alpha: 0.12);
+    final Color iconBg = highlightBg
+        ? color.withValues(alpha: 0.22)
+        : color.withValues(alpha: 0.12);
     final bool isMobile = _isMobile(context);
     final double lblSize = labelFontSize ?? (isMobile ? 11 : 12);
     final double valSize = valueFontSize ?? (isMobile ? 13 : 14);
@@ -1681,7 +1681,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   services: services,
                   fdtDisplayValue: fdtDisplay,
                   fatDisplayValue: fatDisplay,
-                  hasGoogleSheetsPermission: widget.hasGoogleSheetsPermission,
+                  hasServerSavePermission: widget.hasServerSavePermission,
                   hasWhatsAppPermission: widget.hasWhatsAppPermission,
                   importantFtthApiPermissions:
                       widget.importantFtthApiPermissions,
@@ -2024,7 +2024,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                     const SizedBox(height: 4),
                     Text('ID: ${widget.userId}',
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: .9), fontSize: 12)),
+                            color: Colors.white.withValues(alpha: .9),
+                            fontSize: 12)),
                   ],
                 ),
               ),
@@ -2180,7 +2181,7 @@ extension _AddTaskExtension on UserDetailsPageState {
     showDialog(
         context: context,
         builder: (context) {
-          return AddTaskDialog(
+          return AddTaskApiDialog(
             currentUsername: widget.activatedBy,
             currentUserRole: 'مستخدم',
             currentUserDepartment: 'عام',
@@ -2190,7 +2191,7 @@ extension _AddTaskExtension on UserDetailsPageState {
             initialFBG: _getFbgFat().$1 ?? '',
             initialFAT: _getFbgFat().$2 ?? '',
             initialNotes: initialNotes,
-            onTaskAdded: (Task t) {
+            onTaskCreated: (Map<String, dynamic> data) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text('تمت إضافة المهمة'),

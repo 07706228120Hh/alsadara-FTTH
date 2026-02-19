@@ -95,9 +95,9 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       await _showActivationSuccessDialog();
     }
 
-    // 3️⃣ حفظ في Google Sheets (إن توفرت الصلاحية)
-    if (widget.hasGoogleSheetsPermission) {
-      debugPrint('📊 [3/5] حفظ البيانات في Google Sheets...');
+    // 3️⃣ حفظ البيانات في VPS
+    if (widget.hasServerSavePermission) {
+      debugPrint('📊 [3/5] حفظ البيانات...');
       try {
         // حفظ رصيد المحفظة قبل العملية إذا لم يكن محفوظاً
         if (partnerWalletBalanceBefore == 0.0) {
@@ -106,14 +106,14 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         if (customerWalletBalanceBefore == 0.0) {
           customerWalletBalanceBefore = customerWalletBalance;
         }
-        await _saveToGoogleSheets();
+        await _saveToServer();
         safeSetState(() => _isSavedToSheets = true);
-        debugPrint('✅ [3/5] تم الحفظ في Google Sheets بنجاح');
+        debugPrint('✅ [3/5] تم الحفظ بنجاح');
       } catch (e) {
-        debugPrint('⚠️ [3/5] فشل الحفظ في Google Sheets: $e - المتابعة...');
+        debugPrint('⚠️ [3/5] فشل الحفظ: $e - المتابعة...');
       }
     } else {
-      debugPrint('⏭️ [3/5] تخطي Google Sheets - لا توجد صلاحية');
+      debugPrint('⏭️ [3/5] تخطي الحفظ - لا توجد صلاحية');
     }
 
     // 4️⃣ طباعة الوصل
@@ -437,7 +437,8 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
   /// تنفيذ تغيير الاشتراك (API) - يعيد true عند النجاح
   Future<bool> _executeChangeSubscription() async {
     if (subscriptionInfo == null || priceDetails == null) {
-      safeSetState(() => errorMessage = 'معلومات الاشتراك أو الأسعار غير متوفرة');
+      safeSetState(
+          () => errorMessage = 'معلومات الاشتراك أو الأسعار غير متوفرة');
       return false;
     }
 

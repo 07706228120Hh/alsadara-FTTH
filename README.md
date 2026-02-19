@@ -144,6 +144,95 @@ flutter run -d windows
 
 ---
 
+## 🎨 تكامل Figma مع VS Code (MCP)
+
+تم ربط المشروع مع **Figma** باستخدام **Model Context Protocol (MCP)** للاستفادة من التصاميم مباشرة في بيئة التطوير.
+
+### الإضافات المثبتة
+
+| الإضافة | الوظيفة |
+|---------|---------|
+| **Figma for VS Code** | عرض التصاميم، استخراج الأكواد، الإشعارات |
+| **Kilo Code** | AI Agent مع دعم MCP |
+| **Claude Code** | AI Assistant مع دعم MCP |
+
+### إعداد Figma MCP Server
+
+1. **الحصول على Access Token من Figma:**
+   - افتح [Figma Settings](https://www.figma.com/settings)
+   - اذهب إلى **Personal Access Tokens**
+   - أنشئ token جديد باسم `VS Code MCP`
+   - انسخ الـ Token
+
+2. **إضافة خادم Figma MCP في VS Code:**
+   
+   افتح ملف `mcp.json` في VS Code (أو أنشئه):
+   ```
+   %APPDATA%\Code\User\mcp.json
+   ```
+   
+   أضف التكوين التالي:
+   ```json
+   {
+     "mcpServers": {
+       "figma": {
+         "command": "npx",
+         "args": ["-y", "@anthropic-ai/mcp-server-figma"],
+         "env": {
+           "FIGMA_ACCESS_TOKEN": "YOUR_FIGMA_TOKEN_HERE"
+         }
+       }
+     }
+   }
+   ```
+
+3. **أو استخدم Figma Dev Mode MCP (للملفات في Dev Mode):**
+   ```json
+   {
+     "mcpServers": {
+       "figma-dev": {
+         "command": "npx",
+         "args": ["-y", "figma-developer-mcp", "--stdio"],
+         "env": {
+           "FIGMA_API_KEY": "YOUR_FIGMA_TOKEN_HERE"
+         }
+       }
+     }
+   }
+   ```
+
+### الأدوات المتاحة عبر MCP
+
+| الأداة | الوصف |
+|--------|-------|
+| `get_file` | جلب ملف Figma كامل |
+| `get_file_nodes` | جلب عناصر محددة من الملف |
+| `get_images` | تصدير الصور من التصميم |
+| `get_styles` | جلب الأنماط (ألوان، خطوط) |
+| `get_components` | جلب المكونات المعرّفة |
+
+### استخدام Figma مع الـ AI
+
+بعد الإعداد، يمكنك طلب من Claude أو Kilo Code:
+
+```
+"استخدم تصميم Figma لواجهة مدير النظام وحوّله إلى Flutter"
+"اجلب ألوان التصميم من ملف Figma وطبّقها على premium_admin_theme.dart"
+"أنشئ widget بناءً على مكون Button في Figma"
+```
+
+### روابط التصاميم
+
+| التصميم | الرابط | الاستخدام |
+|---------|--------|----------|
+| لوحة تحكم مدير النظام | `[أضف رابط Figma]` | `super_admin_dashboard.dart` |
+| واجهة المواطن | `[أضف رابط Figma]` | `CitizenWeb/` |
+| مكونات النظام | `[أضف رابط Figma]` | مكونات مشتركة |
+
+> 💡 **ملاحظة:** تأكد من أن ملفات Figma في وضع **Dev Mode** للحصول على أفضل تجربة استخراج الكود.
+
+---
+
 ## 📞 الدعم
 
 للدعم الفني أو الاستفسارات، تواصل مع فريق التطوير.

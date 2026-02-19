@@ -61,6 +61,41 @@ public interface IUnitOfWork : IDisposable
     IRepository<ServiceRequestAttachment, long> ServiceRequestAttachments { get; }
     IRepository<ServiceRequestStatusHistory, long> ServiceRequestStatusHistories { get; }
 
+    // Subscription Logs (سجل عمليات الاشتراكات)
+    IRepository<SubscriptionLog, long> SubscriptionLogs { get; }
+
+    // Citizen Portal (بوابة المواطن)
+    IRepository<Citizen, Guid> Citizens { get; }
+    IRepository<InternetPlan, Guid> InternetPlans { get; }
+    IRepository<CitizenSubscription, Guid> CitizenSubscriptions { get; }
+
+    // Agent System (نظام الوكلاء)
+    IRepository<Agent, Guid> Agents { get; }
+    IRepository<AgentTransaction, long> AgentTransactions { get; }
+    IRepository<AgentCommissionRate, long> AgentCommissionRates { get; }
+
+    // Attendance & Work Centers (الحضور والمراكز)
+    IRepository<AttendanceRecord, long> AttendanceRecords { get; }
+    IRepository<WorkCenter, int> WorkCenters { get; }
+
+    // ISP Data (بيانات مشتركي الإنترنت)
+    IRepository<ISPSubscriber, long> ISPSubscribers { get; }
+    IRepository<ZoneStatistic, int> ZoneStatistics { get; }
+
+    // Accounting System (نظام المحاسبة)
+    IRepository<Account, Guid> Accounts { get; }
+    IRepository<JournalEntry, Guid> JournalEntries { get; }
+    IRepository<JournalEntryLine, long> JournalEntryLines { get; }
+    IRepository<CashBox, Guid> CashBoxes { get; }
+    IRepository<CashTransaction, long> CashTransactions { get; }
+    IRepository<EmployeeSalary, long> EmployeeSalaries { get; }
+    IRepository<TechnicianCollection, long> TechnicianCollections { get; }
+    IRepository<TechnicianTransaction, long> TechnicianTransactions { get; }
+    IRepository<Expense, long> Expenses { get; }
+
+    // Task Audit (تدقيق المهام)
+    IRepository<TaskAudit, long> TaskAudits { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);

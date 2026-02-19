@@ -265,8 +265,13 @@ public class ServiceRequest : BaseEntity<Guid>
     
     // ============ المواطن ============
     
-    /// <summary>معرف المواطن الذي طلب</summary>
-    public Guid CitizenId { get; set; }
+    /// <summary>معرف المواطن الذي طلب (اختياري لطلبات الوكلاء)</summary>
+    public Guid? CitizenId { get; set; }
+    
+    // ============ الوكيل ============
+    
+    /// <summary>معرف الوكيل الذي أنشأ الطلب (اختياري - null لطلبات المواطنين المباشرة)</summary>
+    public Guid? AgentId { get; set; }
     
     // ============ الشركة ============
     
@@ -312,6 +317,9 @@ public class ServiceRequest : BaseEntity<Guid>
     /// <summary>التكلفة النهائية</summary>
     public decimal? FinalCost { get; set; }
     
+    /// <summary>باقة الإنترنت المرتبطة بالطلب (لحساب العمولة)</summary>
+    public Guid? InternetPlanId { get; set; }
+    
     /// <summary>الأولوية (1-5)</summary>
     public int Priority { get; set; } = 3;
     
@@ -337,8 +345,10 @@ public class ServiceRequest : BaseEntity<Guid>
     
     public virtual Service Service { get; set; } = null!;
     public virtual OperationType OperationType { get; set; } = null!;
-    public virtual User Citizen { get; set; } = null!;
+    public virtual User? Citizen { get; set; }
+    public virtual Agent? Agent { get; set; }
     public virtual Company? Company { get; set; }
+    public virtual InternetPlan? InternetPlan { get; set; }
     public virtual User? AssignedTo { get; set; }
     public virtual User? Technician { get; set; }
     
@@ -395,7 +405,7 @@ public class ServiceRequestAttachment : BaseEntity<long>
 public class ServiceRequestStatusHistory : BaseEntity<long>
 {
     public Guid ServiceRequestId { get; set; }
-    public Guid ChangedById { get; set; }
+    public Guid? ChangedById { get; set; }
     
     public ServiceRequestStatus FromStatus { get; set; }
     public ServiceRequestStatus ToStatus { get; set; }
@@ -404,5 +414,5 @@ public class ServiceRequestStatusHistory : BaseEntity<long>
     
     // Navigation
     public virtual ServiceRequest ServiceRequest { get; set; } = null!;
-    public virtual User ChangedBy { get; set; } = null!;
+    public virtual User? ChangedBy { get; set; }
 }

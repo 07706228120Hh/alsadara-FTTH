@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'vps_auth_service.dart';
+import 'api/api_client.dart';
 
 /// خدمة الاتصال بـ Sadara Platform API الجديد
 /// تعمل مع Firebase Auth للمصادقة
@@ -189,6 +191,10 @@ class SadaraApiService {
           response = await http.put(uri,
               headers: headers, body: body != null ? json.encode(body) : null);
           break;
+        case 'PATCH':
+          response = await http.patch(uri,
+              headers: headers, body: body != null ? json.encode(body) : null);
+          break;
         case 'DELETE':
           response = await http.delete(uri, headers: headers);
           break;
@@ -209,10 +215,16 @@ class SadaraApiService {
       'Accept': 'application/json',
     };
 
-    // استخدام التوكن من VpsAuthService إذا لم يكن موجوداً
-    final token = _jwtToken ?? VpsAuthService.instance.accessToken;
+    // محاولة الحصول على التوكن من عدة مصادر
+    final token = _jwtToken ??
+        VpsAuthService.instance.accessToken ??
+        ApiClient.instance.authToken;
+
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
+      debugPrint('🔑 SadaraAPI: Token found (${token.length} chars)');
+    } else {
+      debugPrint('⚠️ SadaraAPI: No auth token available from any source');
     }
 
     return headers;
@@ -230,13 +242,27 @@ class SadaraApiService {
       // معالجة الأخطاء
       if (response.statusCode == 401) {
         _jwtToken = null;
-        throw Exception('انتهت صلاحية الجلسة');
+        throw Exception('انتهت صلاحية الجلسة - يرجى تسجيل الدخول مرة أخرى');
       }
 
-      throw Exception(data['message'] ?? 'خطأ غير معروف');
+      throw Exception(
+          data['message'] ?? 'خطأ غير معروف (${response.statusCode})');
     } catch (e) {
       if (e is FormatException) {
-        throw Exception('خطأ في تنسيق الاستجابة');
+        // الاستجابة ليست JSON
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          _jwtToken = null;
+          throw Exception(
+              'غير مصرح - يرجى تسجيل الدخول مرة أخرى (${response.statusCode})');
+        }
+        if (response.statusCode == 404) {
+          throw Exception('الخدمة غير متوفرة (404)');
+        }
+        if (response.statusCode >= 500) {
+          throw Exception('خطأ في الخادم (${response.statusCode})');
+        }
+        throw Exception(
+            'خطأ في تنسيق الاستجابة (${response.statusCode}): ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
       }
       rethrow;
     }
@@ -275,9 +301,9 @@ class SadaraApiService {
   Future<Map<String, dynamic>> updateServiceRequestStatus(
       String id, String status,
       {String? notes}) async {
-    return await put('/servicerequests/$id/status', body: {
+    return await _request('PATCH', '/servicerequests/$id/status', body: {
       'status': status,
-      'notes': notes,
+      'note': notes,
     });
   }
 
@@ -288,6 +314,60 @@ class SadaraApiService {
       'content': content,
       'isVisibleToCitizen': !isInternal,
     });
+  }
+
+  Future<Map<String, dynamic>> deleteServiceRequest(String id) async {
+    return await delete('/servicerequests/$id');
+  }
+
+  /// جلب الموظفين (فنيين وليدرز) للتعيين
+  Future<Map<String, dynamic>> getTaskStaff({String? department}) async {
+    final query = department != null ? '?department=$department' : '';
+    return await get('/servicerequests/task-staff$query');
+  }
+
+  /// جلب بيانات القوائم المنسدلة للمهام
+  Future<Map<String, dynamic>> getTaskLookupData() async {
+    return await get('/servicerequests/task-lookup');
+  }
+
+  /// تعيين مهمة مع تفاصيل فنية
+  Future<Map<String, dynamic>> assignTask(
+    String id, {
+    String? department,
+    String? leader,
+    String? technician,
+    String? technicianPhone,
+    String? fbg,
+    String? fat,
+    String? address,
+    String? employeeId,
+    String? note,
+  }) async {
+    final body = <String, dynamic>{
+      if (department != null) 'Department': department,
+      if (leader != null) 'Leader': leader,
+      if (technician != null) 'Technician': technician,
+      if (technicianPhone != null) 'TechnicianPhone': technicianPhone,
+      if (fbg != null) 'FBG': fbg,
+      if (fat != null) 'FAT': fat,
+      if (address != null) 'Address': address,
+      if (employeeId != null) 'EmployeeId': employeeId,
+      if (note != null) 'Note': note,
+    };
+    return await _request('PATCH', '/servicerequests/$id/assign-task',
+        body: body);
+  }
+
+  Future<Map<String, dynamic>> getServiceRequestStatistics(
+      {String? companyId}) async {
+    final query = companyId != null ? '?companyId=$companyId' : '';
+    return await get('/servicerequests/statistics$query');
+  }
+
+  Future<List<dynamic>> getAvailableServices() async {
+    final result = await get('/servicerequests/services');
+    return result['data'] ?? [];
   }
 
   // --- الملف الشخصي ---
@@ -327,6 +407,25 @@ class SadaraApiService {
   Future<List<dynamic>> getAllUsers({int page = 1, int pageSize = 20}) async {
     final result = await get('/superadmin/users?page=$page&pageSize=$pageSize');
     return result['data'] ?? [];
+  }
+
+  // --- إدارة الباقات (سوبر أدمن) ---
+  Future<List<dynamic>> getPlans() async {
+    final result = await get('/superadmin/plans');
+    return result['data'] ?? [];
+  }
+
+  Future<Map<String, dynamic>> createPlan(Map<String, dynamic> plan) async {
+    return await post('/superadmin/plans', body: plan);
+  }
+
+  Future<Map<String, dynamic>> updatePlan(
+      String id, Map<String, dynamic> plan) async {
+    return await put('/superadmin/plans/$id', body: plan);
+  }
+
+  Future<Map<String, dynamic>> deletePlan(String id) async {
+    return await delete('/superadmin/plans/$id');
   }
 }
 

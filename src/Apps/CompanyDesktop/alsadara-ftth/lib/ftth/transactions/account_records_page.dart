@@ -5,7 +5,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../../services/google_sheets_service.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:intl/intl.dart';
 import 'account_stats_page.dart';
 import '../../models/filter_criteria.dart';
@@ -14,7 +15,7 @@ class AccountRecordsPage extends StatefulWidget {
   final String authToken;
   final String activatedBy;
   final Map<String, bool>? permissions; // تمرير صلاحيات من الصفحة الرئيسية
-  // معلومات النظام الأول (Google Sheets)
+  // معلومات النظام الأول
   final String? firstSystemUsername;
   final String? firstSystemPermissions;
   final String? firstSystemDepartment;
@@ -163,14 +164,129 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     }
   }
 
-  /// جلب السجلات من Google Sheets وتحديث الحالة
+  // ========== VPS API ==========
+  static const String _vpsBaseUrl =
+      'https://api.ramzalsadara.tech/api/internal';
+  static const String _vpsApiKey = 'sadara-internal-2024-secure-key';
+
+  /// جلب السجلات من VPS وتحويلها لصيغة عربية متوافقة مع الصفحة
+  Future<List<Map<String, dynamic>>> _fetchFromVps({
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) async {
+    final client = HttpClient()
+      ..badCertificateCallback = (cert, host, port) => true;
+    final request =
+        await client.getUrl(Uri.parse('$_vpsBaseUrl/subscriptionlogs'));
+    request.headers.set('Content-Type', 'application/json');
+    request.headers.set('Accept', 'application/json');
+    request.headers.set('X-Api-Key', _vpsApiKey);
+    final response = await request.close();
+    final body = await response.transform(utf8.decoder).join();
+
+    if (response.statusCode != 200) {
+      throw Exception('فشل جلب البيانات من الخادم: ${response.statusCode}');
+    }
+
+    final List<dynamic> jsonList =
+        json.decode(body) is List ? json.decode(body) : [];
+    final List<Map<String, dynamic>> result = [];
+
+    for (final item in jsonList) {
+      if (item is! Map) continue;
+      final m = Map<String, dynamic>.from(item);
+
+      // تحليل تاريخ التفعيل
+      String dateStr = '';
+      String timeStr = '';
+      final actDate = m['ActivationDate']?.toString() ?? '';
+      if (actDate.isNotEmpty) {
+        try {
+          final dt = DateTime.parse(actDate);
+          dateStr = '${dt.day}/${dt.month}/${dt.year}';
+          timeStr = m['ActivationTime']?.toString() ??
+              '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        } catch (_) {
+          dateStr = actDate;
+          timeStr = m['ActivationTime']?.toString() ?? '';
+        }
+      }
+
+      // تصفية بالتاريخ محلياً
+      if (fromDate != null || toDate != null) {
+        DateTime? recordDate;
+        try {
+          if (actDate.isNotEmpty) recordDate = DateTime.parse(actDate);
+        } catch (_) {}
+        if (recordDate != null) {
+          final dayOnly =
+              DateTime(recordDate.year, recordDate.month, recordDate.day);
+          if (fromDate != null) {
+            final from = fromDate;
+            if (dayOnly.isBefore(DateTime(from.year, from.month, from.day)))
+              continue;
+          }
+          if (toDate != null) {
+            final to = toDate;
+            if (dayOnly.isAfter(DateTime(to.year, to.month, to.day))) continue;
+          }
+        }
+      }
+
+      // تطبيع نوع العملية
+      String opType = m['OperationType']?.toString() ?? '';
+      if (opType == 'renewal') opType = 'تجديد الاشتراك';
+      if (opType == 'purchase') opType = 'شراء اشتراك جديد';
+      if (opType == 'change') opType = 'تغيير اشتراك';
+
+      result.add({
+        'معرف العميل': m['CustomerId'] ?? '',
+        'اسم العميل': m['CustomerName'] ?? '',
+        'رقم الهاتف': m['PhoneNumber'] ?? '',
+        'معرف الاشتراك': m['SubscriptionId'] ?? '',
+        'اسم الباقة': m['PlanName'] ?? '',
+        'سعر الباقة': m['PlanPrice']?.toString() ?? '0',
+        'فترة الالتزام': m['CommitmentPeriod']?.toString() ?? '',
+        'نوع العملية': opType,
+        'منفذ العملية': m['ActivatedBy'] ?? '',
+        'المُفعِّل': m['ActivatedBy'] ?? '',
+        'تاريخ التفعيل': dateStr,
+        'التاريخ': dateStr,
+        'الوقت': timeStr,
+        'المنطقة': m['ZoneId'] ?? '',
+        'معرف الحزمة': m['BundleId'] ?? '',
+        'الحالة الحالية': m['CurrentStatus'] ?? '',
+        'اسم الجهاز': m['DeviceUsername'] ?? '',
+        'الرصيد قبل': m['WalletBalanceBefore']?.toString() ?? '',
+        'الرصيد بعد': m['WalletBalanceAfter']?.toString() ?? '',
+        'رصيد محفظة الشريك قبل':
+            m['PartnerWalletBalanceBefore']?.toString() ?? '',
+        'رصيد محفظة المشترك قبل':
+            m['CustomerWalletBalanceBefore']?.toString() ?? '',
+        'العملة': m['Currency'] ?? 'IQD',
+        'طريقة الدفع': m['PaymentMethod'] ?? '',
+        'نوع الدفع': m['PaymentMethod'] ?? '',
+        'اسم الشريك': m['PartnerName'] ?? '',
+        'معرف الشريك': m['PartnerId'] ?? '',
+        'تم الطباعة': (m['IsPrinted'] == true) ? 'نعم' : 'لا',
+        'تم إرسال واتساب': (m['IsWhatsAppSent'] == true) ? 'نعم' : 'لا',
+        'ملاحظات': m['SubscriptionNotes'] ?? '',
+        'معرف الجلسة': m['SessionId'] ?? '',
+        '_vpsId': m['Id'], // معرف السجل في VPS للاستخدام الداخلي
+      });
+    }
+
+    return result;
+  }
+
+  /// جلب السجلات من VPS وتحديث الحالة
   Future<void> _loadRecords() async {
     setState(() {
       isLoading = true;
     });
     try {
-      // جلب السجلات مع تصفية التاريخ من الشيت مباشرة
-      final records = await GoogleSheetsService.getRecordsByDateRange(
+      // جلب السجلات من VPS API
+      final records = await _fetchFromVps(
         fromDate: fromDate,
         toDate: toDate,
       );
@@ -244,8 +360,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           errStr.contains('auth') ||
           errStr.contains('صلاحيات')) {
         errorTitle = 'مشكلة في الصلاحيات';
-        errorMessage =
-            'لا يمكن الوصول لجدول البيانات.\nتحقق من صلاحيات التطبيق لـ Google Sheets.';
+        errorMessage = 'لا يمكن الوصول للخادم.\nتحقق من صلاحيات التطبيق.';
       } else if (errStr.contains('network') ||
           errStr.contains('connection') ||
           errStr.contains('اتصال')) {
@@ -259,9 +374,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       } else if (errStr.contains('تهيئة') ||
           errStr.contains('initialization') ||
           errStr.contains('أثناء التهيئة')) {
-        errorTitle = 'خطأ في تهيئة الخدمة';
-        errorMessage =
-            'فشل في تهيئة الاتصال مع Google Sheets.\nتحقق من إعدادات التطبيق وملف المفاتيح.';
+        errorTitle = 'خطأ في الاتصال بالخادم';
+        errorMessage = 'فشل في الاتصال بخادم VPS.\nتحقق من إعدادات التطبيق.';
       } else {
         errorTitle = 'خطأ غير متوقع';
         errorMessage =

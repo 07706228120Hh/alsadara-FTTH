@@ -66,6 +66,36 @@ public class SadaraDbContext : DbContext
     public DbSet<StoreOrder> StoreOrders => Set<StoreOrder>();
     public DbSet<StoreOrderItem> StoreOrderItems => Set<StoreOrderItem>();
 
+    // Subscription Logs (سجل عمليات الاشتراكات - بديل Google Sheets)
+    public DbSet<SubscriptionLog> SubscriptionLogs => Set<SubscriptionLog>();
+
+    // ==================== Agent System (نظام الوكلاء) ====================
+    public DbSet<Agent> Agents => Set<Agent>();
+    public DbSet<AgentTransaction> AgentTransactions => Set<AgentTransaction>();
+    public DbSet<AgentCommissionRate> AgentCommissionRates => Set<AgentCommissionRate>();
+
+    // ==================== Attendance & Work Centers (الحضور والمراكز) ====================
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+    public DbSet<WorkCenter> WorkCenters => Set<WorkCenter>();
+
+    // ==================== ISP Data (بيانات مشتركي الإنترنت) ====================
+    public DbSet<ISPSubscriber> ISPSubscribers => Set<ISPSubscriber>();
+    public DbSet<ZoneStatistic> ZoneStatistics => Set<ZoneStatistic>();
+
+    // ==================== Accounting System (نظام المحاسبة) ====================
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
+    public DbSet<CashBox> CashBoxes => Set<CashBox>();
+    public DbSet<CashTransaction> CashTransactions => Set<CashTransaction>();
+    public DbSet<EmployeeSalary> EmployeeSalaries => Set<EmployeeSalary>();
+    public DbSet<TechnicianCollection> TechnicianCollections => Set<TechnicianCollection>();
+    public DbSet<TechnicianTransaction> TechnicianTransactions => Set<TechnicianTransaction>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+
+    // ==================== Task Audit (تدقيق المهام) ====================
+    public DbSet<TaskAudit> TaskAudits => Set<TaskAudit>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -76,6 +106,26 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<Customer>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<Product>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<Order>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SubscriptionLog>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<Agent>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<AgentTransaction>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<AgentCommissionRate>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<AttendanceRecord>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<WorkCenter>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ISPSubscriber>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ZoneStatistic>().HasQueryFilter(x => !x.IsDeleted);
+
+        // Accounting entities query filters
+        modelBuilder.Entity<Account>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<JournalEntry>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<JournalEntryLine>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<CashBox>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<CashTransaction>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<EmployeeSalary>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<TechnicianCollection>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<TechnicianTransaction>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<Expense>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<TaskAudit>().HasQueryFilter(x => !x.IsDeleted);
 
         // User
         modelBuilder.Entity<User>(entity =>
@@ -445,6 +495,7 @@ public class SadaraDbContext : DbContext
             entity.HasIndex(e => e.RequestNumber).IsUnique();
             entity.HasIndex(e => e.CompanyId);
             entity.HasIndex(e => e.CitizenId);
+            entity.HasIndex(e => e.AgentId);
             entity.HasIndex(e => e.AssignedToId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.Priority);
@@ -462,7 +513,8 @@ public class SadaraDbContext : DbContext
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.Service).WithMany().HasForeignKey(e => e.ServiceId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.OperationType).WithMany().HasForeignKey(e => e.OperationTypeId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Citizen).WithMany().HasForeignKey(e => e.CitizenId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Citizen).WithMany().HasForeignKey(e => e.CitizenId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Agent).WithMany().HasForeignKey(e => e.AgentId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.AssignedTo).WithMany().HasForeignKey(e => e.AssignedToId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.Technician).WithMany().HasForeignKey(e => e.TechnicianId).OnDelete(DeleteBehavior.SetNull);
         });
@@ -497,7 +549,7 @@ public class SadaraDbContext : DbContext
             entity.HasIndex(e => e.ServiceRequestId);
             entity.Property(e => e.Note).HasMaxLength(500);
             entity.HasOne(e => e.ServiceRequest).WithMany(r => r.StatusHistory).HasForeignKey(e => e.ServiceRequestId);
-            entity.HasOne(e => e.ChangedBy).WithMany().HasForeignKey(e => e.ChangedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ChangedBy).WithMany().HasForeignKey(e => e.ChangedById).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
         });
 
         // ==================== Citizen Portal Entities ====================
@@ -533,6 +585,7 @@ public class SadaraDbContext : DbContext
             entity.Property(e => e.MonthlyPrice).HasPrecision(18, 2);
             entity.Property(e => e.YearlyPrice).HasPrecision(18, 2);
             entity.Property(e => e.InstallationFee).HasPrecision(18, 2);
+            entity.Property(e => e.ProfitAmount).HasPrecision(18, 2);
             entity.Property(e => e.Features).HasColumnType("text");
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Cascade);
         });
@@ -656,6 +709,63 @@ public class SadaraDbContext : DbContext
             entity.HasOne(e => e.DeliveredBy).WithMany().HasForeignKey(e => e.DeliveredById).OnDelete(DeleteBehavior.SetNull);
         });
 
+        // ==================== Agent System (نظام الوكلاء) ====================
+
+        // Agent (الوكيل)
+        modelBuilder.Entity<Agent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.AgentCode).IsUnique();
+            entity.HasIndex(e => e.PhoneNumber).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.AgentCode).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.PhoneNumber).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.PasswordHash).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.City).HasMaxLength(100);
+            entity.Property(e => e.Area).HasMaxLength(100);
+            entity.Property(e => e.FullAddress).HasMaxLength(500);
+            entity.Property(e => e.PageId).HasMaxLength(100);
+            entity.Property(e => e.ProfileImageUrl).HasMaxLength(500);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.Property(e => e.TotalCharges).HasPrecision(18, 2);
+            entity.Property(e => e.TotalPayments).HasPrecision(18, 2);
+            entity.Property(e => e.NetBalance).HasPrecision(18, 2);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // AgentTransaction (المعاملات المالية للوكيل)
+        modelBuilder.Entity<AgentTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.AgentId);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.BalanceAfter).HasPrecision(18, 2);
+            entity.Property(e => e.Description).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.ReferenceNumber).HasMaxLength(100);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasOne(e => e.Agent).WithMany(a => a.Transactions).HasForeignKey(e => e.AgentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ServiceRequest).WithMany().HasForeignKey(e => e.ServiceRequestId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Citizen).WithMany().HasForeignKey(e => e.CitizenId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // AgentCommissionRate (نسب عمولات الوكلاء لكل باقة)
+        modelBuilder.Entity<AgentCommissionRate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.AgentId, e.InternetPlanId }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.Property(e => e.CommissionPercentage).HasPrecision(5, 2);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasOne(e => e.Agent).WithMany().HasForeignKey(e => e.AgentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.InternetPlan).WithMany().HasForeignKey(e => e.InternetPlanId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         // StoreOrderItem (عنصر في الطلب)
         modelBuilder.Entity<StoreOrderItem>(entity =>
         {
@@ -666,6 +776,147 @@ public class SadaraDbContext : DbContext
             entity.Property(e => e.TotalPrice).HasPrecision(18, 2);
             entity.HasOne(e => e.Order).WithMany(o => o.Items).HasForeignKey(e => e.StoreOrderId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.Product).WithMany(p => p.OrderItems).HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ==================== Accounting System (نظام المحاسبة) ====================
+
+        // Account (شجرة الحسابات)
+        modelBuilder.Entity<Account>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompanyId, e.Code }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.AccountType);
+            entity.HasIndex(e => e.ParentAccountId);
+            entity.Property(e => e.Code).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.NameEn).HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.OpeningBalance).HasPrecision(18, 2);
+            entity.Property(e => e.CurrentBalance).HasPrecision(18, 2);
+            entity.HasOne(e => e.ParentAccount).WithMany(a => a.SubAccounts).HasForeignKey(e => e.ParentAccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // JournalEntry (القيد المحاسبي)
+        modelBuilder.Entity<JournalEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompanyId, e.EntryNumber }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.EntryDate);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ReferenceType);
+            entity.Property(e => e.EntryNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.Property(e => e.ReferenceId).HasMaxLength(100);
+            entity.Property(e => e.TotalDebit).HasPrecision(18, 2);
+            entity.Property(e => e.TotalCredit).HasPrecision(18, 2);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ApprovedBy).WithMany().HasForeignKey(e => e.ApprovedById).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // JournalEntryLine (سطر القيد)
+        modelBuilder.Entity<JournalEntryLine>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.JournalEntryId);
+            entity.HasIndex(e => e.AccountId);
+            entity.Property(e => e.DebitAmount).HasPrecision(18, 2);
+            entity.Property(e => e.CreditAmount).HasPrecision(18, 2);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.EntityType).HasMaxLength(50);
+            entity.Property(e => e.EntityId).HasMaxLength(100);
+            entity.HasOne(e => e.JournalEntry).WithMany(j => j.Lines).HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Account).WithMany(a => a.JournalEntryLines).HasForeignKey(e => e.AccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // CashBox (الصندوق/القاصة)
+        modelBuilder.Entity<CashBox>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.CurrentBalance).HasPrecision(18, 2);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasOne(e => e.ResponsibleUser).WithMany().HasForeignKey(e => e.ResponsibleUserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.LinkedAccount).WithMany().HasForeignKey(e => e.LinkedAccountId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // CashTransaction (حركة الصندوق)
+        modelBuilder.Entity<CashTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CashBoxId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.BalanceAfter).HasPrecision(18, 2);
+            entity.Property(e => e.Description).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.ReferenceId).HasMaxLength(100);
+            entity.HasOne(e => e.CashBox).WithMany(c => c.Transactions).HasForeignKey(e => e.CashBoxId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.JournalEntry).WithMany().HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // EmployeeSalary (راتب الموظف)
+        modelBuilder.Entity<EmployeeSalary>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.Year, e.Month }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.Status);
+            entity.Property(e => e.BaseSalary).HasPrecision(18, 2);
+            entity.Property(e => e.Allowances).HasPrecision(18, 2);
+            entity.Property(e => e.Deductions).HasPrecision(18, 2);
+            entity.Property(e => e.Bonuses).HasPrecision(18, 2);
+            entity.Property(e => e.NetSalary).HasPrecision(18, 2);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.JournalEntry).WithMany().HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // TechnicianCollection (تحصيل الفني)
+        modelBuilder.Entity<TechnicianCollection>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TechnicianId);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.CollectionDate);
+            entity.HasIndex(e => e.IsDelivered);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.ReceiptNumber).HasMaxLength(100);
+            entity.HasOne(e => e.Technician).WithMany().HasForeignKey(e => e.TechnicianId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Citizen).WithMany().HasForeignKey(e => e.CitizenId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.ServiceRequest).WithMany().HasForeignKey(e => e.ServiceRequestId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.DeliveredToUser).WithMany().HasForeignKey(e => e.DeliveredToUserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.JournalEntry).WithMany().HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CashBox).WithMany().HasForeignKey(e => e.CashBoxId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Expense (المصروفات)
+        modelBuilder.Entity<Expense>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.ExpenseDate);
+            entity.HasIndex(e => e.AccountId);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Description).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.AttachmentUrl).HasMaxLength(500);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.JournalEntry).WithMany().HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.PaidFromCashBox).WithMany().HasForeignKey(e => e.PaidFromCashBoxId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

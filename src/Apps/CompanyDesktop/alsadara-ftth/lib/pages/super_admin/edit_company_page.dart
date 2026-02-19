@@ -6,7 +6,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
 import '../../multi_tenant.dart';
-import 'admin_theme.dart';
+import '../../theme/energy_dashboard_theme.dart';
 
 class EditCompanyPage extends StatefulWidget {
   final Tenant tenant;
@@ -78,7 +78,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AdminTheme.primaryColor,
+              primary: EnergyDashboardTheme.primaryColor,
             ),
           ),
           child: child!,
@@ -187,10 +187,10 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
     final dateFormat = DateFormat('yyyy/MM/dd', 'ar');
 
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
+      backgroundColor: EnergyDashboardTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('تعديل الشركة'),
-        backgroundColor: AdminTheme.primaryColor,
+        backgroundColor: EnergyDashboardTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -368,11 +368,11 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.surfaceColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -386,7 +386,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+                colors: [color.withOpacity(0.1), color.withOpacity(0.15)],
               ),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
@@ -439,21 +439,23 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: AdminTheme.primaryColor),
+        prefixIcon: Icon(icon, color: EnergyDashboardTheme.primaryColor),
         filled: true,
-        fillColor: readOnly ? Colors.grey.shade100 : AdminTheme.backgroundColor,
+        fillColor: readOnly
+            ? Colors.grey.shade100
+            : EnergyDashboardTheme.backgroundColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AdminTheme.borderColor),
+          borderSide: BorderSide(color: EnergyDashboardTheme.borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AdminTheme.borderColor),
+          borderSide: BorderSide(color: EnergyDashboardTheme.borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AdminTheme.primaryColor, width: 2),
+          borderSide: const BorderSide(
+              color: EnergyDashboardTheme.primaryColor, width: 2),
         ),
       ),
       validator: required
@@ -478,13 +480,14 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: AdminTheme.backgroundColor,
+          color: EnergyDashboardTheme.backgroundColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AdminTheme.borderColor),
+          border: Border.all(color: EnergyDashboardTheme.borderColor),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_month_rounded, color: AdminTheme.primaryColor),
+            Icon(Icons.calendar_month_rounded,
+                color: EnergyDashboardTheme.primaryColor),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -494,7 +497,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
                     label,
                     style: TextStyle(
                       fontSize: 12,
-                      color: AdminTheme.textSecondary,
+                      color: EnergyDashboardTheme.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -508,7 +511,8 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_drop_down, color: AdminTheme.textSecondary),
+            Icon(Icons.arrow_drop_down,
+                color: EnergyDashboardTheme.textSecondary),
           ],
         ),
       ),
@@ -524,9 +528,9 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AdminTheme.backgroundColor,
+        color: EnergyDashboardTheme.backgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: DropdownButtonFormField<String>(
         value: value,
@@ -534,7 +538,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
           labelText: label,
           border: InputBorder.none,
           prefixIcon: Icon(Icons.workspace_premium_rounded,
-              color: AdminTheme.primaryColor),
+              color: EnergyDashboardTheme.primaryColor),
         ),
         items: items,
         onChanged: onChanged,
@@ -591,7 +595,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
                       : 'الشركة معلقة ولا يمكن للمستخدمين تسجيل الدخول',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AdminTheme.textSecondary,
+                    color: EnergyDashboardTheme.textSecondary,
                   ),
                 ),
               ],
@@ -615,14 +619,14 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
         gradient: LinearGradient(
           colors: _isLoading
               ? [Colors.grey, Colors.grey.shade600]
-              : [AdminTheme.primaryColor, const Color(0xFF3949AB)],
+              : [EnergyDashboardTheme.primaryColor, const Color(0xFF3949AB)],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: _isLoading
             ? null
             : [
                 BoxShadow(
-                  color: AdminTheme.primaryColor.withOpacity(0.3),
+                  color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),

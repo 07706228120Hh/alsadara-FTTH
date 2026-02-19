@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using System.Diagnostics;
@@ -1109,6 +1110,156 @@ public class SuperAdminController : ControllerBase
 
     #endregion
 
+    #region Internet Plans Management
+
+    /// <summary>
+    /// قائمة جميع باقات الإنترنت
+    /// </summary>
+    [HttpGet("plans")]
+    public async Task<IActionResult> GetPlans()
+    {
+        try
+        {
+            var plans = await _unitOfWork.InternetPlans.AsQueryable()
+                .OrderBy(p => p.SortOrder)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    p.NameAr,
+                    p.Description,
+                    p.SpeedMbps,
+                    p.MonthlyPrice,
+                    p.YearlyPrice,
+                    p.InstallationFee,
+                    p.DurationMonths,
+                    p.IsActive,
+                    p.IsFeatured,
+                    p.SortOrder,
+                    p.Color,
+                    p.Badge,
+                    p.CompanyId,
+                    p.CreatedAt,
+                    p.UpdatedAt
+                })
+                .ToListAsync();
+
+            return Ok(new { success = true, data = plans });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting plans");
+            return StatusCode(500, new { success = false, message = "حدث خطأ" });
+        }
+    }
+
+    /// <summary>
+    /// إضافة باقة جديدة
+    /// </summary>
+    [HttpPost("plans")]
+    public async Task<IActionResult> CreatePlan([FromBody] SuperAdminPlanRequest request)
+    {
+        try
+        {
+            var plan = new InternetPlan
+            {
+                Name = request.Name,
+                NameAr = request.NameAr,
+                Description = request.Description,
+                SpeedMbps = request.SpeedMbps,
+                MonthlyPrice = request.MonthlyPrice,
+                YearlyPrice = request.YearlyPrice ?? request.MonthlyPrice * 10,
+                InstallationFee = request.InstallationFee,
+                DurationMonths = request.DurationMonths,
+                IsActive = request.IsActive,
+                IsFeatured = request.IsFeatured,
+                SortOrder = request.SortOrder,
+                Color = request.Color,
+                Badge = request.Badge,
+                CompanyId = null, // باقة عامة
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.InternetPlans.AddAsync(plan);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم إضافة الباقة بنجاح", data = new { plan.Id } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating plan");
+            return StatusCode(500, new { success = false, message = "حدث خطأ" });
+        }
+    }
+
+    /// <summary>
+    /// تحديث باقة
+    /// </summary>
+    [HttpPut("plans/{id:guid}")]
+    public async Task<IActionResult> UpdatePlan(Guid id, [FromBody] SuperAdminPlanRequest request)
+    {
+        try
+        {
+            var plan = await _unitOfWork.InternetPlans.GetByIdAsync(id);
+            if (plan == null)
+                return NotFound(new { success = false, message = "الباقة غير موجودة" });
+
+            plan.Name = request.Name;
+            plan.NameAr = request.NameAr;
+            plan.Description = request.Description;
+            plan.SpeedMbps = request.SpeedMbps;
+            plan.MonthlyPrice = request.MonthlyPrice;
+            plan.YearlyPrice = request.YearlyPrice ?? request.MonthlyPrice * 10;
+            plan.InstallationFee = request.InstallationFee;
+            plan.DurationMonths = request.DurationMonths;
+            plan.IsActive = request.IsActive;
+            plan.IsFeatured = request.IsFeatured;
+            plan.SortOrder = request.SortOrder;
+            plan.Color = request.Color;
+            plan.Badge = request.Badge;
+            plan.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.InternetPlans.Update(plan);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم تحديث الباقة بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating plan");
+            return StatusCode(500, new { success = false, message = "حدث خطأ" });
+        }
+    }
+
+    /// <summary>
+    /// حذف باقة (حذف ناعم)
+    /// </summary>
+    [HttpDelete("plans/{id:guid}")]
+    public async Task<IActionResult> DeletePlan(Guid id)
+    {
+        try
+        {
+            var plan = await _unitOfWork.InternetPlans.GetByIdAsync(id);
+            if (plan == null)
+                return NotFound(new { success = false, message = "الباقة غير موجودة" });
+
+            plan.IsActive = false;
+            plan.IsDeleted = true;
+            plan.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.InternetPlans.Update(plan);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم حذف الباقة" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting plan");
+            return StatusCode(500, new { success = false, message = "حدث خطأ" });
+        }
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private Task<SystemStatus> GetSystemStatus()
@@ -1414,6 +1565,23 @@ public class MaintenanceModeRequest
 }
 
 // ============ Super Admin Authentication DTOs ============
+
+public class SuperAdminPlanRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string NameAr { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int? SpeedMbps { get; set; }
+    public decimal MonthlyPrice { get; set; }
+    public decimal? YearlyPrice { get; set; }
+    public decimal InstallationFee { get; set; }
+    public int DurationMonths { get; set; } = 1;
+    public bool IsActive { get; set; } = true;
+    public bool IsFeatured { get; set; } = false;
+    public int SortOrder { get; set; } = 0;
+    public string? Color { get; set; }
+    public string? Badge { get; set; }
+}
 
 public class SuperAdminLoginRequest
 {

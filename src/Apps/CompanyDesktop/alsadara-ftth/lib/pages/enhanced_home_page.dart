@@ -7,7 +7,8 @@ library;
 import 'package:flutter/material.dart';
 import '../services/unified_auth_manager.dart';
 import '../widgets/auth_status_monitor.dart';
-import 'vps_tenant_login_page.dart';
+import 'login/premium_login_page.dart';
+import '../services/permission_checker.dart';
 
 /// صفحة رئيسية محسنة مع نظام المصادقة الموحد
 class EnhancedHomePage extends StatefulWidget {
@@ -266,7 +267,11 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
   }
 
   Widget _buildPagesGrid() {
-    final availablePages = widget.pageAccess.entries
+    // V2: بناء قائمة الصفحات المتاحة من PermissionManager
+    final pm = PermissionManager.instance;
+    final pageAccessMap =
+        pm.isLoaded ? pm.buildPageAccess() : widget.pageAccess;
+    final availablePages = pageAccessMap.entries
         .where((entry) => entry.value)
         .map((entry) => entry.key)
         .toList();
@@ -423,7 +428,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
       await UnifiedAuthManager.instance.logout();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const VpsTenantLoginPage()),
+          MaterialPageRoute(builder: (context) => const PremiumLoginPage()),
           (route) => false,
         );
       }
@@ -432,7 +437,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
 
   void _handleSessionExpired() {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const VpsTenantLoginPage()),
+      MaterialPageRoute(builder: (context) => const PremiumLoginPage()),
       (route) => false,
     );
   }

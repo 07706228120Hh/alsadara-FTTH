@@ -4,11 +4,8 @@
 /// تاريخ الإنشاء: 2024
 library;
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // لاستدعاء rootBundle
-import 'package:googleapis/sheets/v4.dart' as sheets;
-import 'package:googleapis_auth/auth_io.dart'; // استخدام clientViaServiceAccount
+import '../services/api_service.dart';
 
 class UsersPage extends StatefulWidget {
   final String permissions; // إضافة معامل الصلاحيات
@@ -19,11 +16,10 @@ class UsersPage extends StatefulWidget {
 }
 
 class _UsersPageState extends State<UsersPage> {
-  sheets.SheetsApi? _sheetsApi;
-  AuthClient? _client;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
+  final ApiService _api = ApiService.instance;
   List<Map<String, String>> users = [];
   List<Map<String, String>> filteredUsers = [];
+  List<Map<String, dynamic>> _rawUsers = []; // بيانات API الخام
   bool isLoading = true;
   String? errorMessage;
   TextEditingController searchController = TextEditingController();
@@ -31,48 +27,33 @@ class _UsersPageState extends State<UsersPage> {
   @override
   void initState() {
     super.initState();
-    _initializeSheetsAPI();
-  }
-
-  Future<void> _initializeSheetsAPI() async {
-    try {
-      final jsonString =
-          await rootBundle.loadString('assets/service_account.json');
-      final accountCredentials =
-          ServiceAccountCredentials.fromJson(jsonDecode(jsonString));
-
-      final scopes = [sheets.SheetsApi.spreadsheetsScope];
-      _client = await clientViaServiceAccount(accountCredentials, scopes);
-      _sheetsApi = sheets.SheetsApi(_client!);
-      fetchUsers();
-
-      debugPrint('Google Sheets API initialized successfully!');
-    } catch (e) {
-      debugPrint('Error initializing Sheets API: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ أثناء تهيئة Google Sheets API: $e')),
-        );
-      }
-    }
+    fetchUsers();
   }
 
   Future<void> fetchUsers() async {
     try {
-      final range = 'المستخدمين!A2:G'; // جلب الأعمدة من A إلى G
-      final response =
-          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
+      setState(() => isLoading = true);
+      final response = await _api.get('/internal/data/users');
+      final data = response['data'];
+      final List<dynamic> rawList = data is List ? data : [];
 
-      final rows = response.values ?? [];
-      List<Map<String, String>> fetchedUsers = rows.map((row) {
+      _rawUsers = rawList.cast<Map<String, dynamic>>();
+      List<Map<String, String>> fetchedUsers = _rawUsers.map((user) {
         return {
-          'اسم المستخدم': row.isNotEmpty ? row[0]?.toString() ?? '' : '',
-          'رقم الهاتف': row.length > 1 ? row[1]?.toString() ?? '' : '',
-          'الصلاحيات': row.length > 2 ? row[2]?.toString() ?? '' : '',
-          'القسم': row.length > 3 ? row[3]?.toString() ?? '' : '',
-          'المركز': row.length > 4 ? row[4]?.toString() ?? '' : '',
-          'الراتب': row.length > 5 ? row[5]?.toString() ?? '' : '',
-          'الكود': row.length > 6 ? row[6]?.toString() ?? '' : '',
+          'اسم المستخدم':
+              (user['FullName'] ?? user['fullName'] ?? '').toString(),
+          'رقم الهاتف':
+              (user['PhoneNumber'] ?? user['phoneNumber'] ?? '').toString(),
+          'الصلاحيات': (user['FirstSystemPermissions'] ??
+                  user['firstSystemPermissions'] ??
+                  '')
+              .toString(),
+          'القسم': (user['Department'] ?? user['department'] ?? '').toString(),
+          'المركز': (user['Center'] ?? user['center'] ?? '').toString(),
+          'الراتب': (user['Salary'] ?? user['salary'] ?? '').toString(),
+          'الكود':
+              (user['EmployeeCode'] ?? user['employeeCode'] ?? '').toString(),
+          '_id': (user['Id'] ?? user['id'] ?? '').toString(),
         };
       }).toList();
 
@@ -91,28 +72,20 @@ class _UsersPageState extends State<UsersPage> {
 
   Future<void> updateUser(int index, Map<String, String> updatedUser) async {
     try {
-      final rowIndex = index + 2; // لأن الصفوف تبدأ من 2 في النطاق.
-      final range =
-          'المستخدمين!A$rowIndex:G$rowIndex'; // تعديل النطاق ليشمل الأعمدة A إلى G
-      final values = [
-        [
-          updatedUser['اسم المستخدم'],
-          updatedUser['رقم الهاتف'],
-          updatedUser['الصلاحيات'],
-          updatedUser['القسم'],
-          updatedUser['المركز'],
-          updatedUser['الراتب'],
-          updatedUser['الكود'],
-        ]
-      ];
-      final valueRange = sheets.ValueRange(values: values);
+      final userId = users[index]['_id'] ?? '';
+      if (userId.isEmpty) {
+        throw 'معرف المستخدم غير موجود';
+      }
 
-      await _sheetsApi!.spreadsheets.values.update(
-        valueRange,
-        spreadsheetId,
-        range,
-        valueInputOption: 'USER_ENTERED',
-      );
+      await _api.put('/users/$userId', body: {
+        'FullName': updatedUser['اسم المستخدم'],
+        'PhoneNumber': updatedUser['رقم الهاتف'],
+        'FirstSystemPermissions': updatedUser['الصلاحيات'],
+        'Department': updatedUser['القسم'],
+        'Center': updatedUser['المركز'],
+        'Salary': updatedUser['الراتب'],
+        'EmployeeCode': updatedUser['الكود'],
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +93,7 @@ class _UsersPageState extends State<UsersPage> {
         );
       }
 
-      fetchUsers(); // جلب البيانات لتحديث الجدول.
+      fetchUsers();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -132,17 +105,12 @@ class _UsersPageState extends State<UsersPage> {
 
   Future<void> deleteUser(int index) async {
     try {
-      final rowIndex = index + 2; // الصف الذي سيتم حذفه
-      final range = 'المستخدمين!A$rowIndex:G$rowIndex';
+      final userId = users[index]['_id'] ?? '';
+      if (userId.isEmpty) {
+        throw 'معرف المستخدم غير موجود';
+      }
 
-      // حذف المحتوى بإرسال قيم فارغة
-      final emptyValues = sheets.ValueRange(values: [[]]);
-      await _sheetsApi!.spreadsheets.values.update(
-        emptyValues,
-        spreadsheetId,
-        range,
-        valueInputOption: 'USER_ENTERED',
-      );
+      await _api.delete('/users/$userId');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -150,7 +118,7 @@ class _UsersPageState extends State<UsersPage> {
         );
       }
 
-      fetchUsers(); // تحديث القائمة بعد الحذف
+      fetchUsers();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -371,7 +339,6 @@ class _UsersPageState extends State<UsersPage> {
 
   @override
   void dispose() {
-    _client?.close();
     searchController.dispose();
     super.dispose();
   }

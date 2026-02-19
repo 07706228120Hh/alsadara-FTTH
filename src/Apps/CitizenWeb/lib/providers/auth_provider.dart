@@ -7,14 +7,46 @@ class AuthProvider with ChangeNotifier {
 
   Citizen? _citizen;
   bool _isLoading = false;
+  bool _isInitialized = false;
   String? _error;
 
   Citizen? get citizen => _citizen;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
   String? get error => _error;
   bool get isAuthenticated => _citizen != null;
 
-  Future<bool> login(String phoneNumber, String password) async {
+  /// تهيئة المصادقة - يتحقق من "تذكرني" ويستعيد الجلسة
+  Future<void> initialize() async {
+    try {
+      final rememberMe = await _apiService.getRememberMe();
+      if (rememberMe) {
+        // محاولة استعادة الجلسة من التخزين المحلي
+        final token = await _apiService.getToken();
+        if (token != null) {
+          try {
+            _citizen = await _apiService.getProfile();
+          } catch (e) {
+            // التوكن غير صالح - مسح البيانات
+            await _apiService.clearToken();
+          }
+        }
+      } else {
+        // بدون "تذكرني" - مسح التوكن عند إعادة التحميل
+        await _apiService.clearToken();
+      }
+    } catch (e) {
+      // فشل التهيئة - متابعة بدون مصادقة
+    }
+    _isInitialized = true;
+    notifyListeners();
+  }
+
+  Future<bool> login(
+    String phoneNumber,
+    String password, {
+    bool rememberMe = false,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -27,6 +59,8 @@ class AuthProvider with ChangeNotifier {
 
       if (response['success'] == true && response['citizen'] != null) {
         _citizen = Citizen.fromJson(response['citizen']);
+        // حفظ حالة "تذكرني"
+        await _apiService.setRememberMe(rememberMe);
         _isLoading = false;
         notifyListeners();
         return true;
@@ -121,6 +155,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     await _apiService.clearToken();
+    await _apiService.setRememberMe(false);
     _citizen = null;
     _error = null;
     notifyListeners();

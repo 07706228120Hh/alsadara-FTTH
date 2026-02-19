@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import 'super_admin/permissions_management_v2_page.dart';
+import '../services/permission_checker.dart';
 
 /// صفحة إدارة موظفي الشركة عبر VPS
 class UsersPageVPS extends StatefulWidget {
@@ -137,7 +138,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           ),
           Text(
             widget.companyName,
-            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8)),
+            style:
+                TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8)),
           ),
         ],
       ),
@@ -276,7 +278,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
             style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
           ),
           const SizedBox(height: 24),
-          if (_searchQuery.isEmpty)
+          if (_searchQuery.isEmpty &&
+              PermissionManager.instance.canAdd('users'))
             ElevatedButton.icon(
               onPressed: () => _showAddEmployeeDialog(),
               icon: const Icon(Icons.person_add_rounded),
@@ -488,20 +491,21 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                   ),
                   const SizedBox(width: 8),
                   // زر التعديل
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _editEmployee(employee),
-                      icon: const Icon(Icons.edit_rounded, size: 18),
-                      label: const Text('تعديل'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2196F3),
-                        side: const BorderSide(color: Color(0xFF2196F3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                  if (PermissionManager.instance.canEdit('users'))
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _editEmployee(employee),
+                        icon: const Icon(Icons.edit_rounded, size: 18),
+                        label: const Text('تعديل'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF2196F3),
+                          side: const BorderSide(color: Color(0xFF2196F3)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   const SizedBox(width: 8),
                   // زر كلمة المرور
                   IconButton(
@@ -521,6 +525,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
 
   Widget? _buildFAB() {
     if (_employees.length >= widget.maxUsers) return null;
+    if (!PermissionManager.instance.canAdd('users')) return null;
 
     return FloatingActionButton.extended(
       onPressed: () => _showAddEmployeeDialog(),
@@ -545,10 +550,12 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           Navigator.pop(context);
           _managePermissions(employee);
         },
-        onDelete: () async {
-          Navigator.pop(context);
-          await _deleteEmployee(employee);
-        },
+        onDelete: PermissionManager.instance.canDelete('users')
+            ? () async {
+                Navigator.pop(context);
+                await _deleteEmployee(employee);
+              }
+            : null,
       ),
     );
   }
@@ -784,10 +791,10 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                       setDialogState(() => isSaving = true);
 
                       try {
-                        final response = await _apiClient.put(
+                        final response = await _apiClient.patch(
                           ApiConfig.internalEmployeePassword(
                               widget.companyId, employee.id),
-                          {'password': passwordController.text},
+                          {'NewPassword': passwordController.text},
                           (json) => json,
                           useInternalKey: true,
                         );
@@ -808,8 +815,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(
-                                    response.message ?? 'فشل في تغيير كلمة المرور'),
+                                content: Text(response.message ??
+                                    'فشل في تغيير كلمة المرور'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -980,13 +987,13 @@ class _EmployeeDetailsDialog extends StatelessWidget {
   final EmployeeModel employee;
   final VoidCallback onEdit;
   final VoidCallback onManagePermissions;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
   const _EmployeeDetailsDialog({
     required this.employee,
     required this.onEdit,
     required this.onManagePermissions,
-    required this.onDelete,
+    this.onDelete,
   });
 
   @override
@@ -1089,7 +1096,8 @@ class _EmployeeDetailsDialog extends StatelessWidget {
                     icon: const Icon(Icons.delete_rounded),
                     label: const Text('حذف'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
+                      foregroundColor:
+                          onDelete != null ? Colors.red : Colors.grey,
                     ),
                   ),
                 ),
@@ -1189,13 +1197,22 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
   bool _isActive = true;
   bool _isSaving = false;
 
-  final List<Map<String, String>> _roles = [
+  static const List<Map<String, String>> _roles = [
     {'value': 'Employee', 'label': 'موظف'},
     {'value': 'Viewer', 'label': 'مشاهد'},
     {'value': 'Technician', 'label': 'فني'},
     {'value': 'TechnicalLeader', 'label': 'ليدر فني'},
     {'value': 'Manager', 'label': 'مدير'},
     {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
+  ];
+
+  static const List<String> _departments = [
+    'الصيانة',
+    'الحسابات',
+    'الفنيين',
+    'الوكلاء',
+    'الاتصالات',
+    'اللحام',
   ];
 
   bool get isEditing => widget.employee != null;
@@ -1211,7 +1228,14 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
       _departmentController.text = emp.department ?? '';
       _centerController.text = emp.center ?? '';
       _salaryController.text = emp.salary ?? '';
-      _selectedRole = emp.role ?? 'Employee';
+      // التأكد أن الدور موجود في القائمة
+      final role = emp.role ?? 'Employee';
+      final roleExists =
+          _roles.any((r) => r['value']!.toLowerCase() == role.toLowerCase());
+      _selectedRole = roleExists
+          ? _roles.firstWhere(
+              (r) => r['value']!.toLowerCase() == role.toLowerCase())['value']!
+          : 'Employee';
       _isActive = emp.isActive;
     }
   }
@@ -1237,8 +1261,9 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
       final data = {
         'fullName': _nameController.text.trim(),
         'phoneNumber': _phoneController.text.trim(),
-        'email':
-            _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
+        'email': _emailController.text.trim().isNotEmpty
+            ? _emailController.text.trim()
+            : null,
         'role': _selectedRole,
         'department': _departmentController.text.trim().isNotEmpty
             ? _departmentController.text.trim()
@@ -1279,8 +1304,9 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
           Navigator.pop(context, true);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                  isEditing ? 'تم تحديث الموظف بنجاح' : 'تم إضافة الموظف بنجاح'),
+              content: Text(isEditing
+                  ? 'تم تحديث الموظف بنجاح'
+                  : 'تم إضافة الموظف بنجاح'),
               backgroundColor: Colors.green,
             ),
           );
@@ -1290,8 +1316,8 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content:
-                  Text(response.message ?? 'فشل في ${isEditing ? 'تحديث' : 'إضافة'} الموظف'),
+              content: Text(response.message ??
+                  'فشل في ${isEditing ? 'تحديث' : 'إضافة'} الموظف'),
               backgroundColor: Colors.red,
             ),
           );
@@ -1363,12 +1389,14 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // المعلومات الأساسية
-                      _buildSectionTitle('المعلومات الأساسية', Icons.person_rounded),
+                      _buildSectionTitle(
+                          'المعلومات الأساسية', Icons.person_rounded),
                       const SizedBox(height: 12),
                       // الاسم
                       TextFormField(
                         controller: _nameController,
-                        decoration: _inputDecoration('الاسم الكامل *', Icons.person_outline),
+                        decoration: _inputDecoration(
+                            'الاسم الكامل *', Icons.person_outline),
                         validator: (v) =>
                             v == null || v.trim().isEmpty ? 'مطلوب' : null,
                       ),
@@ -1376,7 +1404,8 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                       // الهاتف
                       TextFormField(
                         controller: _phoneController,
-                        decoration: _inputDecoration('رقم الهاتف * (للدخول)', Icons.phone_outlined),
+                        decoration: _inputDecoration(
+                            'رقم الهاتف * (للدخول)', Icons.phone_outlined),
                         keyboardType: TextInputType.phone,
                         validator: (v) =>
                             v == null || v.trim().isEmpty ? 'مطلوب' : null,
@@ -1397,8 +1426,9 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                       // البريد
                       TextFormField(
                         controller: _emailController,
-                        decoration:
-                            _inputDecoration('البريد الإلكتروني (اختياري)', Icons.email_outlined),
+                        decoration: _inputDecoration(
+                            'البريد الإلكتروني (اختياري)',
+                            Icons.email_outlined),
                         keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 20),
@@ -1408,7 +1438,8 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                       // الدور
                       DropdownButtonFormField<String>(
                         value: _selectedRole,
-                        decoration: _inputDecoration('الدور الوظيفي *', Icons.work_outline),
+                        decoration: _inputDecoration(
+                            'الدور الوظيفي *', Icons.work_outline),
                         items: _roles
                             .map((r) => DropdownMenuItem(
                                   value: r['value'],
@@ -1421,7 +1452,9 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                       // الحالة
                       SwitchListTile(
                         title: const Text('الحساب نشط'),
-                        subtitle: Text(_isActive ? 'يمكنه تسجيل الدخول' : 'محظور من الدخول'),
+                        subtitle: Text(_isActive
+                            ? 'يمكنه تسجيل الدخول'
+                            : 'محظور من الدخول'),
                         value: _isActive,
                         onChanged: (v) => setState(() => _isActive = v),
                         secondary: Icon(
@@ -1431,21 +1464,42 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                       ),
                       const SizedBox(height: 20),
                       // معلومات إضافية
-                      _buildSectionTitle('معلومات إضافية (اختياري)', Icons.info_outline),
+                      _buildSectionTitle(
+                          'معلومات إضافية (اختياري)', Icons.info_outline),
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              controller: _departmentController,
-                              decoration: _inputDecoration('القسم', Icons.business_outlined),
+                            child: DropdownButtonFormField<String>(
+                              value: _departmentController.text.isNotEmpty &&
+                                      _getAllDepartments()
+                                          .contains(_departmentController.text)
+                                  ? _departmentController.text
+                                  : null,
+                              decoration: _inputDecoration(
+                                  _departmentController.text.isNotEmpty &&
+                                          !_departments.contains(
+                                              _departmentController.text)
+                                      ? 'القسم (الحالي: ${_departmentController.text})'
+                                      : 'القسم',
+                                  Icons.business_outlined),
+                              items: _getAllDepartments()
+                                  .map((d) => DropdownMenuItem(
+                                      value: d, child: Text(d)))
+                                  .toList(),
+                              onChanged: (v) {
+                                setState(() {
+                                  _departmentController.text = v ?? '';
+                                });
+                              },
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextFormField(
                               controller: _centerController,
-                              decoration: _inputDecoration('المركز', Icons.location_on_outlined),
+                              decoration: _inputDecoration(
+                                  'المركز', Icons.location_on_outlined),
                             ),
                           ),
                         ],
@@ -1453,7 +1507,8 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _salaryController,
-                        decoration: _inputDecoration('الراتب', Icons.attach_money),
+                        decoration:
+                            _inputDecoration('الراتب', Icons.attach_money),
                         keyboardType: TextInputType.number,
                       ),
                     ],
@@ -1509,6 +1564,15 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
         ),
       ),
     );
+  }
+
+  /// قائمة الأقسام مع إضافة القسم الحالي إذا لم يكن في القائمة الافتراضية
+  List<String> _getAllDepartments() {
+    final current = _departmentController.text;
+    if (current.isNotEmpty && !_departments.contains(current)) {
+      return [current, ..._departments];
+    }
+    return _departments;
   }
 
   Widget _buildSectionTitle(String title, IconData icon) {

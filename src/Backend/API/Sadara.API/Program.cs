@@ -39,7 +39,8 @@ if (string.IsNullOrEmpty(connectionString))
 else
 {
     builder.Services.AddDbContext<SadaraDbContext>(options =>
-        options.UseNpgsql(connectionString));
+        options.UseNpgsql(connectionString)
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 }
 
 // Repositories
@@ -141,19 +142,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        // في بيئة التطوير: السماح لأي origin
-        if (builder.Environment.IsDevelopment())
-        {
-            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-        }
-        else
-        {
-            // في بيئة الإنتاج: فقط الـ origins المحددة
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
-                  .AllowCredentials();
-        }
+        // السماح لجميع الأصول (Flutter Web يعمل على منافذ مختلفة)
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
 
@@ -162,6 +152,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = null; // Keep original case
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -222,11 +213,28 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sadara API v1");
-    c.RoutePrefix = string.Empty;
+    c.RoutePrefix = "swagger";
 });
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+
+// خدمة بوابة المواطن (Citizen Portal) كملفات ثابتة
+var citizenPortalPath = Path.Combine(AppContext.BaseDirectory, "citizen_portal");
+if (Directory.Exists(citizenPortalPath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(citizenPortalPath),
+        RequestPath = "/portal"
+    });
+    // SPA fallback for citizen portal routes
+    app.MapFallbackToFile("/portal/{**slug}", "index.html", new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(citizenPortalPath)
+    });
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSerilogRequestLogging();
@@ -239,14 +247,14 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<SadaraDbContext>();
     
-    // Apply pending migrations (skip for InMemory database)
-    if (!context.Database.IsInMemory())
-    {
-        await context.Database.MigrateAsync();
-    }
-    else
+    // Apply pending migrations only in Development (production uses manual SQL migrations)
+    if (context.Database.IsInMemory())
     {
         await context.Database.EnsureCreatedAsync();
+    }
+    else if (app.Environment.IsDevelopment())
+    {
+        await context.Database.MigrateAsync();
     }
     
     // Seed core data (permissions, services, operation types, super admin)

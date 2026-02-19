@@ -3,15 +3,13 @@
 library;
 
 import 'dart:convert';
-import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
-import '../../services/api/api_config.dart';
+import '../../services/permission_checker.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
 
@@ -34,6 +32,16 @@ class SavedCredential {
     required this.password,
     required this.savedAt,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SavedCredential &&
+          companyCode == other.companyCode &&
+          username == other.username;
+
+  @override
+  int get hashCode => companyCode.hashCode ^ username.hashCode;
 
   Map<String, dynamic> toJson() => {
         'companyCode': companyCode,
@@ -126,7 +134,6 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   SavedCredential? _selectedCredential;
 
   // Animations
-  late AnimationController _backgroundAnimController;
   late AnimationController _formAnimController;
   late Animation<double> _formSlideAnimation;
   late Animation<double> _formFadeAnimation;
@@ -145,16 +152,17 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   void initState() {
     super.initState();
     _initAnimations();
-    _loadCompanies();
-    _loadSavedCredentials();
+    _loadAllData();
+  }
+
+  /// تحميل جميع البيانات مع SharedPreferences موحد
+  Future<void> _loadAllData() async {
+    final prefs = await SharedPreferences.getInstance();
+    _loadCompanies(prefs);
+    _loadSavedCredentials(prefs);
   }
 
   void _initAnimations() {
-    _backgroundAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-
     _formAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -175,7 +183,6 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
-    _backgroundAnimController.dispose();
     _formAnimController.dispose();
     super.dispose();
   }
@@ -184,12 +191,30 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   // Data Loading
   // ============================================
 
-  Future<void> _loadCompanies() async {
+  Future<void> _loadCompanies([SharedPreferences? prefsParam]) async {
+    // تحميل الكاش أولاً للظهور الفوري
+    try {
+      final prefs = prefsParam ?? await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('cached_companies_list');
+      if (cachedJson != null && mounted) {
+        final List<dynamic> cachedList = jsonDecode(cachedJson);
+        setState(() {
+          _companies = cachedList
+              .map((c) => CompanyListItem.fromJson(c as Map<String, dynamic>))
+              .toList();
+          _loadingCompanies = false;
+        });
+      }
+    } catch (_) {}
+
+    // جلب من السيرفر في الخلفية
     try {
       final response = await ApiClient.instance.get(
         '/companies/list',
         (json) => json,
       );
+
+      if (!mounted) return;
 
       if (response.isSuccess && response.data != null) {
         final data = response.data;
@@ -212,6 +237,13 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           _companiesLoadError =
               _companies.isEmpty ? 'لا توجد شركات مسجلة' : null;
         });
+
+        // حفظ الكاش
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(
+              'cached_companies_list', jsonEncode(companiesList));
+        } catch (_) {}
       } else {
         setState(() {
           _loadingCompanies = false;
@@ -219,16 +251,18 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loadingCompanies = false;
-        _companiesLoadError = 'خطأ في الاتصال بالخادم';
+        _companiesLoadError =
+            _companies.isEmpty ? 'خطأ في الاتصال بالخادم' : null;
       });
     }
   }
 
-  Future<void> _loadSavedCredentials() async {
+  Future<void> _loadSavedCredentials([SharedPreferences? prefsParam]) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = prefsParam ?? await SharedPreferences.getInstance();
       final savedJson = prefs.getString('vps_saved_credentials');
 
       if (savedJson != null) {
@@ -372,7 +406,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     }
   }
 
-  void _navigateAfterLogin() {
+  void _navigateAfterLogin() async {
     if (_authService.isSuperAdmin) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -380,7 +414,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(opacity: animation, child: child);
           },
-          transitionDuration: const Duration(milliseconds: 500),
+          transitionDuration: const Duration(milliseconds: 150),
         ),
       );
     } else if (_authService.currentUser != null &&
@@ -388,22 +422,18 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       final user = _authService.currentUser!;
       final company = _authService.currentCompany!;
 
-      final Map<String, bool> pageAccess = {};
-      for (final permission in user.permissions) {
-        pageAccess[permission] = true;
+      // V2: بناء pageAccess من PermissionManager بدلاً من V1
+      final pm = PermissionManager.instance;
+      if (!pm.isLoaded) {
+        await pm.loadPermissions();
       }
-      user.firstSystemPermissions.forEach((key, value) {
-        if (value) pageAccess[key] = true;
-      });
-      user.secondSystemPermissions.forEach((key, value) {
-        if (value) pageAccess[key] = true;
-      });
+      final Map<String, bool> pageAccess = pm.buildPageAccess();
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => HomePage(
             username: user.fullName.isNotEmpty ? user.fullName : user.username,
-            permissions: user.isAdmin ? 'مدير' : user.role,
+            permissions: user.isAdmin ? 'مدير' : _mapRoleToArabic(user.role),
             department: company.name,
             center: company.code,
             salary: '0',
@@ -414,9 +444,26 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(opacity: animation, child: child);
           },
-          transitionDuration: const Duration(milliseconds: 500),
+          transitionDuration: const Duration(milliseconds: 150),
         ),
       );
+    }
+  }
+
+  /// تحويل الدور من الإنجليزية (VPS API) إلى العربية
+  String _mapRoleToArabic(String role) {
+    switch (role.toLowerCase()) {
+      case 'company_admin':
+      case 'admin':
+      case 'manager':
+      case 'super_admin':
+        return 'مدير';
+      case 'technical_leader':
+        return 'ليدر';
+      case 'technician':
+        return 'فني';
+      default:
+        return role; // الموظفين وغيرهم يبقون كما هم
     }
   }
 
@@ -486,42 +533,28 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     );
   }
 
-  /// خلفية متحركة فخمة
+  /// خلفية ثابتة فخمة (بدون تحريك لأداء أفضل)
   Widget _buildAnimatedBackground() {
-    return AnimatedBuilder(
-      animation: _backgroundAnimController,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment(
-                math.cos(_backgroundAnimController.value * 2 * math.pi),
-                math.sin(_backgroundAnimController.value * 2 * math.pi),
-              ),
-              end: Alignment(
-                -math.cos(_backgroundAnimController.value * 2 * math.pi),
-                -math.sin(_backgroundAnimController.value * 2 * math.pi),
-              ),
-              colors: const [
-                Color(0xFF0f0c29),
-                Color(0xFF302b63),
-                Color(0xFF24243e),
-              ],
-            ),
-          ),
-          child: Stack(
-            children: [
-              // Floating orbs
-              ..._buildFloatingOrbs(),
-              // Blur overlay
-              BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                child: Container(color: Colors.transparent),
-              ),
-            ],
-          ),
-        );
-      },
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0f0c29),
+            Color(0xFF302b63),
+            Color(0xFF24243e),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Floating orbs (ثابتة)
+          ..._buildFloatingOrbs(),
+          // Overlay خفيف بدلاً من BackdropFilter (أداء أفضل على Windows)
+          Container(color: const Color(0xFF1a1535).withOpacity(0.6)),
+        ],
+      ),
     );
   }
 
@@ -546,26 +579,15 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   Widget _buildOrb(double size, List<Color> colors, double opacity) {
-    return AnimatedBuilder(
-      animation: _backgroundAnimController,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(
-            math.sin(_backgroundAnimController.value * 2 * math.pi) * 20,
-            math.cos(_backgroundAnimController.value * 2 * math.pi) * 20,
-          ),
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: colors.map((c) => c.withOpacity(opacity)).toList(),
-              ),
-            ),
-          ),
-        );
-      },
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: colors.map((c) => c.withOpacity(opacity)).toList(),
+        ),
+      ),
     );
   }
 
@@ -578,39 +600,36 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1.5,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1a1535).withOpacity(0.85),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              // القسم الأيسر - الترحيب
+              Expanded(
+                flex: 5,
+                child: _buildWelcomeSection(isDesktop: true),
               ),
-            ),
-            child: Row(
-              children: [
-                // القسم الأيسر - الترحيب
-                Expanded(
-                  flex: 5,
-                  child: _buildWelcomeSection(isDesktop: true),
-                ),
-                // القسم الأيمن - النموذج
-                Expanded(
-                  flex: 4,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: const BorderRadius.horizontal(
-                        right: Radius.circular(32),
-                      ),
+              // القسم الأيمن - النموذج
+              Expanded(
+                flex: 4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(32),
                     ),
-                    child: _buildLoginForm(isCompact: false),
                   ),
+                  child: _buildLoginForm(isCompact: false),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -767,36 +786,31 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     );
   }
 
-  /// شعار متحرك
+  /// شعار ثابت
   Widget _buildAnimatedLogo({required double size}) {
-    return AnimatedBuilder(
-      animation: _backgroundAnimController,
-      builder: (context, child) {
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: _primaryGradient,
-            ),
-            borderRadius: BorderRadius.circular(size * 0.3),
-            boxShadow: [
-              BoxShadow(
-                color: _primaryGradient[0].withOpacity(0.4),
-                blurRadius: 20,
-                spreadRadius: 2,
-              ),
-            ],
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: _primaryGradient,
+        ),
+        borderRadius: BorderRadius.circular(size * 0.3),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryGradient[0].withOpacity(0.4),
+            blurRadius: 20,
+            spreadRadius: 2,
           ),
-          child: Icon(
-            Icons.fiber_smart_record,
-            size: size * 0.5,
-            color: Colors.white,
-          ),
-        );
-      },
+        ],
+      ),
+      child: Icon(
+        Icons.fiber_smart_record,
+        size: size * 0.5,
+        color: Colors.white,
+      ),
     );
   }
 
@@ -804,29 +818,26 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   Widget _buildGlassCard({required Widget child}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: child,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
         ),
+        child: child,
       ),
     );
   }
 
   /// نموذج تسجيل الدخول
   Widget _buildLoginForm({required bool isCompact}) {
-    return Padding(
+    return SingleChildScrollView(
       padding: EdgeInsets.all(isCompact ? 24 : 40),
       child: Form(
         key: _formKey,

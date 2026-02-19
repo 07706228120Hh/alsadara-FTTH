@@ -9,7 +9,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart';
-import 'package:gsheets/gsheets.dart';
 import 'package:excel/excel.dart' as excel;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -20,6 +19,7 @@ import '../../services/local_database_service.dart';
 import '../../services/whatsapp_bulk_sender_service.dart';
 import '../../services/whatsapp_business_service.dart';
 import '../../pages/whatsapp_batch_reports_page.dart';
+import '../../services/permission_checker.dart';
 
 // استثناء خاص لإلغاء عمليات التصدير
 class _CancelledExport implements Exception {
@@ -96,8 +96,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       'https://admin.ftth.iq/api/subscriptions?sortCriteria.property=expires&sortCriteria.direction=asc&status=Active&hierarchyLevel=0';
   final String expiredUrl =
       'https://admin.ftth.iq/api/subscriptions?sortCriteria.property=expires&sortCriteria.direction=asc&status=Expired&hierarchyLevel=0';
-
-  final String spreadsheetId = '1Vc9Syd7D0mo6EGnIsdMA-sVCpvWsAQ7NGnvZf8knXKE';
 
   // Export auth
   final TextEditingController _exportPasswordController =
@@ -856,212 +854,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     }
   }
 
-  /// تصدير البيانات إلى Google Sheets
-  Future<void> exportToGoogleSheets() async {
-    if (!mounted) return;
-    setState(() {
-      isExporting = true;
-      errorMessage = "";
-      progressMessage = "جاري تحضير عملية التصدير...";
-      _cancelRequested = false;
-    });
-
-    try {
-      // إذا كان خيار جلب الأرقام مفعلاً، نجلب الأرقام من الذاكرة الداخلية أولاً
-      if (_exportWithLocalPhones) {
-        setState(() {
-          progressMessage = 'جاري جلب أرقام الهواتف من الذاكرة الداخلية...';
-        });
-        await _loadPhonesFromLocalStorageForExport();
-        if (_cancelRequested) throw const _CancelledExport();
-      }
-
-      // جلب كل الاشتراكات المطابقة للفلاتر الحالية (كل الصفحات)
-      setState(() {
-        progressMessage = "جاري جلب جميع النتائج...";
-      });
-      final allSubs = await fetchAllSubscriptionsForExport();
-      if (_cancelRequested) throw const _CancelledExport();
-      totalItemsToExport = allSubs.length;
-
-      // تحميل التفاصيل والأجهزة (لضمان FAT و ONT Serial)
-      if (allSubs.isNotEmpty) {
-        setState(() {
-          progressMessage = 'جاري جلب تفاصيل الاشتراكات والأجهزة...';
-        });
-        await _loadDetailsAndDevicesForExport(allSubs,
-            base: 0.05, span: 0.15); // يحدّث exportProgress حتى 0.20
-        if (_cancelRequested) throw const _CancelledExport();
-      }
-
-      final credentials =
-          await rootBundle.loadString('lib/credentials/service_account.json');
-      final gsheets = GSheets(credentials);
-      final ss = await gsheets.spreadsheet(spreadsheetId);
-      final sheet = ss.sheets.first;
-
-      if (!mounted) return;
-      setState(() {
-        progressMessage = "جاري حذف البيانات القديمة...";
-      });
-
-      if (_cancelRequested) {
-        _handleExportCancelled();
-        return;
-      }
-
-      // حذف البيانات السابقة
-      await sheet.clear();
-
-      if (_cancelRequested) {
-        _handleExportCancelled();
-        return;
-      }
-
-      // إضافة رأس الجدول (كل التفاصيل الظاهرة الآن)
-      await sheet.values.insertRow(1, [
-        'اسم المشترك',
-        'رقم تعريف المشترك',
-        'رقم الهاتف',
-        'اسم المستخدم',
-        'حالة الاشتراك',
-        'حالة الجلسة',
-        'نوع الباقة',
-        'مدة الالتزام',
-        'تاريخ البدء',
-        'تاريخ الانتهاء',
-        'متبقي',
-        'المنطقة',
-        'FAT',
-        'ONT Serial',
-        'رقم تعريف الاشتراك',
-      ]);
-
-      final batchSize = 150;
-      for (int i = 0; i < allSubs.length; i += batchSize) {
-        if (_cancelRequested) {
-          _handleExportCancelled();
-          return;
-        }
-        if (!mounted) return;
-        final batch = allSubs.skip(i).take(batchSize).map((subscription) {
-          final customer = subscription['customer'] ?? {};
-          final phone = (subscription['customerSummary']?['primaryPhone'] ??
-                  customer['primaryContact']?['mobile'] ??
-                  customer['mobile'] ??
-                  customer['phone'] ??
-                  'غير متوفر')
-              .toString();
-          final username = (subscription['deviceDetails']?['username'] ??
-                  subscription['fullDetails']?['deviceDetails']?['username'] ??
-                  subscription['username'] ??
-                  'غير معروف')
-              .toString();
-          final start = subscription['startedAt']?.split('T')[0] ?? 'غير متوفر';
-          final end = subscription['expires']?.split('T')[0] ?? 'غير متوفر';
-          final remain = (() {
-            final expiresStr = subscription['expires'];
-            if (expiresStr is String && expiresStr.isNotEmpty) {
-              try {
-                final exp = DateTime.parse(expiresStr);
-                final d = exp.difference(DateTime.now()).inDays;
-                if (d < 0) return 'منتهي ${d.abs()} يوم';
-                return '$d يوم';
-              } catch (_) {}
-            }
-            return 'غير معروف';
-          })();
-          final bundle = _getFirstServiceName(subscription);
-          final fatName = (() {
-            final deviceModel = subscription['deviceModel'];
-            if (deviceModel is Map<String, dynamic>) {
-              final fat = deviceModel['fat'];
-              if (fat is Map<String, dynamic>) {
-                return fat['displayValue']?.toString() ?? '-';
-              }
-            }
-            return '-';
-          })();
-          final ontSerial = (() {
-            final deviceModel = subscription['deviceModel'];
-            if (deviceModel is Map<String, dynamic>) {
-              final v = deviceModel['ontSerial'];
-              if (v != null && v.toString().isNotEmpty) return v.toString();
-            }
-            return '-';
-          })();
-          return [
-            customer['displayValue'] ?? 'غير متوفر', // اسم المشترك
-            customer['id'] ?? 'غير متوفر', // رقم تعريف المشترك
-            phone, // رقم الهاتف
-            username, // اسم المستخدم
-            (subscription['status'] == 'Active')
-                ? 'فعال'
-                : (subscription['status'] == 'Expired')
-                    ? 'منتهي'
-                    : (subscription['status'] == 'Suspended')
-                        ? 'معلق'
-                        : (subscription['status'] ??
-                            'غير متوفر'), // حالة الاشتراك
-            subscription['hasActiveSession'] == true
-                ? 'نشطة'
-                : 'غير نشطة', // حالة الجلسة
-            bundle, // نوع الباقة
-            subscription['commitmentPeriod']?.toString() ??
-                'غير متوفر', // مدة الالتزام
-            start, // تاريخ البدء
-            end, // تاريخ الانتهاء
-            remain, // متبقي
-            subscription['zone']?['self']?['displayValue'] ??
-                subscription['zone']?['displayValue'] ??
-                'غير معروف', // المنطقة
-            fatName, // FAT
-            ontSerial, // ONT Serial
-            subscription['self']?['id'] ?? 'غير متوفر', // رقم تعريف الاشتراك
-          ];
-        }).toList();
-
-        await sheet.values.appendRows(batch);
-        if (mounted) {
-          setState(() {
-            exportedItemsCount = (i + batch.length).clamp(0, allSubs.length);
-            exportProgress = 0.2 + (0.6 * exportedItemsCount / allSubs.length);
-            progressMessage =
-                "جاري معالجة $exportedItemsCount من ${allSubs.length} اشتراك...";
-          });
-        }
-      }
-      // تم الاكتفاء بالتصدير إلى Google Sheets أعلاه.
-    } on _CancelledExport catch (_) {
-      // تم التعامل مع الإلغاء بشكل أنيق
-      _handleExportCancelled();
-      return;
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          errorMessage = "فشل تصدير البيانات: $e";
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('فشل في تصدير البيانات: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isExporting = false;
-          progressMessage = ""; // تنظيف رسالة التقدم
-          exportProgress = 0.0; // إعادة تعيين التقدم
-          totalItemsToExport = 0;
-          exportedItemsCount = 0;
-          // تنظيف حالة التطبيق بعد انتهاء التصدير
-        });
-      }
-    }
-  }
-
   /// تصدير كل النتائج الحالية (مع الفلاتر) إلى ملف Excel محلي
   Future<void> exportToExcel() async {
     if (!mounted) return;
@@ -1794,7 +1586,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                       end: Alignment.centerRight,
                     ),
                     border: Border(
-                      top: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+                      top: BorderSide(
+                          color: Colors.black.withValues(alpha: 0.05)),
                     ),
                   ),
                   child: AnimatedSwitcher(
@@ -1908,21 +1701,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                               const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade600,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                ),
-                                onPressed: () {
-                                  setState(() => showExportOptions = false);
-                                  exportToGoogleSheets();
-                                },
-                                icon: const Icon(Icons.cloud),
-                                label: const Text('Google Sheets'),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green.shade700,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
@@ -2009,7 +1787,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           if (!isExporting &&
               !_isBulkSending &&
               !askingPassword &&
-              !showExportOptions)
+              !showExportOptions &&
+              PermissionManager.instance.canSend('subscriptions'))
             IconButton(
               tooltip: 'إرسال واتساب جماعي',
               onPressed: _showBulkWhatsAppDialog,
@@ -2028,7 +1807,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 ),
               ),
             ),
-          if (!isExporting && !askingPassword && !showExportOptions)
+          if (!isExporting &&
+              !askingPassword &&
+              !showExportOptions &&
+              PermissionManager.instance.canExport('subscriptions'))
             IconButton(
               tooltip: 'تصدير',
               onPressed: _onMainExportPressed,
@@ -2377,7 +2159,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? base.withValues(alpha: 0.12) : Colors.white,
+                    color: isSelected
+                        ? base.withValues(alpha: 0.12)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isSelected ? base : Colors.grey.shade300,

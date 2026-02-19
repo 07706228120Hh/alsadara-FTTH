@@ -132,8 +132,7 @@ public class Citizen : BaseEntity<Guid>
     /// <summary>من قام بالتعيين</summary>
     public virtual User? AssignedBy { get; set; }
     
-    /// <summary>طلبات الخدمة</summary>
-    public virtual ICollection<ServiceRequest> ServiceRequests { get; set; } = new List<ServiceRequest>();
+    // ServiceRequests removed - ServiceRequest.CitizenId points to User, not Citizen
     
     /// <summary>اشتراكات المواطن</summary>
     public virtual ICollection<CitizenSubscription> Subscriptions { get; set; } = new List<CitizenSubscription>();

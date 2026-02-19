@@ -11,7 +11,7 @@ import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../services/whatsapp_template_storage.dart';
-import '../../services/google_sheets_service.dart';
+import '../../services/subscription_logs_service.dart';
 import '../../services/thermal_printer_service.dart';
 import '../../services/print_template_storage.dart';
 import '../../services/template_password_storage.dart';
@@ -175,7 +175,7 @@ class SubscriptionDetailsPage extends StatefulWidget {
   final List<dynamic>? services;
   final String? fdtDisplayValue;
   final String? fatDisplayValue;
-  final bool hasGoogleSheetsPermission;
+  final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
   // قائمة الصلاحيات المهمة المفلترة من نظام FTTH للوصول داخل التفاصيل
   final List<String>? importantFtthApiPermissions;
@@ -226,7 +226,7 @@ class SubscriptionDetailsPage extends StatefulWidget {
     this.services,
     this.fdtDisplayValue,
     this.fatDisplayValue,
-    this.hasGoogleSheetsPermission = false,
+    this.hasServerSavePermission = false,
     this.hasWhatsAppPermission = false,
     this.importantFtthApiPermissions,
     this.initialAllowedActions,
@@ -319,8 +319,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   double manualDiscount = 0.0; // خصم يدوي اختياري يطبّق على الإجمالي
   String subscriptionNotes = ''; // ملاحظات الاشتراك
   bool isNotesEnabled = true; // حالة زر تشغيل/إيقاف الملاحظات (افتراضي: مفعل)
-  bool isDataSavedToSheets =
-      false; // لتتبع ما إذا كانت البيانات محفوظة في Google Sheets
+  bool isDataSavedToServer =
+      false; // لتتبع ما إذا كانت البيانات محفوظة في الخادم
 
   // قائمة الفنيين المحمّلة من TechniciansPage
   List<Map<String, String>> technicians = [];
@@ -333,6 +333,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   bool _isSendingWhatsApp = false; // لزر إرسال واتساب العادي
   bool _isSendingToTechnician = false; // لزر إرسال للفني
   bool _isSavedToSheets = false; // لتغيير لون زر تم التفعيل بعد الضغط والنجاح
+  int?
+      _vpsLogId; // معرف السجل المحفوظ في VPS لاستخدامه في تحديثات الطباعة/الواتساب
   // واتساب: رقم افتراضي محفوظ من نافذة "إعداد الواتساب"
   String? _defaultWhatsAppPhone;
   // رقم هاتف المشترك المجلوب من API
@@ -2525,20 +2527,18 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         debugPrint('📱 WhatsApp: تم التحديث isWhatsAppSent بعد الإرسال');
       }
 
-      // حفظ Google Sheets بعد الإرسال (غير حاجز للواجهة الأولى)
-      if (sent && widget.hasGoogleSheetsPermission) {
-        debugPrint('🚀 حفظ بيانات الواتساب بعد الإرسال (Deferred)...');
+      // تحديث حالة الواتساب في VPS بعد الإرسال (غير حاجز للواجهة)
+      if (sent) {
+        debugPrint('🚀 تحديث حالة الواتساب في VPS بعد الإرسال (Deferred)...');
         unawaited(Future(() async {
           try {
-            await _saveToGoogleSheets();
-            debugPrint('✅ حفظ Google Sheets بعد الإرسال اكتمل');
+            await _updateWhatsAppStatusInVps();
+            debugPrint('✅ تم تحديث حالة الواتساب في VPS');
           } catch (e, st) {
-            debugPrint('❌ فشل حفظ Google Sheets بعد الإرسال: $e');
+            debugPrint('❌ فشل تحديث حالة الواتساب في VPS: $e');
             debugPrint(st.toString());
           }
         }));
-      } else if (!widget.hasGoogleSheetsPermission) {
-        debugPrint('ℹ️ لا صلاحية Google Sheets - تخطٍ للحفظ');
       }
     } catch (e) {
       if (mounted) {
@@ -2797,23 +2797,20 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           debugPrint(
               '🖨️ Current state - isPrinted: $isPrinted, isWhatsAppSent: $isWhatsAppSent');
 
-          // حفظ البيانات المحدثة في Google Sheets
-          if (widget.hasGoogleSheetsPermission) {
-            try {
-              await _saveToGoogleSheets();
-              debugPrint(
-                  '✅ تم حفظ البيانات مع تحديث حالة الطباعة في Google Sheets');
-
-              // زيادة عداد تكرار الطباعة في العمود AN
-              if (sessionId.isNotEmpty) {
-                final printCount =
-                    await GoogleSheetsService.incrementPrintCount(
-                  sessionId: sessionId,
-                );
-                debugPrint('🖨️ تم تحديث عداد الطباعة إلى: $printCount');
+          // تحديث حالة الطباعة في VPS
+          try {
+            await _updatePrintStatusInVps();
+            debugPrint('✅ تم تحديث حالة الطباعة في VPS');
+          } catch (e) {
+            debugPrint('⚠️ فشل تحديث حالة الطباعة في VPS: $e');
+            // إذا لم يكن السجل محفوظاً بعد، نحفظ كاملاً
+            if (!isDataSavedToServer && widget.hasServerSavePermission) {
+              try {
+                await _saveToServer();
+                debugPrint('✅ تم حفظ البيانات كاملة مع حالة الطباعة');
+              } catch (e2) {
+                debugPrint('⚠️ فشل الحفظ الكامل أيضاً: $e2');
               }
-            } catch (e) {
-              debugPrint('⚠️ فشل حفظ البيانات بعد الطباعة: $e');
             }
           }
 
@@ -3595,12 +3592,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               const Divider(height: 0),
               ListTile(
                 leading: const Icon(Icons.cloud_upload, color: Colors.orange),
-                title: const Text('إرسال إلى الدرايف'),
-                subtitle: const Text('Google Sheets'),
-                enabled: widget.hasGoogleSheetsPermission,
+                title: const Text('حفظ في الخادم'),
+                subtitle: const Text('VPS'),
+                enabled: widget.hasServerSavePermission,
                 onTap: () async {
                   Navigator.of(context).pop();
-                  await _saveOnlyGoogleSheets();
+                  await _saveOnlyToServer();
                 },
               ),
               const Divider(height: 0),
@@ -3870,12 +3867,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         debugPrint('🔗 Payment URL: ${responseData['paymentUrl']}');
         debugPrint('🔢 Order Number: ${responseData['orderNumber']}');
 
-        // حفظ البيانات في Google Sheets بعد نجاح عملية الشراء
+        // حفظ البيانات في VPS بعد نجاح عملية الشراء
         try {
-          await _saveToGoogleSheets();
-          debugPrint('✅ تم حفظ بيانات شراء الاشتراك في Google Sheets');
+          await _saveToServer();
+          debugPrint('✅ تم حفظ بيانات شراء الاشتراك في VPS');
         } catch (e) {
-          debugPrint('❌ فشل في حفظ البيانات في Google Sheets: $e');
+          debugPrint('❌ فشل في حفظ البيانات في VPS: $e');
           // لا نوقف العملية حتى لو فشل حفظ البيانات
         }
 
@@ -4601,9 +4598,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           try {
             await fetchScheduledChanges(widget.userId);
           } catch (_) {}
-          if (widget.hasGoogleSheetsPermission) {
+          if (widget.hasServerSavePermission) {
             try {
-              await _saveToGoogleSheets();
+              await _saveToServer();
             } catch (e) {
               debugPrint('⚠️ Sheets: $e');
             }
@@ -4810,12 +4807,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         }
 
         debugPrint('✅ Response Data: $responseData');
-        // حفظ Google Sheets
-        if (widget.hasGoogleSheetsPermission) {
+        // حفظ في VPS
+        if (widget.hasServerSavePermission) {
           try {
-            await _saveToGoogleSheets();
+            await _saveToServer();
           } catch (e) {
-            debugPrint('⚠️ فشل حفظ Sheets: $e');
+            debugPrint('⚠️ فشل حفظ VPS: $e');
           }
         }
         // إرسال واتساب
@@ -4870,9 +4867,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     }
   }
 
-  /// حفظ البيانات في Google Sheets
-  Future<void> _saveToGoogleSheets() async {
-    debugPrint('🚀 بدء حفظ البيانات - Current States:');
+  /// حفظ البيانات في VPS (الحفظ الأساسي والوحيد)
+  Future<void> _saveToServer() async {
+    debugPrint('🚀 بدء حفظ البيانات في VPS - Current States:');
     debugPrint('  🖨️ isPrinted: $isPrinted');
     debugPrint('  📱 isWhatsAppSent: $isWhatsAppSent');
     debugPrint('  🆔 sessionId: $sessionId');
@@ -4883,55 +4880,30 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     }
 
     try {
-      debugPrint('📊 بدء حفظ البيانات في Google Sheets...');
+      debugPrint('🔵 بدء حفظ البيانات في VPS...');
 
-      // جلب بيانات العميل المحدثة
-      final customerData = await fetchCustomerDetails(widget.userId);
-
-      // تحضير البيانات للحفظ
-      // تحديد نوع العملية بدقة:
-      // - شراء اشتراك جديد: عندما يكون الاشتراك تجريبي (subscriptionId يبدأ بـ T)
-      // - تجديد الاشتراك: نفس الخطة ونفس فترة الالتزام
-      // - تغيير اشتراك: تغيّر الخطة أو فترة الالتزام
+      // تحديد نوع العملية
       final bool isRenewal = !isNewSubscription &&
           subscriptionInfo != null &&
           selectedPlan == subscriptionInfo!.currentPlan &&
           selectedCommitmentPeriod == subscriptionInfo!.commitmentPeriod;
 
-      final operationType = isNewSubscription
-          ? 'شراء اشتراك جديد'
-          : (isRenewal ? 'تجديد الاشتراك' : 'تغيير اشتراك');
+      final operationType =
+          isNewSubscription ? 'purchase' : (isRenewal ? 'renewal' : 'change');
 
-      // حساب المبلغ المحمّل مرة واحدة كسلسلة وأرقام (للاستخدام في حقول الرصيد)
+      // حساب المبالغ
       final int chargedAmountInt = _getFinalTotal().round();
-      final String chargedAmountStr = chargedAmountInt.toString();
-      // اختيار الرصيد المناسب (محفظة العضو إن كانت فعّالة وإلا الرئيسية)
       final bool usingTeamMemberWallet = hasTeamMemberWallet;
       final double rawBeforeWallet =
           usingTeamMemberWallet ? teamMemberWalletBalance : walletBalance;
-      // رصيد قبل = حسب المحفظة المستخدمة
       final int walletBeforeInt = rawBeforeWallet.round();
-      final String walletBeforeStr = walletBeforeInt.toString();
-      // رصيد بعد = رصيد قبل − السعر الإجمالي
       final int walletAfterInt = walletBeforeInt - chargedAmountInt;
-      final String walletAfterStr = walletAfterInt.toString();
+
       final currentDateTime = DateTime.now();
       final formattedDate =
           '${currentDateTime.day}/${currentDateTime.month}/${currentDateTime.year}';
       final formattedTime =
           '${currentDateTime.hour.toString().padLeft(2, '0')}:${currentDateTime.minute.toString().padLeft(2, '0')}';
-
-      final customerPhone = customerData?['primaryContact']?['mobile'] ??
-          widget.userPhone ??
-          'غير متوفر';
-      // ملاحظات: البريد الإلكتروني والعنوان متاحان هنا عند الحاجة مستقبلًا
-      // final customerEmail = customerData?['primaryContact']?['email'] ?? 'غير متوفر';
-      // final customerAddress = customerData?['addresses']?.isNotEmpty == true
-      //     ? customerData!['addresses'][0]['displayValue']
-      //     : 'غير متوفر';
-
-      // استخدام الدالة الجديدة لحفظ أو تحديث البيانات
-      debugPrint('🆔 Using sessionId in saveToGoogleSheets: $sessionId');
 
       // التأكد من أن sessionId ليس فارغ
       if (sessionId.isEmpty) {
@@ -4939,70 +4911,120 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         debugPrint('⚠️ تم إنشاء sessionId جديد: $sessionId');
       }
 
-      await GoogleSheetsService.saveOrUpdateSubscriptionDetails(
+      // جلب بيانات العميل
+      final customerData = await fetchCustomerDetails(widget.userId);
+      final customerPhone = customerData?['primaryContact']?['mobile'] ??
+          widget.userPhone ??
+          'غير متوفر';
+
+      final logId = await SubscriptionLogsService.instance.saveSubscriptionLog(
+        // معلومات العميل
         customerId: subscriptionInfo!.customerId,
         customerName: subscriptionInfo!.customerName,
         phoneNumber: customerPhone,
+        // معلومات الاشتراك
         subscriptionId: widget.subscriptionId,
-        planName: selectedPlan ?? '',
-        planPrice: chargedAmountStr,
-        commitmentPeriod: selectedCommitmentPeriod ?? 0,
-        operationType: operationType,
-        activatedBy: widget.activatedBy,
-        activationDate: formattedDate,
-        sessionId: sessionId, // معرف الجلسة الفريد
-        activationTime: formattedTime,
-        zoneId: subscriptionInfo!.zoneId,
+        planName: selectedPlan,
+        planPrice: chargedAmountInt.toDouble(),
+        commitmentPeriod: selectedCommitmentPeriod,
         bundleId: subscriptionInfo!.bundleId,
         currentStatus: subscriptionInfo!.status,
         deviceUsername: subscriptionInfo!.deviceUsername,
-        // fbgInfo يُحفظ الآن في العمود S حسب التعديل (بدلاً من FDT)
-        fdtInfo: null, // لم يعد مستخدماً في التخزين الحالي
-        fbgInfo: (widget.fbgValue != null && widget.fbgValue!.trim().isNotEmpty)
-            ? widget.fbgValue!.trim()
-            : (widget.fdtDisplayValue ?? ''),
-        fatInfo: (widget.fatDisplayValue?.trim().isNotEmpty == true
-                ? widget.fatDisplayValue
-                : widget.fatValue)
-            ?.trim(),
-        walletBalanceBefore: walletBeforeStr,
-        walletBalanceAfter: walletAfterStr,
+        // معلومات العملية
+        operationType: operationType,
+        activatedBy: widget.activatedBy,
+        activationDate: currentDateTime,
+        activationTime: formattedTime,
+        sessionId: sessionId,
+        // معلومات الموقع
+        zoneId: subscriptionInfo!.zoneId,
+        zoneName: null,
+        fbgInfo: widget.fbgValue ?? widget.fdtDisplayValue,
+        fatInfo: widget.fatDisplayValue ?? widget.fatValue,
+        fdtInfo: widget.fdtDisplayValue,
+        // معلومات المحفظة
+        walletBalanceBefore: walletBeforeInt.toDouble(),
+        walletBalanceAfter: walletAfterInt.toDouble(),
+        partnerWalletBalanceBefore: partnerWalletBalanceBefore,
+        customerWalletBalanceBefore: customerWalletBalanceBefore,
         currency: (priceDetails!['totalPrice'] is Map &&
                 priceDetails!['totalPrice']['currency'] != null)
             ? priceDetails!['totalPrice']['currency'].toString()
             : (priceDetails!['currency']?.toString() ?? 'IQD'),
         paymentMethod: selectedPaymentMethod,
+        // معلومات الشريك
         partnerName: subscriptionInfo!.partnerName,
         partnerId: subscriptionInfo!.partnerId,
-        lastUpdateDate: DateTime.now().toIso8601String(),
-        // الأعمدة الجديدة AI-AL
-        partnerWalletBalanceBefore:
-            partnerWalletBalanceBefore.toStringAsFixed(2),
-        customerWalletBalanceBefore:
-            customerWalletBalanceBefore.toStringAsFixed(2),
+        // حالة العملية
         isPrinted: isPrinted,
         isWhatsAppSent: isWhatsAppSent,
-        subscriptionNotes: subscriptionNotes, // ملاحظات الاشتراك
+        subscriptionNotes: subscriptionNotes,
+        // معلومات إضافية
+        startDate: formattedDate,
+        endDate: _calculateEndDate(),
       );
 
-      debugPrint('✅ تم حفظ البيانات في Google Sheets بنجاح');
-      debugPrint('💾 الحالات المحفوظة:');
-      debugPrint('  🖨️ isPrinted: $isPrinted');
-      debugPrint('  📱 isWhatsAppSent: $isWhatsAppSent');
+      if (logId != null) {
+        _vpsLogId = logId;
+        debugPrint('✅ تم حفظ البيانات في VPS بنجاح - logId: $logId');
+        debugPrint('💾 الحالات المحفوظة:');
+        debugPrint('  🖨️ isPrinted: $isPrinted');
+        debugPrint('  📱 isWhatsAppSent: $isWhatsAppSent');
 
-      // تحديث حالة الحفظ
-      setState(() {
-        isDataSavedToSheets = true;
-      });
+        // تحديث حالة الحفظ
+        setState(() {
+          isDataSavedToServer = true;
+        });
+      } else {
+        throw Exception('فشل حفظ البيانات في VPS - لم يتم إرجاع logId');
+      }
     } catch (e) {
-      debugPrint('❌ فشل في حفظ البيانات في Google Sheets: $e');
-      throw Exception('فشل في حفظ البيانات في Google Sheets: $e');
+      debugPrint('❌ خطأ في حفظ البيانات في VPS: $e');
+      throw Exception('فشل في حفظ البيانات في الخادم: $e');
     }
   }
 
-  /// تحديث الملاحظات فقط في Google Sheets (بعد الحفظ المسبق)
-  Future<void> _updateNotesInGoogleSheets() async {
-    if (!isDataSavedToSheets) {
+  /// تحديث حالة الطباعة في VPS
+  Future<void> _updatePrintStatusInVps() async {
+    final logId = await _getOrFindVpsLogId();
+    if (logId == null) {
+      debugPrint('⚠️ لا يوجد logId لتحديث حالة الطباعة');
+      return;
+    }
+    await SubscriptionLogsService.instance.updateLogStatus(
+      logId: logId,
+      isPrinted: true,
+    );
+    debugPrint('✅ تم تحديث حالة الطباعة في VPS (logId: $logId)');
+  }
+
+  /// تحديث حالة الواتساب في VPS
+  Future<void> _updateWhatsAppStatusInVps() async {
+    final logId = await _getOrFindVpsLogId();
+    if (logId == null) {
+      debugPrint('⚠️ لا يوجد logId لتحديث حالة الواتساب');
+      return;
+    }
+    await SubscriptionLogsService.instance.updateLogStatus(
+      logId: logId,
+      isWhatsAppSent: true,
+    );
+    debugPrint('✅ تم تحديث حالة الواتساب في VPS (logId: $logId)');
+  }
+
+  /// الحصول على logId المحفوظ أو البحث عنه بواسطة sessionId
+  Future<int?> _getOrFindVpsLogId() async {
+    if (_vpsLogId != null && _vpsLogId! > 0) return _vpsLogId;
+    if (sessionId.isNotEmpty) {
+      _vpsLogId =
+          await SubscriptionLogsService.instance.findLogBySessionId(sessionId);
+    }
+    return _vpsLogId;
+  }
+
+  /// تحديث الملاحظات في VPS (بعد الحفظ المسبق)
+  Future<void> _updateNotesOnServer() async {
+    if (!isDataSavedToServer) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -5014,18 +5036,19 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     }
 
     try {
-      debugPrint('🔄 جاري تحديث الملاحظات في Google Sheets...');
-      debugPrint('📝 معرف الاشتراك: ${widget.subscriptionId}');
-      debugPrint('� الملاحظات: $subscriptionNotes');
+      debugPrint('🔄 جاري تحديث الملاحظات في VPS...');
 
-      // استخدام الدالة المخصصة لتحديث الملاحظات فقط
-      await GoogleSheetsService.updateSubscriptionNotes(
-        subscriptionId: widget.subscriptionId,
-        subscriptionNotes: subscriptionNotes,
-        sessionId: sessionId, // تمرير SessionID للبحث في العمود AH
+      final logId = await _getOrFindVpsLogId();
+      if (logId == null) {
+        throw Exception('لم يتم العثور على السجل في VPS');
+      }
+
+      await SubscriptionLogsService.instance.updateLogStatus(
+        logId: logId,
+        notes: subscriptionNotes,
       );
 
-      debugPrint('✅ تم تحديث الملاحظات في Google Sheets بنجاح');
+      debugPrint('✅ تم تحديث الملاحظات في VPS بنجاح');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -5034,7 +5057,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         ),
       );
     } catch (e) {
-      debugPrint('❌ فشل في تحديث الملاحظات في Google Sheets: $e');
+      debugPrint('❌ فشل في تحديث الملاحظات: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ فشل في تحديث الملاحظات: $e'),
@@ -5176,8 +5199,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   // تمت إزالة الدالة المجمعة السابقة (_saveAndSendWhatsAppAndSheets) بعد فصل الأزرار.
 
-  /// زر حفظ فقط في Google Sheets (بدون واتساب)
-  Future<void> _saveOnlyGoogleSheets() async {
+  /// زر حفظ فقط في VPS (بدون واتساب)
+  Future<void> _saveOnlyToServer() async {
     if (subscriptionInfo == null || priceDetails == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -5186,11 +5209,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       }
       return;
     }
-    if (!widget.hasGoogleSheetsPermission) {
+    if (!widget.hasServerSavePermission) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('لا تملك صلاحية الحفظ في Google Sheets')),
+          const SnackBar(content: Text('لا تملك صلاحية الحفظ في الخادم')),
         );
       }
       return;
@@ -5223,11 +5245,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           ),
         ),
       );
-      await _saveToGoogleSheets();
+      await _saveToServer();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ تم الحفظ في Google Sheets'),
+            content: Text('✅ تم الحفظ في الخادم'),
             backgroundColor: Colors.green,
           ),
         );
@@ -5299,7 +5321,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       }
       return;
     }
-    // استدعاء الدالة الصحيحة التي تحفظ في Google Sheets
+    // استدعاء الدالة الصحيحة التي تحفظ في الخادم
     await sendWhatsAppMessage();
   }
 
@@ -6413,11 +6435,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           SizedBox(height: 16),
                           _buildInfoSection('✅ أذونات التطبيق', [
                             _buildInfoRow(
-                                'إذن جوجل شيت',
-                                widget.hasGoogleSheetsPermission
+                                'إذن حفظ الخادم',
+                                widget.hasServerSavePermission
                                     ? 'مفعل'
                                     : 'غير مفعل',
-                                widget.hasGoogleSheetsPermission
+                                widget.hasServerSavePermission
                                     ? Icons.check_circle
                                     : Icons.cancel),
                             _buildInfoRow(
@@ -7012,7 +7034,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     if (widget.initialCustomerWalletBalance != null) count++;
 
     // أذونات التطبيق
-    count += 2; // hasGoogleSheetsPermission, hasWhatsAppPermission
+    count += 2; // hasServerSavePermission, hasWhatsAppPermission
 
     // === المعلومات الإضافية الجديدة ===
     if (widget.deviceSerial != null) count++;
@@ -7973,16 +7995,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                 filled: true,
                                 fillColor: Colors.white,
                                 // زر التحديث في الجهة اليسرى
-                                prefixIcon: isDataSavedToSheets
+                                prefixIcon: isDataSavedToServer
                                     ? Container(
                                         margin: const EdgeInsets.all(4),
                                         child: IconButton(
                                           onPressed: () =>
-                                              _updateNotesInGoogleSheets(),
+                                              _updateNotesOnServer(),
                                           icon: const Icon(Icons.edit_note,
                                               size: 20),
-                                          tooltip:
-                                              'تحديث الملاحظات في Google Sheets',
+                                          tooltip: 'تحديث الملاحظات في الخادم',
                                           style: IconButton.styleFrom(
                                             backgroundColor: Colors.orange,
                                             foregroundColor: Colors.white,
@@ -8656,8 +8677,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               ),
               const SizedBox(height: 12),
 
-              // زر تم التفعيل (حفظ في Google Sheets)
-              if (widget.hasGoogleSheetsPermission)
+              // زر تم التفعيل (حفظ في الخادم)
+              if (widget.hasServerSavePermission)
                 _buildManualDialogButton(
                   icon: Icons.cloud_upload,
                   label: 'تم التفعيل',
@@ -8665,11 +8686,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   onPressed: () {
                     Navigator.of(ctx).pop();
                     if (!_isSavedToSheets) {
-                      _saveOnlyGoogleSheets();
+                      _saveOnlyToServer();
                     }
                   },
                 ),
-              if (widget.hasGoogleSheetsPermission) const SizedBox(height: 12),
+              if (widget.hasServerSavePermission) const SizedBox(height: 12),
 
               // زر الطباعة
               _buildManualDialogButton(

@@ -49,10 +49,9 @@ class AppTheme {
       // البطاقات
       cardTheme: CardThemeData(
         elevation: 4,
-        shadowColor: (brightness == Brightness.light
-                ? Colors.grey
-                : Colors.black)
-            .withValues(alpha: brightness == Brightness.light ? 0.2 : 0.3),
+        shadowColor:
+            (brightness == Brightness.light ? Colors.grey : Colors.black)
+                .withValues(alpha: brightness == Brightness.light ? 0.2 : 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius16),
         ),
@@ -95,24 +94,29 @@ class AppTheme {
       ),
 
       // الحوارات
-  dialogTheme: DialogThemeData(
+      dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius16),
         ),
-        backgroundColor:
-            brightness == Brightness.light ? Colors.white : const Color(0xFF1E1E1E),
+        backgroundColor: brightness == Brightness.light
+            ? Colors.white
+            : const Color(0xFF1E1E1E),
         surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
           fontFamily: 'Cairo',
           fontWeight: FontWeight.w700,
           fontSize: 18,
-          color: brightness == Brightness.light ? const Color(0xFF1A237E) : Colors.white,
+          color: brightness == Brightness.light
+              ? const Color(0xFF1A237E)
+              : Colors.white,
         ),
         contentTextStyle: TextStyle(
           fontFamily: 'Cairo',
           fontWeight: FontWeight.w500,
           fontSize: 14,
-          color: brightness == Brightness.light ? const Color(0xFF2C3E50) : Colors.white70,
+          color: brightness == Brightness.light
+              ? const Color(0xFF2C3E50)
+              : Colors.white70,
         ),
       ),
 
@@ -164,11 +168,11 @@ class AppTheme {
       // انتقالات موحدة
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.android: _InstantPageTransitionsBuilder(),
+          TargetPlatform.iOS: _InstantPageTransitionsBuilder(),
+          TargetPlatform.windows: _InstantPageTransitionsBuilder(),
+          TargetPlatform.linux: _InstantPageTransitionsBuilder(),
+          TargetPlatform.macOS: _InstantPageTransitionsBuilder(),
         },
       ),
     );
@@ -190,4 +194,20 @@ class AppTheme {
     Color(0xFFFF9800),
     Color(0xFFFF8F00),
   ];
+}
+
+/// انتقال فوري بين الصفحات - بدون أنيميشن لأداء أفضل على Windows Desktop
+class _InstantPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _InstantPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child; // بدون أي أنيميشن - انتقال فوري
+  }
 }

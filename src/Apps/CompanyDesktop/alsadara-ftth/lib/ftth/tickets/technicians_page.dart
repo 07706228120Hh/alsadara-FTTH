@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/permission_checker.dart';
 
 /// صفحة محلية لإدارة فني التوصيل (اسم + رقم)
 /// يتم حفظ البيانات محلياً في SharedPreferences تحت المفتاح 'local_technicians_list'
@@ -241,19 +242,23 @@ class _TechniciansPageState extends State<TechniciansPage> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'إضافة فني جديد',
-            onPressed: () => _addOrEdit(),
-            icon: const Icon(Icons.add_circle_outline),
-          ),
+          if (PermissionManager.instance.canAdd('technicians'))
+            IconButton(
+              tooltip: 'إضافة فني جديد',
+              onPressed: () => _addOrEdit(),
+              icon: const Icon(Icons.add_circle_outline),
+            ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addOrEdit(),
-        backgroundColor: const Color(0xFF1A237E),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('إضافة فني', style: TextStyle(color: Colors.white)),
-      ),
+      floatingActionButton: PermissionManager.instance.canAdd('technicians')
+          ? FloatingActionButton.extended(
+              onPressed: () => _addOrEdit(),
+              backgroundColor: const Color(0xFF1A237E),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('إضافة فني',
+                  style: TextStyle(color: Colors.white)),
+            )
+          : null,
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : technicians.isEmpty
@@ -291,19 +296,20 @@ class _TechniciansPageState extends State<TechniciansPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () => _addOrEdit(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1A237E),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25)),
-                        ),
-                        icon: const Icon(Icons.add),
-                        label: const Text('إضافة أول فني'),
-                      )
+                      if (PermissionManager.instance.canAdd('technicians'))
+                        ElevatedButton.icon(
+                          onPressed: () => _addOrEdit(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1A237E),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25)),
+                          ),
+                          icon: const Icon(Icons.add),
+                          label: const Text('إضافة أول فني'),
+                        )
                     ],
                   ),
                 )
@@ -405,13 +411,17 @@ class _TechniciansPageState extends State<TechniciansPage> {
                                   color: Colors.blue.shade50,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: IconButton(
-                                  tooltip: 'تعديل',
-                                  icon: Icon(Icons.edit,
-                                      size: 20, color: Colors.blue.shade700),
-                                  onPressed: () =>
-                                      _addOrEdit(existing: tech, index: i),
-                                ),
+                                child: PermissionManager.instance
+                                        .canEdit('technicians')
+                                    ? IconButton(
+                                        tooltip: 'تعديل',
+                                        icon: Icon(Icons.edit,
+                                            size: 20,
+                                            color: Colors.blue.shade700),
+                                        onPressed: () => _addOrEdit(
+                                            existing: tech, index: i),
+                                      )
+                                    : const SizedBox.shrink(),
                               ),
                               const SizedBox(width: 4),
                               Container(
@@ -419,12 +429,16 @@ class _TechniciansPageState extends State<TechniciansPage> {
                                   color: Colors.red.shade50,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: IconButton(
-                                  tooltip: 'حذف',
-                                  icon: Icon(Icons.delete_forever,
-                                      size: 20, color: Colors.red.shade700),
-                                  onPressed: () => _delete(i),
-                                ),
+                                child: PermissionManager.instance
+                                        .canDelete('technicians')
+                                    ? IconButton(
+                                        tooltip: 'حذف',
+                                        icon: Icon(Icons.delete_forever,
+                                            size: 20,
+                                            color: Colors.red.shade700),
+                                        onPressed: () => _delete(i),
+                                      )
+                                    : const SizedBox.shrink(),
                               ),
                             ],
                           ),

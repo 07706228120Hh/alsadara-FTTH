@@ -1,0 +1,1 @@
+SELECT "Id", "Name", "TotalCharges", "TotalPayments", "NetBalance", "Status" FROM "Agents" WHERE "IsDeleted" = false;

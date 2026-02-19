@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/google_sheets_service.dart';
+import '../../services/subscription_logs_service.dart';
 import '../../models/filter_criteria.dart';
 
 /// صفحة اسمية الوصولات
@@ -665,7 +665,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
     return descriptions.join(' • ');
   }
 
-  /// تحميل بيانات الوصولات من Google Sheets
+  /// تحميل بيانات الوصولات من الخادم
   Future<void> _loadConnectionsData() async {
     try {
       setState(() {
@@ -710,55 +710,34 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
     }
   }
 
-  /// جلب البيانات من Google Sheets وإعادة تنظيمها حسب فني التوصيل
+  /// جلب البيانات من API وإعادة تنظيمها حسب فني التوصيل
   Future<Map<String, List<Map<String, dynamic>>>>
       _fetchConnectionsFromSheets() async {
     try {
-      print('🔍 ConnectionsListPage - بدء جلب البيانات بدون تصفية رئيسية');
-      print('   - تم إلغاء تطبيق FilterCriteria من الصفحة الرئيسية');
-      print('   - مستخدم محدد: ${widget.specificUser}');
+      print('🔍 ConnectionsListPage - بدء جلب البيانات من API');
 
-      // جلب جميع البيانات بدون تطبيق تصفية رئيسية
-      final rawData = await GoogleSheetsService.getFilteredConnectionsWithNotes(
-        null, // إلغاء تمرير معايير التصفية الرئيسية
-      );
+      // جلب جميع البيانات من API
+      final data = await SubscriptionLogsService.instance.getConnections();
 
-      print('📊 تم استلام ${rawData.length} مستخدمين من الخدمة');
+      print('📊 تم استلام ${data.length} فنيين من API');
 
-      // إعادة تنظيم البيانات حسب فني التوصيل بدلاً من المستخدم
-      Map<String, List<Map<String, dynamic>>> reorganizedData = {};
-
-      rawData.forEach((userName, connections) {
-        // إذا تم تحديد مستخدم معين، فلتر البيانات لهذا المستخدم فقط
-        if (widget.specificUser != null && userName != widget.specificUser) {
-          return; // تجاهل هذا المستخدم
-        }
-
-        for (var connection in connections) {
-          String technicianName = connection['deviceModel'] ?? 'غير محدد';
-
-          if (!reorganizedData.containsKey(technicianName)) {
-            reorganizedData[technicianName] = [];
+      // إذا تم تحديد مستخدم معين، فلتر البيانات
+      if (widget.specificUser != null) {
+        final Map<String, List<Map<String, dynamic>>> filtered = {};
+        data.forEach((techName, connections) {
+          final userConnections = connections
+              .where((c) => c['enteredBy'] == widget.specificUser)
+              .toList();
+          if (userConnections.isNotEmpty) {
+            filtered[techName] = userConnections;
           }
+        });
+        return filtered;
+      }
 
-          // إضافة معلومة المستخدم الذي أدخل البيانات
-          connection['enteredBy'] = userName;
-
-          // طباعة أعمدة السجل الأول للمراجعة
-          if (reorganizedData.isEmpty && connections.isEmpty) {
-            print('🔑 أعمدة البيانات المتاحة في أول سجل:');
-            for (var key in connection.keys) {
-              print('   - $key: ${connection[key]}');
-            }
-          }
-
-          reorganizedData[technicianName]!.add(connection);
-        }
-      });
-
-      return reorganizedData;
+      return data;
     } catch (e) {
-      throw Exception('خطأ في جلب البيانات من Google Sheets: $e');
+      throw Exception('خطأ في جلب البيانات: $e');
     }
   }
 
@@ -2008,7 +1987,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
         ),
       );
 
-      // تحديث العامود AM في Google Sheets
+      // تحديث حالة الدفع في الخادم
       await _updatePaymentStatus(connection);
 
       // تحديث البيانات المحلية فوراً
@@ -2145,26 +2124,21 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
     return result ?? false;
   }
 
-  /// تحديث حالة التسديد في Google Sheets
+  /// تحديث حالة التسديد عبر API
   Future<void> _updatePaymentStatus(Map<String, dynamic> connection) async {
-    // هنا نحتاج لتحديد معرف السجل في Google Sheets لتحديث العامود AM
-    final subscriptionId = connection['subscriptionId']?.toString() ?? '';
-    final customerName = connection['customerName']?.toString() ?? '';
+    final logId = connection['id']?.toString() ?? '';
 
-    if (subscriptionId.isEmpty && customerName.isEmpty) {
+    if (logId.isEmpty) {
       throw Exception('لا يمكن تحديد السجل للتحديث');
     }
 
-    // استدعاء خدمة Google Sheets لتحديث العامود AM
-    await GoogleSheetsService.updatePaymentStatus(
-      subscriptionId: subscriptionId,
-      customerName: customerName,
-      paymentStatus: 'مسدد', // القيمة التي ستحفظ في العامود AM
+    await SubscriptionLogsService.instance.updatePaymentStatus(
+      logId: logId,
+      paymentStatus: 'مسدد',
     );
 
-    print('✅ تم تحديث حالة التسديد في العامود AM');
-    print('   - معرف الاشتراك: $subscriptionId');
-    print('   - اسم العميل: $customerName');
+    print('✅ تم تحديث حالة التسديد');
+    print('   - معرف السجل: $logId');
     print('   - الحالة: مسدد');
   }
 
@@ -2433,14 +2407,16 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
     print('   - اسم العميل: $customerName');
 
     try {
-      // تحديث في Google Sheets - إزالة حالة التسديد
-      print('📊 جاري تحديث Google Sheets...');
-      await GoogleSheetsService.updatePaymentStatus(
-        subscriptionId: subscriptionId,
-        customerName: customerName,
-        paymentStatus: '', // إزالة حالة التسديد
-      );
-      print('✅ تم تحديث Google Sheets بنجاح');
+      // تحديث عبر API - إزالة حالة التسديد
+      final logId = connection['id']?.toString() ?? '';
+      if (logId.isNotEmpty) {
+        print('📊 جاري تحديث حالة الدفع عبر API...');
+        await SubscriptionLogsService.instance.updatePaymentStatus(
+          logId: logId,
+          paymentStatus: '', // إزالة حالة التسديد
+        );
+        print('✅ تم تحديث حالة الدفع بنجاح');
+      }
 
       // تحديث البيانات المحلية
       setState(() {

@@ -5,7 +5,9 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../widgets/notification_filter.dart';
 import 'package:http/http.dart' as http;
 import '../../services/agents_auth_service.dart';
@@ -601,6 +603,375 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         ),
       ),
     );
+  }
+
+  // متغيرات لجلب كل البيانات
+  bool isFetchingAllData = false;
+  Map<String, dynamic> allChartsData = {};
+
+  // جلب كل البيانات من جميع الشارتات بدون فلاتر
+  Future<void> _fetchAllDataWithoutFilters() async {
+    if (guestToken == null) {
+      ftthShowSnackBar(
+        context,
+        const SnackBar(
+          content: Text('يرجى الانتظار حتى يتم الاتصال بالخادم'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isFetchingAllData = true;
+    });
+
+    try {
+      debugPrint('🔄 بدء جلب كل البيانات بدون فلاتر...');
+
+      // قائمة الشارتات المطلوب جلبها مع أوصافها
+      final chartsToFetch = [
+        {'slice_id': 52, 'name': 'zones_detailed', 'desc': 'تفاصيل المناطق'},
+        {
+          'slice_id': 48,
+          'name': 'timeseries_weekly',
+          'desc': 'السلسلة الأسبوعية'
+        },
+        {
+          'slice_id': 51,
+          'name': 'timeseries_monthly',
+          'desc': 'السلسلة الشهرية'
+        },
+        {'slice_id': 46, 'name': 'timeseries_46', 'desc': 'سلسلة زمنية'},
+        {'slice_id': 34, 'name': 'users_34', 'desc': 'إحصائيات المستخدمين'},
+        {'slice_id': 35, 'name': 'users_35', 'desc': 'إحصائيات المستخدمين 2'},
+        {'slice_id': 36, 'name': 'users_36', 'desc': 'إحصائيات المستخدمين 3'},
+        {'slice_id': 37, 'name': 'users_37', 'desc': 'إحصائيات المستخدمين 4'},
+        {'slice_id': 38, 'name': 'users_38', 'desc': 'إحصائيات المستخدمين 5'},
+      ];
+
+      final fetchedData = <String, dynamic>{};
+      int successCount = 0;
+      int failCount = 0;
+
+      for (var chart in chartsToFetch) {
+        try {
+          debugPrint(
+              '📊 جلب ${chart['name']} (slice_id: ${chart['slice_id']})...');
+
+          // إنشاء payload بدون فلاتر
+          final requestPayload = {
+            'form_data': {
+              'slice_id': chart['slice_id'],
+              // إزالة أي فلاتر native
+              'extra_filters': [],
+              'native_filters': [],
+              'extra_form_data': {},
+            },
+            'dashboard_id': 7,
+            'slice_id': chart['slice_id'],
+          };
+
+          final chartData = await AgentsAuthService.fetchChartData(
+            chart['slice_id'] as int,
+            7,
+            guestToken: guestToken,
+            authToken: widget.authToken.isNotEmpty ? widget.authToken : null,
+            requestPayload: requestPayload,
+          );
+
+          if (chartData != null) {
+            fetchedData[chart['name'] as String] = {
+              'slice_id': chart['slice_id'],
+              'description': chart['desc'],
+              'data': chartData['data'],
+              'colnames': chartData['colnames'],
+              'coltypes': chartData['coltypes'],
+              'rowcount': (chartData['data'] as List?)?.length ?? 0,
+            };
+            successCount++;
+            debugPrint(
+                '✅ تم جلب ${chart['name']}: ${(chartData['data'] as List?)?.length ?? 0} سجل');
+          } else {
+            failCount++;
+            debugPrint('❌ فشل جلب ${chart['name']}');
+          }
+        } catch (e) {
+          failCount++;
+          debugPrint('❌ خطأ في جلب ${chart['name']}: $e');
+        }
+      }
+
+      setState(() {
+        allChartsData = fetchedData;
+        isFetchingAllData = false;
+      });
+
+      // عرض نتيجة الجلب
+      if (mounted) {
+        _showAllDataDialog(fetchedData, successCount, failCount);
+      }
+
+      debugPrint('✅ انتهى جلب كل البيانات: $successCount نجاح، $failCount فشل');
+    } catch (e) {
+      debugPrint('❌ خطأ عام في جلب كل البيانات: $e');
+      setState(() {
+        isFetchingAllData = false;
+      });
+      if (mounted) {
+        ftthShowSnackBar(
+          context,
+          SnackBar(
+            content: Text('خطأ في جلب البيانات: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // عرض حوار نتائج جلب كل البيانات
+  void _showAllDataDialog(Map<String, dynamic> data, int success, int fail) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              success > 0 ? Icons.check_circle : Icons.error,
+              color: success > 0 ? Colors.green : Colors.red,
+            ),
+            const SizedBox(width: 8),
+            const Text('نتائج جلب البيانات'),
+          ],
+        ),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.8,
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ملخص
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        Text('$success',
+                            style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green)),
+                        const Text('نجاح',
+                            style: TextStyle(color: Colors.green)),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        Text('$fail',
+                            style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red)),
+                        const Text('فشل', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                            '${data.values.fold<int>(0, (sum, item) => sum + ((item['rowcount'] ?? 0) as int))}',
+                            style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue)),
+                        const Text('إجمالي السجلات',
+                            style: TextStyle(color: Colors.blue)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('تفاصيل البيانات:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              // قائمة البيانات
+              Expanded(
+                child: ListView.builder(
+                  itemCount: data.length,
+                  itemBuilder: (context, index) {
+                    final key = data.keys.elementAt(index);
+                    final item = data[key] as Map<String, dynamic>;
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.blue,
+                          child: Text('${item['slice_id']}',
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 12)),
+                        ),
+                        title: Text(item['description'] ?? key),
+                        subtitle: Text(
+                            '${item['rowcount']} سجل | ${(item['colnames'] as List?)?.length ?? 0} عمود'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.visibility),
+                          tooltip: 'عرض البيانات',
+                          onPressed: () => _showChartDataDetail(key, item),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إغلاق'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              // تصدير البيانات كـ JSON
+              _exportAllDataAsJson(data);
+            },
+            icon: const Icon(Icons.download),
+            label: const Text('تصدير JSON'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // عرض تفاصيل بيانات شارت معين
+  void _showChartDataDetail(String name, Map<String, dynamic> item) {
+    final data = item['data'] as List? ?? [];
+    final columns = (item['colnames'] as List?)?.cast<String>() ?? [];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${item['description']} ($name)'),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.9,
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: data.isEmpty
+              ? const Center(child: Text('لا توجد بيانات'))
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SingleChildScrollView(
+                    child: DataTable(
+                      columnSpacing: 20,
+                      columns: columns
+                          .map((col) => DataColumn(
+                              label: Text(col,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold))))
+                          .toList(),
+                      rows: data.take(100).map((row) {
+                        final rowMap = row as Map<String, dynamic>;
+                        return DataRow(
+                          cells: columns
+                              .map((col) => DataCell(
+                                  Text(rowMap[col]?.toString() ?? '-')))
+                              .toList(),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+        ),
+        actions: [
+          if (data.length > 100)
+            Text('عرض أول 100 من ${data.length}',
+                style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // تصدير كل البيانات كـ JSON
+  void _exportAllDataAsJson(Map<String, dynamic> data) async {
+    try {
+      final jsonString = const JsonEncoder.withIndent('  ').convert({
+        'exported_at': DateTime.now().toIso8601String(),
+        'total_charts': data.length,
+        'charts': data,
+      });
+
+      // محاولة حفظ في ملف أولاً (لـ Windows)
+      try {
+        final timestamp = DateTime.now()
+            .toIso8601String()
+            .replaceAll(':', '-')
+            .replaceAll('.', '-');
+        final fileName = 'ftth_all_data_$timestamp.json';
+
+        // استخدام مسار المستندات أو سطح المكتب
+        final directory = Directory(
+            'C:/Sadara.API/ftth_data_export/07_Dashboard_Project/data/exported');
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
+
+        final file = File('${directory.path}/$fileName');
+        await file.writeAsString(jsonString);
+
+        debugPrint('✅ تم حفظ البيانات في: ${file.path}');
+
+        if (mounted) {
+          ftthShowSnackBar(
+            context,
+            SnackBar(
+              content: Text('تم حفظ البيانات في: ${file.path}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'نسخ المسار',
+                textColor: Colors.white,
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: file.path));
+                },
+              ),
+            ),
+          );
+        }
+      } catch (fileError) {
+        debugPrint('⚠️ فشل حفظ الملف، جاري النسخ للحافظة: $fileError');
+        // إذا فشل الحفظ في ملف، ننسخ للحافظة
+        Clipboard.setData(ClipboardData(text: jsonString));
+
+        if (mounted) {
+          ftthShowSnackBar(
+            context,
+            const SnackBar(
+              content: Text('تم نسخ البيانات إلى الحافظة ✓'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ftthShowSnackBar(
+        context,
+        SnackBar(
+          content: Text('خطأ في التصدير: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   // جلب بيانات المناطق من شارت chart/data (slice_id=52, dashboard_id=7)
@@ -1304,6 +1675,25 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
             onPressed: () async {
               await _initializeData();
             },
+          ),
+          // زر جلب كل البيانات بدون فلاتر
+          IconButton(
+            icon: isFetchingAllData
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.cloud_download, size: 20),
+            tooltip: 'جلب كل البيانات (بدون فلاتر)',
+            onPressed: isFetchingAllData
+                ? null
+                : () async {
+                    await _fetchAllDataWithoutFilters();
+                  },
           ),
         ],
         bottom: userRoles != null

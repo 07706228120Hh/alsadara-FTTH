@@ -13,6 +13,7 @@ import '../../services/auth_service.dart';
 import '../../pages/home_page.dart' as firstSystem;
 import '../core/home_page.dart';
 import '../../services/auth/session_manager.dart';
+import '../../services/permission_checker.dart';
 
 class LoginPage extends StatefulWidget {
   // إضافة معاملات لاستقبال بيانات المستخدم من النظام الأول
@@ -189,6 +190,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         }
 
         final tokenData = result['data'];
+
+        // تحميل صلاحيات V2 إذا لم تكن محملة
+        if (!PermissionManager.instance.isLoaded) {
+          await PermissionManager.instance.loadPermissions();
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -225,65 +232,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
   }
 
-  // وظيفة دمج الصلاحيات من النظامين
+  // V2: بناء صلاحيات الصفحات من PermissionManager
   Map<String, bool> _combinePermissions(bool ftthIsAdmin) {
-    // إذا كانت هناك صلاحيات مُمررة من النظام الأول (مفلترة حسب صلاحيات الشركة)
-    // استخدمها مباشرة بدلاً من إنشاء صلاحيات جديدة
-    if (widget.firstSystemPageAccess != null &&
-        widget.firstSystemPageAccess!.isNotEmpty) {
-      print('🔐 استخدام الصلاحيات المُمررة (مفلترة حسب صلاحيات الشركة)');
-      print('   الصلاحيات: ${widget.firstSystemPageAccess}');
-
-      // استخدام الصلاحيات المُمررة مع الصلاحيات الافتراضية
-      final result = <String, bool>{
-        'users': widget.firstSystemPageAccess!['users'] ?? false,
-        'subscriptions':
-            widget.firstSystemPageAccess!['subscriptions'] ?? false,
-        'tasks': widget.firstSystemPageAccess!['tasks'] ?? false,
-        'zones': widget.firstSystemPageAccess!['zones'] ?? false,
-        'accounts': widget.firstSystemPageAccess!['accounts'] ?? false,
-        'account_records':
-            widget.firstSystemPageAccess!['account_records'] ?? false,
-        'export': widget.firstSystemPageAccess!['export'] ?? false,
-        'agents': widget.firstSystemPageAccess!['agents'] ?? false,
-        'google_sheets':
-            widget.firstSystemPageAccess!['google_sheets'] ?? false,
-        'whatsapp': widget.firstSystemPageAccess!['whatsapp'] ?? false,
-        'wallet_balance':
-            widget.firstSystemPageAccess!['wallet_balance'] ?? false,
-        'expiring_soon':
-            widget.firstSystemPageAccess!['expiring_soon'] ?? false,
-        'quick_search': widget.firstSystemPageAccess!['quick_search'] ?? false,
-        'technicians': widget.firstSystemPageAccess!['technicians'] ?? false,
-        'transactions': widget.firstSystemPageAccess!['transactions'] ?? false,
-        'notifications':
-            widget.firstSystemPageAccess!['notifications'] ?? false,
-        'audit_logs': widget.firstSystemPageAccess!['audit_logs'] ?? false,
-        'whatsapp_link':
-            widget.firstSystemPageAccess!['whatsapp_link'] ?? false,
-        'whatsapp_settings':
-            widget.firstSystemPageAccess!['whatsapp_settings'] ?? false,
-        'plans_bundles':
-            widget.firstSystemPageAccess!['plans_bundles'] ?? false,
-        'whatsapp_business_api':
-            widget.firstSystemPageAccess!['whatsapp_business_api'] ?? false,
-        'whatsapp_bulk_sender':
-            widget.firstSystemPageAccess!['whatsapp_bulk_sender'] ?? false,
-        'whatsapp_conversations_fab':
-            widget.firstSystemPageAccess!['whatsapp_conversations_fab'] ??
-                false,
-        'local_storage':
-            widget.firstSystemPageAccess!['local_storage'] ?? false,
-        'local_storage_import':
-            widget.firstSystemPageAccess!['local_storage_import'] ?? false,
-      };
-      return result;
+    final pm = PermissionManager.instance;
+    if (pm.isLoaded) {
+      print('🔐 V2: استخدام صلاحيات PermissionManager');
+      return pm.buildPageAccess();
     }
 
-    // الصلاحيات الافتراضية لنظام FTTH (بدون تسجيل دخول من النظام الأول)
+    // fallback: الصلاحيات الافتراضية لنظام FTTH
     final ftthPermissions = <String, bool>{
       'users': ftthIsAdmin,
-      'subscriptions': true, // متاح للجميع
+      'subscriptions': true,
       'tasks': ftthIsAdmin,
       'zones': ftthIsAdmin,
       'accounts': ftthIsAdmin,
@@ -429,454 +389,424 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                 return Center(
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(22),
-                                    child: BackdropFilter(
-                                      filter: ui.ImageFilter.blur(
-                                          sigmaX: 20, sigmaY: 20),
-                                      child: Container(
-                                        width: maxW,
-                                        padding: const EdgeInsets.fromLTRB(
-                                            18, 20, 18, 18),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(22),
-                                          border: Border.all(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.25),
-                                            width: 1,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black
-                                                  .withValues(alpha: 0.14),
-                                              blurRadius: 20,
-                                              offset: const Offset(0, 10),
-                                            ),
-                                          ],
+                                    child: Container(
+                                      width: maxW,
+                                      padding: const EdgeInsets.fromLTRB(
+                                          18, 20, 18, 18),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(22),
+                                        border: Border.all(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.25),
+                                          width: 1,
                                         ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // أنيميشن تسجيل الدخول
-                                            SizedBox(
-                                              height: 100,
-                                              width: 100,
-                                              child: Lottie.network(
-                                                'https://assets2.lottiefiles.com/packages/lf20_kkflmtur.json',
-                                                fit: BoxFit.contain,
-                                                repeat: true,
-                                                animate: true,
-                                                errorBuilder: (context, error,
-                                                    stackTrace) {
-                                                  return const Icon(
-                                                    Icons.person,
-                                                    size: 60,
-                                                    color: Color(0xFF667eea),
-                                                  );
-                                                },
-                                              ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.14),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, 10),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // أنيميشن تسجيل الدخول
+                                          SizedBox(
+                                            height: 100,
+                                            width: 100,
+                                            child: Lottie.network(
+                                              'https://assets2.lottiefiles.com/packages/lf20_kkflmtur.json',
+                                              fit: BoxFit.contain,
+                                              repeat: true,
+                                              animate: true,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return const Icon(
+                                                  Icons.person,
+                                                  size: 60,
+                                                  color: Color(0xFF667eea),
+                                                );
+                                              },
                                             ),
-                                            const SizedBox(height: 16),
+                                          ),
+                                          const SizedBox(height: 16),
 
-                                            // حقل اسم المستخدم
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(15),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color:
-                                                        const Color(0xFF667eea)
-                                                            .withValues(
-                                                                alpha: 0.1),
-                                                    blurRadius: 10,
-                                                    offset: const Offset(0, 5),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: TextField(
-                                                controller: usernameController,
-                                                style: const TextStyle(
-                                                    fontSize: 16),
-                                                decoration: InputDecoration(
-                                                  labelText: 'اسم المستخدم',
-                                                  labelStyle: const TextStyle(
-                                                    color: Color(0xFF718096),
-                                                    fontSize: 15,
-                                                  ),
-                                                  prefixIcon: Container(
-                                                    margin:
-                                                        const EdgeInsets.all(
-                                                            12),
-                                                    padding:
-                                                        const EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                      gradient:
-                                                          const LinearGradient(
-                                                        colors: [
-                                                          Color(0xFF667eea),
-                                                          Color(0xFF764ba2)
-                                                        ],
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                    child: const Icon(
-                                                        Icons.person,
-                                                        color: Colors.white,
-                                                        size: 20),
-                                                  ),
-                                                  filled: true,
-                                                  fillColor:
-                                                      const Color(0xFFF7FAFC),
-                                                  border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            15),
-                                                    borderSide: BorderSide.none,
-                                                  ),
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            15),
-                                                    borderSide:
-                                                        const BorderSide(
-                                                      color: Color(0xFF667eea),
-                                                      width: 2,
-                                                    ),
-                                                  ),
+                                          // حقل اسم المستخدم
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: const Color(0xFF667eea)
+                                                      .withValues(alpha: 0.1),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 5),
                                                 ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 16),
-
-                                            // حقل كلمة المرور
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(15),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color:
-                                                        const Color(0xFF667eea)
-                                                            .withValues(
-                                                                alpha: 0.1),
-                                                    blurRadius: 10,
-                                                    offset: const Offset(0, 5),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: TextField(
-                                                controller: passwordController,
-                                                style: const TextStyle(
-                                                    fontSize: 16),
-                                                obscureText: !showPassword,
-                                                decoration: InputDecoration(
-                                                  labelText: 'كلمة المرور',
-                                                  labelStyle: const TextStyle(
-                                                    color: Color(0xFF718096),
-                                                    fontSize: 15,
-                                                  ),
-                                                  prefixIcon: Container(
-                                                    margin:
-                                                        const EdgeInsets.all(
-                                                            12),
-                                                    padding:
-                                                        const EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                      gradient:
-                                                          const LinearGradient(
-                                                        colors: [
-                                                          Color(0xFF667eea),
-                                                          Color(0xFF764ba2)
-                                                        ],
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                    child: const Icon(
-                                                        Icons.lock,
-                                                        color: Colors.white,
-                                                        size: 20),
-                                                  ),
-                                                  suffixIcon: IconButton(
-                                                    icon: Icon(
-                                                      showPassword
-                                                          ? Icons.visibility
-                                                          : Icons
-                                                              .visibility_off,
-                                                      color: const Color(
-                                                          0xFF718096),
-                                                    ),
-                                                    onPressed: () {
-                                                      setState(() {
-                                                        showPassword =
-                                                            !showPassword;
-                                                      });
-                                                    },
-                                                  ),
-                                                  filled: true,
-                                                  fillColor:
-                                                      const Color(0xFFF7FAFC),
-                                                  border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            15),
-                                                    borderSide: BorderSide.none,
-                                                  ),
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            15),
-                                                    borderSide:
-                                                        const BorderSide(
-                                                      color: Color(0xFF667eea),
-                                                      width: 2,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 12),
-
-                                            // خيار تذكرني
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Transform.scale(
-                                                      scale: 1.2,
-                                                      child: Checkbox(
-                                                        value: rememberMe,
-                                                        onChanged: (value) {
-                                                          setState(() {
-                                                            rememberMe =
-                                                                value ?? false;
-                                                          });
-                                                        },
-                                                        activeColor:
-                                                            const Color(
-                                                                0xFF667eea),
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(4),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const Text(
-                                                      'تذكرني',
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        color:
-                                                            Color(0xFF4A5568),
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                // زر مسح البيانات المحفوظة
-                                                if (usernameController
-                                                        .text.isNotEmpty ||
-                                                    passwordController
-                                                        .text.isNotEmpty)
-                                                  TextButton.icon(
-                                                    onPressed:
-                                                        clearSavedCredentials,
-                                                    icon: const Icon(
-                                                      Icons.clear_all_rounded,
-                                                      size: 18,
-                                                      color: Colors.red,
-                                                    ),
-                                                    label: const Text(
-                                                      'مسح البيانات',
-                                                      style: TextStyle(
-                                                        fontSize: 13,
-                                                        color: Colors.red,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    style: TextButton.styleFrom(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 4),
-                                                      minimumSize:
-                                                          const Size(0, 32),
-                                                    ),
-                                                  ),
                                               ],
                                             ),
-                                            const SizedBox(height: 16),
-
-                                            // زر تسجيل الدخول
-                                            isLoading
-                                                ? Container(
-                                                    height: 55,
-                                                    decoration: BoxDecoration(
-                                                      gradient:
-                                                          const LinearGradient(
-                                                        colors: [
-                                                          Color(0xFF667eea),
-                                                          Color(0xFF764ba2)
-                                                        ],
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              15),
-                                                    ),
-                                                    child: const Center(
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                        valueColor:
-                                                            AlwaysStoppedAnimation<
-                                                                    Color>(
-                                                                Colors.white),
-                                                      ),
-                                                    ),
-                                                  )
-                                                : Container(
-                                                    width: double.infinity,
-                                                    height: 50,
-                                                    decoration: BoxDecoration(
-                                                      gradient:
-                                                          const LinearGradient(
-                                                        colors: [
-                                                          Color(0xFF667eea),
-                                                          Color(0xFF764ba2)
-                                                        ],
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              15),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color: const Color(
-                                                                  0xFF667eea)
-                                                              .withValues(
-                                                                  alpha: 0.4),
-                                                          blurRadius: 15,
-                                                          offset: const Offset(
-                                                              0, 8),
-                                                        ),
+                                            child: TextField(
+                                              controller: usernameController,
+                                              style:
+                                                  const TextStyle(fontSize: 16),
+                                              decoration: InputDecoration(
+                                                labelText: 'اسم المستخدم',
+                                                labelStyle: const TextStyle(
+                                                  color: Color(0xFF718096),
+                                                  fontSize: 15,
+                                                ),
+                                                prefixIcon: Container(
+                                                  margin:
+                                                      const EdgeInsets.all(12),
+                                                  padding:
+                                                      const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    gradient:
+                                                        const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFF667eea),
+                                                        Color(0xFF764ba2)
                                                       ],
                                                     ),
-                                                    child: ElevatedButton(
-                                                      onPressed: login,
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                        backgroundColor:
-                                                            Colors.transparent,
-                                                        shadowColor:
-                                                            Colors.transparent,
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(15),
-                                                        ),
-                                                      ),
-                                                      child: const Text(
-                                                        'تسجيل الدخول',
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          letterSpacing: 0.5,
-                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                  ),
+                                                  child: const Icon(
+                                                      Icons.person,
+                                                      color: Colors.white,
+                                                      size: 20),
+                                                ),
+                                                filled: true,
+                                                fillColor:
+                                                    const Color(0xFFF7FAFC),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(15),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(15),
+                                                  borderSide: const BorderSide(
+                                                    color: Color(0xFF667eea),
+                                                    width: 2,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+
+                                          // حقل كلمة المرور
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: const Color(0xFF667eea)
+                                                      .withValues(alpha: 0.1),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 5),
+                                                ),
+                                              ],
+                                            ),
+                                            child: TextField(
+                                              controller: passwordController,
+                                              style:
+                                                  const TextStyle(fontSize: 16),
+                                              obscureText: !showPassword,
+                                              decoration: InputDecoration(
+                                                labelText: 'كلمة المرور',
+                                                labelStyle: const TextStyle(
+                                                  color: Color(0xFF718096),
+                                                  fontSize: 15,
+                                                ),
+                                                prefixIcon: Container(
+                                                  margin:
+                                                      const EdgeInsets.all(12),
+                                                  padding:
+                                                      const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    gradient:
+                                                        const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFF667eea),
+                                                        Color(0xFF764ba2)
+                                                      ],
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                  ),
+                                                  child: const Icon(Icons.lock,
+                                                      color: Colors.white,
+                                                      size: 20),
+                                                ),
+                                                suffixIcon: IconButton(
+                                                  icon: Icon(
+                                                    showPassword
+                                                        ? Icons.visibility
+                                                        : Icons.visibility_off,
+                                                    color:
+                                                        const Color(0xFF718096),
+                                                  ),
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      showPassword =
+                                                          !showPassword;
+                                                    });
+                                                  },
+                                                ),
+                                                filled: true,
+                                                fillColor:
+                                                    const Color(0xFFF7FAFC),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(15),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(15),
+                                                  borderSide: const BorderSide(
+                                                    color: Color(0xFF667eea),
+                                                    width: 2,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+
+                                          // خيار تذكرني
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Transform.scale(
+                                                    scale: 1.2,
+                                                    child: Checkbox(
+                                                      value: rememberMe,
+                                                      onChanged: (value) {
+                                                        setState(() {
+                                                          rememberMe =
+                                                              value ?? false;
+                                                        });
+                                                      },
+                                                      activeColor: const Color(
+                                                          0xFF667eea),
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(4),
                                                       ),
                                                     ),
                                                   ),
-                                            const SizedBox(height: 16),
+                                                  const Text(
+                                                    'تذكرني',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      color: Color(0xFF4A5568),
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              // زر مسح البيانات المحفوظة
+                                              if (usernameController
+                                                      .text.isNotEmpty ||
+                                                  passwordController
+                                                      .text.isNotEmpty)
+                                                TextButton.icon(
+                                                  onPressed:
+                                                      clearSavedCredentials,
+                                                  icon: const Icon(
+                                                    Icons.clear_all_rounded,
+                                                    size: 18,
+                                                    color: Colors.red,
+                                                  ),
+                                                  label: const Text(
+                                                    'مسح البيانات',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.red,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  style: TextButton.styleFrom(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
+                                                    minimumSize:
+                                                        const Size(0, 32),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
 
-                                            // رسالة تسجيل الدخول
-                                            if (loginMessage.isNotEmpty)
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.all(15),
-                                                decoration: BoxDecoration(
+                                          // زر تسجيل الدخول
+                                          isLoading
+                                              ? Container(
+                                                  height: 55,
+                                                  decoration: BoxDecoration(
+                                                    gradient:
+                                                        const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFF667eea),
+                                                        Color(0xFF764ba2)
+                                                      ],
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            15),
+                                                  ),
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                                  Color>(
+                                                              Colors.white),
+                                                    ),
+                                                  ),
+                                                )
+                                              : Container(
+                                                  width: double.infinity,
+                                                  height: 50,
+                                                  decoration: BoxDecoration(
+                                                    gradient:
+                                                        const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFF667eea),
+                                                        Color(0xFF764ba2)
+                                                      ],
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            15),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: const Color(
+                                                                0xFF667eea)
+                                                            .withValues(
+                                                                alpha: 0.4),
+                                                        blurRadius: 15,
+                                                        offset:
+                                                            const Offset(0, 8),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: ElevatedButton(
+                                                    onPressed: login,
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          Colors.transparent,
+                                                      shadowColor:
+                                                          Colors.transparent,
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(15),
+                                                      ),
+                                                    ),
+                                                    child: const Text(
+                                                      'تسجيل الدخول',
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        letterSpacing: 0.5,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                          const SizedBox(height: 16),
+
+                                          // رسالة تسجيل الدخول
+                                          if (loginMessage.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.all(15),
+                                              decoration: BoxDecoration(
+                                                color: loginMessage
+                                                        .contains("نجاح")
+                                                    ? const Color(0xFF48BB78)
+                                                        .withValues(alpha: 0.1)
+                                                    : const Color(0xFFE53E3E)
+                                                        .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
                                                   color: loginMessage
                                                           .contains("نجاح")
                                                       ? const Color(0xFF48BB78)
-                                                          .withValues(
-                                                              alpha: 0.1)
-                                                      : const Color(0xFFE53E3E)
-                                                          .withValues(
-                                                              alpha: 0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: loginMessage
-                                                            .contains("نجاح")
-                                                        ? const Color(
-                                                            0xFF48BB78)
-                                                        : const Color(
-                                                            0xFFE53E3E),
-                                                    width: 1.5,
-                                                  ),
+                                                      : const Color(0xFFE53E3E),
+                                                  width: 1.5,
                                                 ),
-                                                child: Row(
-                                                  children: [
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              6),
-                                                      decoration: BoxDecoration(
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.all(6),
+                                                    decoration: BoxDecoration(
+                                                      color: loginMessage
+                                                              .contains("نجاح")
+                                                          ? const Color(
+                                                              0xFF48BB78)
+                                                          : const Color(
+                                                              0xFFE53E3E),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
+                                                    ),
+                                                    child: Icon(
+                                                      loginMessage
+                                                              .contains("نجاح")
+                                                          ? Icons.check
+                                                          : Icons.error_outline,
+                                                      color: Colors.white,
+                                                      size: 18,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Text(
+                                                      loginMessage,
+                                                      style: TextStyle(
+                                                        fontSize: 15,
                                                         color: loginMessage
                                                                 .contains(
                                                                     "نجاح")
                                                             ? const Color(
-                                                                0xFF48BB78)
+                                                                0xFF22543D)
                                                             : const Color(
-                                                                0xFFE53E3E),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(8),
-                                                      ),
-                                                      child: Icon(
-                                                        loginMessage.contains(
-                                                                "نجاح")
-                                                            ? Icons.check
-                                                            : Icons
-                                                                .error_outline,
-                                                        color: Colors.white,
-                                                        size: 18,
+                                                                0xFF742A2A),
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Text(
-                                                        loginMessage,
-                                                        style: TextStyle(
-                                                          fontSize: 15,
-                                                          color: loginMessage
-                                                                  .contains(
-                                                                      "نجاح")
-                                                              ? const Color(
-                                                                  0xFF22543D)
-                                                              : const Color(
-                                                                  0xFF742A2A),
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                ],
                                               ),
-                                          ],
-                                        ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                   ),

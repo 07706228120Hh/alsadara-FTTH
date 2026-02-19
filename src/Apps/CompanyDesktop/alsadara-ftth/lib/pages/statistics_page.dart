@@ -5,10 +5,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
-import '../config/app_secrets.dart';
+import '../services/zone_statistics_api_service.dart';
+import '../services/task_api_service.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -18,12 +17,6 @@ class StatisticsPage extends StatefulWidget {
 }
 
 class _StatisticsPageState extends State<StatisticsPage> {
-  // 🔒 تم نقل المفتاح إلى AppSecrets
-  String get apiKey => appSecrets.googleSheetsApiKey;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
-  final String statisticsRange = 'Sheet1!A2:F';
-  final String agentsRange = 'الوكلاء!A2:AE';
-
   List<Map<String, dynamic>> statistics = [];
   List<Map<String, dynamic>> filteredStatistics = [];
   List<Map<String, dynamic>> agents = [];
@@ -64,40 +57,26 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   Future<void> fetchStatistics() async {
-    final url =
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$statisticsRange?key=$apiKey';
-
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final data = await ZoneStatisticsApiService.instance.getAll();
 
-        if (data['values'] != null) {
-          final rows = data['values'] as List;
+      final List<Map<String, dynamic>> fetchedStatistics = data.map((zone) {
+        return {
+          "FBG": zone['ZoneName'] ?? zone['zoneName'] ?? 'غير معروف',
+          "FATS": zone['Fats'] ?? zone['fats'] ?? 0,
+          "total_users": zone['TotalUsers'] ?? zone['totalUsers'] ?? 0,
+          "active_users": zone['ActiveUsers'] ?? zone['activeUsers'] ?? 0,
+          "non_subscribed_users":
+              zone['InactiveUsers'] ?? zone['inactiveUsers'] ?? 0,
+          "region": zone['RegionName'] ?? zone['regionName'] ?? 'غير محدد',
+        };
+      }).toList();
 
-          final List<Map<String, dynamic>> fetchedStatistics = rows.map((row) {
-            return {
-              "FBG": row.isNotEmpty ? row[0] : 'غير معروف',
-              "FATS": int.tryParse(row.length > 1 ? row[1] : '0') ?? 0,
-              "total_users": int.tryParse(row.length > 2 ? row[2] : '0') ?? 0,
-              "active_users": int.tryParse(row.length > 3 ? row[3] : '0') ?? 0,
-              "non_subscribed_users":
-                  int.tryParse(row.length > 4 ? row[4] : '0') ?? 0,
-              "region": row.length > 5 ? row[5] : 'غير محدد',
-            };
-          }).toList();
-
-          setState(() {
-            statistics = fetchedStatistics;
-            filteredStatistics = fetchedStatistics;
-            totalZonesCount = fetchedStatistics.length;
-          });
-        }
-      } else {
-        setState(() {
-          errorMessage = 'خطأ في جلب الإحصائيات: ${response.statusCode}';
-        });
-      }
+      setState(() {
+        statistics = fetchedStatistics;
+        filteredStatistics = fetchedStatistics;
+        totalZonesCount = fetchedStatistics.length;
+      });
     } catch (e) {
       setState(() {
         errorMessage = 'حدث خطأ: $e';
@@ -106,43 +85,36 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   Future<void> fetchAgents() async {
-    final url =
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$agentsRange?key=$apiKey';
-
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final data = await TaskApiService.instance.getTaskStaff();
+      final staffList = data['staff'] as List? ?? [];
 
-        if (data['values'] != null) {
-          final rows = data['values'] as List;
-
-          final List<Map<String, dynamic>> fetchedAgents = rows.map((row) {
-            final Map<String, dynamic> agentData = {
-              'zone': row.isNotEmpty ? row[0] : '',
-            };
-            for (int i = 1; i < row.length; i += 2) {
-              if (i + 1 < row.length) {
-                final name = row[i]?.toString() ?? '';
-                final phone = row[i + 1]?.toString() ?? '';
-                agentData['agent${(i + 1) ~/ 2}'] = {
-                  'name': name,
-                  'phone': phone
-                };
-              }
-            }
-            return agentData;
-          }).toList();
-
-          setState(() {
-            agents = fetchedAgents;
-          });
-        }
-      } else {
-        setState(() {
-          errorMessage = 'خطأ في جلب بيانات الوكلاء: ${response.statusCode}';
-        });
+      // تجميع الموظفين حسب القسم
+      final Map<String, List<Map<String, dynamic>>> grouped = {};
+      for (final staff in staffList) {
+        final dept =
+            (staff as Map<String, dynamic>)['Department']?.toString() ??
+                'غير محدد';
+        grouped.putIfAbsent(dept, () => []);
+        grouped[dept]!.add(staff);
       }
+
+      final List<Map<String, dynamic>> fetchedAgents =
+          grouped.entries.map((entry) {
+        final Map<String, dynamic> agentData = {'zone': entry.key};
+        for (int i = 0; i < entry.value.length; i++) {
+          final staff = entry.value[i];
+          agentData['agent${i + 1}'] = {
+            'name': staff['FullName']?.toString() ?? '',
+            'phone': staff['PhoneNumber']?.toString() ?? '',
+          };
+        }
+        return agentData;
+      }).toList();
+
+      setState(() {
+        agents = fetchedAgents;
+      });
     } catch (e) {
       setState(() {
         errorMessage = 'حدث خطأ: $e';

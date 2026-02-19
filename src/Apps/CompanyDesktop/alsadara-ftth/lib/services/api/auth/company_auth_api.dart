@@ -182,6 +182,10 @@ class CompanyLoginResponse {
         permissions: mergedPermissions,
         firstSystemPermissions: mergedFirstPerms,
         secondSystemPermissions: mergedSecondPerms,
+        rawFirstSystemV1: user.rawFirstSystemV1,
+        rawFirstSystemV2: user.rawFirstSystemV2,
+        rawSecondSystemV1: user.rawSecondSystemV1,
+        rawSecondSystemV2: user.rawSecondSystemV2,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
       );
@@ -210,6 +214,12 @@ class CompanyUser {
   final List<String> permissions;
   final Map<String, bool> firstSystemPermissions;
   final Map<String, bool> secondSystemPermissions;
+
+  /// صلاحيات V2 الخام — النظام الأول والثاني
+  final String? rawFirstSystemV2;
+  final String? rawSecondSystemV2;
+  final String? rawFirstSystemV1;
+  final String? rawSecondSystemV1;
   final bool isActive;
   final DateTime? lastLogin;
 
@@ -223,6 +233,10 @@ class CompanyUser {
     required this.permissions,
     required this.firstSystemPermissions,
     required this.secondSystemPermissions,
+    this.rawFirstSystemV2,
+    this.rawSecondSystemV2,
+    this.rawFirstSystemV1,
+    this.rawSecondSystemV1,
     required this.isActive,
     this.lastLogin,
   });
@@ -329,6 +343,10 @@ class CompanyUser {
       permissions: permissionsList,
       firstSystemPermissions: firstPerms,
       secondSystemPermissions: secondPerms,
+      rawFirstSystemV1: firstSystemStr?.toString(),
+      rawFirstSystemV2: firstSystemV2Str?.toString(),
+      rawSecondSystemV1: secondSystemStr?.toString(),
+      rawSecondSystemV2: secondSystemV2Str?.toString(),
       isActive: isActive,
       lastLogin: lastLoginStr != null ? DateTime.parse(lastLoginStr) : null,
     );

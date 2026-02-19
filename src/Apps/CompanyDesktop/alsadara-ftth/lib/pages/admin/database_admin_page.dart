@@ -5,7 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
-import '../super_admin/admin_theme.dart';
+import '../../theme/energy_dashboard_theme.dart';
 
 class DatabaseAdminPage extends StatefulWidget {
   const DatabaseAdminPage({super.key});
@@ -186,20 +186,54 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AdminTheme.surfaceColor,
-        title: const Text('تأكيد الحذف',
-            style: TextStyle(color: AdminTheme.textPrimary)),
+        backgroundColor: EnergyDashboardTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: EnergyDashboardTheme.danger.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.delete_outline,
+                  color: EnergyDashboardTheme.danger, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('تأكيد الحذف',
+                style: TextStyle(
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: const Text('هل أنت متأكد من حذف هذا السجل؟',
-            style: TextStyle(color: AdminTheme.textMuted)),
+            style: TextStyle(
+                color: EnergyDashboardTheme.textSecondary, fontSize: 15)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text('إلغاء',
+                style: TextStyle(color: EnergyDashboardTheme.textMuted)),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                EnergyDashboardTheme.danger,
+                EnergyDashboardTheme.danger.withOpacity(0.8)
+              ]),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10)),
+              child: const Text('حذف',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -265,9 +299,26 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AdminTheme.surfaceColor,
-        title:
-            Text('تعديل سجل', style: TextStyle(color: AdminTheme.textPrimary)),
+        backgroundColor: EnergyDashboardTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: EnergyDashboardTheme.neonBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.edit,
+                  color: EnergyDashboardTheme.neonBlue, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text('تعديل سجل',
+                style: TextStyle(
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: SizedBox(
           width: 500,
           child: SingleChildScrollView(
@@ -278,14 +329,25 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: TextField(
                     controller: controllers[field],
-                    style: const TextStyle(color: AdminTheme.textPrimary),
+                    style: const TextStyle(
+                        color: EnergyDashboardTheme.textPrimary),
                     decoration: InputDecoration(
                       labelText: field,
-                      labelStyle: const TextStyle(color: AdminTheme.textMuted),
+                      labelStyle: const TextStyle(
+                          color: EnergyDashboardTheme.textMuted),
                       filled: true,
-                      fillColor: AdminTheme.backgroundColor,
+                      fillColor: EnergyDashboardTheme.bgSecondary,
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                              color: EnergyDashboardTheme.borderColor)),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                              color: EnergyDashboardTheme.neonBlue, width: 2)),
                     ),
                   ),
                 );
@@ -296,87 +358,101 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
+            child: Text('إلغاء',
+                style: TextStyle(color: EnergyDashboardTheme.textMuted)),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final data = <String, dynamic>{};
-              for (var entry in controllers.entries) {
-                var value = entry.value.text;
-                // تحويل اسم الحقل إلى camelCase
-                String fieldName = entry.key;
-                if (fieldName.isNotEmpty &&
-                    fieldName[0] == fieldName[0].toUpperCase()) {
-                  fieldName =
-                      fieldName[0].toLowerCase() + fieldName.substring(1);
-                }
-                // تحويل القيم المنطقية
-                if (value.toLowerCase() == 'true') {
-                  data[fieldName] = true;
-                } else if (value.toLowerCase() == 'false') {
-                  data[fieldName] = false;
-                } else {
-                  data[fieldName] = value;
-                }
-              }
-
-              try {
-                final client = HttpClient()
-                  ..badCertificateCallback = (cert, host, port) => true;
-
-                final recordId = record['id'] ?? record['Id'];
-                final url = '$baseUrl/databaseadmin/table/$tableName/$recordId';
-                debugPrint('📤 URL: $url');
-                debugPrint('📤 Data: $data');
-
-                final request = await client.putUrl(Uri.parse(url));
-                request.headers
-                    .set('Content-Type', 'application/json; charset=utf-8');
-                request.headers.set('X-Api-Key', apiKey);
-
-                final jsonData = json.encode(data);
-                final bytes = utf8.encode(jsonData);
-                request.headers.set('Content-Length', bytes.length.toString());
-                request.add(bytes);
-
-                final response = await request.close();
-                final responseBody =
-                    await response.transform(utf8.decoder).join();
-
-                debugPrint(
-                    '📥 Response: ${response.statusCode} - $responseBody');
-
-                if (response.statusCode == 200) {
-                  final decoded = json.decode(responseBody);
-                  if (decoded['success'] == true) {
-                    if (context.mounted) Navigator.pop(context);
-                    _showSnackBar('تم التحديث بنجاح', isError: false);
-                    // إعادة تحميل البيانات
-                    await _loadTableData(tableName, page: _currentPage);
-                  } else {
-                    _showSnackBar(decoded['message'] ?? 'فشل التحديث',
-                        isError: true);
+          Container(
+            decoration: BoxDecoration(
+              gradient: EnergyDashboardTheme.neonGreenGradient,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ElevatedButton(
+              onPressed: () async {
+                final data = <String, dynamic>{};
+                for (var entry in controllers.entries) {
+                  var value = entry.value.text;
+                  // تحويل اسم الحقل إلى camelCase
+                  String fieldName = entry.key;
+                  if (fieldName.isNotEmpty &&
+                      fieldName[0] == fieldName[0].toUpperCase()) {
+                    fieldName =
+                        fieldName[0].toLowerCase() + fieldName.substring(1);
                   }
-                } else {
-                  // محاولة قراءة رسالة الخطأ من الاستجابة
-                  String errorMsg = 'خطأ: ${response.statusCode}';
-                  try {
-                    final decoded = json.decode(responseBody);
-                    if (decoded['message'] != null) {
-                      errorMsg = decoded['message'];
-                    }
-                  } catch (_) {}
-                  debugPrint('❌ خطأ API: $responseBody');
-                  _showSnackBar(errorMsg, isError: true);
+                  // تحويل القيم المنطقية
+                  if (value.toLowerCase() == 'true') {
+                    data[fieldName] = true;
+                  } else if (value.toLowerCase() == 'false') {
+                    data[fieldName] = false;
+                  } else {
+                    data[fieldName] = value;
+                  }
                 }
-              } catch (e) {
-                debugPrint('❌ Exception: $e');
-                _showSnackBar(e.toString(), isError: true);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.primaryColor),
-            child: const Text('حفظ', style: TextStyle(color: Colors.white)),
+
+                try {
+                  final client = HttpClient()
+                    ..badCertificateCallback = (cert, host, port) => true;
+
+                  final recordId = record['id'] ?? record['Id'];
+                  final url =
+                      '$baseUrl/databaseadmin/table/$tableName/$recordId';
+                  debugPrint('📤 URL: $url');
+                  debugPrint('📤 Data: $data');
+
+                  final request = await client.putUrl(Uri.parse(url));
+                  request.headers
+                      .set('Content-Type', 'application/json; charset=utf-8');
+                  request.headers.set('X-Api-Key', apiKey);
+
+                  final jsonData = json.encode(data);
+                  final bytes = utf8.encode(jsonData);
+                  request.headers
+                      .set('Content-Length', bytes.length.toString());
+                  request.add(bytes);
+
+                  final response = await request.close();
+                  final responseBody =
+                      await response.transform(utf8.decoder).join();
+
+                  debugPrint(
+                      '📥 Response: ${response.statusCode} - $responseBody');
+
+                  if (response.statusCode == 200) {
+                    final decoded = json.decode(responseBody);
+                    if (decoded['success'] == true) {
+                      if (context.mounted) Navigator.pop(context);
+                      _showSnackBar('تم التحديث بنجاح', isError: false);
+                      // إعادة تحميل البيانات
+                      await _loadTableData(tableName, page: _currentPage);
+                    } else {
+                      _showSnackBar(decoded['message'] ?? 'فشل التحديث',
+                          isError: true);
+                    }
+                  } else {
+                    // محاولة قراءة رسالة الخطأ من الاستجابة
+                    String errorMsg = 'خطأ: ${response.statusCode}';
+                    try {
+                      final decoded = json.decode(responseBody);
+                      if (decoded['message'] != null) {
+                        errorMsg = decoded['message'];
+                      }
+                    } catch (_) {}
+                    debugPrint('❌ خطأ API: $responseBody');
+                    _showSnackBar(errorMsg, isError: true);
+                  }
+                } catch (e) {
+                  debugPrint('❌ Exception: $e');
+                  _showSnackBar(e.toString(), isError: true);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
+              child: const Text('حفظ',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -436,7 +512,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
+      backgroundColor: EnergyDashboardTheme.bgPrimary,
       body: Column(
         children: [
           // شريط التبويبات العلوي
@@ -457,10 +533,18 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
   Widget _buildTopTabBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
-        border: Border(bottom: BorderSide(color: AdminTheme.borderColor)),
+        color: EnergyDashboardTheme.bgCard,
+        border:
+            Border(bottom: BorderSide(color: EnergyDashboardTheme.borderColor)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -473,8 +557,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2)))
                 : Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       // تبويب عام
                       _buildGeneralTab(),
@@ -485,20 +569,25 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   ),
           ),
 
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
 
           // زر التحديث
-          IconButton(
-            icon: const Icon(Icons.refresh,
-                color: AdminTheme.textMuted, size: 20),
-            onPressed: () {
-              _loadTables();
-              _loadStats();
-              if (_selectedTable != null) {
-                _loadTableData(_selectedTable!['name']);
-              }
-            },
-            tooltip: 'تحديث',
+          Container(
+            decoration: BoxDecoration(
+              gradient: EnergyDashboardTheme.neonBlueGradient,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+              onPressed: () {
+                _loadTables();
+                _loadStats();
+                if (_selectedTable != null) {
+                  _loadTableData(_selectedTable!['name']);
+                }
+              },
+              tooltip: 'تحديث',
+            ),
           ),
         ],
       ),
@@ -514,16 +603,17 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: _showGeneralStats
-              ? AdminTheme.primaryColor.withOpacity(0.1)
-              : AdminTheme.backgroundColor,
-          borderRadius: BorderRadius.circular(6),
+          gradient: _showGeneralStats
+              ? EnergyDashboardTheme.neonPurpleGradient
+              : null,
+          color: _showGeneralStats ? null : EnergyDashboardTheme.bgSecondary,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: _showGeneralStats
-                ? AdminTheme.primaryColor.withOpacity(0.3)
-                : AdminTheme.borderColor,
+                ? Colors.transparent
+                : EnergyDashboardTheme.borderColor,
           ),
         ),
         child: Row(
@@ -531,21 +621,21 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           children: [
             Icon(
               Icons.dashboard,
-              size: 14,
+              size: 16,
               color: _showGeneralStats
-                  ? AdminTheme.primaryColor
-                  : AdminTheme.textMuted,
+                  ? Colors.white
+                  : EnergyDashboardTheme.textSecondary,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             Text(
               'عام',
               style: TextStyle(
                 color: _showGeneralStats
-                    ? AdminTheme.primaryColor
-                    : AdminTheme.textPrimary,
+                    ? Colors.white
+                    : EnergyDashboardTheme.textPrimary,
                 fontWeight:
                     _showGeneralStats ? FontWeight.bold : FontWeight.w500,
-                fontSize: 12,
+                fontSize: 13,
               ),
             ),
           ],
@@ -559,38 +649,39 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // عنوان
+          // عنوان مضغوط
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AdminTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: EnergyDashboardTheme.neonBlueGradient,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.analytics,
-                    color: AdminTheme.primaryColor, size: 20),
+                child:
+                    const Icon(Icons.analytics, color: Colors.white, size: 22),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'إحصائيات قاعدة البيانات',
                     style: TextStyle(
-                      color: AdminTheme.textPrimary,
-                      fontSize: 16,
+                      color: EnergyDashboardTheme.textPrimary,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    '${_tables.length} جدول',
-                    style: TextStyle(color: AdminTheme.textMuted, fontSize: 12),
+                    '${_tables.length} جدول متاح',
+                    style: const TextStyle(
+                        color: EnergyDashboardTheme.textMuted, fontSize: 13),
                   ),
                 ],
               ),
@@ -598,11 +689,115 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           ),
           const SizedBox(height: 16),
 
+          // بطاقات الإحصائيات - صف واحد
+          if (_stats != null) _buildCompactStatsRow(),
+          const SizedBox(height: 16),
+
           // بطاقات الجداول مقسمة حسب الفئات
-          ..._getAllCategories()
-              .map((category) => _buildCategorySection(category)),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: _getAllCategories()
+                    .map((category) => _buildCategorySection(category))
+                    .toList(),
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCompactStatsRow() {
+    final statItems = [
+      {
+        'label': 'المستخدمين',
+        'value': _stats!['users'],
+        'icon': Icons.person,
+        'color': EnergyDashboardTheme.neonBlue
+      },
+      {
+        'label': 'الشركات',
+        'value': _stats!['companies'],
+        'icon': Icons.business,
+        'color': EnergyDashboardTheme.neonPurple
+      },
+      {
+        'label': 'الطلبات',
+        'value': _stats!['orders'],
+        'icon': Icons.shopping_cart,
+        'color': EnergyDashboardTheme.neonOrange
+      },
+      {
+        'label': 'المدن',
+        'value': _stats!['cities'],
+        'icon': Icons.location_city,
+        'color': EnergyDashboardTheme.neonGreen
+      },
+      {
+        'label': 'المواطنين',
+        'value': _stats!['citizens'],
+        'icon': Icons.badge,
+        'color': EnergyDashboardTheme.neonPink
+      },
+      {
+        'label': 'تذاكر الدعم',
+        'value': _stats!['supportTickets'],
+        'icon': Icons.support_agent,
+        'color': EnergyDashboardTheme.danger
+      },
+    ];
+
+    return Row(
+      children: statItems.map((item) {
+        final color = item['color'] as Color;
+        return Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [color, color.withOpacity(0.8)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(item['icon'] as IconData, size: 22, color: Colors.white),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${item['value']}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      item['label'] as String,
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -615,11 +810,16 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       children: [
         // عنوان الفئة
         Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: _getCategoryColor(category).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
+            gradient: LinearGradient(
+              colors: [
+                _getCategoryColor(category).withOpacity(0.15),
+                _getCategoryColor(category).withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(8),
             border:
                 Border.all(color: _getCategoryColor(category).withOpacity(0.3)),
           ),
@@ -627,28 +827,28 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(_getCategoryIcon(category),
-                  size: 14, color: _getCategoryColor(category)),
-              const SizedBox(width: 6),
+                  size: 16, color: _getCategoryColor(category)),
+              const SizedBox(width: 8),
               Text(
                 _getCategoryName(category),
                 style: TextStyle(
                   color: _getCategoryColor(category),
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: _getCategoryColor(category).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${tables.length}',
                   style: TextStyle(
                     color: _getCategoryColor(category),
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -659,13 +859,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
         // بطاقات الجداول
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 10,
+          runSpacing: 10,
           children:
               tables.map((table) => _buildTableCard(table, category)).toList(),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -686,35 +886,42 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           _loadTableData(table['name']);
         },
         child: Container(
-          width: 140,
-          padding: const EdgeInsets.all(10),
+          width: 150,
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AdminTheme.borderColor),
+            color: EnergyDashboardTheme.bgCard,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: EnergyDashboardTheme.borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   _getIconData(table['icon']),
-                  size: 14,
+                  size: 16,
                   color: color,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   table['displayName'] ?? table['name'],
                   style: const TextStyle(
-                    color: AdminTheme.textPrimary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -730,21 +937,21 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Core':
-        return Colors.blue;
+        return EnergyDashboardTheme.neonBlue;
       case 'Commerce':
-        return Colors.orange;
+        return EnergyDashboardTheme.neonOrange;
       case 'System':
-        return Colors.purple;
+        return EnergyDashboardTheme.neonPurple;
       case 'Company':
-        return Colors.teal;
+        return EnergyDashboardTheme.neonGreen;
       case 'Permissions':
-        return Colors.red;
+        return EnergyDashboardTheme.danger;
       case 'Services':
-        return Colors.green;
+        return EnergyDashboardTheme.success;
       case 'CitizenPortal':
-        return Colors.indigo;
+        return EnergyDashboardTheme.neonPink;
       default:
-        return Colors.grey;
+        return EnergyDashboardTheme.textMuted;
     }
   }
 
@@ -752,13 +959,14 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     final tables = _groupedTables[category] ?? [];
     final isCurrentCategory = _selectedTable != null &&
         tables.any((t) => t['name'] == _selectedTable!['name']);
+    final color = _getCategoryColor(category);
 
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: PopupMenuButton<Map<String, dynamic>>(
         offset: const Offset(0, 45),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.bgCard,
         onSelected: (table) {
           setState(() {
             _selectedTable = table;
@@ -777,40 +985,38 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 Icon(
                   _getIconData(table['icon']),
                   size: 18,
-                  color: isSelected
-                      ? AdminTheme.primaryColor
-                      : AdminTheme.textMuted,
+                  color: isSelected ? color : EnergyDashboardTheme.textMuted,
                 ),
                 const SizedBox(width: 10),
                 Text(
                   table['displayName'],
                   style: TextStyle(
-                    color: isSelected
-                        ? AdminTheme.primaryColor
-                        : AdminTheme.textPrimary,
+                    color:
+                        isSelected ? color : EnergyDashboardTheme.textPrimary,
                     fontWeight:
                         isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
                 if (isSelected) ...[
                   const Spacer(),
-                  Icon(Icons.check, size: 16, color: AdminTheme.primaryColor),
+                  Icon(Icons.check, size: 16, color: color),
                 ],
               ],
             ),
           );
         }).toList(),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: isCurrentCategory
-                ? AdminTheme.primaryColor.withOpacity(0.1)
-                : AdminTheme.backgroundColor,
-            borderRadius: BorderRadius.circular(6),
+            gradient: isCurrentCategory
+                ? LinearGradient(colors: [color, color.withOpacity(0.8)])
+                : null,
+            color: isCurrentCategory ? null : EnergyDashboardTheme.bgSecondary,
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isCurrentCategory
-                  ? AdminTheme.primaryColor.withOpacity(0.3)
-                  : AdminTheme.borderColor,
+                  ? Colors.transparent
+                  : EnergyDashboardTheme.borderColor,
             ),
           ),
           child: Row(
@@ -818,30 +1024,30 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
             children: [
               Icon(
                 _getCategoryIcon(category),
-                size: 14,
+                size: 16,
                 color: isCurrentCategory
-                    ? AdminTheme.primaryColor
-                    : AdminTheme.textMuted,
+                    ? Colors.white
+                    : EnergyDashboardTheme.textSecondary,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Text(
                 _getCategoryName(category),
                 style: TextStyle(
                   color: isCurrentCategory
-                      ? AdminTheme.primaryColor
-                      : AdminTheme.textPrimary,
+                      ? Colors.white
+                      : EnergyDashboardTheme.textPrimary,
                   fontWeight:
                       isCurrentCategory ? FontWeight.bold : FontWeight.w500,
-                  fontSize: 12,
+                  fontSize: 13,
                 ),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: 4),
               Icon(
                 Icons.keyboard_arrow_down,
-                size: 16,
+                size: 18,
                 color: isCurrentCategory
-                    ? AdminTheme.primaryColor
-                    : AdminTheme.textMuted,
+                    ? Colors.white
+                    : EnergyDashboardTheme.textMuted,
               ),
             ],
           ),
@@ -877,29 +1083,36 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: AdminTheme.primaryColor.withOpacity(0.1),
+              gradient: EnergyDashboardTheme.neonBlueGradient,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: EnergyDashboardTheme.neonBlue.withOpacity(0.4),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
             ),
-            child: Icon(Icons.touch_app,
-                size: 60, color: AdminTheme.primaryColor.withOpacity(0.7)),
+            child: const Icon(Icons.touch_app, size: 50, color: Colors.white),
           ),
           const SizedBox(height: 24),
           const Text(
             'اختر فئة من الأعلى ثم حدد الجدول',
             style: TextStyle(
-              color: AdminTheme.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
+              color: EnergyDashboardTheme.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 10),
+          const Text(
             'يمكنك عرض وتعديل وحذف البيانات من أي جدول',
-            style: TextStyle(color: AdminTheme.textMuted, fontSize: 14),
+            style:
+                TextStyle(color: EnergyDashboardTheme.textMuted, fontSize: 15),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
 
           // عرض الإحصائيات
           if (_stats != null) _buildStatsGrid(),
@@ -914,37 +1127,37 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         'label': 'المستخدمين',
         'value': _stats!['users'],
         'icon': Icons.person,
-        'color': Colors.blue
+        'color': EnergyDashboardTheme.neonBlue
       },
       {
         'label': 'الشركات',
         'value': _stats!['companies'],
         'icon': Icons.business,
-        'color': Colors.purple
+        'color': EnergyDashboardTheme.neonPurple
       },
       {
         'label': 'الطلبات',
         'value': _stats!['orders'],
         'icon': Icons.shopping_cart,
-        'color': Colors.orange
+        'color': EnergyDashboardTheme.neonOrange
       },
       {
         'label': 'المدن',
         'value': _stats!['cities'],
         'icon': Icons.location_city,
-        'color': Colors.green
+        'color': EnergyDashboardTheme.neonGreen
       },
       {
         'label': 'المواطنين',
         'value': _stats!['citizens'],
         'icon': Icons.badge,
-        'color': Colors.teal
+        'color': EnergyDashboardTheme.neonPink
       },
       {
         'label': 'تذاكر الدعم',
         'value': _stats!['supportTickets'],
         'icon': Icons.support_agent,
-        'color': Colors.red
+        'color': EnergyDashboardTheme.danger
       },
     ];
 
@@ -952,31 +1165,41 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       spacing: 16,
       runSpacing: 16,
       children: statItems.map((item) {
+        final color = item['color'] as Color;
         return Container(
           width: 180,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AdminTheme.borderColor),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [color, color.withOpacity(0.8)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              Icon(item['icon'] as IconData,
-                  size: 32, color: item['color'] as Color),
-              const SizedBox(height: 8),
+              Icon(item['icon'] as IconData, size: 32, color: Colors.white),
+              const SizedBox(height: 10),
               Text(
                 '${item['value']}',
                 style: const TextStyle(
-                  color: AdminTheme.textPrimary,
-                  fontSize: 24,
+                  color: Colors.white,
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 4),
               Text(
                 item['label'] as String,
-                style:
-                    const TextStyle(color: AdminTheme.textMuted, fontSize: 12),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ],
           ),
@@ -996,9 +1219,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           child: _isLoadingData
               ? const Center(child: CircularProgressIndicator())
               : _tableData.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text('لا توجد بيانات',
-                          style: TextStyle(color: AdminTheme.textMuted)),
+                          style: TextStyle(
+                              color: EnergyDashboardTheme.textMuted,
+                              fontSize: 16)),
                     )
                   : _buildDataTable(),
         ),
@@ -1011,31 +1236,38 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
   Widget _buildToolbar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: AdminTheme.backgroundColor,
+        color: EnergyDashboardTheme.bgCard,
+        border:
+            Border(bottom: BorderSide(color: EnergyDashboardTheme.borderColor)),
       ),
       child: Row(
         children: [
           // اسم الجدول المحدد
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: AdminTheme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border:
-                  Border.all(color: AdminTheme.primaryColor.withOpacity(0.2)),
+              gradient: EnergyDashboardTheme.neonGreenGradient,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: EnergyDashboardTheme.neonGreen.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(_getIconData(_selectedTable!['icon']),
-                    color: AdminTheme.primaryColor, size: 18),
+                    color: Colors.white, size: 18),
                 const SizedBox(width: 8),
                 Text(
                   _selectedTable!['displayName'],
                   style: const TextStyle(
-                    color: AdminTheme.primaryColor,
+                    color: Colors.white,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1043,30 +1275,41 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           if (_pagination != null)
-            Text(
-              '${_pagination!['totalCount']} سجل',
-              style: const TextStyle(color: AdminTheme.textMuted, fontSize: 13),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: EnergyDashboardTheme.bgSecondary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${_pagination!['totalCount']} سجل',
+                style: const TextStyle(
+                    color: EnergyDashboardTheme.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
+              ),
             ),
           const Spacer(),
 
           // حقل البحث
           SizedBox(
-            width: 280,
+            width: 300,
             child: TextField(
               controller: _searchController,
-              style:
-                  const TextStyle(color: AdminTheme.textPrimary, fontSize: 14),
+              style: const TextStyle(
+                  color: EnergyDashboardTheme.textPrimary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'بحث...',
-                hintStyle: const TextStyle(color: AdminTheme.textMuted),
+                hintStyle:
+                    const TextStyle(color: EnergyDashboardTheme.textMuted),
                 prefixIcon: const Icon(Icons.search,
-                    color: AdminTheme.textMuted, size: 20),
+                    color: EnergyDashboardTheme.neonBlue, size: 20),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear,
-                            color: AdminTheme.textMuted),
+                            color: EnergyDashboardTheme.textMuted),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
@@ -1075,10 +1318,20 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                       )
                     : null,
                 filled: true,
-                fillColor: AdminTheme.backgroundColor,
+                fillColor: EnergyDashboardTheme.bgSecondary,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      BorderSide(color: EnergyDashboardTheme.borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: EnergyDashboardTheme.neonBlue, width: 2),
                 ),
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1106,27 +1359,33 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           child: ConstrainedBox(
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(AdminTheme.surfaceColor),
+              headingRowColor:
+                  WidgetStateProperty.all(EnergyDashboardTheme.bgSecondary),
               dataRowColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.hovered)) {
-                  return AdminTheme.primaryColor.withOpacity(0.05);
+                  return EnergyDashboardTheme.neonBlue.withOpacity(0.05);
                 }
-                return Colors.transparent;
+                return EnergyDashboardTheme.bgCard;
               }),
-              columnSpacing: 20,
-              horizontalMargin: 12,
+              columnSpacing: 24,
+              horizontalMargin: 16,
+              headingRowHeight: 50,
+              dataRowMinHeight: 50,
+              dataRowMaxHeight: 60,
               columns: [
-                const DataColumn(
+                DataColumn(
                     label: Text('إجراءات',
                         style: TextStyle(
-                            color: AdminTheme.textPrimary,
-                            fontWeight: FontWeight.bold))),
+                            color: EnergyDashboardTheme.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13))),
                 ...columns.map((col) => DataColumn(
                       label: Text(
                         col,
                         style: const TextStyle(
-                            color: AdminTheme.textPrimary,
-                            fontWeight: FontWeight.bold),
+                            color: EnergyDashboardTheme.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13),
                       ),
                     )),
               ],
@@ -1138,19 +1397,34 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 18),
-                            color: AdminTheme.primaryColor,
-                            tooltip: 'تعديل',
-                            onPressed: () =>
-                                _showEditDialog(_selectedTable!['name'], row),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: EnergyDashboardTheme.neonBlue
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.edit, size: 18),
+                              color: EnergyDashboardTheme.neonBlue,
+                              tooltip: 'تعديل',
+                              onPressed: () =>
+                                  _showEditDialog(_selectedTable!['name'], row),
+                            ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, size: 18),
-                            color: Colors.red,
-                            tooltip: 'حذف',
-                            onPressed: () => _deleteRecord(
-                                _selectedTable!['name'], rowId.toString()),
+                          const SizedBox(width: 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              color:
+                                  EnergyDashboardTheme.danger.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.delete, size: 18),
+                              color: EnergyDashboardTheme.danger,
+                              tooltip: 'حذف',
+                              onPressed: () => _deleteRecord(
+                                  _selectedTable!['name'], rowId.toString()),
+                            ),
                           ),
                         ],
                       ),
@@ -1176,23 +1450,26 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
   Widget _buildCellContent(String column, dynamic value) {
     if (value == null) {
-      return const Text('-', style: TextStyle(color: AdminTheme.textMuted));
+      return const Text('-',
+          style: TextStyle(color: EnergyDashboardTheme.textMuted));
     }
 
     // عرض القيم المنطقية كشارات
     if (value is bool) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: value
-              ? Colors.green.withOpacity(0.1)
-              : Colors.red.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(4),
+              ? EnergyDashboardTheme.success.withOpacity(0.15)
+              : EnergyDashboardTheme.danger.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           value ? 'نعم' : 'لا',
           style: TextStyle(
-            color: value ? Colors.green : Colors.red,
+            color: value
+                ? EnergyDashboardTheme.success
+                : EnergyDashboardTheme.danger,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
@@ -1207,7 +1484,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         final date = DateTime.parse(value.toString());
         return Text(
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
-          style: const TextStyle(color: AdminTheme.textPrimary, fontSize: 13),
+          style: const TextStyle(
+              color: EnergyDashboardTheme.textPrimary, fontSize: 13),
         );
       } catch (_) {}
     }
@@ -1215,15 +1493,15 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     // عرض الحالات بألوان
     if (column.toLowerCase() == 'status' || column.toLowerCase() == 'role') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AdminTheme.primaryColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(4),
+          color: EnergyDashboardTheme.neonPurple.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           value.toString(),
           style: const TextStyle(
-            color: AdminTheme.primaryColor,
+            color: EnergyDashboardTheme.neonPurple,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
@@ -1239,7 +1517,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
     return Text(
       text,
-      style: const TextStyle(color: AdminTheme.textPrimary, fontSize: 13),
+      style: const TextStyle(
+          color: EnergyDashboardTheme.textPrimary, fontSize: 13),
     );
   }
 
@@ -1250,50 +1529,81 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
-        border: Border(top: BorderSide(color: AdminTheme.borderColor)),
+        color: EnergyDashboardTheme.bgCard,
+        border:
+            Border(top: BorderSide(color: EnergyDashboardTheme.borderColor)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            icon: const Icon(Icons.first_page),
+          _buildPaginationButton(
+            icon: Icons.first_page,
             onPressed: currentPage > 1
                 ? () => _loadTableData(_selectedTable!['name'], page: 1)
                 : null,
-            color: AdminTheme.primaryColor,
           ),
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
+          const SizedBox(width: 8),
+          _buildPaginationButton(
+            icon: Icons.chevron_left,
             onPressed: currentPage > 1
                 ? () => _loadTableData(_selectedTable!['name'],
                     page: currentPage - 1)
                 : null,
-            color: AdminTheme.primaryColor,
           ),
           const SizedBox(width: 16),
-          Text(
-            'صفحة $currentPage من $totalPages',
-            style: const TextStyle(color: AdminTheme.textPrimary),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: EnergyDashboardTheme.neonBlueGradient,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'صفحة $currentPage من $totalPages',
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(width: 16),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
+          _buildPaginationButton(
+            icon: Icons.chevron_right,
             onPressed: currentPage < totalPages
                 ? () => _loadTableData(_selectedTable!['name'],
                     page: currentPage + 1)
                 : null,
-            color: AdminTheme.primaryColor,
           ),
-          IconButton(
-            icon: const Icon(Icons.last_page),
+          const SizedBox(width: 8),
+          _buildPaginationButton(
+            icon: Icons.last_page,
             onPressed: currentPage < totalPages
                 ? () =>
                     _loadTableData(_selectedTable!['name'], page: totalPages)
                 : null,
-            color: AdminTheme.primaryColor,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationButton(
+      {required IconData icon, VoidCallback? onPressed}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: onPressed != null
+            ? EnergyDashboardTheme.bgSecondary
+            : EnergyDashboardTheme.bgSecondary.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: onPressed != null
+              ? EnergyDashboardTheme.borderColor
+              : Colors.transparent,
+        ),
+      ),
+      child: IconButton(
+        icon: Icon(icon),
+        onPressed: onPressed,
+        color: onPressed != null
+            ? EnergyDashboardTheme.neonBlue
+            : EnergyDashboardTheme.textMuted,
       ),
     );
   }

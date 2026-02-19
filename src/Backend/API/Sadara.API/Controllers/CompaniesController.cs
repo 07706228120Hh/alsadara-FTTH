@@ -72,11 +72,11 @@ public class CompaniesController : ControllerBase
                 return Unauthorized(new { success = false, message = "انتهى اشتراك الشركة" });
             }
 
-            // البحث عن المستخدم بـ Username أو PhoneNumber أو Email أو EmployeeCode
+            // البحث عن المستخدم بـ Username أو PhoneNumber أو Email أو EmployeeCode أو FullName
             var user = await _unitOfWork.Users.AsQueryable()
                 .FirstOrDefaultAsync(u => 
                     u.CompanyId == company.Id &&
-                    (u.Username == request.Username || u.PhoneNumber == request.Username || u.Email == request.Username || u.EmployeeCode == request.Username) &&
+                    (u.Username == request.Username || u.PhoneNumber == request.Username || u.Email == request.Username || u.EmployeeCode == request.Username || u.FullName == request.Username) &&
                     u.Role >= UserRole.Employee &&
                     !u.IsDeleted);
 
@@ -233,8 +233,8 @@ public class CompaniesController : ControllerBase
 
     private string GenerateJwtToken(User user, Company company)
     {
-        var jwtKey = _configuration["Jwt:Key"] ?? "SadaraSecretKey2024!@#$%^&*()_+DefaultKey";
-        var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraAPI";
+        var jwtKey = _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+        var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraPlatform";
         var jwtAudience = _configuration["Jwt:Audience"] ?? "SadaraClients";
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
@@ -634,6 +634,14 @@ public class CompaniesController : ControllerBase
         if (currentCount >= company.MaxUsers)
             return BadRequest(new { success = false, message = $"تم الوصول للحد الأقصى للموظفين ({company.MaxUsers})" });
 
+        // التحقق من القسم
+        if (!string.IsNullOrEmpty(request.Department))
+        {
+            var allowedDepartments = new[] { "الصيانة", "الحسابات", "الفنيين", "الوكلاء", "الاتصالات", "اللحام" };
+            if (!allowedDepartments.Contains(request.Department))
+                return BadRequest(new { success = false, message = $"القسم '{request.Department}' غير معروف. الأقسام المتاحة: {string.Join("، ", allowedDepartments)}" });
+        }
+
         // التحقق من رقم الهاتف
         var existingPhone = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
         if (existingPhone != null)
@@ -643,6 +651,7 @@ public class CompaniesController : ControllerBase
         {
             Id = Guid.NewGuid(),
             FullName = request.FullName,
+            Username = request.FullName,
             PhoneNumber = request.PhoneNumber,
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
@@ -698,7 +707,16 @@ public class CompaniesController : ControllerBase
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
 
+        // التحقق من القسم
+        if (!string.IsNullOrEmpty(request.Department))
+        {
+            var allowedDepartments = new[] { "الصيانة", "الحسابات", "الفنيين", "الوكلاء", "الاتصالات", "اللحام" };
+            if (!allowedDepartments.Contains(request.Department))
+                return BadRequest(new { success = false, message = $"القسم '{request.Department}' غير معروف. الأقسام المتاحة: {string.Join("، ", allowedDepartments)}" });
+        }
+
         employee.FullName = request.FullName ?? employee.FullName;
+        employee.Username = request.FullName ?? employee.Username;
         employee.Email = request.Email ?? employee.Email;
         employee.Department = request.Department ?? employee.Department;
         employee.Center = request.Center ?? employee.Center;
@@ -1012,7 +1030,7 @@ public class EmployeeResponse
     public string? Department { get; set; }
     public string? EmployeeCode { get; set; }
     public string? Center { get; set; }
-    public string? Salary { get; set; }
+    public decimal? Salary { get; set; }
     public bool IsActive { get; set; }
     public string? FirstSystemPermissions { get; set; }
     public string? SecondSystemPermissions { get; set; }
@@ -1029,7 +1047,7 @@ public class CreateEmployeeRequest
     public string? Department { get; set; }
     public string? EmployeeCode { get; set; }
     public string? Center { get; set; }
-    public string? Salary { get; set; }
+    public decimal? Salary { get; set; }
     public Dictionary<string, bool>? FirstSystemPermissions { get; set; }
     public Dictionary<string, bool>? SecondSystemPermissions { get; set; }
 }
@@ -1042,7 +1060,7 @@ public class UpdateEmployeeRequest
     public string? Role { get; set; }
     public string? Department { get; set; }
     public string? Center { get; set; }
-    public string? Salary { get; set; }
+    public decimal? Salary { get; set; }
     public Dictionary<string, bool>? FirstSystemPermissions { get; set; }
     public Dictionary<string, bool>? SecondSystemPermissions { get; set; }
 }

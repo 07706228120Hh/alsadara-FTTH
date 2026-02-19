@@ -14,7 +14,7 @@ import '../../services/firebase_auth_service.dart';
 import '../../services/organizations_service.dart';
 import '../../services/firestore_permissions_service.dart';
 import '../../citizen_portal/citizen_portal.dart';
-import '../vps_tenant_login_page.dart';
+import '../login/premium_login_page.dart';
 
 class OrganizationsManagementPage extends StatefulWidget {
   const OrganizationsManagementPage({super.key});
@@ -68,7 +68,7 @@ class _OrganizationsManagementPageState
           ),
         );
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const VpsTenantLoginPage()),
+          MaterialPageRoute(builder: (context) => const PremiumLoginPage()),
         );
         return;
       }
@@ -78,7 +78,7 @@ class _OrganizationsManagementPageState
       debugPrint('❌ خطأ في التحقق من الصلاحيات: $e');
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const VpsTenantLoginPage()),
+        MaterialPageRoute(builder: (context) => const PremiumLoginPage()),
       );
     } finally {
       if (mounted) {
@@ -829,7 +829,7 @@ class _OrganizationsManagementPageState
               if (!mounted) return;
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
-                    builder: (context) => const VpsTenantLoginPage()),
+                    builder: (context) => const PremiumLoginPage()),
               );
             },
             tooltip: 'تسجيل الخروج',

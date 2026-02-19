@@ -1,13 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart'; // إضافة للتحقق من النظام
-import 'package:googleapis/sheets/v4.dart' as sheets;
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/task.dart';
 import '../services/whatsapp_template_storage.dart';
-import '../services/google_sheets_service.dart';
+import '../services/task_api_service.dart';
 import '../widgets/maintenance_messages_dialog.dart';
 import '../widgets/edit_task_dialog.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -33,12 +30,20 @@ class TaskCard extends StatefulWidget {
 
 class _TaskCardState extends State<TaskCard> {
   bool showDetails = false;
-  final List<String> _statuses = ['مفتوحة', 'قيد التنفيذ', 'مكتملة', 'ملغية'];
 
-  // متغيرات لجلب بيانات الو��لاء
-  sheets.SheetsApi? _sheetsApi;
-  AuthClient? _client;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
+  // ═══════ الحالات المتاحة للمستخدم حسب الحالة الحالية ═══════
+  /// الحصول على الحالات المسموح الانتقال إليها (يعرض فقط الحالات العملية)
+  List<String> _getAvailableStatuses() {
+    final current = widget.task.status;
+    // الحالات النهائية
+    if (current == 'مكتملة' || current == 'ملغية' || current == 'مرفوضة') {
+      return [current];
+    }
+    // لأي حالة غير نهائية: اعرض الخيارات العملية فقط
+    return {current, 'قيد التنفيذ', 'مكتملة', 'ملغية'}.toList();
+  }
+
+  // متغيرات لجلب بيانات الوكلاء
   List<Map<String, dynamic>> agents = [];
   bool isLoadingAgents = false;
 
@@ -47,95 +52,114 @@ class _TaskCardState extends State<TaskCard> {
     final currentUserName = widget.currentUserName.trim();
     final taskTechnician = widget.task.technician.trim();
 
-    if (widget.currentUserRole == 'فني' && taskTechnician != currentUserName) {
-      return _buildNoTasksMessage();
+    final isTech = widget.currentUserRole == 'فني' ||
+        widget.currentUserRole.toLowerCase() == 'technician';
+    if (isTech && taskTechnician != currentUserName) {
+      return const SizedBox.shrink();
     }
 
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: _getStatusColor(widget.task.status).withValues(alpha: 0.3),
+    final statusColor = _getStatusColor(widget.task.status);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.black,
           width: 1.5,
         ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              Colors.grey.shade50,
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
-        ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
           onTap: () {
             setState(() {
               showDetails = !showDetails;
             });
           },
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // العنوان المضغوط والأنيق
-                _buildCompactHeader(),
-                const SizedBox(height: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // الشريط العلوي الملون - Header
+              _buildPremiumHeader(statusColor),
 
-                // المعلومات الأساسية في تخطيط مضغوط
-                _buildCompactBasicInfo(),
+              // المعلومات الأساسية
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                child: _buildCompactBasicInfo(),
+              ),
 
-                // التفاصيل المتقدمة
-                if (showDetails) ...[
-                  const SizedBox(height: 12),
-                  _buildCompactDetailedInfo(),
-                ],
-
-                // شريط الإجراءات السفلي
-                const SizedBox(height: 8),
-                _buildCompactActionBar(),
+              // التفاصيل المتقدمة
+              if (showDetails) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: _buildCompactDetailedInfo(),
+                ),
               ],
-            ),
+
+              // فاصل خفيف
+              Divider(height: 1, color: Colors.grey.shade200),
+
+              // شريط الإجراءات السفلي
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+                child: _buildCompactActionBar(),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// عنوان مضغوط وأنيق
-  Widget _buildCompactHeader() {
+  /// عنوان فخم مع شريط ملون
+  Widget _buildPremiumHeader(Color statusColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            _getStatusColor(widget.task.status).withValues(alpha: 0.1),
-            _getStatusColor(widget.task.status).withValues(alpha: 0.05),
+            statusColor.withValues(alpha: 0.12),
+            statusColor.withValues(alpha: 0.04),
           ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _getStatusColor(widget.task.status).withValues(alpha: 0.3),
-          width: 1,
+        border: Border(
+          bottom: BorderSide(
+            color: statusColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
         children: [
-          // أيقونة الأولوية
+          // أيقونة الأولوية في دائرة
           Container(
-            padding: const EdgeInsets.all(6),
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: _getStatusColor(widget.task.status),
-              borderRadius: BorderRadius.circular(6),
+              color: statusColor,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: statusColor.withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Icon(
               _getPriorityIcon(widget.task.priority),
@@ -145,7 +169,7 @@ class _TaskCardState extends State<TaskCard> {
           ),
           const SizedBox(width: 10),
 
-          // العنوان والقسم
+          // العنوان
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,17 +179,19 @@ class _TaskCardState extends State<TaskCard> {
                       ? widget.task.title
                       : 'مهمة غير محددة',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A2E),
+                    letterSpacing: 0.3,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  '${widget.task.department} • رقم ${widget.task.id}',
+                  '${widget.task.department} • #${widget.task.id}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
                   ),
@@ -181,123 +207,186 @@ class _TaskCardState extends State<TaskCard> {
     );
   }
 
-  /// حالة مضغوطة
+  Widget _buildCompactHeader() {
+    return _buildPremiumHeader(_getStatusColor(widget.task.status));
+  }
+
+  /// حالة مضغوطة فخمة
   Widget _buildCompactStatusBadge() {
+    final statusColor = _getStatusColor(widget.task.status);
     return GestureDetector(
       onTap: () => _showStatusChangeDialog(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: _getStatusColor(widget.task.status),
-          borderRadius: BorderRadius.circular(12),
+          color: statusColor,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: _getStatusColor(widget.task.status).withValues(alpha: 0.3),
-              spreadRadius: 0,
-              blurRadius: 4,
+              color: statusColor.withValues(alpha: 0.35),
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Text(
-          widget.task.status,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 10,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    blurRadius: 3,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              widget.task.status,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 10,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// المعلومات الأساسية في تخطيط مضغوط
+  /// المعلومات الأساسية في تخطيط شبكي أنيق
   Widget _buildCompactBasicInfo() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          // الصف الأول: العميل والفني
-          Row(
-            children: [
-              Expanded(
-                child: _buildCompactInfoItem(
-                  Icons.person,
-                  'العميل',
-                  widget.task.username,
-                  Colors.blue,
-                ),
+    return Column(
+      children: [
+        // الصف الأول: العميل | الفني | FBG
+        Row(
+          children: [
+            Expanded(
+              child: _buildInfoTile(
+                Icons.person_outline_rounded,
+                'العميل',
+                widget.task.username,
+                const Color(0xFF3498DB),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildCompactInfoItem(
-                  Icons.engineering,
-                  'الفني',
-                  widget.task.technician,
-                  Colors.blue,
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildInfoTile(
+                Icons.engineering_outlined,
+                'الفني',
+                widget.task.technician,
+                const Color(0xFF009688),
+                trailing: widget.task.technician.isNotEmpty &&
+                        widget.task.technician != 'غير متوفر'
+                    ? _buildMiniIconButton(
+                        Icons.send_rounded,
+                        const Color(0xFF009688),
+                        () => _sendTaskToTechnician(widget.task.technician))
+                    : null,
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // الصف الثاني: FBG والهاتف
-          Row(
-            children: [
-              Expanded(
-                child: _buildCompactInfoItem(
-                  Icons.router,
-                  'FBG',
-                  widget.task.fbg,
-                  Colors.green,
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildInfoTile(
+                Icons.hub_outlined,
+                'FBG',
+                widget.task.fbg,
+                const Color(0xFF27AE60),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildCompactInfoItem(
-                  Icons.phone,
-                  'الهاتف',
-                  widget.task.phone,
-                  Colors.purple,
-                ),
-              ),
-            ],
-          ),
-
-          // المبلغ إذا كان متوفر
-          if (widget.task.amount.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _buildCompactInfoItem(
-              Icons.monetization_on,
-              'المبلغ',
-              widget.task.amount,
-              Colors.red,
             ),
           ],
-        ],
-      ),
+        ),
+        const SizedBox(height: 6),
+        // الصف الثاني: الهاتف | الوكيل | المبلغ
+        Row(
+          children: [
+            Expanded(
+              child: _buildInfoTile(
+                Icons.phone_outlined,
+                'الهاتف',
+                widget.task.phone,
+                const Color(0xFF8E44AD),
+                trailing: widget.task.phone.isNotEmpty
+                    ? _buildMiniIconButton(
+                        Icons.copy_rounded,
+                        const Color(0xFF8E44AD),
+                        () => _copyPhoneNumber(widget.task.phone))
+                    : null,
+              ),
+            ),
+            if (widget.task.agentName.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildInfoTile(
+                  Icons.storefront_outlined,
+                  'الوكيل',
+                  '${widget.task.agentName}${widget.task.pageId.isNotEmpty ? ' - ${widget.task.pageId}' : ''}',
+                  const Color(0xFF6C3483),
+                  trailing: widget.task.pageId.isNotEmpty
+                      ? _buildMiniIconButton(
+                          Icons.copy_rounded, const Color(0xFF6C3483), () {
+                          Clipboard.setData(
+                              ClipboardData(text: widget.task.pageId));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('تم نسخ: ${widget.task.pageId}'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        })
+                      : null,
+                ),
+              ),
+            ],
+            if (widget.task.amount.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildInfoTile(
+                  Icons.payments_outlined,
+                  'المبلغ',
+                  '${widget.task.amount} د.ع',
+                  const Color(0xFFE74C3C),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 
-  /// عنصر معلومات مضغوط
-  Widget _buildCompactInfoItem(
-      IconData icon, String label, String value, Color color) {
+  /// خلية معلومات أنيقة مع عنوان وقيمة
+  Widget _buildInfoTile(IconData icon, String label, String value, Color color,
+      {Widget? trailing}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withValues(alpha: 0.15),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,120 +394,117 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 10,
-                    color: color.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w500,
+                    fontSize: 9,
+                    color: color.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
                   ),
                 ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        value.isNotEmpty ? value : 'غير متوفر',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    // إضافة أيقونة النسخ للهاتف فقط
-                    if (label == 'الهاتف' && value.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => _copyPhoneNumber(value),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: Colors.blue.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.content_copy,
-                            size: 12,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ),
-                    // إضافة أيقونة إرسال المهمة للفني
-                    if (label == 'الفني' &&
-                        value.isNotEmpty &&
-                        value != 'غير متوفر')
-                      GestureDetector(
-                        onTap: () => _sendTaskToTechnician(value),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: Colors.green.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.send,
-                            size: 12,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ),
-                  ],
+                const SizedBox(height: 1),
+                Text(
+                  value.isNotEmpty ? value : '-',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF2C3E50),
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
+          if (trailing != null) trailing,
         ],
       ),
     );
   }
 
+  /// أيقونة صغيرة أنيقة
+  Widget _buildMiniIconButton(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(icon, size: 13, color: color),
+      ),
+    );
+  }
+
   Widget _buildCompactDetailedInfo() {
+    final statusColor = _getStatusColor(widget.task.status);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade200),
+        color: statusColor.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // عنوان صغير
           Row(
             children: [
-              Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Icon(Icons.info_outline_rounded,
+                    size: 12, color: statusColor),
+              ),
               const SizedBox(width: 6),
               Text(
-                'التفاصيل الإضافية',
+                'التفاصيل',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade800,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: statusColor,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          // تفاصيل في شبكة مضغوطة
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 6,
+          // صف التفاصيل الأول
+          Row(
             children: [
-              _buildCompactDetailItem('الموقع', widget.task.location),
-              _buildCompactDetailItem('FAT', widget.task.fat),
-              _buildCompactDetailItem('الأولوية', widget.task.priority),
-              _buildCompactDetailItem(
-                  'الإنشاء', DateFormat('MM/dd').format(widget.task.createdAt)),
+              Expanded(
+                child: _buildCompactDetailItem(Icons.location_on_outlined,
+                    'الموقع', widget.task.location, const Color(0xFF3498DB)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildCompactDetailItem(Icons.cable_outlined, 'FAT',
+                    widget.task.fat, const Color(0xFF27AE60)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // صف التفاصيل الثاني
+          Row(
+            children: [
+              Expanded(
+                child: _buildCompactDetailItem(Icons.flag_outlined, 'الأولوية',
+                    widget.task.priority, const Color(0xFFE67E22)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildCompactDetailItem(
+                    Icons.calendar_today_rounded,
+                    'الإنشاء',
+                    DateFormat('MM/dd').format(widget.task.createdAt),
+                    const Color(0xFF9B59B6)),
+              ),
             ],
           ),
 
@@ -428,43 +514,60 @@ class _TaskCardState extends State<TaskCard> {
             const SizedBox(height: 8),
             if (widget.task.notes.isNotEmpty)
               _buildExpandableText('ملاحظات', widget.task.notes),
-            if (widget.task.summary.isNotEmpty)
+            if (widget.task.summary.isNotEmpty) ...[
+              const SizedBox(height: 4),
               _buildExpandableText('الملخص', widget.task.summary),
+            ],
           ],
         ],
       ),
     );
   }
 
-  Widget _buildCompactDetailItem(String label, String value) {
+  Widget _buildCompactDetailItem(
+      IconData icon, String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(5),
             ),
+            child: Icon(icon, size: 12, color: color),
           ),
-          Text(
-            value.isNotEmpty ? value : '-',
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black87,
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  value.isNotEmpty ? value : '-',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF1A1A2E),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -474,131 +577,127 @@ class _TaskCardState extends State<TaskCard> {
   Widget _buildExpandableText(String label, String text) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
+          Icon(Icons.notes_rounded, size: 13, color: Colors.grey.shade400),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF1A1A2E),
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black87,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  /// شريط الإجراءات المضغوط
+  /// شريط الإجراءات الفخم
   Widget _buildCompactActionBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // واتساب
-          if (widget.task.phone.isNotEmpty)
-            _buildCompactActionButton(
-              Icons.message,
-              'واتساب',
-              Colors.green,
-              () => _launchWhatsApp(widget.task.phone),
-            ),
+    return Row(
+      children: [
+        // واتساب
+        if (widget.task.phone.isNotEmpty)
+          _buildCompactActionButton(
+            Icons.message_rounded,
+            'واتساب',
+            const Color(0xFF25D366),
+            () => _launchWhatsApp(widget.task.phone),
+          ),
 
-          // وكيل
-          if (widget.currentUserRole == 'ليدر' ||
-              widget.currentUserRole == 'مدير')
-            _buildCompactActionButton(
-              Icons.group,
-              'وكيل',
-              Colors.purple,
-              _showAgentsDialog,
-            ),
+        // وكيل
+        if (widget.currentUserRole == 'ليدر' ||
+            widget.currentUserRole == 'مدير')
+          _buildCompactActionButton(
+            Icons.group_rounded,
+            'وكيل',
+            const Color(0xFF8E44AD),
+            _showAgentsDialog,
+          ),
 
-          // تعديل
-          if (widget.currentUserRole == 'مدير' ||
-              widget.currentUserRole == 'ليدر')
-            _buildCompactActionButton(
-              Icons.edit,
-              'تعديل',
-              Colors.blue,
-              _showEditTaskDialog,
-            ),
+        // تعديل
+        if (widget.currentUserRole == 'مدير' ||
+            widget.currentUserRole == 'ليدر')
+          _buildCompactActionButton(
+            Icons.edit_rounded,
+            'تعديل',
+            const Color(0xFF3498DB),
+            _showEditTaskDialog,
+          ),
 
-          // حذف
-          if (widget.currentUserRole == 'مدير')
-            _buildCompactActionButton(
-              Icons.delete,
-              'حذف',
-              Colors.red,
-              _confirmDeleteTask,
-            ),
-        ],
-      ),
+        // حذف
+        if (widget.currentUserRole == 'مدير')
+          _buildCompactActionButton(
+            Icons.delete_outline_rounded,
+            'حذف',
+            const Color(0xFFE74C3C),
+            _confirmDeleteTask,
+          ),
+      ],
     );
   }
 
   Widget _buildCompactActionButton(
       IconData icon, String label, Color color, VoidCallback onPressed) {
     return Expanded(
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: color,
-              width: 2.0, // خط غامق
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.2),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.black.withValues(alpha: 0.15),
+            width: 1,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: color,
-                  fontWeight: FontWeight.bold, // نص غامق
-                ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -638,6 +737,21 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   void _showStatusChangeDialog() {
+    final availableStatuses = _getAvailableStatuses();
+
+    // إذا كانت حالة نهائية (لا يوجد انتقالات مسموحة)
+    if (availableStatuses.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'لا يمكن تغيير الحالة - "${widget.task.status}" حالة نهائية'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     String selectedStatus = widget.task.status;
     final TextEditingController amountController =
         TextEditingController(text: widget.task.amount);
@@ -646,450 +760,298 @@ class _TaskCardState extends State<TaskCard> {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // منع إغلاق النافذة بالنقر خارجها
+      barrierDismissible: true,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final statusColor = _getStatusColor(selectedStatus);
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height *
-                    0.8, // ارتفاع ثابت بدلاً من constraints
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // العنوان
-                    Row(
-                      children: [
-                        Icon(Icons.edit, color: Colors.blue),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'تغيير حالة المهمة',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+              elevation: 8,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Padding(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ── Header ──
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 16),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                              colors: [Color(0xFF1A237E), Color(0xFF283593)]),
+                          borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              topRight: Radius.circular(20)),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // المحتوى القابل للتمرير
-                    Expanded(
-                      // استخدام Expanded بدلاً من Flexible
-                      child: SingleChildScrollView(
-                        child: Column(
+                        child: Row(
                           children: [
-                            // 1. قائمة تغيير الحالة
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: Colors.blue.shade300, width: 2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.blue.shade200
-                                        .withValues(alpha: 0.3),
-                                    spreadRadius: 1,
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '🔄 تغيير حالة المهمة:',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue.shade800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                          color: Colors.blue.shade400,
-                                          width: 2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.blue.shade100
-                                              .withValues(alpha: 0.5),
-                                          spreadRadius: 1,
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 4),
-                                    child: DropdownButton<String>(
-                                      value: selectedStatus,
-                                      isExpanded: true,
-                                      underline: Container(),
-                                      icon: Icon(Icons.arrow_drop_down,
-                                          color: Colors.blue.shade600,
-                                          size: 28),
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.blue.shade800,
-                                      ),
-                                      items: _statuses.map((status) {
-                                        return DropdownMenuItem(
-                                          value: status,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 4),
-                                            child: Row(
-                                              children: [
-                                                Container(
-                                                  width: 12,
-                                                  height: 12,
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        _getStatusColor(status),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            6),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(status),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (value) {
-                                        setDialogState(() {
-                                          selectedStatus =
-                                              value ?? widget.task.status;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 2. مربع نص المبلغ
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: Colors.green.shade300, width: 2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.shade200
-                                        .withValues(alpha: 0.3),
-                                    spreadRadius: 1,
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '💰 المبلغ المطلوب:',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                          color: Colors.green.shade400,
-                                          width: 2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.green.shade100
-                                              .withValues(alpha: 0.5),
-                                          spreadRadius: 1,
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: TextField(
-                                      controller: amountController,
-                                      keyboardType: TextInputType.number,
-                                      style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600),
-                                      inputFormatters: [
-                                        // فلتر لقبول الأرقام الإنجليزية فقط
-                                        FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9.]')),
-                                        // تحويل الأرقام العربية إلى إنجليزية أثناء الكتابة
-                                        TextInputFormatter.withFunction(
-                                            (oldValue, newValue) {
-                                          String converted = newValue.text
-                                              .replaceAll('٠', '0')
-                                              .replaceAll('١', '1')
-                                              .replaceAll('٢', '2')
-                                              .replaceAll('٣', '3')
-                                              .replaceAll('٤', '4')
-                                              .replaceAll('٥', '5')
-                                              .replaceAll('٦', '6')
-                                              .replaceAll('٧', '7')
-                                              .replaceAll('٨', '8')
-                                              .replaceAll('٩', '9');
-                                          return TextEditingValue(
-                                            text: converted,
-                                            selection: TextSelection.collapsed(
-                                                offset: converted.length),
-                                          );
-                                        }),
-                                      ],
-                                      decoration: const InputDecoration(
-                                        labelText: 'المبلغ',
-                                        hintText:
-                                            'أدخل المبلغ المطلوب (اختياري)',
-                                        border: InputBorder.none,
-                                        contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 12),
-                                        prefixIcon: Icon(Icons.attach_money,
-                                            color: Colors.green),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // 3. مربع نص الملاحظات
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: Colors.orange.shade300, width: 2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.orange.shade200
-                                        .withValues(alpha: 0.3),
-                                    spreadRadius: 1,
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '📝 ملاحظات الفني:',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange.shade800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                          color: Colors.orange.shade400,
-                                          width: 2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.orange.shade100
-                                              .withValues(alpha: 0.5),
-                                          spreadRadius: 1,
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: TextField(
-                                      controller: notesController,
-                                      maxLines: 4,
-                                      style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500),
-                                      decoration: const InputDecoration(
-                                        labelText: 'م��احظات',
-                                        hintText:
-                                            'اكتب أي ملاحظات إضافية (��ختياري)',
-                                        border: InputBorder.none,
-                                        contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 12),
-                                        prefixIcon: Icon(Icons.note_add,
-                                            color: Colors.orange),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
+                            const Spacer(),
+                            const Text('تغيير حالة المهمة',
+                                style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white)),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.edit_note_rounded,
+                                color: Colors.white70, size: 22),
                           ],
                         ),
                       ),
-                    ),
 
-                    // الأزرار
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: Colors.grey.shade400, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.shade300
-                                      .withValues(alpha: 0.3),
-                                  spreadRadius: 1,
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: TextButton(
-                              onPressed: () {
-                                amountController.dispose();
-                                notesController.dispose();
-                                Navigator.of(context).pop();
-                              },
-                              style: TextButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                backgroundColor: Colors.grey.shade200,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                      // ── Body ──
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // 1. حالة المهمة
+                            Text('حالة المهمة',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade700)),
+                            const SizedBox(height: 6),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: statusColor.withValues(alpha: 0.4)),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.cancel,
-                                      color: Colors.grey.shade700, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'إلغاء',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.bold,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 2),
+                              child: DropdownButton<String>(
+                                value: selectedStatus,
+                                isExpanded: true,
+                                underline: const SizedBox.shrink(),
+                                icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                    color: statusColor, size: 24),
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
+                                    fontFamily: 'Cairo'),
+                                items: _getAvailableStatuses().map((status) {
+                                  final c = _getStatusColor(status);
+                                  return DropdownMenuItem(
+                                    value: status,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text(status,
+                                            style: TextStyle(
+                                                color: c,
+                                                fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                            width: 10,
+                                            height: 10,
+                                            decoration: BoxDecoration(
+                                                color: c,
+                                                shape: BoxShape.circle)),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    selectedStatus =
+                                        value ?? widget.task.status;
+                                  });
+                                },
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: Colors.blue.shade400, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.blue.shade300
-                                      .withValues(alpha: 0.3),
-                                  spreadRadius: 1,
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
+
+                            const SizedBox(height: 16),
+
+                            // 2. المبلغ
+                            Text('المبلغ',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade700)),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.left,
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.w600),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9.]')),
+                                TextInputFormatter.withFunction(
+                                    (oldValue, newValue) {
+                                  String converted = newValue.text
+                                      .replaceAll('٠', '0')
+                                      .replaceAll('١', '1')
+                                      .replaceAll('٢', '2')
+                                      .replaceAll('٣', '3')
+                                      .replaceAll('٤', '4')
+                                      .replaceAll('٥', '5')
+                                      .replaceAll('٦', '6')
+                                      .replaceAll('٧', '7')
+                                      .replaceAll('٨', '8')
+                                      .replaceAll('٩', '9');
+                                  return TextEditingValue(
+                                      text: converted,
+                                      selection: TextSelection.collapsed(
+                                          offset: converted.length));
+                                }),
                               ],
+                              decoration: InputDecoration(
+                                hintText: '0.00',
+                                hintStyle:
+                                    TextStyle(color: Colors.grey.shade400),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                prefixIcon: Container(
+                                  width: 36,
+                                  alignment: Alignment.center,
+                                  child: Text('\$',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade600)),
+                                ),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300)),
+                                enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300)),
+                                focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.green.shade400,
+                                        width: 1.5)),
+                              ),
                             ),
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                // حفظ القيم قبل إغلاق النافذة
-                                final String newStatus = selectedStatus;
-                                final String amount =
-                                    amountController.text.trim();
-                                final String notes =
-                                    notesController.text.trim();
 
-                                // إغلاق النافذة أولاً
-                                Navigator.of(context).pop();
+                            const SizedBox(height: 16),
 
-                                // انتظار قصير للتأكد من إغلاق النافذة تماماً
-                                await Future.delayed(
-                                    const Duration(milliseconds: 100));
+                            // 3. ملاحظات
+                            Text('ملاحظات الفني',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade700)),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: notesController,
+                              maxLines: 3,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.w500),
+                              decoration: InputDecoration(
+                                hintText: 'ملاحظات إضافية (اختياري)',
+                                hintStyle: TextStyle(
+                                    color: Colors.grey.shade400, fontSize: 13),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300)),
+                                enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300)),
+                                focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.orange.shade400,
+                                        width: 1.5)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                                // تنظيف الـ controllers بعد التأكد من إغلاق النافذة
-                                try {
+                      // ── Buttons ──
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
                                   amountController.dispose();
                                   notesController.dispose();
-                                } catch (e) {
-                                  // تجاهل أخطاء dispose إذا حدثت
-                                  print('تم تجاهل خطأ dispose: $e');
-                                }
-
-                                // تحديث المهمة بعد إغلاق النافذة وتنظيف الـ controllers
-                                _updateTaskStatus(
-                                  newStatus,
-                                  amount: amount,
-                                  notes: notes,
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                backgroundColor: Colors.blue,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  Navigator.of(context).pop();
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  side: BorderSide(color: Colors.grey.shade400),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
                                 ),
-                                elevation: 0,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.update,
-                                      color: Colors.white, size: 20),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'تحديث المهمة',
+                                child: Text('إلغاء',
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w600)),
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final String newStatus = selectedStatus;
+                                  final String amount =
+                                      amountController.text.trim();
+                                  final String notes =
+                                      notesController.text.trim();
+
+                                  Navigator.of(context).pop();
+                                  await Future.delayed(
+                                      const Duration(milliseconds: 100));
+
+                                  try {
+                                    amountController.dispose();
+                                    notesController.dispose();
+                                  } catch (e) {
+                                    print('تم تجاهل خطأ dispose: $e');
+                                  }
+
+                                  _updateTaskStatus(newStatus,
+                                      amount: amount, notes: notes);
+                                },
+                                icon: const Icon(Icons.check_rounded, size: 20),
+                                label: const Text('تحديث المهمة',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: const Color(0xFF1A237E),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -1103,8 +1065,8 @@ class _TaskCardState extends State<TaskCard> {
       {String amount = '', String notes = ''}) async {
     print('🟦 [DEBUG] بدء تحديث المهمة - ID: ${widget.task.id}');
     print('🟦 [DEBUG] الحالة الجديدة: $newStatus');
-    print('🟦 [DEBUG] المبلغ: "$amount"');
-    print('🟦 [DEBUG] الملاحظا��: "$notes"');
+
+    final oldTask = widget.task; // حفظ المهمة الأصلية للتراجع عند الفشل
 
     try {
       final updatedTask = widget.task.copyWith(
@@ -1116,37 +1078,42 @@ class _TaskCardState extends State<TaskCard> {
             : null,
       );
 
-      print('🟦 [DEBUG] ت�� إنشاء المهمة المحدثة بنجاح');
-      print('🟦 [DEBUG] معرف المهمة المحدثة: ${updatedTask.id}');
-      print('🟦 [DEBUG] مبلغ المهمة المحدثة: "${updatedTask.amount}"');
-
-      // تحديث المهمة محلياً أولاً
-      print('🟦 [DEBUG] بدء التحديث المحلي...');
+      // تحديث المهمة محلياً أولاً (optimistic)
       widget.onStatusChanged(updatedTask);
-      print('🟦 [DEBUG] تم التحديث المحلي بنجاح');
 
-      // عرض رسالة التحديث المحلي
-      if (mounted) {
-        print('🟦 [DEBUG] عرض رسالة النجاح المحلي...');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('تم تحديث حالة المهمة إلى: $newStatus'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+      // تحديث الحالة في API والتحقق من النتيجة
+      final result = await _updateStatusViaApi(updatedTask);
+
+      if (result) {
+        // نجاح حقيقي من السيرفر
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم تحديث حالة المهمة إلى: $newStatus'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        // فشل من السيرفر - التراجع عن التحديث المحلي
+        widget.onStatusChanged(oldTask);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('فشل تحديث الحالة - الانتقال غير مسموح'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       }
-
-      // تحديث الحالة في Google Sheets بشكل متزامن
-      print('🟦 [DEBUG] بدء التحديث في Google Sheets...');
-      await _updateStatusInSheet(updatedTask);
-      print('🟦 [DEBUG] تم التحديث في Google Sheets بنجاح');
     } catch (e, stackTrace) {
+      // التراجع عن التحديث المحلي عند حدوث خطأ
+      widget.onStatusChanged(oldTask);
       print('🔴 [ERROR] خطأ في تحديث حالة المهمة: $e');
-      print('🔴 [ERROR] Stack trace: $stackTrace');
 
       if (mounted) {
-        // عرض الخطأ في نافذة يمكن نسخ محتواها
         _showErrorDialog('خطأ في تحديث المهمة', '''
 تفاصيل الخطأ:
 ${e.toString()}
@@ -1154,7 +1121,7 @@ ${e.toString()}
 معلومات تقنية إضافية:
 $stackTrace
 
-البيانات المحاولة تحديثه��:
+البيانات المحاولة تحديثها:
 - الحالة: $newStatus
 - المبلغ: $amount
 - الملاحظات: $notes
@@ -1164,209 +1131,40 @@ $stackTrace
     }
   }
 
-  /// تحديث حالة المهمة في Google Sheets
-  Future<void> _updateStatusInSheet(Task task) async {
+  /// تحديث حالة المهمة عبر API - يُرجع true عند النجاح
+  Future<bool> _updateStatusViaApi(Task task) async {
     try {
-      // استخدام خدمة Google Sheets المحسنة
-      await GoogleSheetsService.updateTaskStatus(task);
+      final apiStatus = Task.mapArabicStatusToApi(task.status);
+      final taskId = task.guid.isNotEmpty ? task.guid : task.id;
+      print('🌐 [API] إرسال طلب تحديث الحالة...');
+      print('🌐 [API] Task ID: $taskId');
+      print('🌐 [API] Task GUID: "${task.guid}"');
+      print('🌐 [API] Task id: "${task.id}"');
+      print('🌐 [API] API Status: $apiStatus');
+      print('🌐 [API] Arabic Status: ${task.status}');
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'تم تحديث الحالة والمبلغ والملاحظات في Google Sheets بنجاح'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+      final result = await TaskApiService.instance.updateStatus(
+        taskId,
+        status: apiStatus,
+        amount: task.amount.isNotEmpty ? double.tryParse(task.amount) : null,
+      );
+
+      print('🌐 [API] النتيجة الكاملة: $result');
+      print('🌐 [API] success: ${result['success']}');
+      print('🌐 [API] statusCode: ${result['statusCode']}');
+      print('🌐 [API] message: ${result['message']}');
+
+      if (result['success'] == true) {
+        print('✅ تم تحديث الحالة في السيرفر بنجاح');
+        return true;
+      } else {
+        final msg = result['message'] ?? 'فشل غير معروف';
+        print('❌ فشل تحديث الحالة في السيرفر: $msg');
+        return false;
       }
     } catch (e) {
-      debugPrint('Error updating status in Google Sheets: $e');
-
-      // محاولة التحديث اليدوي إذا فشلت الخدمة
-      try {
-        await _manualUpdateTaskInSheet(task);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'تم تحديث الحالة والمبلغ والملاحظات بنجاح (نسخة احتياطية)'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      } catch (manualError) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('خطأ في تحديث الحالة: $manualError'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  /// تهيئة Sheets API - نفس طريقة agents_page.dart
-  Future<void> _initializeSheetsAPI() async {
-    if (_sheetsApi != null) return;
-
-    try {
-      // محاولة تحميل ملف service account
-      String jsonString;
-      try {
-        jsonString = await rootBundle.loadString('assets/service_account.json');
-      } catch (e) {
-        debugPrint('تعذر العثور على ملف service_account.json: $e');
-        throw 'ملف الاعتماد مفقود. يرجى التحقق من ملف service_account.json';
-      }
-
-      final accountCredentials =
-          ServiceAccountCredentials.fromJson(jsonDecode(jsonString));
-      final scopes = [sheets.SheetsApi.spreadsheetsScope];
-      _client = await clientViaServiceAccount(accountCredentials, scopes);
-      _sheetsApi = sheets.SheetsApi(_client!);
-
-      debugPrint('✅ تم تهيئة Google Sheets API بنجاح!');
-    } catch (e) {
-      debugPrint('❌ خطأ في تهيئة Sheets API: $e');
-      throw 'فشل في تهيئة خدمة Google Sheets: ${e.toString()}';
-    }
-  }
-
-  /// تحديث يدوي للمهمة في Google Sheets كنسخة احتياطية
-  Future<void> _manualUpdateTaskInSheet(Task task) async {
-    await _initializeSheetsAPI();
-
-    if (_sheetsApi == null) {
-      throw 'فشل في تهيئة API';
-    }
-
-    // قائمة بأسماء الأوراق المحتملة
-    List<String> possibleSheetNames = [
-      'المهام',
-      'tasks',
-      'Tasks',
-      'TASKS',
-      'مهام'
-    ];
-
-    bool updated = false;
-    debugPrint('🔍 [Manual Update] البحث عن المهمة بمعرف: ${task.id}');
-
-    for (String sheetName in possibleSheetNames) {
-      try {
-        debugPrint('📋 [Manual Update] البحث في ورقة: $sheetName');
-
-        final range = '$sheetName!A2:Z';
-        final response =
-            await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-        final rows = response.values ?? [];
-
-        debugPrint(
-            '📊 [Manual Update] عدد الصفوف في $sheetName: ${rows.length}');
-
-        // البحث عن ال��همة بناءً على معرفها مع معالجة أنواع البيانات المختلفة
-        int? rowIndex;
-
-        for (int i = 0; i < rows.length; i++) {
-          if (rows[i].isNotEmpty) {
-            // تحويل كلا القيمتين إ��ى نص وإزالة المسافات
-            String rowId = rows[i][0].toString().trim();
-            String taskId = task.id.toString().trim();
-
-            debugPrint(
-                '🔍 [Manual Update] مقارنة: صف $i -> "$rowId" (نوع: ${rows[i][0].runtimeType}) مع "$taskId" (نوع: ${task.id.runtimeType})');
-
-            // مقارنة مباشرة كنصوص
-            bool isMatch = rowId == taskId;
-
-            // مقارنة إضافية كأرقام إذا كانت القيم رقمية
-            if (!isMatch) {
-              try {
-                double? rowIdNum = double.tryParse(rowId);
-                double? taskIdNum = double.tryParse(taskId);
-                if (rowIdNum != null && taskIdNum != null) {
-                  isMatch = rowIdNum == taskIdNum;
-                  debugPrint(
-                      '🔢 [Manual Update] مقارنة رقمية: $rowIdNum == $taskIdNum -> $isMatch');
-                }
-              } catch (e) {
-                // تجاهل أخطاء التحويل الرقمي
-              }
-            }
-
-            if (isMatch) {
-              rowIndex = i + 2; // +2 لأن الصفوف تبدأ من 1 والنطاق من A2
-              debugPrint(
-                  '✅ [Manual Update] تم العثور على المهمة في الصف: $rowIndex');
-              break;
-            }
-          }
-        }
-
-        if (rowIndex != null) {
-          debugPrint('🔄 [Manual Update] تحديث المهمة في الصف: $rowIndex');
-
-          // تحديث الصف الكا��ل للمهمة
-          final updateRange = '$sheetName!A$rowIndex:Q$rowIndex';
-
-          final valueRange = sheets.ValueRange(
-            range: updateRange,
-            values: [
-              [
-                task.id, // الحفاظ على المعرف كما هو
-                task.status,
-                task.department,
-                task.title,
-                task.leader,
-                task.technician,
-                task.username,
-                task.phone,
-                task.fbg,
-                task.fat,
-                task.location,
-                task.notes,
-                task.createdAt.toIso8601String(),
-                task.closedAt?.toIso8601String() ?? '',
-                task.summary,
-                task.priority,
-                task.agents.join(','),
-              ],
-            ],
-          );
-
-          debugPrint('📝 [Manual Update] نطاق التحديث: $updateRange');
-          debugPrint(
-              '📋 [Manual Update] البيانات المراد تحدي��ها: المعرف=${task.id}, الحالة=${task.status}, ا��عنوان=${task.title}');
-
-          await _sheetsApi!.spreadsheets.values.update(
-            valueRange,
-            spreadsheetId,
-            updateRange,
-            valueInputOption: 'USER_ENTERED',
-          );
-
-          debugPrint('✅ [Manual Update] تم تحديث المهمة بنجاح في $sheetName');
-          updated = true;
-          break; // نجح التحد��ث، توقف عن المحاولة
-        } else {
-          debugPrint(
-              '❌ [Manual Update] لم يتم العثور على المهمة في $sheetName');
-        }
-      } catch (e) {
-        debugPrint('⚠️ [Manual Update] خطأ في معالجة ورقة $sheetName: $e');
-        // تج��هل الأخطاء وحاول الورقة التالية
-        continue;
-      }
-    }
-
-    if (!updated) {
-      debugPrint('❌ [Manual Update] فشل في العثور على المهمة في جميع الأوراق');
-      throw 'لم يتم العثور على المهمة بمعرف "${task.id}" في أي من أوراق Google Sheets';
+      debugPrint('Error updating status via API: $e');
+      return false;
     }
   }
 
@@ -1384,51 +1182,11 @@ $stackTrace
     );
   }
 
-  /// حذف المهمة من Google Sheets
+  /// حذف المهمة عبر API
   Future<void> _deleteTask() async {
     try {
-      await _initializeSheetsAPI();
-
-      if (_sheetsApi == null) {
-        throw 'فشل في تهيئة API';
-      }
-
-      // البحث عن المهمة في الشيت وحذفها
-      final range = 'المهام!A2:Z';
-      final response =
-          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-      final rows = response.values ?? [];
-
-      int? rowIndex;
-      for (int i = 0; i < rows.length; i++) {
-        if (rows[i].isNotEmpty && rows[i][0] == widget.task.id) {
-          rowIndex = i + 2; // +2 لأن الصفوف تبدأ من 1 والنطاق من A2
-          break;
-        }
-      }
-
-      if (rowIndex == null) {
-        throw 'لم يتم العثور على المهمة في الشيت';
-      }
-
-      // حذف الصف
-      final deleteRequest = sheets.DeleteDimensionRequest(
-        range: sheets.DimensionRange(
-          sheetId: 0, // ID الخاص بورقة المهام
-          dimension: 'ROWS',
-          startIndex: rowIndex - 1,
-          endIndex: rowIndex,
-        ),
-      );
-
-      final batchUpdateRequest = sheets.BatchUpdateSpreadsheetRequest(
-        requests: [
-          sheets.Request(deleteDimension: deleteRequest),
-        ],
-      );
-
-      await _sheetsApi!.spreadsheets
-          .batchUpdate(batchUpdateRequest, spreadsheetId);
+      await TaskApiService.instance.deleteRequest(
+          widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1438,8 +1196,7 @@ $stackTrace
           ),
         );
 
-        // إعادة تحميل الصفحة أو إخفاء الكارت
-        Navigator.of(context).pop(); // إذا كان في صفحة منفصلة
+        Navigator.of(context).pop();
       }
     } catch (e) {
       debugPrint('Error deleting task: $e');
@@ -1461,11 +1218,11 @@ $stackTrace
         return AlertDialog(
           title: const Text('تأكيد الحذف'),
           content: const Text(
-              'هل أنت متأكد من رغبتك في حذف هذه المهمة؟\nسيتم حذفها نهائياً من Google Sheets.'),
+              'هل أنت متأكد من رغبتك في حذف هذه المهمة؟\nسيتم حذفها نهائياً.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('إل��اء'),
+              child: const Text('إلغاء'),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -1799,12 +1556,22 @@ $stackTrace
     switch (status) {
       case 'مفتوحة':
         return Colors.blue;
+      case 'قيد المراجعة':
+        return Colors.indigo;
+      case 'موافق عليه':
+        return Colors.teal;
+      case 'معينة':
+        return Colors.purple;
       case 'قيد التنفيذ':
         return Colors.orange;
+      case 'معلقة':
+        return Colors.amber.shade700;
       case 'مكتملة':
         return Colors.green;
       case 'ملغية':
         return Colors.red;
+      case 'مرفوضة':
+        return Colors.red.shade900;
       default:
         return Colors.grey;
     }
@@ -1842,7 +1609,7 @@ $stackTrace
     }).toList();
   }
 
-  /// جلب بيانات الوكلاء
+  /// جلب بيانات الوكلاء من API
   Future<void> _fetchAgentsData() async {
     if (isLoadingAgents) return;
 
@@ -1851,49 +1618,39 @@ $stackTrace
     });
 
     try {
-      await _initializeSheetsAPI();
-
-      if (_sheetsApi == null) {
-        throw 'فشل في تهيئة API';
-      }
-
       debugPrint('جلب بيانات الوكلاء للمجموعة: ${widget.task.fbg}');
 
-      // جلب بيانات الوكلاء من شيت الوكلاء (نفس آلية agents_page.dart)
-      final range = 'الوكلاء!A2:AE'; // تعديل النطاق لجلب الأعمدة من 1 إلى 31
-      final response =
-          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-      final rows = response.values ?? [];
+      // جلب الموظفين من API (task-staff)
+      final response = await TaskApiService.instance.getTaskStaff();
+      final List<dynamic> staffList =
+          response['staff'] ?? response['Staff'] ?? [];
 
-      if (rows.isEmpty) {
-        setState(() {
-          agents = [];
-          isLoadingAgents = false;
-        });
-        return;
+      // تحويل بيانات الموظفين لنفس تنسيق agents
+      final List<Map<String, dynamic>> fetchedAgents = [];
+
+      // تجميع الموظفين حسب القسم/المجموعة
+      final Map<String, List<Map<String, String>>> grouped = {};
+      for (var staff in staffList) {
+        final dept =
+            (staff['Department'] ?? staff['department'] ?? '').toString();
+        final name = (staff['FullName'] ?? staff['fullName'] ?? '').toString();
+        final phone =
+            (staff['PhoneNumber'] ?? staff['phoneNumber'] ?? '').toString();
+        if (name.isNotEmpty) {
+          grouped.putIfAbsent(dept, () => []);
+          grouped[dept]!.add({'name': name, 'phone': phone});
+        }
       }
 
-      // تحويل البيانات لنفس تنسيق agents_page.dart
-      final List<Map<String, dynamic>> fetchedAgents = rows.map((row) {
-        final Map<String, dynamic> agentData = {
-          'group': row.isNotEmpty ? row[0].toString() : '', // اسم المجموعة
-        };
-        for (int i = 1; i < row.length; i += 2) {
-          if (i + 1 < row.length) {
-            final name = row[i]?.toString() ?? '';
-            final phone = row[i + 1]?.toString() ?? '';
-            if (name.isNotEmpty && phone.isNotEmpty) {
-              agentData['agent${(i + 1) ~/ 2}'] = {
-                'name': name,
-                'phone': phone
-              };
-            }
-          }
+      grouped.forEach((group, members) {
+        final Map<String, dynamic> agentData = {'group': group};
+        for (int i = 0; i < members.length; i++) {
+          agentData['agent${i + 1}'] = members[i];
         }
-        return agentData;
-      }).toList();
+        fetchedAgents.add(agentData);
+      });
 
-      // فلترة البيانات حسب FBG المرسل (نفس آلية agents_page.dart)
+      // فلترة البيانات حسب FBG المرسل
       List<Map<String, dynamic>> fbgFilteredAgents = [];
       final taskFBG = widget.task.fbg.trim();
 
@@ -2534,8 +2291,8 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
       // تحديث المهمة محلياً
       widget.onStatusChanged(updatedTask);
 
-      // تحديث في Google Sheets
-      _updateStatusInSheet(updatedTask);
+      // تحديث عبر API
+      _updateStatusViaApi(updatedTask);
 
       Navigator.of(context).pop();
 
@@ -2604,7 +2361,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
     }
   }
 
-  /// البحث عن رقم هاتف الفني في قاعدة البيانات
+  /// البحث عن رقم هاتف الفني
   Future<String> _getTechnicianPhoneNumber(String technicianName) async {
     try {
       // التحقق أولاً من وجود رقم هاتف الفني في المهمة نفسها
@@ -2612,43 +2369,26 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
         return widget.task.technicianPhone;
       }
 
-      // البحث في شيت الفنيين إذا لم يكن متوفراً في المهمة
-      await _initializeSheetsAPI();
+      // البحث في قائمة الموظفين من API
+      try {
+        final response = await TaskApiService.instance.getTaskStaff();
+        final List<dynamic> staffList =
+            response['staff'] ?? response['Staff'] ?? [];
 
-      if (_sheetsApi == null) {
-        return '';
-      }
+        for (var staff in staffList) {
+          final name =
+              (staff['FullName'] ?? staff['fullName'] ?? '').toString().trim();
+          final phone = (staff['PhoneNumber'] ?? staff['phoneNumber'] ?? '')
+              .toString()
+              .trim();
 
-      // قائمة بأسماء الأوراق المحتملة للفنيين
-      List<String> possibleSheetNames = [
-        'الفنيين',
-        'فنيين',
-        'Technicians',
-        'technicians'
-      ];
-
-      for (String sheetName in possibleSheetNames) {
-        try {
-          final range = '$sheetName!A2:C';
-          final response =
-              await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-          final rows = response.values ?? [];
-
-          for (var row in rows) {
-            if (row.length >= 2) {
-              String name = row[0]?.toString().trim() ?? '';
-              String phone = row[1]?.toString().trim() ?? '';
-
-              if (name.toLowerCase() == technicianName.toLowerCase() &&
-                  phone.isNotEmpty) {
-                return phone;
-              }
-            }
+          if (name.toLowerCase() == technicianName.toLowerCase() &&
+              phone.isNotEmpty) {
+            return phone;
           }
-        } catch (e) {
-          // تجاهل أخطاء الأوراق غير الموجودة
-          continue;
         }
+      } catch (e) {
+        debugPrint('خطأ في البحث عن الفني من API: $e');
       }
 
       return '';

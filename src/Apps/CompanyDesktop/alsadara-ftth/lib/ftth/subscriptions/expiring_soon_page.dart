@@ -12,7 +12,6 @@ import 'dart:io';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
 import '../auth/login_page.dart';
-import 'package:gsheets/gsheets.dart';
 import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import '../users/user_details_page.dart';
@@ -20,7 +19,7 @@ import 'package:intl/intl.dart';
 
 class ExpiringSoonPage extends StatefulWidget {
   final String activatedBy;
-  final bool hasGoogleSheetsPermission;
+  final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
   final String? firstSystemPermissions; // صلاحيات النظام الأول
   final bool? isAdminFlag; // علم إداري صريح
@@ -29,7 +28,7 @@ class ExpiringSoonPage extends StatefulWidget {
   const ExpiringSoonPage(
       {super.key,
       required this.activatedBy,
-      this.hasGoogleSheetsPermission = false,
+      this.hasServerSavePermission = false,
       this.hasWhatsAppPermission = false,
       this.firstSystemPermissions,
       this.isAdminFlag,
@@ -49,7 +48,6 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
   // متغيرات التصدير
   bool isExporting = false;
   String exportMessage = '';
-  final String spreadsheetId = '1Vc9Syd7D0mo6EGnIsdMA-sVCpvWsAQ7NGnvZf8knXKE';
 
   // متغيرات التنقل بين الصفحات
   int currentPage = 1;
@@ -302,257 +300,6 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         Map<String, dynamic>.from(subscription);
     enhancedSubscription['customerPhone'] = phone;
     return enhancedSubscription;
-  }
-
-  Future<void> _exportToGoogleSheets() async {
-    if (totalItems == 0) {
-      ftthShowSnackBar(
-        context,
-        const SnackBar(
-          content: Text('لا توجد بيانات للتصدير'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      isExporting = true;
-      exportMessage = 'جاري جلب جميع البيانات للتصدير...';
-    });
-
-    try {
-      // جلب جميع البيانات للتصدير
-      List<dynamic> allData = await _fetchAllDataForExport();
-
-      if (allData.isEmpty) {
-        setState(() {
-          exportMessage = 'لا توجد بيانات للتصدير';
-          isExporting = false;
-        });
-        return;
-      }
-
-      setState(() {
-        exportMessage = 'جاري تحضير عملية التصدير إلى Google Sheets...';
-      });
-      final credentials =
-          await rootBundle.loadString('assets/service_account.json');
-      final gsheets = GSheets(credentials);
-      final ss = await gsheets.spreadsheet(spreadsheetId);
-
-      // تحديد اسم الشيت بناءً على نوع البيانات
-      String sheetName =
-          showTrialSubscriptions ? 'Trial Subscriptions' : 'Expiring Soon';
-      var sheet = ss.worksheetByTitle(sheetName);
-      sheet ??= await ss.addWorksheet(sheetName);
-
-      setState(() {
-        exportMessage = 'جاري مسح البيانات القديمة...';
-      });
-
-      // مسح البيانات القديمة
-      await sheet.clear();
-
-      // إضافة رؤوس الأعمدة (مطابقة للعينة المطلوبة)
-      List<String> headers = [
-        'اسم المشترك',
-        'رقم الهاتف',
-        'رقم تعريف المشترك',
-        'حالة الاشتراك',
-        'تاريخ بدء الاشتراك',
-        'تاريخ انتهاء الاشتراك',
-        'مدة الالتزام (شهر)',
-        'المنطقة',
-        'رقم تعريف الاشتراك',
-        'نوع الباقة',
-        // أعمدة إضافية مطلوبة
-        'اسم المستخدم',
-        'حالة الاتصال',
-        'أول خدمة',
-        'عنوان IP',
-        'تاريخ الإنشاء',
-      ];
-
-      await sheet.values.insertRow(1, headers);
-
-      setState(() {
-        exportMessage = 'جاري كتابة البيانات...';
-      });
-
-      // إعداد البيانات للتصدير
-      List<List<dynamic>> rows = [];
-      for (final item in allData) {
-        // معرف العميل
-        final customerId = item['customer']?['id']?.toString() ?? '';
-        // معرف الاشتراك
-        final subscriptionId =
-            item['id']?.toString() ?? item['self']?['id']?.toString() ?? '';
-        // اسم العميل
-        final customerName =
-            item['customer']?['displayValue']?.toString() ?? 'غير محدد';
-        // الهاتف
-        final phone = item['customerPhone']?.toString() ?? 'غير متوفر';
-        // مدة الالتزام
-        final commitment = item['commitmentPeriod']?.toString() ?? '';
-        // تاريخ الانتهاء
-        final expiryStr = item['expires']?.toString();
-        DateTime? expiryDate;
-        try {
-          if (expiryStr != null) expiryDate = DateTime.parse(expiryStr);
-        } catch (_) {}
-        // حالة الاشتراك
-        String status = 'غير معروف';
-        if (expiryDate != null) {
-          final diff = expiryDate.difference(DateTime.now()).inDays;
-          status = diff < 0 ? 'منتهي' : 'نشط';
-        }
-        // تاريخ البداية: محاولة أخذ حقل صريح وإلا تقدير بالالتزام
-        DateTime? startDate;
-        for (final key in [
-          'activationDate',
-          'activatedOn',
-          'startDate',
-          'starts',
-          'createdOn'
-        ]) {
-          if (item[key] != null) {
-            try {
-              startDate = DateTime.parse(item[key]);
-              break;
-            } catch (_) {}
-          }
-        }
-        if (startDate == null && expiryDate != null && commitment.isNotEmpty) {
-          final months = int.tryParse(commitment) ?? 0;
-          if (months > 0) {
-            // طرح عدد الأشهر مع الحفاظ على اليوم قدر الإمكان
-            int y = expiryDate.year;
-            int m = expiryDate.month - months;
-            while (m <= 0) {
-              m += 12;
-              y -= 1;
-            }
-            final d = expiryDate.day;
-            // معالجة تجاوز أيام الشهر
-            final lastDay = DateTime(y, m + 1, 0).day;
-            startDate = DateTime(y, m, d > lastDay ? lastDay : d);
-          }
-        }
-        String fmt(DateTime? dt) => dt == null
-            ? ''
-            : '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-        final zoneName = item['zone']?['displayValue']?.toString() ?? '';
-        final plan = item['bundle']?['displayValue']?.toString() ?? '';
-        final username = item['username']?.toString() ?? '';
-        final bool isOnline = item['hasActiveSession'] == true;
-        String connectionStatus = isOnline ? 'متصل' : 'غير متصل';
-        String firstServiceName = '';
-        String ipAddress = '';
-        if (item['services'] is List && (item['services'] as List).isNotEmpty) {
-          final first = (item['services'] as List).first;
-          try {
-            firstServiceName = first['displayValue']?.toString() ??
-                first['name']?.toString() ??
-                '';
-          } catch (_) {}
-          // محاولة استخراج أي حقل IP محتمل
-          for (final key in [
-            'ip',
-            'ipAddress',
-            'framedIp',
-            'framedIPAddress',
-            'framedAddress',
-            'framedIP'
-          ]) {
-            if (first[key] != null) {
-              ipAddress = first[key].toString();
-              break;
-            }
-          }
-        }
-        String createdOnFormatted = '';
-        if (item['createdOn'] != null) {
-          try {
-            final created = DateTime.parse(item['createdOn']);
-            createdOnFormatted = fmt(created);
-          } catch (_) {}
-        }
-
-        rows.add([
-          customerName,
-          phone,
-          customerId,
-          status,
-          fmt(startDate),
-          fmt(expiryDate),
-          commitment,
-          zoneName,
-          subscriptionId,
-          plan,
-          username,
-          connectionStatus,
-          firstServiceName,
-          ipAddress,
-          createdOnFormatted,
-        ]);
-      }
-
-      // كتابة البيانات في دفعات
-      const batchSize = 500; // كتابة 500 سجل في كل دفعة (5 دفعات API)
-      for (int i = 0; i < rows.length; i += batchSize) {
-        final endIndex =
-            (i + batchSize > rows.length) ? rows.length : i + batchSize;
-        final batch = rows.sublist(i, endIndex);
-        await sheet.values.appendRows(batch);
-
-        setState(() {
-          exportMessage = 'تم كتابة $endIndex من ${rows.length} سجل...';
-        });
-
-        // إضافة توقف قصير بين الدفعات
-        if (endIndex < rows.length) {
-          await Future.delayed(const Duration(milliseconds: 200));
-        }
-      }
-
-      setState(() {
-        exportMessage = 'تم تصدير ${rows.length} سجل بنجاح!';
-        isExporting = false;
-      });
-
-      ftthShowSnackBar(
-        context,
-        SnackBar(
-          content: Text('تم تصدير ${rows.length} سجل إلى Google Sheets بنجاح!'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-
-      // مسح رسالة التصدير بعد 3 ثوانٍ
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            exportMessage = '';
-          });
-        }
-      });
-    } catch (e) {
-      setState(() {
-        exportMessage = 'فشل في التصدير: $e';
-        isExporting = false;
-      });
-
-      ftthShowSnackBar(
-        context,
-        SnackBar(
-          content: Text('فشل في التصدير: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
   }
 
   Future<void> _exportToExcel() async {
@@ -1142,7 +889,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.clear_all_rounded,
@@ -1180,16 +928,15 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
                 ),
                 child: PopupMenuButton<String>(
                   icon: const Icon(Icons.cloud_download_rounded,
                       color: Colors.white, size: 22),
                   tooltip: 'تصدير البيانات',
                   onSelected: (String value) {
-                    if (value == 'google') {
-                      _exportToGoogleSheets();
-                    } else if (value == 'excel') {
+                    if (value == 'excel') {
                       _exportToExcel();
                     } else if (value == 'clear_cache') {
                       _clearPhoneCache();
@@ -1204,17 +951,6 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     }
                   },
                   itemBuilder: (BuildContext context) => [
-                    const PopupMenuItem<String>(
-                      value: 'google',
-                      child: Row(
-                        children: [
-                          Icon(Icons.cloud_upload,
-                              color: Colors.green, size: 20),
-                          SizedBox(width: 8),
-                          Text('تصدير إلى Google Sheets'),
-                        ],
-                      ),
-                    ),
                     const PopupMenuItem<String>(
                       value: 'excel',
                       child: Row(
@@ -2374,7 +2110,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             userPhone: userPhone,
             authToken: token,
             activatedBy: activatedBy,
-            hasGoogleSheetsPermission: widget.hasGoogleSheetsPermission,
+            hasServerSavePermission: widget.hasServerSavePermission,
             hasWhatsAppPermission: widget.hasWhatsAppPermission,
             firstSystemPermissions: widget.firstSystemPermissions,
             isAdminFlag: widget.isAdminFlag,

@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/tenant.dart';
 import '../../models/tenant_user.dart';
+import '../../theme/energy_dashboard_theme.dart';
 
 class TenantFeaturesPage extends StatefulWidget {
   final Tenant tenant;
@@ -283,7 +284,9 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
                         name,
                         style: GoogleFonts.cairo(
                           fontWeight: FontWeight.w500,
-                          color: value ? Colors.black : Colors.grey,
+                          color: value
+                              ? EnergyDashboardTheme.textPrimary
+                              : EnergyDashboardTheme.textMuted,
                         ),
                       ),
                     ],
@@ -349,7 +352,7 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
         'account_records': 'سجلات الحسابات',
         'export': 'التصدير',
         'agents': 'الوكلاء',
-        'google_sheets': 'جوجل شيتس',
+        'google_sheets': 'حفظ في الخادم',
         'whatsapp': 'واتساب',
         'wallet_balance': 'رصيد المحفظة',
         'expiring_soon': 'تنتهي قريباً',
@@ -383,7 +386,7 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
       'account_records': Icons.receipt_long,
       'export': Icons.file_download,
       'agents': Icons.support_agent,
-      'google_sheets': Icons.table_chart,
+      'google_sheets': Icons.cloud_upload,
       'whatsapp': Icons.chat,
       'wallet_balance': Icons.account_balance_wallet,
       'expiring_soon': Icons.timer,

@@ -5,6 +5,7 @@ namespace Sadara.Domain.Entities;
 public class Notification : BaseEntity<long>
 {
     public Guid UserId { get; set; }
+    public Guid? CompanyId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? TitleAr { get; set; }
     public string Body { get; set; } = string.Empty;
@@ -17,6 +18,12 @@ public class Notification : BaseEntity<long>
     public DateTime? ReadAt { get; set; }
     public bool IsSent { get; set; } = false;
     public DateTime? SentAt { get; set; }
+    
+    /// <summary>معرف الكيان المرتبط (مثل ServiceRequest.Id)</summary>
+    public Guid? ReferenceId { get; set; }
+    
+    /// <summary>نوع الكيان المرتبط (مثل "ServiceRequest")</summary>
+    public string? ReferenceType { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

@@ -124,7 +124,13 @@ public enum NotificationType
     RequestAssigned = 12,
     
     /// <summary>تعليق جديد على طلب</summary>
-    RequestComment = 13
+    RequestComment = 13,
+    
+    /// <summary>طلب وكيل جديد</summary>
+    AgentRequest = 20,
+    
+    /// <summary>اكتمال مهمة</summary>
+    TaskCompleted = 21
 }
 
 /// <summary>
@@ -226,5 +232,133 @@ public enum PermissionGroupType
     Settings = 5,
     
     /// <summary>صلاحيات نظام المواطن</summary>
-    CitizenPortal = 10
+    CitizenPortal = 10,
+
+    /// <summary>صلاحيات المحاسبة</summary>
+    Accounting = 11
+}
+
+// ==================== Accounting System Enums (نظام المحاسبة) ====================
+
+/// <summary>
+/// نوع الحساب المحاسبي
+/// </summary>
+public enum AccountType
+{
+    /// <summary>أصول (مثل: النقدية، البنوك، المدينون)</summary>
+    Assets = 1,
+
+    /// <summary>خصوم/التزامات (مثل: الدائنون، قروض)</summary>
+    Liabilities = 2,
+
+    /// <summary>حقوق الملكية (رأس المال، أرباح محتجزة)</summary>
+    Equity = 3,
+
+    /// <summary>إيرادات (اشتراكات، تركيبات، خدمات)</summary>
+    Revenue = 4,
+
+    /// <summary>مصروفات (رواتب، إيجار، مواد)</summary>
+    Expenses = 5
+}
+
+/// <summary>
+/// حالة القيد المحاسبي
+/// </summary>
+public enum JournalEntryStatus
+{
+    /// <summary>مسودة - لم يُعتمد بعد</summary>
+    Draft = 0,
+
+    /// <summary>معتمد - تم ترحيله للحسابات</summary>
+    Posted = 1,
+
+    /// <summary>ملغي</summary>
+    Voided = 2
+}
+
+/// <summary>
+/// نوع المرجع للقيد المحاسبي
+/// </summary>
+public enum JournalReferenceType
+{
+    /// <summary>قيد يدوي</summary>
+    Manual = 0,
+
+    /// <summary>تحصيل فني</summary>
+    TechnicianCollection = 1,
+
+    /// <summary>راتب موظف</summary>
+    Salary = 2,
+
+    /// <summary>مصروف</summary>
+    Expense = 3,
+
+    /// <summary>إيداع صندوق</summary>
+    CashDeposit = 4,
+
+    /// <summary>سحب من صندوق</summary>
+    CashWithdrawal = 5,
+
+    /// <summary>معاملة وكيل</summary>
+    AgentTransaction = 6,
+
+    /// <summary>دفعة مواطن</summary>
+    CitizenPayment = 7,
+
+    /// <summary>طلب خدمة</summary>
+    ServiceRequest = 8,
+
+    /// <summary>تحويل بين صناديق</summary>
+    CashTransfer = 9
+}
+
+/// <summary>
+/// نوع الصندوق / القاصة
+/// </summary>
+public enum CashBoxType
+{
+    /// <summary>صندوق رئيسي</summary>
+    Main = 0,
+
+    /// <summary>قاصة فرعية</summary>
+    PettyCash = 1,
+
+    /// <summary>صندوق بنكي</summary>
+    Bank = 2
+}
+
+/// <summary>
+/// نوع حركة الصندوق
+/// </summary>
+public enum CashTransactionType
+{
+    /// <summary>إدخال/إيداع</summary>
+    Deposit = 0,
+
+    /// <summary>إخراج/سحب</summary>
+    Withdrawal = 1,
+
+    /// <summary>تحويل وارد من صندوق آخر</summary>
+    TransferIn = 2,
+
+    /// <summary>تحويل صادر لصندوق آخر</summary>
+    TransferOut = 3
+}
+
+/// <summary>
+/// حالة الراتب
+/// </summary>
+public enum SalaryStatus
+{
+    /// <summary>بانتظار الصرف</summary>
+    Pending = 0,
+
+    /// <summary>تم الصرف</summary>
+    Paid = 1,
+
+    /// <summary>صرف جزئي</summary>
+    PartiallyPaid = 2,
+
+    /// <summary>ملغي</summary>
+    Cancelled = 3
 }

@@ -17,6 +17,69 @@ public class NotificationsController : ControllerBase
         _unitOfWork = unitOfWork;
     }
 
+    /// <summary>
+    /// جلب إشعاراتي (المستخدم الحالي)
+    /// </summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> GetMyNotifications([FromQuery] bool? unreadOnly, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty)
+            return Unauthorized(new { success = false, message = "غير مصرح" });
+
+        var query = _unitOfWork.Notifications.AsQueryable()
+            .Where(n => n.UserId == userId);
+
+        if (unreadOnly == true)
+            query = query.Where(n => !n.IsRead);
+
+        var total = await query.CountAsync();
+        var unreadCount = await _unitOfWork.Notifications.AsQueryable()
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .CountAsync();
+
+        var notifications = await query
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(n => new
+            {
+                n.Id,
+                n.Title,
+                TitleAr = n.TitleAr ?? n.Title,
+                n.Body,
+                BodyAr = n.BodyAr ?? n.Body,
+                Type = n.Type.ToString(),
+                n.IsRead,
+                n.ReadAt,
+                n.ReferenceId,
+                n.ReferenceType,
+                n.Data,
+                n.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { success = true, data = notifications, total, unreadCount, page, pageSize });
+    }
+
+    /// <summary>
+    /// عدد إشعاراتي غير المقروءة
+    /// </summary>
+    [HttpGet("me/unread-count")]
+    [Authorize]
+    public async Task<IActionResult> GetMyUnreadCount()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty)
+            return Unauthorized(new { success = false, message = "غير مصرح" });
+
+        var count = await _unitOfWork.Notifications.AsQueryable()
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .CountAsync();
+        return Ok(new { success = true, data = count });
+    }
+
     [HttpGet("user/{userId:guid}")]
     [Authorize]
     public async Task<IActionResult> GetByUser(Guid userId, [FromQuery] bool? unreadOnly, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
@@ -117,6 +180,12 @@ public class NotificationsController : ControllerBase
         await _unitOfWork.SaveChangesAsync();
 
         return Ok(new { success = true });
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var claim = User.FindFirst("sub") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        return claim != null ? Guid.Parse(claim.Value) : Guid.Empty;
     }
 }
 

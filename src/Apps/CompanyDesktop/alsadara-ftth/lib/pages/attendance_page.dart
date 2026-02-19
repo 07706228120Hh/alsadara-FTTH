@@ -4,14 +4,12 @@
 /// تاريخ الإنشاء: 2024
 library;
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // لاستدعاء rootBundle
-import 'package:shared_preferences/shared_preferences.dart'; // لتخزين البيانات محليًا
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:googleapis/sheets/v4.dart' as sheets;
-import 'package:googleapis_auth/auth_io.dart'; // استخدام clientViaServiceAccount
 import '../widgets/responsive_body.dart';
+import '../services/attendance_api_service.dart';
 
 class AttendancePage extends StatefulWidget {
   final String username;
@@ -31,20 +29,17 @@ class AttendancePage extends StatefulWidget {
 class _AttendancePageState extends State<AttendancePage> {
   // لون الخلفية الموحد للصفحة بالكامل
   Color get _bgColor => Colors.blue[400]!;
-  sheets.SheetsApi? _sheetsApi;
-  AuthClient? _client;
+  final AttendanceApiService _attendanceApi = AttendanceApiService.instance;
   int _attendanceCount = 0;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
   final TextEditingController _codeController = TextEditingController();
   String? _savedCode;
+  String? _userId; // معرف المستخدم من API
 
   @override
   void initState() {
     super.initState();
-    _initializeSheetsAPI();
     _fetchAttendanceCount();
     _loadSavedCode();
-    // Ensure system bars blend with our gradient (fix black nav bar)
     WidgetsBinding.instance.addPostFrameCallback((_) => _applySystemUi());
   }
 
@@ -62,45 +57,14 @@ class _AttendancePageState extends State<AttendancePage> {
     ));
   }
 
-  Future<void> _initializeSheetsAPI() async {
-    try {
-      final jsonString =
-          await rootBundle.loadString('assets/service_account.json');
-      final accountCredentials =
-          ServiceAccountCredentials.fromJson(jsonDecode(jsonString));
-      final scopes = [sheets.SheetsApi.spreadsheetsScope];
-      _client = await clientViaServiceAccount(accountCredentials, scopes);
-      _sheetsApi = sheets.SheetsApi(_client!);
-
-      debugPrint('Google Sheets API initialized successfully!');
-    } catch (e) {
-      debugPrint('Error initializing Sheets API: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ أثناء تهيئة Google Sheets API: $e')),
-      );
-    }
-  }
-
   Future<void> _fetchAttendanceCount() async {
     try {
-      final range = 'الحضور!A1:Z';
-      final response =
-          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-
-      final rows = response.values ?? [];
-      int userRowIndex = rows.indexWhere((row) =>
-          row.length > 2 &&
-          row[1] == widget.username &&
-          row[2] == widget.center);
-
-      if (userRowIndex != -1) {
-        final userRow = rows[userRowIndex];
-        int count = userRow.skip(4).where((value) => value != "").length ~/ 2;
-        setState(() {
-          _attendanceCount = count;
-        });
-      }
+      final data = await _attendanceApi.getMonthlyAttendance(
+        userId: _userId ?? widget.username,
+      );
+      setState(() {
+        _attendanceCount = data['totalDays'] ?? 0;
+      });
     } catch (e) {
       debugPrint('Error fetching attendance count: $e');
     }
@@ -130,30 +94,18 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Future<void> _submitAttendance(String attendanceType) async {
     try {
-      if (_sheetsApi == null || _client == null) {
-        throw Exception('Google Sheets API غير مهيأ.');
-      }
-
       // تحقق من موقع المركز
       final centerLocation = await _getCenterLocation(widget.center);
-      if (centerLocation == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('لم يتم العثور على موقع المركز')),
-        );
-        return;
-      }
 
-      // تحقق المسافة (اختياري): فعّل هذا الشرط إذا أردت فرض التواجد ضمن نطاق المركز
-      // نجعل الشرط غير ثابت عند التحليل لتجنب تحذير "dead code"
+      // تحقق المسافة (اختياري)
       final bool enableDistanceCheck = widget.permissions == '_';
-      if (enableDistanceCheck) {
+      double? userLat;
+      double? userLng;
+      if (enableDistanceCheck && centerLocation != null) {
         final userPosition = await Geolocator.getCurrentPosition();
-        if (!_isWithinAllowedDistance(
-          userPosition.latitude,
-          userPosition.longitude,
-          centerLocation,
-        )) {
+        userLat = userPosition.latitude;
+        userLng = userPosition.longitude;
+        if (!_isWithinAllowedDistance(userLat, userLng, centerLocation)) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('أنت خارج نطاق المركز المسموح')),
@@ -162,60 +114,22 @@ class _AttendancePageState extends State<AttendancePage> {
         }
       }
 
-      // قراءة الصفوف للعثور على المستخدم
-      final range = 'الحضور!A1:Z';
-      final response =
-          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-      final rows = response.values ?? [];
-      int userRowIndex = rows.indexWhere((row) =>
-          row.length > 2 &&
-          row[1] == widget.username &&
-          row[2] == widget.center);
-
-      if (userRowIndex == -1) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الموظف غير موجود')),
+      if (attendanceType == 'خروج') {
+        await _attendanceApi.checkOut(
+          userId: _userId ?? widget.username,
+          latitude: userLat,
+          longitude: userLng,
         );
-        return;
-      }
-
-      final userRow = rows[userRowIndex];
-      String? columnDCode = userRow.length > 3 && userRow[3] != null
-          ? userRow[3].toString()
-          : null;
-
-      if (columnDCode == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('لا يوجد كود مخزن لهذا المستخدم.')),
+      } else {
+        await _attendanceApi.checkIn(
+          userId: _userId ?? widget.username,
+          userName: widget.username,
+          centerName: widget.center,
+          latitude: userLat,
+          longitude: userLng,
+          securityCode: _savedCode,
         );
-        return;
       }
-      if (columnDCode != _savedCode) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الكود المدخل غير مطابق للكود المخزن')),
-        );
-        return;
-      }
-
-      final now = TimeOfDay.now();
-      final timeString = '${now.hour}:${now.minute.toString().padLeft(2, '0')}';
-      final column = _columnLetter(4 +
-          (DateTime.now().day - 1) * 2 +
-          (attendanceType == 'خروج' ? 1 : 0));
-      final updateRange = 'الحضور!$column${userRowIndex + 1}';
-      final valueRange = sheets.ValueRange(values: [
-        [timeString]
-      ]);
-
-      await _sheetsApi!.spreadsheets.values.update(
-        valueRange,
-        spreadsheetId,
-        updateRange,
-        valueInputOption: 'USER_ENTERED',
-      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -234,16 +148,18 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Future<List<double>?> _getCenterLocation(String centerId) async {
     try {
-      final range = 'المراكز!A2:B';
-      final response =
-          await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-
-      final rows = response.values ?? [];
-      final centerRow =
-          rows.firstWhere((row) => row[0] == centerId, orElse: () => []);
-      if (centerRow.isEmpty || centerRow.length < 2) return null;
-      final location = centerRow[1].toString().split(',');
-      return [double.parse(location[0]), double.parse(location[1])];
+      final centers = await _attendanceApi.getCenters();
+      final center = centers.firstWhere(
+        (c) => (c['Name'] ?? c['name'] ?? '').toString() == centerId,
+        orElse: () => {},
+      );
+      if (center.isEmpty) return null;
+      final lat = double.tryParse(
+          (center['Latitude'] ?? center['latitude'] ?? '').toString());
+      final lng = double.tryParse(
+          (center['Longitude'] ?? center['longitude'] ?? '').toString());
+      if (lat != null && lng != null) return [lat, lng];
+      return null;
     } catch (e) {
       debugPrint('Error fetching center location: $e');
       return null;
@@ -255,17 +171,6 @@ class _AttendancePageState extends State<AttendancePage> {
     final distance = Geolocator.distanceBetween(
         userLat, userLng, centerLocation[0], centerLocation[1]);
     return distance <= 150;
-  }
-
-  String _columnLetter(int column) {
-    int temp = column;
-    String letter = '';
-    while (temp > 0) {
-      int remainder = (temp - 1) % 26;
-      letter = String.fromCharCode(65 + remainder) + letter;
-      temp = (temp - 1) ~/ 26;
-    }
-    return letter;
   }
 
   @override
@@ -638,7 +543,8 @@ class _AttendancePageState extends State<AttendancePage> {
             offset: const Offset(0, 6),
           ),
         ],
-        border: Border.all(color: Colors.white.withValues(alpha: 0.7), width: 1),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.7), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -770,8 +676,8 @@ class _AttendancePageState extends State<AttendancePage> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.18),
               shape: BoxShape.circle,
-              border:
-                  Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25), width: 1),
             ),
             child: const Icon(
               Icons.calendar_today_rounded,
@@ -827,7 +733,6 @@ class _AttendancePageState extends State<AttendancePage> {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
     ));
-    _client?.close();
     _codeController.dispose();
     super.dispose();
   }

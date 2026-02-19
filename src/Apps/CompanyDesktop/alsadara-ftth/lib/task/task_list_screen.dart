@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:async'; // إضافة Timer للتحديث التلقائي
+import 'dart:async';
 import 'home_page_tasks.dart';
-import 'add_task_dialog.dart';
+import 'add_task_api_dialog.dart';
 import '../models/task.dart';
-import '../services/google_sheets_service.dart'; // استيراد خدمة Google Sheets
-import '../widgets/maintenance_messages_dialog.dart'; // إضافة حوار إعدادات الرسائل
+import '../services/task_api_service.dart';
+import '../widgets/maintenance_messages_dialog.dart';
 
 class TaskListScreen extends StatefulWidget {
   final String username;
@@ -36,9 +36,9 @@ class _TaskListScreenState extends State<TaskListScreen>
 
   // إعدادات التحديث
   static const Duration _refreshInterval =
-      Duration(seconds: 10); // تحديث كل 10 ثوانٍ
+      Duration(seconds: 60); // تحديث كل 60 ثانية
   static const Duration _minimumRefreshGap =
-      Duration(seconds: 3); // حد أدنى بين التحديثات
+      Duration(seconds: 5); // حد أدنى بين التحديثات
   @override
   void initState() {
     super.initState();
@@ -52,6 +52,22 @@ class _TaskListScreenState extends State<TaskListScreen>
     WidgetsBinding.instance.removeObserver(this); // إزالة المراقب
     _refreshTimer?.cancel(); // إلغاء المؤقت عند إغلاق الشاشة
     super.dispose();
+  }
+
+  @override
+  void deactivate() {
+    // إيقاف المؤقت عند مغادرة الصفحة (Navigator.push فوقها)
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    // إعادة تشغيل المؤقت عند العودة للصفحة
+    _startAutoRefresh();
+    _fetchTasks(showLoadingIndicator: false);
   }
 
   @override
@@ -80,7 +96,7 @@ class _TaskListScreenState extends State<TaskListScreen>
     _startAutoRefresh();
   }
 
-  /// جلب المهام من Google Sheets
+  /// جلب المهام من الخادم
   Future<void> _fetchTasks({bool showLoadingIndicator = true}) async {
     try {
       // تحديث حالة التحميل إذا كان مطلوباً
@@ -97,10 +113,25 @@ class _TaskListScreenState extends State<TaskListScreen>
       // تحديث آخر وقت تحديث
       _lastRefresh = DateTime.now();
 
-      final tasks =
-          await GoogleSheetsService.fetchTasks(); // جلب المهام من Google Sheets
+      // فلترة من السيرفر حسب دور المستخدم
+      // الفني ← مهامه فقط، الليدر ← قسمه فقط، المدير ← الكل
+      final String? techFilter =
+          widget.permissions == 'فني' ? widget.username : null;
+      final String? deptFilter =
+          widget.permissions == 'ليدر' ? widget.department : null;
 
-      if (!mounted) return; // التحقق من أن الشاشة لا تزال موجودة قبل التحديث
+      final response = await TaskApiService.instance.getRequests(
+        pageSize: 200,
+        technician: techFilter,
+        department: deptFilter,
+      );
+      final List<dynamic> items =
+          response['data'] ?? response['Items'] ?? response['items'] ?? [];
+      final tasks = items
+          .map((item) => Task.fromApiResponse(item as Map<String, dynamic>))
+          .toList();
+
+      if (!mounted) return;
 
       setState(() {
         _tasks = tasks;
@@ -152,7 +183,9 @@ class _TaskListScreenState extends State<TaskListScreen>
   }
 
   // دالة لتحديث المهمة عند تغيير الحالة
-  void _handleTaskStatusChanged(Task updatedTask) async {
+  // ملاحظة: التحديث في API يتم من task_card._updateStatusViaApi
+  // هنا فقط نحدث الحالة المحلية
+  void _handleTaskStatusChanged(Task updatedTask) {
     if (!mounted) return;
     setState(() {
       final index = _tasks.indexWhere((task) => task.id == updatedTask.id);
@@ -166,9 +199,6 @@ class _TaskListScreenState extends State<TaskListScreen>
         return db.compareTo(da);
       });
     });
-
-    await GoogleSheetsService.updateTaskStatus(
-        updatedTask); // تحديث المهمة على Google Sheets
   }
 
   @override
@@ -193,37 +223,29 @@ class _TaskListScreenState extends State<TaskListScreen>
                     _handleTaskStatusChanged, // تمرير دالة تحديث المهمة
                 onShowMenu: _showMenu,
                 onShowFilter: _showFilter,
+                onRefresh: () => _fetchTasks(showLoadingIndicator: false),
               ),
             ),
     );
   }
 
-  // عرض نافذة إضافة مهمة جديدة
+  // عرض نافذة إضافة مهمة جديدة عبر API
   void _showAddTaskDialog(BuildContext context) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final result = await showDialog<Task>(
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AddTaskDialog(
+        return AddTaskApiDialog(
           currentUsername: widget.username,
           currentUserRole: widget.permissions,
           currentUserDepartment: widget.department,
-          onTaskAdded: (newTask) {
-            // إضافة ا��مهمة الجديدة للقائمة
-            setState(() {
-              _tasks.insert(0, newTask);
-              // ضمان الترتيب الصحيح بعد الإضافة
-              _tasks.sort((a, b) {
-                final da = a.closedAt ?? a.createdAt;
-                final db = b.closedAt ?? b.createdAt;
-                return db.compareTo(da);
-              });
-            });
+          onTaskCreated: (taskData) {
+            // تحديث القائمة بعد إضافة مهمة
+            _fetchTasks(showLoadingIndicator: false);
 
-            // إظهار رسالة نجاح
             scaffoldMessenger.showSnackBar(
               SnackBar(
-                content: Text('تم إضافة المهمة: ${newTask.title}'),
+                content: Text('تم إضافة المهمة بنجاح'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 3),
               ),

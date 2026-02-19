@@ -1,0 +1,1 @@
+SELECT "Id", "RequestNumber", "Status", "FinalCost", "EstimatedCost", "TechnicianId", left("Details", 300) as details_short FROM "ServiceRequests" WHERE "IsDeleted" = false ORDER BY "CreatedAt" DESC LIMIT 5;

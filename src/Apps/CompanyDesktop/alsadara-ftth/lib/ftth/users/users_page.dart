@@ -6,8 +6,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:flutter/services.dart';
-import 'package:gsheets/gsheets.dart';
 import 'package:excel/excel.dart' as ex;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
@@ -17,11 +15,12 @@ import 'dart:io';
 import '../../services/api_service.dart';
 import '../../utils/smart_text_color.dart';
 import '../../services/permissions_service.dart';
+import '../../services/permission_checker.dart';
 
 class UsersPage extends StatefulWidget {
   final String authToken;
   final String activatedBy;
-  final bool hasGoogleSheetsPermission;
+  final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
   // صلاحيات النظام الأول لتمريرها إلى صفحة التفاصيل للتحكم بزر إضافة مهمة
   final String? firstSystemPermissions;
@@ -34,7 +33,7 @@ class UsersPage extends StatefulWidget {
     super.key,
     required this.authToken,
     required this.activatedBy,
-    this.hasGoogleSheetsPermission = false,
+    this.hasServerSavePermission = false,
     this.hasWhatsAppPermission = false,
     this.firstSystemPermissions,
     this.isAdminFlag,
@@ -102,18 +101,10 @@ class _UsersPageState extends State<UsersPage> {
     return _naturalCompare(sa, sb);
   }
 
-  // === متغيرات التصدير إلى Google Sheets ===
-  bool isExporting = false;
-  String exportMessage = "";
-  double exportProgress = 0.0;
-  double exportTotalProgress = 0.0;
-  final String spreadsheetId = '1Vc9Syd7D0mo6EGnIsdMA-sVCpvWsAQ7NGnvZf8knXKE';
   // متغيرات تصدير إكسل
   bool isExcelExporting = false;
   String excelExportMessage = "";
   double excelExportProgress = 0.0; // نسبة مئوية لعدد السجلات المعالجة
-  // عرض خيارات التصدير داخل شريط التطبيق بعد التحقق من كلمة المرور
-  bool showExportOptions = false;
   // محاولة فشل سابقة لتجنب تكرار fallback عدة مرات
   bool _excelFallbackTried = false;
   @override
@@ -222,7 +213,7 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   // ============================================================================
-  // دوال التصدير إلى Google Sheets
+  // دوال مساعدة للتصدير
   // ============================================================================
 
   /// إعادة المحاولة للعمليات الفاشلة
@@ -243,19 +234,6 @@ class _UsersPageState extends State<UsersPage> {
     throw Exception('Failed after $maxAttempts attempts');
   }
 
-  Future<void> _clearSheetData(Worksheet sheet) async {
-    try {
-      final rowCount = sheet.rowCount;
-      if (rowCount > 1) {
-        await sheet.deleteRow(2, count: rowCount - 1);
-        debugPrint("تم حذف البيانات السابقة بنجاح");
-      }
-    } catch (e) {
-      debugPrint("خطأ في حذف البيانات السابقة: $e");
-      throw Exception("فشل في حذف البيانات السابقة: $e");
-    }
-  }
-
   Future<void> _optimizeMemory() async {
     if (Platform.isAndroid || Platform.isIOS) {
       try {
@@ -265,129 +243,6 @@ class _UsersPageState extends State<UsersPage> {
       } catch (e) {
         debugPrint('Memory optimization failed: $e');
       }
-    }
-  }
-
-  Future<void> _exportToGoogleSheets() async {
-    try {
-      setState(() {
-        isExporting = true;
-        exportMessage = "جاري تحضير عملية التصدير...";
-        exportTotalProgress = 0.0;
-      });
-
-      await _optimizeMemory();
-
-      final credentials =
-          await rootBundle.loadString('assets/service_account.json');
-      final gsheets = GSheets(credentials);
-      final ss = await gsheets.spreadsheet(spreadsheetId);
-      final sheet = ss.sheets.first;
-
-      final rowCount = sheet.rowCount;
-      if (rowCount == 0) {
-        await sheet.values
-            .insertRow(1, ['N', 'ID', 'اسم المستخدم', 'رقم الهاتف']);
-      } else {
-        setState(() {
-          exportMessage = "جاري حذف البيانات القديمة...";
-        });
-        await _clearSheetData(sheet);
-      }
-
-      int currentPage = 1;
-      final pageSize = 150;
-      int totalProcessed = 0;
-      List<List<dynamic>> batchRows = [];
-
-      while (true) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (totalProcessed % 1000 == 0 && totalProcessed > 0) {
-          await _optimizeMemory();
-        }
-        final result = await _retryOperation(() async {
-          return await ApiService.instance.get(
-              '/customers?pageSize=$pageSize&pageNumber=$currentPage&sortCriteria.property=self.displayValue&sortCriteria.direction=asc');
-        });
-
-        if (result['success']) {
-          final data = result['data'];
-          final users = data['items'] as List? ?? [];
-          if (users.isEmpty) break;
-
-          for (final user in users) {
-            final userId = user['self']?['id']?.toString() ?? 'غير متوفر';
-            final userName = user['self']?['displayValue'] ?? 'غير معروف';
-            final userPhone = user['primaryContact']?['mobile'] ?? 'غير متوفر';
-
-            batchRows.add([
-              totalProcessed + 1,
-              userId,
-              userName,
-              userPhone,
-            ]);
-            totalProcessed++;
-          }
-
-          if (batchRows.length >= 450) {
-            setState(() {
-              exportMessage = "جاري كتابة البيانات... ($totalProcessed مستخدم)";
-            });
-
-            await Future.delayed(const Duration(milliseconds: 500));
-
-            try {
-              await _retryOperation(() => sheet.values.appendRows(batchRows),
-                  maxAttempts: 5);
-              batchRows = [];
-              await _optimizeMemory();
-
-              setState(() {
-                exportMessage = "تم كتابة $totalProcessed مستخدم بنجاح";
-              });
-            } catch (e) {
-              debugPrint("خطأ في كتابة الدفعة: $e");
-              if (batchRows.length > 150) {
-                final firstHalf = batchRows.sublist(0, batchRows.length ~/ 2);
-                final secondHalf = batchRows.sublist(batchRows.length ~/ 2);
-                await sheet.values.appendRows(firstHalf);
-                await Future.delayed(const Duration(milliseconds: 500));
-                await sheet.values.appendRows(secondHalf);
-                batchRows = [];
-              } else {
-                rethrow;
-              }
-            }
-          }
-
-          setState(() {
-            exportTotalProgress = totalProcessed / (data['totalCount'] as num);
-            exportMessage = "تم تجهيز $totalProcessed مستخدم";
-          });
-          currentPage++;
-        } else {
-          throw Exception("فشل جلب البيانات: ${result['error']}");
-        }
-      }
-
-      if (batchRows.isNotEmpty) {
-        await sheet.values.appendRows(batchRows);
-      }
-
-      setState(() {
-        exportMessage =
-            "تم ترحيل $totalProcessed مستخدم بنجاح إلى Google Sheets";
-        exportTotalProgress = 1.0;
-      });
-    } catch (e) {
-      setState(() {
-        exportMessage = "فشل ترحيل البيانات: $e";
-      });
-    } finally {
-      setState(() {
-        isExporting = false;
-      });
-      await _optimizeMemory();
     }
   }
 
@@ -964,10 +819,10 @@ class _UsersPageState extends State<UsersPage> {
   bool _showPassword = false; // التحكم في إظهار/إخفاء كلمة المرور
 
   Future<void> _onMainExportPressed() async {
-    if (isExporting || isExcelExporting) return;
+    if (isExcelExporting) return;
 
     // الخطوة الأولى: إظهار حقل كلمة المرور إذا لم يكن ظاهر
-    if (!askingPassword && !showExportOptions) {
+    if (!askingPassword) {
       setState(() {
         askingPassword = true;
         _passwordError = null;
@@ -988,13 +843,13 @@ class _UsersPageState extends State<UsersPage> {
       return;
     }
 
-    // نجاح التحقق
+    // نجاح التحقق - تصدير مباشر إلى Excel
     setState(() {
       askingPassword = false;
-      showExportOptions = true;
       _passwordError = null;
       _exportPasswordController.clear();
     });
+    _exportToExcel();
   }
 
   // ============================================================================
@@ -1043,94 +898,6 @@ class _UsersPageState extends State<UsersPage> {
   // ============================================================================
   // دوال بناء عناصر الواجهة
   // ============================================================================
-
-  /// بناء شريط التقدم للتصدير
-  Widget _buildExportProgress() {
-    if (!isExporting) return const SizedBox();
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(16.0),
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade50, Colors.blue.shade100],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: Colors.blue.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.cloud_upload,
-                color: Colors.blue.shade700,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'جاري تصدير البيانات...',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            exportMessage,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade700,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8.0),
-            child: LinearProgressIndicator(
-              value: exportTotalProgress,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
-              minHeight: 8,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${(exportTotalProgress * 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700,
-                ),
-              ),
-              const CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   /// عنصر واجهة لتقدم تصدير الاكسل
   Widget _buildExcelExportProgress() {
@@ -1472,8 +1239,7 @@ class _UsersPageState extends State<UsersPage> {
                       userName: userName,
                       userPhone: userPhone,
                       activatedBy: widget.activatedBy,
-                      hasGoogleSheetsPermission:
-                          widget.hasGoogleSheetsPermission,
+                      hasServerSavePermission: widget.hasServerSavePermission,
                       hasWhatsAppPermission: widget.hasWhatsAppPermission,
                       firstSystemPermissions: widget.firstSystemPermissions,
                       isAdminFlag: widget.isAdminFlag,
@@ -1783,7 +1549,7 @@ class _UsersPageState extends State<UsersPage> {
             ),
           ),
         ),
-        bottom: (askingPassword || showExportOptions)
+        bottom: askingPassword
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(68),
                 child: Container(
@@ -1800,107 +1566,59 @@ class _UsersPageState extends State<UsersPage> {
                       end: Alignment.centerRight,
                     ),
                     border: Border(
-                      top: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+                      top: BorderSide(
+                          color: Colors.black.withValues(alpha: 0.05)),
                     ),
                   ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: askingPassword
-                        ? Row(
-                            key: const ValueKey('pw_row'),
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _exportPasswordController,
-                                  obscureText: !_showPassword,
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    hintText: 'أدخل كلمة المرور',
-                                    errorText: _passwordError,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 10),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      borderSide: BorderSide(
-                                        color: Colors.blue.shade200,
-                                      ),
-                                    ),
-                                    prefixIcon: const Icon(Icons.lock_outline),
-                                    suffixIcon: IconButton(
-                                      tooltip: _showPassword
-                                          ? 'إخفاء الرمز'
-                                          : 'إظهار الرمز',
-                                      icon: Icon(
-                                        _showPassword
-                                            ? Icons.visibility_off
-                                            : Icons.visibility,
-                                      ),
-                                      onPressed: () => setState(() {
-                                        _showPassword = !_showPassword;
-                                      }),
-                                    ),
-                                  ),
-                                  onSubmitted: (_) => _onMainExportPressed(),
-                                ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _exportPasswordController,
+                          obscureText: !_showPassword,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            hintText: 'أدخل كلمة المرور',
+                            errorText: _passwordError,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: Colors.blue.shade200,
                               ),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                ),
-                                onPressed: _onMainExportPressed,
-                                icon: const Icon(Icons.lock_open),
-                                label: const Text('تأكيد'),
+                            ),
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              tooltip:
+                                  _showPassword ? 'إخفاء الرمز' : 'إظهار الرمز',
+                              icon: Icon(
+                                _showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                               ),
-                            ],
-                          )
-                        : Row(
-                            key: const ValueKey('opts_row'),
-                            children: [
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade600,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                ),
-                                onPressed: () {
-                                  setState(() => showExportOptions = false);
-                                  _exportToGoogleSheets();
-                                },
-                                icon: const Icon(Icons.cloud),
-                                label: const Text('Google Sheets'),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                ),
-                                onPressed: () {
-                                  setState(() => showExportOptions = false);
-                                  _exportToExcel();
-                                },
-                                icon: const Icon(Icons.table_view),
-                                label: const Text('Excel'),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                tooltip: 'إغلاق',
-                                onPressed: () => setState(() {
-                                  showExportOptions = false;
-                                }),
-                                icon: const Icon(Icons.close,
-                                    color: Colors.white),
-                              )
-                            ],
+                              onPressed: () => setState(() {
+                                _showPassword = !_showPassword;
+                              }),
+                            ),
                           ),
+                          onSubmitted: (_) => _onMainExportPressed(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        onPressed: _onMainExportPressed,
+                        icon: const Icon(Icons.lock_open),
+                        label: const Text('تأكيد'),
+                      ),
+                    ],
                   ),
                 ),
               )
@@ -1934,38 +1652,34 @@ class _UsersPageState extends State<UsersPage> {
             tooltip: showFilter ? 'إخفاء التصفية' : 'إظهار التصفية',
             onPressed: () => setState(() => showFilter = !showFilter),
           ),
-          if (!isExporting)
-            IconButton(
-              icon: Icon(Icons.refresh, color: smartIconColor, size: 26),
-              tooltip: 'إعادة تحميل الصفحة',
-              onPressed: () async {
-                setState(() => isLoading = true);
-                await _fetchUsers();
-              },
-            ),
-          if (!isExporting &&
-              !isExcelExporting &&
+          IconButton(
+            icon: Icon(Icons.refresh, color: smartIconColor, size: 26),
+            tooltip: 'إعادة تحميل الصفحة',
+            onPressed: () async {
+              setState(() => isLoading = true);
+              await _fetchUsers();
+            },
+          ),
+          if (!isExcelExporting &&
               !askingPassword &&
-              !showExportOptions)
+              PermissionManager.instance.canExport('users'))
             IconButton(
               tooltip: 'تصدير',
               icon: Icon(Icons.cloud_upload, color: smartIconColor, size: 26),
               onPressed: _onMainExportPressed,
             ),
-          if ((askingPassword || showExportOptions) &&
-              !(isExporting || isExcelExporting))
+          if (askingPassword && !isExcelExporting)
             IconButton(
               tooltip: 'إخفاء',
               icon:
                   Icon(Icons.close_fullscreen, color: smartIconColor, size: 24),
               onPressed: () => setState(() {
                 askingPassword = false;
-                showExportOptions = false;
                 _passwordError = null;
                 _exportPasswordController.clear();
               }),
             ),
-          if (isExporting || isExcelExporting)
+          if (isExcelExporting)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: SizedBox(
@@ -2048,7 +1762,6 @@ class _UsersPageState extends State<UsersPage> {
                 )
               : Column(
                   children: [
-                    _buildExportProgress(),
                     _buildExcelExportProgress(),
                     if (showFilter) _buildFilterFields(),
                     _buildTotalUsersCount(),

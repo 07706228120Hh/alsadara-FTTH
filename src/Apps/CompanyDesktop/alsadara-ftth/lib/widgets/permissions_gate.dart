@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'permissions_storage.dart';
-import '../pages/vps_tenant_login_page.dart';
+import '../pages/login/premium_login_page.dart';
 
 class PermissionsGate extends StatefulWidget {
   final Widget child;
@@ -42,7 +42,7 @@ class _PermissionsGateState extends State<PermissionsGate> {
   void _goToLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const VpsTenantLoginPage()),
+      MaterialPageRoute(builder: (context) => const PremiumLoginPage()),
     );
   }
 

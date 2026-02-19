@@ -6,10 +6,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../widgets/responsive_body.dart';
-import '../config/app_secrets.dart';
+import '../services/zone_statistics_api_service.dart';
 
 class ChartsPage extends StatefulWidget {
   const ChartsPage({super.key});
@@ -18,11 +16,6 @@ class ChartsPage extends StatefulWidget {
 }
 
 class _ChartsPageState extends State<ChartsPage> {
-  // 🔒 تم نقل المفتاح إلى AppSecrets
-  String get apiKey => appSecrets.googleSheetsApiKey;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
-  final String range = 'Sheet1!A2:E';
-
   bool isLoading = true;
   String? errorMessage;
 
@@ -37,51 +30,32 @@ class _ChartsPageState extends State<ChartsPage> {
   }
 
   Future<void> fetchChartData() async {
-    final url =
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$range?key=$apiKey';
-
     try {
-      final response = await http.get(Uri.parse(url));
+      final data = await ZoneStatisticsApiService.instance.getAll();
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (data.isNotEmpty) {
+        final List<String> zonesTmp = [];
+        final List<int> totalUsersTmp = [];
+        final List<int> nonSubscribedTmp = [];
 
-        if (data['values'] != null) {
-          final rows = data['values'] as List;
-
-          final List<String> zonesTmp = [];
-          final List<int> totalUsersTmp = [];
-          final List<int> nonSubscribedTmp = [];
-
-          for (final row in rows) {
-            if (row is List && row.isNotEmpty) {
-              final String zone =
-                  row.isNotEmpty ? row[0].toString() : 'غير معروف';
-              final int users =
-                  row.length > 2 ? int.tryParse(row[2].toString()) ?? 0 : 0;
-              final int nonSub =
-                  row.length > 3 ? int.tryParse(row[3].toString()) ?? 0 : 0;
-              zonesTmp.add(zone);
-              totalUsersTmp.add(users);
-              nonSubscribedTmp.add(nonSub);
-            }
-          }
-
-          setState(() {
-            zones = zonesTmp;
-            totalUsersPerZone = totalUsersTmp;
-            nonSubscribedUsersPerZone = nonSubscribedTmp;
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            errorMessage = 'لم يتم العثور على بيانات.';
-            isLoading = false;
-          });
+        for (final zone in data) {
+          zonesTmp.add(
+              (zone['ZoneName'] ?? zone['zoneName'] ?? 'غير معروف').toString());
+          totalUsersTmp
+              .add((zone['TotalUsers'] ?? zone['totalUsers'] ?? 0) as int);
+          nonSubscribedTmp.add(
+              (zone['InactiveUsers'] ?? zone['inactiveUsers'] ?? 0) as int);
         }
+
+        setState(() {
+          zones = zonesTmp;
+          totalUsersPerZone = totalUsersTmp;
+          nonSubscribedUsersPerZone = nonSubscribedTmp;
+          isLoading = false;
+        });
       } else {
         setState(() {
-          errorMessage = 'خطأ في جلب البيانات: ${response.statusCode}';
+          errorMessage = 'لم يتم العثور على بيانات.';
           isLoading = false;
         });
       }

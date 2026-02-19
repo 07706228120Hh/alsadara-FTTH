@@ -7,7 +7,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../services/api/api_client.dart';
 import '../../services/permissions_service.dart';
-import 'admin_theme.dart';
+import '../../theme/energy_dashboard_theme.dart';
+import '../../config/permission_registry.dart';
 
 /// صفحة إدارة صلاحيات V2 للشركة أو الموظف
 class PermissionsManagementV2Page extends StatefulWidget {
@@ -44,167 +45,23 @@ class _PermissionsManagementV2PageState
   // صلاحيات النظام الثاني V2
   Map<String, Map<String, bool>> _secondSystemPermissionsV2 = {};
 
+  // ═══ صلاحيات الشركة (لفلترة صلاحيات الموظف) ═══
+  Map<String, bool> _companyFirstFeaturesV1 = {};
+  Map<String, bool> _companySecondFeaturesV1 = {};
+  Map<String, Map<String, bool>> _companyFirstFeaturesV2 = {};
+  Map<String, Map<String, bool>> _companySecondFeaturesV2 = {};
+
   // قائمة الإجراءات المتاحة
   final List<String> _actions = PermissionsService.availableActions;
   final Map<String, String> _actionNames = PermissionsService.actionNamesAr;
 
-  // أسماء الصلاحيات بالعربي - النظام الأول
-  final Map<String, Map<String, dynamic>> _firstSystemFeatures = {
-    'attendance': {
-      'label': 'الحضور والانصراف',
-      'icon': Icons.access_time_rounded,
-      'description': 'تسجيل حضور وانصراف الموظفين',
-    },
-    'agent': {
-      'label': 'إدارة الوكلاء',
-      'icon': Icons.support_agent_rounded,
-      'description': 'إدارة وكلاء المبيعات والتوزيع',
-    },
-    'tasks': {
-      'label': 'المهام',
-      'icon': Icons.task_alt_rounded,
-      'description': 'إدارة المهام والتكليفات',
-    },
-    'zones': {
-      'label': 'المناطق',
-      'icon': Icons.map_rounded,
-      'description': 'تحديد مناطق العمل والتغطية',
-    },
-    'ai_search': {
-      'label': 'البحث الذكي',
-      'icon': Icons.auto_awesome_rounded,
-      'description': 'بحث بالذكاء الاصطناعي',
-    },
-  };
+  // أسماء الصلاحيات - النظام الأول (تُولّد تلقائياً من السجل المركزي)
+  final Map<String, Map<String, dynamic>> _firstSystemFeatures =
+      PermissionRegistry.buildV2FeaturesMap(PermissionRegistry.firstSystem);
 
-  // أسماء الصلاحيات بالعربي - النظام الثاني
-  final Map<String, Map<String, dynamic>> _secondSystemFeatures = {
-    'users': {
-      'label': 'إدارة المستخدمين',
-      'icon': Icons.people_rounded,
-      'description': 'إدارة المشتركين والعملاء',
-    },
-    'subscriptions': {
-      'label': 'الاشتراكات',
-      'icon': Icons.card_membership_rounded,
-      'description': 'إدارة باقات الاشتراك',
-    },
-    'tasks': {
-      'label': 'المهام',
-      'icon': Icons.assignment_rounded,
-      'description': 'إدارة مهام الصيانة والتركيب',
-    },
-    'zones': {
-      'label': 'المناطق',
-      'icon': Icons.location_on_rounded,
-      'description': 'تحديد مناطق التغطية',
-    },
-    'accounts': {
-      'label': 'الحسابات',
-      'icon': Icons.account_balance_wallet_rounded,
-      'description': 'إدارة الحسابات المالية',
-    },
-    'account_records': {
-      'label': 'سجلات الحسابات',
-      'icon': Icons.receipt_long_rounded,
-      'description': 'عرض سجلات المعاملات',
-    },
-    'export': {
-      'label': 'التصدير',
-      'icon': Icons.file_download_rounded,
-      'description': 'تصدير البيانات والتقارير',
-    },
-    'agents': {
-      'label': 'الوكلاء',
-      'icon': Icons.store_rounded,
-      'description': 'إدارة نقاط البيع',
-    },
-    'google_sheets': {
-      'label': 'Google Sheets',
-      'icon': Icons.table_chart_rounded,
-      'description': 'التكامل مع جداول Google',
-    },
-    'whatsapp': {
-      'label': 'واتساب',
-      'icon': Icons.chat_rounded,
-      'description': 'إرسال رسائل واتساب',
-    },
-    'wallet_balance': {
-      'label': 'رصيد المحفظة',
-      'icon': Icons.account_balance_rounded,
-      'description': 'عرض أرصدة المحفظة',
-    },
-    'expiring_soon': {
-      'label': 'اشتراكات منتهية قريباً',
-      'icon': Icons.warning_amber_rounded,
-      'description': 'عرض الاشتراكات القريبة من الانتهاء',
-    },
-    'quick_search': {
-      'label': 'البحث السريع',
-      'icon': Icons.search_rounded,
-      'description': 'البحث السريع في البيانات',
-    },
-    'technicians': {
-      'label': 'الفنيين',
-      'icon': Icons.engineering_rounded,
-      'description': 'إدارة فريق الصيانة',
-    },
-    'transactions': {
-      'label': 'المعاملات',
-      'icon': Icons.swap_horiz_rounded,
-      'description': 'سجل المعاملات المالية',
-    },
-    'notifications': {
-      'label': 'الإشعارات',
-      'icon': Icons.notifications_rounded,
-      'description': 'إدارة الإشعارات',
-    },
-    'audit_logs': {
-      'label': 'سجل التدقيق',
-      'icon': Icons.history_rounded,
-      'description': 'سجل العمليات والتغييرات',
-    },
-    'whatsapp_link': {
-      'label': 'ربط واتساب',
-      'icon': Icons.qr_code_rounded,
-      'description': 'ربط حساب واتساب',
-    },
-    'whatsapp_settings': {
-      'label': 'إعدادات واتساب',
-      'icon': Icons.settings_rounded,
-      'description': 'إعدادات رسائل واتساب',
-    },
-    'plans_bundles': {
-      'label': 'الباقات والعروض',
-      'icon': Icons.local_offer_rounded,
-      'description': 'إدارة باقات الاشتراك',
-    },
-    'whatsapp_business_api': {
-      'label': 'WhatsApp Business API',
-      'icon': Icons.business_rounded,
-      'description': 'إعدادات API الأعمال',
-    },
-    'whatsapp_bulk_sender': {
-      'label': 'الإرسال الجماعي',
-      'icon': Icons.send_rounded,
-      'description': 'إرسال رسائل جماعية',
-    },
-    'whatsapp_conversations_fab': {
-      'label': 'محادثات واتساب',
-      'icon': Icons.forum_rounded,
-      'description': 'عرض زر المحادثات',
-    },
-    'local_storage': {
-      'label': 'التخزين المحلي',
-      'icon': Icons.storage_rounded,
-      'description': 'التخزين المحلي للمشتركين',
-    },
-    'local_storage_import': {
-      'label': 'استيراد البيانات',
-      'icon': Icons.upload_file_rounded,
-      'description': 'استيراد من التخزين المحلي',
-    },
-  };
+  // أسماء الصلاحيات - النظام الثاني (تُولّد تلقائياً من السجل المركزي)
+  final Map<String, Map<String, dynamic>> _secondSystemFeatures =
+      PermissionRegistry.buildV2FeaturesMap(PermissionRegistry.secondSystem);
 
   @override
   void initState() {
@@ -227,6 +84,11 @@ class _PermissionsManagementV2PageState
     });
 
     try {
+      // ═══ إذا كان موظف، نحتاج جلب صلاحيات الشركة أولاً للفلترة ═══
+      if (widget.employeeId != null) {
+        await _loadCompanyFeatures();
+      }
+
       final String endpoint = widget.employeeId != null
           ? '/internal/companies/${widget.companyId}/employees/${widget.employeeId}/permissions-v2'
           : '/internal/companies/${widget.companyId}/permissions-v2';
@@ -326,6 +188,120 @@ class _PermissionsManagementV2PageState
     };
   }
 
+  /// جلب صلاحيات/ميزات الشركة لاستخدامها كفلتر عند تعديل صلاحيات الموظف
+  Future<void> _loadCompanyFeatures() async {
+    try {
+      // جلب V1 (ميزات بسيطة)
+      final companyRes = await _apiClient.get(
+        '/internal/companies/${widget.companyId}',
+        (json) => json,
+        useInternalKey: true,
+      );
+
+      if (companyRes.isSuccess && companyRes.data != null) {
+        final data = companyRes.data['data'] ?? companyRes.data;
+
+        // V1 features
+        final firstV1 = data['enabledFirstSystemFeatures'] ??
+            data['EnabledFirstSystemFeatures'];
+        final secondV1 = data['enabledSecondSystemFeatures'] ??
+            data['EnabledSecondSystemFeatures'];
+
+        if (firstV1 != null) {
+          if (firstV1 is String && firstV1.isNotEmpty) {
+            _companyFirstFeaturesV1 =
+                Map<String, bool>.from(jsonDecode(firstV1));
+          } else if (firstV1 is Map) {
+            _companyFirstFeaturesV1 = Map<String, bool>.from(firstV1);
+          }
+        }
+        if (secondV1 != null) {
+          if (secondV1 is String && secondV1.isNotEmpty) {
+            _companySecondFeaturesV1 =
+                Map<String, bool>.from(jsonDecode(secondV1));
+          } else if (secondV1 is Map) {
+            _companySecondFeaturesV1 = Map<String, bool>.from(secondV1);
+          }
+        }
+      }
+
+      // جلب V2 (ميزات مفصلة)
+      final v2Res = await _apiClient.get(
+        '/internal/companies/${widget.companyId}/permissions-v2',
+        (json) => json,
+        useInternalKey: true,
+      );
+
+      if (v2Res.isSuccess && v2Res.data != null) {
+        final data = v2Res.data['data'] ?? v2Res.data;
+
+        final firstV2 = data['enabledFirstSystemFeaturesV2'] ??
+            data['EnabledFirstSystemFeaturesV2'];
+        final secondV2 = data['enabledSecondSystemFeaturesV2'] ??
+            data['EnabledSecondSystemFeaturesV2'];
+
+        _companyFirstFeaturesV2 =
+            _parsePermissionsV2(firstV2, _firstSystemFeatures.keys.toList());
+        _companySecondFeaturesV2 =
+            _parsePermissionsV2(secondV2, _secondSystemFeatures.keys.toList());
+      }
+    } catch (e) {
+      debugPrint('Error loading company features for filtering: $e');
+    }
+  }
+
+  /// هل الميزة مفعلة للشركة؟ (V2 أو V1 fallback)
+  bool _isFeatureEnabledForCompany(String featureKey, bool isFirstSystem) {
+    // إذا ليس موظف (يعني نعدل صلاحيات الشركة نفسها) → لا قيود
+    if (widget.employeeId == null) return true;
+
+    final v2Map =
+        isFirstSystem ? _companyFirstFeaturesV2 : _companySecondFeaturesV2;
+    final v1Map =
+        isFirstSystem ? _companyFirstFeaturesV1 : _companySecondFeaturesV1;
+
+    // تحقق V2: إذا أي إجراء مفعل → الميزة مفعلة
+    if (v2Map.containsKey(featureKey)) {
+      final actions = v2Map[featureKey]!;
+      if (actions.values.any((v) => v == true)) return true;
+    }
+
+    // fallback V1: إذا مفعل بشكل بسيط
+    if (v1Map.containsKey(featureKey) && v1Map[featureKey] == true) return true;
+
+    // إذا لم تُجلب بيانات الشركة أصلاً، نسمح (للتوافق العكسي)
+    if (v1Map.isEmpty && v2Map.isEmpty) return true;
+
+    return false;
+  }
+
+  /// هل الإجراء المحدد مفعل للشركة؟ (V2 فقط)
+  bool _isActionEnabledForCompany(
+      String featureKey, String action, bool isFirstSystem) {
+    if (widget.employeeId == null) return true;
+
+    final v2Map =
+        isFirstSystem ? _companyFirstFeaturesV2 : _companySecondFeaturesV2;
+    final v1Map =
+        isFirstSystem ? _companyFirstFeaturesV1 : _companySecondFeaturesV1;
+
+    // V2: تحقق من الإجراء المحدد
+    if (v2Map.containsKey(featureKey)) {
+      final actions = v2Map[featureKey]!;
+      if (actions.containsKey(action)) return actions[action] == true;
+      // إذا V2 موجود لكن الإجراء غير محدد → ممنوع
+      return false;
+    }
+
+    // fallback V1: إذا الميزة مفعلة بشكل بسيط → نسمح بكل الإجراءات
+    if (v1Map.containsKey(featureKey) && v1Map[featureKey] == true) return true;
+
+    // إذا لم تُجلب بيانات → نسمح (للتوافق)
+    if (v1Map.isEmpty && v2Map.isEmpty) return true;
+
+    return false;
+  }
+
   /// حفظ الصلاحيات
   Future<void> _savePermissions() async {
     setState(() => _isSaving = true);
@@ -400,13 +376,13 @@ class _PermissionsManagementV2PageState
         : 'صلاحيات شركة ${widget.companyName}';
 
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
+      backgroundColor: EnergyDashboardTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AdminTheme.surfaceColor,
+        backgroundColor: EnergyDashboardTheme.surfaceColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded,
-              color: AdminTheme.textPrimary),
+              color: EnergyDashboardTheme.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -428,7 +404,7 @@ class _PermissionsManagementV2PageState
                   Text(
                     title,
                     style: const TextStyle(
-                      color: AdminTheme.textPrimary,
+                      color: EnergyDashboardTheme.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -437,7 +413,7 @@ class _PermissionsManagementV2PageState
                   Text(
                     'نظام الصلاحيات المفصل V2',
                     style: TextStyle(
-                      color: AdminTheme.textMuted,
+                      color: EnergyDashboardTheme.textMuted,
                       fontSize: 11,
                     ),
                   ),
@@ -452,7 +428,7 @@ class _PermissionsManagementV2PageState
             onPressed: () => _showBulkActionDialog(),
             icon: const Icon(Icons.checklist_rounded),
             tooltip: 'إجراءات جماعية',
-            color: AdminTheme.textMuted,
+            color: EnergyDashboardTheme.textMuted,
           ),
           const SizedBox(width: 8),
           // زر الحفظ
@@ -481,7 +457,7 @@ class _PermissionsManagementV2PageState
         bottom: TabBar(
           controller: _tabController,
           labelColor: const Color(0xFF9C27B0),
-          unselectedLabelColor: AdminTheme.textMuted,
+          unselectedLabelColor: EnergyDashboardTheme.textMuted,
           indicatorColor: const Color(0xFF9C27B0),
           indicatorWeight: 3,
           tabs: const [
@@ -549,46 +525,116 @@ class _PermissionsManagementV2PageState
     Map<String, Map<String, bool>> permissions,
     bool isFirstSystem,
   ) {
-    final featuresList = features.entries.toList();
+    // فلترة الميزات: إذا كان موظف، نعرض فقط الميزات المفعلة للشركة
+    final filteredEntries = features.entries.where((entry) {
+      return _isFeatureEnabledForCompany(entry.key, isFirstSystem);
+    }).toList();
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // تنبيه إذا كان هناك ميزات محظورة
+          if (widget.employeeId != null &&
+              filteredEntries.length < features.length)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(8),
+                border:
+                    Border.all(color: const Color(0xFFFF9800).withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline,
+                      color: Color(0xFFFF9800), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'يتم عرض الصلاحيات المفعلة للشركة فقط (${filteredEntries.length} من ${features.length})',
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF795548)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // شريط الإجراءات
           _buildActionsHeader(),
           const SizedBox(height: 12),
           // قائمة الصلاحيات
           Expanded(
-            child: ListView.builder(
-              itemCount: featuresList.length,
-              itemBuilder: (context, index) {
-                final entry = featuresList[index];
-                final key = entry.key;
-                final feature = entry.value;
-                final featurePermissions =
-                    permissions[key] ?? {for (var a in _actions) a: false};
+            child: filteredEntries.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.block,
+                            size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(
+                          'لا توجد ميزات مفعلة لهذه الشركة في هذا النظام',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filteredEntries.length,
+                    itemBuilder: (context, index) {
+                      final entry = filteredEntries[index];
+                      final key = entry.key;
+                      final feature = entry.value;
+                      final featurePermissions = permissions[key] ??
+                          {for (var a in _actions) a: false};
 
-                return _buildPermissionCard(
-                  key: key,
-                  label: feature['label'] as String,
-                  icon: feature['icon'] as IconData,
-                  description: feature['description'] as String,
-                  permissions: featurePermissions,
-                  onChanged: (action, value) {
-                    setState(() {
-                      permissions[key] ??= {};
-                      permissions[key]![action] = value;
-                    });
-                  },
-                  onToggleAll: (value) {
-                    setState(() {
-                      permissions[key] = {for (var a in _actions) a: value};
-                    });
-                  },
-                );
-              },
-            ),
+                      return _buildPermissionCard(
+                        key: key,
+                        label: feature['label'] as String,
+                        icon: feature['icon'] as IconData,
+                        description: feature['description'] as String,
+                        permissions: featurePermissions,
+                        isFirstSystem: isFirstSystem,
+                        onChanged: (action, value) {
+                          // تحقق إضافي: لا تسمح بتفعيل إجراء غير مفعل للشركة
+                          if (value &&
+                              !_isActionEnabledForCompany(
+                                  key, action, isFirstSystem)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('هذا الإجراء غير مفعل للشركة'),
+                                backgroundColor: Colors.orange,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                            return;
+                          }
+                          setState(() {
+                            permissions[key] ??= {};
+                            permissions[key]![action] = value;
+                          });
+                        },
+                        onToggleAll: (value) {
+                          setState(() {
+                            if (value && widget.employeeId != null) {
+                              // عند تحديد الكل: فقط الإجراءات المفعلة للشركة
+                              permissions[key] = {
+                                for (var a in _actions)
+                                  a: _isActionEnabledForCompany(
+                                      key, a, isFirstSystem)
+                              };
+                            } else {
+                              permissions[key] = {
+                                for (var a in _actions) a: value
+                              };
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -600,7 +646,7 @@ class _PermissionsManagementV2PageState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF9C27B0).withOpacity(0.05),
+        color: const Color(0xFF9C27B0).withOpacity(0.15),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.2)),
       ),
@@ -649,6 +695,7 @@ class _PermissionsManagementV2PageState
     required IconData icon,
     required String description,
     required Map<String, bool> permissions,
+    required bool isFirstSystem,
     required Function(String action, bool value) onChanged,
     required Function(bool value) onToggleAll,
   }) {
@@ -671,7 +718,7 @@ class _PermissionsManagementV2PageState
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(0.2),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -737,16 +784,23 @@ class _PermissionsManagementV2PageState
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: _actions.map((action) {
                 final isEnabled = permissions[action] ?? false;
+                final isAllowedByCompany =
+                    _isActionEnabledForCompany(key, action, isFirstSystem);
                 return SizedBox(
                   width: 70,
                   child: Transform.scale(
                     scale: 0.9,
-                    child: Checkbox(
-                      value: isEnabled,
-                      onChanged: (value) => onChanged(action, value ?? false),
-                      activeColor: _getActionColor(action),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+                    child: Tooltip(
+                      message: !isAllowedByCompany ? 'غير مفعل للشركة' : '',
+                      child: Checkbox(
+                        value: isEnabled,
+                        onChanged: isAllowedByCompany
+                            ? (value) => onChanged(action, value ?? false)
+                            : null,
+                        activeColor: _getActionColor(action),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
                     ),
                   ),
@@ -895,10 +949,25 @@ class _PermissionsManagementV2PageState
   void _bulkToggleAll(bool value) {
     setState(() {
       for (var key in _firstSystemFeatures.keys) {
-        _firstSystemPermissionsV2[key] = {for (var a in _actions) a: value};
+        if (value && widget.employeeId != null) {
+          // عند التفعيل: فقط ضمن حدود الشركة
+          if (!_isFeatureEnabledForCompany(key, true)) continue;
+          _firstSystemPermissionsV2[key] = {
+            for (var a in _actions) a: _isActionEnabledForCompany(key, a, true)
+          };
+        } else {
+          _firstSystemPermissionsV2[key] = {for (var a in _actions) a: value};
+        }
       }
       for (var key in _secondSystemFeatures.keys) {
-        _secondSystemPermissionsV2[key] = {for (var a in _actions) a: value};
+        if (value && widget.employeeId != null) {
+          if (!_isFeatureEnabledForCompany(key, false)) continue;
+          _secondSystemPermissionsV2[key] = {
+            for (var a in _actions) a: _isActionEnabledForCompany(key, a, false)
+          };
+        } else {
+          _secondSystemPermissionsV2[key] = {for (var a in _actions) a: value};
+        }
       }
     });
 
@@ -915,13 +984,19 @@ class _PermissionsManagementV2PageState
   void _bulkSetViewOnly() {
     setState(() {
       for (var key in _firstSystemFeatures.keys) {
+        if (widget.employeeId != null &&
+            !_isFeatureEnabledForCompany(key, true)) continue;
         _firstSystemPermissionsV2[key] = {
-          for (var a in _actions) a: a == 'view'
+          for (var a in _actions)
+            a: a == 'view' && _isActionEnabledForCompany(key, a, true)
         };
       }
       for (var key in _secondSystemFeatures.keys) {
+        if (widget.employeeId != null &&
+            !_isFeatureEnabledForCompany(key, false)) continue;
         _secondSystemPermissionsV2[key] = {
-          for (var a in _actions) a: a == 'view'
+          for (var a in _actions)
+            a: a == 'view' && _isActionEnabledForCompany(key, a, false)
         };
       }
     });

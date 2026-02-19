@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:convert';
-import 'package:googleapis/sheets/v4.dart' as sheets;
-import 'package:googleapis_auth/auth_io.dart';
 import '../models/task.dart';
-import '../services/google_sheets_service.dart';
+import '../services/task_api_service.dart';
 
 /// نافذة تعديل المهمة الشاملة - جميع الحقول قابلة للتعديل
 class EditTaskDialog extends StatefulWidget {
@@ -44,22 +40,17 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
   final List<String> _statuses = ['مفتوحة', 'قيد التنفيذ', 'مكتملة', 'ملغية'];
   final List<String> _priorities = ['منخفض', 'متوسط', 'عالي', 'عاجل'];
 
-  // قوائم البيانات من Google Sheets
+  // قوائم البيانات من API
   List<String> _departments = [];
   List<String> _leaders = [];
   List<String> _technicians = [];
   List<String> _fbgOptions = [];
 
-  // متغيرات Google Sheets API
-  sheets.SheetsApi? _sheetsApi;
-  AuthClient? _client;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
-
   @override
   void initState() {
     super.initState();
     _initializeControllers();
-    _fetchDataFromGoogleSheets();
+    _fetchDataFromApi();
   }
 
   void _initializeControllers() {
@@ -93,205 +84,59 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     super.dispose();
   }
 
-  Future<void> _fetchDataFromGoogleSheets() async {
+  Future<void> _fetchDataFromApi() async {
     try {
-      if (!mounted) return; // فحص mounted قبل بدء العملية
+      if (!mounted) return;
       setState(() => _isDataLoading = true);
 
-      // تهيئة Google Sheets API
-      await _initializeSheetsAPI();
+      // جلب بيانات الأقسام والخيارات من API
+      final lookupData = await TaskApiService.instance.getTaskLookupData();
 
-      // جلب جميع البيانات المطلوبة
-      await Future.wait([
-        _fetchDepartments(),
-        _fetchUsers(),
-        _fetchFBGOptions(),
-      ]);
+      // استخراج الأقسام
+      final List<dynamic> departments =
+          lookupData['departments'] ?? lookupData['Departments'] ?? [];
 
-      if (mounted) {
-        // فحص mounted قبل تحديث الحالة
-        setState(() => _isDataLoading = false);
-      }
-    } catch (e) {
-      if (mounted) {
-        // فحص mounted قبل تحديث الحالة
-        setState(() => _isDataLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل البيانات: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+      // استخراج خيارات FBG
+      final List<dynamic> fbgOptions =
+          lookupData['fbgOptions'] ?? lookupData['FbgOptions'] ?? [];
 
-  Future<void> _initializeSheetsAPI() async {
-    if (_sheetsApi != null) return;
-
-    try {
-      final jsonString =
-          await rootBundle.loadString('assets/service_account.json');
-      final accountCredentials =
-          ServiceAccountCredentials.fromJson(jsonDecode(jsonString));
-      final scopes = [sheets.SheetsApi.spreadsheetsScope];
-      _client = await clientViaServiceAccount(accountCredentials, scopes);
-      _sheetsApi = sheets.SheetsApi(_client!);
-    } catch (e) {
-      throw 'فشل في تهيئة Google Sheets API: $e';
-    }
-  }
-
-  Future<void> _fetchDepartments() async {
-    if (_sheetsApi == null) return;
-
-    try {
-      const possibleALKSMRanges = [
-        'ALKSM!A2:K',
-        'ALKSM!A1:K',
-        'الاقسام!A2:K',
-        'اقسام!A2:K',
-        'Departments!A2:K',
-        'Sheet3!A2:K'
-      ];
-
-      sheets.ValueRange? response;
-
-      for (String range in possibleALKSMRanges) {
-        try {
-          response =
-              await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-          if (response.values != null && response.values!.isNotEmpty) {
-            break;
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-
-      if (response != null &&
-          response.values != null &&
-          response.values!.isNotEmpty) {
-        Set<String> departmentsSet = {};
-
-        for (var row in response.values!) {
-          if (row.isNotEmpty) {
-            final department = row[0]?.toString().trim() ?? '';
-            if (department.isNotEmpty &&
-                !department.toLowerCase().contains('اقسام') &&
-                !department.toLowerCase().contains('departments') &&
-                !department.toLowerCase().contains('المهمه')) {
-              departmentsSet.add(department);
-            }
-          }
-        }
-
-        if (mounted) {
-          // فحص mounted قبل تحديث الحالة
-          setState(() {
-            _departments = departmentsSet.toList();
-            // التأكد من أن القسم الحالي موجود في القائمة
-            if (!_departments.contains(_selectedDepartment) &&
-                _departments.isNotEmpty) {
-              _departments.add(_selectedDepartment);
-            }
-          });
-        }
-      } else {
-        // قيم افتراضية في حالة فشل الجلب
-        if (mounted) {
-          // فحص mounted قبل تحديث الحالة
-          setState(() {
-            _departments = [
-              'الحسابات',
-              'الفنيين',
-              'الوكلاء',
-              'الاتصالات',
-              'اللحام',
-              'الصيانة'
-            ];
-            if (!_departments.contains(_selectedDepartment)) {
-              _departments.add(_selectedDepartment);
-            }
-          });
-        }
-      }
-    } catch (e) {
-      print('خطأ في جلب الأقسام: $e');
-      if (mounted) {
-        // فحص mounted قبل تحديث الحالة
-        setState(() {
-          _departments = [
-            'الحسابات',
-            'الفنيين',
-            'الوكلاء',
-            'الاتصالات',
-            'اللحام',
-            'الصيانة'
-          ];
-          if (!_departments.contains(_selectedDepartment)) {
-            _departments.add(_selectedDepartment);
-          }
-        });
-      }
-    }
-  }
-
-  Future<void> _fetchUsers() async {
-    if (_sheetsApi == null) return;
-
-    try {
-      const possibleUsersRanges = [
-        'المستخدمين!A2:H',
-        'users!A2:H',
-        'Users!A2:H',
-        'مستخدمين!A2:H',
-        'Sheet2!A2:H'
-      ];
-
-      sheets.ValueRange? response;
-
-      for (String range in possibleUsersRanges) {
-        try {
-          response =
-              await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-          if (response.values != null && response.values!.isNotEmpty) {
-            break;
-          }
-        } catch (e) {
-          continue;
-        }
-      }
+      // جلب الموظفين (فنيين وليدرز)
+      final staffData = await TaskApiService.instance.getTaskStaff();
+      final List<dynamic> staffList =
+          staffData['staff'] ?? staffData['Staff'] ?? [];
 
       List<String> technicians = [];
       List<String> leaders = [];
 
-      if (response != null &&
-          response.values != null &&
-          response.values!.isNotEmpty) {
-        for (var row in response.values!) {
-          if (row.length >= 4) {
-            final username = row[0]?.toString().trim() ?? '';
-            final role = row[2]?.toString().trim() ?? '';
+      for (var staff in staffList) {
+        final name =
+            (staff['FullName'] ?? staff['fullName'] ?? '').toString().trim();
+        final role = (staff['Role'] ?? staff['role'] ?? '').toString();
 
-            if (username.isNotEmpty) {
-              if (role == 'فني') {
-                technicians.add(username);
-              } else if (role == 'ليدر') {
-                leaders.add(username);
-              }
-            }
+        if (name.isNotEmpty) {
+          // Technician = 12, TechnicalLeader = 13
+          if (role == '12' || role == 'Technician' || role == 'فني') {
+            technicians.add(name);
+          } else if (role == '13' ||
+              role == 'TechnicalLeader' ||
+              role == 'ليدر') {
+            leaders.add(name);
           }
         }
       }
 
       if (mounted) {
-        // فحص mounted قبل تحديث الحالة
         setState(() {
+          _departments = departments.map((d) => d.toString()).toList();
+          _fbgOptions = fbgOptions.map((f) => f.toString()).toList();
           _technicians = technicians;
           _leaders = leaders;
 
           // التأكد من أن القيم الحالية موجودة في القوائم
+          if (!_departments.contains(_selectedDepartment) &&
+              _selectedDepartment.isNotEmpty) {
+            _departments.add(_selectedDepartment);
+          }
           if (!_technicians.contains(_selectedTechnician) &&
               _selectedTechnician.isNotEmpty) {
             _technicians.add(_selectedTechnician);
@@ -300,96 +145,41 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
               _selectedLeader.isNotEmpty) {
             _leaders.add(_selectedLeader);
           }
+          if (!_fbgOptions.contains(_selectedFBG) && _selectedFBG.isNotEmpty) {
+            _fbgOptions.add(_selectedFBG);
+          }
+
+          _isDataLoading = false;
         });
       }
     } catch (e) {
-      print('خطأ في جلب المستخدمين: $e');
-      // الحفاظ على القيم الحالية في حالة الخطأ
       if (mounted) {
-        // فحص mounted قبل تحديث الحالة
         setState(() {
+          _isDataLoading = false;
+          // قيم افتراضية
+          _departments = [
+            'الحسابات',
+            'الفنيين',
+            'الوكلاء',
+            'الاتصالات',
+            'اللحام',
+            'الصيانة'
+          ];
+          if (!_departments.contains(_selectedDepartment) &&
+              _selectedDepartment.isNotEmpty) {
+            _departments.add(_selectedDepartment);
+          }
           _technicians =
               _selectedTechnician.isNotEmpty ? [_selectedTechnician] : [];
           _leaders = _selectedLeader.isNotEmpty ? [_selectedLeader] : [];
-        });
-      }
-    }
-  }
-
-  Future<void> _fetchFBGOptions() async {
-    if (_sheetsApi == null) return;
-
-    try {
-      const possibleFBGRanges = [
-        'Sheet1!A:A',
-        'Sheet1!A2:A1000',
-        'Sheet1!A1:A1000',
-        'Sheet1!A2:A',
-        'FBG!A:A',
-        'DataSheet!A:A',
-      ];
-
-      sheets.ValueRange? response;
-
-      for (String range in possibleFBGRanges) {
-        try {
-          response =
-              await _sheetsApi!.spreadsheets.values.get(spreadsheetId, range);
-          if (response.values != null && response.values!.isNotEmpty) {
-            break;
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-
-      if (response != null &&
-          response.values != null &&
-          response.values!.isNotEmpty) {
-        List<String> fbgOptions = [];
-
-        for (var row in response.values!) {
-          if (row.isNotEmpty && row[0] != null) {
-            final fbgValue = row[0].toString().trim();
-
-            if (fbgValue.isNotEmpty &&
-                fbgValue.toLowerCase() != 'fbg' &&
-                !fbgValue.toLowerCase().contains('code') &&
-                !fbgValue.toLowerCase().contains('عنوان') &&
-                !fbgValue.toLowerCase().contains('header') &&
-                fbgValue.length > 2) {
-              fbgOptions.add(fbgValue);
-            }
-          }
-        }
-
-        if (mounted) {
-          // فحص mounted قبل تحديث الحالة
-          setState(() {
-            _fbgOptions = fbgOptions;
-            // التأكد من أن القيمة الحالية موجودة في القائمة
-            if (!_fbgOptions.contains(_selectedFBG) &&
-                _selectedFBG.isNotEmpty) {
-              _fbgOptions.add(_selectedFBG);
-            }
-          });
-        }
-      } else {
-        // الحفاظ على القيمة الحالية في حالة فشل الجلب
-        if (mounted) {
-          // فحص mounted قبل تحديث الحالة
-          setState(() {
-            _fbgOptions = _selectedFBG.isNotEmpty ? [_selectedFBG] : [];
-          });
-        }
-      }
-    } catch (e) {
-      print('خطأ في جلب خيارات FBG: $e');
-      if (mounted) {
-        // فحص mounted قبل تحديث الحالة
-        setState(() {
           _fbgOptions = _selectedFBG.isNotEmpty ? [_selectedFBG] : [];
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في تحميل البيانات: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -782,8 +572,10 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
             : null,
       );
 
-      // حفظ التغييرات في Google Sheets
-      await GoogleSheetsService.updateTaskStatus(updatedTask);
+      // حفظ التغييرات عبر API
+      final apiStatus = Task.mapArabicStatusToApi(updatedTask.status);
+      await TaskApiService.instance
+          .updateStatus(updatedTask.id, status: apiStatus);
 
       // إشعار الوالد بالتحديث
       widget.onTaskUpdated(updatedTask);

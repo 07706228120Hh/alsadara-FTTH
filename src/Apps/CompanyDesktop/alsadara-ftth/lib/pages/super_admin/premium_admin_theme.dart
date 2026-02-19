@@ -1,9 +1,10 @@
+/// ⚠️ ملف قديم - تم التوحيد في EnergyDashboardTheme
+/// @deprecated استخدم lib/theme/energy_dashboard_theme.dart بدلاً من هذا الملف
 /// 🎨 ثيم فخم لنظام مدير النظام (Premium Admin Theme)
 /// تصميم عصري وفخم مع تأثيرات Glass Morphism
 /// متوافق مع RTL ومريح للعين
 library;
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -12,89 +13,97 @@ class PremiumAdminTheme {
   PremiumAdminTheme._();
 
   // ═══════════════════════════════════════════════════════════════
-  // 🎨 الألوان الرئيسية - Premium Color Palette
+  // 🎨 الألوان الرئيسية - Al-Sadara Platform Theme
   // ═══════════════════════════════════════════════════════════════
 
-  // الألوان الأساسية - Royal Purple & Gold
-  static const Color primary = Color(0xFF6C5CE7); // Purple
-  static const Color primaryLight = Color(0xFF8B7CF6);
-  static const Color primaryDark = Color(0xFF5441D6);
-  static const Color primarySoft = Color(0xFFEDE9FE); // Very light purple
+  // الألوان الأساسية - Navy Blue Theme
+  static const Color primary = Color(0xFF3B82F6); // Blue
+  static const Color primaryLight = Color(0xFF60A5FA);
+  static const Color primaryDark = Color(0xFF2563EB);
+  static const Color primarySoft = Color(0xFF1E3A5F); // Dark blue soft
 
-  // الألوان الثانوية - Emerald Success
-  static const Color accent = Color(0xFF00D9A5); // Teal/Emerald
-  static const Color accentLight = Color(0xFF5EFCE8);
-  static const Color accentDark = Color(0xFF00B894);
+  // الألوان الثانوية - Gold/Amber Accent
+  static const Color accent = Color(0xFFD4A574); // Gold/Amber
+  static const Color accentLight = Color(0xFFE8C49A);
+  static const Color accentDark = Color(0xFFB8864E);
 
   // ألوان الحالة
-  static const Color success = Color(0xFF00D9A5);
-  static const Color warning = Color(0xFFFFB347);
-  static const Color danger = Color(0xFFFF6B6B);
-  static const Color info = Color(0xFF54A0FF);
+  static const Color success = Color(0xFF22C55E); // Green
+  static const Color warning = Color(0xFFF59E0B); // Amber
+  static const Color danger = Color(0xFFEF4444); // Red
+  static const Color info = Color(0xFF3B82F6); // Blue
 
-  // ألوان الخلفية - Dark Elegant
-  static const Color bgDark = Color(0xFF0F0E17);
-  static const Color bgDarkLight = Color(0xFF1A1A2E);
-  static const Color bgDarkCard = Color(0xFF16213E);
-  static const Color bgDarkSurface = Color(0xFF1E2746);
+  // ألوان الخلفية - تم تفتيحها لراحة العين
+  static const Color bgDark = Color(0xFF1A2332); // Navy dark - أفتح
+  static const Color bgDarkLight = Color(0xFF243447); // Navy medium - أفتح
+  static const Color bgDarkCard = Color(0xFF1E2D3D); // Card background - أفتح
+  static const Color bgDarkSurface = Color(0xFF2A4158); // Surface - أفتح
 
-  // ألوان الخلفية - Light Clean
-  static const Color bgLight = Color(0xFFF7F8FC);
+  // ألوان الخلفية - Light (للوضع الفاتح)
+  static const Color bgLight = Color(0xFFF1F5F9);
   static const Color bgLightCard = Color(0xFFFFFFFF);
-  static const Color bgLightSurface = Color(0xFFF1F3F8);
+  static const Color bgLightSurface = Color(0xFFE2E8F0);
 
   // ألوان النصوص
-  static const Color textDark = Color(0xFF1A1A2E);
-  static const Color textMedium = Color(0xFF6B7280);
-  static const Color textLight = Color(0xFF9CA3AF);
-  static const Color textWhite = Color(0xFFF7F8FC);
+  static const Color textDark = Color(0xFF1E293B);
+  static const Color textMedium = Color(0xFF64748B);
+  static const Color textLight = Color(0xFF94A3B8);
+  static const Color textWhite = Color(0xFFF8FAFC);
 
   // ألوان الحدود
-  static const Color border = Color(0xFFE5E7EB);
-  static const Color borderDark = Color(0xFF2D3748);
-  static const Color borderLight = Color(0xFFF3F4F6);
+  static const Color border = Color(0xFF334155);
+  static const Color borderDark = Color(0xFF1E3A5F);
+  static const Color borderLight = Color(0xFF475569);
 
   // ═══════════════════════════════════════════════════════════════
-  // 🌈 التدرجات الفخمة - Premium Gradients
+  // 🌈 التدرجات الفخمة - Al-Sadara Gradients
   // ═══════════════════════════════════════════════════════════════
 
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+    colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
   );
 
   static const LinearGradient accentGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF11998e), Color(0xFF38ef7d)],
+    colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
   );
 
+  // تدرج ذهبي للأزرار الرئيسية (من التصميم)
   static const LinearGradient goldGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFFF2994A), Color(0xFFF2C94C)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [Color(0xFFD4A574), Color(0xFFF59E0B), Color(0xFFD97706)],
   );
 
   static const LinearGradient darkGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+    colors: [Color(0xFF1B2838), Color(0xFF0D1B2A)],
   );
 
   static const LinearGradient sidebarGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFF1A1A2E), Color(0xFF0F0E17)],
+    colors: [Color(0xFF0D1B2A), Color(0xFF0A1628)],
   );
 
   static const LinearGradient glassGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0x40FFFFFF),
-      Color(0x10FFFFFF),
+      Color(0x20FFFFFF),
+      Color(0x08FFFFFF),
     ],
+  );
+
+  // تدرج الخلفية الرئيسي (من التصميم)
+  static const LinearGradient backgroundGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF0D1B2A), Color(0xFF152238)],
   );
 
   // ═══════════════════════════════════════════════════════════════

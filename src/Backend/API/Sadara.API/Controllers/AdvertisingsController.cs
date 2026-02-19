@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Interfaces;
@@ -51,6 +52,7 @@ public class AdvertisingsController : ControllerBase
     }
 
     [HttpPost("{id:int}/click")]
+    [Authorize]
     public async Task<IActionResult> RecordClick(int id)
     {
         var advertising = await _unitOfWork.Advertisings.GetByIdAsync(id);
@@ -65,6 +67,7 @@ public class AdvertisingsController : ControllerBase
     }
 
     [HttpPost("{id:int}/view")]
+    [Authorize]
     public async Task<IActionResult> RecordView(int id)
     {
         var advertising = await _unitOfWork.Advertisings.GetByIdAsync(id);

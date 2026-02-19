@@ -49,6 +49,9 @@ public class InternetPlan : BaseEntity<Guid>
     /// <summary>هل نشطة؟</summary>
     public bool IsActive { get; set; } = true;
     
+    /// <summary>الربح لكل اشتراك (المبلغ الصافي بعد خصم التكاليف)</summary>
+    public decimal ProfitAmount { get; set; } = 0;
+    
     /// <summary>الترتيب</summary>
     public int SortOrder { get; set; } = 0;
     

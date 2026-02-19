@@ -7,8 +7,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
-import 'admin_theme.dart';
-import 'premium_admin_theme.dart'; // 🎨 الثيم الفخم
+import '../../theme/energy_dashboard_theme.dart';
 
 class VpsDataManagerPage extends StatefulWidget {
   const VpsDataManagerPage({super.key});
@@ -46,6 +45,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     _TableInfo('orders', '🛒 الطلبات', Icons.shopping_cart),
     _TableInfo('cities', '🌆 المدن', Icons.location_city),
     _TableInfo('servicerequests', '📋 طلبات الخدمة', Icons.support_agent),
+    _TableInfo('subscriptionlogs', '📊 سجلات الاشتراكات', Icons.receipt_long),
   ];
 
   int _selectedTableIndex = 0;
@@ -263,9 +263,9 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: PremiumAdminTheme.bgLight,
+      backgroundColor: EnergyDashboardTheme.bgLight,
       appBar: AppBar(
-        backgroundColor: PremiumAdminTheme.bgLightCard,
+        backgroundColor: EnergyDashboardTheme.bgLightCard,
         elevation: 0,
         scrolledUnderElevation: 1,
         surfaceTintColor: Colors.transparent,
@@ -278,7 +278,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
                 ),
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: PremiumAdminTheme.glowShadow(
+                boxShadow: EnergyDashboardTheme.glowShadow(
                     const Color(0xFF3B82F6).withOpacity(0.3)),
               ),
               child:
@@ -291,7 +291,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 Text(
                   'إدارة بيانات VPS',
                   style: TextStyle(
-                    color: PremiumAdminTheme.textDark,
+                    color: EnergyDashboardTheme.textDark,
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
                   ),
@@ -299,7 +299,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 Text(
                   'عرض وتعديل بيانات الخادم',
                   style: TextStyle(
-                    color: PremiumAdminTheme.textMedium,
+                    color: EnergyDashboardTheme.textMedium,
                     fontSize: 12,
                   ),
                 ),
@@ -307,14 +307,14 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             ),
           ],
         ),
-        iconTheme: IconThemeData(color: PremiumAdminTheme.textDark),
+        iconTheme: IconThemeData(color: EnergyDashboardTheme.textDark),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: AdminTheme.borderColor),
+                bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
               ),
             ),
             child: Row(
@@ -336,13 +336,15 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                               horizontal: 8, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AdminTheme.primaryColor.withOpacity(0.1)
+                                ? EnergyDashboardTheme.primaryColor
+                                    .withOpacity(0.1)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
                               color: isSelected
-                                  ? AdminTheme.primaryColor.withOpacity(0.3)
-                                  : AdminTheme.borderColor,
+                                  ? EnergyDashboardTheme.primaryColor
+                                      .withOpacity(0.3)
+                                  : EnergyDashboardTheme.borderColor,
                             ),
                           ),
                           child: Row(
@@ -351,8 +353,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                               Icon(t.icon,
                                   size: 14,
                                   color: isSelected
-                                      ? AdminTheme.primaryColor
-                                      : AdminTheme.textMuted),
+                                      ? EnergyDashboardTheme.primaryColor
+                                      : EnergyDashboardTheme.textMuted),
                               const SizedBox(width: 4),
                               Text(
                                 t.displayName
@@ -365,8 +367,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                                       ? FontWeight.bold
                                       : FontWeight.w500,
                                   color: isSelected
-                                      ? AdminTheme.primaryColor
-                                      : AdminTheme.textPrimary,
+                                      ? EnergyDashboardTheme.primaryColor
+                                      : EnergyDashboardTheme.textPrimary,
                                 ),
                               ),
                             ],
@@ -387,13 +389,13 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
               color: _errorMessage == null && !_isLoading
-                  ? AdminTheme.accentColor.withOpacity(0.1)
-                  : AdminTheme.warningColor.withOpacity(0.1),
+                  ? EnergyDashboardTheme.accentColor.withOpacity(0.1)
+                  : EnergyDashboardTheme.warningColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: _errorMessage == null && !_isLoading
-                    ? AdminTheme.accentColor.withOpacity(0.3)
-                    : AdminTheme.warningColor.withOpacity(0.3),
+                    ? EnergyDashboardTheme.accentColor.withOpacity(0.3)
+                    : EnergyDashboardTheme.warningColor.withOpacity(0.3),
               ),
             ),
             child: Row(
@@ -404,8 +406,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   height: 8,
                   decoration: BoxDecoration(
                     color: _errorMessage == null && !_isLoading
-                        ? AdminTheme.accentColor
-                        : AdminTheme.warningColor,
+                        ? EnergyDashboardTheme.accentColor
+                        : EnergyDashboardTheme.warningColor,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -414,8 +416,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   _errorMessage == null && !_isLoading ? 'متصل' : 'غير متصل',
                   style: TextStyle(
                     color: _errorMessage == null && !_isLoading
-                        ? AdminTheme.accentColor
-                        : AdminTheme.warningColor,
+                        ? EnergyDashboardTheme.accentColor
+                        : EnergyDashboardTheme.warningColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -427,11 +429,11 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AdminTheme.primaryColor.withOpacity(0.1),
+                color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.refresh,
-                  color: AdminTheme.primaryColor, size: 20),
+                  color: EnergyDashboardTheme.primaryColor, size: 20),
             ),
             onPressed: () => _fetchData(_tables[_selectedTableIndex].endpoint),
             tooltip: 'تحديث',
@@ -444,7 +446,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
               icon: const Icon(Icons.add, size: 18),
               label: const Text('إضافة جديد'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.accentColor,
+                backgroundColor: EnergyDashboardTheme.accentColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding:
@@ -466,7 +468,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 // شريط البحث
                 Container(
                   padding: const EdgeInsets.all(20),
-                  child: AdminTheme.buildSearchBar(
+                  child: EnergyDashboardTheme.buildSearchBar(
                     hint:
                         'البحث في ${_tables[_selectedTableIndex].displayName}...',
                     onChanged: (value) =>
@@ -479,20 +481,20 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   child: Row(
                     children: [
                       Expanded(
-                        child: AdminTheme.buildStatCard(
+                        child: EnergyDashboardTheme.buildStatCard(
                           title: 'إجمالي السجلات',
                           value: _currentData.length.toString(),
                           icon: Icons.storage,
-                          color: AdminTheme.infoColor,
+                          color: EnergyDashboardTheme.infoColor,
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: AdminTheme.buildStatCard(
+                        child: EnergyDashboardTheme.buildStatCard(
                           title: 'الجدول الحالي',
                           value: _tables[_selectedTableIndex].displayName,
                           icon: Icons.table_chart,
-                          color: AdminTheme.primaryColor,
+                          color: EnergyDashboardTheme.primaryColor,
                         ),
                       ),
                     ],
@@ -511,13 +513,13 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             Container(
               width: 420,
               decoration: BoxDecoration(
-                color: AdminTheme.surfaceColor,
+                color: EnergyDashboardTheme.surfaceColor,
                 border: Border(
-                  left: BorderSide(color: AdminTheme.borderColor),
+                  left: BorderSide(color: EnergyDashboardTheme.borderColor),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withOpacity(0.2),
                     blurRadius: 10,
                     offset: const Offset(-4, 0),
                   ),
@@ -532,12 +534,12 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
 
   Widget _buildDataList() {
     if (_isLoading) {
-      return AdminTheme.buildLoadingIndicator(
+      return EnergyDashboardTheme.buildLoadingIndicator(
           message: 'جاري تحميل البيانات...');
     }
 
     if (_errorMessage != null) {
-      return AdminTheme.buildErrorWidget(
+      return EnergyDashboardTheme.buildErrorWidget(
         message: _errorMessage!,
         details: _errorDetails,
         onRetry: () => _fetchData(_tables[_selectedTableIndex].endpoint),
@@ -558,17 +560,17 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AdminTheme.primaryColor.withOpacity(0.1),
+                color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(50),
               ),
               child: Icon(Icons.inbox_outlined,
-                  size: 48, color: AdminTheme.primaryColor),
+                  size: 48, color: EnergyDashboardTheme.primaryColor),
             ),
             const SizedBox(height: 20),
             Text(
               _searchQuery.isEmpty ? 'لا توجد بيانات' : 'لا توجد نتائج',
               style: const TextStyle(
-                  color: AdminTheme.textSecondary,
+                  color: EnergyDashboardTheme.textSecondary,
                   fontSize: 18,
                   fontWeight: FontWeight.w500),
             ),
@@ -600,12 +602,14 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: isSelected
-            ? AdminTheme.primaryColor.withOpacity(0.05)
-            : AdminTheme.surfaceColor,
+            ? EnergyDashboardTheme.primaryColor.withOpacity(0.15)
+            : EnergyDashboardTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: AdminTheme.cardShadow,
+        boxShadow: EnergyDashboardTheme.cardShadow,
         border: Border.all(
-          color: isSelected ? AdminTheme.primaryColor : AdminTheme.borderColor,
+          color: isSelected
+              ? EnergyDashboardTheme.primaryColor
+              : EnergyDashboardTheme.borderColor,
           width: isSelected ? 2 : 1,
         ),
       ),
@@ -615,16 +619,16 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AdminTheme.primaryColor.withOpacity(0.1),
+            color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(_tables[_selectedTableIndex].icon,
-              color: AdminTheme.primaryColor, size: 22),
+              color: EnergyDashboardTheme.primaryColor, size: 22),
         ),
         title: Text(
           name.toString(),
           style: const TextStyle(
-            color: AdminTheme.textPrimary,
+            color: EnergyDashboardTheme.textPrimary,
             fontWeight: FontWeight.w600,
             fontSize: 15,
           ),
@@ -633,7 +637,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             'ID: $id',
-            style: const TextStyle(color: AdminTheme.textMuted, fontSize: 12),
+            style: const TextStyle(
+                color: EnergyDashboardTheme.textMuted, fontSize: 12),
           ),
         ),
         trailing: Row(
@@ -683,30 +688,32 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: AdminTheme.borderColor)),
+            border: Border(
+                bottom: BorderSide(color: EnergyDashboardTheme.borderColor)),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AdminTheme.infoColor.withOpacity(0.1),
+                  color: EnergyDashboardTheme.infoColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.info_outline,
-                    color: AdminTheme.infoColor, size: 18),
+                    color: EnergyDashboardTheme.infoColor, size: 18),
               ),
               const SizedBox(width: 12),
               const Text(
                 'تفاصيل العنصر',
                 style: TextStyle(
-                    color: AdminTheme.textPrimary,
+                    color: EnergyDashboardTheme.textPrimary,
                     fontWeight: FontWeight.bold,
                     fontSize: 16),
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close, color: AdminTheme.textMuted),
+                icon: const Icon(Icons.close,
+                    color: EnergyDashboardTheme.textMuted),
                 onPressed: () => setState(() => _selectedItem = null),
               ),
             ],
@@ -728,7 +735,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: AdminTheme.borderColor)),
+            border: Border(
+                top: BorderSide(color: EnergyDashboardTheme.borderColor)),
           ),
           child: Row(
             children: [
@@ -738,7 +746,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   icon: const Icon(Icons.edit, size: 18),
                   label: const Text('تعديل'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.primaryColor,
+                    backgroundColor: EnergyDashboardTheme.primaryColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -754,7 +762,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   icon: const Icon(Icons.delete, size: 18),
                   label: const Text('حذف'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.dangerColor,
+                    backgroundColor: EnergyDashboardTheme.dangerColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -779,7 +787,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -787,7 +795,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           Text(
             _getFieldLabel(key),
             style: const TextStyle(
-                color: AdminTheme.textMuted,
+                color: EnergyDashboardTheme.textMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w500),
           ),
@@ -798,14 +806,14 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 child: Text(
                   displayValue,
                   style: const TextStyle(
-                      color: AdminTheme.textPrimary,
+                      color: EnergyDashboardTheme.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w500),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.copy,
-                    size: 16, color: AdminTheme.textMuted),
+                    size: 16, color: EnergyDashboardTheme.textMuted),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: displayValue));
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -902,7 +910,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     required TextEditingController controller,
     required String label,
     required IconData icon,
-    Color color = AdminTheme.primaryColor,
+    Color color = EnergyDashboardTheme.primaryColor,
     bool obscureText = false,
     bool readOnly = false,
   }) {
@@ -911,13 +919,15 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       readOnly: readOnly,
       obscureText: obscureText,
       style: TextStyle(
-        color: readOnly ? AdminTheme.textMuted : AdminTheme.textPrimary,
+        color: readOnly
+            ? EnergyDashboardTheme.textMuted
+            : EnergyDashboardTheme.textPrimary,
         fontSize: 15,
       ),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(
-          color: AdminTheme.textSecondary,
+          color: EnergyDashboardTheme.textSecondary,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -932,8 +942,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide:
-              const BorderSide(color: AdminTheme.borderColor, width: 1.5),
+          borderSide: const BorderSide(
+              color: EnergyDashboardTheme.borderColor, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -990,23 +1000,23 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AdminTheme.surfaceColor,
+        backgroundColor: EnergyDashboardTheme.surfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AdminTheme.accentColor.withOpacity(0.1),
+                color: EnergyDashboardTheme.accentColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.add_circle,
-                  color: AdminTheme.accentColor, size: 22),
+                  color: EnergyDashboardTheme.accentColor, size: 22),
             ),
             const SizedBox(width: 12),
             Text('إضافة ${table.displayName}',
                 style: const TextStyle(
-                    color: AdminTheme.textPrimary,
+                    color: EnergyDashboardTheme.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
           ],
@@ -1023,7 +1033,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                     controller: controllers[field]!,
                     label: _getFieldLabel(field),
                     icon: _getFieldIcon(field),
-                    color: AdminTheme.accentColor,
+                    color: EnergyDashboardTheme.accentColor,
                     obscureText: field.toLowerCase().contains('password'),
                   ),
                 );
@@ -1035,7 +1045,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('إلغاء',
-                style: TextStyle(color: AdminTheme.textMuted)),
+                style: TextStyle(color: EnergyDashboardTheme.textMuted)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -1061,7 +1071,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             icon: const Icon(Icons.add, size: 18),
             label: const Text('إضافة'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdminTheme.accentColor,
+              backgroundColor: EnergyDashboardTheme.accentColor,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -1094,23 +1104,23 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AdminTheme.surfaceColor,
+        backgroundColor: EnergyDashboardTheme.surfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AdminTheme.primaryColor.withOpacity(0.1),
+                color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.edit,
-                  color: AdminTheme.primaryColor, size: 22),
+                  color: EnergyDashboardTheme.primaryColor, size: 22),
             ),
             const SizedBox(width: 12),
             const Text('تعديل العنصر',
                 style: TextStyle(
-                    color: AdminTheme.textPrimary,
+                    color: EnergyDashboardTheme.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
           ],
@@ -1129,7 +1139,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                     controller: entry.value,
                     label: _getFieldLabel(entry.key),
                     icon: _getFieldIcon(entry.key),
-                    color: AdminTheme.primaryColor,
+                    color: EnergyDashboardTheme.primaryColor,
                     readOnly: isReadOnly,
                     obscureText: entry.key.toLowerCase().contains('password'),
                   ),
@@ -1142,7 +1152,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('إلغاء',
-                style: TextStyle(color: AdminTheme.textMuted)),
+                style: TextStyle(color: EnergyDashboardTheme.textMuted)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -1165,7 +1175,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             icon: const Icon(Icons.save, size: 18),
             label: const Text('حفظ'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdminTheme.primaryColor,
+              backgroundColor: EnergyDashboardTheme.primaryColor,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -1182,23 +1192,23 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AdminTheme.surfaceColor,
+        backgroundColor: EnergyDashboardTheme.surfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AdminTheme.dangerColor.withOpacity(0.1),
+                color: EnergyDashboardTheme.dangerColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.warning_amber_rounded,
-                  color: AdminTheme.dangerColor, size: 22),
+                  color: EnergyDashboardTheme.dangerColor, size: 22),
             ),
             const SizedBox(width: 12),
             const Text('تأكيد الحذف',
                 style: TextStyle(
-                    color: AdminTheme.textPrimary,
+                    color: EnergyDashboardTheme.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
           ],
@@ -1206,19 +1216,21 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         content: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AdminTheme.dangerColor.withOpacity(0.05),
+            color: EnergyDashboardTheme.dangerColor.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AdminTheme.dangerColor.withOpacity(0.2)),
+            border: Border.all(
+                color: EnergyDashboardTheme.dangerColor.withOpacity(0.2)),
           ),
           child: Row(
             children: [
               Icon(Icons.info_outline,
-                  color: AdminTheme.dangerColor.withOpacity(0.7)),
+                  color: EnergyDashboardTheme.dangerColor.withOpacity(0.7)),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
                   'هل أنت متأكد من حذف هذا العنصر؟\nهذا الإجراء لا يمكن التراجع عنه.',
-                  style: TextStyle(color: AdminTheme.textPrimary, fontSize: 14),
+                  style: TextStyle(
+                      color: EnergyDashboardTheme.textPrimary, fontSize: 14),
                 ),
               ),
             ],
@@ -1228,7 +1240,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('إلغاء',
-                style: TextStyle(color: AdminTheme.textMuted)),
+                style: TextStyle(color: EnergyDashboardTheme.textMuted)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -1240,7 +1252,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             icon: const Icon(Icons.delete, size: 18),
             label: const Text('حذف'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdminTheme.dangerColor,
+              backgroundColor: EnergyDashboardTheme.dangerColor,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),

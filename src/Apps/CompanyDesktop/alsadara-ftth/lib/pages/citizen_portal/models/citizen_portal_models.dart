@@ -22,11 +22,20 @@ enum ServiceRequestStatus {
 
   const ServiceRequestStatus(this.value, this.nameAr, this.color, this.icon);
 
-  static ServiceRequestStatus fromValue(int value) {
-    return ServiceRequestStatus.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => ServiceRequestStatus.pending,
-    );
+  static ServiceRequestStatus fromValue(dynamic value) {
+    if (value is int) {
+      return ServiceRequestStatus.values.firstWhere(
+        (e) => e.value == value,
+        orElse: () => ServiceRequestStatus.pending,
+      );
+    }
+    if (value is String) {
+      return ServiceRequestStatus.values.firstWhere(
+        (e) => e.name.toLowerCase() == value.toLowerCase(),
+        orElse: () => ServiceRequestStatus.pending,
+      );
+    }
+    return ServiceRequestStatus.pending;
   }
 }
 
@@ -43,11 +52,20 @@ enum RequestPriority {
 
   const RequestPriority(this.value, this.nameAr, this.color);
 
-  static RequestPriority fromValue(int value) {
-    return RequestPriority.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => RequestPriority.normal,
-    );
+  static RequestPriority fromValue(dynamic value) {
+    if (value is int) {
+      return RequestPriority.values.firstWhere(
+        (e) => e.value == value,
+        orElse: () => RequestPriority.normal,
+      );
+    }
+    if (value is String) {
+      return RequestPriority.values.firstWhere(
+        (e) => e.name.toLowerCase() == value.toLowerCase(),
+        orElse: () => RequestPriority.normal,
+      );
+    }
+    return RequestPriority.normal;
   }
 }
 
@@ -164,6 +182,10 @@ class ServiceRequestModel {
   final String? citizenName;
   final String? citizenPhone;
   final String? companyId;
+  final String? agentId;
+  final String? agentName;
+  final String? agentCode;
+  final double? agentNetBalance;
   final ServiceRequestStatus status;
   final String? statusNote;
   final RequestPriority priority;
@@ -176,6 +198,7 @@ class ServiceRequestModel {
   final DateTime requestedAt;
   final DateTime? assignedAt;
   final DateTime? completedAt;
+  final List<StatusHistoryItem> statusHistory;
 
   ServiceRequestModel({
     required this.id,
@@ -188,6 +211,10 @@ class ServiceRequestModel {
     this.citizenName,
     this.citizenPhone,
     this.companyId,
+    this.agentId,
+    this.agentName,
+    this.agentCode,
+    this.agentNetBalance,
     required this.status,
     this.statusNote,
     this.priority = RequestPriority.normal,
@@ -200,39 +227,154 @@ class ServiceRequestModel {
     required this.requestedAt,
     this.assignedAt,
     this.completedAt,
+    this.statusHistory = const [],
   });
 
   factory ServiceRequestModel.fromJson(Map<String, dynamic> json) {
     return ServiceRequestModel(
-      id: json['id'] ?? '',
-      requestNumber: json['requestNumber'] ?? '',
-      serviceId: json['serviceId'] ?? 0,
-      serviceName: json['serviceName'],
-      operationTypeId: json['operationTypeId'] ?? 0,
-      operationTypeName: json['operationTypeName'],
-      citizenId: json['citizenId'] ?? '',
-      citizenName: json['citizenName'],
-      citizenPhone: json['citizenPhone'],
-      companyId: json['companyId'],
-      status: ServiceRequestStatus.fromValue(json['status'] ?? 0),
-      statusNote: json['statusNote'],
-      priority: RequestPriority.fromValue(json['priority'] ?? 1),
-      details: json['details'],
-      address: json['address'],
-      assignedToId: json['assignedToId'],
-      assignedToName: json['assignedToName'],
-      estimatedCost: json['estimatedCost']?.toDouble(),
-      finalCost: json['finalCost']?.toDouble(),
+      id: (json['id'] ?? json['Id'] ?? '').toString(),
+      requestNumber: json['requestNumber'] ?? json['RequestNumber'] ?? '',
+      serviceId: json['serviceId'] ?? json['ServiceId'] ?? 0,
+      serviceName: json['serviceNameAr'] ??
+          json['ServiceNameAr'] ??
+          json['serviceName'] ??
+          json['ServiceName'],
+      operationTypeId: json['operationTypeId'] ?? json['OperationTypeId'] ?? 0,
+      operationTypeName: json['operationTypeName'] ?? json['OperationTypeName'],
+      citizenId: (json['citizenId'] ?? json['CitizenId'] ?? '').toString(),
+      citizenName: json['citizenName'] ?? json['CitizenName'],
+      citizenPhone: json['citizenPhone'] ?? json['CitizenPhone'],
+      companyId: (json['companyId'] ?? json['CompanyId'])?.toString(),
+      agentId: (json['agentId'] ?? json['AgentId'])?.toString(),
+      agentName: json['agentName'] ?? json['AgentName'],
+      agentCode: json['agentCode'] ?? json['AgentCode'],
+      agentNetBalance:
+          (json['agentNetBalance'] ?? json['AgentNetBalance'])?.toDouble(),
+      status:
+          ServiceRequestStatus.fromValue(json['status'] ?? json['Status'] ?? 0),
+      statusNote: json['statusNote'] ?? json['StatusNote'],
+      priority:
+          RequestPriority.fromValue(json['priority'] ?? json['Priority'] ?? 1),
+      details: json['details'] ?? json['Details'],
+      address: json['address'] ?? json['Address'],
+      assignedToId: (json['assignedToId'] ?? json['AssignedToId'])?.toString(),
+      assignedToName: json['assignedToName'] ?? json['AssignedToName'],
+      estimatedCost:
+          (json['estimatedCost'] ?? json['EstimatedCost'])?.toDouble(),
+      finalCost: (json['finalCost'] ?? json['FinalCost'])?.toDouble(),
       requestedAt: json['requestedAt'] != null
           ? DateTime.parse(json['requestedAt'])
-          : DateTime.now(),
-      assignedAt: json['assignedAt'] != null
-          ? DateTime.parse(json['assignedAt'])
-          : null,
-      completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'])
-          : null,
+          : json['RequestedAt'] != null
+              ? DateTime.parse(json['RequestedAt'])
+              : json['createdAt'] != null
+                  ? DateTime.parse(json['createdAt'])
+                  : json['CreatedAt'] != null
+                      ? DateTime.parse(json['CreatedAt'])
+                      : DateTime.now(),
+      assignedAt: _parseDate(json['assignedAt'] ?? json['AssignedAt']),
+      completedAt: _parseDate(json['completedAt'] ?? json['CompletedAt']),
+      statusHistory: (json['statusHistory'] ?? json['StatusHistory']) != null
+          ? (json['statusHistory'] ?? json['StatusHistory'] as List)
+              .map<StatusHistoryItem>(
+                  (h) => StatusHistoryItem.fromJson(h as Map<String, dynamic>))
+              .toList()
+          : [],
     );
+  }
+
+  /// نسخة جديدة مع سجل الحالات
+  ServiceRequestModel copyWithHistory(List<StatusHistoryItem> history) {
+    return ServiceRequestModel(
+      id: id,
+      requestNumber: requestNumber,
+      serviceId: serviceId,
+      serviceName: serviceName,
+      operationTypeId: operationTypeId,
+      operationTypeName: operationTypeName,
+      citizenId: citizenId,
+      citizenName: citizenName,
+      citizenPhone: citizenPhone,
+      companyId: companyId,
+      agentId: agentId,
+      agentName: agentName,
+      agentCode: agentCode,
+      agentNetBalance: agentNetBalance,
+      status: status,
+      statusNote: statusNote,
+      priority: priority,
+      details: details,
+      address: address,
+      assignedToId: assignedToId,
+      assignedToName: assignedToName,
+      estimatedCost: estimatedCost,
+      finalCost: finalCost,
+      requestedAt: requestedAt,
+      assignedAt: assignedAt,
+      completedAt: completedAt,
+      statusHistory: history,
+    );
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    return DateTime.parse(value.toString());
+  }
+}
+
+/// سجل تغيير حالة الطلب
+class StatusHistoryItem {
+  final String fromStatus;
+  final String toStatus;
+  final String? note;
+  final String? changedBy;
+  final DateTime changedAt;
+
+  StatusHistoryItem({
+    required this.fromStatus,
+    required this.toStatus,
+    this.note,
+    this.changedBy,
+    required this.changedAt,
+  });
+
+  factory StatusHistoryItem.fromJson(Map<String, dynamic> json) {
+    return StatusHistoryItem(
+      fromStatus: (json['fromStatus'] ?? json['FromStatus'] ?? '').toString(),
+      toStatus: (json['toStatus'] ?? json['ToStatus'] ?? '').toString(),
+      note: json['note'] ?? json['Note'],
+      changedBy: json['changedBy'] ?? json['ChangedBy'],
+      changedAt: json['changedAt'] != null
+          ? DateTime.parse(json['changedAt'].toString())
+          : json['ChangedAt'] != null
+              ? DateTime.parse(json['ChangedAt'].toString())
+              : DateTime.now(),
+    );
+  }
+
+  /// ترجمة اسم الحالة
+  static String statusNameAr(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'جديد';
+      case 'reviewing':
+        return 'قيد المراجعة';
+      case 'approved':
+        return 'موافق عليه';
+      case 'assigned':
+        return 'تم التعيين';
+      case 'inprogress':
+        return 'قيد التنفيذ';
+      case 'completed':
+        return 'مكتمل';
+      case 'cancelled':
+        return 'ملغي';
+      case 'rejected':
+        return 'مرفوض';
+      case 'onhold':
+        return 'معلق';
+      default:
+        return status;
+    }
   }
 }
 

@@ -406,21 +406,33 @@ class AuthService {
       final authHeaders = await getAuthHeaders();
       final allHeaders = {...authHeaders, ...?headers};
 
+      const requestTimeout = Duration(seconds: 15);
       http.Response response;
       switch (method.toUpperCase()) {
         case 'GET':
-          response = await http.get(Uri.parse(url), headers: allHeaders);
+          response = await http
+              .get(Uri.parse(url), headers: allHeaders)
+              .timeout(requestTimeout);
           break;
         case 'POST':
-          response =
-              await http.post(Uri.parse(url), headers: allHeaders, body: body);
+          response = await http
+              .post(Uri.parse(url), headers: allHeaders, body: body)
+              .timeout(requestTimeout);
           break;
         case 'PUT':
-          response =
-              await http.put(Uri.parse(url), headers: allHeaders, body: body);
+          response = await http
+              .put(Uri.parse(url), headers: allHeaders, body: body)
+              .timeout(requestTimeout);
           break;
         case 'DELETE':
-          response = await http.delete(Uri.parse(url), headers: allHeaders);
+          response = await http
+              .delete(Uri.parse(url), headers: allHeaders)
+              .timeout(requestTimeout);
+          break;
+        case 'PATCH':
+          response = await http
+              .patch(Uri.parse(url), headers: allHeaders, body: body)
+              .timeout(requestTimeout);
           break;
         default:
           throw Exception('طريقة HTTP غير مدعومة: $method');
@@ -437,19 +449,29 @@ class AuthService {
 
           switch (method.toUpperCase()) {
             case 'GET':
-              response = await http.get(Uri.parse(url), headers: newAllHeaders);
+              response = await http
+                  .get(Uri.parse(url), headers: newAllHeaders)
+                  .timeout(requestTimeout);
               break;
             case 'POST':
-              response = await http.post(Uri.parse(url),
-                  headers: newAllHeaders, body: body);
+              response = await http
+                  .post(Uri.parse(url), headers: newAllHeaders, body: body)
+                  .timeout(requestTimeout);
               break;
             case 'PUT':
-              response = await http.put(Uri.parse(url),
-                  headers: newAllHeaders, body: body);
+              response = await http
+                  .put(Uri.parse(url), headers: newAllHeaders, body: body)
+                  .timeout(requestTimeout);
               break;
             case 'DELETE':
-              response =
-                  await http.delete(Uri.parse(url), headers: newAllHeaders);
+              response = await http
+                  .delete(Uri.parse(url), headers: newAllHeaders)
+                  .timeout(requestTimeout);
+              break;
+            case 'PATCH':
+              response = await http
+                  .patch(Uri.parse(url), headers: newAllHeaders, body: body)
+                  .timeout(requestTimeout);
               break;
           }
         } else {

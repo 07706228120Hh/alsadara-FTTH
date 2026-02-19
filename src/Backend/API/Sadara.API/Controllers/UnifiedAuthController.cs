@@ -1066,7 +1066,7 @@ public class UnifiedAuthController : ControllerBase
     private string GenerateJwtToken(User user, Company? company)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            _configuration["Jwt:Key"] ?? "SadaraPlatformSecretKey2024VerySecure"));
+            _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!"));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>

@@ -16,6 +16,9 @@ class PermissionsService {
     'tasks', // إدارة المهام (النظام الأول)
     'zones', // إدارة الزونات (النظام الأول)
     'ai_search', // البحث بالذكاء الاصطناعي
+    'sadara_portal', // منصة الصدارة
+    'accounting', // النظام المحاسبي
+    'diagnostics', // تشخيص النظام
   ];
 
   static const Map<String, bool> firstSystemDefaults = {
@@ -24,6 +27,9 @@ class PermissionsService {
     'tasks': false,
     'zones': false,
     'ai_search': false,
+    'sadara_portal': false,
+    'accounting': false,
+    'diagnostics': false,
   };
 
   // =================
@@ -46,7 +52,7 @@ class PermissionsService {
     'account_records', // سجلات الحسابات (منفصلة عن إدارة الحسابات)
     'export', // تصدير البيانات
     'agents', // إدارة الوكلاء
-    'google_sheets', // Google Sheets
+    'google_sheets', // حفظ البيانات في الخادم
     'whatsapp', // رسائل WhatsApp
     'wallet_balance', // رصيد المحفظة
     'expiring_soon', // الاشتراكات المنتهية قريباً
@@ -66,6 +72,11 @@ class PermissionsService {
     // === صلاحيات التخزين المحلي ===
     'local_storage', // التخزين المحلي للمشتركين
     'local_storage_import', // زر استيراد البيانات في التخزين المحلي
+    // صلاحيات جديدة — كانت مفتوحة بدون حماية
+    'superset_reports', // تقارير Superset
+    'server_data', // بيانات السيرفر
+    'dashboard_project', // مشروع Dashboard
+    'fetch_server_data', // جلب بيانات الموقع
   ];
 
   static const Map<String, bool> secondSystemDefaults = {
@@ -81,7 +92,7 @@ class PermissionsService {
     'accounts': false, // 🔒 منع إدارة الحسابات (للمديرين فقط)
     'account_records': false, // 🔒 سجلات الحسابات (مستقل)
     'export': false, // 🔒 منع تصدير البيانات (للمديرين فقط)
-    'google_sheets': false, // 🔒 منع إرسال المعلومات إلى Google Sheets
+    'google_sheets': false, // 🔒 منع حفظ البيانات في الخادم
     'whatsapp': false, // 🔒 منع إرسال رسائل WhatsApp
     // المفاتيح الجديدة المضافة لضمان الحفظ والاسترجاع
     'transactions': false,
@@ -97,6 +108,11 @@ class PermissionsService {
     // صلاحيات التخزين المحلي
     'local_storage': false, // التخزين المحلي للمشتركين
     'local_storage_import': false, // زر استيراد البيانات في التخزين المحلي
+    // صلاحيات جديدة — كانت مفتوحة بدون حماية
+    'superset_reports': false, // تقارير Superset
+    'server_data': false, // بيانات السيرفر
+    'dashboard_project': false, // مشروع Dashboard
+    'fetch_server_data': false, // جلب بيانات الموقع
   };
 
   // =================

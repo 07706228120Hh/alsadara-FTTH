@@ -8,7 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
-import 'admin_theme.dart';
+import '../../theme/energy_dashboard_theme.dart';
 
 class FirebaseDataManagerPage extends StatefulWidget {
   const FirebaseDataManagerPage({super.key});
@@ -58,9 +58,9 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AdminTheme.backgroundColor,
+      backgroundColor: EnergyDashboardTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AdminTheme.surfaceColor,
+        backgroundColor: EnergyDashboardTheme.surfaceColor,
         elevation: 0,
         scrolledUnderElevation: 1,
         surfaceTintColor: Colors.transparent,
@@ -80,29 +80,29 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
             const Text(
               'إدارة بيانات Firebase',
               style: TextStyle(
-                color: AdminTheme.textPrimary,
+                color: EnergyDashboardTheme.textPrimary,
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
               ),
             ),
           ],
         ),
-        iconTheme: const IconThemeData(color: AdminTheme.textPrimary),
+        iconTheme: const IconThemeData(color: EnergyDashboardTheme.textPrimary),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: Container(
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: AdminTheme.borderColor),
+                bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
               ),
             ),
             child: TabBar(
               controller: _tabController,
               isScrollable: true,
-              indicatorColor: AdminTheme.primaryColor,
+              indicatorColor: EnergyDashboardTheme.primaryColor,
               indicatorWeight: 3,
-              labelColor: AdminTheme.primaryColor,
-              unselectedLabelColor: AdminTheme.textMuted,
+              labelColor: EnergyDashboardTheme.primaryColor,
+              unselectedLabelColor: EnergyDashboardTheme.textMuted,
               labelStyle: const TextStyle(fontWeight: FontWeight.w600),
               tabs: _collections
                   .map((c) => Tab(
@@ -123,11 +123,11 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AdminTheme.primaryColor.withOpacity(0.1),
+                color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.refresh,
-                  color: AdminTheme.primaryColor, size: 20),
+                  color: EnergyDashboardTheme.primaryColor, size: 20),
             ),
             onPressed: () => setState(() {}),
             tooltip: 'تحديث',
@@ -140,7 +140,7 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
               icon: const Icon(Icons.add, size: 18),
               label: const Text('إضافة جديد'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.accentColor,
+                backgroundColor: EnergyDashboardTheme.accentColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding:
@@ -157,7 +157,7 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
           // شريط البحث
           Container(
             padding: const EdgeInsets.all(20),
-            child: AdminTheme.buildSearchBar(
+            child: EnergyDashboardTheme.buildSearchBar(
               hint: 'البحث في ${_getCollectionName(_selectedCollection)}...',
               onChanged: (value) =>
                   setState(() => _searchQuery = value.toLowerCase()),
@@ -245,12 +245,12 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
       stream: _firestore.collection(collectionName).snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return AdminTheme.buildLoadingIndicator(
+          return EnergyDashboardTheme.buildLoadingIndicator(
               message: 'جاري تحميل البيانات...');
         }
 
         if (snapshot.hasError) {
-          return AdminTheme.buildErrorWidget(
+          return EnergyDashboardTheme.buildErrorWidget(
             message: 'حدث خطأ في تحميل البيانات',
             details: snapshot.error.toString(),
             onRetry: () => setState(() {}),
@@ -274,17 +274,17 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: AdminTheme.primaryColor.withOpacity(0.1),
+                    color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: Icon(Icons.inbox_outlined,
-                      size: 48, color: AdminTheme.primaryColor),
+                      size: 48, color: EnergyDashboardTheme.primaryColor),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   _searchQuery.isEmpty ? 'لا توجد بيانات' : 'لا توجد نتائج',
                   style: const TextStyle(
-                      color: AdminTheme.textSecondary,
+                      color: EnergyDashboardTheme.textSecondary,
                       fontSize: 18,
                       fontWeight: FontWeight.w500),
                 ),
@@ -321,10 +321,10 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
+            color: EnergyDashboardTheme.surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: AdminTheme.cardShadow,
-            border: Border.all(color: AdminTheme.borderColor),
+            boxShadow: EnergyDashboardTheme.cardShadow,
+            border: Border.all(color: EnergyDashboardTheme.borderColor),
           ),
           child: Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -343,7 +343,7 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
               title: Text(
                 data['name'] ?? 'بدون اسم',
                 style: const TextStyle(
-                  color: AdminTheme.textPrimary,
+                  color: EnergyDashboardTheme.textPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -353,7 +353,7 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                 child: Text(
                   'الكود: ${data['code'] ?? 'N/A'} | ID: ${tenant.id}',
                   style: const TextStyle(
-                      color: AdminTheme.textMuted, fontSize: 12),
+                      color: EnergyDashboardTheme.textMuted, fontSize: 12),
                 ),
               ),
               trailing: Row(
@@ -396,7 +396,7 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
               children: [
                 // بيانات الشركة
                 _buildDataSection('بيانات الشركة', data),
-                const Divider(color: AdminTheme.borderColor),
+                const Divider(color: EnergyDashboardTheme.borderColor),
                 // مستخدمي الشركة
                 _buildTenantUsersSection(tenant.id),
               ],
@@ -734,8 +734,9 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                     padding: const EdgeInsets.only(bottom: 16),
                     child: TextFormField(
                       controller: controllers[field],
-                      style:
-                          const TextStyle(color: Colors.black87, fontSize: 15),
+                      style: TextStyle(
+                          color: EnergyDashboardTheme.textPrimary,
+                          fontSize: 15),
                       obscureText: field.toLowerCase().contains('password'),
                       decoration: InputDecoration(
                         labelText: _getFieldLabel(field),
@@ -884,7 +885,9 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                     controller: entry.value,
                     readOnly: isReadOnly,
                     style: TextStyle(
-                      color: isReadOnly ? Colors.grey : Colors.black87,
+                      color: isReadOnly
+                          ? EnergyDashboardTheme.textMuted
+                          : EnergyDashboardTheme.textPrimary,
                       fontSize: 15,
                     ),
                     decoration: InputDecoration(
@@ -1080,15 +1083,18 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                       DropdownMenuItem(
                           value: 'admin',
                           child: Text('مدير',
-                              style: TextStyle(color: Colors.black87))),
+                              style: TextStyle(
+                                  color: EnergyDashboardTheme.textPrimary))),
                       DropdownMenuItem(
                           value: 'manager',
                           child: Text('مشرف',
-                              style: TextStyle(color: Colors.black87))),
+                              style: TextStyle(
+                                  color: EnergyDashboardTheme.textPrimary))),
                       DropdownMenuItem(
                           value: 'employee',
                           child: Text('موظف',
-                              style: TextStyle(color: Colors.black87))),
+                              style: TextStyle(
+                                  color: EnergyDashboardTheme.textPrimary))),
                     ],
                     onChanged: (value) =>
                         setDialogState(() => selectedRole = value!),
@@ -1159,7 +1165,9 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
       readOnly: readOnly,
       obscureText: obscureText,
       style: TextStyle(
-        color: readOnly ? Colors.grey : Colors.black87,
+        color: readOnly
+            ? EnergyDashboardTheme.textMuted
+            : EnergyDashboardTheme.textPrimary,
         fontSize: 15,
       ),
       decoration: InputDecoration(
@@ -1204,7 +1212,7 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
     return DropdownButtonFormField<String>(
       value: value,
       dropdownColor: Colors.white,
-      style: const TextStyle(color: Colors.black87, fontSize: 15),
+      style: TextStyle(color: EnergyDashboardTheme.textPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(
@@ -1292,15 +1300,18 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                       DropdownMenuItem(
                           value: 'admin',
                           child: Text('مدير',
-                              style: TextStyle(color: Colors.black87))),
+                              style: TextStyle(
+                                  color: EnergyDashboardTheme.textPrimary))),
                       DropdownMenuItem(
                           value: 'manager',
                           child: Text('مشرف',
-                              style: TextStyle(color: Colors.black87))),
+                              style: TextStyle(
+                                  color: EnergyDashboardTheme.textPrimary))),
                       DropdownMenuItem(
                           value: 'employee',
                           child: Text('موظف',
-                              style: TextStyle(color: Colors.black87))),
+                              style: TextStyle(
+                                  color: EnergyDashboardTheme.textPrimary))),
                     ],
                     onChanged: (value) =>
                         setDialogState(() => selectedRole = value!),
@@ -1327,9 +1338,9 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                                   style: TextStyle(
                                       fontSize: 12, color: Colors.grey)),
                               Text(currentPassword,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 14,
-                                      color: Colors.black87,
+                                      color: EnergyDashboardTheme.textPrimary,
                                       fontWeight: FontWeight.w500)),
                             ],
                           ),
@@ -1368,9 +1379,10 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
                       border: Border.all(color: Colors.grey.shade400),
                     ),
                     child: SwitchListTile(
-                      title: const Text('الحساب نشط',
-                          style:
-                              TextStyle(color: Colors.black87, fontSize: 15)),
+                      title: Text('الحساب نشط',
+                          style: TextStyle(
+                              color: EnergyDashboardTheme.textPrimary,
+                              fontSize: 15)),
                       subtitle: Text(
                         isActive
                             ? 'المستخدم يمكنه تسجيل الدخول'

@@ -9,7 +9,7 @@ import '../../../services/api/api_config.dart';
 import '../../../services/api/api_client.dart';
 import '../../../services/vps_auth_service.dart';
 import '../../../services/unified_auth_manager.dart';
-import '../../../services/google_sheets_service.dart';
+
 import '../../../services/whatsapp_business_service.dart';
 import '../models/diagnostic_test.dart';
 import '../../../config/app_secrets.dart';
@@ -155,13 +155,13 @@ class DiagnosticService {
       // 🔗 خدمات خارجية
       // ═══════════════════════════════════════════════════════════
       DiagnosticTest(
-        id: 'google_sheets_connection',
-        name: 'Google Sheets Connection',
-        nameAr: 'الاتصال بـ Google Sheets',
-        description: 'فحص الاتصال بجداول Google',
+        id: 'vps_api_connection',
+        name: 'VPS API Connection',
+        nameAr: 'الاتصال بـ VPS API',
+        description: 'فحص الاتصال بخادم VPS API',
         category: 'connection',
         type: DiagnosticTestType.connection,
-        testFunction: _testGoogleSheetsConnection,
+        testFunction: _testVpsApiConnection,
       ),
       DiagnosticTest(
         id: 'whatsapp_api',
@@ -872,52 +872,49 @@ class DiagnosticService {
     }
   }
 
-  /// اختبار اتصال Google Sheets
-  Future<DiagnosticTestResult> _testGoogleSheetsConnection() async {
+  /// اختبار اتصال VPS API
+  Future<DiagnosticTestResult> _testVpsApiConnection() async {
     final stopwatch = Stopwatch()..start();
     try {
-      // تحقق من وجود ملف الخدمة
-      final hasServiceFile = await GoogleSheetsService.hasServiceFile();
-      if (!hasServiceFile) {
-        stopwatch.stop();
+      final response = await http
+          .get(
+            Uri.parse('https://api.ftth.iq/api/health'),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      stopwatch.stop();
+      if (response.statusCode == 200) {
         return DiagnosticTestResult(
-          testId: 'google_sheets_connection',
+          testId: 'vps_api_connection',
+          success: true,
+          message: 'الاتصال بـ VPS API يعمل',
+          details:
+              'VPS API متصل ويعمل بشكل صحيح (${stopwatch.elapsedMilliseconds}ms)',
+          duration: stopwatch.elapsed,
+        );
+      } else {
+        return DiagnosticTestResult(
+          testId: 'vps_api_connection',
           success: false,
-          message: 'ملف الخدمة غير موجود',
-          details: '''
-❌ ملف الخدمة غير موجود
-━━━━━━━━━━━━━━━━━━━━━━━━
-📁 المسار المطلوب: assets/service_account.json
-💡 تأكد من وجود الملف في مجلد assets''',
+          message: 'خطأ في VPS API (كود: ${response.statusCode})',
+          details: 'VPS API أرجع كود حالة غير متوقع: ${response.statusCode}',
           duration: stopwatch.elapsed,
         );
       }
-
-      // تحقق من الاتصال
-      await GoogleSheetsService.getSpreadsheetId();
-
-      stopwatch.stop();
-      return DiagnosticTestResult(
-        testId: 'google_sheets_connection',
-        success: true,
-        message: 'الاتصال بـ Google Sheets يعمل',
-        details: 'Google Sheets API متصل ويعمل بشكل صحيح',
-        duration: stopwatch.elapsed,
-      );
     } catch (e) {
       stopwatch.stop();
       return DiagnosticTestResult(
-        testId: 'google_sheets_connection',
+        testId: 'vps_api_connection',
         success: false,
-        message: 'فشل الاتصال بـ Google Sheets',
+        message: 'فشل الاتصال بـ VPS API',
         details: '''
-❌ خطأ في الاتصال بـ Google Sheets
+❌ خطأ في الاتصال بـ VPS API
 ━━━━━━━━━━━━━━━━━━━━━━━━
 🔍 الخطأ: ${e.toString()}
 💡 الحلول المقترحة:
-   1. تحقق من ملف service_account.json
-   2. تأكد من تفعيل Google Sheets API
-   3. التحقق من صلاحيات الملف الشخصي''',
+   1. تحقق من اتصال الإنترنت
+   2. تأكد من أن الخادم يعمل
+   3. تحقق من عنوان API''',
         duration: stopwatch.elapsed,
       );
     }

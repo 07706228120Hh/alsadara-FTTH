@@ -495,7 +495,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
       case 'agents':
         return 'إدارة الوكلاء';
       case 'google_sheets':
-        return 'Google Sheets';
+        return 'حفظ في الخادم';
       case 'whatsapp':
         return 'رسائل WhatsApp';
       case 'wallet_balance':

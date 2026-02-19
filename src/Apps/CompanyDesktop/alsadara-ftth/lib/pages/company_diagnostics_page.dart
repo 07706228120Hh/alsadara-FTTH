@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/vps_auth_service.dart';
+import '../services/sadara_api_service.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 
@@ -37,10 +38,14 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
   List<Map<String, dynamic>>? _employees;
   bool _loadingEmployees = false;
 
+  // --- حالة تشخيص المنصة ---
+  bool _portalTesting = false;
+  final List<_PortalDiagResult> _portalResults = [];
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
   }
 
   @override
@@ -73,6 +78,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
               Tab(icon: Icon(Icons.security), text: 'الصلاحيات'),
               Tab(icon: Icon(Icons.cloud), text: 'API'),
               Tab(icon: Icon(Icons.group), text: 'الموظفين'),
+              Tab(icon: Icon(Icons.hub), text: 'المنصة'),
               Tab(icon: Icon(Icons.storage), text: 'الجلسة'),
             ],
           ),
@@ -97,6 +103,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             _buildPermissionsTab(),
             _buildApiTab(),
             _buildEmployeesTab(),
+            _buildPortalDiagnosticsTab(),
             _buildSessionTab(),
           ],
         ),
@@ -782,6 +789,31 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
     buffer.writeln('tenantId: ${widget.tenantId}');
     buffer.writeln('tenantCode: ${widget.tenantCode}');
 
+    // تشخيص المنصة
+    buffer.writeln('\n=== تشخيص منصة الصدارة ===');
+    final sadaraApi = SadaraApiService.instance;
+    buffer.writeln(
+        'SadaraAPI مصادق: ${sadaraApi.isAuthenticated ? "نعم" : "لا"}');
+    buffer.writeln(
+        'VPS Token: ${_authService.accessToken != null ? "موجود (${_authService.accessToken!.length} حرف)" : "غير موجود"}');
+    buffer.writeln(
+        'ApiClient Token: ${ApiClient.instance.authToken != null ? "موجود (${ApiClient.instance.authToken!.length} حرف)" : "غير موجود"}');
+    buffer.writeln('عنوان API المنصة: ${SadaraApiService.baseUrl}');
+    if (_portalResults.isNotEmpty) {
+      buffer.writeln('\n--- نتائج التشخيص ---');
+      for (final r in _portalResults) {
+        buffer.writeln('${r.title}: ${r.status}');
+        if (r.duration != null) {
+          buffer.writeln('  الزمن: ${r.duration!.inMilliseconds} مللي ثانية');
+        }
+        if (r.details != null) {
+          buffer.writeln('  التفاصيل: ${r.details}');
+        }
+      }
+    } else {
+      buffer.writeln('لم يتم تشغيل تشخيص المنصة بعد');
+    }
+
     Clipboard.setData(ClipboardData(text: buffer.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -884,6 +916,384 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
     );
   }
 
+  /// تبويب تشخيص منصة الصدارة
+  Widget _buildPortalDiagnosticsTab() {
+    final sadaraApi = SadaraApiService.instance;
+    final vps = VpsAuthService.instance;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // معلومات التوكن والاتصال
+          _buildSectionCard(
+            title: '🔑 حالة المصادقة للمنصة',
+            icon: Icons.vpn_key,
+            color: Colors.deepPurple,
+            children: [
+              _buildInfoTile(
+                'SadaraAPI مصادق',
+                sadaraApi.isAuthenticated ? '✅ نعم' : '❌ لا',
+                Icons.lock,
+              ),
+              _buildInfoTile(
+                'VPS Token',
+                vps.accessToken != null
+                    ? '✅ موجود (${vps.accessToken!.length} حرف)'
+                    : '❌ غير موجود',
+                Icons.token,
+              ),
+              _buildInfoTile(
+                'ApiClient Token',
+                ApiClient.instance.authToken != null
+                    ? '✅ موجود (${ApiClient.instance.authToken!.length} حرف)'
+                    : '❌ غير موجود',
+                Icons.key,
+              ),
+              _buildInfoTile(
+                'عنوان API المنصة',
+                SadaraApiService.baseUrl,
+                Icons.link,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // زر تشغيل التشخيص
+          _buildSectionCard(
+            title: '🧪 تشخيص جلب بيانات المنصة',
+            icon: Icons.science,
+            color: _portalResults.isEmpty
+                ? Colors.grey
+                : (_portalResults.every((r) => r.success)
+                    ? Colors.green
+                    : Colors.orange),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ElevatedButton.icon(
+                  onPressed: _portalTesting ? null : _runPortalDiagnostics,
+                  icon: _portalTesting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.play_arrow),
+                  label: Text(_portalTesting
+                      ? 'جاري التشخيص...'
+                      : 'تشغيل تشخيص المنصة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+              ),
+              if (_portalResults.isNotEmpty) ...[
+                const Divider(),
+                ..._portalResults.map((r) => ListTile(
+                      leading: _portalTesting && r.status == 'جاري...'
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              r.success
+                                  ? Icons.check_circle
+                                  : (r.status == 'جاري...'
+                                      ? Icons.hourglass_top
+                                      : Icons.error),
+                              color: r.success
+                                  ? Colors.green
+                                  : (r.status == 'جاري...'
+                                      ? Colors.blue
+                                      : Colors.red),
+                            ),
+                      title: Text(
+                        r.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(r.status),
+                          if (r.duration != null)
+                            Text(
+                              '⏱ ${r.duration!.inMilliseconds} مللي ثانية',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          if (r.details != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: SelectableText(
+                                  r.details!,
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      isThreeLine: r.details != null,
+                    )),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// تشغيل تشخيص المنصة الكامل
+  Future<void> _runPortalDiagnostics() async {
+    final api = SadaraApiService.instance;
+    final vps = VpsAuthService.instance;
+
+    setState(() {
+      _portalTesting = true;
+      _portalResults.clear();
+      _portalResults.addAll([
+        _PortalDiagResult(title: '1️⃣ فحص التوكن', status: 'جاري...'),
+        _PortalDiagResult(title: '2️⃣ استعادة الجلسة', status: 'بانتظار...'),
+        _PortalDiagResult(title: '3️⃣ جلب كل الطلبات', status: 'بانتظار...'),
+        _PortalDiagResult(title: '4️⃣ فرز طلبات المواطن', status: 'بانتظار...'),
+        _PortalDiagResult(title: '5️⃣ فرز طلبات الوكيل', status: 'بانتظار...'),
+        _PortalDiagResult(title: '6️⃣ جلب الإحصائيات', status: 'بانتظار...'),
+      ]);
+    });
+
+    // ====== 1. فحص التوكن ======
+    final sw1 = Stopwatch()..start();
+    final hasToken =
+        vps.accessToken != null || ApiClient.instance.authToken != null;
+    sw1.stop();
+    setState(() {
+      _portalResults[0] = _PortalDiagResult(
+        title: '1️⃣ فحص التوكن',
+        status: hasToken
+            ? 'تم العثور على توكن (VPS: ${vps.accessToken != null ? "✅" : "❌"}, ApiClient: ${ApiClient.instance.authToken != null ? "✅" : "❌"})'
+            : '❌ لا يوجد توكن في أي مصدر',
+        success: hasToken,
+        duration: sw1.elapsed,
+      );
+      _portalResults[1] =
+          _PortalDiagResult(title: '2️⃣ استعادة الجلسة', status: 'جاري...');
+    });
+
+    // ====== 2. استعادة الجلسة (إذا لم يكن هناك توكن) ======
+    final sw2 = Stopwatch()..start();
+    bool sessionRestored = hasToken;
+    if (!hasToken) {
+      try {
+        final restored = await vps.restoreSession();
+        if (!restored) {
+          await vps.refreshAccessToken();
+        }
+        sessionRestored = vps.accessToken != null;
+      } catch (e) {
+        sessionRestored = false;
+      }
+    }
+    sw2.stop();
+    setState(() {
+      _portalResults[1] = _PortalDiagResult(
+        title: '2️⃣ استعادة الجلسة',
+        status: sessionRestored
+            ? (hasToken
+                ? '✅ التوكن كان موجوداً مسبقاً'
+                : '✅ تم استعادة الجلسة بنجاح')
+            : '❌ فشل في استعادة الجلسة - يرجى تسجيل الدخول مجدداً',
+        success: sessionRestored,
+        duration: sw2.elapsed,
+      );
+      _portalResults[2] =
+          _PortalDiagResult(title: '3️⃣ جلب كل الطلبات', status: 'جاري...');
+    });
+
+    // ====== 3. جلب كل الطلبات ======
+    List<dynamic> allResults = [];
+    final sw3 = Stopwatch()..start();
+    try {
+      allResults = await api.getServiceRequests(page: 1, pageSize: 200);
+      sw3.stop();
+      setState(() {
+        _portalResults[2] = _PortalDiagResult(
+          title: '3️⃣ جلب كل الطلبات',
+          status: '✅ تم جلب ${allResults.length} طلب بنجاح',
+          success: true,
+          duration: sw3.elapsed,
+          details: allResults.isNotEmpty
+              ? 'أول طلب: ${const JsonEncoder.withIndent("  ").convert(allResults.first)}'
+                  .substring(
+                      0,
+                      500.clamp(
+                          0,
+                          allResults.isNotEmpty
+                              ? const JsonEncoder.withIndent("  ")
+                                  .convert(allResults.first)
+                                  .length
+                              : 0))
+              : 'لا توجد طلبات',
+        );
+      });
+    } catch (e) {
+      sw3.stop();
+      setState(() {
+        _portalResults[2] = _PortalDiagResult(
+          title: '3️⃣ جلب كل الطلبات',
+          status: '❌ فشل في جلب الطلبات',
+          success: false,
+          duration: sw3.elapsed,
+          details: e.toString(),
+        );
+      });
+    }
+
+    // ====== 4. فرز طلبات المواطن ======
+    setState(() {
+      _portalResults[3] =
+          _PortalDiagResult(title: '4️⃣ فرز طلبات المواطن', status: 'جاري...');
+    });
+    final sw4 = Stopwatch()..start();
+    int citizenCount = 0;
+    try {
+      for (final r in allResults) {
+        if (r is Map<String, dynamic>) {
+          final details = r['details'];
+          if (details != null) {
+            try {
+              final parsed = json.decode(details.toString());
+              if (parsed is Map) {
+                final source = parsed['source']?.toString().toLowerCase() ?? '';
+                if (source != 'agent_portal') citizenCount++;
+              } else {
+                citizenCount++;
+              }
+            } catch (_) {
+              citizenCount++;
+            }
+          } else {
+            citizenCount++;
+          }
+        }
+      }
+      sw4.stop();
+      setState(() {
+        _portalResults[3] = _PortalDiagResult(
+          title: '4️⃣ فرز طلبات المواطن',
+          status: '✅ عدد طلبات المواطن: $citizenCount',
+          success: true,
+          duration: sw4.elapsed,
+        );
+      });
+    } catch (e) {
+      sw4.stop();
+      setState(() {
+        _portalResults[3] = _PortalDiagResult(
+          title: '4️⃣ فرز طلبات المواطن',
+          status: '❌ خطأ في فرز الطلبات: $e',
+          success: false,
+          duration: sw4.elapsed,
+        );
+      });
+    }
+
+    // ====== 5. فرز طلبات الوكيل ======
+    setState(() {
+      _portalResults[4] =
+          _PortalDiagResult(title: '5️⃣ فرز طلبات الوكيل', status: 'جاري...');
+    });
+    final sw5 = Stopwatch()..start();
+    int agentCount = 0;
+    try {
+      for (final r in allResults) {
+        if (r is Map<String, dynamic>) {
+          final details = r['details'];
+          if (details != null) {
+            try {
+              final parsed = json.decode(details.toString());
+              if (parsed is Map) {
+                final source = parsed['source']?.toString().toLowerCase() ?? '';
+                if (source == 'agent_portal') agentCount++;
+              }
+            } catch (_) {}
+          }
+        }
+      }
+      sw5.stop();
+      setState(() {
+        _portalResults[4] = _PortalDiagResult(
+          title: '5️⃣ فرز طلبات الوكيل',
+          status: '✅ عدد طلبات الوكيل: $agentCount',
+          success: true,
+          duration: sw5.elapsed,
+        );
+      });
+    } catch (e) {
+      sw5.stop();
+      setState(() {
+        _portalResults[4] = _PortalDiagResult(
+          title: '5️⃣ فرز طلبات الوكيل',
+          status: '❌ خطأ في فرز الطلبات: $e',
+          success: false,
+          duration: sw5.elapsed,
+        );
+      });
+    }
+
+    // ====== 6. جلب الإحصائيات ======
+    setState(() {
+      _portalResults[5] =
+          _PortalDiagResult(title: '6️⃣ جلب الإحصائيات', status: 'جاري...');
+    });
+    final sw6 = Stopwatch()..start();
+    try {
+      final stats = await api.getServiceRequestStatistics();
+      sw6.stop();
+      setState(() {
+        _portalResults[5] = _PortalDiagResult(
+          title: '6️⃣ جلب الإحصائيات',
+          status: '✅ تم جلب الإحصائيات بنجاح',
+          success: true,
+          duration: sw6.elapsed,
+          details: const JsonEncoder.withIndent('  ').convert(stats),
+        );
+      });
+    } catch (e) {
+      sw6.stop();
+      setState(() {
+        _portalResults[5] = _PortalDiagResult(
+          title: '6️⃣ جلب الإحصائيات',
+          status: '❌ فشل: $e',
+          success: false,
+          duration: sw6.elapsed,
+          details: e.toString(),
+        );
+      });
+    }
+
+    setState(() {
+      _portalTesting = false;
+    });
+  }
+
   /// جلب قائمة الموظفين من API
   Future<void> _fetchEmployees() async {
     final company = _authService.currentCompany;
@@ -957,4 +1367,21 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       });
     }
   }
+}
+
+/// نتيجة اختبار تشخيص المنصة
+class _PortalDiagResult {
+  final String title;
+  final String status;
+  final bool success;
+  final Duration? duration;
+  final String? details;
+
+  _PortalDiagResult({
+    required this.title,
+    required this.status,
+    this.success = false,
+    this.duration,
+    this.details,
+  });
 }

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:intl/intl.dart';
 
 class Task {
-  final String id; // معرف المهمة
+  final String id; // معرف المهمة (RequestNumber)
+  final String guid; // المعرف الفريد من السيرفر (GUID)
   final String title; // عنوان المهمة
   final String status; // حالة المهمة (مفتوحة، قيد التنفيذ، مكتملة، ملغية)
   final String department; // القسم المسؤول عن المهمة
@@ -23,10 +25,15 @@ class Task {
   final String createdBy; // الشخص الذي أنشأ المهمة
   final String amount; // المبلغ المرتبط بالمهمة (تمت إضافته)
   final String technicianPhone; // رقم هاتف الفني (العمود T)
+  final String agentName; // اسم الوكيل (إن كان طلب وكيل)
+  final String agentCode; // رمز الوكيل
+  final String pageId; // معرف صفحة الوكيل
+  final String source; // مصدر الطلب (agent_portal أو companyDesktop)
 
   /// **البناء الأساسي لمهمة جديدة**
   Task({
     required this.id,
+    this.guid = '',
     required this.title,
     required this.status,
     required this.department,
@@ -47,16 +54,16 @@ class Task {
     required this.createdBy,
     this.amount = '', // تمت إضافة المبلغ مع قيمة افتراضية
     this.technicianPhone = '', // تمت إضافة رقم هاتف الفني مع قيمة افتراضية
-  }) {
-    // التحقق من القيم المنطقية
-    if (status == 'مكتملة' || status == 'ملغية') {
-      assert(closedAt != null, 'يجب تعيين closedAt عند إكمال أو إلغاء المهمة');
-    }
-  }
+    this.agentName = '', // اسم الوكيل
+    this.agentCode = '', // رمز الوكيل
+    this.pageId = '', // معرف صفحة الوكيل
+    this.source = '', // مصدر الطلب
+  });
 
   /// **نسخة معدلة من المهمة**: لإنشاء نسخة جديدة مع قيم محدثة
   Task copyWith({
     String? id,
+    String? guid,
     String? title,
     String? status,
     String? department,
@@ -77,9 +84,14 @@ class Task {
     String? createdBy,
     String? amount, // تمت إضافة المبلغ هنا
     String? technicianPhone, // تمت إضافة رقم هاتف الفني هنا
+    String? agentName,
+    String? agentCode,
+    String? pageId,
+    String? source,
   }) {
     return Task(
       id: id ?? this.id,
+      guid: guid ?? this.guid,
       title: title ?? this.title,
       status: status ?? this.status,
       department: department ?? this.department,
@@ -99,7 +111,12 @@ class Task {
       statusHistory: statusHistory ?? this.statusHistory,
       createdBy: createdBy ?? this.createdBy,
       amount: amount ?? this.amount, // تمت إضافة المبلغ هنا
-      technicianPhone: technicianPhone ?? this.technicianPhone, // تمت إضافة رقم هاتف الفني هنا
+      technicianPhone: technicianPhone ??
+          this.technicianPhone, // تمت إضافة رقم هاتف الفني هنا
+      agentName: agentName ?? this.agentName,
+      agentCode: agentCode ?? this.agentCode,
+      pageId: pageId ?? this.pageId,
+      source: source ?? this.source,
     );
   }
 
@@ -108,6 +125,159 @@ class Task {
 
   /// **التحقق مما إذا كانت المهمة ملغية**
   bool get isCancelled => status == 'ملغية';
+
+  // ═══════ بناء من API ═══════
+
+  /// إنشاء مهمة من استجابة API (ServiceRequest)
+  factory Task.fromApiResponse(Map<String, dynamic> response) {
+    // تحليل JSON المخزن في Details
+    Map<String, dynamic> details = {};
+    if (response['Details'] != null) {
+      try {
+        if (response['Details'] is String) {
+          details = json.decode(response['Details']);
+        } else if (response['Details'] is Map) {
+          details = Map<String, dynamic>.from(response['Details'] as Map);
+        }
+      } catch (_) {}
+    }
+
+    // تحليل سجل الحالة
+    List<StatusHistory> statusHistory = [];
+    if (response['StatusHistory'] is List) {
+      for (var h in response['StatusHistory']) {
+        statusHistory.add(StatusHistory(
+          fromStatus: mapApiStatusToArabic(h['FromStatus']?.toString() ?? ''),
+          toStatus: mapApiStatusToArabic(h['ToStatus']?.toString() ?? ''),
+          notes: h['Note']?.toString() ?? '',
+          changedBy: h['ChangedBy']?.toString() ?? '',
+          changedAt: DateTime.tryParse(h['ChangedAt']?.toString() ?? ''),
+        ));
+      }
+    }
+
+    return Task(
+      id: response['RequestNumber']?.toString() ??
+          response['Id']?.toString() ??
+          '',
+      guid: response['Id']?.toString() ?? '',
+      title: details['taskType']?.toString() ??
+          response['OperationTypeName']?.toString() ??
+          response['RequestNumber']?.toString() ??
+          '',
+      status: mapApiStatusToArabic(response['Status']?.toString() ?? 'Pending'),
+      department: details['department']?.toString() ?? '',
+      leader: details['leader']?.toString() ?? '',
+      technician: details['technician']?.toString() ??
+          response['TechnicianName']?.toString() ??
+          response['AssignedToName']?.toString() ??
+          '',
+      username: details['customerName']?.toString() ??
+          response['CitizenName']?.toString() ??
+          '',
+      phone: details['customerPhone']?.toString() ??
+          response['ContactPhone']?.toString() ??
+          '',
+      fbg: details['fbg']?.toString() ?? '',
+      fat: details['fat']?.toString() ?? '',
+      location: response['Address']?.toString() ??
+          details['location']?.toString() ??
+          '',
+      notes: details['notes']?.toString() ??
+          response['StatusNote']?.toString() ??
+          '',
+      createdAt: DateTime.tryParse(response['CreatedAt']?.toString() ?? '') ??
+          DateTime.now(),
+      closedAt: response['CompletedAt'] != null
+          ? DateTime.tryParse(response['CompletedAt'].toString())
+          : null,
+      summary: details['summary']?.toString() ?? '',
+      priority: _mapApiPriorityToArabic(response['Priority']),
+      agents: [],
+      statusHistory: statusHistory,
+      createdBy: details['source']?.toString() ?? '',
+      amount: (details['subscriptionAmount'] ??
+              response['EstimatedCost'] ??
+              response['FinalCost'] ??
+              '')
+          .toString(),
+      technicianPhone: details['technicianPhone']?.toString() ?? '',
+      agentName: response['AgentName']?.toString() ?? '',
+      agentCode: response['AgentCode']?.toString() ?? '',
+      pageId: details['pageId']?.toString() ?? '',
+      source: details['source']?.toString() ?? '',
+    );
+  }
+
+  // ═══════ تحويل الحالات ═══════
+
+  /// تحويل حالة API إلى عربي
+  static String mapApiStatusToArabic(String status) {
+    switch (status) {
+      case 'Pending':
+        return 'مفتوحة';
+      case 'Reviewing':
+        return 'قيد المراجعة';
+      case 'Approved':
+        return 'موافق عليه';
+      case 'Assigned':
+        return 'مفتوحة';
+      case 'InProgress':
+        return 'قيد التنفيذ';
+      case 'Completed':
+        return 'مكتملة';
+      case 'Cancelled':
+        return 'ملغية';
+      case 'Rejected':
+        return 'مرفوضة';
+      case 'OnHold':
+        return 'معلقة';
+      default:
+        return status;
+    }
+  }
+
+  /// تحويل حالة عربية إلى API
+  static String mapArabicStatusToApi(String status) {
+    switch (status) {
+      case 'مفتوحة':
+        return 'Pending';
+      case 'قيد المراجعة':
+        return 'Reviewing';
+      case 'موافق عليه':
+        return 'Approved';
+      case 'معينة':
+        return 'Assigned';
+      case 'قيد التنفيذ':
+        return 'InProgress';
+      case 'مكتملة':
+        return 'Completed';
+      case 'ملغية':
+        return 'Cancelled';
+      case 'مرفوضة':
+        return 'Rejected';
+      case 'معلقة':
+        return 'OnHold';
+      default:
+        return status;
+    }
+  }
+
+  /// تحويل أولوية API إلى عربي
+  static String _mapApiPriorityToArabic(dynamic priority) {
+    switch (priority) {
+      case 1:
+        return 'عاجل';
+      case 2:
+        return 'عالي';
+      case 3:
+        return 'متوسط';
+      case 4:
+        return 'منخفض';
+      default:
+        return 'متوسط';
+    }
+  }
 
   /// **تحويل المهمة إلى صيغة نصية**
   @override

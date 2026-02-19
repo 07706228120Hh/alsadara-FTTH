@@ -68,6 +68,21 @@ class ApiService {
     }
   }
 
+  // طلب PATCH مع التعامل التلقائي مع التوكن
+  Future<Map<String, dynamic>> patch(String endpoint, {Object? body}) async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'PATCH',
+        '$baseUrl$endpoint',
+        body: body is Map ? json.encode(body) : body,
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('خطأ في طلب PATCH: $e');
+    }
+  }
+
   // معالجة الاستجابة
   Map<String, dynamic> _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -77,6 +92,11 @@ class ApiService {
 
       try {
         final data = json.decode(response.body);
+        // إذا كان الـ API يرجع صيغة {success, data} مسبقاً، أرجعه مباشرة بدون تغليف إضافي
+        if (data is Map<String, dynamic> && data.containsKey('success')) {
+          data['statusCode'] = response.statusCode;
+          return data;
+        }
         return {
           'success': true,
           'data': data,
@@ -104,6 +124,7 @@ class ApiService {
 
       return {
         'success': false,
+        'message': errorMessage,
         'error': errorMessage,
         'statusCode': response.statusCode,
       };

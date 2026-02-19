@@ -22,6 +22,85 @@ namespace Sadara.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sadara.Domain.Entities.Account", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AccountType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CurrentBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsLeaf")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystemAccount")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameEn")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("ParentAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountType");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("ParentAccountId");
+
+                    b.HasIndex("CompanyId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("Accounts");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.Address", b =>
                 {
                     b.Property<Guid>("Id")
@@ -152,6 +231,241 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("Advertisings");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.Agent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AgentCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Area")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("FullAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("NetBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PageId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ProfileImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TotalCharges")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalPayments")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentCode")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Agents");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.AgentCommissionRate", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CommissionPercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InternetPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("InternetPlanId");
+
+                    b.HasIndex("AgentId", "InternetPlanId")
+                        .IsUnique();
+
+                    b.ToTable("AgentCommissionRates");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.AgentTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CitizenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ServiceRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("CitizenId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ServiceRequestId");
+
+                    b.HasIndex("Type");
+
+                    b.ToTable("AgentTransactions");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.AppVersion", b =>
                 {
                     b.Property<int>("Id")
@@ -245,6 +559,73 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("Areas");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.AttendanceRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CenterName")
+                        .HasColumnType("text");
+
+                    b.Property<double?>("CheckInLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("CheckInLongitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("CheckInTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("CheckOutLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("CheckOutLongitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("CheckOutTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SecurityCode")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AttendanceRecords");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.CartItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -280,6 +661,127 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("CartItems");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.CashBox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CashBoxType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CurrentBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("LinkedAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ResponsibleUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("LinkedAccountId");
+
+                    b.HasIndex("ResponsibleUserId");
+
+                    b.ToTable("CashBoxes");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.CashTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CashBoxId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ReferenceType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashBoxId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.ToTable("CashTransactions");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.Category", b =>
@@ -1079,6 +1581,206 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.EmployeeSalary", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Allowances")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("BaseSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Bonuses")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Deductions")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("NetSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("EmployeeSalaries");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.Expense", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("AttachmentUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("ExpenseDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("PaidFromCashBoxId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("ExpenseDate");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("PaidFromCashBoxId");
+
+                    b.ToTable("Expenses");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.ISPSubscriber", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Agent")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Dash")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MotherName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Region")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ISPSubscribers");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.InternetPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1143,6 +1845,10 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<decimal>("ProfitAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -1161,6 +1867,145 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.HasIndex("CompanyId");
 
                     b.ToTable("InternetPlans");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.JournalEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("EntryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EntryNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReferenceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ReferenceType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TotalCredit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalDebit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedById");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("EntryDate");
+
+                    b.HasIndex("ReferenceType");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("CompanyId", "EntryNumber")
+                        .IsUnique();
+
+                    b.ToTable("JournalEntries");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.JournalEntryLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CreditAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("DebitAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.ToTable("JournalEntryLines");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.Merchant", b =>
@@ -1286,6 +2131,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("BodyAr")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1309,6 +2157,12 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceType")
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("SentAt")
                         .HasColumnType("timestamp with time zone");
@@ -2222,6 +3076,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("AgentId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Area")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -2235,10 +3092,7 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CitizenId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CitizenId1")
+                    b.Property<Guid?>("CitizenId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("City")
@@ -2271,6 +3125,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<decimal?>("FinalCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("InternetPlanId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -2323,15 +3180,17 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AgentId");
+
                     b.HasIndex("AssignedToId");
 
                     b.HasIndex("CitizenId");
 
-                    b.HasIndex("CitizenId1");
-
                     b.HasIndex("CompanyId");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("InternetPlanId");
 
                     b.HasIndex("OperationTypeId");
 
@@ -2458,7 +3317,7 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<Guid>("ChangedById")
+                    b.Property<Guid?>("ChangedById")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -2792,6 +3651,148 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("StoreProducts");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.SubscriptionLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActivatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ActivationDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ActivationTime")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ApiResponse")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BundleId")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("CommitmentPeriod")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CurrentStatus")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CustomerId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CustomerName")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("CustomerWalletBalanceBefore")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeviceUsername")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EndDate")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FatInfo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FbgInfo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FdtInfo")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrinted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsWhatsAppSent")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OperationType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartnerId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartnerName")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("PartnerWalletBalanceBefore")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PaymentStatus")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlanName")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("PlanPrice")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("SessionId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StartDate")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SubscriptionId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SubscriptionNotes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TechnicianName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("WalletBalanceAfter")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("WalletBalanceBefore")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("ZoneId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ZoneName")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SubscriptionLogs");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.SupportTicket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2874,6 +3875,218 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("SupportTickets");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.TaskAudit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AuditStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("AuditedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AuditedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RequestNumber")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ServiceRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TaskAudits");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.TechnicianCollection", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("CashBoxId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CitizenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CollectionDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeliveredToUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDelivered")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReceiptNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ReceivedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ServiceRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TechnicianId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashBoxId");
+
+                    b.HasIndex("CitizenId");
+
+                    b.HasIndex("CollectionDate");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("DeliveredToUserId");
+
+                    b.HasIndex("IsDelivered");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("ServiceRequestId");
+
+                    b.HasIndex("TechnicianId");
+
+                    b.ToTable("TechnicianCollections");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.TechnicianTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReceivedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ServiceRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TechnicianId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("ServiceRequestId");
+
+                    b.HasIndex("TechnicianId");
+
+                    b.ToTable("TechnicianTransactions");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.TemplatePermission", b =>
@@ -3059,15 +4272,24 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Salary")
+                    b.Property<decimal?>("Salary")
                         .HasPrecision(18, 2)
-                        .HasColumnType("text");
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<string>("SecondSystemPermissions")
                         .HasColumnType("text");
 
                     b.Property<string>("SecondSystemPermissionsV2")
                         .HasColumnType("text");
+
+                    b.Property<decimal>("TechNetBalance")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("TechTotalCharges")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("TechTotalPayments")
+                        .HasColumnType("numeric");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -3181,6 +4403,115 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("WishlistItems");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.WorkCenter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("RadiusMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WorkCenters");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.ZoneStatistic", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActiveUsers")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Fats")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("InactiveUsers")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RegionName")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalUsers")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ZoneName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ZoneStatistics");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.Account", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.Account", "ParentAccount")
+                        .WithMany("SubAccounts")
+                        .HasForeignKey("ParentAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Company");
+
+                    b.Navigation("ParentAccount");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.Address", b =>
                 {
                     b.HasOne("Sadara.Domain.Entities.Area", "Area")
@@ -3206,6 +4537,69 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("Customer");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.Agent", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.AgentCommissionRate", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Agent", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.InternetPlan", "InternetPlan")
+                        .WithMany()
+                        .HasForeignKey("InternetPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("InternetPlan");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.AgentTransaction", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Agent", "Agent")
+                        .WithMany("Transactions")
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.Citizen", "Citizen")
+                        .WithMany()
+                        .HasForeignKey("CitizenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.ServiceRequest", "ServiceRequest")
+                        .WithMany()
+                        .HasForeignKey("ServiceRequestId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Citizen");
+
+                    b.Navigation("ServiceRequest");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.Area", b =>
                 {
                     b.HasOne("Sadara.Domain.Entities.City", "City")
@@ -3215,6 +4609,17 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("City");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.AttendanceRecord", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.CartItem", b =>
@@ -3234,6 +4639,57 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.CashBox", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.Account", "LinkedAccount")
+                        .WithMany()
+                        .HasForeignKey("LinkedAccountId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.User", "ResponsibleUser")
+                        .WithMany()
+                        .HasForeignKey("ResponsibleUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Company");
+
+                    b.Navigation("LinkedAccount");
+
+                    b.Navigation("ResponsibleUser");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.CashTransaction", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.CashBox", "CashBox")
+                        .WithMany("Transactions")
+                        .HasForeignKey("CashBoxId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CashBox");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("JournalEntry");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.Category", b =>
@@ -3403,6 +4859,73 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.EmployeeSalary", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.Expense", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.CashBox", "PaidFromCashBox")
+                        .WithMany()
+                        .HasForeignKey("PaidFromCashBoxId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("PaidFromCashBox");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.InternetPlan", b =>
                 {
                     b.HasOne("Sadara.Domain.Entities.Company", "Company")
@@ -3411,6 +4934,51 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.JournalEntry", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.User", "ApprovedBy")
+                        .WithMany()
+                        .HasForeignKey("ApprovedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ApprovedBy");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.JournalEntryLine", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Account", "Account")
+                        .WithMany("JournalEntryLines")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany("Lines")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("JournalEntry");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.Merchant", b =>
@@ -3599,6 +5167,11 @@ namespace Sadara.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Sadara.Domain.Entities.ServiceRequest", b =>
                 {
+                    b.HasOne("Sadara.Domain.Entities.Agent", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Sadara.Domain.Entities.User", "AssignedTo")
                         .WithMany()
                         .HasForeignKey("AssignedToId")
@@ -3607,19 +5180,16 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.HasOne("Sadara.Domain.Entities.User", "Citizen")
                         .WithMany()
                         .HasForeignKey("CitizenId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Sadara.Domain.Entities.Citizen", null)
-                        .WithMany("ServiceRequests")
-                        .HasForeignKey("CitizenId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Sadara.Domain.Entities.Company", "Company")
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.InternetPlan", "InternetPlan")
+                        .WithMany()
+                        .HasForeignKey("InternetPlanId");
 
                     b.HasOne("Sadara.Domain.Entities.OperationType", "OperationType")
                         .WithMany()
@@ -3638,11 +5208,15 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasForeignKey("TechnicianId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.Navigation("Agent");
+
                     b.Navigation("AssignedTo");
 
                     b.Navigation("Citizen");
 
                     b.Navigation("Company");
+
+                    b.Navigation("InternetPlan");
 
                     b.Navigation("OperationType");
 
@@ -3694,8 +5268,7 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.HasOne("Sadara.Domain.Entities.User", "ChangedBy")
                         .WithMany()
                         .HasForeignKey("ChangedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Sadara.Domain.Entities.ServiceRequest", "ServiceRequest")
                         .WithMany("StatusHistory")
@@ -3806,6 +5379,85 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("Company");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.TechnicianCollection", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.CashBox", "CashBox")
+                        .WithMany()
+                        .HasForeignKey("CashBoxId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.Citizen", "Citizen")
+                        .WithMany()
+                        .HasForeignKey("CitizenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.User", "DeliveredToUser")
+                        .WithMany()
+                        .HasForeignKey("DeliveredToUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.JournalEntry", "JournalEntry")
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.ServiceRequest", "ServiceRequest")
+                        .WithMany()
+                        .HasForeignKey("ServiceRequestId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Sadara.Domain.Entities.User", "Technician")
+                        .WithMany()
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CashBox");
+
+                    b.Navigation("Citizen");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("DeliveredToUser");
+
+                    b.Navigation("JournalEntry");
+
+                    b.Navigation("ServiceRequest");
+
+                    b.Navigation("Technician");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.TechnicianTransaction", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.ServiceRequest", "ServiceRequest")
+                        .WithMany()
+                        .HasForeignKey("ServiceRequestId");
+
+                    b.HasOne("Sadara.Domain.Entities.User", "Technician")
+                        .WithMany()
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+
+                    b.Navigation("ServiceRequest");
+
+                    b.Navigation("Technician");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.TemplatePermission", b =>
                 {
                     b.HasOne("Sadara.Domain.Entities.Permission", "Permission")
@@ -3906,6 +5558,23 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.Account", b =>
+                {
+                    b.Navigation("JournalEntryLines");
+
+                    b.Navigation("SubAccounts");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.Agent", b =>
+                {
+                    b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.CashBox", b =>
+                {
+                    b.Navigation("Transactions");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.Category", b =>
                 {
                     b.Navigation("Products");
@@ -3916,8 +5585,6 @@ namespace Sadara.Infrastructure.Data.Migrations
             modelBuilder.Entity("Sadara.Domain.Entities.Citizen", b =>
                 {
                     b.Navigation("Payments");
-
-                    b.Navigation("ServiceRequests");
 
                     b.Navigation("Subscriptions");
 
@@ -3949,6 +5616,11 @@ namespace Sadara.Infrastructure.Data.Migrations
             modelBuilder.Entity("Sadara.Domain.Entities.InternetPlan", b =>
                 {
                     b.Navigation("CitizenSubscriptions");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.JournalEntry", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.Merchant", b =>

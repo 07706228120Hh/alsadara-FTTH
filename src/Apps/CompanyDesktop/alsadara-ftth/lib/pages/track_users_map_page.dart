@@ -42,6 +42,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
   }
 
   Future<void> _fetchAndUpdateMarkers() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
@@ -85,6 +86,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
             }
           }
         }
+        if (!mounted) return;
         setState(() {
           _markers
             ..clear()
@@ -96,6 +98,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
     } catch (e) {
       debugPrint("خطأ عند جلب المواقع: $e");
     }
+    if (!mounted) return;
     setState(() {
       _loading = false;
     });

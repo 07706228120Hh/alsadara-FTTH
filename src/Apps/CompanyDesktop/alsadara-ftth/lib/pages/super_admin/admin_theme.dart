@@ -1,3 +1,5 @@
+/// ⚠️ ملف قديم - تم التوحيد في EnergyDashboardTheme
+/// @deprecated استخدم lib/theme/energy_dashboard_theme.dart بدلاً من هذا الملف
 /// ثيم عصري لنظام مدير النظام
 /// تصميم نظيف وحديث بألوان فاتحة ومريحة للعين
 library;

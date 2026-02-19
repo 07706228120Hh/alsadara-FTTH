@@ -5,10 +5,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:math';
-import '../config/app_secrets.dart';
+import '../services/isp_subscribers_api_service.dart';
 
 class EnhancedSearchUsersPage extends StatefulWidget {
   const EnhancedSearchUsersPage({super.key});
@@ -19,9 +17,8 @@ class EnhancedSearchUsersPage extends StatefulWidget {
 }
 
 class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
-  // 🔒 تم نقل المفتاح إلى AppSecrets
-  String get apiKey => appSecrets.googleSheetsApiKey;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
+  final ISPSubscribersApiService _ispService =
+      ISPSubscribersApiService.instance;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -371,49 +368,16 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
     });
 
     try {
-      debugPrint('🔄 Loading regions from Google Sheets...');
-      final regionsUrl =
-          'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/users!B2:B?key=$apiKey';
+      debugPrint('🔄 Loading regions from VPS API...');
+      final regions = await _ispService.getRegions();
 
-      debugPrint('📡 Regions URL: $regionsUrl');
-      final response = await http.get(Uri.parse(regionsUrl));
-
-      debugPrint('📊 Regions Response Status: ${response.statusCode}');
-      debugPrint('📊 Regions Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint('📋 Parsed data: $data');
-
-        final values = data['values'] as List?;
-        debugPrint('📋 Values from sheet: $values');
-
-        if (values != null) {
-          debugPrint('📋 Processing ${values.length} rows');
-          for (int i = 0; i < values.length; i++) {
-            var row = values[i];
-            debugPrint('📋 Row $i: $row');
-            if (row.isNotEmpty) {
-              String region = row[0]?.toString() ?? '';
-              debugPrint('📋 Adding region: "$region"');
-              if (region.isNotEmpty) {
-                uniqueRegions.add(region);
-              }
-            }
-          }
-        } else {
-          debugPrint('⚠️ No values found in response');
-        }
-
-        debugPrint('✅ Loaded ${uniqueRegions.length} regions successfully');
-        debugPrint('📋 All regions: ${uniqueRegions.toList()}');
-        setState(() {
-          filteredRegions = uniqueRegions.toList()..sort();
-          isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load regions');
-      }
+      debugPrint('✅ Loaded ${regions.length} regions successfully');
+      debugPrint('📋 All regions: $regions');
+      setState(() {
+        uniqueRegions = regions.toSet();
+        filteredRegions = uniqueRegions.toList()..sort();
+        isLoading = false;
+      });
     } catch (e) {
       debugPrint('❌ Error loading regions: $e');
       setState(() {
@@ -438,7 +402,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
   }
 
   //============================================================================
-  // (3) جلب بيانات المستخدمين للمنطقة المحددة مع التصفية المباشرة
+  // (3) جلب بيانات المستخدمين للمنطقة المحددة
   //============================================================================
   Future<void> fetchUsersWithQuery(String region) async {
     setState(() {
@@ -449,114 +413,25 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
     });
 
     try {
-      debugPrint('🔄 Loading users for region: $region using Query API');
+      debugPrint('🔄 Loading users for region: $region from VPS API');
 
-      final query =
-          Uri.encodeComponent('SELECT A, B, C, D, E WHERE B = "$region"');
-      final queryUrl =
-          'https://docs.google.com/spreadsheets/d/$spreadsheetId/gviz/tq?tqx=out:json&tq=$query&sheet=users';
+      final result = await _ispService.getByRegion(region);
 
-      debugPrint('📡 Query URL: $queryUrl');
-
-      final response = await http.get(Uri.parse(queryUrl));
-
-      debugPrint('📊 Query Response Status: ${response.statusCode}');
-      debugPrint('📊 Query Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        String responseBody = response.body;
-
-        if (responseBody
-            .startsWith('/*O_o*/\ngoogle.visualization.Query.setResponse(')) {
-          responseBody = responseBody.substring(
-              '/*O_o*/\ngoogle.visualization.Query.setResponse('.length);
-          responseBody = responseBody.substring(0, responseBody.length - 2);
-        }
-
-        final data = json.decode(responseBody);
-        final table = data['table'];
-        final rows = table['rows'] as List?;
-
-        debugPrint(
-            '📋 Found ${rows?.length ?? 0} filtered rows for region "$region"');
-
-        if (rows != null) {
-          for (int i = 0; i < rows.length; i++) {
-            final row = rows[i];
-            final cells = row['c'] as List?;
-
-            if (cells != null && cells.length >= 5) {
-              users.add({
-                'name': cells[0]?['v']?.toString() ?? '',
-                'region': cells[1]?['v']?.toString() ?? '',
-                'agent': cells[2]?['v']?.toString() ?? '',
-                'dash': cells[3]?['v']?.toString() ?? '',
-                'mother': cells[4]?['v']?.toString() ?? '',
-              });
-              debugPrint('✅ Added user: ${cells[0]?['v']?.toString() ?? ""}');
-            }
-          }
-          debugPrint(
-              '✅ Loaded ${users.length} users for region "$region" using direct filtering');
-        }
-
-        setState(() => isLoading = false);
-      } else {
-        throw Exception('Failed to load users with query');
+      for (var item in result) {
+        users.add({
+          'name': item['Name']?.toString() ?? '',
+          'region': item['Region']?.toString() ?? '',
+          'agent': item['Agent']?.toString() ?? '',
+          'dash': item['Dash']?.toString() ?? '',
+          'mother': item['MotherName']?.toString() ?? '',
+        });
       }
+
+      debugPrint('✅ Loaded ${users.length} users for region "$region"');
+
+      setState(() => isLoading = false);
     } catch (e) {
-      debugPrint('❌ Error loading users with query: $e');
-      debugPrint('📋 Falling back to regular method...');
-      await _fetchUsersRegular(region);
-    }
-  }
-
-  //============================================================================
-  // (3.1) الطريقة العادية لجلب المستخدمين (fallback)
-  //============================================================================
-  Future<void> _fetchUsersRegular(String region) async {
-    try {
-      debugPrint('🔄 Loading users for region: $region with regular method');
-
-      final usersUrl =
-          'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/users!A2:E?key=$apiKey';
-
-      debugPrint('📡 Users URL: $usersUrl');
-      final response = await http.get(Uri.parse(usersUrl));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final values = data['values'] as List?;
-
-        if (values != null) {
-          int matchedUsers = 0;
-          for (int i = 0; i < values.length; i++) {
-            var row = values[i];
-
-            if (row.isNotEmpty && row.length > 1) {
-              final userRegion = row[1]?.toString() ?? '';
-
-              if (userRegion == region) {
-                matchedUsers++;
-                users.add({
-                  'name': row[0]?.toString() ?? '',
-                  'region': userRegion,
-                  'agent': row[2]?.toString() ?? '',
-                  'dash': row[3]?.toString() ?? '',
-                  'mother': row[4]?.toString() ?? '',
-                });
-              }
-            }
-          }
-          debugPrint('✅ Found $matchedUsers users for region "$region"');
-        }
-
-        setState(() => isLoading = false);
-      } else {
-        throw Exception('Failed to load users');
-      }
-    } catch (e) {
-      debugPrint('❌ Error in regular fetch: $e');
+      debugPrint('❌ Error loading users: $e');
       setState(() {
         isLoading = false;
         hasError = true;
@@ -669,38 +544,24 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
   }
 
   //============================================================================
-  // اختبار الاتصال بـ Google Sheets
+  // اختبار الاتصال بـ VPS API
   //============================================================================
-  Future<void> _testGoogleSheetsConnection() async {
+  Future<void> _testApiConnection() async {
     setState(() {
       isLoading = true;
       hasError = false;
     });
 
     try {
-      debugPrint('🧪 Testing Google Sheets connection...');
+      debugPrint('🧪 Testing VPS API connection...');
 
-      final testUrl =
-          'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/users!A1:E1?key=$apiKey';
+      final regions = await _ispService.getRegions();
 
-      debugPrint('📡 Test URL: $testUrl');
-      final response = await http.get(Uri.parse(testUrl));
-
-      debugPrint('📊 Test Response Status: ${response.statusCode}');
-      debugPrint('📊 Test Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final values = data['values'] as List?;
-
-        if (values != null && values.isNotEmpty) {
-          debugPrint('✅ Connection successful! Headers: ${values[0]}');
-          _showSuccess('تم الاتصال بنجاح مع Google Sheets');
-        } else {
-          _showError('تم الاتصال ولكن لا توجد بيانات');
-        }
+      if (regions.isNotEmpty) {
+        debugPrint('✅ Connection successful! Found ${regions.length} regions');
+        _showSuccess('تم الاتصال بنجاح - ${regions.length} منطقة');
       } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+        _showError('تم الاتصال ولكن لا توجد بيانات');
       }
 
       setState(() => isLoading = false);
@@ -711,7 +572,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
         hasError = true;
         errorMessage = 'فشل الاتصال: $e';
       });
-      _showError('فشل الاتصال مع Google Sheets: $e');
+      _showError('فشل الاتصال: $e');
     }
   }
 
@@ -872,7 +733,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
-                    onPressed: isLoading ? null : _testGoogleSheetsConnection,
+                    onPressed: isLoading ? null : _testApiConnection,
                     icon: const Icon(Icons.cloud_sync),
                     label: const Text('اختبار الاتصال'),
                     style: ElevatedButton.styleFrom(

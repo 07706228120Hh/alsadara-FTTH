@@ -9,8 +9,12 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
-import 'package:gsheets/gsheets.dart';
+import 'dart:io';
+import 'package:excel/excel.dart' as ex;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import '../../services/permissions_service.dart';
+import '../../services/permission_checker.dart';
 
 // تم تحديث الواجهة لتصبح أكثر عصرية وحداثة بدون إضافة حزم خارجية
 // ركزنا على: ألوان متدرجة، بطاقات تفاعلية، حركات انتقالية، وتحسين عرض التقدم والرسائل
@@ -196,7 +200,7 @@ class _ExportPageState extends State<ExportPage>
   bool _passwordDialogShown =
       false; // حارس لمنع تكرار إظهار مربع كلمة المرور وبالتالي بقاء حاجز شفاف
   final TextEditingController passwordController = TextEditingController();
-  final String spreadsheetId = '1Vc9Syd7D0mo6EGnIsdMA-sVCpvWsAQ7NGnvZf8knXKE';
+
   final Duration timeout = const Duration(minutes: 5);
   late final AnimationController _bgController; // متحكم لتحريك الخلفية الملونة
 
@@ -366,50 +370,7 @@ class _ExportPageState extends State<ExportPage>
     }
   }
 
-  Future<void> _clearSheetData(Worksheet sheet) async {
-    try {
-      final rowCount = sheet.rowCount;
-      if (rowCount > 1) {
-        final headerRow = await sheet.values.row(1);
-        final columnCount = headerRow.length;
-
-        final lastColumnLetter = String.fromCharCode(65 + columnCount - 1);
-        final range = 'A2:$lastColumnLetter$rowCount';
-
-        setState(() {
-          exportMessage = "جاري مسح البيانات...";
-        });
-
-        await sheet.values.clear(range);
-
-        final secondRow = await sheet.values.row(2);
-        debugPrint("محتويات السطر الثاني بعد المسح: $secondRow");
-
-        if (rowCount > 2) {
-          await sheet.deleteRow(2, count: rowCount - 1);
-        }
-
-        setState(() {
-          exportMessage = "تم مسح البيانات بنجاح";
-        });
-
-        debugPrint("تم مسح البيانات السابقة بنجاح");
-      } else {
-        debugPrint("لا توجد بيانات لمسحها.");
-      }
-    } catch (e) {
-      debugPrint("خطأ في مسح البيانات السابقة: $e");
-      throw Exception("فشل في مسح البيانات السابقة: $e");
-    }
-  }
-
-  Future<Worksheet> _getOrCreateSheet(Spreadsheet ss, String sheetName) async {
-    var sheet = ss.worksheetByTitle(sheetName);
-    sheet ??= await ss.addWorksheet(sheetName);
-    return sheet;
-  }
-
-  Future<void> _exportToGoogleSheets(String apiUrl, List<String> headers,
+  Future<void> _exportToExcel(String apiUrl, List<String> headers,
       {required String sheetName}) async {
     if (!isAuthenticated) return;
 
@@ -428,23 +389,23 @@ class _ExportPageState extends State<ExportPage>
     });
 
     try {
-      final credentials =
-          await rootBundle.loadString('assets/service_account.json');
-      final gsheets = GSheets(credentials);
-      final ss = await gsheets.spreadsheet(spreadsheetId);
-      final sheet = await _getOrCreateSheet(ss, sheetName);
+      final excel = ex.Excel.createExcel();
+      final sheet = excel[sheetName];
+      // Remove default Sheet1 if different
+      if (sheetName != 'Sheet1' && excel.sheets.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
+      }
 
-      setState(() {
-        exportMessage = "جاري مسح البيانات القديمة...";
-      });
-
-      await _retryOperation(() => _clearSheetData(sheet), 3);
-      await sheet.values.insertRow(1, headers);
+      // Write header row
+      for (int i = 0; i < headers.length; i++) {
+        sheet
+            .cell(ex.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+            .value = ex.TextCellValue(headers[i]);
+      }
 
       int currentPage = 1;
       final pageSize = 150;
       int totalProcessed = 0;
-      List<List<dynamic>> batchRows = [];
 
       while (true) {
         if (isCancelled) {
@@ -493,7 +454,7 @@ class _ExportPageState extends State<ExportPage>
                 totalProcessed + 1,
                 item['customer']?['displayValue'] ?? 'غير معروف',
                 item['customer']?['id'] ?? 'غير معروف',
-                item['self']?['id'] ?? 'غير معروف', // إضافة self.id
+                item['self']?['id'] ?? 'غير معروف',
                 item['username'] ?? 'غير معروف',
                 item['services']?.first?['displayValue'] ?? 'غير معروف',
                 item['status'] ?? 'غير معروف',
@@ -510,23 +471,22 @@ class _ExportPageState extends State<ExportPage>
               row = [totalProcessed + 1, customerId, customerName, phone];
             }
 
-            batchRows.add(row);
+            final rowIndex = totalProcessed + 1; // +1 for header
+            for (int i = 0; i < row.length; i++) {
+              sheet
+                  .cell(ex.CellIndex.indexByColumnRow(
+                      columnIndex: i, rowIndex: rowIndex))
+                  .value = ex.TextCellValue(row[i].toString());
+            }
             totalProcessed++;
-          }
-
-          if (batchRows.length >= 450 || items.length < pageSize) {
-            setState(() {
-              exportMessage = "جاري كتابة البيانات... ($totalProcessed سجل)";
-            });
-            await sheet.values.appendRows(batchRows);
-            batchRows.clear();
-            await _optimizeMemory();
           }
 
           setState(() {
             exportTotalProgress = totalProcessed / (data['totalCount'] as num);
             exportMessage = "تم تجهيز $totalProcessed سجل";
           });
+
+          await _optimizeMemory();
 
           if (!apiUrl.contains('addresses')) {
             currentPage++;
@@ -538,12 +498,30 @@ class _ExportPageState extends State<ExportPage>
         }
       }
 
-      if (batchRows.isNotEmpty) {
-        await sheet.values.appendRows(batchRows);
+      // Save Excel file
+      setState(() {
+        exportMessage = "جاري حفظ الملف...";
+      });
+
+      final dir = await getApplicationDocumentsDirectory();
+      final exportDir = Directory('${dir.path}/ftth_exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .split('.')
+          .first;
+      final filePath = '${exportDir.path}/${sheetName}_$timestamp.xlsx';
+      final fileBytes = excel.save();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
       }
 
       setState(() {
-        exportMessage = "تم تصدير $totalProcessed سجل بنجاح!";
+        exportMessage = "تم تصدير $totalProcessed سجل بنجاح!\n$filePath";
         exportTotalProgress = 1.0;
       });
     } catch (e) {
@@ -558,7 +536,7 @@ class _ExportPageState extends State<ExportPage>
     }
   }
 
-  Future<void> _exportCustomerDetails() async {
+  Future<void> _exportCustomerDetailsToExcel() async {
     if (!isAuthenticated) return;
 
     if (!await _checkInternetConnection()) {
@@ -576,18 +554,13 @@ class _ExportPageState extends State<ExportPage>
     });
 
     try {
-      final credentials =
-          await rootBundle.loadString('assets/service_account.json');
-      final gsheets = GSheets(credentials);
-      final ss = await gsheets.spreadsheet(spreadsheetId);
-      final sheet = await _getOrCreateSheet(ss, 'SUP details');
+      final excel = ex.Excel.createExcel();
+      final sheet = excel['SUP details'];
+      if (excel.sheets.containsKey('Sheet1')) {
+        excel.delete('Sheet1');
+      }
 
-      setState(() {
-        exportMessage = "جاري مسح البيانات القديمة...";
-      });
-
-      await _retryOperation(() => _clearSheetData(sheet), 3);
-      await sheet.values.insertRow(1, [
+      final detailHeaders = [
         'N',
         'ID',
         'اسم المستخدم',
@@ -596,12 +569,16 @@ class _ExportPageState extends State<ExportPage>
         'المنطقة',
         'FAT',
         'GPS'
-      ]);
+      ];
+      for (int i = 0; i < detailHeaders.length; i++) {
+        sheet
+            .cell(ex.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+            .value = ex.TextCellValue(detailHeaders[i]);
+      }
 
       int currentPage = 1;
       final pageSize = 100;
       int totalProcessed = 0;
-      List<List<dynamic>> batchRows = [];
 
       while (true) {
         if (isCancelled) {
@@ -682,42 +659,33 @@ class _ExportPageState extends State<ExportPage>
               final detailsItems = detailsData['items'] as List? ?? [];
 
               for (final item in detailsItems) {
-                final List<dynamic> row = [
-                  totalProcessed + 1,
-                  item['customer']?['id'] ?? 'غير معروف',
-                  item['deviceDetails']?['username'] ?? 'غير معروف',
-                  item['customer']?['displayValue'] ?? 'غير معروف',
-                  item['deviceDetails']?['serial'] ?? 'غير معروف',
-                  item['zone']?['displayValue'] ?? 'غير معروف',
-                  item['deviceDetails']?['fat']?['displayValue'] ?? 'غير معروف',
+                final row = [
+                  (totalProcessed + 1).toString(),
+                  (item['customer']?['id'] ?? 'غير معروف').toString(),
+                  (item['deviceDetails']?['username'] ?? 'غير معروف')
+                      .toString(),
+                  (item['customer']?['displayValue'] ?? 'غير معروف').toString(),
+                  (item['deviceDetails']?['serial'] ?? 'غير معروف').toString(),
+                  (item['zone']?['displayValue'] ?? 'غير معروف').toString(),
+                  (item['deviceDetails']?['fat']?['displayValue'] ??
+                          'غير معروف')
+                      .toString(),
                   '${item['gpsCoordinate']?['latitude'] ?? ''}, ${item['gpsCoordinate']?['longitude'] ?? ''}'
                 ];
 
-                batchRows.add(row);
-                totalProcessed++;
-
-                if (batchRows.length >= 1000) {
-                  setState(() {
-                    exportMessage =
-                        "جاري كتابة البيانات... ($totalProcessed سجل)";
-                  });
-                  await sheet.values.appendRows(batchRows);
-                  batchRows.clear();
-                  await _optimizeMemory();
+                final rowIndex = totalProcessed + 1;
+                for (int j = 0; j < row.length; j++) {
+                  sheet
+                      .cell(ex.CellIndex.indexByColumnRow(
+                          columnIndex: j, rowIndex: rowIndex))
+                      .value = ex.TextCellValue(row[j]);
                 }
+                totalProcessed++;
               }
             } else {
               throw Exception(
                   "فشل جلب تفاصيل المشتركين: ${detailsResponse.statusCode}");
             }
-          }
-
-          if (batchRows.isNotEmpty) {
-            setState(() {
-              exportMessage = "جاري كتابة البيانات... ($totalProcessed سجل)";
-            });
-            await sheet.values.appendRows(batchRows);
-            batchRows.clear();
           }
 
           if (customersItems.length < pageSize) break;
@@ -728,9 +696,31 @@ class _ExportPageState extends State<ExportPage>
         }
       }
 
+      // Save Excel file
+      setState(() {
+        exportMessage = "جاري حفظ الملف...";
+      });
+
+      final dir = await getApplicationDocumentsDirectory();
+      final exportDir = Directory('${dir.path}/ftth_exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .split('.')
+          .first;
+      final filePath = '${exportDir.path}/SUP_details_$timestamp.xlsx';
+      final fileBytes = excel.save();
+      if (fileBytes != null) {
+        await File(filePath).writeAsBytes(fileBytes);
+        await OpenFile.open(filePath);
+      }
+
       setState(() {
         exportTotalProgress = 1.0;
-        exportMessage = "تم تصدير $totalProcessed سجل بنجاح!";
+        exportMessage = "تم تصدير $totalProcessed سجل بنجاح!\n$filePath";
       });
     } catch (e) {
       setState(() {
@@ -776,7 +766,10 @@ class _ExportPageState extends State<ExportPage>
             centerTitle: true,
             title: ShaderMask(
               shaderCallback: (rect) => LinearGradient(
-                colors: [scheme.onPrimary, scheme.onPrimary.withValues(alpha: 0.75)],
+                colors: [
+                  scheme.onPrimary,
+                  scheme.onPrimary.withValues(alpha: 0.75)
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ).createShader(rect),
@@ -851,6 +844,16 @@ class _ExportPageState extends State<ExportPage>
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 18),
                             itemBuilder: (context, index) {
+                              if (!PermissionManager.instance
+                                  .canExport('export')) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text('لا تملك صلاحية التصدير',
+                                        style: TextStyle(color: Colors.grey)),
+                                  ),
+                                );
+                              }
                               switch (index) {
                                 case 0:
                                   return Align(
@@ -864,7 +867,7 @@ class _ExportPageState extends State<ExportPage>
                                         Color(0xFFFFC107),
                                         Color(0xFFFF9800),
                                       ],
-                                      onPressed: () => _exportToGoogleSheets(
+                                      onPressed: () => _exportToExcel(
                                         'https://api.ftth.iq/api/customers',
                                         [
                                           'N',
@@ -888,7 +891,7 @@ class _ExportPageState extends State<ExportPage>
                                         Color(0xFFFF7043), // deepOrange lighten
                                         Color(0xFFFF5722), // deepOrange base
                                       ],
-                                      onPressed: () => _exportToGoogleSheets(
+                                      onPressed: () => _exportToExcel(
                                         'https://api.ftth.iq/api/subscriptions',
                                         [
                                           'N',
@@ -919,7 +922,7 @@ class _ExportPageState extends State<ExportPage>
                                         Color(0xFFE040FB),
                                         Color(0xFF7C4DFF),
                                       ],
-                                      onPressed: _exportCustomerDetails,
+                                      onPressed: _exportCustomerDetailsToExcel,
                                     ),
                                   );
                               }
@@ -1040,7 +1043,8 @@ class _ModernProgressBar extends StatelessWidget {
                     height: 20,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                      color: scheme.surfaceContainerHighest
+                          .withValues(alpha: 0.35),
                     ),
                   ),
                   AnimatedContainer(
@@ -1211,8 +1215,8 @@ class _ColoredIconCircle extends StatelessWidget {
         color: (contrast == Colors.white ? Colors.black : Colors.white)
             .withValues(alpha: 0.14),
         border: Border.all(
-          color:
-              (useLightBorder ? Colors.white : Colors.black).withValues(alpha: 0.30),
+          color: (useLightBorder ? Colors.white : Colors.black)
+              .withValues(alpha: 0.30),
           width: 1.1,
         ),
         boxShadow: [
@@ -1269,10 +1273,6 @@ class _ColoredIconCircle extends StatelessWidget {
       ),
     );
   }
-}
-
-extension on WorksheetAsValues {
-  clear(String range) {}
 }
 
 // تفتيح/تغميق بسيط للّون لإنشاء تدرج واضح بدون شفافية

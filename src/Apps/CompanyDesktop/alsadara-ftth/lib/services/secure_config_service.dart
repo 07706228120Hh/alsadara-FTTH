@@ -1,4 +1,3 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureConfigService {
@@ -11,16 +10,9 @@ class SecureConfigService {
     ),
   );
 
-  // Google Sheets Configuration
-  static String get googleSheetsApiKey => dotenv.env['GOOGLE_SHEETS_API_KEY'] ?? '';
-  static String get spreadsheetId => dotenv.env['GOOGLE_SHEETS_SPREADSHEET_ID'] ?? '';
-  static String get sheetsRange => dotenv.env['GOOGLE_SHEETS_RANGE'] ?? 'المستخدمين!A2:J';
-
   // التحقق من صحة التكوين
   static bool get isConfigValid {
-    return googleSheetsApiKey.isNotEmpty && 
-           spreadsheetId.isNotEmpty && 
-           sheetsRange.isNotEmpty;
+    return true; // تم الانتقال إلى VPS API
   }
 
   // حفظ بيانات المستخدم بشكل آمن

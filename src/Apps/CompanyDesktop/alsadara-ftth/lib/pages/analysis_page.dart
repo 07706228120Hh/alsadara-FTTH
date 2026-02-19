@@ -7,9 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'charts_page.dart';
 import '../widgets/responsive_body.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../config/app_secrets.dart';
+import '../services/zone_statistics_api_service.dart';
 
 class AnalysisPage extends StatefulWidget {
   const AnalysisPage({super.key});
@@ -18,11 +16,6 @@ class AnalysisPage extends StatefulWidget {
 }
 
 class _AnalysisPageState extends State<AnalysisPage> {
-  // 🔒 تم نقل المفتاح إلى AppSecrets
-  String get apiKey => appSecrets.googleSheetsApiKey;
-  final String spreadsheetId = '1MGY8UhtHaUiRaUKbohEi3a74jgEh7NeOuTEHBQ83KZc';
-  final String range = 'Sheet1!A2:E';
-
   bool isLoading = true;
   String? errorMessage;
 
@@ -88,77 +81,34 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   Future<void> fetchAnalysisData() async {
-    final url =
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$range?key=$apiKey';
-
     try {
-      final response = await http.get(Uri.parse(url));
+      final data = await ZoneStatisticsApiService.instance.getSummary();
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (data.isNotEmpty) {
+        setState(() {
+          totalZones = (data['totalZones'] ?? data['TotalZones'] ?? 0) as int;
+          totalUsers = (data['totalUsers'] ?? data['TotalUsers'] ?? 0) as int;
+          totalActiveUsers =
+              (data['totalActive'] ?? data['TotalActive'] ?? 0) as int;
+          totalInactiveUsers =
+              (data['totalInactive'] ?? data['TotalInactive'] ?? 0) as int;
+          totalFats = (data['totalFats'] ?? data['TotalFats'] ?? 0) as int;
 
-        if (data['values'] != null) {
-          final rows = data['values'] as List;
+          avgFats = (data['avgFatsPerZone'] ?? data['AvgFatsPerZone'] ?? 0.0)
+              .toDouble();
+          minFats = (data['minFats'] ?? data['MinFats'] ?? 0) as int;
+          maxFats = (data['maxFats'] ?? data['MaxFats'] ?? 0) as int;
 
-          int fatsSum = 0;
-          int usersSum = 0;
-          int activeUsersSum = 0;
-          int inactiveUsersSum = 0;
+          avgUsers = (data['avgUsersPerZone'] ?? data['AvgUsersPerZone'] ?? 0.0)
+              .toDouble();
+          minUsers = (data['minUsers'] ?? data['MinUsers'] ?? 0) as int;
+          maxUsers = (data['maxUsers'] ?? data['MaxUsers'] ?? 0) as int;
 
-          List<int> fatsList = [];
-          List<int> usersList = [];
-
-          for (var row in rows) {
-            if (row.length > 1) {
-              int fats = int.tryParse(row[1]) ?? 0;
-              fatsSum += fats;
-              fatsList.add(fats);
-            }
-            if (row.length > 2) {
-              int users = int.tryParse(row[2]) ?? 0;
-              usersSum += users;
-              usersList.add(users);
-            }
-            if (row.length > 3) {
-              int inactiveUsers = int.tryParse(row[3]) ?? 0;
-              inactiveUsersSum += inactiveUsers;
-            }
-            if (row.length > 4) {
-              int activeUsers = int.tryParse(row[4]) ?? 0;
-              activeUsersSum += activeUsers;
-            }
-          }
-
-          setState(() {
-            totalZones = rows.length;
-            totalUsers = usersSum;
-            totalActiveUsers = activeUsersSum;
-            totalInactiveUsers = inactiveUsersSum;
-            totalFats = fatsSum;
-
-            if (fatsList.isNotEmpty) {
-              minFats = fatsList.reduce((a, b) => a < b ? a : b);
-              maxFats = fatsList.reduce((a, b) => a > b ? a : b);
-              avgFats = fatsSum / fatsList.length;
-            }
-
-            if (usersList.isNotEmpty) {
-              minUsers = usersList.reduce((a, b) => a < b ? a : b);
-              maxUsers = usersList.reduce((a, b) => a > b ? a : b);
-              avgUsers = usersSum / usersList.length;
-            }
-
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            errorMessage = 'لم يتم العثور على بيانات.';
-            isLoading = false;
-          });
-        }
+          isLoading = false;
+        });
       } else {
         setState(() {
-          errorMessage = 'خطأ في جلب البيانات: ${response.statusCode}';
+          errorMessage = 'لم يتم العثور على بيانات.';
           isLoading = false;
         });
       }

@@ -36,7 +36,18 @@ public class User : BaseEntity<Guid>
     public string? Center { get; set; }
     
     /// <summary>الراتب (اختياري)</summary>
-    public string? Salary { get; set; }
+    public decimal? Salary { get; set; }
+
+    // ============ الحساب المالي للفني (ملخص محسوب) ============
+
+    /// <summary>إجمالي الأجور المترتبة على الفني</summary>
+    public decimal TechTotalCharges { get; set; } = 0;
+
+    /// <summary>إجمالي التسديدات من الفني</summary>
+    public decimal TechTotalPayments { get; set; } = 0;
+
+    /// <summary>الصافي = التسديدات - الأجور (سالب = عليه)</summary>
+    public decimal TechNetBalance { get; set; } = 0;
     
     /// <summary>
     /// صلاحيات النظام الأول (JSON)

@@ -28,6 +28,20 @@ class ApiService {
     await _storage.delete(key: 'auth_token');
   }
 
+  /// حفظ حالة "تذكرني"
+  Future<void> setRememberMe(bool value) async {
+    await _storage.write(
+      key: 'citizen_remember_me',
+      value: value ? 'true' : 'false',
+    );
+  }
+
+  /// قراءة حالة "تذكرني"
+  Future<bool> getRememberMe() async {
+    final value = await _storage.read(key: 'citizen_remember_me');
+    return value == 'true';
+  }
+
   // Authentication APIs
   Future<Map<String, dynamic>> register({
     required String fullName,

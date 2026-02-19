@@ -21,6 +21,7 @@ public static class SeedData
         await SeedPermissionTemplatesAsync(context);
         await SeedServicesAsync(context);
         await SeedOperationTypesAsync(context);
+        await SeedInternetPlansAsync(context);
         await SeedSuperAdminAsync(context);
         await context.SaveChangesAsync();
     }
@@ -440,6 +441,32 @@ public static class SeedData
                 IsActive = true,
                 DisplayOrder = 8,
                 CreatedAt = DateTime.UtcNow
+            },
+            // خدمات الإنترنت (FTTH)
+            new()
+            {
+                Id = 9,
+                Name = "Internet FTTH",
+                NameAr = "خدمات الإنترنت - فايبر",
+                Description = "اشتراكات الإنترنت بالألياف الضوئية FTTH",
+                Icon = "wifi",
+                Color = "#0EA5E9",
+                IsActive = true,
+                DisplayOrder = 0, // أولوية عالية
+                CreatedAt = DateTime.UtcNow
+            },
+            // عمليات الوكلاء
+            new()
+            {
+                Id = 10,
+                Name = "Agent Operations",
+                NameAr = "عمليات الوكلاء",
+                Description = "طلبات الوكلاء المالية (رصيد، مديونية، ماستر)",
+                Icon = "storefront",
+                Color = "#E91E63",
+                IsActive = true,
+                DisplayOrder = 10,
+                CreatedAt = DateTime.UtcNow
             }
         };
 
@@ -553,6 +580,62 @@ public static class SeedData
                 EstimatedDays = 1,
                 DisplayOrder = 7,
                 CreatedAt = DateTime.UtcNow
+            },
+            // تفعيل اشتراك جديد
+            new()
+            {
+                Id = 8,
+                Name = "New Subscription",
+                NameAr = "تفعيل اشتراك جديد",
+                Icon = "fiber-new",
+                IsActive = true,
+                RequiresApproval = true,
+                RequiresTechnician = true,
+                EstimatedDays = 2,
+                DisplayOrder = 8,
+                CreatedAt = DateTime.UtcNow
+            },
+            // شحن ماستر
+            new()
+            {
+                Id = 9,
+                Name = "Master Recharge",
+                NameAr = "شحن ماستر",
+                Icon = "credit-card",
+                IsActive = true,
+                RequiresApproval = true,
+                RequiresTechnician = false,
+                EstimatedDays = 0,
+                DisplayOrder = 9,
+                CreatedAt = DateTime.UtcNow
+            },
+            // طلب رصيد
+            new()
+            {
+                Id = 10,
+                Name = "Balance Request",
+                NameAr = "طلب رصيد",
+                Icon = "account-balance-wallet",
+                IsActive = true,
+                RequiresApproval = true,
+                RequiresTechnician = false,
+                EstimatedDays = 0,
+                DisplayOrder = 10,
+                CreatedAt = DateTime.UtcNow
+            },
+            // دفع مديونية
+            new()
+            {
+                Id = 11,
+                Name = "Debt Payment",
+                NameAr = "تسديد حساب",
+                Icon = "payments",
+                IsActive = true,
+                RequiresApproval = false,
+                RequiresTechnician = false,
+                EstimatedDays = 0,
+                DisplayOrder = 11,
+                CreatedAt = DateTime.UtcNow
             }
         };
 
@@ -595,6 +678,16 @@ public static class SeedData
                     (2, 6) => 90000m,
                     (2, 7) => 15000m,
                     
+                    // Internet FTTH prices
+                    (9, 1) => 50000m,  // Installation
+                    (9, 2) => 25000m,  // Repair
+                    (9, 3) => 15000m,  // Periodic Maintenance
+                    (9, 4) => 10000m,  // Inspection
+                    (9, 5) => 40000m,  // Replacement
+                    (9, 6) => 60000m,  // Emergency
+                    (9, 7) => 10000m,  // Consultation
+                    (9, 8) => 0m,      // New Subscription (price from plan)
+                    
                     // Default price for other combinations
                     _ => 30000m
                 };
@@ -611,6 +704,96 @@ public static class SeedData
         }
 
         await context.ServiceOperations.AddRangeAsync(serviceOperations);
+    }
+
+    #endregion
+
+    #region Internet Plans
+
+    private static async Task SeedInternetPlansAsync(SadaraDbContext context)
+    {
+        if (await context.InternetPlans.AnyAsync()) return;
+
+        var plans = new List<InternetPlan>
+        {
+            new()
+            {
+                Id = Guid.Parse("a1000000-0000-0000-0000-000000000001"),
+                Name = "Fiber 25 Mbps",
+                NameAr = "فايبر 25 ميغا",
+                Description = "باقة أساسية للتصفح والاستخدام الخفيف",
+                SpeedMbps = 25,
+                MonthlyPrice = 25000m,
+                YearlyPrice = 250000m,
+                InstallationFee = 50000m,
+                DurationMonths = 1,
+                Features = "[\"تصفح الإنترنت\",\"شبكات التواصل\",\"بث فيديو SD\"]",
+                IsFeatured = false,
+                IsActive = true,
+                SortOrder = 1,
+                Color = "#3B82F6",
+                CreatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                Id = Guid.Parse("a1000000-0000-0000-0000-000000000002"),
+                Name = "Fiber 50 Mbps",
+                NameAr = "فايبر 50 ميغا",
+                Description = "باقة عائلية للاستخدام المتوسط",
+                SpeedMbps = 50,
+                MonthlyPrice = 40000m,
+                YearlyPrice = 400000m,
+                InstallationFee = 50000m,
+                DurationMonths = 1,
+                Features = "[\"تصفح الإنترنت\",\"شبكات التواصل\",\"بث فيديو HD\",\"ألعاب أونلاين\"]",
+                IsFeatured = false,
+                IsActive = true,
+                SortOrder = 2,
+                Color = "#10B981",
+                CreatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                Id = Guid.Parse("a1000000-0000-0000-0000-000000000003"),
+                Name = "Fiber 100 Mbps",
+                NameAr = "فايبر 100 ميغا",
+                Description = "باقة متقدمة للاستخدام الكثيف",
+                SpeedMbps = 100,
+                MonthlyPrice = 60000m,
+                YearlyPrice = 600000m,
+                InstallationFee = 50000m,
+                DurationMonths = 1,
+                Features = "[\"تصفح الإنترنت\",\"شبكات التواصل\",\"بث فيديو Full HD\",\"ألعاب أونلاين\",\"عمل من المنزل\"]",
+                IsFeatured = true,
+                IsActive = true,
+                SortOrder = 3,
+                Color = "#F59E0B",
+                Badge = "الأكثر طلباً",
+                CreatedAt = DateTime.UtcNow
+            },
+            new()
+            {
+                Id = Guid.Parse("a1000000-0000-0000-0000-000000000004"),
+                Name = "Fiber 200 Mbps",
+                NameAr = "فايبر 200 ميغا",
+                Description = "باقة احترافية للشركات والمستخدمين المحترفين",
+                SpeedMbps = 200,
+                MonthlyPrice = 90000m,
+                YearlyPrice = 900000m,
+                InstallationFee = 0m,
+                DurationMonths = 1,
+                Features = "[\"تصفح الإنترنت\",\"شبكات التواصل\",\"بث فيديو 4K\",\"ألعاب أونلاين\",\"عمل من المنزل\",\"تركيب مجاني\",\"دعم فني 24/7\"]",
+                IsFeatured = true,
+                IsActive = true,
+                SortOrder = 4,
+                Color = "#8B5CF6",
+                Badge = "VIP",
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+
+        await context.InternetPlans.AddRangeAsync(plans);
+        await context.SaveChangesAsync();
     }
 
     #endregion

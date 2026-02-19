@@ -16,7 +16,7 @@ class QuickSearchUsersPage extends StatefulWidget {
   final String authToken;
   final String activatedBy;
   final String? initialSearchQuery;
-  final bool hasGoogleSheetsPermission;
+  final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
   final String? firstSystemPermissions; // صلاحيات النظام الأول
   final bool? isAdminFlag; // علم إداري صريح
@@ -28,7 +28,7 @@ class QuickSearchUsersPage extends StatefulWidget {
     required this.authToken,
     required this.activatedBy,
     this.initialSearchQuery,
-    this.hasGoogleSheetsPermission = false,
+    this.hasServerSavePermission = false,
     this.hasWhatsAppPermission = false,
     this.firstSystemPermissions,
     this.isAdminFlag,
@@ -761,7 +761,8 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1A237E).withValues(alpha: 0.9),
+                            color:
+                                const Color(0xFF1A237E).withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
@@ -1032,8 +1033,8 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
-                                  color:
-                                      const Color(0xFF4CAF50).withValues(alpha: 0.18),
+                                  color: const Color(0xFF4CAF50)
+                                      .withValues(alpha: 0.18),
                                   width: 1,
                                 ),
                               ),
@@ -1262,8 +1263,8 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                             userName: userName,
                                             userPhone: userPhone,
                                             activatedBy: widget.activatedBy,
-                                            hasGoogleSheetsPermission: widget
-                                                .hasGoogleSheetsPermission,
+                                            hasServerSavePermission:
+                                                widget.hasServerSavePermission,
                                             hasWhatsAppPermission:
                                                 widget.hasWhatsAppPermission,
                                             firstSystemPermissions:
@@ -1333,7 +1334,8 @@ class _SnowPainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.fill;
     final glow = Paint()
-      ..color = const Color(0xFF90CAF9).withValues(alpha: 0.35) // أزرق فاتح كالهالة
+      ..color =
+          const Color(0xFF90CAF9).withValues(alpha: 0.35) // أزرق فاتح كالهالة
       ..style = PaintingStyle.fill
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 

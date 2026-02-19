@@ -1,0 +1,1 @@
+﻿SELECT "AgentCode", "Name", "PhoneNumber", substring("PasswordHash", 1, 20) as hash_start FROM "Agents" WHERE "IsDeleted" = false;

@@ -15,6 +15,7 @@ import '../services/auth_service.dart';
 import '../services/background_sync_service.dart';
 import '../services/permissions_service.dart';
 import 'local_subscriber_details_page.dart';
+import '../services/permission_checker.dart';
 
 class LocalStoragePage extends StatefulWidget {
   final String? authToken;
@@ -123,9 +124,11 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   Future<void> _loadPermissions() async {
     final hasImport = await PermissionsService.hasSecondSystemPermission(
         'local_storage_import');
+    // Also check V2 import action
+    final hasV2Import = PermissionManager.instance.canImport('local_storage');
     if (mounted) {
       setState(() {
-        _hasImportPermission = hasImport;
+        _hasImportPermission = hasImport || hasV2Import;
       });
     }
   }
@@ -1665,7 +1668,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     ),
                     title: const Text('تصدير إلى Excel'),
                     subtitle: const Text('تصدير جميع البيانات لملف Excel'),
-                    enabled: !_isSyncing && _subscribersCount > 0,
+                    enabled: !_isSyncing &&
+                        _subscribersCount > 0 &&
+                        PermissionManager.instance.canExport('local_storage'),
                     onTap: () {
                       Navigator.pop(context); // إغلاق القائمة
                       _exportToExcel();
@@ -2641,7 +2646,8 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     ),
                   ),
                   const Spacer(),
-                  if (_selectedIds.isNotEmpty)
+                  if (_selectedIds.isNotEmpty &&
+                      PermissionManager.instance.canDelete('local_storage'))
                     ElevatedButton.icon(
                       onPressed: _deleteSelected,
                       icon: const Icon(Icons.delete, size: 16),
@@ -2711,7 +2717,8 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                  color: const Color(0xFF1A237E).withValues(alpha: 0.3), width: 1.5),
+                  color: const Color(0xFF1A237E).withValues(alpha: 0.3),
+                  width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -2968,7 +2975,8 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                    color: const Color(0xFF1A237E).withValues(alpha: 0.3), width: 1),
+                    color: const Color(0xFF1A237E).withValues(alpha: 0.3),
+                    width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),

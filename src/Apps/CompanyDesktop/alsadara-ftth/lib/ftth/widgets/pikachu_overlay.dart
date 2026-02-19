@@ -20,6 +20,7 @@ class PikachuOverlay {
 
   // مؤقت الحركة
   static Timer? _moveTimer;
+  static int _idleFrames = 0; // عداد الإطارات بدون حركة
 
   // للتحكم في إعادة البناء
   static final _notifier = ValueNotifier<Offset>(const Offset(100, 100));
@@ -31,7 +32,7 @@ class PikachuOverlay {
       show(context);
     }
     _showToggleButton(context);
-    _startMoveTimer();
+    // لا نبدأ المؤقت هنا - سيبدأ فقط عند تحريك الماوس
   }
 
   /// تحميل الإعداد من SharedPreferences
@@ -55,15 +56,17 @@ class PikachuOverlay {
     }
   }
 
-  /// بدء مؤقت الحركة السلسة
+  /// بدء مؤقت الحركة السلسة (يتوقف تلقائياً عند الوصول للهدف)
   static void _startMoveTimer() {
-    _moveTimer?.cancel();
+    if (_moveTimer?.isActive ?? false) return; // يعمل بالفعل
+    _idleFrames = 0;
     _moveTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
       // تحريك بيكاتشو بسلاسة نحو الهدف
       final dx = (_targetPosition.dx - _pikachuPosition.dx) * 0.08;
       final dy = (_targetPosition.dy - _pikachuPosition.dy) * 0.08;
 
       if (dx.abs() > 0.1 || dy.abs() > 0.1) {
+        _idleFrames = 0;
         _pikachuPosition = Offset(
           _pikachuPosition.dx + dx,
           _pikachuPosition.dy + dy,
@@ -75,6 +78,13 @@ class PikachuOverlay {
         }
 
         _notifier.value = _pikachuPosition;
+      } else {
+        _idleFrames++;
+        // إيقاف المؤقت بعد 30 إطار بدون حركة (~0.5 ثانية)
+        if (_idleFrames > 30) {
+          timer.cancel();
+          _moveTimer = null;
+        }
       }
     });
   }
@@ -96,6 +106,9 @@ class PikachuOverlay {
     // الإزاحة بحسب الاتجاه: بيكاتشو دائماً خلف الماوس
     final xOffset = _movingRight ? -160.0 : 60.0;
     _targetPosition = Offset(position.dx + xOffset, position.dy - 80);
+
+    // تشغيل مؤقت الحركة فقط عند تحرك الماوس
+    _startMoveTimer();
   }
 
   /// إظهار بيكاتشو

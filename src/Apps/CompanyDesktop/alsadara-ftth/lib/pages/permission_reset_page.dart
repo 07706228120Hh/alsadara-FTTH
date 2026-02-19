@@ -143,7 +143,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
                           title = '🤝 إدارة الوكلاء';
                           break;
                         case 'google_sheets':
-                          title = '📊 Google Sheets';
+                          title = '📊 حفظ في الخادم';
                           break;
                         case 'whatsapp':
                           title = '💬 إرسال رسائل WhatsApp';

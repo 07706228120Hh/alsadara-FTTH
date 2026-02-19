@@ -9,7 +9,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart'; // لاستخدام Clipboard
 import 'package:http/http.dart' as http;
-import '../../task/add_task_dialog.dart'; // تأكد من استيراد صفحة AddTKTATDialog
+import '../../task/add_task_api_dialog.dart'; // تأكد من استيراد صفحة AddTaskApiDialog
 // import 'utils/status_translator.dart'; // لم يعد مستخدماً بعد إخفاء زر مؤشرات SLA
 import 'package:url_launcher/url_launcher.dart'; // لفتح رابط التذكرة في المتصفح
 
@@ -377,16 +377,15 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                 ].join('\n');
                 showDialog(
                   context: context,
-                  builder: (context) => AddTaskDialog(
+                  builder: (context) => AddTaskApiDialog(
                     currentUsername: 'اسم المستخدم',
                     currentUserRole: 'Admin',
                     currentUserDepartment: 'FTTH',
                     initialNotes:
                         combinedText, // تمرير المعلومات إلى حقل الملاحظات
-                    onTaskAdded: (newTask) {
+                    onTaskCreated: (Map<String, dynamic> data) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text('تم إضافة TKTAT: ${newTask.title}')),
+                        const SnackBar(content: Text('تم إضافة المهمة بنجاح')),
                       );
                       Navigator.pop(context);
                     },
@@ -1263,7 +1262,10 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
           height: boxSize,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color.withValues(alpha: .95), color.withValues(alpha: .70)],
+              colors: [
+                color.withValues(alpha: .95),
+                color.withValues(alpha: .70)
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -1275,7 +1277,8 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                 offset: const Offset(0, 3),
               ),
             ],
-            border: Border.all(color: Colors.white.withValues(alpha: .55), width: 1),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: .55), width: 1),
           ),
           child: Tooltip(
             message: tooltip ?? '',
@@ -1420,8 +1423,8 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                 decoration: BoxDecoration(
                   color: mainColor.withValues(alpha: .10),
                   borderRadius: BorderRadius.circular(30),
-                  border:
-                      Border.all(color: mainColor.withValues(alpha: .35), width: .8),
+                  border: Border.all(
+                      color: mainColor.withValues(alpha: .35), width: .8),
                 ),
                 child: Text(
                   categoryName,

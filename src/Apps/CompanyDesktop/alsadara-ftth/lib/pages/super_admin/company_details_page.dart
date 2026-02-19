@@ -10,11 +10,11 @@ import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'edit_company_page.dart';
-import 'admin_theme.dart';
-import 'premium_admin_theme.dart';
+import '../../theme/energy_dashboard_theme.dart';
 import '../home_page.dart';
 import '../../multi_tenant.dart';
 import 'permissions_management_v2_page.dart';
+import '../../services/permission_checker.dart';
 
 /// حالة الاشتراك
 enum CompanyStatus {
@@ -137,7 +137,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     final isCompact = screenHeight < 800;
 
     return Scaffold(
-      backgroundColor: PremiumAdminTheme.bgLight,
+      backgroundColor: EnergyDashboardTheme.bgLight,
       appBar: _buildPremiumAppBar(statusColor, statusText, isCompact),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isCompact ? 16 : 24),
@@ -177,15 +177,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   PreferredSizeWidget _buildPremiumAppBar(
       Color statusColor, String statusText, bool isCompact) {
     return AppBar(
-      backgroundColor: PremiumAdminTheme.bgLightCard,
+      backgroundColor: EnergyDashboardTheme.bgLightCard,
       elevation: 0,
       toolbarHeight: isCompact ? 60 : 70,
       flexibleSpace: Container(
         decoration: BoxDecoration(
-          color: PremiumAdminTheme.bgLightCard,
+          color: EnergyDashboardTheme.bgLightCard,
           boxShadow: [
             BoxShadow(
-              color: PremiumAdminTheme.primary.withOpacity(0.05),
+              color: EnergyDashboardTheme.primary.withOpacity(0.15),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -195,14 +195,14 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       leading: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Material(
-          color: PremiumAdminTheme.bgLightSurface,
+          color: EnergyDashboardTheme.bgLightSurface,
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(12),
             child: const Icon(
               Icons.arrow_back_rounded,
-              color: PremiumAdminTheme.textDark,
+              color: EnergyDashboardTheme.textDark,
             ),
           ),
         ),
@@ -213,10 +213,10 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Container(
             padding: EdgeInsets.all(isCompact ? 8 : 10),
             decoration: BoxDecoration(
-              gradient: PremiumAdminTheme.primaryGradient,
+              gradient: EnergyDashboardTheme.primaryGradient,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: PremiumAdminTheme.glowShadow(
-                  PremiumAdminTheme.primary.withOpacity(0.3)),
+              boxShadow: EnergyDashboardTheme.glowShadow(
+                  EnergyDashboardTheme.primary.withOpacity(0.5)),
             ),
             child: Icon(
               Icons.business_rounded,
@@ -234,7 +234,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 Text(
                   _company.name,
                   style: TextStyle(
-                    color: PremiumAdminTheme.textDark,
+                    color: EnergyDashboardTheme.textDark,
                     fontSize: isCompact ? 15 : 17,
                     fontWeight: FontWeight.bold,
                   ),
@@ -244,7 +244,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 Text(
                   'كود: ${_company.code}',
                   style: TextStyle(
-                    color: PremiumAdminTheme.textMedium,
+                    color: EnergyDashboardTheme.textMedium,
                     fontSize: isCompact ? 11 : 12,
                   ),
                 ),
@@ -277,11 +277,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             vertical: isCompact ? 8 : 10,
           ),
           decoration: BoxDecoration(
-            gradient: PremiumAdminTheme.accentGradient,
+            gradient: EnergyDashboardTheme.accentGradient,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: PremiumAdminTheme.accent.withOpacity(0.3),
+                color: EnergyDashboardTheme.accent.withOpacity(0.5),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -320,15 +320,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         vertical: isCompact ? 6 : 8,
       ),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
+        color: statusColor.withOpacity(0.2),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
-          color: statusColor.withOpacity(0.3),
+          color: statusColor.withOpacity(0.5),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.15),
+            color: statusColor.withOpacity(0.35),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -367,14 +367,27 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   /// بطاقة معلومات الشركة المضغوطة
   Widget _buildCompactInfoCard(DateFormat dateFormat, bool isCompact) {
-    const Color infoIconColor = PremiumAdminTheme.primary;
+    const Color infoIconColor = EnergyDashboardTheme.primary;
 
     return Container(
-      padding: EdgeInsets.all(isCompact ? 14 : 20),
+      padding: EdgeInsets.all(isCompact ? 16 : 22),
       decoration: BoxDecoration(
-        color: PremiumAdminTheme.bgLightCard,
+        color: EnergyDashboardTheme.bgLightCard,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: PremiumAdminTheme.cardShadow,
+        border: Border.all(
+            color: EnergyDashboardTheme.primary.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: EnergyDashboardTheme.primary.withOpacity(0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,11 +398,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: PremiumAdminTheme.primaryGradient,
+                  gradient: EnergyDashboardTheme.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: infoIconColor.withOpacity(0.3),
+                      color: infoIconColor.withOpacity(0.5),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -402,7 +415,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Text(
                 'معلومات الشركة',
                 style: TextStyle(
-                  color: PremiumAdminTheme.textDark,
+                  color: EnergyDashboardTheme.textDark,
                   fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -414,11 +427,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                       horizontal: isCompact ? 10 : 14,
                       vertical: isCompact ? 5 : 7),
                   decoration: BoxDecoration(
-                    gradient: PremiumAdminTheme.accentGradient,
+                    gradient: EnergyDashboardTheme.accentGradient,
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: PremiumAdminTheme.accent.withOpacity(0.3),
+                        color: EnergyDashboardTheme.accent.withOpacity(0.5),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -502,40 +515,61 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     required bool isCompact,
   }) {
     return Container(
-      padding: EdgeInsets.all(isCompact ? 10 : 14),
+      padding: EdgeInsets.all(isCompact ? 12 : 16),
       decoration: BoxDecoration(
-        color: PremiumAdminTheme.bgLightSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: PremiumAdminTheme.border.withOpacity(0.5)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            EnergyDashboardTheme.primary.withOpacity(0.12),
+            EnergyDashboardTheme.primary.withOpacity(0.15),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: EnergyDashboardTheme.primary.withOpacity(0.25), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: EnergyDashboardTheme.primary.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(isCompact ? 6 : 8),
+            padding: EdgeInsets.all(isCompact ? 10 : 12),
             decoration: BoxDecoration(
-              color: PremiumAdminTheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              gradient: EnergyDashboardTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: EnergyDashboardTheme.primary.withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Icon(icon,
-                size: isCompact ? 18 : 22, color: PremiumAdminTheme.primary),
+            child: Icon(icon, size: isCompact ? 20 : 24, color: Colors.white),
           ),
-          SizedBox(height: isCompact ? 8 : 10),
+          SizedBox(height: isCompact ? 10 : 12),
           Text(
             label,
             style: TextStyle(
-              color: PremiumAdminTheme.textLight,
-              fontSize: isCompact ? 10 : 11,
-              fontWeight: FontWeight.w500,
+              color: EnergyDashboardTheme.textMedium,
+              fontSize: isCompact ? 10 : 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: isCompact ? 3 : 5),
+          SizedBox(height: isCompact ? 4 : 6),
           Text(
             value,
             style: TextStyle(
-              color: PremiumAdminTheme.textDark,
+              color: EnergyDashboardTheme.textDark,
               fontSize: isCompact ? 12 : 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
             ),
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -547,20 +581,33 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   /// بطاقة الاشتراك المضغوطة - تصميم جديد
   Widget _buildCompactSubscriptionCard(DateFormat dateFormat, bool isCompact) {
-    // ألوان بطاقات الاشتراك حسب التصميم - فخم
-    const Color subscriptionBlue = Color(0xFFEDE9FE); // بنفسجي فاتح
-    const Color subscriptionGreen = Color(0xFFD1FAE5); // زمردي فاتح
-    const Color blueText = PremiumAdminTheme.primary;
-    const Color greenText = PremiumAdminTheme.success;
-    const Color orangeText = Color(0xFFF59E0B);
-    const Color redText = PremiumAdminTheme.danger;
+    // ألوان بطاقات الاشتراك - تباين قوي بين الخلفية والنص
+    const Color subscriptionBlue = Color(0xFFE0E7FF); // خلفية زرقاء فاتحة
+    const Color subscriptionGreen = Color(0xFFD1FAE5); // خلفية خضراء فاتحة
+    const Color blueText = Color(0xFF1E3A8A); // نص أزرق داكن جداً
+    const Color greenText = Color(0xFF064E3B); // نص أخضر داكن جداً
+    const Color orangeText = Color(0xFF9A3412); // برتقالي داكن جداً
+    const Color redText = Color(0xFF991B1B); // أحمر داكن جداً
 
     return Container(
-      padding: EdgeInsets.all(isCompact ? 16 : 20),
+      padding: EdgeInsets.all(isCompact ? 16 : 22),
       decoration: BoxDecoration(
-        color: PremiumAdminTheme.bgLightCard,
+        color: EnergyDashboardTheme.bgLightCard,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: PremiumAdminTheme.cardShadow,
+        border: Border.all(
+            color: EnergyDashboardTheme.accent.withOpacity(0.2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: EnergyDashboardTheme.accent.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -572,11 +619,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: PremiumAdminTheme.accentGradient,
+                  gradient: EnergyDashboardTheme.accentGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: greenText.withOpacity(0.3),
+                      color: greenText.withOpacity(0.5),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -589,7 +636,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Text(
                 'الاشتراك',
                 style: TextStyle(
-                  color: PremiumAdminTheme.textDark,
+                  color: EnergyDashboardTheme.textDark,
                   fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -645,7 +692,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                           : greenText,
                   isCompact: isCompact,
                   showBadge: _company.daysRemaining <= 30,
-                  badgeColor: _company.daysRemaining <= 7 ? redText : orangeText,
+                  badgeColor:
+                      _company.daysRemaining <= 7 ? redText : orangeText,
                 ),
               ),
               SizedBox(width: isCompact ? 8 : 12),
@@ -682,28 +730,46 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 10 : 14,
-        vertical: isCompact ? 12 : 16,
+        horizontal: isCompact ? 12 : 16,
+        vertical: isCompact ? 14 : 18,
       ),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: foregroundColor.withOpacity(0.2),
-          width: 1,
+          color: foregroundColor.withOpacity(0.45),
+          width: 2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: foregroundColor.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: backgroundColor.withOpacity(0.5),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // أيقونة
+          // أيقونة - بخلفية داكنة للتباين
           Container(
-            padding: EdgeInsets.all(isCompact ? 8 : 10),
+            padding: EdgeInsets.all(isCompact ? 10 : 12),
             decoration: BoxDecoration(
-              color: foregroundColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: foregroundColor,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: foregroundColor.withOpacity(0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            child: Icon(icon,
-                color: foregroundColor, size: isCompact ? 18 : 22),
+            child: Icon(icon, color: Colors.white, size: isCompact ? 20 : 24),
           ),
           SizedBox(width: isCompact ? 10 : 14),
           // النص
@@ -715,12 +781,12 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 Text(
                   label,
                   style: TextStyle(
-                    color: PremiumAdminTheme.textMedium,
-                    fontSize: isCompact ? 10 : 12,
-                    fontWeight: FontWeight.w500,
+                    color: foregroundColor,
+                    fontSize: isCompact ? 12 : 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: isCompact ? 2 : 4),
+                SizedBox(height: isCompact ? 3 : 5),
                 Row(
                   children: [
                     Flexible(
@@ -728,7 +794,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                         value,
                         style: TextStyle(
                           color: foregroundColor,
-                          fontSize: isCompact ? 13 : 15,
+                          fontSize: isCompact ? 15 : 17,
                           fontWeight: FontWeight.bold,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -737,16 +803,17 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                     if (showBadge) ...[
                       const SizedBox(width: 6),
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: 12,
+                        height: 12,
                         decoration: BoxDecoration(
                           color: badgeColor,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: (badgeColor ?? foregroundColor)
-                                  .withOpacity(0.5),
-                              blurRadius: 4,
+                                  .withOpacity(0.7),
+                              blurRadius: 8,
+                              spreadRadius: 2,
                             ),
                           ],
                         ),
@@ -764,30 +831,43 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   /// شبكة جميع الأزرار - تصميم جديد منسق
   Widget _buildAllActionsGrid(bool isCompact) {
-    // ألوان التصميم الفخم
-    const Color primaryBlue = PremiumAdminTheme.primary;
-    const Color lightBlue = Color(0xFF54A0FF);
-    const Color lightBlueBg = Color(0xFFEDE9FE);
-    const Color purple = Color(0xFFA855F7);
-    const Color purpleBg = Color(0xFFF3E8FF);
-    const Color green = PremiumAdminTheme.success;
-    const Color greenBg = Color(0xFFD1FAE5);
-    const Color orange = Color(0xFFF59E0B);
-    const Color orangeLightBg = Color(0xFFFEF3C7);
-    const Color orangeBg = Color(0xFFFDE68A);
-    const Color teal = Color(0xFF14B8A6);
-    const Color indigo = Color(0xFF6366F1);
-    const Color indigoBg = Color(0xFFE0E7FF);
-    const Color dangerRed = PremiumAdminTheme.danger;
-    const Color dangerBg = Color(0xFFFEE2E2);
-    const Color dangerBorder = Color(0xFFFECACA);
+    // ألوان التصميم الفخم - أغمق وأكثر تبايناً
+    const Color primaryBlue = EnergyDashboardTheme.primary;
+    const Color lightBlue = Color(0xFF2563EB); // أغمق من 3B82F6
+    const Color lightBlueBg = Color(0xFFA5D8FF); // أزرق أغمق
+    const Color purple = Color(0xFF7C3AED);
+    const Color purpleBg = Color(0xFFC4B5FD); // بنفسجي أغمق
+    const Color green = Color(0xFF059669);
+    const Color greenBg = Color(0xFF6EE7B7);
+    const Color orange = Color(0xFFC2410C);
+    const Color orangeLightBg = Color(0xFFFCD34D);
+    const Color orangeBg = Color(0xFFFBBF24);
+    const Color teal = Color(0xFF0F766E);
+    const Color indigo = Color(0xFF4338CA);
+    const Color indigoBg = Color(0xFF93C5FD); // نيلي أغمق
+    const Color dangerRed = Color(0xFFDC2626);
+    const Color dangerBg = Color(0xFFFCA5A5);
+    const Color dangerBorder = Color(0xFFEF4444);
 
     return Container(
-      padding: EdgeInsets.all(isCompact ? 16 : 24),
+      padding: EdgeInsets.all(isCompact ? 18 : 26),
       decoration: BoxDecoration(
-        color: PremiumAdminTheme.bgLightCard,
+        color: EnergyDashboardTheme.bgLightCard,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: PremiumAdminTheme.cardShadow,
+        border: Border.all(
+            color: EnergyDashboardTheme.primary.withOpacity(0.35), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: EnergyDashboardTheme.primary.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -799,11 +879,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: PremiumAdminTheme.primaryGradient,
+                  gradient: EnergyDashboardTheme.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryBlue.withOpacity(0.3),
+                      color: primaryBlue.withOpacity(0.5),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -816,7 +896,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Text(
                 'الإجراءات',
                 style: TextStyle(
-                  color: PremiumAdminTheme.textDark,
+                  color: EnergyDashboardTheme.textDark,
                   fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -896,10 +976,16 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                   icon: _isLinkedToCitizen
                       ? Icons.person_off_rounded
                       : Icons.person_add_alt_1_rounded,
-                  label: _isLinkedToCitizen ? 'إلغاء ربط المواطن' : 'ربط بوابة المواطن',
-                  backgroundColor: _isLinkedToCitizen ? orangeLightBg : const Color(0xFFE0F2F1),
+                  label: _isLinkedToCitizen
+                      ? 'إلغاء ربط المواطن'
+                      : 'ربط بوابة المواطن',
+                  backgroundColor: _isLinkedToCitizen
+                      ? orangeLightBg
+                      : const Color(0xFFE0F2F1),
                   foregroundColor: _isLinkedToCitizen ? orange : teal,
-                  onPressed: _isLinkedToCitizen ? _unlinkFromCitizenPortal : _linkToCitizenPortal,
+                  onPressed: _isLinkedToCitizen
+                      ? _unlinkFromCitizenPortal
+                      : _linkToCitizenPortal,
                   isCompact: isCompact,
                 ),
               ),
@@ -911,7 +997,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                       : Icons.play_circle_rounded,
                   label: _company.isActive ? 'تعطيل الشركة' : 'تفعيل الشركة',
                   backgroundColor: _company.isActive ? orangeBg : greenBg,
-                  foregroundColor: _company.isActive ? const Color(0xFFE65100) : green,
+                  foregroundColor:
+                      _company.isActive ? const Color(0xFFE65100) : green,
                   onPressed: _toggleCompanyStatus,
                   isCompact: isCompact,
                 ),
@@ -951,57 +1038,69 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
-        hoverColor: foregroundColor.withOpacity(0.1),
-        splashColor: foregroundColor.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(18),
+        hoverColor: foregroundColor.withOpacity(0.35),
+        splashColor: foregroundColor.withOpacity(0.25),
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: isCompact ? 12 : 16,
-            vertical: isCompact ? 14 : 18,
+            horizontal: isCompact ? 14 : 18,
+            vertical: isCompact ? 16 : 20,
           ),
           decoration: BoxDecoration(
             color: isPrimary ? null : backgroundColor,
-            gradient: isPrimary ? PremiumAdminTheme.primaryGradient : null,
-            borderRadius: BorderRadius.circular(16),
-            border: isDanger
-                ? Border.all(color: foregroundColor.withOpacity(0.3), width: 1.5)
-                : null,
-            boxShadow: isPrimary
-                ? [
-                    BoxShadow(
-                      color: PremiumAdminTheme.primary.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
+            gradient: isPrimary ? EnergyDashboardTheme.primaryGradient : null,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDanger
+                  ? foregroundColor.withOpacity(0.4)
+                  : isPrimary
+                      ? Colors.transparent
+                      : foregroundColor.withOpacity(0.25),
+              width: isDanger ? 2 : 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isPrimary
+                    ? EnergyDashboardTheme.primary.withOpacity(0.35)
+                    : foregroundColor.withOpacity(0.35),
+                blurRadius: isPrimary ? 14 : 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // أيقونة
+              // أيقونة - بخلفية داكنة للتباين
               Container(
-                padding: EdgeInsets.all(isCompact ? 10 : 12),
+                padding: EdgeInsets.all(isCompact ? 12 : 14),
                 decoration: BoxDecoration(
                   color: isPrimary
-                      ? Colors.white.withOpacity(0.2)
-                      : foregroundColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                      ? Colors.white.withOpacity(0.3)
+                      : foregroundColor,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: foregroundColor.withOpacity(0.5),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Icon(
                   icon,
-                  color: isPrimary ? Colors.white : foregroundColor,
-                  size: isCompact ? 22 : 26,
+                  color: isPrimary ? Colors.white : Colors.white,
+                  size: isCompact ? 24 : 28,
                 ),
               ),
-              SizedBox(height: isCompact ? 10 : 12),
+              SizedBox(height: isCompact ? 12 : 14),
               // النص
               Text(
                 label,
                 style: TextStyle(
                   color: isPrimary ? Colors.white : foregroundColor,
-                  fontSize: isCompact ? 11 : 13,
-                  fontWeight: FontWeight.w600,
+                  fontSize: isCompact ? 12 : 14,
+                  fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -1029,7 +1128,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(14),
-        hoverColor: foregroundColor.withOpacity(0.1),
+        hoverColor: foregroundColor.withOpacity(0.2),
         splashColor: foregroundColor.withOpacity(0.2),
         child: Container(
           padding: EdgeInsets.symmetric(
@@ -1038,7 +1137,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ),
           decoration: BoxDecoration(
             color: isPrimary ? null : backgroundColor,
-            gradient: isPrimary ? PremiumAdminTheme.primaryGradient : null,
+            gradient: isPrimary ? EnergyDashboardTheme.primaryGradient : null,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isPrimary
@@ -1049,8 +1148,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             boxShadow: [
               BoxShadow(
                 color: isPrimary
-                    ? PremiumAdminTheme.primary.withOpacity(0.3)
-                    : Colors.black.withOpacity(0.04),
+                    ? EnergyDashboardTheme.primary.withOpacity(0.5)
+                    : Colors.black.withOpacity(0.2),
                 blurRadius: isPrimary ? 10 : 4,
                 offset: const Offset(0, 3),
               ),
@@ -1255,20 +1354,33 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     );
 
     if (confirm == true && mounted) {
-      final Map<String, bool> fullPermissions = {
-        'attendance': true,
-        'agent': true,
-        'tasks': true,
-        'zones': true,
-        'ai_search': true,
-        'users_management': true,
-        'reports': true,
-        'settings': true,
-        'dashboard': true,
-        'tickets': true,
-        'notifications': true,
-        'maintenance': true,
-      };
+      // V2: منح جميع الصلاحيات للسوبر أدمن
+      PermissionManager.instance.grantAll([
+        'attendance',
+        'agent',
+        'tasks',
+        'zones',
+        'ai_search',
+        'users_management',
+        'reports',
+        'settings',
+        'dashboard',
+        'tickets',
+        'notifications',
+        'maintenance',
+        'users',
+        'subscriptions',
+        'accounts',
+        'account_records',
+        'export',
+        'technicians',
+        'transactions',
+        'local_storage',
+        'sadara_portal',
+        'accounting',
+        'diagnostics',
+      ]);
+      final fullPermissions = PermissionManager.instance.buildPageAccess();
 
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -1342,7 +1454,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                  color: const Color(0xFF4CAF50).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.star_rounded, color: Color(0xFF4CAF50)),
@@ -1372,7 +1484,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.toggle_on_rounded, color: Colors.grey),
@@ -1594,7 +1706,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     return ElevatedButton(
       onPressed: () => Navigator.pop(context, days),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AdminTheme.primaryColor,
+        backgroundColor: EnergyDashboardTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       child: Text(label),
@@ -1965,7 +2077,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
+                    color: Colors.purple.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.security_rounded,
@@ -1986,7 +2098,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       Text(
                         widget.company.name,
                         style: TextStyle(
-                          color: AdminTheme.textMuted,
+                          color: EnergyDashboardTheme.textMuted,
                           fontSize: 13,
                         ),
                       ),
@@ -2002,9 +2114,9 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             const SizedBox(height: 20),
             TabBar(
               controller: _tabController,
-              labelColor: AdminTheme.primaryColor,
-              unselectedLabelColor: AdminTheme.textMuted,
-              indicatorColor: AdminTheme.primaryColor,
+              labelColor: EnergyDashboardTheme.primaryColor,
+              unselectedLabelColor: EnergyDashboardTheme.textMuted,
+              indicatorColor: EnergyDashboardTheme.primaryColor,
               tabs: const [
                 Tab(text: 'النظام الرئيسي'),
                 Tab(text: 'نظام FTTH'),
@@ -2042,7 +2154,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       : const Icon(Icons.save_rounded),
                   label: const Text('حفظ الصلاحيات'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.primaryColor,
+                    backgroundColor: EnergyDashboardTheme.primaryColor,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -2080,13 +2192,13 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isEnabled
-                  ? AdminTheme.primaryColor.withOpacity(0.1)
-                  : AdminTheme.backgroundColor,
+                  ? EnergyDashboardTheme.primaryColor.withOpacity(0.2)
+                  : EnergyDashboardTheme.backgroundColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isEnabled
-                    ? AdminTheme.primaryColor.withOpacity(0.5)
-                    : AdminTheme.borderColor,
+                    ? EnergyDashboardTheme.primaryColor.withOpacity(0.5)
+                    : EnergyDashboardTheme.borderColor,
               ),
             ),
             child: Row(
@@ -2094,8 +2206,8 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                 Icon(
                   feature['icon'] as IconData,
                   color: isEnabled
-                      ? AdminTheme.primaryColor
-                      : AdminTheme.textMuted,
+                      ? EnergyDashboardTheme.primaryColor
+                      : EnergyDashboardTheme.textMuted,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -2104,8 +2216,8 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                     feature['label'] as String,
                     style: TextStyle(
                       color: isEnabled
-                          ? AdminTheme.textPrimary
-                          : AdminTheme.textMuted,
+                          ? EnergyDashboardTheme.textPrimary
+                          : EnergyDashboardTheme.textMuted,
                       fontSize: 12,
                       fontWeight:
                           isEnabled ? FontWeight.w600 : FontWeight.normal,
@@ -2120,7 +2232,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       permissions[key] = value;
                     });
                   },
-                  activeColor: AdminTheme.primaryColor,
+                  activeColor: EnergyDashboardTheme.primaryColor,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ],
@@ -2235,7 +2347,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3F51B5).withOpacity(0.1),
+                    color: const Color(0xFF3F51B5).withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.people_rounded,
@@ -2346,8 +2458,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
         contentPadding: const EdgeInsets.all(12),
         leading: CircleAvatar(
           backgroundColor: user.isActive
-              ? const Color(0xFF4CAF50).withOpacity(0.1)
-              : Colors.grey.withOpacity(0.1),
+              ? const Color(0xFF4CAF50).withOpacity(0.2)
+              : Colors.grey.withOpacity(0.2),
           child: Icon(
             Icons.person_rounded,
             color: user.isActive ? const Color(0xFF4CAF50) : Colors.grey,
@@ -2471,7 +2583,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                  color: const Color(0xFF4CAF50).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.star_rounded, color: Color(0xFF4CAF50)),
@@ -2501,7 +2613,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.toggle_on_rounded, color: Colors.grey),
@@ -2610,7 +2722,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF9C27B0).withOpacity(0.1),
+                  color: const Color(0xFF9C27B0).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.security_rounded,
@@ -2705,8 +2817,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
                               color: isCompanyEnabled
-                                  ? Colors.black87
-                                  : Colors.grey,
+                                  ? EnergyDashboardTheme.textPrimary
+                                  : EnergyDashboardTheme.textMuted,
                             ),
                           ),
                           subtitle: !isCompanyEnabled
@@ -3027,10 +3139,10 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       setDialogState(() => isChanging = true);
 
                       try {
-                        final response = await widget.apiClient.put(
+                        final response = await widget.apiClient.patch(
                           ApiConfig.internalEmployeePassword(
                               widget.company.id, user.id),
-                          {'password': passwordController.text},
+                          {'NewPassword': passwordController.text},
                           (json) => json,
                           useInternalKey: true,
                         );
@@ -3097,6 +3209,30 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
     bool isActive = user.isActive;
     bool isSaving = false;
 
+    final departments = [
+      'الصيانة',
+      'الحسابات',
+      'الفنيين',
+      'الوكلاء',
+      'الاتصالات',
+      'اللحام',
+    ];
+    String? selectedDepartment =
+        departments.contains(user.department) ? user.department : null;
+
+    final roles = [
+      {'value': 'Employee', 'label': 'موظف'},
+      {'value': 'Viewer', 'label': 'مشاهد'},
+      {'value': 'Technician', 'label': 'فني'},
+      {'value': 'TechnicalLeader', 'label': 'ليدر فني'},
+      {'value': 'Manager', 'label': 'مدير'},
+      {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
+    ];
+    String selectedRole =
+        (user.role != null && roles.any((r) => r['value'] == user.role))
+            ? user.role!
+            : 'Employee';
+
     await showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -3146,6 +3282,46 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedDepartment,
+                  decoration: InputDecoration(
+                    labelText: 'القسم',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.business_outlined),
+                  ),
+                  items: departments
+                      .map((d) => DropdownMenuItem<String>(
+                            value: d,
+                            child: Text(d),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() => selectedDepartment = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: InputDecoration(
+                    labelText: 'الدور',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.admin_panel_settings_outlined),
+                  ),
+                  items: roles
+                      .map((role) => DropdownMenuItem<String>(
+                            value: role['value'],
+                            child: Text(role['label']!),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() => selectedRole = value ?? 'Employee');
+                  },
+                ),
+                const SizedBox(height: 12),
                 SwitchListTile(
                   title: const Text('الحالة'),
                   subtitle: Text(isActive ? 'نشط' : 'معطل'),
@@ -3178,6 +3354,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             'email': emailController.text,
                             'phone': phoneController.text,
                             'isActive': isActive,
+                            'department': selectedDepartment ?? '',
+                            'role': selectedRole,
                           },
                           (json) => json,
                           useInternalKey: true,
@@ -3268,7 +3446,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                  color: const Color(0xFF4CAF50).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.person_add_rounded,
@@ -3566,6 +3744,7 @@ class CompanyUser {
   final String? email;
   final String? phone;
   final String? role;
+  final String? department;
   final String? password;
   final bool isActive;
   final DateTime? createdAt;
@@ -3579,6 +3758,7 @@ class CompanyUser {
     this.email,
     this.phone,
     this.role,
+    this.department,
     this.password,
     required this.isActive,
     this.createdAt,
@@ -3608,6 +3788,7 @@ class CompanyUser {
           json['PhoneNumber'],
       role:
           json['role'] ?? json['Role'] ?? json['jobTitle'] ?? json['JobTitle'],
+      department: json['department'] ?? json['Department'],
       password: json['password'] ?? json['Password'],
       isActive: json['isActive'] ?? json['IsActive'] ?? true,
       createdAt: json['createdAt'] != null || json['CreatedAt'] != null

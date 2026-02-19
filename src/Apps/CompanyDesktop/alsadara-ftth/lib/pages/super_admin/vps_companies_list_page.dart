@@ -10,6 +10,7 @@ import '../../services/api/api_config.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
 import '../home_page.dart';
+import '../../services/permission_checker.dart';
 
 /// حالة الاشتراك
 enum VpsSubscriptionStatus {
@@ -484,21 +485,33 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
     );
 
     if (confirm == true && context.mounted) {
-      // إنشاء صلاحيات المدير الكاملة
-      final Map<String, bool> fullPermissions = {
-        'attendance': true,
-        'agent': true,
-        'tasks': true,
-        'zones': true,
-        'ai_search': true,
-        'users_management': true,
-        'reports': true,
-        'settings': true,
-        'dashboard': true,
-        'tickets': true,
-        'notifications': true,
-        'maintenance': true,
-      };
+      // V2: منح جميع الصلاحيات للسوبر أدمن
+      PermissionManager.instance.grantAll([
+        'attendance',
+        'agent',
+        'tasks',
+        'zones',
+        'ai_search',
+        'users_management',
+        'reports',
+        'settings',
+        'dashboard',
+        'tickets',
+        'notifications',
+        'maintenance',
+        'users',
+        'subscriptions',
+        'accounts',
+        'account_records',
+        'export',
+        'technicians',
+        'transactions',
+        'local_storage',
+        'sadara_portal',
+        'accounting',
+        'diagnostics',
+      ]);
+      final fullPermissions = PermissionManager.instance.buildPageAccess();
 
       // الانتقال للصفحة الرئيسية كمدير
       Navigator.of(context).pushAndRemoveUntil(

@@ -5,7 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../../services/google_sheets_service.dart';
+import '../../services/subscription_logs_service.dart';
 import 'package:intl/intl.dart';
 import '../../models/filter_criteria.dart';
 
@@ -67,7 +67,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
       print('   - عدد العمليات الممررة: ${widget.userSpecificRecords!.length}');
       _useProvidedRecords();
     } else {
-      print('🔄 UserRecordsPage - جلب العمليات من Google Sheets');
+      print('🔄 UserRecordsPage - جلب العمليات من الخادم');
       _loadUserRecords();
     }
   }
@@ -127,14 +127,15 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
     }
   }
 
-  /// جلب سجلات المستخدم المحدد من Google Sheets
+  /// جلب سجلات المستخدم المحدد من الخادم
   Future<void> _loadUserRecords() async {
     setState(() {
       isLoading = true;
     });
 
     try {
-      final allSheetsRecords = await GoogleSheetsService.getAllRecords();
+      final allSheetsRecords =
+          await SubscriptionLogsService.instance.getAllRecords();
 
       // تصفية السجلات الخاصة بالمستخدم المحدد
       final userRecords = allSheetsRecords.where((record) {

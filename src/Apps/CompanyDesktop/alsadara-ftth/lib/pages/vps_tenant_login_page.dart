@@ -11,6 +11,7 @@ import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import 'home_page.dart';
 import 'super_admin/super_admin_dashboard.dart';
+import '../services/permission_checker.dart';
 
 /// نموذج بيانات تسجيل الدخول المحفوظة
 class SavedCredential {
@@ -445,7 +446,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
     }
   }
 
-  void _navigateAfterLogin() {
+  void _navigateAfterLogin() async {
     if (_authService.isSuperAdmin) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SuperAdminDashboard()),
@@ -455,18 +456,12 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       final user = _authService.currentUser!;
       final company = _authService.currentCompany!;
 
-      // تحويل الصلاحيات
-      final Map<String, bool> pageAccess = {};
-      for (final permission in user.permissions) {
-        pageAccess[permission] = true;
+      // V2: بناء pageAccess من PermissionManager
+      final pm = PermissionManager.instance;
+      if (!pm.isLoaded) {
+        await pm.loadPermissions();
       }
-      // إضافة صلاحيات النظام الأول والثاني
-      user.firstSystemPermissions.forEach((key, value) {
-        if (value) pageAccess[key] = true;
-      });
-      user.secondSystemPermissions.forEach((key, value) {
-        if (value) pageAccess[key] = true;
-      });
+      final Map<String, bool> pageAccess = pm.buildPageAccess();
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -487,475 +482,444 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
 
   @override
   Widget build(BuildContext context) {
+    // الحصول على حجم الشاشة
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    final isSmallScreen = screenWidth < 600;
+    final padding = isSmallScreen ? 16.0 : 24.0;
+    final cardPadding = isSmallScreen ? 20.0 : 32.0;
+    final logoSize = isSmallScreen ? 60.0 : 80.0;
+    final maxCardWidth = screenWidth > 500 ? 420.0 : screenWidth - 32;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              const Color(0xFF1a237e),
-              const Color(0xFF0d47a1),
-              Colors.indigo[400]!,
-            ],
-          ),
+        decoration: const BoxDecoration(
+          // خلفية Navy داكنة من التصميم
+          color: Color(0xFF0D1B2A),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Card(
-                elevation: 12,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+              padding: EdgeInsets.all(padding),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: screenHeight - 48,
                 ),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 450),
-                  padding: const EdgeInsets.all(32),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // الشعار
-                        AnimatedBuilder(
-                          animation: _animationController,
-                          builder: (context, child) {
-                            return Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.indigo[700]!,
-                                    Colors.indigo[500]!,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.indigo.withValues(alpha: 0.3),
-                                    blurRadius: 20,
-                                    spreadRadius: 5,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.fiber_smart_record,
-                                size: 64,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // الشعار - أيقونة الماسة
+                    Container(
+                      width: logoSize,
+                      height: logoSize,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF152238),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF1E3A5F),
+                          width: 2,
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.diamond_outlined,
+                          size: logoSize * 0.5,
+                          color: const Color(0xFF3B82F6),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: isSmallScreen ? 24 : 40),
+
+                    // بطاقة تسجيل الدخول
+                    Container(
+                      constraints: BoxConstraints(maxWidth: maxCardWidth),
+                      padding: EdgeInsets.all(cardPadding),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF152238).withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color(0xFF1E3A5F),
+                          width: 1,
+                        ),
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // العنوان
+                            Text(
+                              'مرحباً بك',
+                              style: GoogleFonts.cairo(
+                                fontSize: isSmallScreen ? 22 : 28,
+                                fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-
-                        // العنوان
-                        Text(
-                          'منصة صدارة',
-                          style: GoogleFonts.cairo(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.indigo[900],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'تسجيل الدخول',
-                          style: GoogleFonts.cairo(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // شارة VPS API
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green[100],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.cloud_done,
-                                  size: 16, color: Colors.green[700]),
-                              const SizedBox(width: 4),
-                              Text(
-                                'VPS API',
-                                style: GoogleFonts.cairo(
-                                  fontSize: 12,
-                                  color: Colors.green[700],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // قسم بيانات الدخول المحفوظة
-                        if (_savedCredentials.isNotEmpty) ...[
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue[200]!),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.bookmark,
-                                        color: Colors.blue[700], size: 20),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'حسابات محفوظة',
-                                      style: GoogleFonts.cairo(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue[700],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<SavedCredential>(
-                                  value: _selectedCredential,
-                                  isExpanded: true,
-                                  decoration: InputDecoration(
-                                    hintText: 'اختر حساب محفوظ',
-                                    hintStyle: GoogleFonts.cairo(),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                  ),
-                                  items: _savedCredentials.map((credential) {
-                                    return DropdownMenuItem(
-                                      value: credential,
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              credential.displayName,
-                                              style: GoogleFonts.cairo(
-                                                  fontSize: 14),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete,
-                                                size: 18, color: Colors.red),
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              _deleteCredential(credential);
-                                            },
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      _selectCredential(value);
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(),
-                          const SizedBox(height: 16),
-                        ],
+                            SizedBox(height: isSmallScreen ? 16 : 24),
 
-                        // رسالة الخطأ
-                        if (_errorMessage != null)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.red[200]!),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.error_outline,
-                                    color: Colors.red[700]),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: GoogleFonts.cairo(
-                                      color: Colors.red[700],
-                                      fontSize: 14,
-                                    ),
+                            // تبويبات Super Admin / Tenant
+                            _buildLoginTabs(),
+                            const SizedBox(height: 24),
+
+                            // رسالة الخطأ
+                            if (_errorMessage != null)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFFEF4444).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFFEF4444)
+                                        .withOpacity(0.3),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-
-                        // رسالة خطأ تحميل الشركات
-                        if (_companiesLoadError != null && !_loadingCompanies)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange[200]!),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.warning_amber,
-                                    color: Colors.orange[700]),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _companiesLoadError!,
-                                    style: GoogleFonts.cairo(
-                                      color: Colors.orange[700],
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _loadingCompanies = true;
-                                      _companiesLoadError = null;
-                                    });
-                                    _loadCompanies();
-                                  },
-                                  child: Text(
-                                    'إعادة المحاولة',
-                                    style: GoogleFonts.cairo(
-                                      color: Colors.orange[700],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // قائمة الشركات المنسدلة
-                        _loadingCompanies
-                            ? Container(
-                                padding: const EdgeInsets.all(16),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      'جاري تحميل قائمة الشركات...',
-                                      style: GoogleFonts.cairo(
-                                          color: Colors.grey[600]),
+                                    const Icon(Icons.error_outline,
+                                        color: Color(0xFFEF4444), size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: GoogleFonts.cairo(
+                                          color: const Color(0xFFEF4444),
+                                          fontSize: 13,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
-                              )
-                            : DropdownButtonFormField<CompanyListItem>(
-                                value: _selectedCompany,
-                                isExpanded: true,
-                                decoration: InputDecoration(
-                                  labelText: 'اختر الشركة',
-                                  labelStyle: GoogleFonts.cairo(),
-                                  hintText: _companies.isEmpty
-                                      ? 'لا توجد شركات (اختر مدير النظام)'
-                                      : 'اختر الشركة من القائمة',
-                                  hintStyle: GoogleFonts.cairo(fontSize: 12),
-                                  prefixIcon: const Icon(Icons.business),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.grey[50],
-                                ),
-                                items: _buildCompanyDropdownItems(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedCompany = value;
-                                    _selectedCredential = null;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null) {
-                                    return 'يرجى اختيار الشركة';
-                                  }
-                                  return null;
-                                },
                               ),
-                        const SizedBox(height: 16),
 
-                        // اسم المستخدم
-                        TextFormField(
-                          controller: _usernameController,
-                          textDirection: TextDirection.ltr,
-                          decoration: InputDecoration(
-                            labelText: 'اسم المستخدم / رقم الهاتف',
-                            labelStyle: GoogleFonts.cairo(),
-                            prefixIcon: const Icon(Icons.person),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'يرجى إدخال اسم المستخدم';
-                            }
-                            return null;
-                          },
-                          onChanged: (_) {
-                            setState(() => _selectedCredential = null);
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // كلمة المرور
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          textDirection: TextDirection.ltr,
-                          decoration: InputDecoration(
-                            labelText: 'كلمة المرور',
-                            labelStyle: GoogleFonts.cairo(),
-                            prefixIcon: const Icon(Icons.lock),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () {
-                                setState(
-                                    () => _obscurePassword = !_obscurePassword);
+                            // حقل البريد/اسم المستخدم
+                            _buildTextField(
+                              controller: _usernameController,
+                              label: 'البريد الإلكتروني أو اسم المستخدم',
+                              hint: 'user@sadara.com',
+                              icon: Icons.email_outlined,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'يرجى إدخال اسم المستخدم';
+                                }
+                                return null;
                               },
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'يرجى إدخال كلمة المرور';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => _login(),
-                        ),
-                        const SizedBox(height: 16),
+                            SizedBox(height: isSmallScreen ? 12 : 16),
 
-                        // تذكرني
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: _rememberMe,
-                              onChanged: (value) {
-                                setState(() => _rememberMe = value ?? false);
+                            // حقل كلمة المرور
+                            _buildTextField(
+                              controller: _passwordController,
+                              label: 'كلمة المرور',
+                              hint: '••••••••',
+                              icon: Icons.lock_outline,
+                              isPassword: true,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'يرجى إدخال كلمة المرور';
+                                }
+                                return null;
                               },
-                              activeColor: Colors.indigo[700],
                             ),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() => _rememberMe = !_rememberMe);
-                                },
-                                child: Text(
-                                  'تذكرني (حفظ بيانات الدخول)',
-                                  style: GoogleFonts.cairo(
-                                    color: Colors.grey[700],
-                                  ),
+                            SizedBox(height: isSmallScreen ? 16 : 24),
+
+                            // زر تسجيل الدخول بتدرج ذهبي
+                            _buildLoginButton(),
+                            SizedBox(height: isSmallScreen ? 16 : 24),
+
+                            // تسجيل الدخول بالبصمة
+                            _buildBiometricLogin(),
+                            SizedBox(height: isSmallScreen ? 12 : 16),
+
+                            // نسيت كلمة المرور
+                            TextButton(
+                              onPressed: () {},
+                              child: Text(
+                                'نسيت كلمة المرور؟',
+                                style: GoogleFonts.cairo(
+                                  color: const Color(0xFF64748B),
+                                  fontSize: isSmallScreen ? 12 : 14,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-
-                        // زر تسجيل الدخول
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _login,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.indigo[700],
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 3,
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.login),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'تسجيل الدخول',
-                                        style: GoogleFonts.cairo(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // معلومات إضافية
-                        if (_savedCredentials.isNotEmpty)
-                          Text(
-                            '${_savedCredentials.length} حسابات محفوظة',
-                            style: GoogleFonts.cairo(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// تبويبات الشركة/الوكيل و مدير النظام
+  Widget _buildLoginTabs() {
+    final isSuperAdmin = _selectedCompany?.code == '1';
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1B2A),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildTabButton(
+              label: 'شركة / وكيل',
+              icon: Icons.people_outline,
+              isSelected: !isSuperAdmin,
+              onTap: () {
+                setState(() {
+                  _selectedCompany =
+                      _companies.isNotEmpty ? _companies.first : null;
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: _buildTabButton(
+              label: 'مدير النظام',
+              icon: Icons.shield_outlined,
+              isSelected: isSuperAdmin,
+              onTap: () {
+                setState(() {
+                  _selectedCompany = CompanyListItem(
+                    id: '1',
+                    name: 'مدير النظام',
+                    code: '1',
+                  );
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1E3A5F) : Colors.transparent,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: GoogleFonts.cairo(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected ? Colors.white : const Color(0xFF64748B),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// حقل إدخال بالتصميم الجديد
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.cairo(
+            fontSize: 12,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: isPassword ? _obscurePassword : false,
+          textDirection: TextDirection.ltr,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: 15,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.poppins(
+              color: const Color(0xFF475569),
+              fontSize: 14,
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: const Color(0xFF64748B),
+              size: 20,
+            ),
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: const Color(0xFF64748B),
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  )
+                : Icon(icon, color: const Color(0xFF64748B), size: 20),
+            filled: true,
+            fillColor: const Color(0xFF0D1B2A),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF1E3A5F)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF1E3A5F)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFEF4444)),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+          validator: validator,
+          onFieldSubmitted: (_) => _login(),
+        ),
+      ],
+    );
+  }
+
+  /// زر تسجيل الدخول بتدرج ذهبي
+  Widget _buildLoginButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Color(0xFFD4A574),
+              Color(0xFFF59E0B),
+              Color(0xFFD97706),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _login,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  'تسجيل الدخول',
+                  style: GoogleFonts.cairo(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// تسجيل الدخول بالبصمة
+  Widget _buildBiometricLogin() {
+    return Column(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: const Color(0xFF152238),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFF1E3A5F),
+            ),
+          ),
+          child: IconButton(
+            onPressed: () {
+              // TODO: تنفيذ تسجيل الدخول بالبصمة
+            },
+            icon: const Icon(
+              Icons.fingerprint,
+              color: Color(0xFF3B82F6),
+              size: 28,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'تسجيل الدخول بالبصمة',
+          style: GoogleFonts.cairo(
+            fontSize: 12,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+      ],
     );
   }
 }

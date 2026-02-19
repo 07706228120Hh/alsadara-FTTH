@@ -1,9 +1,11 @@
-/// لوحة تحكم Super Admin الرئيسية - تصميم عصري
-/// تعرض جميع الشركات مع إحصائيات وخيارات الإدارة
+/// لوحة تحكم Super Admin الرئيسية - تصميم Energy Dashboard
+/// مستوحى من تصاميم Energy Management Dashboard العصرية
+/// خلفية داكنة + ألوان نيون متوهجة + Glassmorphism
 library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:google_fonts/google_fonts.dart';
 import '../../multi_tenant.dart';
 import '../../config/data_source_config.dart'; // ✅ إعدادات مصدر البيانات
 import '../../services/vps_auth_service.dart'; // ✅ خدمة VPS
@@ -14,13 +16,19 @@ import 'edit_company_page.dart';
 import 'tenant_features_page.dart';
 import 'firebase_data_manager_page.dart';
 import 'vps_data_manager_page.dart';
-import '../vps_tenant_login_page.dart'; // ✅ صفحة تسجيل دخول VPS
+import '../login/premium_login_page.dart'; // ✨ صفحة تسجيل الدخول الفخمة
 import '../home_page.dart';
-import 'admin_theme.dart';
-import 'premium_admin_theme.dart'; // 🎨 الثيم الفخم الجديد
+import '../../theme/energy_dashboard_theme.dart'; // 🔋 ثيم Energy Dashboard الموحد
 import '../diagnostics/system_diagnostics_page.dart'; // 🔧 صفحة التشخيص
+import '../../services/permission_checker.dart';
 import '../account/account_info_page.dart'; // ✅ صفحة معلومات الحساب
 import '../admin/database_admin_page.dart'; // ✅ صفحة إدارة قاعدة البيانات
+import 'energy_dashboard_home.dart'; // 🔋 الشاشة الرئيسية بتصميم Energy Dashboard
+import 'subscription_logs_page.dart'; // 📋 سجلات الاشتراكات
+import 'agents_management_page.dart'; // 👤 إدارة الوكلاء
+import 'service_requests_page.dart'; // 📋 طلبات الخدمة
+import 'sadara_portal_page.dart'; // 🌐 منصة الصدارة
+import 'plans_management_page.dart'; // 💰 إدارة الباقات والأسعار
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -34,7 +42,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   final CustomAuthService _authService = CustomAuthService();
   final SuperAdminApi _superAdminApi = SuperAdminApi(); // ✅ VPS API
   late AnimationController _animationController;
-  int _selectedIndex = 1; // ✅ البدء في شاشة إدارة الشركات مباشرة
+  int _selectedIndex = 0; // 🏠 البدء في الشاشة الرئيسية
   bool _isSidebarCollapsed = false; // ✅ حالة إخفاء/إظهار الشريط الجانبي
 
   // ✅ بيانات الشركات من VPS
@@ -91,44 +99,66 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AdminTheme.surfaceColor,
+        backgroundColor: EnergyDashboardTheme.bgCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AdminTheme.dangerColor.withOpacity(0.1),
+                color: EnergyDashboardTheme.danger.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: EnergyDashboardTheme.glowCustom(
+                  EnergyDashboardTheme.danger,
+                  intensity: 0.2,
+                ),
               ),
-              child: const Icon(Icons.logout, color: AdminTheme.dangerColor),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: EnergyDashboardTheme.danger,
+              ),
             ),
             const SizedBox(width: 14),
-            const Text('تسجيل الخروج',
-                style: TextStyle(
-                    color: AdminTheme.textPrimary,
-                    fontWeight: FontWeight.bold)),
+            Text(
+              'تسجيل الخروج',
+              style: GoogleFonts.cairo(
+                color: EnergyDashboardTheme.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
-        content: const Text('هل تريد تسجيل الخروج من لوحة التحكم؟',
-            style: TextStyle(color: AdminTheme.textSecondary)),
+        content: Text(
+          'هل تريد تسجيل الخروج من لوحة التحكم؟',
+          style: GoogleFonts.cairo(
+            color: EnergyDashboardTheme.textSecondary,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء',
-                style: TextStyle(color: AdminTheme.textMuted)),
+            child: Text(
+              'إلغاء',
+              style: GoogleFonts.cairo(
+                color: EnergyDashboardTheme.textMuted,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdminTheme.dangerColor,
+              backgroundColor: EnergyDashboardTheme.danger,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('تسجيل الخروج'),
+            child: Text(
+              'تسجيل الخروج',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -146,7 +176,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         // الانتقال لصفحة تسجيل الدخول
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (_) => const VpsTenantLoginPage(),
+            builder: (_) => const PremiumLoginPage(),
           ),
           (route) => false,
         );
@@ -159,21 +189,26 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          color: PremiumAdminTheme.bgLight,
+          // 🔋 خلفية Energy Dashboard - أسود مزرق عميق
+          gradient: EnergyDashboardTheme.backgroundGradient,
         ),
         child: SafeArea(
           child: Row(
             children: [
-              // 🎨 القائمة الجانبية الفخمة
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                width: _isSidebarCollapsed ? 80 : 260,
-                child: _buildPremiumSidebar(),
-              ),
+              // 🎨 القائمة الجانبية بتصميم Energy Dashboard
+              _buildEnergySidebar(),
               // المحتوى الرئيسي
               Expanded(
-                child: _buildMainContent(),
+                child: Column(
+                  children: [
+                    // الشريط العلوي
+                    _buildEnergyTopBar(),
+                    // المحتوى
+                    Expanded(child: _buildMainContent()),
+                    // الشريط السفلي
+                    _buildEnergyFooter(),
+                  ],
+                ),
               ),
             ],
           ),
@@ -182,12 +217,597 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // 🔋 Energy Dashboard - الشريط العلوي
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildEnergyTopBar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 16 : 24,
+        vertical: isSmallScreen ? 12 : 16,
+      ),
+      decoration: BoxDecoration(
+        color: EnergyDashboardTheme.bgSecondary,
+        border: const Border(
+          bottom: BorderSide(color: EnergyDashboardTheme.borderColor, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: EnergyDashboardTheme.neonGreen.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // شعار الصدارة مع توهج نيون
+          Row(
+            children: [
+              Container(
+                width: isSmallScreen ? 36 : 42,
+                height: isSmallScreen ? 36 : 42,
+                decoration: BoxDecoration(
+                  gradient: EnergyDashboardTheme.neonGreenGradient,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: EnergyDashboardTheme.glowCustom(
+                    EnergyDashboardTheme.neonGreen,
+                    intensity: 0.3,
+                  ),
+                ),
+                child: Icon(
+                  Icons.bolt_rounded,
+                  color: EnergyDashboardTheme.bgPrimary,
+                  size: isSmallScreen ? 20 : 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'منصة الصدارة',
+                    style: GoogleFonts.cairo(
+                      color: EnergyDashboardTheme.textPrimary,
+                      fontSize: isSmallScreen ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'لوحة تحكم مدير النظام',
+                    style: GoogleFonts.cairo(
+                      color: EnergyDashboardTheme.neonGreen,
+                      fontSize: isSmallScreen ? 10 : 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const Spacer(),
+          // أزرار الإجراءات السريعة
+          if (!isSmallScreen) ...[
+            _buildTopBarAction(
+              icon: Icons.notifications_outlined,
+              color: EnergyDashboardTheme.neonBlue,
+              badge: '3',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBarAction({
+    required IconData icon,
+    required Color color,
+    String? badge,
+  }) {
+    return Stack(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        if (badge != null)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: EnergyDashboardTheme.danger,
+                shape: BoxShape.circle,
+                boxShadow: EnergyDashboardTheme.glowCustom(
+                  EnergyDashboardTheme.danger,
+                  intensity: 0.4,
+                ),
+              ),
+              child: Text(
+                badge,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🔋 Energy Dashboard - الشريط السفلي
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildEnergyFooter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+      decoration: BoxDecoration(
+        color: EnergyDashboardTheme.bgSecondary,
+        border: const Border(
+          top: BorderSide(color: EnergyDashboardTheme.borderColor, width: 1),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: EnergyDashboardTheme.neonGreen,
+                  shape: BoxShape.circle,
+                  boxShadow: EnergyDashboardTheme.glowCustom(
+                    EnergyDashboardTheme.neonGreen,
+                    intensity: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'متصل بالخادم',
+                style: GoogleFonts.cairo(
+                  color: EnergyDashboardTheme.neonGreen,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '© 2026 منصة الصدارة. جميع الحقوق محفوظة.',
+            style: GoogleFonts.cairo(
+              color: EnergyDashboardTheme.textMuted,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🔋 Energy Dashboard - القائمة الجانبية
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildEnergySidebar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final sidebarWidth =
+        _isSidebarCollapsed ? 50.0 : (screenWidth < 800 ? 150.0 : 165.0);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: sidebarWidth,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+        ),
+        border: const Border(
+          left: BorderSide(color: Color(0xFF334155), width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(-4, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 6),
+
+          // جميع عناصر القائمة
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              children: [
+                _buildEnergyNavItem(
+                  index: 0,
+                  icon: Icons.dashboard_rounded,
+                  label: 'الرئيسية',
+                  color: EnergyDashboardTheme.neonGreen,
+                ),
+                _buildEnergyNavItem(
+                  index: 1,
+                  icon: Icons.business_rounded,
+                  label: 'إدارة الشركات',
+                  color: EnergyDashboardTheme.neonBlue,
+                ),
+                _buildEnergyNavItem(
+                  index: 2,
+                  icon: Icons.support_agent_rounded,
+                  label: 'الوكلاء',
+                  color: EnergyDashboardTheme.neonPink,
+                ),
+                _buildEnergyNavItem(
+                  index: 5,
+                  icon: Icons.people_outline_rounded,
+                  label: 'بوابة المواطن',
+                  color: EnergyDashboardTheme.neonPurple,
+                ),
+                _buildEnergyNavItem(
+                  index: 6,
+                  icon: Icons.monitor_heart_rounded,
+                  label: 'تشخيص النظام',
+                  color: EnergyDashboardTheme.neonOrange,
+                ),
+                _buildEnergyNavItem(
+                  index: 3,
+                  icon: Icons.cloud_outlined,
+                  label: 'بيانات Firebase',
+                  color: EnergyDashboardTheme.neonOrange,
+                ),
+                _buildEnergyNavItem(
+                  index: 4,
+                  icon: Icons.dns_outlined,
+                  label: 'بيانات VPS',
+                  color: EnergyDashboardTheme.neonBlue,
+                ),
+                _buildEnergyNavItem(
+                  index: 8,
+                  icon: Icons.storage_outlined,
+                  label: 'قاعدة البيانات',
+                  color: EnergyDashboardTheme.neonPurple,
+                ),
+                _buildEnergyNavItem(
+                  index: 9,
+                  icon: Icons.receipt_long_rounded,
+                  label: 'سجلات الاشتراكات',
+                  color: EnergyDashboardTheme.neonGreen,
+                ),
+                _buildEnergyNavItem(
+                  index: 10,
+                  icon: Icons.assignment_rounded,
+                  label: 'طلبات الخدمة',
+                  color: EnergyDashboardTheme.neonPink,
+                ),
+                _buildEnergyNavItem(
+                  index: 11,
+                  icon: Icons.hub_rounded,
+                  label: 'منصة الصدارة',
+                  color: EnergyDashboardTheme.neonPurple,
+                ),
+                _buildEnergyNavItem(
+                  index: 7,
+                  icon: Icons.settings_outlined,
+                  label: 'الإعدادات',
+                  color: EnergyDashboardTheme.textOnDarkSecondary,
+                ),
+                const SizedBox(height: 4),
+                _buildEnergyLogoutItem(),
+              ],
+            ),
+          ),
+
+          // زر طي القائمة
+          GestureDetector(
+            onTap: () =>
+                setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Center(
+                child: Icon(
+                  _isSidebarCollapsed
+                      ? Icons.chevron_right_rounded
+                      : Icons.chevron_left_rounded,
+                  color: EnergyDashboardTheme.textOnDarkMuted,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnergySidebarHeader() {
+    return Container(
+      padding: EdgeInsets.all(_isSidebarCollapsed ? 8 : 12),
+      child: Column(
+        children: [
+          // الشعار
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: EnergyDashboardTheme.neonGreenGradient,
+              boxShadow: EnergyDashboardTheme.glowCustom(
+                EnergyDashboardTheme.neonGreen,
+                intensity: 0.3,
+              ),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(_isSidebarCollapsed ? 8 : 10),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF0F172A),
+              ),
+              child: Icon(
+                Icons.shield_rounded,
+                size: _isSidebarCollapsed ? 18 : 22,
+                color: EnergyDashboardTheme.neonGreen,
+              ),
+            ),
+          ),
+
+          if (!_isSidebarCollapsed) ...[
+            const SizedBox(height: 8),
+            Text(
+              VpsAuthService.instance.currentSuperAdmin?.fullName ??
+                  CustomAuthService.currentSuperAdmin?.name ??
+                  'مدير النظام',
+              style: GoogleFonts.cairo(
+                color: EnergyDashboardTheme.textOnDark,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: EnergyDashboardTheme.neonGreenGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.verified_rounded,
+                    color: EnergyDashboardTheme.bgPrimary,
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Super Admin',
+                    style: GoogleFonts.cairo(
+                      color: EnergyDashboardTheme.bgPrimary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnergyNavItem({
+    required int index,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    final isSelected = _selectedIndex == index;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 1),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (index == 5 && !DataSourceConfig.useVpsApi) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'بوابة المواطن متاحة فقط مع VPS API',
+                    style: GoogleFonts.cairo(),
+                  ),
+                  backgroundColor: EnergyDashboardTheme.danger,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            } else {
+              setState(() => _selectedIndex = index);
+            }
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.symmetric(
+              horizontal: _isSidebarCollapsed ? 6 : 8,
+              vertical: 6,
+            ),
+            decoration: isSelected
+                ? EnergyDashboardTheme.sidebarActiveItem(color)
+                : BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: color.withOpacity(0.15),
+                      width: 1,
+                    ),
+                    color: color.withOpacity(0.04),
+                  ),
+            child: _isSidebarCollapsed
+                ? Center(
+                    child: Tooltip(
+                      message: label,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? color.withOpacity(0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 18,
+                          color: isSelected
+                              ? color
+                              : EnergyDashboardTheme.textOnDarkMuted,
+                        ),
+                      ),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(isSelected ? 0.15 : 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: isSelected
+                              ? EnergyDashboardTheme.glowCustom(color,
+                                  intensity: 0.2)
+                              : null,
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 16,
+                          color: isSelected
+                              ? color
+                              : EnergyDashboardTheme.textOnDarkMuted,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: GoogleFonts.cairo(
+                            fontSize: 11,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: isSelected
+                                ? EnergyDashboardTheme.textOnDark
+                                : EnergyDashboardTheme.textOnDarkSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isSelected)
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            boxShadow: EnergyDashboardTheme.glowCustom(color,
+                                intensity: 0.5),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnergyLogoutItem() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _logout,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: _isSidebarCollapsed ? 6 : 8,
+            vertical: 5,
+          ),
+          decoration: BoxDecoration(
+            color: EnergyDashboardTheme.danger.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: _isSidebarCollapsed
+              ? Center(
+                  child: Tooltip(
+                    message: 'خروج',
+                    child: Icon(
+                      Icons.logout_rounded,
+                      size: 14,
+                      color: EnergyDashboardTheme.danger,
+                    ),
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.logout_rounded,
+                      size: 14,
+                      color: EnergyDashboardTheme.danger,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'خروج',
+                      style: GoogleFonts.cairo(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: EnergyDashboardTheme.danger,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
   /// ✅ بناء المحتوى الرئيسي حسب التبويب المحدد
   Widget _buildMainContent() {
     switch (_selectedIndex) {
+      case 0:
+        // 🏠 الشاشة الرئيسية - Energy Dashboard Home
+        return const EnergyDashboardHome();
       case 1:
         // ✅ إدارة الشركات
         return const UnifiedCompaniesPage();
+      case 2:
+        // 👤 إدارة الوكلاء
+        return const AgentsManagementPage();
       case 3:
         // ✅ بيانات Firebase
         return const FirebaseDataManagerPage();
@@ -206,138 +826,294 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       case 8:
         // ✅ إدارة قاعدة البيانات
         return const DatabaseAdminPage();
+      case 9:
+        // 📋 سجلات الاشتراكات
+        return const SubscriptionLogsPage();
+      case 10:
+        // 📋 طلبات الخدمة
+        return const ServiceRequestsManagementPage();
+      case 11:
+        // 🌐 منصة الصدارة
+        return const SadaraPortalPage();
       default:
-        // ✅ الافتراضي: إدارة الشركات
-        return const UnifiedCompaniesPage();
+        // 🏠 الافتراضي: الشاشة الرئيسية
+        return const EnergyDashboardHome();
     }
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // 🎨 القائمة الجانبية الفخمة الجديدة
+  // 🎨 القائمة الجانبية بالتصميم الجديد (Al-Sadara Theme)
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildPremiumSidebar() {
+  Widget _buildNewSidebar() {
+    // الحصول على حجم الشاشة
+    final screenWidth = MediaQuery.of(context).size.width;
+    final sidebarWidth =
+        _isSidebarCollapsed ? 56.0 : (screenWidth < 800 ? 150.0 : 170.0);
+
     return Container(
+      width: sidebarWidth,
       decoration: BoxDecoration(
-        gradient: PremiumAdminTheme.sidebarGradient,
+        color: EnergyDashboardTheme.bgSidebar,
+        border: Border(
+          left: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
-            blurRadius: 30,
-            offset: const Offset(5, 0),
+            blurRadius: 8,
+            offset: const Offset(-2, 0),
           ),
         ],
       ),
       child: Column(
         children: [
-          // رأس القائمة الفخم
-          _buildPremiumSidebarHeader(),
+          const SizedBox(height: 8),
 
-          // الفاصل
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: _isSidebarCollapsed ? 16 : 24,
-              vertical: 8,
-            ),
-            child: Divider(
-              color: Colors.white.withOpacity(0.1),
-              thickness: 1,
-            ),
-          ),
-
-          // عناصر القائمة
+          // عناصر القائمة الرئيسية
           Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: _isSidebarCollapsed ? 8 : 16,
-              ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!_isSidebarCollapsed)
-                    Padding(
-                      padding:
-                          const EdgeInsets.only(right: 12, bottom: 8, top: 8),
-                      child: Text(
-                        'الرئيسية',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  _buildPremiumNavItem(
-                      1, Icons.business_rounded, 'إدارة الشركات'),
-                  _buildPremiumNavItem(
-                      5, Icons.people_alt_rounded, 'بوابة المواطن'),
-                  const SizedBox(height: 16),
-                  if (!_isSidebarCollapsed)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12, bottom: 8),
-                      child: Text(
-                        'البيانات',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  _buildPremiumNavItem(
-                      3, Icons.cloud_rounded, 'بيانات Firebase'),
-                  _buildPremiumNavItem(4, Icons.dns_rounded, 'بيانات VPS'),
-                  _buildPremiumNavItem(
-                      8, Icons.storage_rounded, 'قاعدة البيانات'),
-                  const SizedBox(height: 16),
-                  if (!_isSidebarCollapsed)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12, bottom: 8),
-                      child: Text(
-                        'الأدوات',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  _buildPremiumNavItem(
-                      6, Icons.monitor_heart_rounded, 'تشخيص النظام'),
-                  _buildPremiumNavItem(
-                      7, Icons.account_circle_rounded, 'حسابي'),
+                  _buildNewNavItem(
+                    index: 0,
+                    icon: Icons.dashboard_rounded,
+                    label: 'الرئيسية',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 1,
+                    icon: Icons.business_rounded,
+                    label: 'إدارة الشركات',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 5,
+                    icon: Icons.people_outline_rounded,
+                    label: 'بوابة المواطن',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 6,
+                    icon: Icons.monitor_heart_rounded,
+                    label: 'تشخيص النظام',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 3,
+                    icon: Icons.cloud_outlined,
+                    label: 'بيانات Firebase',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 4,
+                    icon: Icons.dns_outlined,
+                    label: 'بيانات VPS',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 8,
+                    icon: Icons.storage_outlined,
+                    label: 'قاعدة البيانات',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 11,
+                    icon: Icons.hub_rounded,
+                    label: 'منصة الصدارة',
+                  ),
+                  const SizedBox(height: 2),
+                  _buildNewNavItem(
+                    index: 7,
+                    icon: Icons.settings_outlined,
+                    label: 'الإعدادات',
+                  ),
                 ],
               ),
             ),
           ),
 
-          // الفاصل السفلي
+          // تسجيل الخروج في الأسفل
           Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: _isSidebarCollapsed ? 16 : 24,
-            ),
-            child: Divider(
-              color: Colors.white.withOpacity(0.1),
-              thickness: 1,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: _buildLogoutItem(),
           ),
 
-          // زر تسجيل الخروج
-          Padding(
-            padding: EdgeInsets.all(_isSidebarCollapsed ? 12 : 16),
-            child: _buildPremiumLogoutButton(),
+          const SizedBox(height: 8),
+
+          // زر طي القائمة
+          GestureDetector(
+            onTap: () =>
+                setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF152238),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Icon(
+                  _isSidebarCollapsed
+                      ? Icons.chevron_right
+                      : Icons.chevron_left,
+                  color: const Color(0xFF64748B),
+                  size: 18,
+                ),
+              ),
+            ),
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
+  /// عنصر قائمة بالتصميم الجديد
+  Widget _buildNewNavItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = _selectedIndex == index;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          if (index == 5 && !DataSourceConfig.useVpsApi) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('بوابة المواطن متاحة فقط مع VPS API'),
+                backgroundColor: const Color(0xFFEF4444),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          } else {
+            setState(() => _selectedIndex = index);
+          }
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: _isSidebarCollapsed ? 8 : 10,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF3B82F6).withOpacity(0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: isSelected
+                ? Border.all(color: const Color(0xFF3B82F6).withOpacity(0.4))
+                : null,
+          ),
+          child: _isSidebarCollapsed
+              ? Center(
+                  child: Tooltip(
+                    message: label,
+                    child: Icon(
+                      icon,
+                      size: 20,
+                      color: isSelected
+                          ? EnergyDashboardTheme.neonBlue
+                          : EnergyDashboardTheme.textOnDarkMuted,
+                    ),
+                  ),
+                )
+              : Row(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 18,
+                      color: isSelected
+                          ? EnergyDashboardTheme.neonBlue
+                          : EnergyDashboardTheme.textOnDarkMuted,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected
+                              ? EnergyDashboardTheme.textOnDark
+                              : EnergyDashboardTheme.textOnDarkSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// عنصر تسجيل الخروج
+  Widget _buildLogoutItem() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _logout,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: _isSidebarCollapsed ? 8 : 10,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEF4444).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: _isSidebarCollapsed
+              ? Center(
+                  child: Tooltip(
+                    message: 'تسجيل الخروج',
+                    child: Icon(
+                      Icons.logout_rounded,
+                      size: 16,
+                      color: const Color(0xFFEF4444),
+                    ),
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.logout_rounded,
+                      size: 14,
+                      color: const Color(0xFFEF4444),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'خروج',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumSidebar() {
+    return _buildNewSidebar();
+  }
+
   Widget _buildPremiumSidebarHeader() {
     return Container(
-      padding: EdgeInsets.all(_isSidebarCollapsed ? 16 : 24),
+      padding: EdgeInsets.all(_isSidebarCollapsed ? 12 : 16),
       child: Column(
         children: [
           // زر إخفاء/إظهار
@@ -350,14 +1126,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 // الشعار النصي
                 ShaderMask(
                   shaderCallback: (bounds) =>
-                      PremiumAdminTheme.primaryGradient.createShader(bounds),
+                      EnergyDashboardTheme.primaryGradient.createShader(bounds),
                   child: const Text(
                     'SADARA',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 3,
+                      letterSpacing: 2,
                     ),
                   ),
                 ),
@@ -369,64 +1145,64 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       ? Icons.keyboard_double_arrow_left
                       : Icons.keyboard_double_arrow_right,
                   color: Colors.white.withOpacity(0.6),
-                  size: 20,
+                  size: 18,
                 ),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.05),
+                  backgroundColor: Colors.white.withOpacity(0.15),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
             ],
           ),
 
-          SizedBox(height: _isSidebarCollapsed ? 16 : 24),
+          SizedBox(height: _isSidebarCollapsed ? 10 : 14),
 
           // الشعار والمعلومات
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: PremiumAdminTheme.primaryGradient,
+              gradient: EnergyDashboardTheme.primaryGradient,
               boxShadow:
-                  PremiumAdminTheme.glowShadow(PremiumAdminTheme.primary),
+                  EnergyDashboardTheme.glowShadow(EnergyDashboardTheme.primary),
             ),
             child: Container(
-              padding: EdgeInsets.all(_isSidebarCollapsed ? 12 : 16),
+              padding: EdgeInsets.all(_isSidebarCollapsed ? 10 : 12),
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: PremiumAdminTheme.bgDark,
+                color: EnergyDashboardTheme.bgDark,
               ),
               child: Icon(
                 Icons.shield_rounded,
-                size: _isSidebarCollapsed ? 24 : 32,
+                size: _isSidebarCollapsed ? 20 : 26,
                 color: Colors.white,
               ),
             ),
           ),
 
           if (!_isSidebarCollapsed) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Text(
               VpsAuthService.instance.currentSuperAdmin?.fullName ??
                   CustomAuthService.currentSuperAdmin?.name ??
                   'مدير النظام',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                gradient: PremiumAdminTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(20),
+                gradient: EnergyDashboardTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -434,14 +1210,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   Icon(
                     Icons.verified_rounded,
                     color: Colors.white.withOpacity(0.9),
-                    size: 14,
+                    size: 12,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   const Text(
                     'Super Admin',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -458,7 +1234,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     final isSelected = _selectedIndex == index;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Material(
         color: Colors.transparent,
         child: Tooltip(
@@ -470,7 +1246,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: const Text('بوابة المواطن متاحة فقط مع VPS API'),
-                    backgroundColor: PremiumAdminTheme.danger,
+                    backgroundColor: EnergyDashboardTheme.danger,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
@@ -480,16 +1256,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 setState(() => _selectedIndex = index);
               }
             },
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
               padding: EdgeInsets.symmetric(
-                horizontal: _isSidebarCollapsed ? 12 : 16,
-                vertical: 14,
+                horizontal: _isSidebarCollapsed ? 10 : 12,
+                vertical: 10,
               ),
               decoration: isSelected
-                  ? PremiumAdminTheme.sidebarActiveDecoration
+                  ? EnergyDashboardTheme.sidebarActiveDecoration
                   : BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       color: Colors.transparent,
@@ -504,10 +1280,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     color: isSelected
                         ? Colors.white
                         : Colors.white.withOpacity(0.6),
-                    size: 22,
+                    size: 20,
                   ),
                   if (!_isSidebarCollapsed) ...[
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         title,
@@ -515,7 +1291,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                           color: isSelected
                               ? Colors.white
                               : Colors.white.withOpacity(0.7),
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight:
                               isSelected ? FontWeight.w600 : FontWeight.w500,
                         ),
@@ -561,9 +1337,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            color: PremiumAdminTheme.danger.withOpacity(0.15),
+            color: EnergyDashboardTheme.danger.withOpacity(0.15),
             border: Border.all(
-              color: PremiumAdminTheme.danger.withOpacity(0.3),
+              color: EnergyDashboardTheme.danger.withOpacity(0.3),
             ),
           ),
           child: Row(
@@ -573,7 +1349,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             children: [
               Icon(
                 Icons.logout_rounded,
-                color: PremiumAdminTheme.danger,
+                color: EnergyDashboardTheme.danger,
                 size: 20,
               ),
               if (!_isSidebarCollapsed) ...[
@@ -581,7 +1357,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 const Text(
                   'تسجيل الخروج',
                   style: TextStyle(
-                    color: PremiumAdminTheme.danger,
+                    color: EnergyDashboardTheme.danger,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
@@ -604,13 +1380,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       builder: (context, child) {
         return Container(
           decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
+            color: EnergyDashboardTheme.surfaceColor,
             border: const Border(
-              left: BorderSide(color: AdminTheme.borderColor),
+              left: BorderSide(color: EnergyDashboardTheme.borderColor),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withOpacity(0.2),
                 blurRadius: 20,
                 offset: const Offset(-5, 0),
               ),
@@ -637,6 +1413,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       _buildNavItem(3, Icons.cloud, 'بيانات Firebase'),
                       _buildNavItem(4, Icons.dns, 'بيانات VPS'),
                       _buildNavItem(8, Icons.storage, 'إدارة قاعدة البيانات'),
+                      _buildNavItem(11, Icons.hub_rounded, 'منصة الصدارة'),
                       _buildNavItem(
                           6, Icons.medical_services_rounded, 'تشخيص النظام'),
                       if (!_isSidebarCollapsed)
@@ -675,12 +1452,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
               icon: Icon(
                 _isSidebarCollapsed ? Icons.menu_open : Icons.menu,
-                color: AdminTheme.textMuted,
+                color: EnergyDashboardTheme.textMuted,
                 size: 22,
               ),
               tooltip: _isSidebarCollapsed ? 'توسيع القائمة' : 'تصغير القائمة',
               style: IconButton.styleFrom(
-                backgroundColor: AdminTheme.backgroundColor,
+                backgroundColor: EnergyDashboardTheme.backgroundColor,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
@@ -693,11 +1470,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: const LinearGradient(
-                colors: [AdminTheme.primaryColor, AdminTheme.accentColor],
+                colors: [
+                  EnergyDashboardTheme.primaryColor,
+                  EnergyDashboardTheme.accentColor
+                ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AdminTheme.primaryColor.withOpacity(0.3),
+                  color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
                   blurRadius: 15,
                   spreadRadius: 1,
                 ),
@@ -711,7 +1491,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               ),
               child: ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
-                  colors: [AdminTheme.primaryColor, AdminTheme.accentColor],
+                  colors: [
+                    EnergyDashboardTheme.primaryColor,
+                    EnergyDashboardTheme.accentColor
+                  ],
                 ).createShader(bounds),
                 child: Icon(
                   Icons.admin_panel_settings,
@@ -726,7 +1509,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             Text(
               CustomAuthService.currentSuperAdmin?.name ?? 'مدير النظام',
               style: const TextStyle(
-                color: AdminTheme.textPrimary,
+                color: EnergyDashboardTheme.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -740,25 +1523,25 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AdminTheme.primaryColor.withOpacity(0.1),
-                    AdminTheme.accentColor.withOpacity(0.1),
+                    EnergyDashboardTheme.primaryColor.withOpacity(0.1),
+                    EnergyDashboardTheme.accentColor.withOpacity(0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AdminTheme.primaryColor.withOpacity(0.3),
+                  color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
                 ),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.verified,
-                      color: AdminTheme.primaryColor, size: 12),
+                      color: EnergyDashboardTheme.primaryColor, size: 12),
                   SizedBox(width: 4),
                   Text(
                     'Super Admin',
                     style: TextStyle(
-                      color: AdminTheme.primaryColor,
+                      color: EnergyDashboardTheme.primaryColor,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -798,7 +1581,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('بوابة المواطن متاحة فقط مع VPS API'),
-                      backgroundColor: AdminTheme.dangerColor,
+                      backgroundColor: EnergyDashboardTheme.dangerColor,
                     ),
                   );
                 }
@@ -817,11 +1600,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 color: isSelected
-                    ? AdminTheme.primaryColor.withOpacity(0.1)
+                    ? EnergyDashboardTheme.primaryColor.withOpacity(0.1)
                     : null,
                 border: isSelected
                     ? Border.all(
-                        color: AdminTheme.primaryColor.withOpacity(0.3))
+                        color:
+                            EnergyDashboardTheme.primaryColor.withOpacity(0.3))
                     : null,
               ),
               child: Row(
@@ -833,8 +1617,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   Icon(
                     icon,
                     color: isSelected
-                        ? AdminTheme.primaryColor
-                        : AdminTheme.textMuted,
+                        ? EnergyDashboardTheme.primaryColor
+                        : EnergyDashboardTheme.textMuted,
                     size: _isSidebarCollapsed ? 22 : 18,
                   ),
                   if (!_isSidebarCollapsed) ...[
@@ -844,8 +1628,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                         title,
                         style: TextStyle(
                           color: isSelected
-                              ? AdminTheme.primaryColor
-                              : AdminTheme.textSecondary,
+                              ? EnergyDashboardTheme.primaryColor
+                              : EnergyDashboardTheme.textSecondary,
                           fontSize: 13,
                           fontWeight:
                               isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -860,10 +1644,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                         height: 5,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AdminTheme.primaryColor,
+                          color: EnergyDashboardTheme.primaryColor,
                           boxShadow: [
                             BoxShadow(
-                              color: AdminTheme.primaryColor.withOpacity(0.4),
+                              color: EnergyDashboardTheme.primaryColor
+                                  .withOpacity(0.4),
                               blurRadius: 6,
                             ),
                           ],
@@ -894,21 +1679,21 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              color: AdminTheme.dangerColor.withOpacity(0.1),
-              border:
-                  Border.all(color: AdminTheme.dangerColor.withOpacity(0.3)),
+              color: EnergyDashboardTheme.dangerColor.withOpacity(0.1),
+              border: Border.all(
+                  color: EnergyDashboardTheme.dangerColor.withOpacity(0.3)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.logout_rounded,
-                    color: AdminTheme.dangerColor, size: 18),
+                    color: EnergyDashboardTheme.dangerColor, size: 18),
                 if (!_isSidebarCollapsed) ...[
                   const SizedBox(width: 6),
                   const Text(
                     'تسجيل الخروج',
                     style: TextStyle(
-                      color: AdminTheme.dangerColor,
+                      color: EnergyDashboardTheme.dangerColor,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
@@ -922,45 +1707,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     );
   }
 
-  Widget _buildTopBar() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
-        border: const Border(
-          bottom: BorderSide(color: AdminTheme.borderColor),
-        ),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _getGreeting(),
-                style: const TextStyle(
-                  color: AdminTheme.textMuted,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _getPageTitle(),
-                style: const TextStyle(
-                  color: AdminTheme.textPrimary,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          // زر الإضافة السريعة
-          _buildQuickAddButton(),
-        ],
-      ),
-    );
-  }
+  // تم نقل _buildTopBar للأعلى في التصميم الجديد
 
   /// ✅ عنوان الصفحة حسب التبويب
   String _getPageTitle() {
@@ -998,12 +1745,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AdminTheme.primaryColor, AdminTheme.accentColor],
+              colors: [
+                EnergyDashboardTheme.primaryColor,
+                EnergyDashboardTheme.accentColor
+              ],
             ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: AdminTheme.primaryColor.withOpacity(0.3),
+                color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -1031,11 +1781,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   Widget _buildDashboardContent() {
     // ✅ استخدام VPS API بدلاً من Firebase
     if (_isLoadingVpsTenants) {
-      return AdminTheme.buildLoadingIndicator();
+      return EnergyDashboardTheme.buildLoadingIndicator();
     }
 
     if (_vpsTenantsError != null) {
-      return AdminTheme.buildErrorWidget(
+      return EnergyDashboardTheme.buildErrorWidget(
         message: 'خطأ: $_vpsTenantsError',
         onRetry: _loadVpsTenants,
       );
@@ -1059,7 +1809,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   icon: const Icon(Icons.refresh, size: 18),
                   label: const Text('تحديث'),
                   style: TextButton.styleFrom(
-                    foregroundColor: AdminTheme.primaryColor,
+                    foregroundColor: EnergyDashboardTheme.primaryColor,
                   ),
                 ),
               ],
@@ -1091,12 +1841,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         const Row(
           children: [
             Icon(Icons.analytics_outlined,
-                color: AdminTheme.primaryColor, size: 22),
+                color: EnergyDashboardTheme.primaryColor, size: 22),
             SizedBox(width: 8),
             Text(
               'الإحصائيات',
               style: TextStyle(
-                color: AdminTheme.textPrimary,
+                color: EnergyDashboardTheme.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1136,7 +1886,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'اشتراكات منتهية',
               value: expiredTenants.toString(),
               icon: Icons.cancel_rounded,
-              gradient: const [Color(0xFFeb3349), Color(0xFFf45c43)],
+              gradient: const [
+                EnergyDashboardTheme.danger,
+                EnergyDashboardTheme.neonPink
+              ],
               onTap: () => _showFilteredCompanies(
                   context, tenants, 'اشتراكات منتهية', (t) => t.isExpired),
             ),
@@ -1144,7 +1897,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'تنتهي قريباً',
               value: expiringSoonTenants.toString(),
               icon: Icons.warning_rounded,
-              gradient: const [Color(0xFFf7971e), Color(0xFFffd200)],
+              gradient: const [
+                EnergyDashboardTheme.neonOrange,
+                EnergyDashboardTheme.neonYellow
+              ],
               onTap: () => _showFilteredCompanies(context, tenants,
                   'تنتهي خلال 7 أيام', (t) => t.isExpiringSoon),
             ),
@@ -1178,9 +1934,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           width: 180,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
+            color: EnergyDashboardTheme.surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AdminTheme.borderColor),
+            border: Border.all(color: EnergyDashboardTheme.borderColor),
             boxShadow: [
               BoxShadow(
                 color: gradient[0].withOpacity(0.1),
@@ -1210,7 +1966,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   ),
                   Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: AdminTheme.textMuted,
+                    color: EnergyDashboardTheme.textMuted,
                     size: 14,
                   ),
                 ],
@@ -1228,7 +1984,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               Text(
                 title,
                 style: const TextStyle(
-                  color: AdminTheme.textSecondary,
+                  color: EnergyDashboardTheme.textSecondary,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1259,7 +2015,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         minChildSize: 0.5,
         builder: (context, scrollController) => Container(
           decoration: const BoxDecoration(
-            color: AdminTheme.surfaceColor,
+            color: EnergyDashboardTheme.surfaceColor,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -1270,7 +2026,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AdminTheme.borderColor,
+                  color: EnergyDashboardTheme.borderColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1282,7 +2038,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     Text(
                       title,
                       style: const TextStyle(
-                        color: AdminTheme.textPrimary,
+                        color: EnergyDashboardTheme.textPrimary,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1292,13 +2048,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AdminTheme.primaryColor.withOpacity(0.1),
+                        color:
+                            EnergyDashboardTheme.primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${filteredTenants.length}',
                         style: const TextStyle(
-                          color: AdminTheme.primaryColor,
+                          color: EnergyDashboardTheme.primaryColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1306,13 +2063,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     const Spacer(),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon:
-                          const Icon(Icons.close, color: AdminTheme.textMuted),
+                      icon: const Icon(Icons.close,
+                          color: EnergyDashboardTheme.textMuted),
                     ),
                   ],
                 ),
               ),
-              const Divider(color: AdminTheme.borderColor, height: 1),
+              const Divider(color: EnergyDashboardTheme.borderColor, height: 1),
               // قائمة الشركات
               Expanded(
                 child: filteredTenants.isEmpty
@@ -1323,13 +2080,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                             Icon(
                               Icons.inbox_rounded,
                               size: 64,
-                              color: AdminTheme.textMuted.withOpacity(0.5),
+                              color: EnergyDashboardTheme.textMuted
+                                  .withOpacity(0.5),
                             ),
                             const SizedBox(height: 16),
                             const Text(
                               'لا توجد شركات',
                               style: TextStyle(
-                                color: AdminTheme.textMuted,
+                                color: EnergyDashboardTheme.textMuted,
                                 fontSize: 16,
                               ),
                             ),
@@ -1362,12 +2120,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             const Row(
               children: [
                 Icon(Icons.business_rounded,
-                    color: AdminTheme.primaryColor, size: 22),
+                    color: EnergyDashboardTheme.primaryColor, size: 22),
                 SizedBox(width: 8),
                 Text(
                   'آخر الشركات',
                   style: TextStyle(
-                    color: AdminTheme.textPrimary,
+                    color: EnergyDashboardTheme.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1380,7 +2138,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
               label: const Text('عرض الكل'),
               style: TextButton.styleFrom(
-                foregroundColor: AdminTheme.primaryColor,
+                foregroundColor: EnergyDashboardTheme.primaryColor,
               ),
             ),
           ],
@@ -1398,22 +2156,22 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         children: [
           Icon(
             Icons.business_rounded,
             size: 64,
-            color: AdminTheme.textMuted.withOpacity(0.5),
+            color: EnergyDashboardTheme.textMuted.withOpacity(0.5),
           ),
           const SizedBox(height: 16),
           const Text(
             'لا توجد شركات بعد',
             style: TextStyle(
-              color: AdminTheme.textMuted,
+              color: EnergyDashboardTheme.textMuted,
               fontSize: 18,
             ),
           ),
@@ -1421,7 +2179,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           Text(
             'اضغط على زر "شركة جديدة" للبدء',
             style: TextStyle(
-              color: AdminTheme.textMuted.withOpacity(0.7),
+              color: EnergyDashboardTheme.textMuted.withOpacity(0.7),
               fontSize: 14,
             ),
           ),
@@ -1441,9 +2199,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AdminTheme.surfaceColor,
+              color: EnergyDashboardTheme.surfaceColor,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AdminTheme.borderColor),
+              border: Border.all(color: EnergyDashboardTheme.borderColor),
               boxShadow: [
                 BoxShadow(
                   color: _getStatusColor(tenant.status).withOpacity(0.08),
@@ -1485,7 +2243,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       Text(
                         tenant.name,
                         style: const TextStyle(
-                          color: AdminTheme.textPrimary,
+                          color: EnergyDashboardTheme.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1494,7 +2252,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       Text(
                         'كود: ${tenant.code}',
                         style: const TextStyle(
-                          color: AdminTheme.textMuted,
+                          color: EnergyDashboardTheme.textMuted,
                           fontSize: 13,
                         ),
                       ),
@@ -1522,7 +2280,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 const SizedBox(width: 8),
                 const Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: AdminTheme.textMuted,
+                  color: EnergyDashboardTheme.textMuted,
                   size: 14,
                 ),
               ],
@@ -1547,7 +2305,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _getStatusColor(tenant.status).withOpacity(0.3),
@@ -1799,7 +2557,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
@@ -1860,7 +2618,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         _buildActionButton(
           icon: Icons.login_rounded,
           label: 'الدخول للشركة',
-          gradient: const [Color(0xFF667eea), Color(0xFF764ba2)],
+          gradient: const [
+            EnergyDashboardTheme.neonBlue,
+            EnergyDashboardTheme.neonPurple
+          ],
           onTap: () {
             Navigator.pop(context);
             _enterCompany(tenant);
@@ -1871,7 +2632,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         _buildActionButton(
           icon: Icons.tune_rounded,
           label: 'إدارة ميزات الشركة',
-          gradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
+          gradient: const [
+            EnergyDashboardTheme.success,
+            EnergyDashboardTheme.neonGreen
+          ],
           onTap: () {
             Navigator.pop(context);
             Navigator.push(
@@ -1910,7 +2674,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 label: tenant.isActive ? 'تعليق' : 'تفعيل',
                 gradient: tenant.isActive
                     ? const [Color(0xFFf093fb), Color(0xFFf5576c)]
-                    : const [Color(0xFF11998e), Color(0xFF38ef7d)],
+                    : const [
+                        EnergyDashboardTheme.success,
+                        EnergyDashboardTheme.neonGreen
+                      ],
                 onTap: () {
                   Navigator.pop(context);
                   if (tenant.isActive) {
@@ -1927,7 +2694,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         _buildActionButton(
           icon: Icons.delete_rounded,
           label: 'حذف الشركة',
-          gradient: const [Color(0xFFeb3349), Color(0xFFf45c43)],
+          gradient: const [
+            EnergyDashboardTheme.danger,
+            EnergyDashboardTheme.neonPink
+          ],
           onTap: () {
             Navigator.pop(context);
             _deleteCompany(context, tenant);
@@ -1981,20 +2751,33 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   }
 
   void _enterCompany(Tenant tenant) {
-    final Map<String, bool> fullPermissions = {
-      'attendance': true,
-      'agent': true,
-      'tasks': true,
-      'zones': true,
-      'ai_search': true,
-      'users_management': true,
-      'reports': true,
-      'settings': true,
-      'dashboard': true,
-      'tickets': true,
-      'notifications': true,
-      'maintenance': true,
-    };
+    // V2: منح جميع الصلاحيات للسوبر أدمن
+    PermissionManager.instance.grantAll([
+      'attendance',
+      'agent',
+      'tasks',
+      'zones',
+      'ai_search',
+      'users_management',
+      'reports',
+      'settings',
+      'dashboard',
+      'tickets',
+      'notifications',
+      'maintenance',
+      'users',
+      'subscriptions',
+      'accounts',
+      'account_records',
+      'export',
+      'technicians',
+      'transactions',
+      'local_storage',
+      'sadara_portal',
+      'accounting',
+      'diagnostics',
+    ]);
+    final fullPermissions = PermissionManager.instance.buildPageAccess();
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
@@ -2152,7 +2935,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -2376,19 +3159,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     switch (status) {
       case SubscriptionStatus.active:
         label = 'نشط';
-        color = const Color(0xFF38ef7d);
+        color = EnergyDashboardTheme.success;
         break;
       case SubscriptionStatus.warning:
         label = 'تحذير';
-        color = const Color(0xFFffd200);
+        color = EnergyDashboardTheme.neonOrange;
         break;
       case SubscriptionStatus.critical:
         label = 'حرج';
-        color = const Color(0xFFf45c43);
+        color = EnergyDashboardTheme.danger;
         break;
       case SubscriptionStatus.expired:
         label = 'منتهي';
-        color = const Color(0xFFeb3349);
+        color = EnergyDashboardTheme.danger;
         break;
       case SubscriptionStatus.suspended:
         label = 'معلق';
@@ -2417,13 +3200,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   Color _getStatusColor(SubscriptionStatus status) {
     switch (status) {
       case SubscriptionStatus.active:
-        return const Color(0xFF38ef7d);
+        return EnergyDashboardTheme.success;
       case SubscriptionStatus.warning:
-        return const Color(0xFFffd200);
+        return EnergyDashboardTheme.neonOrange;
       case SubscriptionStatus.critical:
-        return const Color(0xFFf45c43);
+        return EnergyDashboardTheme.danger;
       case SubscriptionStatus.expired:
-        return const Color(0xFFeb3349);
+        return EnergyDashboardTheme.danger;
       case SubscriptionStatus.suspended:
         return Colors.grey;
     }
@@ -2485,15 +3268,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: EnergyDashboardTheme.neonPurpleGradient,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF667eea).withOpacity(0.3),
+            color: EnergyDashboardTheme.neonPurple.withOpacity(0.2),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -2549,7 +3328,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF667eea),
+              foregroundColor: EnergyDashboardTheme.neonBlue,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -2573,108 +3352,119 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         'title': 'إجمالي المواطنين',
         'value': '1,247',
         'icon': Icons.people_outline,
-        'color': const Color(0xFF38ef7d),
+        'color': EnergyDashboardTheme.success,
         'trend': '+12%',
       },
       {
         'title': 'الاشتراكات النشطة',
         'value': '893',
         'icon': Icons.wifi,
-        'color': const Color(0xFF667eea),
+        'color': EnergyDashboardTheme.neonBlue,
         'trend': '+8%',
       },
       {
         'title': 'المدفوعات الشهرية',
         'value': '45.2M',
         'icon': Icons.payments_outlined,
-        'color': const Color(0xFFffd200),
+        'color': EnergyDashboardTheme.neonOrange,
         'trend': '+15%',
       },
       {
         'title': 'تذاكر الدعم المفتوحة',
         'value': '23',
         'icon': Icons.support_agent,
-        'color': const Color(0xFFf45c43),
+        'color': EnergyDashboardTheme.danger,
         'trend': '-5%',
       },
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 20,
-        mainAxisSpacing: 20,
-        childAspectRatio: 1.5,
-      ),
-      itemCount: stats.length,
-      itemBuilder: (context, index) {
-        final stat = stats[index];
-        final color = stat['color'] as Color;
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AdminTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AdminTheme.borderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+    // استخدام LayoutBuilder للتكيف مع الشاشة
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // حساب عدد الأعمدة بناءً على عرض الشاشة
+        final crossAxisCount = constraints.maxWidth > 900
+            ? 4
+            : (constraints.maxWidth > 600 ? 2 : 1);
+
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: stats.map((stat) {
+            final color = stat['color'] as Color;
+            // حساب عرض البطاقة
+            final cardWidth =
+                (constraints.maxWidth - (16 * (crossAxisCount - 1))) /
+                    crossAxisCount;
+
+            return SizedBox(
+              width: cardWidth.clamp(200.0, 280.0),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: EnergyDashboardTheme.bgCard,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: EnergyDashboardTheme.borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(stat['icon'] as IconData,
+                              color: color, size: 22),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: (stat['trend'] as String).startsWith('+')
+                                ? EnergyDashboardTheme.success.withOpacity(0.15)
+                                : EnergyDashboardTheme.danger.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            stat['trend'] as String,
+                            style: TextStyle(
+                              color: (stat['trend'] as String).startsWith('+')
+                                  ? EnergyDashboardTheme.success
+                                  : EnergyDashboardTheme.danger,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child:
-                        Icon(stat['icon'] as IconData, color: color, size: 22),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: (stat['trend'] as String).startsWith('+')
-                          ? const Color(0xFF38ef7d).withOpacity(0.1)
-                          : const Color(0xFFf45c43).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      stat['trend'] as String,
-                      style: TextStyle(
-                        color: (stat['trend'] as String).startsWith('+')
-                            ? const Color(0xFF38ef7d)
-                            : const Color(0xFFf45c43),
-                        fontSize: 12,
+                    const SizedBox(height: 16),
+                    Text(
+                      stat['value'] as String,
+                      style: const TextStyle(
+                        color: EnergyDashboardTheme.textPrimary,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                stat['value'] as String,
-                style: const TextStyle(
-                  color: AdminTheme.textPrimary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                    const SizedBox(height: 4),
+                    Text(
+                      stat['title'] as String,
+                      style: const TextStyle(
+                        color: EnergyDashboardTheme.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                stat['title'] as String,
-                style: const TextStyle(
-                  color: AdminTheme.textMuted,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
+            );
+          }).toList(),
         );
       },
     );
@@ -2686,42 +3476,42 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         'title': 'إدارة المواطنين',
         'subtitle': 'عرض وإضافة وتعديل بيانات المواطنين',
         'icon': Icons.people_alt_rounded,
-        'color': const Color(0xFF38ef7d),
+        'color': EnergyDashboardTheme.success,
         'route': 'citizens',
       },
       {
         'title': 'إدارة الاشتراكات',
         'subtitle': 'متابعة وتفعيل وإلغاء الاشتراكات',
         'icon': Icons.card_membership_rounded,
-        'color': const Color(0xFF667eea),
+        'color': EnergyDashboardTheme.neonBlue,
         'route': 'subscriptions',
       },
       {
         'title': 'المدفوعات',
         'subtitle': 'تسجيل ومتابعة المدفوعات',
         'icon': Icons.payments_rounded,
-        'color': const Color(0xFFffd200),
+        'color': EnergyDashboardTheme.neonOrange,
         'route': 'payments',
       },
       {
         'title': 'باقات الإنترنت',
         'subtitle': 'إدارة باقات الاشتراك والأسعار',
         'icon': Icons.wifi_rounded,
-        'color': const Color(0xFF764ba2),
+        'color': EnergyDashboardTheme.neonPurple,
         'route': 'plans',
       },
       {
         'title': 'تذاكر الدعم',
         'subtitle': 'الرد على استفسارات المواطنين',
         'icon': Icons.support_agent_rounded,
-        'color': const Color(0xFFf45c43),
+        'color': EnergyDashboardTheme.danger,
         'route': 'tickets',
       },
       {
         'title': 'التقارير',
         'subtitle': 'تقارير شاملة عن النظام',
         'icon': Icons.analytics_rounded,
-        'color': const Color(0xFF00b4db),
+        'color': EnergyDashboardTheme.info,
         'route': 'reports',
       },
     ];
@@ -2729,21 +3519,22 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.flash_on_rounded, color: AdminTheme.primaryColor),
-              SizedBox(width: 8),
-              Text(
+              Icon(Icons.flash_on_rounded,
+                  color: EnergyDashboardTheme.neonBlue),
+              const SizedBox(width: 8),
+              const Text(
                 'الإجراءات السريعة',
                 style: TextStyle(
-                  color: AdminTheme.textPrimary,
+                  color: EnergyDashboardTheme.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2751,84 +3542,90 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             ],
           ),
           const SizedBox(height: 20),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.8,
-            ),
-            itemCount: actions.length,
-            itemBuilder: (context, index) {
-              final action = actions[index];
-              final color = action['color'] as Color;
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    // الانتقال للصفحة المطلوبة
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _CitizenPortalMainPage(
-                          initialTab: action['route'] as String,
+          // استخدام Wrap بدلاً من GridView لتجنب التداخل
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = constraints.maxWidth > 700
+                  ? 3
+                  : (constraints.maxWidth > 450 ? 2 : 1);
+              final cardWidth =
+                  (constraints.maxWidth - (16 * (crossAxisCount - 1))) /
+                      crossAxisCount;
+
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: actions.map((action) {
+                  final color = action['color'] as Color;
+                  return SizedBox(
+                    width: cardWidth.clamp(140.0, 250.0),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => _CitizenPortalMainPage(
+                                initialTab: action['route'] as String,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: color.withOpacity(0.25)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: color.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(action['icon'] as IconData,
+                                        color: color, size: 20),
+                                  ),
+                                  const Spacer(),
+                                  Icon(Icons.arrow_forward_ios,
+                                      color: color, size: 14),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                action['title'] as String,
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                action['subtitle'] as String,
+                                style: const TextStyle(
+                                  color: EnergyDashboardTheme.textMuted,
+                                  fontSize: 11,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: color.withOpacity(0.2)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(action['icon'] as IconData,
-                                  color: color, size: 20),
-                            ),
-                            const Spacer(),
-                            Icon(Icons.arrow_forward_ios,
-                                color: color, size: 14),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          action['title'] as String,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          action['subtitle'] as String,
-                          style: const TextStyle(
-                            color: AdminTheme.textMuted,
-                            fontSize: 11,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                  );
+                }).toList(),
               );
             },
           ),
@@ -2841,21 +3638,22 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceColor,
+        color: EnergyDashboardTheme.bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AdminTheme.borderColor),
+        border: Border.all(color: EnergyDashboardTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.business_rounded, color: AdminTheme.primaryColor),
+              Icon(Icons.business_rounded,
+                  color: EnergyDashboardTheme.primaryColor),
               SizedBox(width: 8),
               Text(
                 'الشركة المرتبطة',
                 style: TextStyle(
-                  color: AdminTheme.textPrimary,
+                  color: EnergyDashboardTheme.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2869,31 +3667,31 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF667eea).withOpacity(0.1),
-                  const Color(0xFF764ba2).withOpacity(0.1),
+                  EnergyDashboardTheme.neonBlue.withOpacity(0.15),
+                  EnergyDashboardTheme.neonPurple.withOpacity(0.15),
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: const Color(0xFF667eea).withOpacity(0.3)),
+              border: Border.all(
+                  color: EnergyDashboardTheme.neonBlue.withOpacity(0.4)),
             ),
             child: Column(
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: EnergyDashboardTheme.bgCard,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF667eea).withOpacity(0.2),
+                        color: EnergyDashboardTheme.neonBlue.withOpacity(0.3),
                         blurRadius: 10,
                       ),
                     ],
                   ),
                   child: const Icon(
                     Icons.wifi_rounded,
-                    color: Color(0xFF667eea),
+                    color: EnergyDashboardTheme.neonBlue,
                     size: 32,
                   ),
                 ),
@@ -2901,7 +3699,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 const Text(
                   'شركة الصدارة للإنترنت',
                   style: TextStyle(
-                    color: AdminTheme.textPrimary,
+                    color: EnergyDashboardTheme.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2911,18 +3709,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF38ef7d).withOpacity(0.1),
+                    color: EnergyDashboardTheme.success.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.verified, color: Color(0xFF38ef7d), size: 14),
+                      Icon(Icons.verified,
+                          color: EnergyDashboardTheme.success, size: 14),
                       SizedBox(width: 6),
                       Text(
                         'مرتبطة بنظام المواطن',
                         style: TextStyle(
-                          color: Color(0xFF38ef7d),
+                          color: EnergyDashboardTheme.success,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2950,18 +3749,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AdminTheme.backgroundColor,
+        color: EnergyDashboardTheme.bgSecondary,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AdminTheme.textMuted, size: 20),
+          Icon(icon, color: EnergyDashboardTheme.textMuted, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
               style: const TextStyle(
-                color: AdminTheme.textSecondary,
+                color: EnergyDashboardTheme.textSecondary,
                 fontSize: 13,
               ),
             ),
@@ -2969,7 +3768,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           Text(
             value,
             style: const TextStyle(
-              color: AdminTheme.textPrimary,
+              color: EnergyDashboardTheme.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
@@ -3003,7 +3802,7 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_getTabTitle(_currentTab)),
-        backgroundColor: const Color(0xFF667eea),
+        backgroundColor: EnergyDashboardTheme.neonBlue,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -3020,7 +3819,7 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
           // القائمة الجانبية
           Container(
             width: 220,
-            color: const Color(0xFF1a1a2e),
+            color: EnergyDashboardTheme.bgSidebar,
             child: Column(
               children: [
                 const SizedBox(height: 20),
@@ -3041,7 +3840,7 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
                   child: Text(
                     'بوابة المواطن v1.0',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: EnergyDashboardTheme.textOnDarkMuted,
                       fontSize: 12,
                     ),
                   ),
@@ -3051,38 +3850,41 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
           ),
           // المحتوى
           Expanded(
-            child: Container(
-              color: const Color(0xFF0f0f1a),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _getTabIcon(_currentTab),
-                      size: 80,
-                      color: const Color(0xFF667eea).withOpacity(0.5),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      _getTabTitle(_currentTab),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+            child: _currentTab == 'plans'
+                ? const PlansManagementPage()
+                : Container(
+                    color: EnergyDashboardTheme.bgPrimary,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _getTabIcon(_currentTab),
+                            size: 80,
+                            color:
+                                EnergyDashboardTheme.neonBlue.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            _getTabTitle(_currentTab),
+                            style: const TextStyle(
+                              color: EnergyDashboardTheme.textPrimary,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'قيد التطوير - سيتم إضافة المحتوى قريباً',
+                            style: TextStyle(
+                              color: EnergyDashboardTheme.textMuted,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'قيد التطوير - سيتم إضافة المحتوى قريباً',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
           ),
         ],
       ),
@@ -3098,11 +3900,14 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF667eea).withOpacity(0.2) : null,
+            color: isSelected
+                ? EnergyDashboardTheme.neonBlue.withOpacity(0.2)
+                : null,
             border: Border(
               right: BorderSide(
-                color:
-                    isSelected ? const Color(0xFF667eea) : Colors.transparent,
+                color: isSelected
+                    ? EnergyDashboardTheme.neonBlue
+                    : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -3111,14 +3916,18 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
             children: [
               Icon(
                 icon,
-                color: isSelected ? const Color(0xFF667eea) : Colors.white54,
+                color: isSelected
+                    ? EnergyDashboardTheme.neonBlue
+                    : EnergyDashboardTheme.textOnDarkSecondary,
                 size: 20,
               ),
               const SizedBox(width: 12),
               Text(
                 title,
                 style: TextStyle(
-                  color: isSelected ? const Color(0xFF667eea) : Colors.white54,
+                  color: isSelected
+                      ? EnergyDashboardTheme.neonBlue
+                      : EnergyDashboardTheme.textOnDarkSecondary,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),

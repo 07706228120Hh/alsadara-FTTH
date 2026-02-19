@@ -55,6 +55,39 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<ServiceRequestAttachment, long>? _serviceRequestAttachments;
     private IRepository<ServiceRequestStatusHistory, long>? _serviceRequestStatusHistories;
 
+    // Subscription Logs (سجل عمليات الاشتراكات)
+    private IRepository<SubscriptionLog, long>? _subscriptionLogs;
+
+    // Citizen Portal (بوابة المواطن)
+    private IRepository<Citizen, Guid>? _citizens;
+    private IRepository<InternetPlan, Guid>? _internetPlans;
+    private IRepository<CitizenSubscription, Guid>? _citizenSubscriptions;
+
+    // Agent System (نظام الوكلاء)
+    private IRepository<Agent, Guid>? _agents;
+    private IRepository<AgentTransaction, long>? _agentTransactions;
+    private IRepository<AgentCommissionRate, long>? _agentCommissionRates;
+
+    // Attendance & Work Centers (الحضور والمراكز)
+    private IRepository<AttendanceRecord, long>? _attendanceRecords;
+    private IRepository<WorkCenter, int>? _workCenters;
+
+    // ISP Data (بيانات مشتركي الإنترنت)
+    private IRepository<ISPSubscriber, long>? _ispSubscribers;
+    private IRepository<ZoneStatistic, int>? _zoneStatistics;
+
+    // Accounting System (نظام المحاسبة)
+    private IRepository<Account, Guid>? _accounts;
+    private IRepository<JournalEntry, Guid>? _journalEntries;
+    private IRepository<JournalEntryLine, long>? _journalEntryLines;
+    private IRepository<CashBox, Guid>? _cashBoxes;
+    private IRepository<CashTransaction, long>? _cashTransactions;
+    private IRepository<EmployeeSalary, long>? _employeeSalaries;
+    private IRepository<TechnicianCollection, long>? _technicianCollections;
+    private IRepository<TechnicianTransaction, long>? _technicianTransactions;
+    private IRepository<Expense, long>? _expenses;
+    private IRepository<TaskAudit, long>? _taskAudits;
+
     public UnitOfWork(SadaraDbContext context)
     {
         _context = context;
@@ -157,6 +190,76 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<ServiceRequestStatusHistory, long> ServiceRequestStatusHistories =>
         _serviceRequestStatusHistories ??= new Repository<ServiceRequestStatusHistory, long>(_context);
+
+    // Subscription Logs
+    public IRepository<SubscriptionLog, long> SubscriptionLogs =>
+        _subscriptionLogs ??= new Repository<SubscriptionLog, long>(_context);
+
+    // Citizen Portal (بوابة المواطن)
+    public IRepository<Citizen, Guid> Citizens =>
+        _citizens ??= new Repository<Citizen, Guid>(_context);
+
+    public IRepository<InternetPlan, Guid> InternetPlans =>
+        _internetPlans ??= new Repository<InternetPlan, Guid>(_context);
+
+    public IRepository<CitizenSubscription, Guid> CitizenSubscriptions =>
+        _citizenSubscriptions ??= new Repository<CitizenSubscription, Guid>(_context);
+
+    // Agent System (نظام الوكلاء)
+    public IRepository<Agent, Guid> Agents =>
+        _agents ??= new Repository<Agent, Guid>(_context);
+
+    public IRepository<AgentTransaction, long> AgentTransactions =>
+        _agentTransactions ??= new Repository<AgentTransaction, long>(_context);
+
+    public IRepository<AgentCommissionRate, long> AgentCommissionRates =>
+        _agentCommissionRates ??= new Repository<AgentCommissionRate, long>(_context);
+
+    // Attendance & Work Centers (الحضور والمراكز)
+    public IRepository<AttendanceRecord, long> AttendanceRecords =>
+        _attendanceRecords ??= new Repository<AttendanceRecord, long>(_context);
+
+    public IRepository<WorkCenter, int> WorkCenters =>
+        _workCenters ??= new Repository<WorkCenter, int>(_context);
+
+    // ISP Data (بيانات مشتركي الإنترنت)
+    public IRepository<ISPSubscriber, long> ISPSubscribers =>
+        _ispSubscribers ??= new Repository<ISPSubscriber, long>(_context);
+
+    public IRepository<ZoneStatistic, int> ZoneStatistics =>
+        _zoneStatistics ??= new Repository<ZoneStatistic, int>(_context);
+
+    // Accounting System (نظام المحاسبة)
+    public IRepository<Account, Guid> Accounts =>
+        _accounts ??= new Repository<Account, Guid>(_context);
+
+    public IRepository<JournalEntry, Guid> JournalEntries =>
+        _journalEntries ??= new Repository<JournalEntry, Guid>(_context);
+
+    public IRepository<JournalEntryLine, long> JournalEntryLines =>
+        _journalEntryLines ??= new Repository<JournalEntryLine, long>(_context);
+
+    public IRepository<CashBox, Guid> CashBoxes =>
+        _cashBoxes ??= new Repository<CashBox, Guid>(_context);
+
+    public IRepository<CashTransaction, long> CashTransactions =>
+        _cashTransactions ??= new Repository<CashTransaction, long>(_context);
+
+    public IRepository<EmployeeSalary, long> EmployeeSalaries =>
+        _employeeSalaries ??= new Repository<EmployeeSalary, long>(_context);
+
+    public IRepository<TechnicianCollection, long> TechnicianCollections =>
+        _technicianCollections ??= new Repository<TechnicianCollection, long>(_context);
+
+    public IRepository<TechnicianTransaction, long> TechnicianTransactions =>
+        _technicianTransactions ??= new Repository<TechnicianTransaction, long>(_context);
+
+    public IRepository<Expense, long> Expenses =>
+        _expenses ??= new Repository<Expense, long>(_context);
+
+    // Task Audit (تدقيق المهام)
+    public IRepository<TaskAudit, long> TaskAudits =>
+        _taskAudits ??= new Repository<TaskAudit, long>(_context);
 
     #endregion
 
