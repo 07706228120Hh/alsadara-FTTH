@@ -464,6 +464,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
       decoration: BoxDecoration(
         color: _bgCard,
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.black, width: 1),
         boxShadow: const [
           BoxShadow(
             color: _shadowColor,
@@ -663,6 +664,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         decoration: BoxDecoration(
           color: _bgCard,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.black, width: 1),
           boxShadow: const [
             BoxShadow(
               color: _shadowColor,

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
@@ -192,10 +193,6 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
           // ملخص البطاقات
           _buildSummaryCards(),
-          const SizedBox(height: 16),
-
-          // المبالغ المستحقة
-          _buildNetOwedCard(),
           const SizedBox(height: 16),
 
           // جدول العمليات
@@ -404,54 +401,249 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                 style: GoogleFonts.cairo(
                     fontSize: 14, fontWeight: FontWeight.w600)),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-              columnSpacing: 16,
-              columns: const [
-                DataColumn(label: Text('#')),
-                DataColumn(label: Text('العميل')),
-                DataColumn(label: Text('الخطة')),
-                DataColumn(label: Text('المبلغ')),
-                DataColumn(label: Text('النوع')),
-                DataColumn(label: Text('التحصيل')),
-                DataColumn(label: Text('التاريخ')),
-                DataColumn(label: Text('محاسبة')),
-              ],
-              rows: _transactions.asMap().entries.map((entry) {
-                final i = entry.key;
-                final tx = entry.value as Map<String, dynamic>;
-                return DataRow(cells: [
-                  DataCell(
-                      Text('${i + 1}', style: const TextStyle(fontSize: 12))),
-                  DataCell(Text(tx['customerName'] ?? '-',
-                      style: const TextStyle(fontSize: 12))),
-                  DataCell(Text(tx['planName'] ?? '-',
-                      style: const TextStyle(fontSize: 12))),
-                  DataCell(Text(
-                    _currencyFormat.format((tx['planPrice'] ?? 0).toDouble()),
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green.shade700),
-                  )),
-                  DataCell(_buildTypeBadge(tx['operationType'] ?? '')),
-                  DataCell(_buildCollectionBadge(tx['collectionType'] ?? '')),
-                  DataCell(Text(
-                    _formatDate(tx['activationDate']),
-                    style: const TextStyle(fontSize: 11),
-                  )),
-                  DataCell(
-                    tx['journalEntryId'] != null
-                        ? Icon(Icons.check_circle,
-                            size: 16, color: Colors.green.shade600)
-                        : Icon(Icons.remove_circle_outline,
-                            size: 16, color: Colors.grey.shade400),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    border: TableBorder.all(
+                        color: Colors.grey.shade300, width: 0.5),
+                    headingRowColor:
+                        WidgetStateProperty.all(Colors.grey.shade100),
+                    headingRowHeight: 36,
+                    dataRowMinHeight: 30,
+                    dataRowMaxHeight: 48,
+                    columnSpacing: 0,
+                    horizontalMargin: 8,
+                    columns: const [
+                      DataColumn(label: _ColHead('#')),
+                      DataColumn(label: _ColHead('م.العميل')),
+                      DataColumn(label: _ColHead('العميل')),
+                      DataColumn(label: _ColHead('الهاتف')),
+                      DataColumn(label: _ColHead('م.الاشتراك')),
+                      DataColumn(label: _ColHead('الباقة')),
+                      DataColumn(label: _ColHead('المبلغ')),
+                      DataColumn(label: _ColHead('الالتزام')),
+                      DataColumn(label: _ColHead('النوع')),
+                      DataColumn(label: _ColHead('التحصيل')),
+                      DataColumn(label: _ColHead('المنطقة')),
+                      DataColumn(label: _ColHead('الفني')),
+                      DataColumn(label: _ColHead('المُنفذ')),
+                      DataColumn(label: _ColHead('التاريخ')),
+                      DataColumn(label: _ColHead('البداية')),
+                      DataColumn(label: _ColHead('النهاية')),
+                      DataColumn(label: _ColHead('الحالة')),
+                      DataColumn(label: _ColHead('الدفع')),
+                      DataColumn(label: _ColHead('محفظة قبل')),
+                      DataColumn(label: _ColHead('محفظة بعد')),
+                      DataColumn(label: _ColHead('الجهاز')),
+                      DataColumn(label: _ColHead('طباعة')),
+                      DataColumn(label: _ColHead('واتساب')),
+                      DataColumn(label: _ColHead('مطابقة')),
+                      DataColumn(label: _ColHead('محاسبة')),
+                      DataColumn(label: _ColHead('ملاحظات')),
+                    ],
+                    rows: _transactions.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final tx = entry.value as Map<String, dynamic>;
+                      final walletBefore =
+                          (tx['WalletBalanceBefore'] as num?)?.toDouble();
+                      final walletAfter =
+                          (tx['WalletBalanceAfter'] as num?)?.toDouble();
+
+                      return DataRow(cells: [
+                        // #
+                        DataCell(Center(
+                            child: Text('${i + 1}',
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600)))),
+                        // م.العميل
+                        DataCell(Center(
+                            child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(tx['CustomerId'] ?? '-',
+                                style: const TextStyle(fontSize: 10),
+                                overflow: TextOverflow.ellipsis),
+                            if (tx['CustomerId'] != null)
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(
+                                      ClipboardData(text: tx['CustomerId']));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('تم النسخ'),
+                                          duration: Duration(seconds: 1)));
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 2),
+                                  child: Icon(Icons.copy,
+                                      size: 12, color: Colors.grey.shade500),
+                                ),
+                              ),
+                          ],
+                        ))),
+                        // العميل
+                        DataCell(Center(
+                            child: Text(tx['CustomerName'] ?? '-',
+                                style: const TextStyle(fontSize: 11),
+                                overflow: TextOverflow.ellipsis))),
+                        // الهاتف
+                        DataCell(Center(
+                            child: Text(tx['PhoneNumber'] ?? '-',
+                                style: const TextStyle(fontSize: 11)))),
+                        // م.الاشتراك
+                        DataCell(Center(
+                            child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(tx['SubscriptionId'] ?? '-',
+                                style: const TextStyle(fontSize: 10),
+                                overflow: TextOverflow.ellipsis),
+                            if (tx['SubscriptionId'] != null)
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(
+                                      text: tx['SubscriptionId']));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('تم النسخ'),
+                                          duration: Duration(seconds: 1)));
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 2),
+                                  child: Icon(Icons.copy,
+                                      size: 12, color: Colors.grey.shade500),
+                                ),
+                              ),
+                          ],
+                        ))),
+                        // الباقة
+                        DataCell(Center(
+                            child: Text(tx['PlanName'] ?? '-',
+                                style: const TextStyle(fontSize: 11)))),
+                        // المبلغ
+                        DataCell(Center(
+                            child: Text(
+                          _currencyFormat
+                              .format((tx['PlanPrice'] ?? 0).toDouble()),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.green.shade700),
+                        ))),
+                        // الالتزام
+                        DataCell(Center(
+                            child: Text(
+                                tx['CommitmentPeriod'] != null
+                                    ? '${tx['CommitmentPeriod']} شهر'
+                                    : '-',
+                                style: const TextStyle(fontSize: 11)))),
+                        // النوع
+                        DataCell(Center(
+                            child: _buildTypeBadge(tx['OperationType'] ?? ''))),
+                        // التحصيل
+                        DataCell(Center(
+                            child: _buildCollectionBadge(
+                                tx['CollectionType'] ?? ''))),
+                        // المنطقة
+                        DataCell(Center(
+                            child: Text(tx['ZoneName'] ?? tx['ZoneId'] ?? '-',
+                                style: const TextStyle(fontSize: 11),
+                                overflow: TextOverflow.ellipsis))),
+                        // الفني
+                        DataCell(Center(
+                            child: Text(tx['TechnicianName'] ?? '-',
+                                style: const TextStyle(fontSize: 11)))),
+                        // المُنفذ
+                        DataCell(Center(
+                            child: Text(tx['ActivatedBy'] ?? '-',
+                                style: const TextStyle(fontSize: 11),
+                                overflow: TextOverflow.ellipsis))),
+                        // التاريخ
+                        DataCell(Center(
+                            child: Text(_formatDate(tx['ActivationDate']),
+                                style: const TextStyle(fontSize: 10)))),
+                        // البداية
+                        DataCell(Center(
+                            child: Text(tx['StartDate'] ?? '-',
+                                style: const TextStyle(fontSize: 10)))),
+                        // النهاية
+                        DataCell(Center(
+                            child: Text(tx['EndDate'] ?? '-',
+                                style: const TextStyle(fontSize: 10)))),
+                        // الحالة
+                        DataCell(Center(
+                            child:
+                                _buildStatusBadge(tx['CurrentStatus'] ?? ''))),
+                        // الدفع
+                        DataCell(Center(
+                            child: Text(
+                                tx['PaymentStatus'] ??
+                                    tx['PaymentMethod'] ??
+                                    '-',
+                                style: const TextStyle(fontSize: 11)))),
+                        // محفظة قبل
+                        DataCell(Center(
+                            child: Text(
+                                walletBefore != null
+                                    ? _currencyFormat.format(walletBefore)
+                                    : '-',
+                                style: const TextStyle(fontSize: 10)))),
+                        // محفظة بعد
+                        DataCell(Center(
+                            child: Text(
+                                walletAfter != null
+                                    ? _currencyFormat.format(walletAfter)
+                                    : '-',
+                                style: const TextStyle(fontSize: 10)))),
+                        // الجهاز
+                        DataCell(Center(
+                            child: Text(tx['DeviceUsername'] ?? '-',
+                                style: const TextStyle(fontSize: 10),
+                                overflow: TextOverflow.ellipsis))),
+                        // طباعة
+                        DataCell(Center(
+                            child: tx['IsPrinted'] == true
+                                ? Icon(Icons.print,
+                                    size: 15, color: Colors.green.shade600)
+                                : Icon(Icons.print_disabled,
+                                    size: 15, color: Colors.grey.shade400))),
+                        // واتساب
+                        DataCell(Center(
+                            child: tx['IsWhatsAppSent'] == true
+                                ? Icon(Icons.check_circle,
+                                    size: 15, color: Colors.green.shade600)
+                                : Icon(Icons.cancel_outlined,
+                                    size: 15, color: Colors.grey.shade400))),
+                        // مطابقة
+                        DataCell(Center(
+                            child: tx['IsReconciled'] == true
+                                ? Icon(Icons.check_circle,
+                                    size: 15, color: Colors.green.shade600)
+                                : Icon(Icons.cancel_outlined,
+                                    size: 15, color: Colors.grey.shade400))),
+                        // محاسبة
+                        DataCell(Center(
+                            child: tx['JournalEntryId'] != null
+                                ? Icon(Icons.check_circle,
+                                    size: 15, color: Colors.green.shade600)
+                                : Icon(Icons.remove_circle_outline,
+                                    size: 15, color: Colors.grey.shade400))),
+                        // ملاحظات
+                        DataCell(Center(
+                            child: Text(tx['SubscriptionNotes'] ?? '-',
+                                style: const TextStyle(fontSize: 10),
+                                overflow: TextOverflow.ellipsis))),
+                      ]);
+                    }).toList(),
                   ),
-                ]);
-              }).toList(),
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -459,19 +651,60 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
   }
 
   Widget _buildTypeBadge(String type) {
-    final isRenewal = type.toLowerCase().contains('renew');
+    final lower = type.toLowerCase();
+    String label;
+    Color bgColor;
+    Color txtColor;
+    if (lower.contains('renew')) {
+      label = 'تجديد';
+      bgColor = Colors.blue.shade50;
+      txtColor = Colors.blue.shade700;
+    } else if (lower.contains('change')) {
+      label = 'تغيير';
+      bgColor = Colors.orange.shade50;
+      txtColor = Colors.orange.shade700;
+    } else if (lower.contains('schedule')) {
+      label = 'جدولة';
+      bgColor = Colors.purple.shade50;
+      txtColor = Colors.purple.shade700;
+    } else {
+      label = 'شراء';
+      bgColor = Colors.teal.shade50;
+      txtColor = Colors.teal.shade700;
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: isRenewal ? Colors.blue.shade50 : Colors.teal.shade50,
+        color: bgColor,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        isRenewal ? 'تجديد' : 'شراء',
-        style: TextStyle(
-            fontSize: 10,
-            color: isRenewal ? Colors.blue.shade700 : Colors.teal.shade700),
+      child: Text(label, style: TextStyle(fontSize: 10, color: txtColor)),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    if (status.isEmpty) return const Text('-', style: TextStyle(fontSize: 11));
+    final lower = status.toLowerCase();
+    Color color;
+    if (lower.contains('active')) {
+      color = Colors.green.shade700;
+    } else if (lower.contains('suspend') || lower.contains('block')) {
+      color = Colors.red.shade700;
+    } else if (lower.contains('trial')) {
+      color = Colors.orange.shade700;
+    } else {
+      color = Colors.grey.shade700;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
+      child: Text(status,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          overflow: TextOverflow.ellipsis),
     );
   }
 
@@ -567,6 +800,23 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         Navigator.pop(context);
         _loadData();
       },
+    );
+  }
+}
+
+/// عنوان عمود مختصر
+class _ColHead extends StatelessWidget {
+  final String text;
+  const _ColHead(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Center(
+        child: Text(text,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+            overflow: TextOverflow.ellipsis),
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../services/plan_pricing_service.dart';
 
 /// نموذج بسيط لعملية مشغل
 class _OpTransaction {
@@ -20,6 +21,12 @@ class _OpTransaction {
   final String zoneId;
   final String deviceUsername;
   final String auditCreator;
+  final int planDuration;
+  final double remainingBalance; // الرصيد بعد العملية
+  final String paymentMode; // طريقة الدفع
+  final String paymentMethod; // نوع الدفع
+  final String startsAt; // بداية الاشتراك
+  final String endsAt; // نهاية الاشتراك
 
   _OpTransaction({
     required this.id,
@@ -34,6 +41,12 @@ class _OpTransaction {
     this.zoneId = '',
     this.deviceUsername = '',
     this.auditCreator = '',
+    this.planDuration = 0,
+    this.remainingBalance = 0.0,
+    this.paymentMode = '',
+    this.paymentMethod = '',
+    this.startsAt = '',
+    this.endsAt = '',
   });
 }
 
@@ -103,6 +116,16 @@ class _FtthOperatorTransactionsPageState
         zoneId: tx['zoneId']?.toString() ?? '',
         deviceUsername: tx['deviceUsername']?.toString() ?? '',
         auditCreator: tx['auditCreator']?.toString() ?? '',
+        planDuration: (tx['planDuration'] ?? 0) is int
+            ? tx['planDuration'] ?? 0
+            : int.tryParse('${tx['planDuration']}') ?? 0,
+        remainingBalance: ((tx['remainingBalance'] ?? 0.0) is num)
+            ? (tx['remainingBalance'] ?? 0.0).toDouble()
+            : double.tryParse('${tx['remainingBalance']}') ?? 0.0,
+        paymentMode: tx['paymentMode']?.toString() ?? '',
+        paymentMethod: tx['paymentMethod']?.toString() ?? '',
+        startsAt: tx['startsAt']?.toString() ?? '',
+        endsAt: tx['endsAt']?.toString() ?? '',
       );
     }).toList();
 
@@ -170,6 +193,48 @@ class _FtthOperatorTransactionsPageState
           break;
         case 'customer':
           cmp = a.customerName.compareTo(b.customerName);
+          break;
+        case 'plan':
+          cmp = a.planName.compareTo(b.planName);
+          break;
+        case 'zone':
+          cmp = a.zoneId.compareTo(b.zoneId);
+          break;
+        case 'duration':
+          cmp = a.planDuration.compareTo(b.planDuration);
+          break;
+        case 'balance':
+          cmp = a.remainingBalance.compareTo(b.remainingBalance);
+          break;
+        case 'discount':
+          const rnChg = {
+            'PLAN_RENEW',
+            'AUTO_RENEW',
+            'PLAN_EMI_RENEW',
+            'PLAN_CHANGE',
+            'SCHEDULE_CHANGE',
+            'PLAN_SCHEDULE',
+          };
+          final dA = rnChg.contains(a.type)
+              ? (PlanPricingService.instance
+                      .getDiscount(a.planName, a.amount) ??
+                  0)
+              : 0.0;
+          final dB = rnChg.contains(b.type)
+              ? (PlanPricingService.instance
+                      .getDiscount(b.planName, b.amount) ??
+                  0)
+              : 0.0;
+          cmp = dA.compareTo(dB);
+          break;
+        case 'startDate':
+          cmp = a.startsAt.compareTo(b.startsAt);
+          break;
+        case 'endDate':
+          cmp = a.endsAt.compareTo(b.endsAt);
+          break;
+        case 'payment':
+          cmp = a.paymentMode.compareTo(b.paymentMode);
           break;
         case 'date':
         default:
@@ -594,153 +659,352 @@ class _FtthOperatorTransactionsPageState
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: 14,
-          horizontalMargin: 12,
-          headingRowHeight: 36,
-          dataRowMinHeight: 40,
-          dataRowMaxHeight: 70,
-          headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
-          columns: const [
-            DataColumn(label: Text('#', style: TextStyle(fontSize: 11))),
-            DataColumn(label: Text('التاريخ', style: TextStyle(fontSize: 11))),
-            DataColumn(label: Text('النوع', style: TextStyle(fontSize: 11))),
-            DataColumn(label: Text('العميل', style: TextStyle(fontSize: 11))),
-            DataColumn(label: Text('الباقة', style: TextStyle(fontSize: 11))),
-            DataColumn(label: Text('المبلغ', style: TextStyle(fontSize: 11))),
-            DataColumn(label: Text('المنطقة', style: TextStyle(fontSize: 11))),
-            DataColumn(label: Text('ملاحظات', style: TextStyle(fontSize: 11))),
-          ],
-          rows: _filtered.asMap().entries.map((entry) {
-            final i = entry.key;
-            final tx = entry.value;
-            final catColor = _categoryColor(_categorizeType(tx.type));
-            final isAttributed = tx.createdBy.startsWith('⇐');
+    // خريطة أعمدة الترتيب
+    const sortKeys = [
+      '', // #
+      'date',
+      'type',
+      'customer',
+      'plan',
+      'amount',
+      'discount',
+      'balance',
+      'duration',
+      'startDate',
+      'endDate',
+      'payment',
+      'zone',
+      '', // ملاحظات
+    ];
 
-            return DataRow(
-              color: WidgetStateProperty.resolveWith((states) {
-                if (isAttributed) return Colors.indigo.shade50;
-                if (i.isEven) return Colors.white;
-                return Colors.grey.shade50;
-              }),
-              cells: [
-                DataCell(
-                    Text('${i + 1}', style: const TextStyle(fontSize: 11))),
-                DataCell(Text(_formatDate(tx.occuredAt),
-                    style: const TextStyle(fontSize: 10))),
-                DataCell(
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: catColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: catColor.withOpacity(0.4)),
-                    ),
-                    child: Text(
-                      _translateType(tx.type),
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: catColor.shade700),
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: constraints.maxWidth,
+            ),
+            child: SingleChildScrollView(
+              child: DataTable(
+                border: TableBorder.all(color: Colors.black54, width: 0.5),
+                columnSpacing: 0,
+                horizontalMargin: 8,
+                headingRowHeight: 30,
+                dataRowMinHeight: 24,
+                dataRowMaxHeight: 36,
+                headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
+                headingTextStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.black87),
+                sortColumnIndex: sortKeys.contains(_sortBy)
+                    ? sortKeys.indexOf(_sortBy)
+                    : null,
+                sortAscending: _isAscending,
+                columns: [
+                  DataColumn(
+                      label: Expanded(child: Center(child: Text('#'))),
+                      numeric: true),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('التاريخ'))),
+                    onSort: (_, asc) => _onColumnSort('date', asc),
                   ),
-                ),
-                DataCell(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (tx.customerName.isNotEmpty)
-                        Text(tx.customerName,
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('النوع'))),
+                    onSort: (_, asc) => _onColumnSort('type', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('العميل'))),
+                    onSort: (_, asc) => _onColumnSort('customer', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('م.العميل'))),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('الباقة'))),
+                    onSort: (_, asc) => _onColumnSort('plan', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('المبلغ'))),
+                    numeric: true,
+                    onSort: (_, asc) => _onColumnSort('amount', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('الخصم'))),
+                    numeric: true,
+                    onSort: (_, asc) => _onColumnSort('discount', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('الرصيد'))),
+                    numeric: true,
+                    onSort: (_, asc) => _onColumnSort('balance', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('المدة'))),
+                    numeric: true,
+                    onSort: (_, asc) => _onColumnSort('duration', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('البداية'))),
+                    onSort: (_, asc) => _onColumnSort('startDate', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('النهاية'))),
+                    onSort: (_, asc) => _onColumnSort('endDate', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('الدفع'))),
+                    onSort: (_, asc) => _onColumnSort('payment', asc),
+                  ),
+                  DataColumn(
+                    label: Expanded(child: Center(child: Text('المنطقة'))),
+                    onSort: (_, asc) => _onColumnSort('zone', asc),
+                  ),
+                  DataColumn(
+                      label: Expanded(child: Center(child: Text('ملاحظات')))),
+                ],
+                rows: _filtered.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final tx = entry.value;
+                  final catColor = _categoryColor(_categorizeType(tx.type));
+                  final isAttributed = tx.createdBy.startsWith('⇐');
+
+                  return DataRow(
+                    color: WidgetStateProperty.resolveWith((states) {
+                      if (isAttributed) return Colors.indigo.shade50;
+                      if (i.isEven) return Colors.white;
+                      return Colors.grey.shade50;
+                    }),
+                    cells: [
+                      DataCell(Text('${i + 1}',
+                          style: const TextStyle(fontSize: 11))),
+                      DataCell(Text(_formatDate(tx.occuredAt),
+                          style: const TextStyle(fontSize: 10))),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: catColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border:
+                                Border.all(color: catColor.withOpacity(0.4)),
+                          ),
+                          child: Text(
+                            _translateType(tx.type),
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: catColor.shade700),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(tx.customerName.isNotEmpty ? tx.customerName : '-',
                             style: const TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.w500),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
-                      if (tx.customerId.isNotEmpty)
-                        Text(tx.customerId,
-                            style: TextStyle(
-                                fontSize: 9, color: Colors.grey.shade500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: 120,
-                    child: Text(tx.planName,
+                      ),
+                      DataCell(
+                        tx.customerId.isNotEmpty
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(tx.customerId,
+                                      style: const TextStyle(fontSize: 10),
+                                      overflow: TextOverflow.ellipsis),
+                                  const SizedBox(width: 2),
+                                  InkWell(
+                                    onTap: () {
+                                      Clipboard.setData(
+                                          ClipboardData(text: tx.customerId));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                              content: Text('تم النسخ'),
+                                              duration: Duration(seconds: 1)));
+                                    },
+                                    child: Icon(Icons.copy,
+                                        size: 12, color: Colors.grey.shade500),
+                                  ),
+                                ],
+                              )
+                            : const Text('-', style: TextStyle(fontSize: 10)),
+                      ),
+                      DataCell(
+                        SizedBox(
+                          width: 120,
+                          child: Text(tx.planName,
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.grey.shade700),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                      DataCell(Text(
+                        '${_currencyFormat.format(tx.amount.abs())} د.ع',
                         style: TextStyle(
-                            fontSize: 10, color: Colors.grey.shade700),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                ),
-                DataCell(Text(
-                  '${_currencyFormat.format(tx.amount.abs())} د.ع',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: tx.amount < 0
-                          ? Colors.red.shade700
-                          : Colors.green.shade700),
-                )),
-                DataCell(Text(
-                  tx.zoneId.isNotEmpty ? tx.zoneId : '-',
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-                )),
-                DataCell(
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (isAttributed)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: Colors.indigo.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.indigo.shade200),
-                          ),
-                          child: Text('منسوب تلقائياً',
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: tx.amount < 0
+                                ? Colors.red.shade700
+                                : Colors.green.shade700),
+                      )),
+                      // عمود الخصم (تجديد وتغيير فقط - الشراء له أسعار مختلفة)
+                      DataCell(() {
+                        const renewChangeTypes = {
+                          'PLAN_RENEW',
+                          'AUTO_RENEW',
+                          'PLAN_EMI_RENEW',
+                          'PLAN_CHANGE',
+                          'SCHEDULE_CHANGE',
+                          'PLAN_SCHEDULE',
+                        };
+                        if (!renewChangeTypes.contains(tx.type)) {
+                          return Text('-',
                               style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.indigo.shade700,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      if (tx.auditCreator.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(top: 2),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.green.shade200),
-                          ),
-                          child: Text('audit: ${tx.auditCreator}',
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.green.shade800,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                      if (tx.deviceUsername.isNotEmpty)
-                        Text('📡 ${tx.deviceUsername}',
+                                  fontSize: 10, color: Colors.grey.shade400));
+                        }
+                        final discount = PlanPricingService.instance
+                            .getDiscount(tx.planName, tx.amount);
+                        if (discount != null) {
+                          return Text(
+                            _currencyFormat.format(discount),
                             style: TextStyle(
-                                fontSize: 9, color: Colors.grey.shade500)),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange.shade800),
+                          );
+                        }
+                        return Text('-',
+                            style: TextStyle(
+                                fontSize: 10, color: Colors.grey.shade400));
+                      }()),
+                      DataCell(Text(
+                        tx.remainingBalance != 0
+                            ? _currencyFormat.format(tx.remainingBalance.abs())
+                            : '-',
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.grey.shade600),
+                      )),
+                      DataCell(Text(
+                        tx.planDuration > 0
+                            ? '${tx.planDuration} يوم'
+                            : _calcDuration(tx.startsAt, tx.endsAt),
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.grey.shade600),
+                      )),
+                      DataCell(Text(
+                        tx.startsAt.isNotEmpty ? _formatDate(tx.startsAt) : '-',
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.grey.shade600),
+                      )),
+                      DataCell(Text(
+                        tx.endsAt.isNotEmpty ? _formatDate(tx.endsAt) : '-',
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.grey.shade600),
+                      )),
+                      DataCell(Text(
+                        tx.paymentMode.isNotEmpty
+                            ? tx.paymentMode
+                            : tx.paymentMethod.isNotEmpty
+                                ? tx.paymentMethod
+                                : '-',
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.grey.shade600),
+                      )),
+                      DataCell(Text(
+                        tx.zoneId.isNotEmpty ? tx.zoneId : '-',
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.grey.shade600),
+                      )),
+                      DataCell(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isAttributed)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.indigo.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border:
+                                      Border.all(color: Colors.indigo.shade200),
+                                ),
+                                child: Text('منسوب تلقائياً',
+                                    style: TextStyle(
+                                        fontSize: 9,
+                                        color: Colors.indigo.shade700,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                            if (tx.auditCreator.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border:
+                                      Border.all(color: Colors.green.shade200),
+                                ),
+                                child: Text('audit: ${tx.auditCreator}',
+                                    style: TextStyle(
+                                        fontSize: 9,
+                                        color: Colors.green.shade800,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                            if (tx.deviceUsername.isNotEmpty)
+                              Text('📡 ${tx.deviceUsername}',
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.grey.shade500)),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  /// حساب المدة من تاريخ البداية والنهاية
+  String _calcDuration(String startsAt, String endsAt) {
+    if (startsAt.isEmpty || endsAt.isEmpty) return '-';
+    try {
+      final start = DateTime.parse(startsAt);
+      final end = DateTime.parse(endsAt);
+      final days = end.difference(start).inDays;
+      if (days <= 0) return '-';
+      if (days <= 31) return '$days يوم';
+      final months = (days / 30).round();
+      if (months == 1) return 'شهر';
+      if (months == 2) return 'شهرين';
+      if (months <= 10) return '$months أشهر';
+      return '$months شهر';
+    } catch (_) {
+      return '-';
+    }
+  }
+
+  void _onColumnSort(String column, bool ascending) {
+    setState(() {
+      if (_sortBy == column) {
+        _isAscending = !_isAscending;
+      } else {
+        _sortBy = column;
+        _isAscending = ascending;
+      }
+      _applyFilters();
+    });
   }
 }
 

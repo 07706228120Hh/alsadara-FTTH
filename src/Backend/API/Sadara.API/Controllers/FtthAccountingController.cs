@@ -336,17 +336,38 @@ public class FtthAccountingController : ControllerBase
                     transactions = logs.Select(l => new
                     {
                         l.Id,
+                        l.CustomerId,
                         l.CustomerName,
+                        l.PhoneNumber,
+                        l.SubscriptionId,
                         l.PlanName,
                         l.PlanPrice,
+                        l.CommitmentPeriod,
+                        l.CurrentStatus,
+                        l.DeviceUsername,
                         l.OperationType,
-                        l.CollectionType,
+                        l.ActivatedBy,
                         l.ActivationDate,
+                        l.ActivationTime,
                         l.ZoneId,
-                        l.JournalEntryId,
-                        l.IsReconciled,
+                        l.ZoneName,
+                        l.FbgInfo,
+                        l.FatInfo,
+                        l.FdtInfo,
+                        l.WalletBalanceBefore,
+                        l.WalletBalanceAfter,
                         l.PaymentMethod,
-                        l.TechnicianName
+                        l.PartnerName,
+                        l.TechnicianName,
+                        l.PaymentStatus,
+                        l.StartDate,
+                        l.EndDate,
+                        l.CollectionType,
+                        l.IsReconciled,
+                        l.JournalEntryId,
+                        l.IsPrinted,
+                        l.IsWhatsAppSent,
+                        l.SubscriptionNotes
                     })
                 }
             });
@@ -386,7 +407,7 @@ public class FtthAccountingController : ControllerBase
                 query = query.Where(l => l.ActivationDate <= toUtc);
             }
 
-            // تجميع حسب UserId
+            // تجميع حسب UserId مع تفصيل أنواع العمليات
             var grouped = await query
                 .GroupBy(l => l.UserId)
                 .Select(g => new
@@ -394,6 +415,7 @@ public class FtthAccountingController : ControllerBase
                     UserId = g.Key,
                     TotalCount = g.Count(),
                     TotalAmount = g.Sum(l => l.PlanPrice ?? 0),
+                    // حسب نوع التحصيل
                     CashAmount = g.Where(l => l.CollectionType == "cash").Sum(l => l.PlanPrice ?? 0),
                     CashCount = g.Count(l => l.CollectionType == "cash"),
                     CreditAmount = g.Where(l => l.CollectionType == "credit").Sum(l => l.PlanPrice ?? 0),
@@ -403,7 +425,18 @@ public class FtthAccountingController : ControllerBase
                     AgentAmount = g.Where(l => l.CollectionType == "agent").Sum(l => l.PlanPrice ?? 0),
                     AgentCount = g.Count(l => l.CollectionType == "agent"),
                     UnclassifiedAmount = g.Where(l => l.CollectionType == null || l.CollectionType == "").Sum(l => l.PlanPrice ?? 0),
-                    UnclassifiedCount = g.Count(l => l.CollectionType == null || l.CollectionType == "")
+                    UnclassifiedCount = g.Count(l => l.CollectionType == null || l.CollectionType == ""),
+                    // حسب نوع العملية
+                    PurchaseCount = g.Count(l => l.OperationType != null && (l.OperationType.Contains("PURCHASE") || l.OperationType.Contains("SUBSCRIBE"))),
+                    PurchaseAmount = g.Where(l => l.OperationType != null && (l.OperationType.Contains("PURCHASE") || l.OperationType.Contains("SUBSCRIBE"))).Sum(l => l.PlanPrice ?? 0),
+                    RenewalCount = g.Count(l => l.OperationType != null && l.OperationType.Contains("RENEW")),
+                    RenewalAmount = g.Where(l => l.OperationType != null && l.OperationType.Contains("RENEW")).Sum(l => l.PlanPrice ?? 0),
+                    ChangeCount = g.Count(l => l.OperationType != null && l.OperationType.Contains("CHANGE") && !l.OperationType.Contains("SCHEDULE")),
+                    ChangeAmount = g.Where(l => l.OperationType != null && l.OperationType.Contains("CHANGE") && !l.OperationType.Contains("SCHEDULE")).Sum(l => l.PlanPrice ?? 0),
+                    ScheduleCount = g.Count(l => l.OperationType != null && l.OperationType.Contains("SCHEDULE")),
+                    ScheduleAmount = g.Where(l => l.OperationType != null && l.OperationType.Contains("SCHEDULE")).Sum(l => l.PlanPrice ?? 0),
+                    // مطابقة
+                    ReconciledCount = g.Count(l => l.IsReconciled)
                 })
                 .ToListAsync();
 
@@ -435,9 +468,67 @@ public class FtthAccountingController : ControllerBase
                     agentCount = g.AgentCount,
                     unclassifiedAmount = g.UnclassifiedAmount,
                     unclassifiedCount = g.UnclassifiedCount,
-                    netOwed = g.CashAmount + g.CreditAmount // نقد + آجل (يجب تسليمها/تحصيلها)
+                    netOwed = g.CashAmount + g.CreditAmount,
+                    // أنواع العمليات
+                    purchaseCount = g.PurchaseCount,
+                    purchaseAmount = g.PurchaseAmount,
+                    renewalCount = g.RenewalCount,
+                    renewalAmount = g.RenewalAmount,
+                    changeCount = g.ChangeCount,
+                    changeAmount = g.ChangeAmount,
+                    scheduleCount = g.ScheduleCount,
+                    scheduleAmount = g.ScheduleAmount,
+                    reconciledCount = g.ReconciledCount
                 };
             }).OrderByDescending(x => x.totalAmount).ToList();
+
+            // ── توزيعات إضافية ──
+
+            // توزيع أنواع العمليات
+            var operationTypes = await query
+                .GroupBy(l => l.OperationType ?? "غير محدد")
+                .Select(g => new { type = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .OrderByDescending(x => x.count)
+                .ToListAsync();
+
+            // توزيع المناطق
+            var zones = await query
+                .Where(l => l.ZoneName != null && l.ZoneName != "")
+                .GroupBy(l => l.ZoneName!)
+                .Select(g => new { zone = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .OrderByDescending(x => x.count)
+                .Take(20)
+                .ToListAsync();
+
+            // توزيع الباقات
+            var plans = await query
+                .Where(l => l.PlanName != null && l.PlanName != "")
+                .GroupBy(l => l.PlanName!)
+                .Select(g => new { plan = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .OrderByDescending(x => x.count)
+                .Take(20)
+                .ToListAsync();
+
+            // توزيع الفنيين
+            var technicians = await query
+                .Where(l => l.TechnicianName != null && l.TechnicianName != "")
+                .GroupBy(l => l.TechnicianName!)
+                .Select(g => new { technician = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .OrderByDescending(x => x.count)
+                .Take(15)
+                .ToListAsync();
+
+            // توزيع يومي
+            var daily = await query
+                .Where(l => l.ActivationDate != null)
+                .GroupBy(l => l.ActivationDate!.Value.Date)
+                .Select(g => new { date = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .OrderBy(x => x.date)
+                .ToListAsync();
+
+            // إحصائيات المطابقة
+            var totalRecords = result.Sum(r => r.totalCount);
+            var reconciledTotal = result.Sum(r => r.reconciledCount);
 
             return Ok(new
             {
@@ -452,7 +543,36 @@ public class FtthAccountingController : ControllerBase
                     totalCredit = result.Sum(r => r.creditAmount),
                     totalMaster = result.Sum(r => r.masterAmount),
                     totalAgent = result.Sum(r => r.agentAmount),
-                    totalNetOwed = result.Sum(r => r.netOwed)
+                    totalNetOwed = result.Sum(r => r.netOwed),
+                    totalUnclassified = result.Sum(r => r.unclassifiedAmount),
+                    totalUnclassifiedCount = result.Sum(r => r.unclassifiedCount),
+                    // تفصيل أنواع العمليات
+                    totalPurchase = result.Sum(r => r.purchaseAmount),
+                    totalPurchaseCount = result.Sum(r => r.purchaseCount),
+                    totalRenewal = result.Sum(r => r.renewalAmount),
+                    totalRenewalCount = result.Sum(r => r.renewalCount),
+                    totalChange = result.Sum(r => r.changeAmount),
+                    totalChangeCount = result.Sum(r => r.changeCount),
+                    totalSchedule = result.Sum(r => r.scheduleAmount),
+                    totalScheduleCount = result.Sum(r => r.scheduleCount),
+                    // مطابقة
+                    reconciledCount = reconciledTotal,
+                    reconciledPercentage = totalRecords > 0
+                        ? Math.Round((double)reconciledTotal / totalRecords * 100, 1)
+                        : 0
+                },
+                distributions = new
+                {
+                    operationTypes,
+                    zones,
+                    plans,
+                    technicians,
+                    daily = daily.Select(d => new
+                    {
+                        date = d.date.ToString("yyyy-MM-dd"),
+                        d.count,
+                        d.amount
+                    })
                 }
             });
         }
