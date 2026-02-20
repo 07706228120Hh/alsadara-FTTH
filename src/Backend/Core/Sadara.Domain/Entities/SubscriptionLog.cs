@@ -62,4 +62,27 @@ public class SubscriptionLog : BaseEntity<long>
     // معلومات التوصيل والدفع
     public string? TechnicianName { get; set; }  // اسم الفني المنفذ
     public string? PaymentStatus { get; set; }   // حالة الدفع (مسدد / غير مسدد)
+
+    // ============ تكامل المحاسبة - FTTH Accounting Integration ============
+    
+    /// <summary>نوع التحصيل: cash=نقد, credit=آجل, master=ماستر, agent=وكيل</summary>
+    public string? CollectionType { get; set; }
+    
+    /// <summary>معرف العملية من admin.ftth.iq</summary>
+    public string? FtthTransactionId { get; set; }
+    
+    /// <summary>ربط بالمهمة (ServiceRequest) إن وُجدت</summary>
+    public Guid? ServiceRequestId { get; set; }
+    
+    /// <summary>إذا التفعيل لصالح وكيل معين</summary>
+    public Guid? LinkedAgentId { get; set; }
+    
+    /// <summary>القيد المحاسبي المُنشأ تلقائياً</summary>
+    public Guid? JournalEntryId { get; set; }
+    
+    /// <summary>هل تمت المطابقة مع FTTH الخارجي</summary>
+    public bool IsReconciled { get; set; } = false;
+    
+    /// <summary>ملاحظات المطابقة</summary>
+    public string? ReconciliationNotes { get; set; }
 }

@@ -87,6 +87,14 @@ public class User : BaseEntity<Guid>
     public string? LastLoginDeviceId { get; set; }
     public string? LastLoginDeviceInfo { get; set; }
     
+    // ============ FTTH Integration ============
+    
+    /// <summary>اسم المستخدم في نظام FTTH (null = فني فقط، ليس مشغل FTTH)</summary>
+    public string? FtthUsername { get; set; }
+    
+    /// <summary>كلمة مرور FTTH مشفرة (AES) — null إذا ليس مشغل FTTH</summary>
+    public string? FtthPasswordEncrypted { get; set; }
+    
     // ============ Navigation ============
     
     public virtual Merchant? Merchant { get; set; }

@@ -1,0 +1,1 @@
+SELECT "Id", data_type FROM information_schema.columns WHERE table_name = 'SubscriptionLogs' AND column_name = 'Id'; UPDATE "SubscriptionLogs" SET "IsDeleted" = true, "DeletedAt" = NOW() WHERE "Id" = 3;

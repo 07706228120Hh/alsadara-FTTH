@@ -1,0 +1,572 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart' hide TextDirection;
+import '../../services/vps_auth_service.dart';
+import '../../theme/accounting_theme.dart';
+
+/// صفحة كشف حساب مشغل FTTH
+/// تعرض ملخص العمليات المالية لمشغل محدد (نقد/آجل/ماستر/وكيل)
+class FtthOperatorAccountPage extends StatefulWidget {
+  final String userId;
+  final String operatorName;
+  final String? companyId;
+
+  const FtthOperatorAccountPage({
+    super.key,
+    required this.userId,
+    required this.operatorName,
+    this.companyId,
+  });
+
+  @override
+  State<FtthOperatorAccountPage> createState() =>
+      _FtthOperatorAccountPageState();
+}
+
+class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
+  bool _isLoading = true;
+  String? _errorMessage;
+  Map<String, dynamic>? _data;
+  List<dynamic> _transactions = [];
+
+  // فلاتر التاريخ
+  DateTime? _fromDate;
+  DateTime? _toDate;
+  String _dateLabel = 'الكل';
+
+  String get _companyId =>
+      widget.companyId ?? VpsAuthService.instance.currentCompanyId ?? '';
+
+  final _currencyFormat = NumberFormat('#,###', 'ar');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  String? _getAuthToken() {
+    return VpsAuthService.instance.accessToken;
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      var url =
+          'https://api.ramzalsadara.tech/api/ftth-accounting/operator-summary/${widget.userId}?companyId=$_companyId';
+      if (_fromDate != null) {
+        url += '&from=${_fromDate!.toIso8601String().split('T')[0]}';
+      }
+      if (_toDate != null) {
+        url += '&to=${_toDate!.toIso8601String().split('T')[0]}';
+      }
+
+      final token = _getAuthToken();
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+          'X-Api-Key': 'sadara-internal-2024-secure-key',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          _data = result['data'] as Map<String, dynamic>?;
+          _transactions = (_data?['transactions'] as List?) ?? [];
+        } else {
+          _errorMessage = result['message'] ?? 'خطأ';
+        }
+      } else {
+        _errorMessage = 'خطأ في الاتصال: ${response.statusCode}';
+      }
+    } catch (e) {
+      _errorMessage = 'خطأ: $e';
+    }
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AccountingTheme.bgPrimary,
+        appBar: AppBar(
+          backgroundColor: AccountingTheme.bgSidebar,
+          iconTheme: const IconThemeData(color: Colors.white),
+          title: Text(
+            'كشف حساب: ${widget.operatorName}',
+            style: GoogleFonts.cairo(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.date_range, color: Colors.white70),
+              onPressed: _showDateFilterDialog,
+              tooltip: 'فلتر التاريخ',
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white70),
+              onPressed: _loadData,
+              tooltip: 'تحديث',
+            ),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: 48, color: Colors.red.shade300),
+                        const SizedBox(height: 12),
+                        Text(_errorMessage!,
+                            style: TextStyle(color: Colors.red.shade700)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                            onPressed: _loadData,
+                            child: const Text('إعادة المحاولة')),
+                      ],
+                    ),
+                  )
+                : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_data == null) return const Center(child: Text('لا توجد بيانات'));
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // فلتر التاريخ
+          if (_dateLabel != 'الكل')
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.filter_alt, size: 16, color: Colors.blue.shade700),
+                  const SizedBox(width: 6),
+                  Text(_dateLabel,
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.blue.shade700)),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _fromDate = null;
+                        _toDate = null;
+                        _dateLabel = 'الكل';
+                      });
+                      _loadData();
+                    },
+                    child: Icon(Icons.close,
+                        size: 16, color: Colors.blue.shade700),
+                  ),
+                ],
+              ),
+            ),
+
+          // ملخص البطاقات
+          _buildSummaryCards(),
+          const SizedBox(height: 16),
+
+          // المبالغ المستحقة
+          _buildNetOwedCard(),
+          const SizedBox(height: 16),
+
+          // جدول العمليات
+          _buildTransactionsTable(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCards() {
+    final total = (_data?['totalAmount'] ?? 0).toDouble();
+    final cash = (_data?['cashAmount'] ?? 0).toDouble();
+    final credit = (_data?['creditAmount'] ?? 0).toDouble();
+    final master = (_data?['masterAmount'] ?? 0).toDouble();
+    final agent = (_data?['agentAmount'] ?? 0).toDouble();
+    final unclassified = (_data?['unclassifiedAmount'] ?? 0).toDouble();
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        _summaryCard(
+            'إجمالي العمليات',
+            total,
+            '${_data?['totalActivations'] ?? 0} عملية',
+            AccountingTheme.neonBlue,
+            icon: Icons.receipt_long),
+        _summaryCard('نقد', cash, '${_data?['cashCount'] ?? 0} عملية',
+            Colors.green.shade600,
+            icon: Icons.attach_money),
+        _summaryCard('آجل', credit, '${_data?['creditCount'] ?? 0} عملية',
+            Colors.orange.shade600,
+            icon: Icons.schedule),
+        _summaryCard('ماستر', master, '${_data?['masterCount'] ?? 0} عملية',
+            Colors.purple.shade600,
+            icon: Icons.credit_card),
+        _summaryCard('وكيل', agent, '${_data?['agentCount'] ?? 0} عملية',
+            Colors.blue.shade600,
+            icon: Icons.store),
+        if (unclassified > 0)
+          _summaryCard('غير مصنف', unclassified,
+              '${_data?['unclassifiedCount'] ?? 0} عملية', Colors.grey.shade600,
+              icon: Icons.help_outline),
+      ],
+    );
+  }
+
+  Widget _summaryCard(String title, double amount, String subtitle, Color color,
+      {IconData? icon}) {
+    return SizedBox(
+      width: 180,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18, color: color),
+                    const SizedBox(width: 6),
+                  ],
+                  Expanded(
+                    child: Text(title,
+                        style: GoogleFonts.cairo(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: color)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${_currencyFormat.format(amount)} د.ع',
+                style: GoogleFonts.cairo(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: color),
+              ),
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNetOwedCard() {
+    final remainingCash = (_data?['remainingCash'] ?? 0).toDouble();
+    final remainingCredit = (_data?['remainingCredit'] ?? 0).toDouble();
+    final netOwed = (_data?['netOwed'] ?? 0).toDouble();
+    final deliveredCash = (_data?['deliveredCash'] ?? 0).toDouble();
+    final collectedCredit = (_data?['collectedCredit'] ?? 0).toDouble();
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: netOwed > 0 ? Colors.red.shade50 : Colors.green.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  netOwed > 0
+                      ? Icons.warning_amber_rounded
+                      : Icons.check_circle,
+                  color:
+                      netOwed > 0 ? Colors.red.shade700 : Colors.green.shade700,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'المبالغ المستحقة',
+                  style: GoogleFonts.cairo(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: netOwed > 0
+                          ? Colors.red.shade700
+                          : Colors.green.shade700),
+                ),
+              ],
+            ),
+            const Divider(),
+            _netRow('نقد مُجمّع', (_data?['cashAmount'] ?? 0).toDouble(),
+                Colors.green),
+            _netRow('نقد مُسلَّم', deliveredCash, Colors.teal),
+            _netRow('باقي النقد', remainingCash,
+                remainingCash > 0 ? Colors.red : Colors.green),
+            const SizedBox(height: 8),
+            _netRow('آجل مُسجّل', (_data?['creditAmount'] ?? 0).toDouble(),
+                Colors.orange),
+            _netRow('آجل مُحصّل', collectedCredit, Colors.teal),
+            _netRow('باقي الآجل', remainingCredit,
+                remainingCredit > 0 ? Colors.red : Colors.green),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('صافي المستحق',
+                    style: GoogleFonts.cairo(
+                        fontSize: 14, fontWeight: FontWeight.bold)),
+                Text(
+                  '${_currencyFormat.format(netOwed)} د.ع',
+                  style: GoogleFonts.cairo(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: netOwed > 0
+                        ? Colors.red.shade700
+                        : Colors.green.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _netRow(String label, double amount, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+          Text(
+            '${_currencyFormat.format(amount)} د.ع',
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionsTable() {
+    if (_transactions.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Text('لا توجد عمليات',
+                style: TextStyle(color: Colors.grey.shade500)),
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Text('العمليات (${_transactions.length})',
+                style: GoogleFonts.cairo(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+              columnSpacing: 16,
+              columns: const [
+                DataColumn(label: Text('#')),
+                DataColumn(label: Text('العميل')),
+                DataColumn(label: Text('الخطة')),
+                DataColumn(label: Text('المبلغ')),
+                DataColumn(label: Text('النوع')),
+                DataColumn(label: Text('التحصيل')),
+                DataColumn(label: Text('التاريخ')),
+                DataColumn(label: Text('محاسبة')),
+              ],
+              rows: _transactions.asMap().entries.map((entry) {
+                final i = entry.key;
+                final tx = entry.value as Map<String, dynamic>;
+                return DataRow(cells: [
+                  DataCell(
+                      Text('${i + 1}', style: const TextStyle(fontSize: 12))),
+                  DataCell(Text(tx['customerName'] ?? '-',
+                      style: const TextStyle(fontSize: 12))),
+                  DataCell(Text(tx['planName'] ?? '-',
+                      style: const TextStyle(fontSize: 12))),
+                  DataCell(Text(
+                    _currencyFormat.format((tx['planPrice'] ?? 0).toDouble()),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green.shade700),
+                  )),
+                  DataCell(_buildTypeBadge(tx['operationType'] ?? '')),
+                  DataCell(_buildCollectionBadge(tx['collectionType'] ?? '')),
+                  DataCell(Text(
+                    _formatDate(tx['activationDate']),
+                    style: const TextStyle(fontSize: 11),
+                  )),
+                  DataCell(
+                    tx['journalEntryId'] != null
+                        ? Icon(Icons.check_circle,
+                            size: 16, color: Colors.green.shade600)
+                        : Icon(Icons.remove_circle_outline,
+                            size: 16, color: Colors.grey.shade400),
+                  ),
+                ]);
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeBadge(String type) {
+    final isRenewal = type.toLowerCase().contains('renew');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: isRenewal ? Colors.blue.shade50 : Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        isRenewal ? 'تجديد' : 'شراء',
+        style: TextStyle(
+            fontSize: 10,
+            color: isRenewal ? Colors.blue.shade700 : Colors.teal.shade700),
+      ),
+    );
+  }
+
+  Widget _buildCollectionBadge(String type) {
+    MaterialColor color;
+    String label;
+    switch (type.toLowerCase()) {
+      case 'cash':
+        color = Colors.green;
+        label = 'نقد';
+        break;
+      case 'credit':
+        color = Colors.orange;
+        label = 'آجل';
+        break;
+      case 'master':
+        color = Colors.purple;
+        label = 'ماستر';
+        break;
+      case 'agent':
+        color = Colors.blue;
+        label = 'وكيل';
+        break;
+      default:
+        color = Colors.grey;
+        label = type.isNotEmpty ? type : '-';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 10, color: color.shade700)),
+    );
+  }
+
+  String _formatDate(dynamic date) {
+    if (date == null) return '-';
+    try {
+      final dt = DateTime.parse(date.toString());
+      return DateFormat('yyyy/MM/dd', 'ar').format(dt);
+    } catch (_) {
+      return date.toString();
+    }
+  }
+
+  void _showDateFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('فلتر التاريخ', style: GoogleFonts.cairo()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _dateFilterOption('اليوم', () {
+              final now = DateTime.now();
+              _fromDate = DateTime(now.year, now.month, now.day);
+              _toDate = now;
+              _dateLabel = 'اليوم';
+            }),
+            _dateFilterOption('آخر 7 أيام', () {
+              _toDate = DateTime.now();
+              _fromDate = _toDate!.subtract(const Duration(days: 7));
+              _dateLabel = 'آخر 7 أيام';
+            }),
+            _dateFilterOption('هذا الشهر', () {
+              final now = DateTime.now();
+              _fromDate = DateTime(now.year, now.month, 1);
+              _toDate = now;
+              _dateLabel = 'هذا الشهر';
+            }),
+            _dateFilterOption('الكل', () {
+              _fromDate = null;
+              _toDate = null;
+              _dateLabel = 'الكل';
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dateFilterOption(String label, VoidCallback setDates) {
+    return ListTile(
+      title: Text(label, style: GoogleFonts.cairo(fontSize: 14)),
+      trailing: _dateLabel == label
+          ? Icon(Icons.check, color: Colors.green.shade600)
+          : null,
+      onTap: () {
+        setDates();
+        Navigator.pop(context);
+        _loadData();
+      },
+    );
+  }
+}

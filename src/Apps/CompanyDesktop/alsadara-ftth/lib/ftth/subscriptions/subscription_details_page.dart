@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../services/whatsapp_template_storage.dart';
 import '../../services/subscription_logs_service.dart';
+import '../../services/vps_auth_service.dart';
 import '../../services/thermal_printer_service.dart';
 import '../../services/print_template_storage.dart';
 import '../../services/template_password_storage.dart';
@@ -279,8 +280,13 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   final List<int> commitmentPeriods = [1, 2, 3, 6, 12];
 
   // إضافة قائمة طرق الدفع والمتغير الخاص بها
-  final List<String> paymentMethods = ["نقد", "أجل"];
+  final List<String> paymentMethods = ["نقد", "أجل", "ماستر", "وكيل"];
   String selectedPaymentMethod = "نقد"; // طريقة الدفع الافتراضية
+
+  // الوكيل المختار (يظهر عند اختيار "وكيل")
+  Map<String, dynamic>? _selectedLinkedAgent;
+  List<Map<String, dynamic>> _agentsList = [];
+  bool _isLoadingAgents = false;
   // حالة حساب السعر لزر التمديد (Extend) بعد اختيار فترة الالتزام
   bool _isCalculatingExtendPrice = false; // لعرض لودر داخل زر التمديد
   String? _extendPriceError; // في حال فشل استرجاع السعر
@@ -490,14 +496,15 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           return 1;
         default:
           // إذا لم نجد قيمة مطابقة، استخدم القيمة المحلية كبديل
-          final localValue = selectedPaymentMethod == 'نقد' ? 0 : 1;
+          final localValue = selectedPaymentMethod == 'أجل' ? 1 : 0;
           debugPrint(
               '⚠️ قيمة salesType غير مطابقة (${subscriptionInfo!.salesType}), استخدام القيمة المحلية: $localValue');
           return localValue;
       }
     }
     // إذا لم يكن لدينا salesType من API، استخدم القيمة المحلية
-    final localValue = selectedPaymentMethod == 'نقد' ? 0 : 1;
+    // نقد/ماستر/وكيل = 0 (دفع فوري)، أجل = 1
+    final localValue = selectedPaymentMethod == 'أجل' ? 1 : 0;
     debugPrint(
         '⚠️ لا يوجد salesType من API، استخدام القيمة المحلية: $localValue');
     return localValue;
@@ -4962,6 +4969,13 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         // معلومات إضافية
         startDate: formattedDate,
         endDate: _calculateEndDate(),
+        // معلومات المستخدم والشركة (مطلوبة للوحة المشغلين)
+        userId: VpsAuthService.instance.currentUser?.id ??
+            VpsAuthService.instance.currentSuperAdmin?.id,
+        companyId: VpsAuthService.instance.currentCompanyId,
+        // حقول تكامل المحاسبة
+        collectionType: _getCollectionTypeCode(selectedPaymentMethod),
+        linkedAgentId: _selectedLinkedAgent?['id']?.toString(),
       );
 
       if (logId != null) {
@@ -9985,7 +9999,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               ],
             ),
             SizedBox(height: 6),
-            // زران كبيران في نفس الصف ويتقاسمان العرض بالتساوي
+            // صف واحد: نقد + أجل + ماستر + وكيل
             Row(
               children: [
                 Expanded(
@@ -9994,21 +10008,60 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     icon: Icons.attach_money,
                     baseColor: Colors.green.shade600,
                     selected: selectedPaymentMethod == 'نقد',
-                    onTap: () => setState(() => selectedPaymentMethod = 'نقد'),
+                    onTap: () => setState(() {
+                      selectedPaymentMethod = 'نقد';
+                      _selectedLinkedAgent = null;
+                    }),
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 6),
                 Expanded(
                   child: _buildPaymentOptionButton(
                     title: 'أجل',
                     icon: Icons.schedule,
                     baseColor: Colors.orange.shade600,
                     selected: selectedPaymentMethod == 'أجل',
-                    onTap: () => setState(() => selectedPaymentMethod = 'أجل'),
+                    onTap: () => setState(() {
+                      selectedPaymentMethod = 'أجل';
+                      _selectedLinkedAgent = null;
+                    }),
+                  ),
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  child: _buildPaymentOptionButton(
+                    title: 'ماستر',
+                    icon: Icons.credit_card,
+                    baseColor: Colors.purple.shade600,
+                    selected: selectedPaymentMethod == 'ماستر',
+                    onTap: () => setState(() {
+                      selectedPaymentMethod = 'ماستر';
+                      _selectedLinkedAgent = null;
+                    }),
+                  ),
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  child: _buildPaymentOptionButton(
+                    title: 'وكيل',
+                    icon: Icons.store,
+                    baseColor: Colors.blue.shade600,
+                    selected: selectedPaymentMethod == 'وكيل',
+                    onTap: () {
+                      setState(() {
+                        selectedPaymentMethod = 'وكيل';
+                      });
+                      _loadAgentsList();
+                    },
                   ),
                 ),
               ],
             ),
+            // دروبداون اختيار الوكيل (يظهر فقط عند اختيار "وكيل")
+            if (selectedPaymentMethod == 'وكيل') ...[
+              SizedBox(height: 8),
+              _buildAgentDropdown(),
+            ],
           ],
         ),
       ),
@@ -10024,7 +10077,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     required VoidCallback onTap,
   }) {
     // ارتفاع موحد للصناديق (نقد / أجل / المحفظة الرئيسية / محفظة المشترك)
-    const double unifiedBoxHeight = 72; // يمكن تعديله لاحقاً بسهولة
+    const double unifiedBoxHeight = 52; // مناسب لصف واحد من 4 أزرار
     final Color bg =
         selected ? baseColor.withValues(alpha: 0.12) : Colors.white;
     final Color borderColor =
@@ -10038,7 +10091,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeInOut,
         height: unifiedBoxHeight, // استخدام الارتفاع الموحد
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(10),
@@ -10046,22 +10099,22 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         ),
         child: Row(
           children: [
-            Icon(icon, color: textColor),
-            const SizedBox(width: 10),
+            Icon(icon, color: textColor, size: 18),
+            const SizedBox(width: 6),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: textColor,
                 ),
               ),
             ),
             if (selected)
-              Icon(Icons.check_circle, color: baseColor, size: 22)
+              Icon(Icons.check_circle, color: baseColor, size: 18)
             else
-              Icon(Icons.radio_button_unchecked, color: borderColor, size: 20),
+              Icon(Icons.radio_button_unchecked, color: borderColor, size: 16),
           ],
         ),
       ),
@@ -10069,6 +10122,126 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   }
 
   /// معلومات المحفظة - تم إخفاؤها حسب الطلب، والدالة أزيلت لعدم الاستخدام
+
+  /// جلب قائمة الوكلاء من السيرفر
+  Future<void> _loadAgentsList() async {
+    if (_agentsList.isNotEmpty || _isLoadingAgents) return;
+    setState(() => _isLoadingAgents = true);
+    try {
+      final companyId = VpsAuthService.instance.currentCompanyId;
+      final url = companyId != null
+          ? 'https://api.ramzalsadara.tech/api/ftth-accounting/agents-list?companyId=$companyId'
+          : 'https://api.ramzalsadara.tech/api/ftth-accounting/agents-list';
+
+      final token = _getAuthToken();
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+          'X-Api-Key': 'sadara-internal-2024-secure-key',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          setState(() {
+            _agentsList = List<Map<String, dynamic>>.from(data['data']);
+          });
+        }
+      }
+      debugPrint('✅ تم جلب ${_agentsList.length} وكيل');
+    } catch (e) {
+      debugPrint('❌ خطأ في جلب الوكلاء: $e');
+    } finally {
+      setState(() => _isLoadingAgents = false);
+    }
+  }
+
+  /// الحصول على توكن المصادقة
+  String? _getAuthToken() {
+    return VpsAuthService.instance.accessToken;
+  }
+
+  /// دروبداون اختيار الوكيل
+  Widget _buildAgentDropdown() {
+    if (_isLoadingAgents) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 8),
+            Text('جاري تحميل الوكلاء...',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    if (_agentsList.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Text('لا يوجد وكلاء متاحين',
+            style: TextStyle(color: Colors.red.shade400, fontSize: 12)),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: _selectedLinkedAgent?['id']?.toString(),
+          hint: Text('اختر الوكيل',
+              style: TextStyle(color: Colors.blue.shade700, fontSize: 13)),
+          icon: Icon(Icons.arrow_drop_down, color: Colors.blue.shade700),
+          items: _agentsList.map((agent) {
+            return DropdownMenuItem<String>(
+              value: agent['id']?.toString(),
+              child: Text(
+                '${agent['name']} (${agent['agentCode'] ?? ''})',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedLinkedAgent = _agentsList.firstWhere(
+                (a) => a['id']?.toString() == value,
+                orElse: () => {},
+              );
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  /// تحويل طريقة الدفع العربية لكود إنجليزي للسيرفر
+  String _getCollectionTypeCode(String method) {
+    switch (method) {
+      case 'نقد':
+        return 'cash';
+      case 'أجل':
+        return 'credit';
+      case 'ماستر':
+        return 'master';
+      case 'وكيل':
+        return 'agent';
+      default:
+        return 'cash';
+    }
+  }
 
   /// بطاقة رصيد المحفظة - منفصلة عن بطاقة طريقة الدفع وتعرض في نفس الصف
   Widget _buildWalletBalanceCard({bool compact = false, double? fixedHeight}) {

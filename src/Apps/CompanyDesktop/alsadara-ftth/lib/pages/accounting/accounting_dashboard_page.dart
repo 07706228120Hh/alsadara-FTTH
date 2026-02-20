@@ -14,6 +14,7 @@ import 'statistics_page.dart';
 import 'agent_commission_page.dart';
 import 'agent_transactions_page.dart';
 import '../super_admin/agents_management_page.dart';
+import 'ftth_operators_dashboard_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -622,6 +623,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         color: const Color(0xFF3F51B5),
         onTap: () => _navigateTo(const AgentsManagementPage()),
       ),
+      _SectionItem(
+        title: 'مشغلو FTTH',
+        subtitle: 'لوحة متابعة مشغلي الإنترنت',
+        icon: Icons.wifi_tethering,
+        color: const Color(0xFF00897B),
+        onTap: () => _navigateTo(
+            FtthOperatorsDashboardPage(companyId: widget.companyId)),
+      ),
     ];
 
     return LayoutBuilder(
@@ -744,9 +753,9 @@ class _SummaryItem {
   _SummaryItem({
     required this.title,
     required this.value,
-    this.subtitle,
     required this.icon,
     required this.color,
+    this.subtitle,
   });
 }
 

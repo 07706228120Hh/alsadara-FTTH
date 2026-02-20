@@ -126,6 +126,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
   }
 
   Future<void> _fetchExpiringSoonData() async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       errorMessage = '';
@@ -175,6 +176,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         List<dynamic> enhancedSubscriptions =
             await _fetchPhonesInParallel(subscriptions);
 
+        if (!mounted) return;
         setState(() {
           expiringSoonData = enhancedSubscriptions;
           isLoading = false;
@@ -184,6 +186,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         AuthErrorHandler.handle401Error(context);
         return;
       } else {
+        if (!mounted) return;
         setState(() {
           errorMessage = 'تعذر جلب البيانات: ${response.statusCode}';
           isLoading = false;
@@ -220,10 +223,28 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         return;
       }
 
-      setState(() {
-        errorMessage = 'حدث خطأ أثناء جلب البيانات: $e';
-        isLoading = false;
-      });
+      if (mounted) {
+        // عرض الخطأ كإشعار بسيط بدلاً من شاشة خطأ كاملة
+        final shortMsg = e.toString().contains('TimeoutException')
+            ? 'انتهت مهلة الاتصال — حاول مرة أخرى'
+            : 'تعذر جلب البيانات';
+        ftthShowSnackBar(
+          context,
+          SnackBar(
+            content: Text(shortMsg),
+            backgroundColor: Colors.orange.shade700,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'إعادة',
+              textColor: Colors.white,
+              onPressed: _fetchExpiringSoonData,
+            ),
+          ),
+        );
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -314,6 +335,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       isExporting = true;
       exportMessage = 'جاري جلب جميع البيانات للتصدير...';
@@ -324,6 +346,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       List<dynamic> allData = await _fetchAllDataForExport();
 
       if (allData.isEmpty) {
+        if (!mounted) return;
         setState(() {
           exportMessage = 'لا توجد بيانات للتصدير';
           isExporting = false;
@@ -331,6 +354,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         return;
       }
 
+      if (!mounted) return;
       setState(() {
         exportMessage = 'جاري إنشاء ملف Excel...';
       });
@@ -340,6 +364,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
           showTrialSubscriptions ? 'Trial_Subscriptions' : 'Expiring_Soon';
       ExcelLib.Sheet sheet = excel[sheetName];
 
+      if (!mounted) return;
       setState(() {
         exportMessage = 'جاري إعداد رؤوس الأعمدة...';
       });
@@ -369,6 +394,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         cell.value = ExcelLib.TextCellValue(headers[i]);
       }
 
+      if (!mounted) return;
       setState(() {
         exportMessage = 'جاري كتابة البيانات...';
       });
@@ -490,7 +516,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         excelRow++;
         written++;
 
-        if (written % progressChunk == 0) {
+        if (written % progressChunk == 0 && mounted) {
           setState(() {
             exportMessage = 'تم كتابة $written من ${allData.length} سجل...';
           });
@@ -498,6 +524,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         }
       }
       // رسالة نهائية قبل الحفظ
+      if (!mounted) return;
       setState(() {
         exportMessage = 'تم كتابة ${allData.length} سجل - جاري الحفظ...';
       });
@@ -543,11 +570,13 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       File file = File(filePath);
       await file.writeAsBytes(fileBytes!);
 
+      if (!mounted) return;
       setState(() {
         exportMessage = 'تم حفظ ${allData.length} سجل في $fileName';
         isExporting = false;
       });
 
+      if (!mounted) return;
       ftthShowSnackBar(
         context,
         SnackBar(
@@ -581,6 +610,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         exportMessage = 'فشل في التصدير: $e';
         isExporting = false;
@@ -604,6 +634,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
 
     try {
       while (true) {
+        if (!mounted) break;
         setState(() {
           exportMessage =
               'جاري جلب البيانات - الدفعة $page (${allData.length} سجل تم جلبه)...';
@@ -653,9 +684,11 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
           allData.addAll(enhancedPageItems);
 
           // تحديث التقدم كل 100 سجل
-          setState(() {
-            exportMessage = 'تم جلب ${allData.length} سجل حتى الآن...';
-          });
+          if (mounted) {
+            setState(() {
+              exportMessage = 'تم جلب ${allData.length} سجل حتى الآن...';
+            });
+          }
 
           page++;
 
@@ -762,6 +795,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
 
   // دالة جلب المناطق من API
   Future<void> _fetchZones() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingZones = true;
     });
@@ -789,6 +823,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         final zones = List<Map<String, dynamic>>.from(data['items'] ?? []);
         zones.sort(_zoneComparator);
 
+        if (!mounted) return;
         setState(() {
           _zones = zones;
           _isLoadingZones = false;
@@ -796,6 +831,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       } else {
         debugPrint('❌ خطأ في جلب المناطق: ${response.statusCode}');
         debugPrint('📄 رسالة الخطأ: ${response.body}');
+        if (!mounted) return;
         setState(() {
           _zones = [];
           _isLoadingZones = false;
@@ -827,10 +863,12 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         }
       }
 
-      setState(() {
-        _zones = [];
-        _isLoadingZones = false;
-      });
+      if (mounted) {
+        setState(() {
+          _zones = [];
+          _isLoadingZones = false;
+        });
+      }
     }
   }
 

@@ -66,6 +66,9 @@ class SubscriptionLogsService {
     String? startDate,
     String? endDate,
     String? apiResponse,
+    // حقول تكامل المحاسبة
+    String? collectionType,
+    String? linkedAgentId,
   }) async {
     try {
       final body = {
@@ -113,6 +116,9 @@ class SubscriptionLogsService {
         'startDate': startDate,
         'endDate': endDate,
         'apiResponse': apiResponse,
+        // حقول تكامل المحاسبة
+        'collectionType': collectionType,
+        'linkedAgentId': linkedAgentId,
       };
 
       // إزالة القيم null

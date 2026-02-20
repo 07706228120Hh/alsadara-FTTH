@@ -1,2 +1,2 @@
-﻿SELECT "FullName", "TechTotalCharges", "TechTotalPayments", "TechNetBalance" FROM "Users" WHERE "Id" = 'b1e3a4f3-b808-44dc-8feb-c41e34beca66';
-SELECT count(*) as tx_count FROM "TechnicianTransactions" WHERE "TechnicianId" = 'b1e3a4f3-b808-44dc-8feb-c41e34beca66' AND "IsDeleted" = false;
+SELECT COUNT(*) as total, COUNT("UserId") as with_user, COUNT("CompanyId") as with_company, COUNT("CollectionType") as with_collection FROM "SubscriptionLogs" WHERE "IsDeleted" = false;
+SELECT "UserId", "CompanyId", "CollectionType", "ActivatedBy", "ActivationDate" FROM "SubscriptionLogs" WHERE "IsDeleted" = false ORDER BY "ActivationDate" DESC LIMIT 5;

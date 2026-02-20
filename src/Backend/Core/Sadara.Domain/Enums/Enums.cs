@@ -309,7 +309,16 @@ public enum JournalReferenceType
     ServiceRequest = 8,
 
     /// <summary>تحويل بين صناديق</summary>
-    CashTransfer = 9
+    CashTransfer = 9,
+
+    /// <summary>عملية اشتراك FTTH (تفعيل/تجديد)</summary>
+    FtthSubscription = 10,
+
+    /// <summary>تسليم نقد من مشغل FTTH</summary>
+    OperatorCashDelivery = 11,
+
+    /// <summary>تحصيل دين آجل من مشغل FTTH</summary>
+    OperatorCreditCollection = 12
 }
 
 /// <summary>
@@ -324,7 +333,13 @@ public enum CashBoxType
     PettyCash = 1,
 
     /// <summary>صندوق بنكي</summary>
-    Bank = 2
+    Bank = 2,
+
+    /// <summary>صندوق مشغل FTTH</summary>
+    OperatorBox = 3,
+
+    /// <summary>صندوق الدفع الإلكتروني (الماستر)</summary>
+    ElectronicPayment = 4
 }
 
 /// <summary>

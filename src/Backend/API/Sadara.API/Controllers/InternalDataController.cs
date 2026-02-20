@@ -23,12 +23,14 @@ public class InternalDataController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly SadaraDbContext _context;
+    private readonly ILogger<InternalDataController> _logger;
 
-    public InternalDataController(IUnitOfWork unitOfWork, IConfiguration configuration, SadaraDbContext context)
+    public InternalDataController(IUnitOfWork unitOfWork, IConfiguration configuration, SadaraDbContext context, ILogger<InternalDataController> logger)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _context = context;
+        _logger = logger;
     }
 
     /// <summary>
@@ -1744,10 +1746,38 @@ public class InternalDataController : ControllerBase
             if (request.TryGetProperty("companyId", out var cid) && cid.ValueKind == JsonValueKind.String && Guid.TryParse(cid.GetString(), out var companyGuid))
                 log.CompanyId = companyGuid;
 
+            // حقول تكامل المحاسبة الجديدة
+            log.CollectionType = request.TryGetProperty("collectionType", out var pCt) ? pCt.GetString() : null;
+            log.FtthTransactionId = request.TryGetProperty("ftthTransactionId", out var pFt) ? pFt.GetString() : null;
+            if (request.TryGetProperty("serviceRequestId", out var pSr) && pSr.ValueKind == JsonValueKind.String && Guid.TryParse(pSr.GetString(), out var srGuid))
+                log.ServiceRequestId = srGuid;
+            if (request.TryGetProperty("linkedAgentId", out var pLa) && pLa.ValueKind == JsonValueKind.String && Guid.TryParse(pLa.GetString(), out var laGuid))
+                log.LinkedAgentId = laGuid;
+
             await _unitOfWork.SubscriptionLogs.AddAsync(log);
             await _unitOfWork.SaveChangesAsync();
 
-            return Ok(new { success = true, data = new { log.Id }, message = "تم حفظ السجل بنجاح" });
+            // إنشاء قيد محاسبي تلقائي إذا توفرت البيانات
+            Guid? journalEntryId = null;
+            if (log.CompanyId.HasValue && log.UserId.HasValue && log.PlanPrice.HasValue && log.PlanPrice > 0 && !string.IsNullOrEmpty(log.CollectionType))
+            {
+                try
+                {
+                    journalEntryId = await CreateAccountingEntryForLog(log);
+                    if (journalEntryId.HasValue)
+                    {
+                        log.JournalEntryId = journalEntryId;
+                        _unitOfWork.SubscriptionLogs.Update(log);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+                catch (Exception acEx)
+                {
+                    _logger.LogWarning(acEx, "فشل إنشاء القيد المحاسبي لسجل FTTH {LogId} — السجل حُفظ بدونه", log.Id);
+                }
+            }
+
+            return Ok(new { success = true, data = new { log.Id, JournalEntryId = journalEntryId }, message = "تم حفظ السجل بنجاح" });
         }
         catch (Exception ex)
         {
@@ -1917,6 +1947,95 @@ public class InternalDataController : ControllerBase
         using var sha256 = SHA256.Create();
         var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
         return Convert.ToBase64String(hashedBytes);
+    }
+
+    /// <summary>
+    /// إنشاء قيد محاسبي لسجل FTTH — يُستدعى تلقائياً بعد حفظ السجل
+    /// </summary>
+    private async Task<Guid?> CreateAccountingEntryForLog(Sadara.Domain.Entities.SubscriptionLog log)
+    {
+        var companyId = log.CompanyId!.Value;
+        var userId = log.UserId!.Value;
+        var amount = log.PlanPrice!.Value;
+        var collectionType = log.CollectionType ?? "cash";
+
+        // تحديد حساب الإيراد
+        var revenueCode = log.OperationType?.ToLower() == "purchase" ? "4120" : "4110";
+        var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId);
+        if (revenueAccount == null)
+            revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
+        if (revenueAccount == null)
+        {
+            _logger.LogWarning("حساب الإيراد غير موجود للشركة {CompanyId}", companyId);
+            return null;
+        }
+
+        // اسم المشغل
+        var user = await _unitOfWork.Users.GetByIdAsync(userId);
+        var operatorName = user?.FullName ?? "مشغل";
+        var planName = log.PlanName ?? "اشتراك";
+        var customerName = log.CustomerName ?? "عميل";
+        var opType = log.OperationType?.ToLower() == "purchase" ? "شراء" : "تجديد";
+
+        Sadara.Domain.Entities.Account debitAccount;
+        string description;
+
+        switch (collectionType.ToLower())
+        {
+            case "cash":
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                await _unitOfWork.SaveChangesAsync();
+                description = $"{opType} {planName} - {customerName} - نقد عبر {operatorName}";
+                break;
+
+            case "credit":
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1160", userId, $"ذمة {operatorName}", companyId);
+                await _unitOfWork.SaveChangesAsync();
+                description = $"{opType} {planName} - {customerName} - آجل على {operatorName}";
+                break;
+
+            case "master":
+                debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1170", companyId)
+                    ?? throw new Exception("حساب 1170 غير موجود");
+                description = $"{opType} {planName} - {customerName} - ماستر (إلكتروني)";
+                break;
+
+            case "agent":
+                if (!log.LinkedAgentId.HasValue) throw new Exception("لا يوجد وكيل");
+                var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+                if (agent == null) throw new Exception("الوكيل غير موجود");
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, $"ذمة وكيل {agent.Name}", companyId);
+                await _unitOfWork.SaveChangesAsync();
+                description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
+                break;
+
+            default:
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                await _unitOfWork.SaveChangesAsync();
+                description = $"{opType} {planName} - {customerName} - عبر {operatorName}";
+                break;
+        }
+
+        var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+        {
+            (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
+            (revenueAccount.Id, 0, amount, $"إيراد {opType} - {customerName}")
+        };
+
+        await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+            _unitOfWork, companyId, userId, description,
+            JournalReferenceType.FtthSubscription, log.Id.ToString(), lines);
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var entry = await _unitOfWork.JournalEntries.AsQueryable()
+            .Where(j => j.ReferenceType == JournalReferenceType.FtthSubscription
+                && j.ReferenceId == log.Id.ToString()
+                && j.CompanyId == companyId)
+            .OrderByDescending(j => j.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return entry?.Id;
     }
 }
 

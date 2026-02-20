@@ -2799,6 +2799,8 @@ public class AccountingController : ControllerBase
         Add("1130", "المدينون", "Accounts Receivable", AccountType.Assets, "1100", true);
         Add("1140", "تحصيلات تحت التسليم", "Collections Pending Delivery", AccountType.Assets, "1100", true);
         Add("1150", "ذمم الوكلاء", "Agent Receivables", AccountType.Assets, "1100", true);
+        Add("1160", "ذمم المشغلين", "Operator Receivables", AccountType.Assets, "1100", true);
+        Add("1170", "صندوق الدفع الإلكتروني", "Electronic Payment Box", AccountType.Assets, "1100", true);
         Add("1200", "الأصول الثابتة", "Fixed Assets", AccountType.Assets, "1000");
         Add("1210", "المعدات والأجهزة", "Equipment", AccountType.Assets, "1200", true);
         Add("1220", "الأثاث والتجهيزات", "Furniture & Fixtures", AccountType.Assets, "1200", true);
@@ -2817,7 +2819,9 @@ public class AccountingController : ControllerBase
 
         // === إيرادات ===
         Add("4000", "الإيرادات", "Revenue", AccountType.Revenue, null);
-        Add("4100", "إيرادات الاشتراكات", "Subscription Revenue", AccountType.Revenue, "4000", true);
+        Add("4100", "إيرادات الاشتراكات", "Subscription Revenue", AccountType.Revenue, "4000");
+        Add("4110", "إيرادات التجديد", "Renewal Revenue", AccountType.Revenue, "4100", true);
+        Add("4120", "إيرادات الشراء", "Purchase Revenue", AccountType.Revenue, "4100", true);
         Add("4200", "إيرادات التركيب", "Installation Revenue", AccountType.Revenue, "4000", true);
         Add("4300", "إيرادات الصيانة", "Maintenance Revenue", AccountType.Revenue, "4000", true);
         Add("4400", "إيرادات أخرى", "Other Revenue", AccountType.Revenue, "4000", true);
