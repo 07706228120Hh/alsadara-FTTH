@@ -4,9 +4,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/employee_profile_service.dart';
 import '../../services/permission_checker.dart';
+import '../../services/api/api_client.dart';
+import '../../services/api/api_config.dart';
+import '../super_admin/permissions_management_v2_page.dart';
 import 'tabs/hr_info_tab.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/tasks_tab.dart';
@@ -335,17 +339,314 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                 ),
               ),
             const SizedBox(width: 8),
+            // ═══ أزرار الإجراءات ═══
+            // تغيير كلمة المرور
+            _headerActionBtn(
+              icon: Icons.key_rounded,
+              tooltip: 'تغيير كلمة المرور',
+              color: const Color(0xFFFF9800),
+              onTap: () => _showPasswordDialog(),
+            ),
+            const SizedBox(width: 4),
+            // الصلاحيات
+            if (_pm.canEdit('users'))
+              _headerActionBtn(
+                icon: Icons.shield_outlined,
+                tooltip: 'إدارة الصلاحيات',
+                color: const Color(0xFFAB47BC),
+                onTap: () => _openPermissionsPage(),
+              ),
+            if (_pm.canEdit('users'))
+              const SizedBox(width: 4),
+            // حذف الموظف
+            if (_pm.canDelete('users'))
+              _headerActionBtn(
+                icon: Icons.delete_outline_rounded,
+                tooltip: 'حذف الموظف',
+                color: const Color(0xFFFF5252),
+                onTap: () => _deleteEmployee(),
+              ),
+            if (_pm.canDelete('users'))
+              const SizedBox(width: 4),
             // زر تحديث
-            IconButton(
-              onPressed: _loadFullProfile,
-              icon: const Icon(Icons.refresh, size: 20),
+            _headerActionBtn(
+              icon: Icons.refresh_rounded,
               tooltip: 'تحديث',
-              style: IconButton.styleFrom(foregroundColor: Colors.white70),
+              color: Colors.white70,
+              onTap: _loadFullProfile,
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _headerActionBtn({
+    required IconData icon,
+    required String tooltip,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ═══ حوار تغيير كلمة المرور ═══
+  Future<void> _showPasswordDialog() async {
+    final passwordController = TextEditingController();
+    bool showPassword = false;
+    bool isSaving = false;
+    final empName = _employee['fullName'] ?? _employee['FullName'] ?? 'الموظف';
+    final empId = widget.employeeId;
+    final currentPassword = _employee['password'] ?? _employee['Password'];
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9800).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.key_rounded, color: Color(0xFFFF9800), size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'كلمة مرور $empName',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (currentPassword != null && currentPassword.toString().isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFFE0B2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Color(0xFFFF9800), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('كلمة المرور الحالية:', style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF795548))),
+                              const SizedBox(height: 2),
+                              SelectableText(
+                                currentPassword.toString(),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'monospace'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: currentPassword.toString()));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('تم نسخ كلمة المرور'), duration: Duration(seconds: 1)),
+                            );
+                          },
+                          icon: const Icon(Icons.copy_rounded, size: 18),
+                          tooltip: 'نسخ',
+                        ),
+                      ],
+                    ),
+                  ),
+                Text('كلمة المرور الجديدة:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: passwordController,
+                  obscureText: !showPassword,
+                  decoration: InputDecoration(
+                    hintText: 'أدخل كلمة المرور الجديدة',
+                    hintStyle: GoogleFonts.cairo(fontSize: 13),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    suffixIcon: IconButton(
+                      onPressed: () => setDialogState(() => showPassword = !showPassword),
+                      icon: Icon(showPassword ? Icons.visibility_off : Icons.visibility, size: 20),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إغلاق', style: GoogleFonts.cairo()),
+              ),
+              ElevatedButton.icon(
+                onPressed: isSaving || passwordController.text.isEmpty
+                    ? null
+                    : () async {
+                        setDialogState(() => isSaving = true);
+                        try {
+                          final response = await ApiClient.instance.patch(
+                            ApiConfig.internalEmployeePassword(widget.companyId, empId),
+                            {'NewPassword': passwordController.text},
+                            (json) => json,
+                            useInternalKey: true,
+                          );
+                          if (response.isSuccess && mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('تم تغيير كلمة المرور بنجاح', style: GoogleFonts.cairo()),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            _loadFullProfile();
+                          } else {
+                            setDialogState(() => isSaving = false);
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSaving = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                icon: isSaving
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save_rounded, size: 18),
+                label: Text('حفظ', style: GoogleFonts.cairo()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF9800),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ═══ فتح صفحة إدارة الصلاحيات ═══
+  Future<void> _openPermissionsPage() async {
+    final empName = _employee['fullName'] ?? _employee['FullName'] ?? '';
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PermissionsManagementV2Page(
+          companyId: widget.companyId,
+          companyName: widget.companyName,
+          employeeId: widget.employeeId,
+          employeeName: empName,
+        ),
+      ),
+    );
+    if (result == true) _loadFullProfile();
+  }
+
+  /// ═══ حذف الموظف ═══
+  Future<void> _deleteEmployee() async {
+    final empName = _employee['fullName'] ?? _employee['FullName'] ?? 'الموظف';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.warning_rounded, color: Colors.red.shade400),
+              const SizedBox(width: 8),
+              Text('تأكيد الحذف', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            'هل أنت متأكد من حذف الموظف "$empName"؟\nهذا الإجراء لا يمكن التراجع عنه.',
+            style: GoogleFonts.cairo(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('إلغاء', style: GoogleFonts.cairo()),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text('حذف', style: GoogleFonts.cairo(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        final response = await ApiClient.instance.delete(
+          ApiConfig.internalEmployeeById(widget.companyId, widget.employeeId),
+          (json) => json,
+          useInternalKey: true,
+        );
+        if (response.isSuccess && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم حذف الموظف بنجاح', style: GoogleFonts.cairo()),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop(); // العودة لقائمة الموظفين
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'فشل في حذف الموظف', style: GoogleFonts.cairo()),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
   }
 
   Widget _headerChip(String text, Color color) {

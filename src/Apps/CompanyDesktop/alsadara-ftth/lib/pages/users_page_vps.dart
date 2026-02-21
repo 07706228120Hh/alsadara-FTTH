@@ -696,7 +696,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                             decoration: BoxDecoration(
                               color: _accent.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: _accent.withOpacity(0.2)),
+                              border:
+                                  Border.all(color: _accent.withOpacity(0.2)),
                             ),
                             child: const Icon(
                               Icons.arrow_back_ios_new_rounded,
