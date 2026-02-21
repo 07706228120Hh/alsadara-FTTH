@@ -28,6 +28,8 @@ class HrInfoTab extends StatefulWidget {
 class _HrInfoTabState extends State<HrInfoTab> {
   bool _editing = false;
   bool _saving = false;
+  bool _showPassword = false;
+  bool _showFtthPassword = false;
 
   // Controllers
   late TextEditingController _fullNameCtrl;
@@ -574,12 +576,17 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 children: [
                   Expanded(
                     child: Text(
-                      _password.isNotEmpty ? _password : '—',
+                      _password.isEmpty
+                          ? '—'
+                          : _showPassword
+                              ? _password
+                              : '•' * _password.length.clamp(6, 16),
                       style: _password.isNotEmpty
-                          ? const TextStyle(
+                          ? TextStyle(
                               fontSize: 13,
-                              fontFamily: 'monospace',
+                              fontFamily: _showPassword ? 'monospace' : null,
                               color: _valueColor,
+                              letterSpacing: _showPassword ? 0 : 2,
                             )
                           : GoogleFonts.cairo(
                               fontSize: 13,
@@ -587,7 +594,23 @@ class _HrInfoTabState extends State<HrInfoTab> {
                             ),
                     ),
                   ),
-                  if (_password.isNotEmpty)
+                  if (_password.isNotEmpty) ...[
+                    InkWell(
+                      onTap: () =>
+                          setState(() => _showPassword = !_showPassword),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(
+                          _showPassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 16,
+                          color: _warning.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     InkWell(
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: _password));
@@ -602,6 +625,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       child: Icon(Icons.copy_rounded,
                           size: 16, color: _warning.withOpacity(0.7)),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -767,6 +791,13 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
   Widget _ftthRow(String label, String value, IconData icon,
       {bool isSensitive = false}) {
+    final showVal = isSensitive ? _showFtthPassword : true;
+    final displayText = value.isEmpty
+        ? '—'
+        : showVal
+            ? value
+            : '•' * value.length.clamp(6, 16);
+
     return Row(
       children: [
         SizedBox(
@@ -795,8 +826,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
               children: [
                 Expanded(
                   child: SelectableText(
-                    value.isEmpty ? '—' : value,
-                    style: isSensitive && value.isNotEmpty
+                    displayText,
+                    style: (isSensitive && showVal && value.isNotEmpty)
                         ? TextStyle(
                             fontSize: 13,
                             fontFamily: 'monospace',
@@ -808,6 +839,22 @@ class _HrInfoTabState extends State<HrInfoTab> {
                           ),
                   ),
                 ),
+                if (isSensitive && value.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: InkWell(
+                      onTap: () => setState(
+                          () => _showFtthPassword = !_showFtthPassword),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Icon(
+                        _showFtthPassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        size: 14,
+                        color: _ftthColor.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
                 if (value.isNotEmpty)
                   InkWell(
                     onTap: () {

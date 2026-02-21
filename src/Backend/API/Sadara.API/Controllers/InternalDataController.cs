@@ -627,6 +627,26 @@ public class InternalDataController : ControllerBase
         if (request.IsActive.HasValue)
             employee.IsActive = request.IsActive.Value;
 
+        // HR fields
+        if (request.NationalId != null)
+            employee.NationalId = request.NationalId;
+        if (request.DateOfBirth != null && DateTime.TryParse(request.DateOfBirth, out var dob))
+            employee.DateOfBirth = dob;
+        if (request.HireDate != null && DateTime.TryParse(request.HireDate, out var hire))
+            employee.HireDate = hire;
+        if (request.ContractType != null)
+            employee.ContractType = request.ContractType;
+        if (request.BankAccountNumber != null)
+            employee.BankAccountNumber = request.BankAccountNumber;
+        if (request.BankName != null)
+            employee.BankName = request.BankName;
+        if (request.EmergencyContactName != null)
+            employee.EmergencyContactName = request.EmergencyContactName;
+        if (request.EmergencyContactPhone != null)
+            employee.EmergencyContactPhone = request.EmergencyContactPhone;
+        if (request.HrNotes != null)
+            employee.HrNotes = request.HrNotes;
+
         employee.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Users.Update(employee);
@@ -2270,6 +2290,16 @@ public class InternalUpdateEmployeeRequest
     public string? Center { get; set; }
     public decimal? Salary { get; set; }
     public bool? IsActive { get; set; }
+    // HR fields
+    public string? NationalId { get; set; }
+    public string? DateOfBirth { get; set; }
+    public string? HireDate { get; set; }
+    public string? ContractType { get; set; }
+    public string? BankAccountNumber { get; set; }
+    public string? BankName { get; set; }
+    public string? EmergencyContactName { get; set; }
+    public string? EmergencyContactPhone { get; set; }
+    public string? HrNotes { get; set; }
 }
 
 /// <summary>
