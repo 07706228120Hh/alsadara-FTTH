@@ -42,22 +42,38 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
 
   // رموز محاسبية ومالية
   static const _symbols = [
-    '\$', '٪', '¥', '€', '£', '₹',
-    '﷼', '₿', '∑', '±',
-    '📊', '💰', '💵', '🏦', '📈', '💳',
-    '🧾', '📋', '🔢', '💲',
+    '\$',
+    '٪',
+    '¥',
+    '€',
+    '£',
+    '₹',
+    '﷼',
+    '₿',
+    '∑',
+    '±',
+    '📊',
+    '💰',
+    '💵',
+    '🏦',
+    '📈',
+    '💳',
+    '🧾',
+    '📋',
+    '🔢',
+    '💲',
   ];
 
   void _initShapes() {
     final rng = Random();
-    for (int i = 0; i < 28; i++) {
+    for (int i = 0; i < 35; i++) {
       _shapes.add(_FloatingShape(
         x: rng.nextDouble(),
         y: rng.nextDouble(),
-        radius: rng.nextDouble() * 14 + 16, // حجم الرمز 16-30
+        radius: rng.nextDouble() * 26 + 24, // حجم الرمز 24-50
         speedX: (rng.nextDouble() - 0.5) * 0.25,
         speedY: (rng.nextDouble() - 0.5) * 0.25,
-        opacity: rng.nextDouble() * 0.08 + 0.06, // 6-14% شفافية (أوضح)
+        opacity: rng.nextDouble() * 0.10 + 0.10, // 10-20% شفافية (فوق البطاقات)
         color: [
           const Color(0xFF3498DB),
           const Color(0xFF1ABC9C),
@@ -192,19 +208,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
                   Expanded(
                     child: Stack(
                       children: [
-                        // خلفية متحركة
-                        Positioned.fill(
-                          child: AnimatedBuilder(
-                            animation: Listenable.merge(
-                                [_bgAnimController, _particleController]),
-                            builder: (context, _) => CustomPaint(
-                              painter: _LightBgPainter(
-                                animValue: _bgAnimController.value,
-                                shapes: _shapes,
-                              ),
-                            ),
-                          ),
-                        ),
                         // المحتوى
                         _isLoading
                             ? const Center(
@@ -213,6 +216,21 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
                             : _errorMessage != null
                                 ? _buildErrorView()
                                 : _buildContent(),
+                        // رموز محاسبية عائمة فوق المحتوى
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: AnimatedBuilder(
+                              animation: Listenable.merge(
+                                  [_bgAnimController, _particleController]),
+                              builder: (context, _) => CustomPaint(
+                                painter: _LightBgPainter(
+                                  animValue: _bgAnimController.value,
+                                  shapes: _shapes,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -477,7 +495,12 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     final spacing = isCompact ? 12.0 : 20.0;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(padding),
+      padding: EdgeInsets.only(
+        left: padding,
+        right: padding,
+        top: isCompact ? 4.0 : 8.0,
+        bottom: padding,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
