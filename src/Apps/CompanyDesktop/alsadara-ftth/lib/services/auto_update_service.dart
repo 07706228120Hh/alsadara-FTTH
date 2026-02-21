@@ -1,5 +1,5 @@
 /// خدمة التحديث التلقائي للتطبيق
-/// تتحقق من وجود تحديثات جديدة على GitHub وتقوم بتحميلها وتثبيتها
+/// تتحقق من وجود تحديثات جديدة على GitHub وتقوم بتحميلها وتثبيتها تلقائياً
 library;
 
 import 'dart:convert';
@@ -26,19 +26,43 @@ class UpdateInfo {
   });
 
   factory UpdateInfo.fromGitHubRelease(Map<String, dynamic> json) {
-    // البحث عن ملف exe أو zip في الأصول
+    // الأولوية: Setup.exe أولاً → ثم أي .exe → ثم .zip
     String downloadUrl = '';
     int downloadSize = 0;
 
     final assets = json['assets'] as List<dynamic>? ?? [];
+
+    // المرحلة 1: البحث عن ملف Setup.exe (المثبّت)
     for (var asset in assets) {
       final name = asset['name']?.toString().toLowerCase() ?? '';
-      if (name.endsWith('.exe') ||
-          name.endsWith('.zip') ||
-          name.endsWith('.msix')) {
+      if (name.contains('setup') && name.endsWith('.exe')) {
         downloadUrl = asset['browser_download_url'] ?? '';
         downloadSize = asset['size'] ?? 0;
         break;
+      }
+    }
+
+    // المرحلة 2: إذا لم نجد Setup، نبحث عن أي .exe
+    if (downloadUrl.isEmpty) {
+      for (var asset in assets) {
+        final name = asset['name']?.toString().toLowerCase() ?? '';
+        if (name.endsWith('.exe')) {
+          downloadUrl = asset['browser_download_url'] ?? '';
+          downloadSize = asset['size'] ?? 0;
+          break;
+        }
+      }
+    }
+
+    // المرحلة 3: zip كخيار أخير
+    if (downloadUrl.isEmpty) {
+      for (var asset in assets) {
+        final name = asset['name']?.toString().toLowerCase() ?? '';
+        if (name.endsWith('.zip')) {
+          downloadUrl = asset['browser_download_url'] ?? '';
+          downloadSize = asset['size'] ?? 0;
+          break;
+        }
       }
     }
 
@@ -121,6 +145,17 @@ class AutoUpdateService {
       final fileName = updateInfo.downloadUrl.split('/').last;
       final filePath = '${tempDir.path}\\$fileName';
 
+      // تحقق إذا كان الملف محمّل مسبقاً بنفس الحجم
+      final existingFile = File(filePath);
+      if (existingFile.existsSync() && updateInfo.downloadSize > 0) {
+        final existingSize = existingFile.lengthSync();
+        if (existingSize == updateInfo.downloadSize) {
+          debugPrint('✅ الملف محمّل مسبقاً: $filePath');
+          onProgress?.call(1.0);
+          return filePath;
+        }
+      }
+
       final request = http.Request('GET', Uri.parse(updateInfo.downloadUrl));
       final response = await http.Client().send(request);
 
@@ -148,20 +183,21 @@ class AutoUpdateService {
     return null;
   }
 
-  /// تثبيت التحديث
+  /// تثبيت التحديث (المثبت الصامت)
   Future<bool> installUpdate(String filePath) async {
     try {
       if (filePath.endsWith('.exe')) {
-        // تشغيل ملف المثبت
-        await Process.start(filePath, ['/SILENT', '/CLOSEAPPLICATIONS']);
+        // تشغيل المثبّت بالوضع الصامت مع إغلاق التطبيق الحالي تلقائياً
+        await Process.start(filePath, [
+          '/SILENT',
+          '/CLOSEAPPLICATIONS',
+          '/RESTARTAPPLICATIONS',
+          '/NOCANCEL',
+          '/SP-',
+        ]);
         // إغلاق التطبيق الحالي للسماح بالتحديث
         exit(0);
-      } else if (filePath.endsWith('.zip')) {
-        // فك الضغط واستبدال الملفات
-        // يمكن إضافة منطق فك الضغط هنا
-        debugPrint('📦 فك ضغط التحديث من: $filePath');
       } else if (filePath.endsWith('.msix')) {
-        // تثبيت حزمة MSIX
         await Process.start('powershell', [
           '-Command',
           'Add-AppxPackage',

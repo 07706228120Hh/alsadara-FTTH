@@ -1,12 +1,12 @@
 /// نافذة التحديث التلقائي
-/// تعرض معلومات التحديث الجديد مع خيارات التحميل والتثبيت
+/// تبدأ تحميل وتثبيت التحديث تلقائياً عند اكتشاف إصدار جديد
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auto_update_service.dart';
 
-/// نافذة إشعار التحديث
+/// نافذة التحديث التلقائي - تبدأ التحميل فوراً
 class UpdateDialog extends StatefulWidget {
   final UpdateInfo updateInfo;
   final String currentVersion;
@@ -26,9 +26,12 @@ class UpdateDialog extends StatefulWidget {
     return showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => UpdateDialog(
-        updateInfo: updateInfo,
-        currentVersion: currentVersion,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: UpdateDialog(
+          updateInfo: updateInfo,
+          currentVersion: currentVersion,
+        ),
       ),
     );
   }
@@ -37,10 +40,9 @@ class UpdateDialog extends StatefulWidget {
 class _UpdateDialogState extends State<UpdateDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  bool _isDownloading = false;
-  bool _isInstalling = false;
   double _downloadProgress = 0.0;
-  String _statusMessage = '';
+  _UpdatePhase _phase = _UpdatePhase.preparing;
+  String _errorMessage = '';
 
   @override
   void initState() {
@@ -49,6 +51,9 @@ class _UpdateDialogState extends State<UpdateDialog>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+
+    // ⚡ بدء التحميل والتثبيت تلقائياً
+    Future.delayed(const Duration(milliseconds: 500), _startAutoUpdate);
   }
 
   @override
@@ -57,35 +62,37 @@ class _UpdateDialogState extends State<UpdateDialog>
     super.dispose();
   }
 
-  Future<void> _downloadAndInstall() async {
-    setState(() {
-      _isDownloading = true;
-      _statusMessage = 'جاري تحميل التحديث...';
-    });
+  /// بدء التحديث التلقائي (تحميل ← تثبيت)
+  Future<void> _startAutoUpdate() async {
+    // --- المرحلة 1: التحميل ---
+    setState(() => _phase = _UpdatePhase.downloading);
 
     final filePath = await AutoUpdateService.instance.downloadUpdate(
       widget.updateInfo,
       onProgress: (progress) {
-        setState(() {
-          _downloadProgress = progress;
-          _statusMessage =
-              'جاري التحميل... ${(progress * 100).toStringAsFixed(0)}%';
-        });
+        if (mounted) setState(() => _downloadProgress = progress);
       },
     );
 
-    if (filePath != null) {
-      setState(() {
-        _isDownloading = false;
-        _isInstalling = true;
-        _statusMessage = 'جاري تثبيت التحديث...';
-      });
+    if (filePath == null) {
+      if (mounted) {
+        setState(() {
+          _phase = _UpdatePhase.error;
+          _errorMessage = 'فشل في تحميل التحديث. تحقق من اتصال الإنترنت.';
+        });
+      }
+      return;
+    }
 
-      await AutoUpdateService.instance.installUpdate(filePath);
-    } else {
+    // --- المرحلة 2: التثبيت ---
+    if (mounted) setState(() => _phase = _UpdatePhase.installing);
+    await Future.delayed(const Duration(seconds: 1));
+
+    final success = await AutoUpdateService.instance.installUpdate(filePath);
+    if (!success && mounted) {
       setState(() {
-        _isDownloading = false;
-        _statusMessage = 'فشل في تحميل التحديث';
+        _phase = _UpdatePhase.error;
+        _errorMessage = 'فشل في تثبيت التحديث.';
       });
     }
   }
@@ -96,56 +103,87 @@ class _UpdateDialogState extends State<UpdateDialog>
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  String get _phaseTitle {
+    switch (_phase) {
+      case _UpdatePhase.preparing:
+        return 'جاري التحضير...';
+      case _UpdatePhase.downloading:
+        return 'جاري تحميل التحديث';
+      case _UpdatePhase.installing:
+        return 'جاري تثبيت التحديث...';
+      case _UpdatePhase.error:
+        return 'حدث خطأ';
+    }
+  }
+
+  IconData get _phaseIcon {
+    switch (_phase) {
+      case _UpdatePhase.preparing:
+        return Icons.hourglass_top_rounded;
+      case _UpdatePhase.downloading:
+        return Icons.cloud_download_rounded;
+      case _UpdatePhase.installing:
+        return Icons.install_desktop_rounded;
+      case _UpdatePhase.error:
+        return Icons.error_outline_rounded;
+    }
+  }
+
+  Color get _phaseColor {
+    switch (_phase) {
+      case _UpdatePhase.preparing:
+      case _UpdatePhase.downloading:
+        return const Color(0xFF00E5FF);
+      case _UpdatePhase.installing:
+        return const Color(0xFF00E676);
+      case _UpdatePhase.error:
+        return const Color(0xFFFF5252);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
-        width: 450,
-        padding: const EdgeInsets.all(24),
+        width: 420,
+        padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0D1B2A),
-              Color(0xFF1B263B),
-            ],
+            colors: [Color(0xFF0D1B2A), Color(0xFF1B263B)],
           ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // أيقونة التحديث المتحركة
+            // أيقونة المرحلة
             AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
                 return Container(
-                  width: 80,
-                  height: 80,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: [
-                        const Color(0xFF00E5FF).withValues(alpha: 0.3),
-                        const Color(0xFF00E5FF).withValues(alpha: 0.1),
+                        _phaseColor.withValues(alpha: 0.3),
+                        _phaseColor.withValues(alpha: 0.1),
                       ],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(
-                            alpha: 0.3 + (_animationController.value * 0.2)),
+                        color: _phaseColor.withValues(
+                            alpha: 0.2 + (_animationController.value * 0.15)),
                         blurRadius: 20,
-                        spreadRadius: 5,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.system_update_rounded,
-                    color: Color(0xFF00E5FF),
-                    size: 40,
-                  ),
+                  child: Icon(_phaseIcon, color: _phaseColor, size: 36),
                 );
               },
             ),
@@ -153,9 +191,9 @@ class _UpdateDialogState extends State<UpdateDialog>
 
             // العنوان
             Text(
-              '🎉 تحديث جديد متاح!',
+              _phaseTitle,
               style: GoogleFonts.cairo(
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -164,163 +202,147 @@ class _UpdateDialogState extends State<UpdateDialog>
 
             // معلومات الإصدار
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'v${widget.currentVersion}',
-                    style: GoogleFonts.cairo(
-                      color: Colors.grey[400],
-                      fontSize: 14,
-                    ),
-                  ),
+                  Text('v${widget.currentVersion}',
+                      style: GoogleFonts.cairo(
+                          color: Colors.grey[400], fontSize: 13)),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Icon(Icons.arrow_forward,
+                    child: Icon(Icons.arrow_forward_rounded,
                         color: Color(0xFF00E5FF), size: 16),
                   ),
                   Text(
                     'v${widget.updateInfo.version}',
                     style: GoogleFonts.cairo(
                       color: const Color(0xFF00E5FF),
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // حجم التحميل
-            if (widget.updateInfo.downloadSize > 0)
-              Text(
-                'حجم التحديث: ${_formatSize(widget.updateInfo.downloadSize)}',
-                style: GoogleFonts.cairo(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
-              ),
-            const SizedBox(height: 16),
-
-            // ملاحظات الإصدار
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              constraints: const BoxConstraints(maxHeight: 150),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '📝 ما الجديد:',
-                      style: GoogleFonts.cairo(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.updateInfo.releaseNotes,
-                      style: GoogleFonts.cairo(
-                        color: Colors.grey[300],
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
             const SizedBox(height: 20),
 
-            // شريط التقدم أثناء التحميل
-            if (_isDownloading || _isInstalling) ...[
-              Column(
+            // --- محتوى حسب المرحلة ---
+
+            if (_phase == _UpdatePhase.downloading) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: _downloadProgress,
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  valueColor: const AlwaysStoppedAnimation(Color(0xFF00E5FF)),
+                  minHeight: 8,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  LinearProgressIndicator(
-                    value: _isInstalling ? null : _downloadProgress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
-                    _statusMessage,
+                    '${(_downloadProgress * 100).toStringAsFixed(0)}%',
                     style: GoogleFonts.cairo(
-                      color: Colors.grey[400],
-                      fontSize: 12,
-                    ),
+                        color: const Color(0xFF00E5FF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold),
                   ),
+                  if (widget.updateInfo.downloadSize > 0)
+                    Text(
+                      _formatSize(widget.updateInfo.downloadSize),
+                      style: GoogleFonts.cairo(
+                          color: Colors.grey[500], fontSize: 12),
+                    ),
                 ],
               ),
-            ] else ...[
-              // أزرار الإجراء
+              const SizedBox(height: 6),
+              Text(
+                'لا تغلق التطبيق أثناء التحميل',
+                style: GoogleFonts.cairo(color: Colors.grey[500], fontSize: 11),
+              ),
+            ] else if (_phase == _UpdatePhase.preparing ||
+                _phase == _UpdatePhase.installing) ...[
+              const SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation(Color(0xFF00E5FF)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _phase == _UpdatePhase.installing
+                    ? 'سيتم إعادة تشغيل التطبيق تلقائياً...'
+                    : 'جاري التحضير...',
+                style: GoogleFonts.cairo(color: Colors.grey[400], fontSize: 12),
+              ),
+            ] else if (_phase == _UpdatePhase.error) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF5252).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: const Color(0xFFFF5252).withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  _errorMessage,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cairo(
+                      color: const Color(0xFFFF9E9E), fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 16),
               Row(
                 children: [
-                  // زر التخطي
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.pop(context),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                           side: BorderSide(
                               color: Colors.white.withValues(alpha: 0.2)),
                         ),
                       ),
-                      child: Text(
-                        'لاحقاً',
-                        style: GoogleFonts.cairo(
-                          color: Colors.grey[400],
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: Text('تخطي',
+                          style: GoogleFonts.cairo(
+                              color: Colors.grey[400],
+                              fontWeight: FontWeight.w600)),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // زر التحديث
                   Expanded(
                     flex: 2,
-                    child: ElevatedButton(
-                      onPressed: widget.updateInfo.downloadUrl.isNotEmpty
-                          ? _downloadAndInstall
-                          : null,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _phase = _UpdatePhase.preparing;
+                          _downloadProgress = 0;
+                        });
+                        _startAutoUpdate();
+                      },
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: Text('إعادة المحاولة',
+                          style:
+                              GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00E5FF),
                         foregroundColor: const Color(0xFF0D1B2A),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                         elevation: 0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.download_rounded, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'تحديث الآن',
-                            style: GoogleFonts.cairo(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
@@ -334,13 +356,17 @@ class _UpdateDialogState extends State<UpdateDialog>
   }
 }
 
-/// مدير التحديثات - للتحقق عند بدء التطبيق
+enum _UpdatePhase { preparing, downloading, installing, error }
+
+/// مدير التحديثات - يُفحص ويُحدّث تلقائياً عند بدء التطبيق
 class UpdateManager {
   static Future<void> checkAndShowUpdateDialog(BuildContext context) async {
     try {
       final updateInfo = await AutoUpdateService.instance.checkForUpdate();
 
-      if (updateInfo != null && context.mounted) {
+      if (updateInfo != null &&
+          updateInfo.downloadUrl.isNotEmpty &&
+          context.mounted) {
         final currentVersion =
             await AutoUpdateService.instance.getCurrentVersion();
         await UpdateDialog.show(context, updateInfo, currentVersion);
