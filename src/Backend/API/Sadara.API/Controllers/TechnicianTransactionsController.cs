@@ -75,6 +75,22 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 foreach (var sr in srs) srDict[sr.Id] = sr;
             }
 
+            // جلب أرقام القيود المحاسبية المرتبطة
+            var jeIds = transactions
+                .Where(t => t.JournalEntryId.HasValue)
+                .Select(t => t.JournalEntryId!.Value)
+                .Distinct()
+                .ToList();
+            var jeDict = new Dictionary<Guid, string>();
+            if (jeIds.Any())
+            {
+                var jes = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Where(j => jeIds.Contains(j.Id))
+                    .Select(j => new { j.Id, j.EntryNumber })
+                    .ToListAsync();
+                foreach (var j in jes) jeDict[j.Id] = j.EntryNumber;
+            }
+
             // حساب الإجماليات
             var allTechTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
                 .Where(t => t.TechnicianId == userId);
@@ -139,6 +155,9 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                         description = tx.Description,
                         referenceNumber = tx.ReferenceNumber,
                         serviceRequestId = tx.ServiceRequestId,
+                        journalEntryId = tx.JournalEntryId,
+                        journalEntryNumber = tx.JournalEntryId.HasValue && jeDict.ContainsKey(tx.JournalEntryId.Value)
+                            ? jeDict[tx.JournalEntryId.Value] : null,
                         notes = tx.Notes,
                         receivedBy = tx.ReceivedBy,
                         createdAt = tx.CreatedAt,
@@ -226,6 +245,22 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 foreach (var sr in srs) srDict[sr.Id] = sr;
             }
 
+            // جلب أرقام القيود المحاسبية المرتبطة
+            var jeIds2 = transactions
+                .Where(t => t.JournalEntryId.HasValue)
+                .Select(t => t.JournalEntryId!.Value)
+                .Distinct()
+                .ToList();
+            var jeDict = new Dictionary<Guid, string>();
+            if (jeIds2.Any())
+            {
+                var jes = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Where(j => jeIds2.Contains(j.Id))
+                    .Select(j => new { j.Id, j.EntryNumber })
+                    .ToListAsync();
+                foreach (var j in jes) jeDict[j.Id] = j.EntryNumber;
+            }
+
             var allTechTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
                 .Where(t => t.TechnicianId == technicianId);
 
@@ -288,6 +323,9 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                         description = tx.Description,
                         referenceNumber = tx.ReferenceNumber,
                         serviceRequestId = tx.ServiceRequestId,
+                        journalEntryId = tx.JournalEntryId,
+                        journalEntryNumber = tx.JournalEntryId.HasValue && jeDict.ContainsKey(tx.JournalEntryId.Value)
+                            ? jeDict[tx.JournalEntryId.Value] : null,
                         notes = tx.Notes,
                         receivedBy = tx.ReceivedBy,
                         createdAt = tx.CreatedAt,

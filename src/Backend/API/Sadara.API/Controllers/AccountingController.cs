@@ -102,10 +102,12 @@ public class AccountingController : ControllerBase
                     account.Name,
                     account.NameEn,
                     AccountType = account.AccountType.ToString(),
+                    account.OpeningBalance,
                     CurrentBalance = subtreeBalance,
                     account.IsLeaf,
                     account.IsActive,
                     account.Level,
+                    account.Description,
                     Children = children.Select(c => BuildTree(c)).ToList()
                 };
             }
@@ -198,6 +200,14 @@ public class AccountingController : ControllerBase
             account.NameEn = dto.NameEn ?? account.NameEn;
             account.Description = dto.Description ?? account.Description;
             account.IsActive = dto.IsActive ?? account.IsActive;
+
+            // تحديث الرصيد الافتتاحي مع تعديل الرصيد الحالي
+            if (dto.OpeningBalance.HasValue)
+            {
+                var diff = dto.OpeningBalance.Value - account.OpeningBalance;
+                account.OpeningBalance = dto.OpeningBalance.Value;
+                account.CurrentBalance += diff;
+            }
 
             _unitOfWork.Accounts.Update(account);
             await _unitOfWork.SaveChangesAsync();
@@ -1221,6 +1231,8 @@ public class AccountingController : ControllerBase
                     c.Description,
                     c.Notes,
                     c.CompanyId,
+                    c.JournalEntryId,
+                    JournalEntryNumber = c.JournalEntry != null ? c.JournalEntry.EntryNumber : null,
                     c.CreatedAt
                 }).ToListAsync();
 
@@ -1357,21 +1369,25 @@ public class AccountingController : ControllerBase
                 }
             }
 
-            // === إنشاء قيد محاسبي تلقائي للتحصيل ===
-            // مدين: حساب النقدية 1110 (استلمنا مال)
-            // دائن: حساب إيرادات الاشتراكات 4100
+            // === إنشاء قيد محاسبي تلقائي لتسليم التحصيل ===
+            // مدين: حساب النقدية 1110 (استلمنا كاش من الفني)
+            // دائن: حساب ذمم الفنيين 1140-sub (إقفال مستحقات الفني)
+            // ملاحظة: الإيراد سُجّل مسبقاً عند تفعيل الاشتراك (Dr 1140 / Cr 4110|4120)
+            var technician = await _unitOfWork.Users.GetByIdAsync(collection.TechnicianId);
             var cashAcct = await FindAccountByCode("1110", collection.CompanyId);
-            var revenueAcct = await FindAccountByCode("4100", collection.CompanyId);
-            if (cashAcct != null && revenueAcct != null)
+            var techSubAcct = await FindOrCreateSubAccount(
+                "1140", collection.TechnicianId,
+                technician?.FullName ?? "فني", collection.CompanyId);
+            if (cashAcct != null)
             {
                 var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                 {
-                    (cashAcct.Id, collection.Amount, 0, $"تحصيل فني #{collection.Id}"),
-                    (revenueAcct.Id, 0, collection.Amount, $"إيراد تحصيل فني #{collection.Id}")
+                    (cashAcct.Id, collection.Amount, 0, $"تسليم تحصيل فني #{collection.Id}"),
+                    (techSubAcct.Id, 0, collection.Amount, $"إقفال ذمة فني #{collection.Id}")
                 };
                 await CreateAndPostJournalEntry(
                     collection.CompanyId, dto.DeliveredToUserId,
-                    $"تحصيل فني تلقائي #{collection.Id}",
+                    $"تسليم تحصيل فني #{collection.Id}",
                     JournalReferenceType.TechnicianCollection, collection.Id.ToString(),
                     journalLines);
             }
@@ -1943,7 +1959,7 @@ public class AccountingController : ControllerBase
     }
 
     /// <summary>
-    /// حذف قيد محاسبي (ناعم) - يُلغي أيضاً أرصدة الحسابات
+    /// حذف قيد محاسبي (ناعم) - يُلغي أيضاً أرصدة الحسابات والكيانات المرتبطة
     /// </summary>
     [HttpDelete("journal-entries/{id}")]
     public async Task<IActionResult> DeleteJournalEntry(Guid id)
@@ -1959,7 +1975,7 @@ public class AccountingController : ControllerBase
 
             await _unitOfWork.BeginTransactionAsync();
 
-            // عكس الأرصدة إذا كان مُعتمداً
+            // 1. عكس الأرصدة إذا كان مُعتمداً
             if (entry.Status == JournalEntryStatus.Posted)
             {
                 foreach (var line in entry.Lines)
@@ -1974,13 +1990,258 @@ public class AccountingController : ControllerBase
                 }
             }
 
+            // 2. حذف ناعم لأسطر القيد
+            foreach (var line in entry.Lines)
+            {
+                line.IsDeleted = true;
+                line.DeletedAt = DateTime.UtcNow;
+                _unitOfWork.JournalEntryLines.Update(line);
+            }
+
+            // 3. حذف الكيانات المرتبطة حسب نوع المرجع
+            var refId = entry.ReferenceId;
+            switch (entry.ReferenceType)
+            {
+                case JournalReferenceType.Expense:
+                    if (long.TryParse(refId, out var expenseId))
+                    {
+                        var expense = await _unitOfWork.Expenses.GetByIdAsync(expenseId);
+                        if (expense != null && !expense.IsDeleted)
+                        {
+                            // إعادة المبلغ للصندوق
+                            if (expense.PaidFromCashBoxId.HasValue)
+                            {
+                                var box = await _unitOfWork.CashBoxes.GetByIdAsync(expense.PaidFromCashBoxId.Value);
+                                if (box != null)
+                                {
+                                    box.CurrentBalance += expense.Amount;
+                                    _unitOfWork.CashBoxes.Update(box);
+                                }
+                            }
+                            expense.IsDeleted = true;
+                            expense.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.Expenses.Update(expense);
+                            _logger.LogInformation("حذف مصروف مرتبط #{ExpenseId} عند حذف القيد", expenseId);
+                        }
+                    }
+                    break;
+
+                case JournalReferenceType.TechnicianCollection:
+                    if (long.TryParse(refId, out var collectionId))
+                    {
+                        var collection = await _unitOfWork.TechnicianCollections.GetByIdAsync(collectionId);
+                        if (collection != null && !collection.IsDeleted)
+                        {
+                            // إذا مسلّم، إعادة المبلغ من الصندوق
+                            if (collection.IsDelivered && collection.CashBoxId.HasValue)
+                            {
+                                var box = await _unitOfWork.CashBoxes.GetByIdAsync(collection.CashBoxId.Value);
+                                if (box != null)
+                                {
+                                    box.CurrentBalance -= collection.Amount;
+                                    _unitOfWork.CashBoxes.Update(box);
+                                }
+                            }
+                            collection.IsDeleted = true;
+                            collection.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.TechnicianCollections.Update(collection);
+                            _logger.LogInformation("حذف تحصيل مرتبط #{CollectionId} عند حذف القيد", collectionId);
+                        }
+                    }
+                    break;
+
+                case JournalReferenceType.Salary:
+                    if (long.TryParse(refId, out var salaryId))
+                    {
+                        var salary = await _unitOfWork.EmployeeSalaries.GetByIdAsync(salaryId);
+                        if (salary != null && !salary.IsDeleted)
+                        {
+                            salary.IsDeleted = true;
+                            salary.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.EmployeeSalaries.Update(salary);
+                            _logger.LogInformation("حذف راتب مرتبط #{SalaryId} عند حذف القيد", salaryId);
+                        }
+                    }
+                    break;
+
+                case JournalReferenceType.CashDeposit:
+                case JournalReferenceType.CashWithdrawal:
+                case JournalReferenceType.CashTransfer:
+                    // حذف حركة الصندوق المرتبطة
+                    var cashTx = await _unitOfWork.CashTransactions.AsQueryable()
+                        .FirstOrDefaultAsync(ct => ct.JournalEntryId == id && !ct.IsDeleted);
+                    if (cashTx != null)
+                    {
+                        // عكس رصيد الصندوق
+                        var cashBox = await _unitOfWork.CashBoxes.GetByIdAsync(cashTx.CashBoxId);
+                        if (cashBox != null)
+                        {
+                            cashBox.CurrentBalance -= cashTx.Amount;
+                            _unitOfWork.CashBoxes.Update(cashBox);
+                        }
+                        cashTx.IsDeleted = true;
+                        cashTx.DeletedAt = DateTime.UtcNow;
+                        _unitOfWork.CashTransactions.Update(cashTx);
+                        _logger.LogInformation("حذف حركة صندوق مرتبطة عند حذف القيد");
+                    }
+                    break;
+
+                case JournalReferenceType.ServiceRequest:
+                    // حذف معاملات الفني والوكيل المرتبطة بطلب الخدمة
+                    if (Guid.TryParse(refId, out var srId))
+                    {
+                        // معاملة الفني
+                        var srTechTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                            .FirstOrDefaultAsync(t => t.ServiceRequestId == srId && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted);
+                        if (srTechTx != null)
+                        {
+                            var tech = await _unitOfWork.Users.GetByIdAsync(srTechTx.TechnicianId);
+                            if (tech != null)
+                            {
+                                tech.TechTotalCharges -= srTechTx.Amount;
+                                tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
+                                _unitOfWork.Users.Update(tech);
+                            }
+                            srTechTx.IsDeleted = true;
+                            srTechTx.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.TechnicianTransactions.Update(srTechTx);
+                            _logger.LogInformation("حذف معاملة فني مرتبطة بطلب خدمة عند حذف القيد");
+                        }
+
+                        // معاملة الوكيل
+                        var srAgentTx = await _unitOfWork.AgentTransactions.AsQueryable()
+                            .FirstOrDefaultAsync(t => t.ServiceRequestId == srId && t.Type == TransactionType.Charge && !t.IsDeleted);
+                        if (srAgentTx != null)
+                        {
+                            var agent = await _unitOfWork.Agents.GetByIdAsync(srAgentTx.AgentId);
+                            if (agent != null)
+                            {
+                                agent.TotalCharges -= srAgentTx.Amount;
+                                agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                                _unitOfWork.Agents.Update(agent);
+                            }
+                            srAgentTx.IsDeleted = true;
+                            srAgentTx.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.AgentTransactions.Update(srAgentTx);
+                            _logger.LogInformation("حذف معاملة وكيل مرتبطة بطلب خدمة عند حذف القيد");
+                        }
+                    }
+                    break;
+
+                case JournalReferenceType.FtthSubscription:
+                    // حذف سجل الاشتراك + معاملاته المرتبطة
+                    if (long.TryParse(refId, out var subLogId))
+                    {
+                        var subLog = await _unitOfWork.SubscriptionLogs.GetByIdAsync(subLogId);
+                        if (subLog != null && !subLog.IsDeleted)
+                        {
+                            // معاملة الفني المرتبطة
+                            if (subLog.LinkedTechnicianId.HasValue)
+                            {
+                                var ftthTechTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                                    .FirstOrDefaultAsync(t => t.ReferenceNumber == subLogId.ToString()
+                                        && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted);
+                                if (ftthTechTx != null)
+                                {
+                                    var tech2 = await _unitOfWork.Users.GetByIdAsync(ftthTechTx.TechnicianId);
+                                    if (tech2 != null)
+                                    {
+                                        tech2.TechTotalCharges -= ftthTechTx.Amount;
+                                        tech2.TechNetBalance = tech2.TechTotalPayments - tech2.TechTotalCharges;
+                                        _unitOfWork.Users.Update(tech2);
+                                    }
+                                    ftthTechTx.IsDeleted = true;
+                                    ftthTechTx.DeletedAt = DateTime.UtcNow;
+                                    _unitOfWork.TechnicianTransactions.Update(ftthTechTx);
+                                }
+                            }
+
+                            // معاملة الوكيل المرتبطة
+                            if (subLog.LinkedAgentId.HasValue)
+                            {
+                                var ftthAgentTx = await _unitOfWork.AgentTransactions.AsQueryable()
+                                    .FirstOrDefaultAsync(t => t.ReferenceNumber == subLogId.ToString()
+                                        && t.Type == TransactionType.Charge && !t.IsDeleted);
+                                if (ftthAgentTx != null)
+                                {
+                                    var agent2 = await _unitOfWork.Agents.GetByIdAsync(ftthAgentTx.AgentId);
+                                    if (agent2 != null)
+                                    {
+                                        agent2.TotalCharges -= ftthAgentTx.Amount;
+                                        agent2.NetBalance = agent2.TotalPayments - agent2.TotalCharges;
+                                        _unitOfWork.Agents.Update(agent2);
+                                    }
+                                    ftthAgentTx.IsDeleted = true;
+                                    ftthAgentTx.DeletedAt = DateTime.UtcNow;
+                                    _unitOfWork.AgentTransactions.Update(ftthAgentTx);
+                                }
+                            }
+
+                            subLog.IsDeleted = true;
+                            subLog.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.SubscriptionLogs.Update(subLog);
+                            _logger.LogInformation("حذف سجل اشتراك #{LogId} ومعاملاته عند حذف القيد", subLogId);
+                        }
+                    }
+                    break;
+
+                case JournalReferenceType.AgentTransaction:
+                    // حذف معاملة الوكيل المرتبطة بالقيد
+                    var agentTxByJe = await _unitOfWork.AgentTransactions.AsQueryable()
+                        .FirstOrDefaultAsync(t => t.JournalEntryId == id && !t.IsDeleted);
+                    if (agentTxByJe != null)
+                    {
+                        var agent3 = await _unitOfWork.Agents.GetByIdAsync(agentTxByJe.AgentId);
+                        if (agent3 != null)
+                        {
+                            if (agentTxByJe.Type == TransactionType.Charge)
+                                agent3.TotalCharges -= agentTxByJe.Amount;
+                            else if (agentTxByJe.Type == TransactionType.Payment)
+                                agent3.TotalPayments -= agentTxByJe.Amount;
+                            agent3.NetBalance = agent3.TotalPayments - agent3.TotalCharges;
+                            _unitOfWork.Agents.Update(agent3);
+                        }
+                        agentTxByJe.IsDeleted = true;
+                        agentTxByJe.DeletedAt = DateTime.UtcNow;
+                        _unitOfWork.AgentTransactions.Update(agentTxByJe);
+                        _logger.LogInformation("حذف معاملة وكيل مرتبطة عند حذف القيد");
+                    }
+                    break;
+
+                case JournalReferenceType.OperatorCashDelivery:
+                case JournalReferenceType.OperatorCreditCollection:
+                    // حذف حركات الصندوق المرتبطة بعمليات المشغل
+                    var opCashTx = await _unitOfWork.CashTransactions.AsQueryable()
+                        .FirstOrDefaultAsync(ct => ct.JournalEntryId == id && !ct.IsDeleted);
+                    if (opCashTx != null)
+                    {
+                        var opBox = await _unitOfWork.CashBoxes.GetByIdAsync(opCashTx.CashBoxId);
+                        if (opBox != null)
+                        {
+                            if (opCashTx.TransactionType == CashTransactionType.Deposit)
+                                opBox.CurrentBalance -= opCashTx.Amount;
+                            else
+                                opBox.CurrentBalance += opCashTx.Amount;
+                            _unitOfWork.CashBoxes.Update(opBox);
+                        }
+                        opCashTx.IsDeleted = true;
+                        opCashTx.DeletedAt = DateTime.UtcNow;
+                        _unitOfWork.CashTransactions.Update(opCashTx);
+                        _logger.LogInformation("حذف حركة صندوق مشغل مرتبطة عند حذف القيد");
+                    }
+                    break;
+            }
+
+            // 4. حذف القيد نفسه
             entry.IsDeleted = true;
             entry.DeletedAt = DateTime.UtcNow;
             entry.Status = JournalEntryStatus.Voided;
             _unitOfWork.JournalEntries.Update(entry);
 
             await _unitOfWork.CommitTransactionAsync();
-            return Ok(new { success = true, message = "تم حذف القيد" });
+
+            _logger.LogInformation("تم حذف القيد {EntryNumber} وجميع الكيانات المرتبطة", entry.EntryNumber);
+            return Ok(new { success = true, message = "تم حذف القيد وجميع السجلات المرتبطة به" });
         }
         catch (Exception ex)
         {
@@ -2114,6 +2375,31 @@ public class AccountingController : ControllerBase
             // الصافي الكلي = صافي الوكلاء + صافي الفنيين (سالب = مديون عليهم للشركة)
             var totalNet = agentNetTotal + techNetTotal;
 
+            // ═══ رصيد القاصة (11101) ═══
+            var cashRegisterBalance = leafAccounts
+                .Where(a => a.Code == "11101")
+                .Sum(a => a.CurrentBalance);
+
+            // ═══ رصيد صندوق الشركة الرئيسي (11104) ═══
+            var mainCashBoxBalance = leafAccounts
+                .Where(a => a.Code == "11104")
+                .Sum(a => a.CurrentBalance);
+
+            // ═══ رصيد الصفحة (11102) ═══
+            var pageBalance = leafAccounts
+                .Where(a => a.Code == "11102")
+                .Sum(a => a.CurrentBalance);
+
+            // ═══ مستحقات المشغلين = نقد في صناديقهم (1110) + آجل في ذمتهم (1160) ═══
+            var knownNonOperatorCodes = new HashSet<string> { "1110", "11101", "11102", "11103", "11104" };
+            var operatorCashBoxes = leafAccounts
+                .Where(a => a.Code != null && a.Code.StartsWith("1110") && !knownNonOperatorCodes.Contains(a.Code))
+                .Sum(a => a.CurrentBalance);
+            var operatorCredit = leafAccounts
+                .Where(a => a.Code != null && a.Code.StartsWith("1160") && a.Code != "1160")
+                .Sum(a => a.CurrentBalance);
+            var operatorReceivables = operatorCashBoxes + operatorCredit;
+
             return Ok(new
             {
                 success = true,
@@ -2146,7 +2432,11 @@ public class AccountingController : ControllerBase
                         TotalRevenue = totalRevenue,
                         TotalExpenses = totalExpensesFromAccounts,
                         NetIncome = totalRevenue - totalExpensesFromAccounts,
-                        CashAccountBalance = cashAccountBalance
+                        CashAccountBalance = cashAccountBalance,
+                        CashRegisterBalance = cashRegisterBalance,
+                        MainCashBoxBalance = mainCashBoxBalance,
+                        PageBalance = pageBalance,
+                        OperatorReceivables = operatorReceivables
                     },
                     // تفاصيل الصافي
                     PendingDetails = new
@@ -2631,8 +2921,10 @@ public class AccountingController : ControllerBase
     private async Task<string> GenerateEntryNumber(Guid companyId)
     {
         var year = DateTime.UtcNow.Year;
-        var count = await _unitOfWork.JournalEntries.CountAsync(
-            j => j.CompanyId == companyId && j.EntryDate.Year == year);
+        // IgnoreQueryFilters لعدّ جميع القيود بما فيها المحذوفة ناعمياً لتجنب تعارض الأرقام
+        var count = await _unitOfWork.JournalEntries.AsQueryable()
+            .IgnoreQueryFilters()
+            .CountAsync(j => j.CompanyId == companyId && j.EntryDate.Year == year);
         return $"JE-{year}-{(count + 1):D4}";
     }
 
@@ -2863,7 +3155,8 @@ public record UpdateAccountDto(
     string? Name,
     string? NameEn,
     string? Description,
-    bool? IsActive
+    bool? IsActive,
+    decimal? OpeningBalance
 );
 
 public record SeedAccountsDto(Guid CompanyId);
@@ -2886,7 +3179,7 @@ public record CreateJournalEntryLineDto(
     string? EntityId
 );
 
-public record PostJournalEntryDto(Guid ApprovedById);
+public record PostJournalEntryDto(Guid? ApprovedById);
 
 public record CreateCashBoxDto(
     string Name,

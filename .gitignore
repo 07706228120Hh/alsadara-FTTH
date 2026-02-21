@@ -50,6 +50,9 @@ bin/
 obj/
 out/
 publish/
+publish-output/
+publish-temp/
+deploy-temp/
 
 # IDE
 .vs/

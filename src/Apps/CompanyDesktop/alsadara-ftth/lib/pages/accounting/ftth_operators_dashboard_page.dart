@@ -5,9 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/vps_auth_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/accounting_service.dart';
 import '../../services/plan_pricing_service.dart';
 import '../../theme/accounting_theme.dart';
 import 'ftth_operator_account_page.dart';
+import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
 
 /// لوحة تحكم مشغلي FTTH — 3 تبويبات
@@ -746,13 +748,20 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   /// المرحلة 2: نسب عمليات "بدون منشئ" في الخلفية مع تحديث العداد
   Future<void> _resolveOrphansInBackground() async {
+    // جمع معاملات "بدون منشئ" + "Agent" (كلاهما يحتاج إعادة نسب)
+    final List<_FtthTransaction> orphanTxs = [];
     final noCreator = _ftthOperators.remove('بدون منشئ');
-    if (noCreator == null || noCreator.transactions.isEmpty) {
+    if (noCreator != null && noCreator.transactions.isNotEmpty) {
+      orphanTxs.addAll(noCreator.transactions);
+    }
+    final agentOp = _ftthOperators.remove('Agent');
+    if (agentOp != null && agentOp.transactions.isNotEmpty) {
+      orphanTxs.addAll(agentOp.transactions);
+    }
+    if (orphanTxs.isEmpty) {
       if (mounted) setState(() {});
       return;
     }
-
-    final orphanTxs = List<_FtthTransaction>.from(noCreator.transactions);
 
     // جمع customerIds الفريدة
     final Set<String> uniqueCustomerIds = {};
@@ -927,6 +936,148 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         _isResolvingOrphans = false;
         _orphanResolved = _orphanTotal;
       });
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  مزامنة عمليات FTTH → خادمنا
+  // ════════════════════════════════════════════════════════════════
+
+  Future<void> _syncFtthToOurServer() async {
+    if (_ftthOperators.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('لا توجد بيانات FTTH لمزامنتها — جلب البيانات أولاً'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    // تأكيد المزامنة
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.sync, color: Colors.teal.shade700),
+            const SizedBox(width: 8),
+            Text('مزامنة FTTH → خادمنا',
+                style: GoogleFonts.cairo(
+                    fontSize: 16, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'سيتم إرسال جميع عمليات FTTH المحملة إلى خادمنا.\n'
+              'العمليات المحفوظة مسبقاً (بناءً على FtthTransactionId) ستُتجاهل تلقائياً.',
+              style: GoogleFonts.cairo(fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'عدد العمليات: ${_ftthOperators.values.fold<int>(0, (s, op) => s + op.transactions.length)}',
+              style:
+                  GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.sync, size: 18),
+            label: const Text('مزامنة'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // تحويل العمليات
+    final List<Map<String, dynamic>> txList = [];
+    for (final opEntry in _ftthOperators.entries) {
+      for (final tx in opEntry.value.transactions) {
+        txList.add({
+          'ftthTransactionId': tx.id,
+          'customerId': tx.customerId,
+          'customerName': tx.customerName,
+          'subscriptionId': tx.subscriptionId,
+          'planName': tx.planName,
+          'amount': tx.amount,
+          'operationType': tx.type,
+          'createdBy': tx.auditCreator ?? opEntry.key,
+          'occuredAt': tx.occuredAt,
+          'zoneId': tx.zoneId,
+          'deviceUsername': tx.deviceUsername,
+        });
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('جاري مزامنة ${txList.length} عملية...'),
+          backgroundColor: Colors.teal,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+    }
+
+    try {
+      final result = await AccountingService.instance.syncFtthTransactions(
+        companyId: _companyId,
+        transactions: txList,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        final success = result['success'] == true;
+        final data = result['data'];
+        final saved = data is Map
+            ? data['saved'] ?? result['saved'] ?? 0
+            : result['saved'] ?? 0;
+        final skipped = data is Map
+            ? data['skipped'] ?? result['skipped'] ?? 0
+            : result['skipped'] ?? 0;
+        final failed = data is Map
+            ? data['failed'] ?? result['failed'] ?? 0
+            : result['failed'] ?? 0;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'تمت المزامنة: $saved محفوظ، $skipped موجود مسبقاً، $failed فشل'
+                  : result['message'] ?? 'خطأ في المزامنة',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+
+        // إعادة تحميل بيانات خادمنا
+        if (success) _loadOursData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -1137,6 +1288,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               constraints: const BoxConstraints(minWidth: 36),
             ),
             IconButton(
+              icon: const Icon(Icons.move_to_inbox,
+                  color: Colors.greenAccent, size: 20),
+              onPressed: _showReceiveCashDialog,
+              tooltip: 'استلام نقد من مشغل',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36),
+            ),
+            IconButton(
               icon: const Icon(Icons.price_change_outlined,
                   color: Colors.amberAccent, size: 20),
               onPressed: _showPlanPricingDialog,
@@ -1176,6 +1335,70 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 tooltip: 'الفريق',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 36),
+              ),
+            if (_ftthAuthenticated)
+              IconButton(
+                icon:
+                    const Icon(Icons.link, color: Colors.limeAccent, size: 20),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        FtthOperatorLinkingPage(companyId: _companyId),
+                  ),
+                ),
+                tooltip: 'ربط المشغلين',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36),
+              ),
+            if (_ftthAuthenticated)
+              IconButton(
+                icon: const Icon(Icons.sync,
+                    color: Colors.lightGreenAccent, size: 20),
+                onPressed: _syncFtthToOurServer,
+                tooltip: 'مزامنة FTTH → خادمنا',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36),
+              ),
+            // زر إعادة نسب "بدون منشئ" + "Agent"
+            if (_ftthAuthenticated &&
+                !_isResolvingOrphans &&
+                _ftthOperators.isNotEmpty)
+              Builder(builder: (_) {
+                final orphanCount =
+                    (_ftthOperators['بدون منشئ']?.transactions.length ?? 0) +
+                        (_ftthOperators['Agent']?.transactions.length ?? 0);
+                return IconButton(
+                  icon: orphanCount > 0
+                      ? Badge(
+                          label: Text(
+                            '$orphanCount',
+                            style: const TextStyle(
+                                fontSize: 9, color: Colors.white),
+                          ),
+                          backgroundColor: Colors.orange,
+                          child: const Icon(Icons.person_search,
+                              color: Colors.orangeAccent, size: 20),
+                        )
+                      : const Icon(Icons.person_search,
+                          color: Colors.white54, size: 20),
+                  onPressed: _resolveOrphansInBackground,
+                  tooltip: 'إعادة نسب المعاملات ($orphanCount عملية)',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36),
+                );
+              }),
+            if (_isResolvingOrphans)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.orangeAccent),
+                  ),
+                ),
               ),
             const SizedBox(width: 4),
           ],
@@ -2373,39 +2596,49 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   Widget _buildOursSummary() {
     if (_oursSummary == null) return const SizedBox();
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
+    final cards = <Widget>[
+      _summaryCard(
+          'إجمالي العمليات',
+          (_oursSummary!['totalAmount'] ?? 0).toDouble(),
+          '${_oursSummary!['totalActivations'] ?? 0} عملية بواسطة ${_oursSummary!['totalOperators'] ?? 0} مشغل',
+          AccountingTheme.neonBlue,
+          icon: Icons.analytics_outlined),
+      _summaryCard('نقد', (_oursSummary!['totalCash'] ?? 0).toDouble(), '',
+          Colors.green.shade600,
+          icon: Icons.attach_money),
+      _summaryCard('آجل', (_oursSummary!['totalCredit'] ?? 0).toDouble(), '',
+          Colors.orange.shade600,
+          icon: Icons.schedule),
+      _summaryCard('ماستر', (_oursSummary!['totalMaster'] ?? 0).toDouble(), '',
+          Colors.purple.shade600,
+          icon: Icons.credit_card),
+      _summaryCard('وكيل', (_oursSummary!['totalAgent'] ?? 0).toDouble(), '',
+          Colors.blue.shade600,
+          icon: Icons.store),
+      _summaryCard('فني', (_oursSummary!['totalTechnician'] ?? 0).toDouble(),
+          '', Colors.teal.shade600,
+          icon: Icons.engineering),
+      _summaryCard('المستحق', (_oursSummary!['totalNetOwed'] ?? 0).toDouble(),
+          'نقد + آجل بعد خصم التسليمات', Colors.red.shade600,
+          icon: Icons.warning_amber_rounded),
+      if ((_oursSummary!['totalUnclassified'] ?? 0).toDouble() > 0)
         _summaryCard(
-            'إجمالي العمليات',
-            (_oursSummary!['totalAmount'] ?? 0).toDouble(),
-            '${_oursSummary!['totalActivations'] ?? 0} عملية بواسطة ${_oursSummary!['totalOperators'] ?? 0} مشغل',
-            AccountingTheme.neonBlue,
-            icon: Icons.analytics_outlined),
-        _summaryCard('نقد', (_oursSummary!['totalCash'] ?? 0).toDouble(), '',
-            Colors.green.shade600,
-            icon: Icons.attach_money),
-        _summaryCard('آجل', (_oursSummary!['totalCredit'] ?? 0).toDouble(), '',
-            Colors.orange.shade600,
-            icon: Icons.schedule),
-        _summaryCard('ماستر', (_oursSummary!['totalMaster'] ?? 0).toDouble(),
-            '', Colors.purple.shade600,
-            icon: Icons.credit_card),
-        _summaryCard('وكيل', (_oursSummary!['totalAgent'] ?? 0).toDouble(), '',
-            Colors.blue.shade600,
-            icon: Icons.store),
-        _summaryCard('المستحق', (_oursSummary!['totalNetOwed'] ?? 0).toDouble(),
-            'نقد + آجل غير مسلّم', Colors.red.shade600,
-            icon: Icons.warning_amber_rounded),
-        if ((_oursSummary!['totalUnclassified'] ?? 0).toDouble() > 0)
-          _summaryCard(
-              'غير مصنّفة',
-              (_oursSummary!['totalUnclassified'] ?? 0).toDouble(),
-              '${_oursSummary!['totalUnclassifiedCount'] ?? 0} عملية',
-              Colors.grey.shade600,
-              icon: Icons.help_outline),
-      ],
+            'غير مصنّفة',
+            (_oursSummary!['totalUnclassified'] ?? 0).toDouble(),
+            '${_oursSummary!['totalUnclassifiedCount'] ?? 0} عملية',
+            Colors.grey.shade600,
+            icon: Icons.help_outline),
+    ];
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: cards
+            .map((c) => Expanded(
+                child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: c)))
+            .toList(),
+      ),
     );
   }
 
@@ -2636,13 +2869,19 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       DataColumn(
                           label: Expanded(child: Center(child: Text('وكيل')))),
                       DataColumn(
+                          label: Expanded(child: Center(child: Text('فني')))),
+                      DataColumn(
+                          label:
+                              Expanded(child: Center(child: Text('المسلّم')))),
+                      DataColumn(
                           label:
                               Expanded(child: Center(child: Text('المستحق')))),
                       DataColumn(
                           label:
                               Expanded(child: Center(child: Text('مطابقة')))),
                       DataColumn(
-                          label: Expanded(child: Center(child: Text('')))),
+                          label:
+                              Expanded(child: Center(child: Text('إجراءات')))),
                     ],
                     rows: _oursOperators.asMap().entries.map((entry) {
                       final i = entry.key;
@@ -2763,6 +3002,27 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontWeight: FontWeight.w600,
                               color: Colors.blue.shade700),
                         ))),
+                        // فني
+                        DataCell(Center(
+                            child: Text(
+                          _currencyFormat
+                              .format((op['technicianAmount'] ?? 0).toDouble()),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.teal.shade700),
+                        ))),
+                        // المسلّم
+                        DataCell(Center(
+                            child: Text(
+                          _currencyFormat.format(
+                              ((op['deliveredCash'] ?? 0).toDouble()) +
+                                  ((op['collectedCredit'] ?? 0).toDouble())),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.green.shade700),
+                        ))),
                         // المستحق
                         DataCell(Center(
                             child: Text(
@@ -2786,13 +3046,38 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   : Colors.orange.shade700),
                         ))),
                         DataCell(Center(
-                            child: IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: Icon(Icons.open_in_new,
-                              size: 16, color: AccountingTheme.neonBlue),
-                          onPressed: () => _openOperatorAccount(op),
-                          tooltip: 'فتح كشف الحساب',
+                            child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: Icon(Icons.open_in_new,
+                                  size: 16, color: AccountingTheme.neonBlue),
+                              onPressed: () => _openOperatorAccount(op),
+                              tooltip: 'كشف الحساب',
+                            ),
+                            if (op['userId'] != null) ...[
+                              const SizedBox(width: 4),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: Icon(Icons.payments,
+                                    size: 15, color: Colors.green.shade700),
+                                onPressed: () => _showQuickDeliverDialog(op),
+                                tooltip: 'تسليم نقد',
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: Icon(Icons.request_quote,
+                                    size: 15, color: Colors.orange.shade700),
+                                onPressed: () => _showQuickCollectDialog(op),
+                                tooltip: 'تحصيل آجل',
+                              ),
+                            ],
+                          ],
                         ))),
                       ]);
                     }).toList(),
@@ -2982,6 +3267,1018 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   }
 
   // ════════════════════════════════════════════════════════════════
+  //  تسليم نقد سريع / تحصيل آجل سريع
+  // ════════════════════════════════════════════════════════════════
+
+  // ════════════════════════════════════════════════════════════════
+  //  استلام نقد من مشغل (حوار مركزي)
+  // ════════════════════════════════════════════════════════════════
+
+  Future<void> _showReceiveCashDialog() async {
+    // جمع المشغلين الذين لديهم userId ورصيد نقد
+    final operators = _oursOperators
+        .where(
+            (op) => op['userId'] != null && op['userId'].toString().isNotEmpty)
+        .toList();
+
+    if (operators.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('لا يوجد مشغلون بصناديق نقد'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    Map<String, dynamic>? selectedOp;
+    final amountController = TextEditingController();
+    final notesController = TextEditingController();
+    bool isSubmitting = false;
+    String? errorMsg;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Icon(Icons.move_to_inbox, color: Colors.green.shade700),
+                const SizedBox(width: 8),
+                Text('استلام نقد من مشغل',
+                    style: GoogleFonts.cairo(
+                        fontSize: 16, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // معلومة توضيحية
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 16, color: Colors.blue.shade700),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'تحويل النقد من صندوق المشغل إلى الصندوق الرئيسي',
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.blue.shade700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // اختيار المشغل
+                  Text('اختر المشغل:',
+                      style: GoogleFonts.cairo(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: operators.length,
+                      separatorBuilder: (_, __) =>
+                          Divider(height: 1, color: Colors.grey.shade200),
+                      itemBuilder: (_, i) {
+                        final op = operators[i] as Map<String, dynamic>;
+                        final cashAmt = (op['cashAmount'] ?? 0).toDouble();
+                        final isSelected = selectedOp != null &&
+                            selectedOp!['userId'] == op['userId'];
+                        return ListTile(
+                          dense: true,
+                          selected: isSelected,
+                          selectedTileColor: Colors.green.shade50,
+                          leading: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: isSelected
+                                ? Colors.green.shade700
+                                : Colors.grey.shade300,
+                            child: Text('${i + 1}',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.black54,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                          title: Text(op['operatorName'] ?? '-',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: cashAmt > 0
+                                  ? Colors.green.shade50
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: cashAmt > 0
+                                      ? Colors.green.shade300
+                                      : Colors.grey.shade300),
+                            ),
+                            child: Text(
+                              _currencyFormat.format(cashAmt),
+                              style: GoogleFonts.cairo(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: cashAmt > 0
+                                    ? Colors.green.shade700
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ),
+                          onTap: () {
+                            setDlgState(() {
+                              selectedOp = op;
+                              // تعبئة المبلغ الكامل تلقائياً
+                              amountController.text =
+                                  cashAmt > 0 ? cashAmt.toStringAsFixed(0) : '';
+                              errorMsg = null;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  if (selectedOp != null) ...[
+                    const SizedBox(height: 14),
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: TextField(
+                        controller: amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'المبلغ',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          prefixIcon: const Icon(Icons.attach_money),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: notesController,
+                      decoration: InputDecoration(
+                        labelText: 'ملاحظات (اختياري)',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        prefixIcon: const Icon(Icons.note),
+                      ),
+                    ),
+                  ],
+                  if (errorMsg != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(errorMsg!,
+                          style: TextStyle(
+                              color: Colors.red.shade700, fontSize: 12)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    isSubmitting ? null : () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                onPressed: isSubmitting || selectedOp == null
+                    ? null
+                    : () async {
+                        final amount = double.tryParse(amountController.text);
+                        if (amount == null || amount <= 0) {
+                          setDlgState(() => errorMsg = 'أدخل مبلغاً صحيحاً');
+                          return;
+                        }
+                        setDlgState(() {
+                          isSubmitting = true;
+                          errorMsg = null;
+                        });
+                        try {
+                          final res =
+                              await AccountingService.instance.quickDeliver(
+                            operatorUserId: selectedOp!['userId'].toString(),
+                            amount: amount,
+                            companyId: _companyId,
+                            notes: notesController.text.isEmpty
+                                ? null
+                                : notesController.text,
+                          );
+                          if (ctx.mounted) {
+                            if (res['success'] == true) {
+                              Navigator.pop(ctx, true);
+                            } else {
+                              setDlgState(() {
+                                isSubmitting = false;
+                                errorMsg = res['message'] ?? 'فشلت العملية';
+                              });
+                            }
+                          }
+                        } catch (e) {
+                          setDlgState(() {
+                            isSubmitting = false;
+                            errorMsg = 'خطأ: $e';
+                          });
+                        }
+                      },
+                icon: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check, size: 18),
+                label: Text(isSubmitting ? 'جاري...' : 'استلام'),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'تم استلام النقد من ${selectedOp?['operatorName'] ?? 'المشغل'} بنجاح'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _loadOursData();
+    }
+  }
+
+  Future<void> _showQuickDeliverDialog(Map<String, dynamic> op) async {
+    final userId = op['userId']?.toString();
+    if (userId == null || userId.isEmpty) return;
+    final name = op['operatorName'] ?? 'مشغل';
+    final cashAmount = (op['cashAmount'] ?? 0).toDouble();
+    final amountController = TextEditingController();
+    final notesController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.payments, color: Colors.green.shade700),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('تسليم نقد — $name',
+                  style: GoogleFonts.cairo(
+                      fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 350,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('رصيد النقد الحالي: ${_currencyFormat.format(cashAmount)}',
+                  style: GoogleFonts.cairo(
+                      fontSize: 13, color: Colors.grey.shade700)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'المبلغ',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.attach_money),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: notesController,
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظات (اختياري)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.note),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text('تسليم'),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green, foregroundColor: Colors.white),
+          ),
+        ],
+      ),
+    );
+
+    if (result != true) return;
+    final amount = double.tryParse(amountController.text);
+    if (amount == null || amount <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('أدخل مبلغاً صحيحاً'),
+              backgroundColor: Colors.orange),
+        );
+      }
+      return;
+    }
+
+    try {
+      final res = await AccountingService.instance.quickDeliver(
+        operatorUserId: userId,
+        amount: amount,
+        companyId: _companyId,
+        notes: notesController.text.isEmpty ? null : notesController.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['success'] == true
+                ? 'تم تسليم ${_currencyFormat.format(amount)} بنجاح'
+                : res['message'] ?? 'خطأ'),
+            backgroundColor: res['success'] == true ? Colors.green : Colors.red,
+          ),
+        );
+        if (res['success'] == true) _loadOursData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _showQuickCollectDialog(Map<String, dynamic> op) async {
+    final userId = op['userId']?.toString();
+    if (userId == null || userId.isEmpty) return;
+    final name = op['operatorName'] ?? 'مشغل';
+    final creditAmount = (op['creditAmount'] ?? 0).toDouble();
+    final amountController = TextEditingController();
+    final notesController = TextEditingController();
+
+    // جلب عملاء الآجل غير المسددين
+    List<Map<String, dynamic>> creditCustomers = [];
+    Set<int> selectedLogIds = {};
+    bool isLoadingCustomers = true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          // جلب البيانات عند أول بناء
+          if (isLoadingCustomers) {
+            AccountingService.instance
+                .getCreditCustomers(
+                    operatorUserId: userId, companyId: _companyId)
+                .then((res) {
+              if (res['success'] == true) {
+                final rawData = res['data'];
+                final List dataList = rawData is List
+                    ? rawData
+                    : (rawData is Map
+                        ? (rawData['data'] ?? rawData['customers'] ?? [])
+                        : []);
+                final list = dataList
+                    .map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList();
+                setDlgState(() {
+                  creditCustomers = list;
+                  isLoadingCustomers = false;
+                });
+              } else {
+                setDlgState(() => isLoadingCustomers = false);
+              }
+            }).catchError((_) {
+              setDlgState(() => isLoadingCustomers = false);
+            });
+            isLoadingCustomers = false; // لمنع الجلب المتكرر
+          }
+
+          // حساب المجموع المحدد
+          double selectedTotal = 0;
+          String selectedNames = '';
+          if (selectedLogIds.isNotEmpty) {
+            for (final c in creditCustomers) {
+              if (selectedLogIds.contains((c['Id'] as num).toInt())) {
+                selectedTotal += (c['Amount'] as num? ?? 0).toDouble();
+              }
+            }
+            final names = creditCustomers
+                .where((c) => selectedLogIds.contains((c['Id'] as num).toInt()))
+                .map((c) => c['CustomerName']?.toString() ?? '-')
+                .toSet()
+                .toList();
+            selectedNames = names.join('، ');
+          }
+
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Icon(Icons.request_quote, color: Colors.orange.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('تحصيل آجل — $name',
+                        style: GoogleFonts.cairo(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 500,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // معلومة الرصيد
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 16, color: Colors.orange.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'رصيد الآجل الحالي: ${_currencyFormat.format(creditAmount)}',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade700,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // قائمة العملاء
+                    Text('اختر العملاء المراد تحصيلهم:',
+                        style: GoogleFonts.cairo(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      constraints: const BoxConstraints(maxHeight: 250),
+                      child: creditCustomers.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Center(
+                                child: Text(
+                                  isLoadingCustomers
+                                      ? 'جاري التحميل...'
+                                      : 'لا يوجد عملاء آجل غير مسددين',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500),
+                                ),
+                              ),
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // زر تحديد/إلغاء الكل
+                                Container(
+                                  color: Colors.grey.shade100,
+                                  child: ListTile(
+                                    dense: true,
+                                    leading: Checkbox(
+                                      value: selectedLogIds.length ==
+                                          creditCustomers.length,
+                                      tristate: true,
+                                      onChanged: (_) {
+                                        setDlgState(() {
+                                          if (selectedLogIds.length ==
+                                              creditCustomers.length) {
+                                            selectedLogIds.clear();
+                                            amountController.clear();
+                                          } else {
+                                            selectedLogIds = creditCustomers
+                                                .map((c) =>
+                                                    (c['Id'] as num).toInt())
+                                                .toSet();
+                                            double total = creditCustomers.fold(
+                                                0.0,
+                                                (s, c) =>
+                                                    s +
+                                                    (c['Amount'] as num? ?? 0)
+                                                        .toDouble());
+                                            amountController.text =
+                                                total.toStringAsFixed(0);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    title: Text('تحديد الكل',
+                                        style: GoogleFonts.cairo(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                    trailing: Text(
+                                        '${creditCustomers.length} عميل',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600)),
+                                  ),
+                                ),
+                                Divider(height: 1, color: Colors.grey.shade300),
+                                Flexible(
+                                  child: ListView.separated(
+                                    shrinkWrap: true,
+                                    itemCount: creditCustomers.length,
+                                    separatorBuilder: (_, __) => Divider(
+                                        height: 1, color: Colors.grey.shade200),
+                                    itemBuilder: (_, i) {
+                                      final c = creditCustomers[i];
+                                      final logId = (c['Id'] as num).toInt();
+                                      final cName =
+                                          c['CustomerName']?.toString() ?? '-';
+                                      final cAmount =
+                                          (c['Amount'] as num? ?? 0).toDouble();
+                                      final planName =
+                                          c['PlanName']?.toString() ?? '';
+                                      final date =
+                                          c['ActivationDate']?.toString();
+                                      final dateStr = date != null
+                                          ? date.substring(
+                                              0,
+                                              date.length >= 10
+                                                  ? 10
+                                                  : date.length)
+                                          : '';
+                                      final isSelected =
+                                          selectedLogIds.contains(logId);
+
+                                      // معلومات التكرار
+                                      final cycleMonths =
+                                          c['RenewalCycleMonths'] as int?;
+                                      final paidMonths =
+                                          (c['PaidMonths'] as num?)?.toInt() ??
+                                              0;
+                                      final collectionType =
+                                          c['CollectionType']?.toString() ??
+                                              'credit';
+                                      final isCashWithCycle =
+                                          collectionType == 'cash' &&
+                                              cycleMonths != null &&
+                                              cycleMonths > 1;
+                                      final isRecurring = cycleMonths != null &&
+                                          cycleMonths > 0;
+                                      final remainingMonths = isRecurring
+                                          ? cycleMonths - paidMonths
+                                          : 1;
+                                      final monthlyAmount = cAmount;
+                                      final remainingAmount = isRecurring
+                                          ? monthlyAmount * remainingMonths
+                                          : cAmount;
+
+                                      return ListTile(
+                                        dense: true,
+                                        selected: isSelected,
+                                        selectedTileColor:
+                                            Colors.orange.shade50,
+                                        leading: Checkbox(
+                                          value: isSelected,
+                                          activeColor: Colors.orange.shade700,
+                                          onChanged: (v) {
+                                            setDlgState(() {
+                                              if (v == true) {
+                                                selectedLogIds.add(logId);
+                                              } else {
+                                                selectedLogIds.remove(logId);
+                                              }
+                                              // تحديث المبلغ تلقائياً — للمكرر يُحسب شهر واحد فقط
+                                              double total = 0;
+                                              for (final cc
+                                                  in creditCustomers) {
+                                                if (selectedLogIds.contains(
+                                                    (cc['Id'] as num)
+                                                        .toInt())) {
+                                                  total +=
+                                                      (cc['Amount'] as num? ??
+                                                              0)
+                                                          .toDouble();
+                                                }
+                                              }
+                                              amountController.text =
+                                                  total.toStringAsFixed(0);
+                                            });
+                                          },
+                                        ),
+                                        title: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(cName,
+                                                  style: GoogleFonts.cairo(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600)),
+                                            ),
+                                            if (isRecurring) ...[
+                                              const SizedBox(width: 4),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      Colors.deepPurple.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                      color: Colors
+                                                          .deepPurple.shade300),
+                                                ),
+                                                child: Text(
+                                                  '🔄 $paidMonths/$cycleMonths شهر',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    color: Colors
+                                                        .deepPurple.shade700,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            if (isCashWithCycle) ...[
+                                              const SizedBox(width: 4),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 5,
+                                                        vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.teal.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                      color:
+                                                          Colors.teal.shade300),
+                                                ),
+                                                child: Text(
+                                                  'نقد+آجل',
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    color: Colors.teal.shade700,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        subtitle: Row(
+                                          children: [
+                                            Text('$planName  •  $dateStr',
+                                                style: TextStyle(
+                                                    fontSize: 10,
+                                                    color:
+                                                        Colors.grey.shade600)),
+                                            if (isRecurring) ...[
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'متبقي: ${_currencyFormat.format(remainingAmount)}',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  color: Colors.red.shade600,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        trailing: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange.shade50,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                    color:
+                                                        Colors.orange.shade300),
+                                              ),
+                                              child: Text(
+                                                  _currencyFormat
+                                                      .format(monthlyAmount),
+                                                  style: GoogleFonts.cairo(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors
+                                                          .orange.shade800)),
+                                            ),
+                                            if (isRecurring)
+                                              Text('/شهر',
+                                                  style: TextStyle(
+                                                      fontSize: 8,
+                                                      color: Colors
+                                                          .grey.shade500)),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                    if (selectedLogIds.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle,
+                                size: 16, color: Colors.green.shade700),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'المحدد: ${selectedLogIds.length} عميل — المجموع: ${_currencyFormat.format(selectedTotal)}',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // زر تحديد التكرار للعميل المحدد (إذا محدد عميل واحد فقط)
+                      if (selectedLogIds.length == 1) ...[
+                        const SizedBox(height: 6),
+                        Builder(builder: (_) {
+                          final selLog = creditCustomers.firstWhere(
+                            (c) =>
+                                (c['Id'] as num).toInt() ==
+                                selectedLogIds.first,
+                            orElse: () => <String, dynamic>{},
+                          );
+                          final currentCycle =
+                              selLog['RenewalCycleMonths'] as int?;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.deepPurple.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border:
+                                  Border.all(color: Colors.deepPurple.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.repeat,
+                                    size: 16,
+                                    color: Colors.deepPurple.shade700),
+                                const SizedBox(width: 6),
+                                Text('التكرار:',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.deepPurple.shade700,
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 8),
+                                ...([0, 1, 2, 3]).map((months) {
+                                  final isActive =
+                                      (months == 0 && currentCycle == null) ||
+                                          currentCycle == months;
+                                  final label = months == 0
+                                      ? 'بدون'
+                                      : months == 1
+                                          ? 'شهر'
+                                          : '$months أشهر';
+                                  return Padding(
+                                    padding: const EdgeInsets.only(left: 4),
+                                    child: InkWell(
+                                      onTap: () async {
+                                        final logId = selectedLogIds.first;
+                                        final res = await AccountingService
+                                            .instance
+                                            .setRenewalCycle(
+                                          logId: logId,
+                                          cycleMonths:
+                                              months == 0 ? null : months,
+                                        );
+                                        if (res['success'] == true) {
+                                          // تحديث البيانات محلياً
+                                          final idx =
+                                              creditCustomers.indexWhere((c) =>
+                                                  (c['Id'] as num).toInt() ==
+                                                  logId);
+                                          if (idx >= 0) {
+                                            setDlgState(() {
+                                              creditCustomers[idx]
+                                                      ['RenewalCycleMonths'] =
+                                                  months == 0 ? null : months;
+                                              // إذا العملية نقد، الشهر الأول مدفوع تلقائياً
+                                              final paidFromServer =
+                                                  res['paidMonths'] as int? ??
+                                                      0;
+                                              creditCustomers[idx]
+                                                      ['PaidMonths'] =
+                                                  paidFromServer;
+                                            });
+                                          }
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isActive
+                                              ? Colors.deepPurple.shade700
+                                              : Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color:
+                                                  Colors.deepPurple.shade300),
+                                        ),
+                                        child: Text(label,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: isActive
+                                                  ? Colors.white
+                                                  : Colors.deepPurple.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            )),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: amountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'المبلغ',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.attach_money),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'ملاحظات (اختياري)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.note),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  icon: const Icon(Icons.check, size: 18),
+                  label: const Text('تحصيل'),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      foregroundColor: Colors.white),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    if (result != true) return;
+    final amount = double.tryParse(amountController.text);
+    if (amount == null || amount <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('أدخل مبلغاً صحيحاً'),
+              backgroundColor: Colors.orange),
+        );
+      }
+      return;
+    }
+
+    // جمع أسماء العملاء المحددين
+    String? customerName;
+    if (selectedLogIds.isNotEmpty) {
+      final names = creditCustomers
+          .where((c) => selectedLogIds.contains((c['Id'] as num).toInt()))
+          .map((c) => c['CustomerName']?.toString() ?? '-')
+          .toSet()
+          .toList();
+      customerName = names.join('، ');
+    }
+
+    try {
+      final res = await AccountingService.instance.quickCollect(
+        operatorUserId: userId,
+        amount: amount,
+        companyId: _companyId,
+        notes: notesController.text.isEmpty ? null : notesController.text,
+        subscriptionLogIds:
+            selectedLogIds.isNotEmpty ? selectedLogIds.toList() : null,
+        customerName: customerName,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['success'] == true
+                ? 'تم تحصيل ${_currencyFormat.format(amount)} بنجاح'
+                : res['message'] ?? 'خطأ'),
+            backgroundColor: res['success'] == true ? Colors.green : Colors.red,
+          ),
+        );
+        if (res['success'] == true) _loadOursData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
   //  TAB 2: خادم FTTH
   // ════════════════════════════════════════════════════════════════
 
@@ -3076,6 +4373,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 ],
               ),
             ),
+
           // زر إظهار/إخفاء تعبئة رصيد الفريق
           Align(
             alignment: AlignmentDirectional.centerStart,
@@ -4204,50 +5502,50 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   /// بطاقة ملخص عامة (تُستخدم في تاب خادمنا)
   Widget _summaryCard(String title, double value, String subtitle, Color color,
       {IconData? icon, bool isCount = false}) {
-    return SizedBox(
-      width: 200,
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Colors.black, width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 18, color: color),
-                    const SizedBox(width: 6),
-                  ],
-                  Expanded(
-                    child: Text(title,
-                        style: GoogleFonts.cairo(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: color)),
-                  ),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Colors.black, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: 6),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Text(
+                Expanded(
+                  child: Text(title,
+                      style: GoogleFonts.cairo(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: color)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
                 isCount
                     ? '${value.toInt()}'
                     : '${_currencyFormat.format(value)} د.ع',
                 style: GoogleFonts.cairo(
                     fontSize: 16, fontWeight: FontWeight.bold, color: color),
               ),
-              if (subtitle.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(subtitle,
-                    style:
-                        TextStyle(fontSize: 10, color: Colors.grey.shade600)),
-              ],
+            ),
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
             ],
-          ),
+          ],
         ),
       ),
     );

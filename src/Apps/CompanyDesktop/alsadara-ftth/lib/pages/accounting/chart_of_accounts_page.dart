@@ -1067,6 +1067,8 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
     final nameCtrl = TextEditingController(text: account['Name'] ?? '');
     final nameEnCtrl = TextEditingController(text: account['NameEn'] ?? '');
     final descCtrl = TextEditingController(text: account['Description'] ?? '');
+    final openingBalanceCtrl = TextEditingController(
+        text: (account['OpeningBalance'] ?? 0).toString());
     bool isActive = account['IsActive'] ?? true;
 
     showDialog(
@@ -1080,23 +1082,28 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                 style: const TextStyle(color: AccountingTheme.textPrimary)),
             content: SizedBox(
               width: 400,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildField('اسم الحساب', nameCtrl),
-                  const SizedBox(height: 12),
-                  _buildField('الاسم بالإنجليزية', nameEnCtrl),
-                  const SizedBox(height: 12),
-                  _buildField('الوصف', descCtrl, maxLines: 2),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: const Text('نشط',
-                        style: TextStyle(color: AccountingTheme.textPrimary)),
-                    value: isActive,
-                    activeColor: AccountingTheme.accent,
-                    onChanged: (v) => setDialogState(() => isActive = v),
-                  ),
-                ],
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildField('اسم الحساب', nameCtrl),
+                    const SizedBox(height: 12),
+                    _buildField('الاسم بالإنجليزية', nameEnCtrl),
+                    const SizedBox(height: 12),
+                    _buildField('الرصيد الافتتاحي', openingBalanceCtrl,
+                        isNumber: true),
+                    const SizedBox(height: 12),
+                    _buildField('الوصف', descCtrl, maxLines: 2),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: const Text('نشط',
+                          style: TextStyle(color: AccountingTheme.textPrimary)),
+                      value: isActive,
+                      activeColor: AccountingTheme.accent,
+                      onChanged: (v) => setDialogState(() => isActive = v),
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -1111,12 +1118,19 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   Navigator.pop(ctx);
+                  final newBalance = double.tryParse(openingBalanceCtrl.text);
+                  final oldBalance =
+                      (account['OpeningBalance'] as num?)?.toDouble() ?? 0;
                   final result = await AccountingService.instance.updateAccount(
                     account['Id'],
                     name: nameCtrl.text,
                     nameEn: nameEnCtrl.text.isEmpty ? null : nameEnCtrl.text,
                     description: descCtrl.text.isEmpty ? null : descCtrl.text,
                     isActive: isActive,
+                    openingBalance:
+                        (newBalance != null && newBalance != oldBalance)
+                            ? newBalance
+                            : null,
                   );
                   if (result['success'] == true) {
                     _showSnackBar('تم التعديل بنجاح', AccountingTheme.success);

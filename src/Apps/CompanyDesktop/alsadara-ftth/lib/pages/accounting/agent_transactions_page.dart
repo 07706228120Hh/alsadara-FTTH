@@ -614,6 +614,9 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                     label: Text('الوصف',
                         style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
                 DataColumn(
+                    label: Text('رقم القيد',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                DataColumn(
                     label: Text('التاريخ',
                         style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
               ],
@@ -673,6 +676,11 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                       ),
                     ),
                   ),
+                  DataCell(Text(
+                    tx['journalEntryNumber']?.toString() ?? '-',
+                    style: GoogleFonts.cairo(
+                        fontSize: 11, color: AccountingTheme.textMuted),
+                  )),
                   DataCell(Text(
                     _formatDate(tx['createdAt']),
                     style: GoogleFonts.cairo(

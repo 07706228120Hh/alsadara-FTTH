@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,11 +53,34 @@ Future<void> main() async {
   // 📊 تهيئة Error Reporter لتسجيل الأخطاء
   await ErrorReporterService.instance.initialize();
 
-  // 🛡️ التقاط أخطاء Flutter تلقائياً
+  // 🛡️ التقاط أخطاء Flutter تلقائياً (مع حماية من التكرار السريع الذي يجمّد التطبيق)
   FlutterError.onError = (FlutterErrorDetails details) {
-    ErrorReporterService.instance.captureFlutterError(details);
-    // الاستمرار بالسلوك الافتراضي في وضع Debug
-    FlutterError.presentError(details);
+    // حماية كاملة: لا نسمح لأي خطأ بالتسرب للـ debugger حتى لا يتجمد التطبيق
+    try {
+      ErrorReporterService.instance.captureFlutterError(details);
+    } catch (_) {
+      // تجاهل أخطاء التسجيل نفسها
+    }
+    // طباعة مختصرة بدل presentError الثقيلة التي تعيد رسم الخطأ وتسبب حلقة تجمد
+    if (kDebugMode) {
+      debugPrint('⚡ Flutter Error: ${details.exception}');
+      debugPrint('📍 ${details.context}');
+    }
+  };
+
+  // 🛡️ التقاط أخطاء Dart غير المعالجة (async errors etc.) لمنع تجمد التطبيق في الـ debugger
+  PlatformDispatcher.instance.onError = (error, stack) {
+    if (kDebugMode) {
+      debugPrint('⚡ Unhandled Error: $error');
+    }
+    try {
+      ErrorReporterService.instance.reportError(
+        error: error,
+        stackTrace: stack,
+        context: 'PlatformDispatcher.onError',
+      );
+    } catch (_) {}
+    return true; // ← true يعني أنه تم معالجة الخطأ (لا تُوقف التطبيق)
   };
 
   // إعداد مدير النوافذ للديسكتوب

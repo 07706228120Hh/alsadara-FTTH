@@ -400,6 +400,8 @@ class AgentTransactionModel {
   final String? citizenId;
   final String? createdById;
   final String? notes;
+  final String? journalEntryId;
+  final String? journalEntryNumber;
   final DateTime createdAt;
 
   AgentTransactionModel({
@@ -415,6 +417,8 @@ class AgentTransactionModel {
     this.citizenId,
     this.createdById,
     this.notes,
+    this.journalEntryId,
+    this.journalEntryNumber,
     required this.createdAt,
   });
 
@@ -432,6 +436,8 @@ class AgentTransactionModel {
       citizenId: json['citizenId'],
       createdById: json['createdById'],
       notes: json['notes'],
+      journalEntryId: json['journalEntryId']?.toString(),
+      journalEntryNumber: json['journalEntryNumber']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),

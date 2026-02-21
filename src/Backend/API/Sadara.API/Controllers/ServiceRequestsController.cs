@@ -371,6 +371,40 @@ public class ServiceRequestsController : ControllerBase
                         _unitOfWork.AgentTransactions.Update(existingCharge);
                         hasFinancialChanges = true;
 
+                        // ═══ إلغاء القيد المحاسبي المرتبط ═══
+                        if (existingCharge.JournalEntryId.HasValue)
+                        {
+                            var agentJe = await _unitOfWork.JournalEntries.AsQueryable()
+                                .Include(j => j.Lines)
+                                .FirstOrDefaultAsync(j => j.Id == existingCharge.JournalEntryId.Value && !j.IsDeleted);
+                            if (agentJe != null)
+                            {
+                                if (agentJe.Status == JournalEntryStatus.Posted)
+                                {
+                                    foreach (var jLine in agentJe.Lines)
+                                    {
+                                        var acct = await _unitOfWork.Accounts.GetByIdAsync(jLine.AccountId);
+                                        if (acct == null) continue;
+                                        if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                                            acct.CurrentBalance -= jLine.DebitAmount - jLine.CreditAmount;
+                                        else
+                                            acct.CurrentBalance -= jLine.CreditAmount - jLine.DebitAmount;
+                                        _unitOfWork.Accounts.Update(acct);
+                                    }
+                                }
+                                foreach (var jLine in agentJe.Lines)
+                                {
+                                    jLine.IsDeleted = true;
+                                    jLine.DeletedAt = DateTime.UtcNow;
+                                }
+                                agentJe.IsDeleted = true;
+                                agentJe.DeletedAt = DateTime.UtcNow;
+                                agentJe.Status = JournalEntryStatus.Voided;
+                                _unitOfWork.JournalEntries.Update(agentJe);
+                                _logger.LogInformation("تم إلغاء القيد المحاسبي {EntryNumber} بسبب إلغاء طلب الوكيل", agentJe.EntryNumber);
+                            }
+                        }
+
                         _logger.LogInformation("تم استرداد {Amount} لرصيد الوكيل {AgentId} بسبب {Status} الطلب {RequestNumber}",
                             existingCharge.Amount, agent.Id, newStatus, request.RequestNumber);
                     }
@@ -465,6 +499,39 @@ public class ServiceRequestsController : ControllerBase
                                 await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
                                 hasTechFinancialChanges = true;
 
+                                // ═══ توحيد: إنشاء قيد محاسبي Dr 1140 / Cr 4100 ═══
+                                var techCompanyId = request.CompanyId ?? technician.CompanyId ?? Guid.Empty;
+                                if (techCompanyId != Guid.Empty)
+                                {
+                                    try
+                                    {
+                                        var techSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                                            _unitOfWork, "1140", technician.Id, technician.FullName, techCompanyId);
+                                        var techRevenueAcct = await ServiceRequestAccountingHelper.FindAccountByCode(
+                                            _unitOfWork, "4100", techCompanyId);
+
+                                        if (techRevenueAcct != null)
+                                        {
+                                            var techJournalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                                            {
+                                                (techSubAcct.Id, cost, 0, $"ذمم فني {technician.FullName} - طلب {request.RequestNumber}"),
+                                                (techRevenueAcct.Id, 0, cost, $"إيراد خدمة عبر فني {technician.FullName}")
+                                            };
+                                            var jeId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                                                _unitOfWork, techCompanyId, GetCurrentUserId(),
+                                                $"إكمال طلب خدمة {request.RequestNumber} - فني {technician.FullName}",
+                                                JournalReferenceType.ServiceRequest, request.Id.ToString(),
+                                                techJournalLines);
+                                            techTx.JournalEntryId = jeId;
+                                            _unitOfWork.TechnicianTransactions.Update(techTx);
+                                        }
+                                    }
+                                    catch (Exception jeEx)
+                                    {
+                                        _logger.LogWarning(jeEx, "فشل إنشاء قيد فني للطلب {RequestNumber}", request.RequestNumber);
+                                    }
+                                }
+
                                 _logger.LogInformation("تم خصم {Cost} على الفني {TechName} للمهمة {RequestNumber} ({Category})",
                                     cost, technician.FullName, request.RequestNumber, txCategory);
                             }
@@ -490,6 +557,74 @@ public class ServiceRequestsController : ControllerBase
                             existingTechCharge.DeletedAt = DateTime.UtcNow;
                             _unitOfWork.TechnicianTransactions.Update(existingTechCharge);
                             hasTechFinancialChanges = true;
+
+                            // ═══ إلغاء القيد المحاسبي المرتبط ═══
+                            if (existingTechCharge.JournalEntryId.HasValue)
+                            {
+                                var techJe = await _unitOfWork.JournalEntries.AsQueryable()
+                                    .Include(j => j.Lines)
+                                    .FirstOrDefaultAsync(j => j.Id == existingTechCharge.JournalEntryId.Value && !j.IsDeleted);
+                                if (techJe != null)
+                                {
+                                    if (techJe.Status == JournalEntryStatus.Posted)
+                                    {
+                                        foreach (var jLine in techJe.Lines)
+                                        {
+                                            var acct = await _unitOfWork.Accounts.GetByIdAsync(jLine.AccountId);
+                                            if (acct == null) continue;
+                                            if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                                                acct.CurrentBalance -= jLine.DebitAmount - jLine.CreditAmount;
+                                            else
+                                                acct.CurrentBalance -= jLine.CreditAmount - jLine.DebitAmount;
+                                            _unitOfWork.Accounts.Update(acct);
+                                        }
+                                    }
+                                    foreach (var jLine in techJe.Lines)
+                                    {
+                                        jLine.IsDeleted = true;
+                                        jLine.DeletedAt = DateTime.UtcNow;
+                                    }
+                                    techJe.IsDeleted = true;
+                                    techJe.DeletedAt = DateTime.UtcNow;
+                                    techJe.Status = JournalEntryStatus.Voided;
+                                    _unitOfWork.JournalEntries.Update(techJe);
+                                    _logger.LogInformation("تم إلغاء القيد المحاسبي {EntryNumber} بسبب إلغاء مهمة الفني", techJe.EntryNumber);
+                                }
+                            }
+                            else
+                            {
+                                // بحث عن القيد عبر ReferenceType + ReferenceId (للسجلات القديمة بدون JournalEntryId)
+                                var techJeFallback = await _unitOfWork.JournalEntries.AsQueryable()
+                                    .Include(j => j.Lines)
+                                    .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.ServiceRequest
+                                        && j.ReferenceId == id.ToString() && !j.IsDeleted);
+                                if (techJeFallback != null)
+                                {
+                                    if (techJeFallback.Status == JournalEntryStatus.Posted)
+                                    {
+                                        foreach (var jLine in techJeFallback.Lines)
+                                        {
+                                            var acct = await _unitOfWork.Accounts.GetByIdAsync(jLine.AccountId);
+                                            if (acct == null) continue;
+                                            if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                                                acct.CurrentBalance -= jLine.DebitAmount - jLine.CreditAmount;
+                                            else
+                                                acct.CurrentBalance -= jLine.CreditAmount - jLine.DebitAmount;
+                                            _unitOfWork.Accounts.Update(acct);
+                                        }
+                                    }
+                                    foreach (var jLine in techJeFallback.Lines)
+                                    {
+                                        jLine.IsDeleted = true;
+                                        jLine.DeletedAt = DateTime.UtcNow;
+                                    }
+                                    techJeFallback.IsDeleted = true;
+                                    techJeFallback.DeletedAt = DateTime.UtcNow;
+                                    techJeFallback.Status = JournalEntryStatus.Voided;
+                                    _unitOfWork.JournalEntries.Update(techJeFallback);
+                                    _logger.LogInformation("تم إلغاء القيد المحاسبي {EntryNumber} (fallback) بسبب إلغاء مهمة الفني", techJeFallback.EntryNumber);
+                                }
+                            }
 
                             _logger.LogInformation("تم استرداد {Amount} من الفني {TechName} بسبب {Status} المهمة {RequestNumber}",
                                 existingTechCharge.Amount, technician.FullName, newStatus, request.RequestNumber);
@@ -1789,7 +1924,16 @@ public static class ServiceRequestAccountingHelper
                 && a.Description == personId.ToString()
                 && a.IsActive);
 
-        if (existing != null) return existing;
+        if (existing != null)
+        {
+            // تحديث الاسم إذا تغيّر (مثلاً إزالة بادئة "ذمة وكيل")
+            if (existing.Name != personName)
+            {
+                existing.Name = personName;
+                unitOfWork.Accounts.Update(existing);
+            }
+            return existing;
+        }
 
         var siblings = await unitOfWork.Accounts.AsQueryable()
             .Where(a => a.ParentAccountId == parent.Id && a.CompanyId == companyId)
@@ -1835,7 +1979,7 @@ public static class ServiceRequestAccountingHelper
         return subAccount;
     }
 
-    public static async Task CreateAndPostJournalEntry(
+    public static async Task<Guid> CreateAndPostJournalEntry(
         IUnitOfWork unitOfWork,
         Guid companyId,
         Guid createdById,
@@ -1845,13 +1989,16 @@ public static class ServiceRequestAccountingHelper
         List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
     {
         var year = DateTime.UtcNow.Year;
-        var count = await unitOfWork.JournalEntries.CountAsync(
-            j => j.CompanyId == companyId && j.EntryDate.Year == year);
+        // IgnoreQueryFilters لعدّ جميع القيود بما فيها المحذوفة ناعمياً لتجنب تعارض الأرقام
+        var count = await unitOfWork.JournalEntries.AsQueryable()
+            .IgnoreQueryFilters()
+            .CountAsync(j => j.CompanyId == companyId && j.EntryDate.Year == year);
         var entryNumber = $"JE-{year}-{(count + 1):D4}";
 
+        var entryId = Guid.NewGuid();
         var entry = new JournalEntry
         {
-            Id = Guid.NewGuid(),
+            Id = entryId,
             EntryNumber = entryNumber,
             EntryDate = DateTime.UtcNow,
             Description = description,
@@ -1890,6 +2037,8 @@ public static class ServiceRequestAccountingHelper
             }
             unitOfWork.Accounts.Update(account);
         }
+
+        return entryId;
     }
 }
 

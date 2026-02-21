@@ -458,6 +458,9 @@ public class TechnicianTransaction : BaseEntity<long>
     /// <summary>الشركة</summary>
     public Guid CompanyId { get; set; }
 
+    /// <summary>القيد المحاسبي المرتبط</summary>
+    public Guid? JournalEntryId { get; set; }
+
     // ============ Navigation Properties ============
 
     /// <summary>الفني</summary>

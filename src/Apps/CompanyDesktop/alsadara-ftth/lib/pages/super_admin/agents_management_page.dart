@@ -3,14 +3,18 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/accounting_theme.dart';
 import '../../models/agent.dart';
 import '../../services/agent_api_service.dart';
+import '../accounting/agent_transactions_page.dart';
+import '../accounting/agent_commission_page.dart';
 
 class AgentsManagementPage extends StatefulWidget {
   final String? initialAgentId;
-  const AgentsManagementPage({super.key, this.initialAgentId});
+  final String? companyId;
+  const AgentsManagementPage({super.key, this.initialAgentId, this.companyId});
 
   @override
   State<AgentsManagementPage> createState() => _AgentsManagementPageState();
@@ -25,6 +29,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   String _searchQuery = '';
   AgentStatus? _statusFilter;
   AgentModel? _selectedAgent; // للعرض التفصيلي
+
+  // قائمة التبويب الجانبية
+  int _sidebarIndex = 0; // 0=الوكلاء، 1=المعاملات، 2=العمولات
 
   // محاسبة
   AgentAccountingSummary? _accountingSummary;
@@ -196,26 +203,144 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
       );
     }
 
-    // الوضع العادي - عرض كل الوكلاء
+    // الوضع العادي - عرض كل الوكلاء مع القائمة الجانبية
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AccountingTheme.bgPrimary,
-        body: Column(
+        body: Row(
           children: [
-            _buildToolbar(),
-            _buildAccountingBar(),
+            // القائمة الجانبية
+            _buildSidebar(),
+            // المحتوى الرئيسي
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                      ? _buildError()
-                      : _selectedAgent != null
-                          ? _buildAgentDetail()
-                          : _buildAgentsList(),
+              child: _sidebarIndex == 0
+                  ? Column(
+                      children: [
+                        _buildToolbar(),
+                        _buildAccountingBar(),
+                        Expanded(
+                          child: _isLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _errorMessage != null
+                                  ? _buildError()
+                                  : _selectedAgent != null
+                                      ? _buildAgentDetail()
+                                      : _buildAgentsList(),
+                        ),
+                      ],
+                    )
+                  : _sidebarIndex == 1
+                      ? AgentTransactionsPage(companyId: widget.companyId)
+                      : AgentCommissionPage(companyId: widget.companyId),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ==================== القائمة الجانبية ====================
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 64,
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgCard,
+        border: const Border(
+          left: BorderSide(color: AccountingTheme.borderColor, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(-2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          // زر العودة
+          Tooltip(
+            message: 'العودة',
+            preferBelow: false,
+            child: InkWell(
+              onTap: () => Navigator.of(context).pop(),
+              borderRadius: BorderRadius.circular(8),
+              hoverColor: AccountingTheme.neonBlue.withOpacity(0.08),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AccountingTheme.neonBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: AccountingTheme.neonBlue,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(
+              height: 1,
+              color: AccountingTheme.borderColor,
+              indent: 10,
+              endIndent: 10),
+          const SizedBox(height: 8),
+          // عناصر القائمة
+          _SidebarItem(
+            icon: Icons.support_agent_rounded,
+            label: 'الوكلاء',
+            color: AccountingTheme.neonPurple,
+            isSelected: _sidebarIndex == 0,
+            onTap: () => setState(() => _sidebarIndex = 0),
+          ),
+          _SidebarItem(
+            icon: Icons.receipt_long,
+            label: 'المعاملات',
+            color: AccountingTheme.neonOrange,
+            isSelected: _sidebarIndex == 1,
+            onTap: () => setState(() => _sidebarIndex = 1),
+          ),
+          _SidebarItem(
+            icon: Icons.percent,
+            label: 'العمولات',
+            color: AccountingTheme.neonPink,
+            isSelected: _sidebarIndex == 2,
+            onTap: () => setState(() => _sidebarIndex = 2),
+          ),
+          const Spacer(),
+          // تحديث
+          Tooltip(
+            message: 'تحديث',
+            preferBelow: false,
+            child: InkWell(
+              onTap: () {
+                if (_sidebarIndex == 0) _loadData();
+              },
+              borderRadius: BorderRadius.circular(8),
+              hoverColor: AccountingTheme.neonGreen.withOpacity(0.08),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AccountingTheme.neonGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.refresh,
+                  color: AccountingTheme.neonGreen,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }
@@ -231,16 +356,6 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
       ),
       child: Row(
         children: [
-          // زر العودة للصفحة الرئيسية
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_rounded, size: 20),
-            tooltip: 'العودة للرئيسية',
-            style: IconButton.styleFrom(
-              foregroundColor: AccountingTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 4),
           // أيقونة + عنوان
           Container(
             padding: const EdgeInsets.all(8),
@@ -2090,5 +2205,80 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     if (amount == 0) return '0';
     final formatter = NumberFormat('#,###', 'en');
     return formatter.format(amount.round());
+  }
+}
+
+/// عنصر القائمة الجانبية - ستايل المحاسبة
+class _SidebarItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SidebarItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
+      child: Tooltip(
+        message: label,
+        preferBelow: false,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            hoverColor: color.withOpacity(0.08),
+            splashColor: color.withOpacity(0.15),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color:
+                    isSelected ? color.withOpacity(0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? color.withOpacity(0.2)
+                          : color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 19,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: GoogleFonts.cairo(
+                      fontSize: 10,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: isSelected ? color : AccountingTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

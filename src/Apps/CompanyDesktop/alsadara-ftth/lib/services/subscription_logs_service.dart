@@ -69,6 +69,8 @@ class SubscriptionLogsService {
     // حقول تكامل المحاسبة
     String? collectionType,
     String? linkedAgentId,
+    String? linkedTechnicianId,
+    String? technicianName,
   }) async {
     try {
       final body = {
@@ -119,6 +121,8 @@ class SubscriptionLogsService {
         // حقول تكامل المحاسبة
         'collectionType': collectionType,
         'linkedAgentId': linkedAgentId,
+        'linkedTechnicianId': linkedTechnicianId,
+        'technicianName': technicianName,
       };
 
       // إزالة القيم null

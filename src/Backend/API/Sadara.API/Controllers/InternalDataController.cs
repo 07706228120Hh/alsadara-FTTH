@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
@@ -1753,6 +1754,25 @@ public class InternalDataController : ControllerBase
                 log.ServiceRequestId = srGuid;
             if (request.TryGetProperty("linkedAgentId", out var pLa) && pLa.ValueKind == JsonValueKind.String && Guid.TryParse(pLa.GetString(), out var laGuid))
                 log.LinkedAgentId = laGuid;
+            if (request.TryGetProperty("linkedTechnicianId", out var pLt) && pLt.ValueKind == JsonValueKind.String && Guid.TryParse(pLt.GetString(), out var ltGuid))
+                log.LinkedTechnicianId = ltGuid;
+
+            // حفظ اسم الفني من الطلب أو جلبه من قاعدة البيانات
+            if (request.TryGetProperty("technicianName", out var pTn) && pTn.ValueKind == JsonValueKind.String)
+                log.TechnicianName = pTn.GetString();
+
+            // جلب اسم الفني من LinkedTechnicianId إذا لم يُرسل
+            if (string.IsNullOrEmpty(log.TechnicianName) && log.LinkedTechnicianId.HasValue)
+            {
+                var tech = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == log.LinkedTechnicianId.Value);
+                if (tech != null) log.TechnicianName = tech.FullName;
+            }
+            // جلب اسم الوكيل إذا كان التحصيل عبر وكيل
+            if (log.CollectionType == "agent" && log.LinkedAgentId.HasValue && string.IsNullOrEmpty(log.TechnicianName))
+            {
+                var agent = await _unitOfWork.Agents.FirstOrDefaultAsync(a => a.Id == log.LinkedAgentId.Value);
+                if (agent != null) log.TechnicianName = agent.Name;
+            }
 
             await _unitOfWork.SubscriptionLogs.AddAsync(log);
             await _unitOfWork.SaveChangesAsync();
@@ -2004,9 +2024,61 @@ public class InternalDataController : ControllerBase
                 if (!log.LinkedAgentId.HasValue) throw new Exception("لا يوجد وكيل");
                 var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
                 if (agent == null) throw new Exception("الوكيل غير موجود");
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, $"ذمة وكيل {agent.Name}", companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, agent.Name, companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
+
+                // ═══ توحيد: تحديث رصيد الوكيل + إنشاء AgentTransaction ═══
+                agent.TotalCharges += amount;
+                agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                _unitOfWork.Agents.Update(agent);
+
+                var agentTxCat = log.OperationType?.ToLower() == "purchase"
+                    ? TransactionCategory.NewSubscription
+                    : TransactionCategory.RenewalSubscription;
+
+                var agentTx2 = new AgentTransaction
+                {
+                    AgentId = agent.Id,
+                    Type = TransactionType.Charge,
+                    Category = agentTxCat,
+                    Amount = amount,
+                    BalanceAfter = agent.NetBalance,
+                    Description = $"{opType} {planName} - {customerName}",
+                    ReferenceNumber = log.Id.ToString(),
+                    CreatedById = userId,
+                    Notes = $"تفعيل عبر {operatorName}"
+                };
+                await _unitOfWork.AgentTransactions.AddAsync(agentTx2);
+                break;
+
+            case "technician":
+                if (!log.LinkedTechnicianId.HasValue) throw new Exception("لا يوجد فني");
+                var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                if (tech == null) throw new Exception("الفني غير موجود");
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1140", tech.Id, tech.FullName, companyId);
+                await _unitOfWork.SaveChangesAsync();
+                description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
+
+                // ═══ توحيد: تحديث رصيد الفني + إنشاء TechnicianTransaction ═══
+                tech.TechTotalCharges += amount;
+                tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
+                _unitOfWork.Users.Update(tech);
+
+                var techTx2 = new TechnicianTransaction
+                {
+                    TechnicianId = tech.Id,
+                    Type = TechnicianTransactionType.Charge,
+                    Category = TechnicianTransactionCategory.Subscription,
+                    Amount = amount,
+                    BalanceAfter = tech.TechNetBalance,
+                    Description = $"{opType} {planName} - {customerName}",
+                    ReferenceNumber = log.Id.ToString(),
+                    CreatedById = userId,
+                    CompanyId = companyId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.TechnicianTransactions.AddAsync(techTx2);
                 break;
 
             default:
@@ -2034,6 +2106,28 @@ public class InternalDataController : ControllerBase
                 && j.CompanyId == companyId)
             .OrderByDescending(j => j.CreatedAt)
             .FirstOrDefaultAsync();
+
+        // ربط JournalEntryId بالمعاملات المُنشأة
+        if (entry != null)
+        {
+            var linkedTechTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && t.JournalEntryId == null && !t.IsDeleted);
+            if (linkedTechTx != null)
+            {
+                linkedTechTx.JournalEntryId = entry.Id;
+                _unitOfWork.TechnicianTransactions.Update(linkedTechTx);
+            }
+
+            var linkedAgentTx = await _unitOfWork.AgentTransactions.AsQueryable()
+                .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && t.JournalEntryId == null && !t.IsDeleted);
+            if (linkedAgentTx != null)
+            {
+                linkedAgentTx.JournalEntryId = entry.Id;
+                _unitOfWork.AgentTransactions.Update(linkedAgentTx);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+        }
 
         return entry?.Id;
     }

@@ -596,6 +596,9 @@ class _TechnicianTransactionsPageState
                       if (contactPhone != null && contactPhone.isNotEmpty)
                         _infoChip(
                             Icons.phone_outlined, contactPhone, _textGray),
+                      if (tx['journalEntryNumber'] != null)
+                        _infoChip(Icons.receipt_long_outlined,
+                            'قيد: ${tx['journalEntryNumber']}', _accentBlue),
                       _infoChip(
                           Icons.access_time, _formatDate(createdAt), _textGray),
                     ],

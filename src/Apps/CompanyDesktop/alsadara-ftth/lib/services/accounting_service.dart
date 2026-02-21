@@ -83,12 +83,14 @@ class AccountingService {
     String? nameEn,
     String? description,
     bool? isActive,
+    double? openingBalance,
   }) async {
     final body = <String, dynamic>{
       'Name': name,
       'NameEn': nameEn,
       'Description': description,
       'IsActive': isActive,
+      'OpeningBalance': openingBalance,
     };
     body.removeWhere((key, value) => value == null);
     final response =
@@ -688,5 +690,192 @@ class AccountingService {
           .toList();
     }
     return [];
+  }
+
+  // ═══════════════════════════════════════════
+  // تكامل FTTH - ربط المشغلين والمزامنة
+  // ═══════════════════════════════════════════
+
+  /// جلب قائمة المشغلين مع حالة الربط
+  Future<Map<String, dynamic>> getOperatorsLinking({String? companyId}) async {
+    String query = '/ftth-accounting/operators-linking';
+    if (companyId != null) query += '?companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// ربط حساب FTTH بمستخدم
+  Future<Map<String, dynamic>> linkFtthAccount({
+    required String userId,
+    required String ftthUsername,
+    String? ftthPasswordEncrypted,
+  }) async {
+    final response = await _client.post(
+      '/ftth-accounting/link-ftth-account',
+      {
+        'userId': userId,
+        'ftthUsername': ftthUsername,
+        'ftthPasswordEncrypted': ftthPasswordEncrypted,
+      },
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// مزامنة عمليات FTTH دفعة واحدة
+  Future<Map<String, dynamic>> syncFtthTransactions({
+    String? companyId,
+    required List<Map<String, dynamic>> transactions,
+  }) async {
+    final response = await _client.post(
+      '/ftth-accounting/sync-ftth-transactions',
+      {
+        'companyId': companyId,
+        'transactions': transactions,
+      },
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// تسليم نقد سريع من مشغل
+  Future<Map<String, dynamic>> quickDeliver({
+    required String operatorUserId,
+    required double amount,
+    required String companyId,
+    String? notes,
+  }) async {
+    final response = await _client.post(
+      '/ftth-accounting/quick-deliver',
+      {
+        'operatorUserId': operatorUserId,
+        'amount': amount,
+        'companyId': companyId,
+        'notes': notes,
+      },
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// جلب عملاء الآجل غير المسددين لمشغل معين
+  Future<Map<String, dynamic>> getCreditCustomers({
+    required String operatorUserId,
+    String? companyId,
+  }) async {
+    String query = '/ftth-accounting/credit-customers/$operatorUserId';
+    if (companyId != null) query += '?companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// تحصيل آجل سريع
+  Future<Map<String, dynamic>> quickCollect({
+    required String operatorUserId,
+    required double amount,
+    required String companyId,
+    String? notes,
+    List<int>? subscriptionLogIds,
+    String? customerName,
+  }) async {
+    final body = <String, dynamic>{
+      'operatorUserId': operatorUserId,
+      'amount': amount,
+      'companyId': companyId,
+      'notes': notes,
+    };
+    if (subscriptionLogIds != null && subscriptionLogIds.isNotEmpty) {
+      body['subscriptionLogIds'] = subscriptionLogIds;
+    }
+    if (customerName != null) {
+      body['customerName'] = customerName;
+    }
+    final response = await _client.post(
+      '/ftth-accounting/quick-collect',
+      body,
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// جلب لوحة المشغلين
+  Future<Map<String, dynamic>> getOperatorsDashboard({
+    String? companyId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    String query = '/ftth-accounting/operators-dashboard';
+    final params = <String>[];
+    if (companyId != null) params.add('companyId=$companyId');
+    if (from != null)
+      params.add('from=${from.toIso8601String().split('T')[0]}');
+    if (to != null) params.add('to=${to.toIso8601String().split('T')[0]}');
+    if (params.isNotEmpty) query += '?${params.join('&')}';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// جلب ملخص مشغل محدد
+  Future<Map<String, dynamic>> getOperatorSummary(
+    String userId, {
+    String? companyId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    String query = '/ftth-accounting/operator-summary/$userId';
+    final params = <String>[];
+    if (companyId != null) params.add('companyId=$companyId');
+    if (from != null)
+      params.add('from=${from.toIso8601String().split('T')[0]}');
+    if (to != null) params.add('to=${to.toIso8601String().split('T')[0]}');
+    if (params.isNotEmpty) query += '?${params.join('&')}';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// جلب لوحة مراقبة الأموال الموحدة
+  Future<Map<String, dynamic>> getFundsOverview({String? companyId}) async {
+    String query = '/ftth-accounting/funds-overview';
+    if (companyId != null) query += '?companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// تحديد دورة التجديد المكرر لسجل اشتراك
+  Future<Map<String, dynamic>> setRenewalCycle({
+    required int logId,
+    int? cycleMonths,
+    int? paidMonths,
+  }) async {
+    final body = <String, dynamic>{
+      'logId': logId,
+      'cycleMonths': cycleMonths,
+      'paidMonths': paidMonths ?? 0,
+    };
+    final response = await _client.post(
+      '/ftth-accounting/set-renewal-cycle',
+      body,
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// تحصيل شهر واحد من اشتراك مكرر
+  Future<Map<String, dynamic>> collectRenewalMonth({
+    required int logId,
+    required String companyId,
+    int? monthsCount,
+  }) async {
+    final body = <String, dynamic>{
+      'logId': logId,
+      'companyId': companyId,
+      'monthsCount': monthsCount ?? 1,
+    };
+    final response = await _client.post(
+      '/ftth-accounting/collect-renewal-month',
+      body,
+      (json) => json,
+    );
+    return _toMap(response);
   }
 }

@@ -1135,6 +1135,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
     final finalCost = tx['finalCost'];
     final serviceRequestId = tx['serviceRequestId'] ?? '';
     final receivedBy = tx['receivedBy'] ?? '';
+    final journalEntryNumber = tx['journalEntryNumber']?.toString() ?? '';
 
     String typeLabel = isCharge ? 'أجور (خصم)' : 'تسديد (دفع)';
     String categoryLabel = _categoryLabel(category);
@@ -1227,6 +1228,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   _infoRow('التاريخ', _formatDate(date)),
                   _infoRow('الرصيد بعد المعاملة', '${_fmt(balanceAfter)} د.ع'),
                   if (refNumber.isNotEmpty) _infoRow('رقم المرجع', refNumber),
+                  if (journalEntryNumber.isNotEmpty)
+                    _infoRow('رقم القيد', journalEntryNumber),
                   if (receivedBy.isNotEmpty) _infoRow('المستلم', receivedBy),
                   if (customerName.isNotEmpty) _infoRow('العميل', customerName),
                   if (taskType.isNotEmpty) _infoRow('نوع المهمة', taskType),

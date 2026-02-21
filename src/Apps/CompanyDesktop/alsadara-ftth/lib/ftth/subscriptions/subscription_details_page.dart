@@ -280,13 +280,22 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   final List<int> commitmentPeriods = [1, 2, 3, 6, 12];
 
   // إضافة قائمة طرق الدفع والمتغير الخاص بها
-  final List<String> paymentMethods = ["نقد", "أجل", "ماستر", "وكيل"];
+  final List<String> paymentMethods = ["نقد", "أجل", "ماستر", "وكيل", "فني"];
   String selectedPaymentMethod = "نقد"; // طريقة الدفع الافتراضية
 
   // الوكيل المختار (يظهر عند اختيار "وكيل")
   Map<String, dynamic>? _selectedLinkedAgent;
   List<Map<String, dynamic>> _agentsList = [];
   bool _isLoadingAgents = false;
+
+  // الفني المختار (يظهر عند اختيار "فني")
+  Map<String, dynamic>? _selectedLinkedTechnician;
+  List<Map<String, dynamic>> _techniciansList = [];
+  bool _isLoadingTechnicians = false;
+
+  // أخطاء تحميل القوائم
+  String? _agentsLoadError;
+  String? _techniciansLoadError;
   // حالة حساب السعر لزر التمديد (Extend) بعد اختيار فترة الالتزام
   bool _isCalculatingExtendPrice = false; // لعرض لودر داخل زر التمديد
   String? _extendPriceError; // في حال فشل استرجاع السعر
@@ -519,6 +528,14 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
     // تحميل قائمة الفنيين
     _loadTechnicians();
+
+    // تحميل مسبق لقوائم الوكلاء والفنيين (بصمت في الخلفية)
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) _loadAgentsList();
+    });
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) _loadTechniciansList();
+    });
 
     // أنيميشن خلفية بسيط (تغيير تدريجي للألوان) لمنح الصفحة حيوية بدون التأثير على الحجم
     _bgAnim = AnimationController(
@@ -1068,8 +1085,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     if (!_walletsFetched) return; // ننتظر الأرصدة أولاً
     if (priceDetails != null) return; // تم الحساب مسبقاً
     if (selectedPlan != null && selectedCommitmentPeriod != null) {
-      // إطلاق الحساب بدون انتظار المستخدم
-      fetchPriceDetails();
+      // إطلاق الحساب بدون انتظار المستخدم — مع catchError لمنع توقف التطبيق
+      fetchPriceDetails().catchError((e) {
+        debugPrint('⚠️ _autoComputePriceIfPossible error: $e');
+      });
     }
   }
 
@@ -1353,8 +1372,11 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         }
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         errorMessage = "حدث خطأ أثناء جلب تفاصيل الاشتراك: $e";
+        _priceError = 'فشل جلب بيانات الاشتراك: $e';
+        _priceAttempted = true;
       });
     } finally {
       if (!mounted) return;
@@ -1649,6 +1671,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           await Future.delayed(const Duration(milliseconds: 500));
         }
       }
+    }
+    // إذا لم يتم الحصول على السعر ولم يُسجَل خطأ (مثلاً model=null)
+    if (priceDetails == null && _priceError == null) {
+      _priceError = 'لم يتم الحصول على تفاصيل السعر من الخادم. حاول مجدداً.';
     }
     if (mounted) {
       setState(() {
@@ -2307,10 +2333,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         if (model != null) {
           priceDetails = _normalizePriceModel(model);
           priceDetails!['source'] = 'calculate-price';
+          _evaluatePriceWalletRelation();
         } else {
           priceDetails = null;
         }
-        _evaluatePriceWalletRelation();
       });
       // بعد اكتمال الحساب يمكن إعادة بناء الواجهة لعرض التفاصيل فوراً
 
@@ -4975,7 +5001,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         companyId: VpsAuthService.instance.currentCompanyId,
         // حقول تكامل المحاسبة
         collectionType: _getCollectionTypeCode(selectedPaymentMethod),
-        linkedAgentId: _selectedLinkedAgent?['id']?.toString(),
+        linkedAgentId: _selectedLinkedAgent?['Id']?.toString(),
+        linkedTechnicianId: _selectedLinkedTechnician?['Id']?.toString(),
+        technicianName: _selectedLinkedTechnician?['Name']?.toString() ??
+            _selectedLinkedAgent?['Name']?.toString(),
       );
 
       if (logId != null) {
@@ -4989,6 +5018,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         setState(() {
           isDataSavedToServer = true;
         });
+
+        // ملاحظة: المحاسبة (JE + AgentTransaction/TechnicianTransaction + تحديث الرصيد)
+        // يتم تلقائياً من السيرفر عبر CreateAccountingEntryForLog
+        // لذلك لا نستدعي _recordChargeToLinkedPerson هنا لتجنب الازدواجية
       } else {
         throw Exception('فشل حفظ البيانات في VPS - لم يتم إرجاع logId');
       }
@@ -10011,6 +10044,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     onTap: () => setState(() {
                       selectedPaymentMethod = 'نقد';
                       _selectedLinkedAgent = null;
+                      _selectedLinkedTechnician = null;
                     }),
                   ),
                 ),
@@ -10024,6 +10058,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     onTap: () => setState(() {
                       selectedPaymentMethod = 'أجل';
                       _selectedLinkedAgent = null;
+                      _selectedLinkedTechnician = null;
                     }),
                   ),
                 ),
@@ -10037,6 +10072,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     onTap: () => setState(() {
                       selectedPaymentMethod = 'ماستر';
                       _selectedLinkedAgent = null;
+                      _selectedLinkedTechnician = null;
                     }),
                   ),
                 ),
@@ -10047,12 +10083,23 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     icon: Icons.store,
                     baseColor: Colors.blue.shade600,
                     selected: selectedPaymentMethod == 'وكيل',
-                    onTap: () {
-                      setState(() {
-                        selectedPaymentMethod = 'وكيل';
-                      });
-                      _loadAgentsList();
-                    },
+                    onTap: () => setState(() {
+                      selectedPaymentMethod = 'وكيل';
+                      _selectedLinkedTechnician = null;
+                    }),
+                  ),
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  child: _buildPaymentOptionButton(
+                    title: 'فني',
+                    icon: Icons.engineering,
+                    baseColor: Colors.teal.shade600,
+                    selected: selectedPaymentMethod == 'فني',
+                    onTap: () => setState(() {
+                      selectedPaymentMethod = 'فني';
+                      _selectedLinkedAgent = null;
+                    }),
                   ),
                 ),
               ],
@@ -10061,6 +10108,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             if (selectedPaymentMethod == 'وكيل') ...[
               SizedBox(height: 8),
               _buildAgentDropdown(),
+            ],
+            // دروبداون اختيار الفني (يظهر فقط عند اختيار "فني")
+            if (selectedPaymentMethod == 'فني') ...[
+              SizedBox(height: 8),
+              _buildTechnicianDropdown(),
             ],
           ],
         ),
@@ -10123,10 +10175,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   /// معلومات المحفظة - تم إخفاؤها حسب الطلب، والدالة أزيلت لعدم الاستخدام
 
-  /// جلب قائمة الوكلاء من السيرفر
-  Future<void> _loadAgentsList() async {
-    if (_agentsList.isNotEmpty || _isLoadingAgents) return;
-    setState(() => _isLoadingAgents = true);
+  /// جلب قائمة الوكلاء من السيرفر (يُستدعى في initState فقط — لا يُستدعى عند الضغط)
+  Future<void> _loadAgentsList({bool forceReload = false}) async {
+    if ((!forceReload && _agentsList.isNotEmpty) || _isLoadingAgents) return;
+    if (mounted) {
+      setState(() {
+        _isLoadingAgents = true;
+        _agentsLoadError = null;
+      });
+    }
     try {
       final companyId = VpsAuthService.instance.currentCompanyId;
       final url = companyId != null
@@ -10134,15 +10191,21 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           : 'https://api.ramzalsadara.tech/api/ftth-accounting/agents-list';
 
       final token = _getAuthToken();
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-          'X-Api-Key': 'sadara-internal-2024-secure-key',
-        },
-      );
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'X-Api-Key': 'sadara-internal-2024-secure-key',
+      };
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
 
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+
+      debugPrint('📡 استجابة الوكلاء: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -10150,12 +10213,74 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             _agentsList = List<Map<String, dynamic>>.from(data['data']);
           });
         }
+        debugPrint('✅ تم جلب ${_agentsList.length} وكيل');
+      } else {
+        setState(
+            () => _agentsLoadError = 'خطأ من السيرفر (${response.statusCode})');
       }
-      debugPrint('✅ تم جلب ${_agentsList.length} وكيل');
     } catch (e) {
       debugPrint('❌ خطأ في جلب الوكلاء: $e');
+      if (mounted) {
+        setState(() => _agentsLoadError = 'خطأ في الاتصال');
+      }
     } finally {
-      setState(() => _isLoadingAgents = false);
+      if (mounted) setState(() => _isLoadingAgents = false);
+    }
+  }
+
+  /// جلب قائمة الفنيين من السيرفر (يُستدعى في initState فقط — لا يُستدعى عند الضغط)
+  Future<void> _loadTechniciansList({bool forceReload = false}) async {
+    if ((!forceReload && _techniciansList.isNotEmpty) ||
+        _isLoadingTechnicians) {
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _isLoadingTechnicians = true;
+        _techniciansLoadError = null;
+      });
+    }
+    try {
+      final companyId = VpsAuthService.instance.currentCompanyId;
+      final url = companyId != null
+          ? 'https://api.ramzalsadara.tech/api/ftth-accounting/technicians-list?companyId=$companyId'
+          : 'https://api.ramzalsadara.tech/api/ftth-accounting/technicians-list';
+
+      final token = _getAuthToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'X-Api-Key': 'sadara-internal-2024-secure-key',
+      };
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+
+      debugPrint('📡 استجابة الفنيين: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          setState(() {
+            _techniciansList = List<Map<String, dynamic>>.from(data['data']);
+          });
+        }
+        debugPrint('✅ تم جلب ${_techniciansList.length} فني');
+      } else {
+        setState(() =>
+            _techniciansLoadError = 'خطأ من السيرفر (${response.statusCode})');
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في جلب الفنيين: $e');
+      if (mounted) {
+        setState(() => _techniciansLoadError = 'خطأ في الاتصال');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingTechnicians = false);
     }
   }
 
@@ -10164,66 +10289,406 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     return VpsAuthService.instance.accessToken;
   }
 
-  /// دروبداون اختيار الوكيل
+  /// دروبداون اختيار الوكيل مع بحث (Autocomplete — بدون اتصال شبكة عند الضغط)
   Widget _buildAgentDropdown() {
     if (_isLoadingAgents) {
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(children: [
+          SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.blue.shade600)),
+          const SizedBox(width: 8),
+          Text('جاري تحميل الوكلاء...',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        ]),
+      );
+    }
+    if (_agentsList.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
+          const SizedBox(width: 6),
+          Text('لا يوجد وكلاء متاحين',
+              style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: () => _loadAgentsList(forceReload: true),
+            icon: Icon(Icons.refresh, size: 14, color: Colors.blue.shade600),
+            label: Text('تحديث',
+                style: TextStyle(fontSize: 11, color: Colors.blue.shade600)),
+            style: TextButton.styleFrom(
+                padding: EdgeInsets.zero, minimumSize: const Size(50, 28)),
+          ),
+        ]),
+      );
+    }
+
+    // إذا تم اختيار وكيل — أظهر بطاقته مع زر تغيير
+    if (_selectedLinkedAgent != null) {
+      final name = _selectedLinkedAgent!['Name']?.toString() ?? '';
+      final code = _selectedLinkedAgent!['AgentCode']?.toString() ?? '';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.blue.shade400, width: 1.5),
+        ),
         child: Row(
           children: [
-            SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2)),
-            SizedBox(width: 8),
-            Text('جاري تحميل الوكلاء...',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            CircleAvatar(
+              backgroundColor: Colors.blue.shade100,
+              radius: 16,
+              child: Icon(Icons.store, color: Colors.blue.shade700, size: 16),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.blue.shade800)),
+                  if (code.isNotEmpty)
+                    Text(code,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.blue.shade600)),
+                ],
+              ),
+            ),
+            Icon(Icons.check_circle, color: Colors.blue.shade600, size: 20),
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: () => setState(() => _selectedLinkedAgent = null),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close, color: Colors.red.shade400, size: 18),
+              ),
+            ),
           ],
         ),
       );
     }
 
-    if (_agentsList.isEmpty) {
+    // حقل بحث مع قائمة منسدلة
+    return Autocomplete<Map<String, dynamic>>(
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.trim().isEmpty) {
+          return _agentsList;
+        }
+        final q = textEditingValue.text.trim().toLowerCase();
+        return _agentsList.where((agent) {
+          final name = (agent['Name']?.toString() ?? '').toLowerCase();
+          final code = (agent['AgentCode']?.toString() ?? '').toLowerCase();
+          final phone = (agent['PhoneNumber']?.toString() ?? '').toLowerCase();
+          return name.contains(q) || code.contains(q) || phone.contains(q);
+        });
+      },
+      displayStringForOption: (agent) {
+        final name = agent['Name']?.toString() ?? '';
+        final code = agent['AgentCode']?.toString() ?? '';
+        return '$name${code.isNotEmpty ? " ($code)" : ""}';
+      },
+      onSelected: (agent) => setState(() => _selectedLinkedAgent = agent),
+      optionsMaxHeight: 200,
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            hintText: 'ابحث عن وكيل بالاسم أو الكود...',
+            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            prefixIcon:
+                Icon(Icons.search, color: Colors.blue.shade400, size: 20),
+            suffixIcon:
+                Icon(Icons.store, color: Colors.blue.shade600, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            filled: true,
+            fillColor: Colors.blue.shade50,
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topRight,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 200),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade300),
+                color: Colors.white,
+              ),
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                shrinkWrap: true,
+                itemCount: options.length,
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, color: Colors.grey.shade200),
+                itemBuilder: (_, i) {
+                  final agent = options.elementAt(i);
+                  final name = agent['Name']?.toString() ?? '';
+                  final code = agent['AgentCode']?.toString() ?? '';
+                  final phone = agent['PhoneNumber']?.toString() ?? '';
+                  return InkWell(
+                    onTap: () => onSelected(agent),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.blue.shade100,
+                            radius: 16,
+                            child: Icon(Icons.store,
+                                color: Colors.blue.shade700, size: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                                if (code.isNotEmpty || phone.isNotEmpty)
+                                  Text(
+                                    [
+                                      if (code.isNotEmpty) code,
+                                      if (phone.isNotEmpty) phone
+                                    ].join(' • '),
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade600),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// دروبداون اختيار الفني مع بحث (Autocomplete — بدون اتصال شبكة عند الضغط)
+  Widget _buildTechnicianDropdown() {
+    if (_isLoadingTechnicians) {
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Text('لا يوجد وكلاء متاحين',
-            style: TextStyle(color: Colors.red.shade400, fontSize: 12)),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(children: [
+          SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.teal.shade600)),
+          const SizedBox(width: 8),
+          Text('جاري تحميل الفنيين...',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        ]),
+      );
+    }
+    if (_techniciansList.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
+          const SizedBox(width: 6),
+          Text('لا يوجد فنيين متاحين',
+              style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: () => _loadTechniciansList(forceReload: true),
+            icon: Icon(Icons.refresh, size: 14, color: Colors.teal.shade600),
+            label: Text('تحديث',
+                style: TextStyle(fontSize: 11, color: Colors.teal.shade600)),
+            style: TextButton.styleFrom(
+                padding: EdgeInsets.zero, minimumSize: const Size(50, 28)),
+          ),
+        ]),
       );
     }
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: _selectedLinkedAgent?['id']?.toString(),
-          hint: Text('اختر الوكيل',
-              style: TextStyle(color: Colors.blue.shade700, fontSize: 13)),
-          icon: Icon(Icons.arrow_drop_down, color: Colors.blue.shade700),
-          items: _agentsList.map((agent) {
-            return DropdownMenuItem<String>(
-              value: agent['id']?.toString(),
-              child: Text(
-                '${agent['name']} (${agent['agentCode'] ?? ''})',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedLinkedAgent = _agentsList.firstWhere(
-                (a) => a['id']?.toString() == value,
-                orElse: () => {},
-              );
-            });
-          },
+    // إذا تم اختيار فني — أظهر بطاقته مع زر تغيير
+    if (_selectedLinkedTechnician != null) {
+      final name = _selectedLinkedTechnician!['Name']?.toString() ?? '';
+      final username = _selectedLinkedTechnician!['Username']?.toString() ?? '';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.teal.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.teal.shade400, width: 1.5),
         ),
-      ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.teal.shade100,
+              radius: 16,
+              child: Icon(Icons.engineering,
+                  color: Colors.teal.shade700, size: 16),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.teal.shade800)),
+                  if (username.isNotEmpty)
+                    Text(username,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.teal.shade600)),
+                ],
+              ),
+            ),
+            Icon(Icons.check_circle, color: Colors.teal.shade600, size: 20),
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: () => setState(() => _selectedLinkedTechnician = null),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close, color: Colors.red.shade400, size: 18),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // حقل بحث مع قائمة منسدلة
+    return Autocomplete<Map<String, dynamic>>(
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.trim().isEmpty) {
+          return _techniciansList;
+        }
+        final q = textEditingValue.text.trim().toLowerCase();
+        return _techniciansList.where((tech) {
+          final name = (tech['Name']?.toString() ?? '').toLowerCase();
+          final username = (tech['Username']?.toString() ?? '').toLowerCase();
+          final phone = (tech['PhoneNumber']?.toString() ?? '').toLowerCase();
+          return name.contains(q) || username.contains(q) || phone.contains(q);
+        });
+      },
+      displayStringForOption: (tech) {
+        final name = tech['Name']?.toString() ?? '';
+        final username = tech['Username']?.toString() ?? '';
+        return '$name${username.isNotEmpty ? " ($username)" : ""}';
+      },
+      onSelected: (tech) => setState(() => _selectedLinkedTechnician = tech),
+      optionsMaxHeight: 200,
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            hintText: 'ابحث عن فني بالاسم أو المعرف...',
+            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            prefixIcon:
+                Icon(Icons.search, color: Colors.teal.shade400, size: 20),
+            suffixIcon:
+                Icon(Icons.engineering, color: Colors.teal.shade600, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            filled: true,
+            fillColor: Colors.teal.shade50,
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topRight,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 200),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.teal.shade300),
+                color: Colors.white,
+              ),
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                shrinkWrap: true,
+                itemCount: options.length,
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, color: Colors.grey.shade200),
+                itemBuilder: (_, i) {
+                  final tech = options.elementAt(i);
+                  final name = tech['Name']?.toString() ?? '';
+                  final username = tech['Username']?.toString() ?? '';
+                  final phone = tech['PhoneNumber']?.toString() ?? '';
+                  return InkWell(
+                    onTap: () => onSelected(tech),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.teal.shade100,
+                            radius: 16,
+                            child: Icon(Icons.engineering,
+                                color: Colors.teal.shade700, size: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                                if (username.isNotEmpty || phone.isNotEmpty)
+                                  Text(
+                                    [
+                                      if (username.isNotEmpty) username,
+                                      if (phone.isNotEmpty) phone
+                                    ].join(' • '),
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade600),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -10238,9 +10703,114 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         return 'master';
       case 'وكيل':
         return 'agent';
+      case 'فني':
+        return 'technician';
       default:
         return 'cash';
     }
+  }
+
+  /// تسجيل مبلغ على حساب الوكيل/الفني المختار بعد نجاح العملية
+  Future<void> _recordChargeToLinkedPerson(double amount) async {
+    try {
+      final token = _getAuthToken();
+      if (token == null) return;
+
+      final customerName =
+          subscriptionInfo?.customerName ?? widget.userName ?? '';
+      final planName = selectedPlan ?? '';
+
+      if (selectedPaymentMethod == 'وكيل' && _selectedLinkedAgent != null) {
+        // تسجيل أجور على الوكيل
+        final agentId = _selectedLinkedAgent!['Id']?.toString();
+        if (agentId == null || agentId.isEmpty) return;
+
+        final url = '${_getBaseUrl()}/agents/$agentId/charge';
+        final body = {
+          'Amount': amount,
+          'Category':
+              'RenewalSubscription', // enum كنص — السيرفر يستخدم JsonStringEnumConverter
+          'Description': 'تجديد اشتراك: $customerName - $planName',
+          'ReferenceNumber': widget.subscriptionId,
+          'Notes': 'عبر شاشة التجديد - ${widget.activatedBy}',
+        };
+
+        debugPrint('📤 إرسال charge للوكيل: $url');
+        debugPrint('📤 Body: ${jsonEncode(body)}');
+
+        final response = await http
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 10));
+
+        debugPrint(
+            '📥 استجابة charge: ${response.statusCode} — ${response.body}');
+
+        if (response.statusCode == 200) {
+          debugPrint(
+              '✅ تم تسجيل $amount على حساب الوكيل: ${_selectedLinkedAgent!['Name']}');
+        } else {
+          debugPrint(
+              '⚠️ فشل تسجيل الأجور على الوكيل: ${response.statusCode} — ${response.body}');
+        }
+      } else if (selectedPaymentMethod == 'فني' &&
+          _selectedLinkedTechnician != null) {
+        // تسجيل تحصيل على الفني
+        final techId = _selectedLinkedTechnician!['Id']?.toString();
+        if (techId == null || techId.isEmpty) return;
+
+        final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+        final url = '${_getBaseUrl()}/accounting/collections';
+        final body = {
+          'TechnicianId': techId,
+          'Amount': amount,
+          'Description': 'تجديد اشتراك: $customerName - $planName',
+          'PaymentMethod': 'cash',
+          'ReceivedBy': widget.activatedBy,
+          'Notes': 'عبر شاشة التجديد - اشتراك ${widget.subscriptionId}',
+          'CompanyId': companyId,
+        };
+
+        debugPrint('📤 إرسال collection للفني: $url');
+        debugPrint('📤 Body: ${jsonEncode(body)}');
+
+        final response = await http
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 10));
+
+        debugPrint(
+            '📥 استجابة collection: ${response.statusCode} — ${response.body}');
+
+        if (response.statusCode == 200) {
+          debugPrint(
+              '✅ تم تسجيل $amount على حساب الفني: ${_selectedLinkedTechnician!['Name']}');
+        } else {
+          debugPrint(
+              '⚠️ فشل تسجيل التحصيل على الفني: ${response.statusCode} — ${response.body}');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ خطأ في تسجيل المبلغ على الوكيل/الفني: $e');
+      // لا نوقف العملية — التسجيل اختياري
+    }
+  }
+
+  /// الحصول على Base URL للسيرفر
+  String _getBaseUrl() {
+    return 'https://api.ramzalsadara.tech/api';
   }
 
   /// بطاقة رصيد المحفظة - منفصلة عن بطاقة طريقة الدفع وتعرض في نفس الصف

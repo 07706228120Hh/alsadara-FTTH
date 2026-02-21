@@ -77,6 +77,9 @@ public class SubscriptionLog : BaseEntity<long>
     /// <summary>إذا التفعيل لصالح وكيل معين</summary>
     public Guid? LinkedAgentId { get; set; }
     
+    /// <summary>إذا التفعيل لصالح فني معين</summary>
+    public Guid? LinkedTechnicianId { get; set; }
+    
     /// <summary>القيد المحاسبي المُنشأ تلقائياً</summary>
     public Guid? JournalEntryId { get; set; }
     
@@ -85,4 +88,15 @@ public class SubscriptionLog : BaseEntity<long>
     
     /// <summary>ملاحظات المطابقة</summary>
     public string? ReconciliationNotes { get; set; }
+
+    // ============ التفعيل المكرر - Recurring Renewal ============
+    
+    /// <summary>عدد أشهر التكرار (null = غير مكرر، 1/2/3 = مكرر)</summary>
+    public int? RenewalCycleMonths { get; set; }
+    
+    /// <summary>عدد الأشهر المدفوعة حتى الآن</summary>
+    public int PaidMonths { get; set; } = 0;
+    
+    /// <summary>تاريخ الاستحقاق القادم (نفس يوم التفعيل + شهر)</summary>
+    public DateTime? NextRenewalDate { get; set; }
 }

@@ -11,10 +11,9 @@ import 'compound_journal_entry_page.dart';
 import 'revenue_page.dart';
 import 'client_accounts_page.dart';
 import 'statistics_page.dart';
-import 'agent_commission_page.dart';
-import 'agent_transactions_page.dart';
 import '../super_admin/agents_management_page.dart';
 import 'ftth_operators_dashboard_page.dart';
+import 'funds_overview_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -53,14 +52,37 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
       _errorMessage = null;
     });
     try {
-      final result = await AccountingService.instance.getDashboard(
-        companyId: widget.companyId,
-      );
+      // جلب الداشبورد + قائمة الحسابات بالتوازي
+      final results = await Future.wait([
+        AccountingService.instance.getDashboard(companyId: widget.companyId),
+        AccountingService.instance.getAccounts(companyId: widget.companyId),
+      ]);
       if (!mounted) return;
+
+      final result = results[0];
+      final accountsResult = results[1];
+
       if (result['success'] == true) {
+        final data = result['data'] is Map<String, dynamic>
+            ? result['data']
+            : <String, dynamic>{};
+
+        // إدراج رصيد القاصة (11101) من قائمة الحسابات إذا لم يكن في الداشبورد
+        final balances = data['AccountBalances'] as Map<String, dynamic>? ?? {};
+        if (balances['CashRegisterBalance'] == null &&
+            accountsResult['success'] == true) {
+          final accounts = accountsResult['data'] as List? ?? [];
+          for (final acct in accounts) {
+            if (acct is Map && acct['Code']?.toString() == '11101') {
+              balances['CashRegisterBalance'] = acct['CurrentBalance'] ?? 0;
+              break;
+            }
+          }
+          data['AccountBalances'] = balances;
+        }
+
         setState(() {
-          _dashboardData =
-              result['data'] is Map<String, dynamic> ? result['data'] : {};
+          _dashboardData = data;
           _isLoading = false;
         });
       } else {
@@ -193,6 +215,26 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             color: const Color(0xFF3498DB),
             onTap: () =>
                 _navigateTo(ChartOfAccountsPage(companyId: widget.companyId)),
+          ),
+          _sidebarBtn(
+            icon: Icons.menu_book,
+            label: 'القيود المحاسبية',
+            color: const Color(0xFF2ECC71),
+            onTap: () =>
+                _navigateTo(JournalEntriesPage(companyId: widget.companyId)),
+          ),
+          _sidebarBtn(
+            icon: Icons.payments,
+            label: 'الرواتب',
+            color: const Color(0xFFE91E63),
+            onTap: () => _navigateTo(SalariesPage(companyId: widget.companyId)),
+          ),
+          _sidebarBtn(
+            icon: Icons.analytics,
+            label: 'الإحصائيات',
+            color: const Color(0xFF34495E),
+            onTap: () =>
+                _navigateTo(StatisticsPage(companyId: widget.companyId)),
           ),
           const Spacer(),
         ],
@@ -396,26 +438,44 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
 
     final items = <_SummaryItem>[
       _SummaryItem(
-        title: 'رصيد الصندوق',
-        value: _formatCurrency(accountBalances['CashAccountBalance']),
+        title: 'رصيد القاصة',
+        value: _formatCurrency(accountBalances['CashRegisterBalance']),
+        icon: Icons.point_of_sale,
+        color: const Color(0xFF16A085),
+      ),
+      _SummaryItem(
+        title: 'صندوق الشركة الرئيسي',
+        value: _formatCurrency(accountBalances['MainCashBoxBalance']),
+        icon: Icons.account_balance,
+        color: const Color(0xFF2C3E50),
+      ),
+      _SummaryItem(
+        title: 'رصيد الصفحة',
+        value: _formatCurrency(accountBalances['PageBalance']),
         icon: Icons.account_balance_wallet,
         color: const Color(0xFF3498DB),
       ),
       _SummaryItem(
-        title: 'إجمالي المصروفات',
+        title: 'المصاريف',
         value: _formatCurrency(accountBalances['TotalExpenses']),
         icon: Icons.trending_down,
         color: const Color(0xFFE74C3C),
       ),
       _SummaryItem(
-        title: 'رواتب الشهر',
-        value: _formatCurrency(salaries['MonthlyTotal']),
-        icon: Icons.payments,
-        color: const Color(0xFF1ABC9C),
+        title: 'الالتزامات',
+        value: _formatCurrency(accountBalances['TotalLiabilities']),
+        icon: Icons.assignment_late,
+        color: const Color(0xFFE67E22),
+      ),
+      _SummaryItem(
+        title: 'مستحقات المشغلين',
+        value: _formatCurrency(accountBalances['OperatorReceivables']),
+        icon: Icons.people,
+        color: const Color(0xFF9B59B6),
       ),
       _SummaryItem(
         title: agentIsDebtor
-            ? 'مستحقات الوكلاء (مديون)'
+            ? 'مستحقات الوكلاء (مدينون)'
             : 'مستحقات الوكلاء (دائن)',
         value: _formatCurrency(agentNet.abs()),
         icon: Icons.support_agent,
@@ -423,8 +483,9 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             agentIsDebtor ? const Color(0xFFE74C3C) : const Color(0xFF2ECC71),
       ),
       _SummaryItem(
-        title:
-            techIsDebtor ? 'مستحقات الفنيين (مديون)' : 'مستحقات الفنيين (دائن)',
+        title: techIsDebtor
+            ? 'مستحقات الفنيين (مدينون)'
+            : 'مستحقات الفنيين (دائن)',
         value: _formatCurrency(techNet.abs()),
         icon: Icons.engineering,
         color: techIsDebtor ? const Color(0xFF8E44AD) : const Color(0xFF27AE60),
@@ -434,14 +495,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
-        final cols = maxW > 1200
-            ? 5
-            : maxW > 900
-                ? 4
-                : maxW > 600
-                    ? 3
-                    : 2;
-        final spacing = 16.0;
+        final cols = items.length; // صف واحد دائمًا
+        final spacing = 10.0;
         final cardWidth = (maxW - spacing * (cols - 1)) / cols;
         return Wrap(
           spacing: spacing,
@@ -515,23 +570,19 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  item.title,
-                  style: GoogleFonts.cairo(
-                    fontSize: 12,
-                    color: _textGray,
-                  ),
-                ),
-                if (item.subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    item.subtitle!,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.cairo(
-                      fontSize: 10,
-                      color: _textSubtle,
+                      fontSize: 12,
+                      color: _textGray,
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -543,14 +594,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   Widget _buildSectionsGrid() {
     final sections = [
       _SectionItem(
-        title: 'القيود المحاسبية',
-        subtitle: 'إنشاء ومراجعة القيود',
-        icon: Icons.menu_book,
-        color: const Color(0xFF2ECC71),
-        onTap: () =>
-            _navigateTo(JournalEntriesPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
         title: 'قيد مركب',
         subtitle: 'إدخال قيد محاسبي مركب',
         icon: Icons.post_add,
@@ -559,11 +602,11 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             _navigateTo(CompoundJournalEntryPage(companyId: widget.companyId)),
       ),
       _SectionItem(
-        title: 'الإيرادات',
-        subtitle: 'تسجيل ومتابعة الإيرادات',
-        icon: Icons.trending_up,
+        title: 'المصاريف والإيرادات',
+        subtitle: 'تسجيل ومتابعة المصاريف والإيرادات',
+        icon: Icons.swap_horiz,
         color: const Color(0xFF1ABC9C),
-        onTap: () => _navigateTo(RevenuePage(companyId: widget.companyId)),
+        onTap: () => _showExpensesRevenueDialog(),
       ),
       _SectionItem(
         title: 'حسابات العملاء',
@@ -574,13 +617,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             _navigateTo(ClientAccountsPage(companyId: widget.companyId)),
       ),
       _SectionItem(
-        title: 'الرواتب',
-        subtitle: 'إدارة رواتب الموظفين',
-        icon: Icons.payments,
-        color: const Color(0xFFE91E63),
-        onTap: () => _navigateTo(SalariesPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
         title: 'تحصيلات الفنيين',
         subtitle: 'متابعة تحصيلات الفنيين',
         icon: Icons.engineering,
@@ -588,49 +624,28 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         onTap: () => _navigateTo(CollectionsPage(companyId: widget.companyId)),
       ),
       _SectionItem(
-        title: 'المصروفات',
-        subtitle: 'تسجيل ومتابعة المصروفات',
-        icon: Icons.receipt,
-        color: const Color(0xFFE74C3C),
-        onTap: () => _navigateTo(ExpensesPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'الإحصائيات',
-        subtitle: 'تفاصيل الأرصدة والتقارير',
-        icon: Icons.analytics,
-        color: const Color(0xFF34495E),
-        onTap: () => _navigateTo(StatisticsPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'عمولات الوكلاء',
-        subtitle: 'نسب العمولة حسب الباقات',
-        icon: Icons.percent,
-        color: const Color(0xFF8E44AD),
-        onTap: () =>
-            _navigateTo(AgentCommissionPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'معاملات الوكلاء',
-        subtitle: 'عرض جميع معاملات الوكلاء',
-        icon: Icons.receipt_long,
-        color: const Color(0xFF2980B9),
-        onTap: () =>
-            _navigateTo(AgentTransactionsPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
         title: 'إدارة الوكلاء',
         subtitle: 'إضافة وإدارة الوكلاء والمحاسبة',
         icon: Icons.support_agent,
         color: const Color(0xFF3F51B5),
-        onTap: () => _navigateTo(const AgentsManagementPage()),
+        onTap: () =>
+            _navigateTo(AgentsManagementPage(companyId: widget.companyId)),
       ),
       _SectionItem(
-        title: 'مشغلو FTTH',
-        subtitle: 'لوحة متابعة مشغلي الإنترنت',
+        title: 'حسابات التفعيلات',
+        subtitle: 'لوحة متابعة حسابات التفعيلات',
         icon: Icons.wifi_tethering,
         color: const Color(0xFF00897B),
         onTap: () => _navigateTo(
             FtthOperatorsDashboardPage(companyId: widget.companyId)),
+      ),
+      _SectionItem(
+        title: 'مراقبة الأموال',
+        subtitle: 'أرصدة الصناديق والذمم والإيرادات',
+        icon: Icons.account_balance,
+        color: const Color(0xFF5C6BC0),
+        onTap: () =>
+            _navigateTo(FundsOverviewPage(companyId: widget.companyId)),
       ),
     ];
 
@@ -715,6 +730,77 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     );
   }
 
+  void _showExpensesRevenueDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SimpleDialog(
+          title: Text(
+            'المصاريف والإيرادات',
+            style: GoogleFonts.cairo(
+              fontWeight: FontWeight.bold,
+              color: _textDark,
+            ),
+          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          children: [
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _navigateTo(ExpensesPage(companyId: widget.companyId));
+              },
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE74C3C).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.receipt,
+                        color: Color(0xFFE74C3C), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('المصروفات',
+                      style: GoogleFonts.cairo(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _navigateTo(RevenuePage(companyId: widget.companyId));
+              },
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1ABC9C).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.trending_up,
+                        color: Color(0xFF1ABC9C), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('الإيرادات',
+                      style: GoogleFonts.cairo(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _navigateTo(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     _loadDashboard();
@@ -748,7 +834,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
 class _SummaryItem {
   final String title;
   final String value;
-  final String? subtitle;
   final IconData icon;
   final Color color;
 
@@ -757,7 +842,6 @@ class _SummaryItem {
     required this.value,
     required this.icon,
     required this.color,
-    this.subtitle,
   });
 }
 

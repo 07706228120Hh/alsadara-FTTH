@@ -1,1 +1,0 @@
-﻿SELECT "Id", "RequestNumber", "AgentId", "Status", "Details", "CreatedAt" FROM "ServiceRequests" ORDER BY "CreatedAt" DESC LIMIT 5;

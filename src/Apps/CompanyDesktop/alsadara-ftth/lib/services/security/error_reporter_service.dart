@@ -23,6 +23,13 @@ class ErrorReporterService {
   static const int maxLocalLogs = 100;
   static const String logFileName = 'error_logs.json';
 
+  // حماية من التكرار السريع (throttle)
+  DateTime _lastReportTime = DateTime(2000);
+  String _lastErrorMessage = '';
+  int _suppressedCount = 0;
+  static const Duration _throttleDuration = Duration(seconds: 2);
+  bool _isSaving = false; // منع الكتابة المتزامنة
+
   // معلومات الجهاز والتطبيق
   Map<String, dynamic>? _deviceInfo;
   Map<String, dynamic>? _appInfo;
@@ -119,8 +126,30 @@ class ErrorReporterService {
     // await _sendToServer(errorReport);
   }
 
-  /// تسجيل خطأ Flutter
-  void captureFlutterError(FlutterErrorDetails details) {
+  /// تسجيل خطأ Flutter (مع حماية من التكرار السريع)
+  /// يعيد true إذا تم تسجيل الخطأ، false إذا تم تجاهله (مكرر)
+  bool captureFlutterError(FlutterErrorDetails details) {
+    final now = DateTime.now();
+    final errorMsg = details.exception.toString();
+
+    // تجاهل الأخطاء المتكررة بسرعة (نفس الخطأ خلال أقل من ثانيتين)
+    if (errorMsg == _lastErrorMessage &&
+        now.difference(_lastReportTime) < _throttleDuration) {
+      _suppressedCount++;
+      return false; // تم التجاهل
+    }
+
+    // طباعة عدد الأخطاء المكبوتة إن وجدت
+    if (_suppressedCount > 0) {
+      if (kDebugMode) {
+        print('⚠️ ErrorReporter: تم تجاهل $_suppressedCount خطأ متكرر');
+      }
+      _suppressedCount = 0;
+    }
+
+    _lastReportTime = now;
+    _lastErrorMessage = errorMsg;
+
     reportError(
       error: details.exception,
       stackTrace: details.stack,
@@ -131,6 +160,7 @@ class ErrorReporterService {
         'silent': details.silent,
       },
     );
+    return true; // تم التسجيل
   }
 
   /// طباعة الخطأ
@@ -162,8 +192,11 @@ class ErrorReporterService {
     }
   }
 
-  /// حفظ محلياً
+  /// حفظ محلياً (مع حماية من الكتابة المتزامنة)
   Future<void> _saveLocally(ErrorReport report) async {
+    // منع الكتابة المتزامنة التي تسبب تجميد
+    if (_isSaving) return;
+    _isSaving = true;
     try {
       final directory = await getApplicationSupportDirectory();
       final file = File('${directory.path}/$logFileName');
@@ -192,6 +225,8 @@ class ErrorReporterService {
       if (kDebugMode) {
         print('❌ ErrorReporter: فشل الحفظ المحلي: $e');
       }
+    } finally {
+      _isSaving = false;
     }
   }
 

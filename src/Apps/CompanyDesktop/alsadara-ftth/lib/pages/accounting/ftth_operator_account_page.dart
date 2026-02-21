@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
 
@@ -426,6 +427,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                       DataColumn(label: _ColHead('الباقة')),
                       DataColumn(label: _ColHead('المبلغ')),
                       DataColumn(label: _ColHead('الالتزام')),
+                      DataColumn(label: _ColHead('التكرار')),
                       DataColumn(label: _ColHead('النوع')),
                       DataColumn(label: _ColHead('التحصيل')),
                       DataColumn(label: _ColHead('المنطقة')),
@@ -542,6 +544,44 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                     ? '${tx['CommitmentPeriod']} شهر'
                                     : '-',
                                 style: const TextStyle(fontSize: 11)))),
+                        // التكرار
+                        DataCell(
+                          Center(child: Builder(builder: (_) {
+                            final cycle = tx['RenewalCycleMonths'] as int?;
+                            final paid =
+                                (tx['PaidMonths'] as num?)?.toInt() ?? 0;
+                            if (cycle == null || cycle <= 0) {
+                              return Icon(Icons.add_circle_outline,
+                                  size: 16, color: Colors.grey.shade400);
+                            }
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: paid >= cycle
+                                    ? Colors.green.shade50
+                                    : Colors.deepPurple.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: paid >= cycle
+                                      ? Colors.green.shade300
+                                      : Colors.deepPurple.shade300,
+                                ),
+                              ),
+                              child: Text(
+                                '$paid/$cycle شهر',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: paid >= cycle
+                                      ? Colors.green.shade700
+                                      : Colors.deepPurple.shade700,
+                                ),
+                              ),
+                            );
+                          })),
+                          onTap: () => _showRenewalCycleDialog(tx),
+                        ),
                         // النوع
                         DataCell(Center(
                             child: _buildTypeBadge(tx['OperationType'] ?? ''))),
@@ -750,6 +790,113 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       return DateFormat('yyyy/MM/dd', 'ar').format(dt);
     } catch (_) {
       return date.toString();
+    }
+  }
+
+  /// دايلوق تعيين دورة التكرار مباشرة من جدول العمليات
+  void _showRenewalCycleDialog(Map<String, dynamic> tx) {
+    final logId = tx['Id'];
+    if (logId == null) return;
+    final currentCycle = tx['RenewalCycleMonths'] as int?;
+    final customerName = tx['CustomerName'] ?? '-';
+    final planName = tx['PlanName'] ?? '-';
+    final collectionType =
+        (tx['CollectionType'] ?? '').toString().toLowerCase();
+
+    final options = [
+      {'label': 'بدون', 'value': 0},
+      {'label': 'شهر', 'value': 1},
+      {'label': '2 أشهر', 'value': 2},
+      {'label': '3 أشهر', 'value': 3},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('تعيين التكرار',
+            style:
+                GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$customerName - $planName',
+                style: GoogleFonts.cairo(
+                    fontSize: 12, color: Colors.grey.shade700)),
+            if (collectionType == 'cash')
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('نقد - الشهر الأول مدفوع تلقائياً',
+                    style:
+                        TextStyle(fontSize: 11, color: Colors.teal.shade700)),
+              ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: options.map((opt) {
+                final val = opt['value'] as int;
+                final isSelected = (currentCycle ?? 0) == val;
+                return ChoiceChip(
+                  label: Text(opt['label'] as String,
+                      style: GoogleFonts.cairo(fontSize: 12)),
+                  selected: isSelected,
+                  selectedColor: Colors.deepPurple.shade100,
+                  onSelected: (_) async {
+                    Navigator.pop(ctx);
+                    await _applyRenewalCycle(
+                        logId, val == 0 ? null : val, collectionType);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _applyRenewalCycle(
+      dynamic logId, int? cycleMonths, String collectionType) async {
+    try {
+      // حساب PaidMonths: إذا نقد وأكثر من شهر = 1 (الأول مدفوع)
+      int? paidMonths;
+      if (collectionType == 'cash' && cycleMonths != null && cycleMonths > 1) {
+        paidMonths = 1;
+      } else {
+        paidMonths = 0;
+      }
+
+      final result = await AccountingService.instance.setRenewalCycle(
+        logId: int.parse(logId.toString()),
+        cycleMonths: cycleMonths,
+        paidMonths: paidMonths,
+      );
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(cycleMonths != null
+                ? 'تم تعيين التكرار: $cycleMonths شهر'
+                : 'تم إلغاء التكرار'),
+            backgroundColor: Colors.green.shade600,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        _loadData(); // إعادة تحميل البيانات
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'خطأ'),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ: $e'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
     }
   }
 

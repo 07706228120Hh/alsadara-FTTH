@@ -211,6 +211,9 @@ public class AgentTransaction : BaseEntity<long>
     
     /// <summary>ملاحظات إضافية</summary>
     public string? Notes { get; set; }
+
+    /// <summary>القيد المحاسبي المرتبط</summary>
+    public Guid? JournalEntryId { get; set; }
     
     // ============ Navigation Properties ============
     

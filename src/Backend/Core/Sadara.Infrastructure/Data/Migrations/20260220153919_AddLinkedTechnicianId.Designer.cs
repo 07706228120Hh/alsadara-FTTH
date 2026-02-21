@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sadara.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Sadara.Infrastructure.Data;
 namespace Sadara.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(SadaraDbContext))]
-    partial class SadaraDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260220153919_AddLinkedTechnicianId")]
+    partial class AddLinkedTechnicianId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -434,9 +437,6 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
-
-                    b.Property<Guid?>("JournalEntryId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");
@@ -3749,14 +3749,8 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<Guid?>("LinkedTechnicianId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("NextRenewalDate")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("OperationType")
                         .HasColumnType("text");
-
-                    b.Property<int>("PaidMonths")
-                        .HasColumnType("integer");
 
                     b.Property<string>("PartnerId")
                         .HasColumnType("text");
@@ -3784,9 +3778,6 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.Property<string>("ReconciliationNotes")
                         .HasColumnType("text");
-
-                    b.Property<int?>("RenewalCycleMonths")
-                        .HasColumnType("integer");
 
                     b.Property<Guid?>("ServiceRequestId")
                         .HasColumnType("uuid");
@@ -4092,9 +4083,6 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
-
-                    b.Property<Guid?>("JournalEntryId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");

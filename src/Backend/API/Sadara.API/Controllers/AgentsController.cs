@@ -390,6 +390,22 @@ public class AgentsController : ControllerBase
                 .Where(t => agentIds.Contains(t.AgentId) && t.Type == TransactionType.Payment)
                 .SumAsync(t => t.Amount);
 
+            // جلب أرقام القيود المحاسبية المرتبطة
+            var jeIds = transactions
+                .Where(t => t.JournalEntryId.HasValue)
+                .Select(t => t.JournalEntryId!.Value)
+                .Distinct()
+                .ToList();
+            var jeDict = new Dictionary<Guid, string>();
+            if (jeIds.Any())
+            {
+                var jes = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Where(j => jeIds.Contains(j.Id))
+                    .Select(j => new { j.Id, j.EntryNumber })
+                    .ToListAsync();
+                foreach (var j in jes) jeDict[j.Id] = j.EntryNumber;
+            }
+
             return Ok(new
             {
                 success = true,
@@ -410,6 +426,9 @@ public class AgentsController : ControllerBase
                     serviceRequestId = tx.ServiceRequestId,
                     citizenId = tx.CitizenId,
                     createdById = tx.CreatedById,
+                    journalEntryId = tx.JournalEntryId,
+                    journalEntryNumber = tx.JournalEntryId.HasValue && jeDict.ContainsKey(tx.JournalEntryId.Value)
+                        ? jeDict[tx.JournalEntryId.Value] : null,
                     notes = tx.Notes,
                     createdAt = tx.CreatedAt
                 }),
@@ -538,6 +557,54 @@ public class AgentsController : ControllerBase
             };
 
             await _unitOfWork.AgentTransactions.AddAsync(transaction);
+
+            // === قيد محاسبي تلقائي: أجور الوكيل ===
+            // مدين: 1150-sub ذمم الوكيل (زاد دينه)
+            // دائن: 4100 إيرادات (سجّلنا إيراد)
+            if (agent.CompanyId != Guid.Empty)
+            {
+                try
+                {
+                    var revenueAcct = await ServiceRequestAccountingHelper.FindAccountByCode(
+                        _unitOfWork, "4100", agent.CompanyId);
+                    var agentSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                        _unitOfWork, "1150", agent.Id, agent.Name, agent.CompanyId);
+
+                    if (revenueAcct != null)
+                    {
+                        await _unitOfWork.SaveChangesAsync();
+
+                        var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                        {
+                            (agentSubAcct.Id, request.Amount, 0, $"أجور وكيل {agent.Name} - {request.Description ?? "أجور"}"),
+                            (revenueAcct.Id, 0, request.Amount, $"إيراد أجور وكيل {agent.Name}")
+                        };
+                        await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                            _unitOfWork, agent.CompanyId, GetCurrentUserId() ?? Guid.Empty,
+                            $"أجور وكيل {agent.Name} - {request.Amount:N0} دينار",
+                            JournalReferenceType.AgentTransaction, agent.Id.ToString(),
+                            journalLines);
+
+                        // ربط القيد بالمعاملة
+                        var je = await _unitOfWork.JournalEntries.AsQueryable()
+                            .Where(j => j.ReferenceType == JournalReferenceType.AgentTransaction
+                                && j.ReferenceId == agent.Id.ToString()
+                                && j.CompanyId == agent.CompanyId)
+                            .OrderByDescending(j => j.CreatedAt)
+                            .FirstOrDefaultAsync();
+                        if (je != null)
+                        {
+                            transaction.JournalEntryId = je.Id;
+                            _unitOfWork.AgentTransactions.Update(transaction);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "فشل إنشاء القيد المحاسبي لأجور الوكيل {AgentCode}", agent.AgentCode);
+                }
+            }
+
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Charge added to agent {AgentCode}: {Amount} IQD", agent.AgentCode, request.Amount);
@@ -631,6 +698,18 @@ public class AgentsController : ControllerBase
                             $"تسديد وكيل {agent.Name} - {request.Amount:N0} دينار",
                             JournalReferenceType.Manual, agent.Id.ToString(),
                             journalLines);
+
+                        // ربط القيد بالمعاملة
+                        var payJe = await _unitOfWork.JournalEntries.AsQueryable()
+                            .Where(j => j.ReferenceId == agent.Id.ToString()
+                                && j.CompanyId == agent.CompanyId)
+                            .OrderByDescending(j => j.CreatedAt)
+                            .FirstOrDefaultAsync();
+                        if (payJe != null)
+                        {
+                            transaction.JournalEntryId = payJe.Id;
+                            _unitOfWork.AgentTransactions.Update(transaction);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -1749,6 +1828,7 @@ public class AgentsController : ControllerBase
             citizenId = tx.CitizenId,
             createdById = tx.CreatedById,
             notes = tx.Notes,
+            journalEntryId = tx.JournalEntryId,
             createdAt = tx.CreatedAt
         };
     }
