@@ -408,8 +408,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   void _navigateAfterLogin() async {
-    // ✅ فحص التحديثات بعد تسجيل الدخول مباشرة
-    _checkForUpdatesAfterLogin();
+    // ✅ فحص التحديثات بعد تسجيل الدخول مباشرة - ننتظر انتهاء الفحص قبل الانتقال
+    await _checkForUpdatesAfterLogin();
 
     if (_authService.isSuperAdmin) {
       Navigator.of(context).pushReplacement(
