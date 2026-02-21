@@ -1,9 +1,9 @@
 /// تبويب بيانات HR — المعلومات الشخصية والوظيفية
-/// يعرض ويعدل: الاسم، الهاتف، القسم، الكود، الراتب الأساسي
-/// + الحقول الجديدة: الجنسية، تاريخ الميلاد، التعيين، العقد، البنك، الطوارئ
+/// مقسّم إلى بطاقات: الحساب، الوظيفة، الشخصية، المالية، الطوارئ، FTTH، ملاحظات
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
 
@@ -47,11 +47,15 @@ class _HrInfoTabState extends State<HrInfoTab> {
   DateTime? _dateOfBirth;
   DateTime? _hireDate;
 
+  // ═══ ألوان ═══
+  static const _cardBg = Colors.white;
   static const _accent = Color(0xFF3498DB);
+  static const _headerDark = Color(0xFF2C3E50);
   static const _labelColor = Color(0xFF7F8C8D);
-  static const _cardShadow = [
-    BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
-  ];
+  static const _valueColor = Color(0xFF2D3436);
+  static const _success = Color(0xFF27AE60);
+  static const _warning = Color(0xFFFF9800);
+  static const _ftthColor = Color(0xFF00BCD4);
 
   @override
   void initState() {
@@ -143,7 +147,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم الحفظ بنجاح', style: GoogleFonts.cairo()),
-            backgroundColor: Colors.green,
+            backgroundColor: _success,
           ),
         );
       }
@@ -161,6 +165,31 @@ class _HrInfoTabState extends State<HrInfoTab> {
     }
   }
 
+  // ═══════════════ الحصول على بيانات FTTH ═══════════════
+  String get _ftthUsername =>
+      (widget.employee['ftthUsername'] ??
+              widget.employee['FtthUsername'] ??
+              widget.employee['fTthUsername'] ??
+              '')
+          .toString();
+
+  String get _ftthPassword =>
+      (widget.employee['ftthPasswordEncrypted'] ??
+              widget.employee['FtthPasswordEncrypted'] ??
+              widget.employee['ftthPassword'] ??
+              widget.employee['FtthPassword'] ??
+              '')
+          .toString();
+
+  String get _role =>
+      (widget.employee['role'] ?? widget.employee['Role'] ?? '').toString();
+
+  String get _password =>
+      (widget.employee['password'] ?? widget.employee['Password'] ?? '')
+          .toString();
+
+  // ═══════════════ البناء ═══════════════
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -169,41 +198,112 @@ class _HrInfoTabState extends State<HrInfoTab> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              _sectionCard('المعلومات الأساسية', Icons.person, [
-                _fieldRow('الاسم الكامل', _fullNameCtrl, Icons.person),
-                _fieldRow('رقم الهاتف', _phoneCtrl, Icons.phone),
-                _fieldRow('القسم', _deptCtrl, Icons.business),
-                _fieldRow('كود الموظف', _empCodeCtrl, Icons.badge),
-                _fieldRow('المركز', _centerCtrl, Icons.location_on),
-              ]),
+              // ═══ صف أول: الحساب + الوظيفة ═══
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _sectionCard(
+                      'معلومات الحساب',
+                      Icons.person_outline_rounded,
+                      _accent,
+                      [
+                        _field('الاسم الكامل', _fullNameCtrl, Icons.person),
+                        _field(
+                            'رقم الهاتف', _phoneCtrl, Icons.phone_android),
+                        _passwordField(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _sectionCard(
+                      'المعلومات الوظيفية',
+                      Icons.work_outline_rounded,
+                      const Color(0xFF8E44AD),
+                      [
+                        _readOnlyField('الدور', _getRoleLabel(_role),
+                            Icons.admin_panel_settings, _getRoleColor(_role)),
+                        _field('القسم', _deptCtrl, Icons.business),
+                        _field('كود الموظف', _empCodeCtrl, Icons.badge),
+                        _field('المركز', _centerCtrl, Icons.location_on),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
-              _sectionCard('المعلومات الشخصية', Icons.account_circle, [
-                _fieldRow('رقم الهوية', _nationalIdCtrl, Icons.credit_card),
-                _dateField('تاريخ الميلاد', _dateOfBirth, (d) {
-                  setState(() => _dateOfBirth = d);
-                }),
-                _dateField('تاريخ التعيين', _hireDate, (d) {
-                  setState(() => _hireDate = d);
-                }),
-                _contractTypeField(),
-              ]),
+              // ═══ صف ثاني: الشخصية + المالية ═══
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _sectionCard(
+                      'المعلومات الشخصية',
+                      Icons.account_circle_outlined,
+                      const Color(0xFFE67E22),
+                      [
+                        _field(
+                            'رقم الهوية', _nationalIdCtrl, Icons.credit_card),
+                        _dateField('تاريخ الميلاد', _dateOfBirth, (d) {
+                          setState(() => _dateOfBirth = d);
+                        }),
+                        _dateField('تاريخ التعيين', _hireDate, (d) {
+                          setState(() => _hireDate = d);
+                        }),
+                        _contractTypeField(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _sectionCard(
+                      'المعلومات المالية',
+                      Icons.account_balance_outlined,
+                      _success,
+                      [
+                        _field(
+                            'الراتب الأساسي', _salaryCtrl, Icons.payments,
+                            isNumber: true),
+                        _field('اسم البنك', _bankNameCtrl,
+                            Icons.account_balance),
+                        _field(
+                            'رقم الحساب البنكي', _bankAccCtrl, Icons.numbers),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
-              _sectionCard('المعلومات المالية', Icons.account_balance, [
-                _fieldRow('الراتب الأساسي', _salaryCtrl, Icons.payments,
-                    isNumber: true),
-                _fieldRow('اسم البنك', _bankNameCtrl, Icons.account_balance),
-                _fieldRow('رقم الحساب البنكي', _bankAccCtrl, Icons.numbers),
-              ]),
+              // ═══ صف ثالث: الطوارئ + FTTH ═══
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _sectionCard(
+                      'جهة اتصال الطوارئ',
+                      Icons.emergency_outlined,
+                      Colors.red,
+                      [
+                        _field('اسم جهة الطوارئ', _emergNameCtrl,
+                            Icons.person_pin),
+                        _field('هاتف الطوارئ', _emergPhoneCtrl,
+                            Icons.phone_callback),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(child: _ftthCard()),
+                ],
+              ),
               const SizedBox(height: 16),
-              _sectionCard('جهة اتصال الطوارئ', Icons.emergency, [
-                _fieldRow('اسم جهة الطوارئ', _emergNameCtrl, Icons.person_pin),
-                _fieldRow(
-                    'هاتف الطوارئ', _emergPhoneCtrl, Icons.phone_callback),
-              ]),
-              const SizedBox(height: 16),
-              _sectionCard('ملاحظات HR', Icons.notes, [
-                _notesField(),
-              ]),
+              // ═══ ملاحظات HR ═══
+              _sectionCard(
+                'ملاحظات HR',
+                Icons.notes_rounded,
+                _labelColor,
+                [_notesField()],
+              ),
               const SizedBox(height: 80), // مسافة للزر العائم
             ],
           ),
@@ -231,7 +331,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                   FloatingActionButton.extended(
                     heroTag: 'save',
                     onPressed: _saving ? null : _save,
-                    backgroundColor: Colors.green,
+                    backgroundColor: _success,
                     icon: _saving
                         ? const SizedBox(
                             width: 18,
@@ -260,36 +360,67 @@ class _HrInfoTabState extends State<HrInfoTab> {
     );
   }
 
-  Widget _sectionCard(String title, IconData icon, List<Widget> children) {
+  // ═══════════════ بطاقة القسم ═══════════════
+
+  Widget _sectionCard(
+      String title, IconData icon, Color color, List<Widget> children) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: _cardShadow,
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 3)),
+        ],
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // الرأس
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: _accent.withOpacity(0.08),
+              gradient: LinearGradient(
+                colors: [color.withOpacity(0.08), color.withOpacity(0.02)],
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+              ),
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
+                  const BorderRadius.vertical(top: Radius.circular(14)),
+              border: Border(
+                bottom: BorderSide(color: color.withOpacity(0.15)),
+              ),
             ),
             child: Row(
               children: [
-                Icon(icon, color: _accent, size: 20),
-                const SizedBox(width: 8),
-                Text(title,
-                    style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.bold, fontSize: 14)),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: _headerDark,
+                  ),
+                ),
               ],
             ),
           ),
+          // المحتوى
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(children: children),
           ),
         ],
@@ -297,27 +428,29 @@ class _HrInfoTabState extends State<HrInfoTab> {
     );
   }
 
-  Widget _fieldRow(String label, TextEditingController ctrl, IconData icon,
+  // ═══════════════ حقل عادي ═══════════════
+
+  Widget _field(String label, TextEditingController ctrl, IconData icon,
       {bool isNumber = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
           SizedBox(
-            width: 160,
+            width: 150,
             child: Row(
               children: [
-                Icon(icon, size: 16, color: _labelColor),
+                Icon(icon, size: 15, color: _labelColor),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(label,
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 13)),
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: _editing
                 ? TextField(
@@ -345,18 +478,20 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     ),
                   )
                 : Container(
+                    width: double.infinity,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
                     ),
                     child: Text(
                       ctrl.text.isEmpty ? '—' : ctrl.text,
                       style: GoogleFonts.cairo(
-                          fontSize: 13,
-                          color:
-                              ctrl.text.isEmpty ? _labelColor : Colors.black87),
+                        fontSize: 13,
+                        color: ctrl.text.isEmpty ? _labelColor : _valueColor,
+                      ),
                     ),
                   ),
           ),
@@ -364,6 +499,348 @@ class _HrInfoTabState extends State<HrInfoTab> {
       ),
     );
   }
+
+  // ═══════════════ حقل للقراءة فقط (الدور) ═══════════════
+
+  Widget _readOnlyField(
+      String label, String value, IconData icon, Color badgeColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Row(
+              children: [
+                Icon(icon, size: 15, color: _labelColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(label,
+                      style:
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: badgeColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: badgeColor.withOpacity(0.3)),
+            ),
+            child: Text(
+              value,
+              style: GoogleFonts.cairo(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: badgeColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════ حقل كلمة المرور ═══════════════
+
+  Widget _passwordField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Row(
+              children: [
+                const Icon(Icons.lock_outline, size: 15, color: _labelColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('كلمة المرور',
+                      style:
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _warning.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _password.isNotEmpty ? _password : '—',
+                      style: _password.isNotEmpty
+                          ? const TextStyle(
+                              fontSize: 13,
+                              fontFamily: 'monospace',
+                              color: _valueColor,
+                            )
+                          : GoogleFonts.cairo(
+                              fontSize: 13,
+                              color: _labelColor,
+                            ),
+                    ),
+                  ),
+                  if (_password.isNotEmpty)
+                    InkWell(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: _password));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('تم نسخ كلمة المرور',
+                                style: GoogleFonts.cairo()),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      child: Icon(Icons.copy_rounded,
+                          size: 16, color: _warning.withOpacity(0.7)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════ بطاقة FTTH ═══════════════
+
+  Widget _ftthCard() {
+    final isLinked = _ftthUsername.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 3)),
+        ],
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // الرأس
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  _ftthColor.withOpacity(0.08),
+                  _ftthColor.withOpacity(0.02)
+                ],
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+              ),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(14)),
+              border: Border(
+                bottom: BorderSide(color: _ftthColor.withOpacity(0.15)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: _ftthColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child:
+                      const Icon(Icons.router, color: _ftthColor, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'معلومات نظام FTTH',
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: _headerDark,
+                  ),
+                ),
+                const Spacer(),
+                // شارة حالة الربط
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isLinked
+                        ? _success.withOpacity(0.1)
+                        : _warning.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isLinked
+                          ? _success.withOpacity(0.3)
+                          : _warning.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isLinked ? _success : _warning,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isLinked ? 'مربوط' : 'غير مربوط',
+                        style: GoogleFonts.cairo(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isLinked ? _success : _warning,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // المحتوى
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: isLinked
+                ? Column(
+                    children: [
+                      _ftthRow(
+                        'اسم المستخدم FTTH',
+                        _ftthUsername,
+                        Icons.person_outline,
+                      ),
+                      const SizedBox(height: 12),
+                      _ftthRow(
+                        'كلمة مرور FTTH',
+                        _ftthPassword.isNotEmpty ? _ftthPassword : '—',
+                        Icons.vpn_key_outlined,
+                        isSensitive: true,
+                      ),
+                    ],
+                  )
+                : Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Column(
+                        children: [
+                          Icon(Icons.link_off_rounded,
+                              size: 36,
+                              color: _labelColor.withOpacity(0.4)),
+                          const SizedBox(height: 8),
+                          Text(
+                            'هذا الموظف غير مربوط بنظام FTTH',
+                            style: GoogleFonts.cairo(
+                              color: _labelColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'يمكنك ربطه من شاشة حسابات ← ربط المشغلين',
+                            style: GoogleFonts.cairo(
+                              color: _labelColor.withOpacity(0.7),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ftthRow(String label, String value, IconData icon,
+      {bool isSensitive = false}) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 150,
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: _ftthColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(label,
+                    style: GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _ftthColor.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _ftthColor.withOpacity(0.15)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    value.isEmpty ? '—' : value,
+                    style: isSensitive && value.isNotEmpty
+                        ? TextStyle(
+                            fontSize: 13,
+                            fontFamily: 'monospace',
+                            color: _valueColor,
+                          )
+                        : GoogleFonts.cairo(
+                            fontSize: 13,
+                            color: value.isNotEmpty
+                                ? _valueColor
+                                : _labelColor,
+                          ),
+                  ),
+                ),
+                if (value.isNotEmpty)
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: value));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content:
+                              Text('تم النسخ', style: GoogleFonts.cairo()),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    child: Icon(Icons.copy_rounded,
+                        size: 14, color: _ftthColor.withOpacity(0.5)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════ حقل التاريخ ═══════════════
 
   Widget _dateField(
       String label, DateTime? value, ValueChanged<DateTime?> onChanged) {
@@ -376,17 +853,20 @@ class _HrInfoTabState extends State<HrInfoTab> {
       child: Row(
         children: [
           SizedBox(
-            width: 160,
+            width: 150,
             child: Row(
               children: [
-                const Icon(Icons.calendar_today, size: 16, color: _labelColor),
+                const Icon(Icons.calendar_today, size: 15, color: _labelColor),
                 const SizedBox(width: 6),
-                Text(label,
-                    style: GoogleFonts.cairo(color: _labelColor, fontSize: 13)),
+                Expanded(
+                  child: Text(label,
+                      style:
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: _editing
                 ? InkWell(
@@ -395,7 +875,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         context: context,
                         initialDate: value ?? DateTime(1990),
                         firstDate: DateTime(1950),
-                        lastDate: DateTime.now(),
+                        lastDate:
+                            DateTime.now().add(const Duration(days: 365)),
                       );
                       if (picked != null) onChanged(picked);
                     },
@@ -409,7 +890,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(display, style: GoogleFonts.cairo(fontSize: 13)),
+                          Text(display,
+                              style: GoogleFonts.cairo(fontSize: 13)),
                           const Icon(Icons.calendar_today,
                               size: 14, color: _accent),
                         ],
@@ -417,23 +899,28 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     ),
                   )
                 : Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
                     ),
                     child: Text(display,
                         style: GoogleFonts.cairo(
                             fontSize: 13,
-                            color:
-                                value != null ? Colors.black87 : _labelColor)),
+                            color: value != null
+                                ? _valueColor
+                                : _labelColor)),
                   ),
           ),
         ],
       ),
     );
   }
+
+  // ═══════════════ حقل نوع العقد ═══════════════
 
   Widget _contractTypeField() {
     const types = [
@@ -447,17 +934,18 @@ class _HrInfoTabState extends State<HrInfoTab> {
       child: Row(
         children: [
           SizedBox(
-            width: 160,
+            width: 150,
             child: Row(
               children: [
-                const Icon(Icons.work, size: 16, color: _labelColor),
+                const Icon(Icons.work, size: 15, color: _labelColor),
                 const SizedBox(width: 6),
                 Text('نوع العقد',
-                    style: GoogleFonts.cairo(color: _labelColor, fontSize: 13)),
+                    style:
+                        GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: _editing
                 ? DropdownButtonFormField<String>(
@@ -480,11 +968,13 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     ),
                   )
                 : Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
                     ),
                     child: Text(
                       types
@@ -495,7 +985,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       style: GoogleFonts.cairo(
                           fontSize: 13,
                           color: _contractType != null
-                              ? Colors.black87
+                              ? _valueColor
                               : _labelColor),
                     ),
                   ),
@@ -504,6 +994,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
       ),
     );
   }
+
+  // ═══════════════ حقل الملاحظات ═══════════════
 
   Widget _notesField() {
     return _editing
@@ -524,15 +1016,63 @@ class _HrInfoTabState extends State<HrInfoTab> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFEEEEEE)),
             ),
             child: Text(
-              _hrNotesCtrl.text.isEmpty ? 'لا توجد ملاحظات' : _hrNotesCtrl.text,
+              _hrNotesCtrl.text.isEmpty
+                  ? 'لا توجد ملاحظات'
+                  : _hrNotesCtrl.text,
               style: GoogleFonts.cairo(
                 fontSize: 13,
-                color: _hrNotesCtrl.text.isEmpty ? _labelColor : Colors.black87,
+                color:
+                    _hrNotesCtrl.text.isEmpty ? _labelColor : _valueColor,
               ),
             ),
           );
+  }
+
+  // ═══════════════ Helpers ═══════════════
+
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'SuperAdmin':
+        return const Color(0xFFE74C3C);
+      case 'CompanyAdmin':
+        return const Color(0xFF8E44AD);
+      case 'Manager':
+        return const Color(0xFF2980B9);
+      case 'TechnicalLeader':
+        return const Color(0xFF16A085);
+      case 'Technician':
+        return const Color(0xFF27AE60);
+      case 'Viewer':
+        return const Color(0xFF95A5A6);
+      case 'Employee':
+        return const Color(0xFF3498DB);
+      default:
+        return const Color(0xFF7F8C8D);
+    }
+  }
+
+  String _getRoleLabel(String role) {
+    switch (role) {
+      case 'SuperAdmin':
+        return 'مدير النظام';
+      case 'CompanyAdmin':
+        return 'مدير الشركة';
+      case 'Manager':
+        return 'مدير';
+      case 'TechnicalLeader':
+        return 'ليدر فني';
+      case 'Technician':
+        return 'فني';
+      case 'Viewer':
+        return 'مشاهد';
+      case 'Employee':
+        return 'موظف';
+      default:
+        return role.isEmpty ? 'غير محدد' : role;
+    }
   }
 }
