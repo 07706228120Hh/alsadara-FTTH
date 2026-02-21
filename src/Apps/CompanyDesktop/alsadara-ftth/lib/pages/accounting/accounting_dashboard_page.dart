@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
@@ -26,22 +27,71 @@ class AccountingDashboardPage extends StatefulWidget {
       _AccountingDashboardPageState();
 }
 
-class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
+class _AccountingDashboardPageState extends State<AccountingDashboardPage>
+    with TickerProviderStateMixin {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _dashboardData;
   bool _sidebarExpanded = false;
   Timer? _autoCollapseTimer;
 
+  // ── خلفية متحركة ──
+  late final AnimationController _bgAnimController;
+  late final AnimationController _particleController;
+  final List<_FloatingShape> _shapes = [];
+
+  void _initShapes() {
+    final rng = Random();
+    for (int i = 0; i < 22; i++) {
+      _shapes.add(_FloatingShape(
+        x: rng.nextDouble(),
+        y: rng.nextDouble(),
+        radius: rng.nextDouble() * 30 + 10,
+        speedX: (rng.nextDouble() - 0.5) * 0.3,
+        speedY: (rng.nextDouble() - 0.5) * 0.3,
+        opacity: rng.nextDouble() * 0.08 + 0.03,
+        color: [
+          const Color(0xFF3498DB),
+          const Color(0xFF1ABC9C),
+          const Color(0xFF9B59B6),
+          const Color(0xFF2ECC71),
+          const Color(0xFFE67E22),
+          const Color(0xFF5C6BC0),
+        ][rng.nextInt(6)],
+      ));
+    }
+  }
+
   @override
   void dispose() {
     _autoCollapseTimer?.cancel();
+    _bgAnimController.dispose();
+    _particleController.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    _bgAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+    _particleController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+    _initShapes();
+    _particleController.addListener(() {
+      for (final s in _shapes) {
+        s.x += s.speedX * 0.003;
+        s.y += s.speedY * 0.003;
+        if (s.x < -0.05) s.x = 1.05;
+        if (s.x > 1.05) s.x = -0.05;
+        if (s.y < -0.05) s.y = 1.05;
+        if (s.y > 1.05) s.y = -0.05;
+      }
+    });
     _loadDashboard();
   }
 
@@ -126,13 +176,31 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                   _buildSidebar(),
                   // ═══ المحتوى الرئيسي ═══
                   Expanded(
-                    child: _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                                color: Color(0xFF3498DB)))
-                        : _errorMessage != null
-                            ? _buildErrorView()
-                            : _buildContent(),
+                    child: Stack(
+                      children: [
+                        // خلفية متحركة
+                        Positioned.fill(
+                          child: AnimatedBuilder(
+                            animation: Listenable.merge(
+                                [_bgAnimController, _particleController]),
+                            builder: (context, _) => CustomPaint(
+                              painter: _LightBgPainter(
+                                animValue: _bgAnimController.value,
+                                shapes: _shapes,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // المحتوى
+                        _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                    color: Color(0xFF3498DB)))
+                            : _errorMessage != null
+                                ? _buildErrorView()
+                                : _buildContent(),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -859,4 +927,134 @@ class _SectionItem {
     required this.color,
     required this.onTap,
   });
+}
+
+// ── الأشكال العائمة ──
+class _FloatingShape {
+  double x, y;
+  final double radius;
+  final double speedX, speedY;
+  final double opacity;
+  final Color color;
+
+  _FloatingShape({
+    required this.x,
+    required this.y,
+    required this.radius,
+    required this.speedX,
+    required this.speedY,
+    required this.opacity,
+    required this.color,
+  });
+}
+
+// ── رسام الخلفية الفاتحة المتحركة ──
+class _LightBgPainter extends CustomPainter {
+  final double animValue;
+  final List<_FloatingShape> shapes;
+
+  _LightBgPainter({required this.animValue, required this.shapes});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1) خلفية أساسية فاتحة مع تدرج خفيف متحرك
+    final bgPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: const [
+          Color(0xFFF5F6FA),
+          Color(0xFFEEF1F8),
+          Color(0xFFF0F4FF),
+          Color(0xFFF5F6FA),
+        ],
+        stops: [
+          0.0,
+          (0.3 + 0.1 * sin(animValue * 2 * pi)).clamp(0.0, 1.0),
+          (0.7 + 0.1 * sin(animValue * 2 * pi + 1)).clamp(0.0, 1.0),
+          1.0,
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // 2) موجة خفيفة في الأسفل
+    final wavePaint = Paint()
+      ..color = const Color(0x0A3498DB)
+      ..style = PaintingStyle.fill;
+    final wavePath = Path();
+    wavePath.moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 1) {
+      final y = size.height -
+          40 -
+          sin((x / size.width * 2 * pi) + animValue * 2 * pi) * 12 -
+          sin((x / size.width * 4 * pi) + animValue * 2 * pi * 0.7) * 6;
+      wavePath.lineTo(x, y);
+    }
+    wavePath.lineTo(size.width, size.height);
+    wavePath.close();
+    canvas.drawPath(wavePath, wavePaint);
+
+    // موجة ثانية
+    final wave2Paint = Paint()
+      ..color = const Color(0x081ABC9C)
+      ..style = PaintingStyle.fill;
+    final wave2Path = Path();
+    wave2Path.moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 1) {
+      final y = size.height -
+          20 -
+          sin((x / size.width * 3 * pi) + animValue * 2 * pi + 2) * 10 -
+          cos((x / size.width * 2 * pi) + animValue * 2 * pi * 0.5) * 5;
+      wave2Path.lineTo(x, y);
+    }
+    wave2Path.lineTo(size.width, size.height);
+    wave2Path.close();
+    canvas.drawPath(wave2Path, wave2Paint);
+
+    // 3) أشكال عائمة شفافة
+    for (final s in shapes) {
+      final paint = Paint()
+        ..color = s.color.withOpacity(s.opacity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      canvas.drawCircle(
+        Offset(s.x * size.width, s.y * size.height),
+        s.radius,
+        paint,
+      );
+    }
+
+    // 4) توهج خفيف في الزاوية
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment(
+          -0.7 + 0.2 * sin(animValue * 2 * pi),
+          -0.8 + 0.15 * cos(animValue * 2 * pi),
+        ),
+        radius: 0.7,
+        colors: const [
+          Color(0x083498DB),
+          Color(0x00FFFFFF),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), glowPaint);
+  }
+
+  static double sin(double x) => _sin(x);
+  static double cos(double x) => _cos(x);
+  static double _sin(double x) {
+    x = x % (2 * pi);
+    // Taylor series approx - good enough for smooth animation
+    double result = 0, term = x;
+    for (int i = 1; i <= 7; i++) {
+      result += term;
+      term *= -x * x / ((2 * i) * (2 * i + 1));
+    }
+    return result;
+  }
+
+  static double _cos(double x) => _sin(x + pi / 2);
+  static const double pi = 3.14159265358979;
+
+  @override
+  bool shouldRepaint(covariant _LightBgPainter oldDelegate) => true;
 }
