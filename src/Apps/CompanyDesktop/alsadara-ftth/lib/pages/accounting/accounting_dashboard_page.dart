@@ -495,7 +495,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
-        final cols = items.length; // صف واحد دائمًا
+        final cols = (items.length / 2).ceil(); // صفين
         final spacing = 10.0;
         final cardWidth = (maxW - spacing * (cols - 1)) / cols;
         return Wrap(
