@@ -40,16 +40,24 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   late final AnimationController _particleController;
   final List<_FloatingShape> _shapes = [];
 
+  // رموز محاسبية ومالية
+  static const _symbols = [
+    '\$', '٪', '¥', '€', '£', '₹',
+    '﷼', '₿', '∑', '±',
+    '📊', '💰', '💵', '🏦', '📈', '💳',
+    '🧾', '📋', '🔢', '💲',
+  ];
+
   void _initShapes() {
     final rng = Random();
-    for (int i = 0; i < 22; i++) {
+    for (int i = 0; i < 28; i++) {
       _shapes.add(_FloatingShape(
         x: rng.nextDouble(),
         y: rng.nextDouble(),
-        radius: rng.nextDouble() * 30 + 10,
-        speedX: (rng.nextDouble() - 0.5) * 0.3,
-        speedY: (rng.nextDouble() - 0.5) * 0.3,
-        opacity: rng.nextDouble() * 0.08 + 0.03,
+        radius: rng.nextDouble() * 14 + 16, // حجم الرمز 16-30
+        speedX: (rng.nextDouble() - 0.5) * 0.25,
+        speedY: (rng.nextDouble() - 0.5) * 0.25,
+        opacity: rng.nextDouble() * 0.08 + 0.06, // 6-14% شفافية (أوضح)
         color: [
           const Color(0xFF3498DB),
           const Color(0xFF1ABC9C),
@@ -57,7 +65,12 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
           const Color(0xFF2ECC71),
           const Color(0xFFE67E22),
           const Color(0xFF5C6BC0),
-        ][rng.nextInt(6)],
+          const Color(0xFF2C3E50),
+          const Color(0xFFE74C3C),
+        ][rng.nextInt(8)],
+        symbol: _symbols[rng.nextInt(_symbols.length)],
+        rotation: rng.nextDouble() * 0.5 - 0.25, // دوران خفيف
+        rotationSpeed: (rng.nextDouble() - 0.5) * 0.02,
       ));
     }
   }
@@ -86,10 +99,11 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
       for (final s in _shapes) {
         s.x += s.speedX * 0.003;
         s.y += s.speedY * 0.003;
-        if (s.x < -0.05) s.x = 1.05;
-        if (s.x > 1.05) s.x = -0.05;
-        if (s.y < -0.05) s.y = 1.05;
-        if (s.y > 1.05) s.y = -0.05;
+        s.rotation += s.rotationSpeed * 0.05;
+        if (s.x < -0.08) s.x = 1.08;
+        if (s.x > 1.08) s.x = -0.08;
+        if (s.y < -0.08) s.y = 1.08;
+        if (s.y > 1.08) s.y = -0.08;
       }
     });
     _loadDashboard();
@@ -929,13 +943,16 @@ class _SectionItem {
   });
 }
 
-// ── الأشكال العائمة ──
+// ── الأشكال العائمة (رموز محاسبية) ──
 class _FloatingShape {
   double x, y;
   final double radius;
   final double speedX, speedY;
   final double opacity;
   final Color color;
+  final String symbol;
+  double rotation;
+  final double rotationSpeed;
 
   _FloatingShape({
     required this.x,
@@ -945,6 +962,9 @@ class _FloatingShape {
     required this.speedY,
     required this.opacity,
     required this.color,
+    required this.symbol,
+    required this.rotation,
+    required this.rotationSpeed,
   });
 }
 
@@ -1011,16 +1031,31 @@ class _LightBgPainter extends CustomPainter {
     wave2Path.close();
     canvas.drawPath(wave2Path, wave2Paint);
 
-    // 3) أشكال عائمة شفافة
+    // 3) رموز محاسبية عائمة
     for (final s in shapes) {
-      final paint = Paint()
-        ..color = s.color.withOpacity(s.opacity)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-      canvas.drawCircle(
-        Offset(s.x * size.width, s.y * size.height),
-        s.radius,
-        paint,
+      final cx = s.x * size.width;
+      final cy = s.y * size.height;
+
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.rotate(s.rotation);
+
+      // رسم الرمز كنص
+      final tp = TextPainter(
+        text: TextSpan(
+          text: s.symbol,
+          style: TextStyle(
+            fontSize: s.radius,
+            color: s.color.withOpacity(s.opacity),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
       );
+      tp.layout();
+      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+
+      canvas.restore();
     }
 
     // 4) توهج خفيف في الزاوية
