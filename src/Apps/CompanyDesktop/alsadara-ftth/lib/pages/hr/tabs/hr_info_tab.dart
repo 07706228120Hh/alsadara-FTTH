@@ -49,6 +49,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
   DateTime? _dateOfBirth;
   DateTime? _hireDate;
 
+  // Password controllers
+  late TextEditingController _newPasswordCtrl;
+  late TextEditingController _ftthPasswordCtrl;
+
   // ═══ ألوان ═══
   static const _cardBg = Colors.white;
   static const _accent = Color(0xFF3498DB);
@@ -91,6 +95,9 @@ class _HrInfoTabState extends State<HrInfoTab> {
     _hrNotesCtrl =
         TextEditingController(text: e['hrNotes'] ?? e['HrNotes'] ?? '');
 
+    _newPasswordCtrl = TextEditingController();
+    _ftthPasswordCtrl = TextEditingController();
+
     _contractType = e['contractType'] ?? e['ContractType'];
 
     final dob = e['dateOfBirth'] ?? e['DateOfBirth'];
@@ -114,6 +121,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
     _emergNameCtrl.dispose();
     _emergPhoneCtrl.dispose();
     _hrNotesCtrl.dispose();
+    _newPasswordCtrl.dispose();
+    _ftthPasswordCtrl.dispose();
     super.dispose();
   }
 
@@ -139,17 +148,30 @@ class _HrInfoTabState extends State<HrInfoTab> {
         if (_dateOfBirth != null)
           'dateOfBirth': _dateOfBirth!.toIso8601String(),
         if (_hireDate != null) 'hireDate': _hireDate!.toIso8601String(),
+        if (_newPasswordCtrl.text.isNotEmpty)
+          'newPassword': _newPasswordCtrl.text,
+        if (_ftthPasswordCtrl.text.isNotEmpty)
+          'ftthPassword': _ftthPasswordCtrl.text,
       };
 
       final ok = await EmployeeProfileService.instance
           .updateEmployee(widget.companyId, empId, data);
       if (ok && mounted) {
         setState(() => _editing = false);
+        _newPasswordCtrl.clear();
+        _ftthPasswordCtrl.clear();
         widget.onSaved();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم الحفظ بنجاح', style: GoogleFonts.cairo()),
             backgroundColor: _success,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل في حفظ البيانات', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -545,6 +567,73 @@ class _HrInfoTabState extends State<HrInfoTab> {
   // ═══════════════ حقل كلمة المرور ═══════════════
 
   Widget _passwordField() {
+    // In edit mode: show current password + new password input
+    if (_editing) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 150,
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_outline, size: 15, color: _labelColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('كلمة مرور جديدة',
+                        style: GoogleFonts.cairo(
+                            color: _labelColor, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _newPasswordCtrl,
+                obscureText: !_showPassword,
+                style: GoogleFonts.cairo(fontSize: 13),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'اتركه فارغاً إذا لا تريد التغيير',
+                  hintStyle: GoogleFonts.cairo(
+                      fontSize: 11, color: _labelColor.withOpacity(0.6)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: _warning.withOpacity(0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: _warning.withOpacity(0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _warning, width: 1.5),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFFFF8E1),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _showPassword
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      size: 16,
+                      color: _warning.withOpacity(0.7),
+                    ),
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // View mode: show masked password
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -748,12 +837,79 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         Icons.person_outline,
                       ),
                       const SizedBox(height: 12),
-                      _ftthRow(
-                        'كلمة مرور FTTH',
-                        _ftthPassword.isNotEmpty ? _ftthPassword : '—',
-                        Icons.vpn_key_outlined,
-                        isSensitive: true,
-                      ),
+                      if (_editing) ...[
+                        // Editable FTTH password field
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: 150,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.vpn_key_outlined,
+                                      size: 15, color: _ftthColor),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text('كلمة مرور FTTH جديدة',
+                                        style: GoogleFonts.cairo(
+                                            color: _labelColor, fontSize: 12)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _ftthPasswordCtrl,
+                                obscureText: !_showFtthPassword,
+                                style: GoogleFonts.cairo(fontSize: 13),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  hintText: 'اتركه فارغاً إذا لا تريد التغيير',
+                                  hintStyle: GoogleFonts.cairo(
+                                      fontSize: 11,
+                                      color: _labelColor.withOpacity(0.6)),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: _ftthColor.withOpacity(0.3)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: _ftthColor.withOpacity(0.3)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                        color: _ftthColor, width: 1.5),
+                                  ),
+                                  filled: true,
+                                  fillColor: _ftthColor.withOpacity(0.04),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _showFtthPassword
+                                          ? Icons.visibility_off_rounded
+                                          : Icons.visibility_rounded,
+                                      size: 16,
+                                      color: _ftthColor.withOpacity(0.5),
+                                    ),
+                                    onPressed: () => setState(() =>
+                                        _showFtthPassword = !_showFtthPassword),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else
+                        _ftthRow(
+                          'كلمة مرور FTTH',
+                          _ftthPassword.isNotEmpty ? _ftthPassword : '—',
+                          Icons.vpn_key_outlined,
+                          isSensitive: true,
+                        ),
                     ],
                   )
                 : Center(

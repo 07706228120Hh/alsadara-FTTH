@@ -631,9 +631,9 @@ public class InternalDataController : ControllerBase
         if (request.NationalId != null)
             employee.NationalId = request.NationalId;
         if (request.DateOfBirth != null && DateTime.TryParse(request.DateOfBirth, out var dob))
-            employee.DateOfBirth = dob;
+            employee.DateOfBirth = DateTime.SpecifyKind(dob, DateTimeKind.Utc);
         if (request.HireDate != null && DateTime.TryParse(request.HireDate, out var hire))
-            employee.HireDate = hire;
+            employee.HireDate = DateTime.SpecifyKind(hire, DateTimeKind.Utc);
         if (request.ContractType != null)
             employee.ContractType = request.ContractType;
         if (request.BankAccountNumber != null)
@@ -646,6 +646,12 @@ public class InternalDataController : ControllerBase
             employee.EmergencyContactPhone = request.EmergencyContactPhone;
         if (request.HrNotes != null)
             employee.HrNotes = request.HrNotes;
+
+        // Password fields
+        if (!string.IsNullOrEmpty(request.NewPassword) && request.NewPassword.Length >= 4)
+            employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        if (request.FtthPassword != null)
+            employee.FtthPasswordEncrypted = request.FtthPassword;
 
         employee.UpdatedAt = DateTime.UtcNow;
 
@@ -2300,6 +2306,9 @@ public class InternalUpdateEmployeeRequest
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? HrNotes { get; set; }
+    // Password fields
+    public string? NewPassword { get; set; }
+    public string? FtthPassword { get; set; }
 }
 
 /// <summary>
