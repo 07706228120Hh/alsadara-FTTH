@@ -518,7 +518,8 @@ public class InternalDataController : ControllerBase
                 u.IsActive,
                 u.FirstSystemPermissions,
                 u.SecondSystemPermissions,
-                u.CreatedAt
+                u.CreatedAt,
+                u.FtthUsername,
             })
             .ToListAsync();
 
@@ -558,7 +559,20 @@ public class InternalDataController : ControllerBase
                 employee.IsActive,
                 employee.FirstSystemPermissions,
                 employee.SecondSystemPermissions,
-                employee.CreatedAt
+                employee.CreatedAt,
+                // HR fields
+                employee.NationalId,
+                employee.DateOfBirth,
+                employee.HireDate,
+                employee.ContractType,
+                employee.BankAccountNumber,
+                employee.BankName,
+                employee.EmergencyContactName,
+                employee.EmergencyContactPhone,
+                employee.HrNotes,
+                // FTTH Integration
+                employee.FtthUsername,
+                employee.FtthPasswordEncrypted,
             }
         });
     }

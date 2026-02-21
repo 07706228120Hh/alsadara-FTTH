@@ -166,20 +166,18 @@ class _HrInfoTabState extends State<HrInfoTab> {
   }
 
   // ═══════════════ الحصول على بيانات FTTH ═══════════════
-  String get _ftthUsername =>
-      (widget.employee['ftthUsername'] ??
-              widget.employee['FtthUsername'] ??
-              widget.employee['fTthUsername'] ??
-              '')
-          .toString();
+  String get _ftthUsername => (widget.employee['ftthUsername'] ??
+          widget.employee['FtthUsername'] ??
+          widget.employee['fTthUsername'] ??
+          '')
+      .toString();
 
-  String get _ftthPassword =>
-      (widget.employee['ftthPasswordEncrypted'] ??
-              widget.employee['FtthPasswordEncrypted'] ??
-              widget.employee['ftthPassword'] ??
-              widget.employee['FtthPassword'] ??
-              '')
-          .toString();
+  String get _ftthPassword => (widget.employee['ftthPasswordEncrypted'] ??
+          widget.employee['FtthPasswordEncrypted'] ??
+          widget.employee['ftthPassword'] ??
+          widget.employee['FtthPassword'] ??
+          '')
+      .toString();
 
   String get _role =>
       (widget.employee['role'] ?? widget.employee['Role'] ?? '').toString();
@@ -209,8 +207,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       _accent,
                       [
                         _field('الاسم الكامل', _fullNameCtrl, Icons.person),
-                        _field(
-                            'رقم الهاتف', _phoneCtrl, Icons.phone_android),
+                        _field('رقم الهاتف', _phoneCtrl, Icons.phone_android),
                         _passwordField(),
                       ],
                     ),
@@ -262,11 +259,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       Icons.account_balance_outlined,
                       _success,
                       [
-                        _field(
-                            'الراتب الأساسي', _salaryCtrl, Icons.payments,
+                        _field('الراتب الأساسي', _salaryCtrl, Icons.payments,
                             isNumber: true),
-                        _field('اسم البنك', _bankNameCtrl,
-                            Icons.account_balance),
+                        _field(
+                            'اسم البنك', _bankNameCtrl, Icons.account_balance),
                         _field(
                             'رقم الحساب البنكي', _bankAccCtrl, Icons.numbers),
                       ],
@@ -568,8 +564,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
           const SizedBox(width: 10),
           Expanded(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF8E1),
                 borderRadius: BorderRadius.circular(8),
@@ -664,8 +659,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     color: _ftthColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child:
-                      const Icon(Icons.router, color: _ftthColor, size: 18),
+                  child: const Icon(Icons.router, color: _ftthColor, size: 18),
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -744,8 +738,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       child: Column(
                         children: [
                           Icon(Icons.link_off_rounded,
-                              size: 36,
-                              color: _labelColor.withOpacity(0.4)),
+                              size: 36, color: _labelColor.withOpacity(0.4)),
                           const SizedBox(height: 8),
                           Text(
                             'هذا الموظف غير مربوط بنظام FTTH',
@@ -811,9 +804,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                           )
                         : GoogleFonts.cairo(
                             fontSize: 13,
-                            color: value.isNotEmpty
-                                ? _valueColor
-                                : _labelColor,
+                            color: value.isNotEmpty ? _valueColor : _labelColor,
                           ),
                   ),
                 ),
@@ -823,8 +814,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       Clipboard.setData(ClipboardData(text: value));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content:
-                              Text('تم النسخ', style: GoogleFonts.cairo()),
+                          content: Text('تم النسخ', style: GoogleFonts.cairo()),
                           duration: const Duration(seconds: 1),
                         ),
                       );
@@ -875,8 +865,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         context: context,
                         initialDate: value ?? DateTime(1990),
                         firstDate: DateTime(1950),
-                        lastDate:
-                            DateTime.now().add(const Duration(days: 365)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
                       if (picked != null) onChanged(picked);
                     },
@@ -890,8 +879,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(display,
-                              style: GoogleFonts.cairo(fontSize: 13)),
+                          Text(display, style: GoogleFonts.cairo(fontSize: 13)),
                           const Icon(Icons.calendar_today,
                               size: 14, color: _accent),
                         ],
@@ -900,8 +888,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                   )
                 : Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
                       borderRadius: BorderRadius.circular(8),
@@ -910,9 +898,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     child: Text(display,
                         style: GoogleFonts.cairo(
                             fontSize: 13,
-                            color: value != null
-                                ? _valueColor
-                                : _labelColor)),
+                            color: value != null ? _valueColor : _labelColor)),
                   ),
           ),
         ],
@@ -940,8 +926,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 const Icon(Icons.work, size: 15, color: _labelColor),
                 const SizedBox(width: 6),
                 Text('نوع العقد',
-                    style:
-                        GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                    style: GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
               ],
             ),
           ),
@@ -969,8 +954,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                   )
                 : Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
                       borderRadius: BorderRadius.circular(8),
@@ -1020,13 +1005,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
               border: Border.all(color: const Color(0xFFEEEEEE)),
             ),
             child: Text(
-              _hrNotesCtrl.text.isEmpty
-                  ? 'لا توجد ملاحظات'
-                  : _hrNotesCtrl.text,
+              _hrNotesCtrl.text.isEmpty ? 'لا توجد ملاحظات' : _hrNotesCtrl.text,
               style: GoogleFonts.cairo(
                 fontSize: 13,
-                color:
-                    _hrNotesCtrl.text.isEmpty ? _labelColor : _valueColor,
+                color: _hrNotesCtrl.text.isEmpty ? _labelColor : _valueColor,
               ),
             ),
           );

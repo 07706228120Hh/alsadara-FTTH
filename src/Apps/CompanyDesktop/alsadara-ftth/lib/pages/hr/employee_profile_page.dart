@@ -170,6 +170,14 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         setState(() {
           _employee = data;
           _isLoading = false;
+          // إعادة بناء التبويبات بعد تحميل البيانات الكاملة (تحتوي FTTH)
+          _visibleTabs.clear();
+          _buildVisibleTabs();
+          _tabController.dispose();
+          _tabController = TabController(
+            length: _visibleTabs.length,
+            vsync: this,
+          );
         });
       } else {
         setState(() => _isLoading = false);
@@ -356,8 +364,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                 color: const Color(0xFFAB47BC),
                 onTap: () => _openPermissionsPage(),
               ),
-            if (_pm.canEdit('users'))
-              const SizedBox(width: 4),
+            if (_pm.canEdit('users')) const SizedBox(width: 4),
             // حذف الموظف
             if (_pm.canDelete('users'))
               _headerActionBtn(
@@ -366,8 +373,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                 color: const Color(0xFFFF5252),
                 onTap: () => _deleteEmployee(),
               ),
-            if (_pm.canDelete('users'))
-              const SizedBox(width: 4),
+            if (_pm.canDelete('users')) const SizedBox(width: 4),
             // زر تحديث
             _headerActionBtn(
               icon: Icons.refresh_rounded,
@@ -424,7 +430,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         builder: (ctx, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
                 Container(
@@ -433,13 +440,15 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                     color: const Color(0xFFFF9800).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.key_rounded, color: Color(0xFFFF9800), size: 20),
+                  child: const Icon(Icons.key_rounded,
+                      color: Color(0xFFFF9800), size: 20),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'كلمة مرور $empName',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -449,7 +458,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (currentPassword != null && currentPassword.toString().isNotEmpty)
+                if (currentPassword != null &&
+                    currentPassword.toString().isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
@@ -460,26 +470,36 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline, color: Color(0xFFFF9800), size: 18),
+                        const Icon(Icons.info_outline,
+                            color: Color(0xFFFF9800), size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('كلمة المرور الحالية:', style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF795548))),
+                              Text('كلمة المرور الحالية:',
+                                  style: GoogleFonts.cairo(
+                                      fontSize: 11,
+                                      color: const Color(0xFF795548))),
                               const SizedBox(height: 2),
                               SelectableText(
                                 currentPassword.toString(),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'monospace'),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    fontFamily: 'monospace'),
                               ),
                             ],
                           ),
                         ),
                         IconButton(
                           onPressed: () {
-                            Clipboard.setData(ClipboardData(text: currentPassword.toString()));
+                            Clipboard.setData(ClipboardData(
+                                text: currentPassword.toString()));
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('تم نسخ كلمة المرور'), duration: Duration(seconds: 1)),
+                              const SnackBar(
+                                  content: Text('تم نسخ كلمة المرور'),
+                                  duration: Duration(seconds: 1)),
                             );
                           },
                           icon: const Icon(Icons.copy_rounded, size: 18),
@@ -488,7 +508,9 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                       ],
                     ),
                   ),
-                Text('كلمة المرور الجديدة:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('كلمة المرور الجديدة:',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: passwordController,
@@ -496,11 +518,17 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                   decoration: InputDecoration(
                     hintText: 'أدخل كلمة المرور الجديدة',
                     hintStyle: GoogleFonts.cairo(fontSize: 13),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
                     prefixIcon: const Icon(Icons.lock_outline, size: 20),
                     suffixIcon: IconButton(
-                      onPressed: () => setDialogState(() => showPassword = !showPassword),
-                      icon: Icon(showPassword ? Icons.visibility_off : Icons.visibility, size: 20),
+                      onPressed: () =>
+                          setDialogState(() => showPassword = !showPassword),
+                      icon: Icon(
+                          showPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          size: 20),
                     ),
                   ),
                 ),
@@ -518,7 +546,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                         setDialogState(() => isSaving = true);
                         try {
                           final response = await ApiClient.instance.patch(
-                            ApiConfig.internalEmployeePassword(widget.companyId, empId),
+                            ApiConfig.internalEmployeePassword(
+                                widget.companyId, empId),
                             {'NewPassword': passwordController.text},
                             (json) => json,
                             useInternalKey: true,
@@ -527,7 +556,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('تم تغيير كلمة المرور بنجاح', style: GoogleFonts.cairo()),
+                                content: Text('تم تغيير كلمة المرور بنجاح',
+                                    style: GoogleFonts.cairo()),
                                 backgroundColor: Colors.green,
                               ),
                             );
@@ -539,19 +569,26 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                           setDialogState(() => isSaving = false);
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+                              SnackBar(
+                                  content: Text('خطأ: $e'),
+                                  backgroundColor: Colors.red),
                             );
                           }
                         }
                       },
                 icon: isSaving
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save_rounded, size: 18),
                 label: Text('حفظ', style: GoogleFonts.cairo()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF9800),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -586,12 +623,14 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               Icon(Icons.warning_rounded, color: Colors.red.shade400),
               const SizedBox(width: 8),
-              Text('تأكيد الحذف', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              Text('تأكيد الحذف',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Text(
@@ -607,7 +646,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               child: Text('حذف', style: GoogleFonts.cairo(color: Colors.white)),
             ),
@@ -634,7 +674,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response.message ?? 'فشل في حذف الموظف', style: GoogleFonts.cairo()),
+              content: Text(response.message ?? 'فشل في حذف الموظف',
+                  style: GoogleFonts.cairo()),
               backgroundColor: Colors.red,
             ),
           );
