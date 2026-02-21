@@ -38,6 +38,35 @@ public class User : BaseEntity<Guid>
     /// <summary>الراتب (اختياري)</summary>
     public decimal? Salary { get; set; }
 
+    // ============ بيانات HR ============
+    
+    /// <summary>رقم الهوية الوطنية</summary>
+    public string? NationalId { get; set; }
+    
+    /// <summary>تاريخ الميلاد</summary>
+    public DateTime? DateOfBirth { get; set; }
+    
+    /// <summary>تاريخ التعيين</summary>
+    public DateTime? HireDate { get; set; }
+    
+    /// <summary>نوع العقد: permanent/contract/partTime</summary>
+    public string? ContractType { get; set; }
+    
+    /// <summary>رقم الحساب البنكي</summary>
+    public string? BankAccountNumber { get; set; }
+    
+    /// <summary>اسم البنك</summary>
+    public string? BankName { get; set; }
+    
+    /// <summary>جهة اتصال الطوارئ - الاسم</summary>
+    public string? EmergencyContactName { get; set; }
+    
+    /// <summary>جهة اتصال الطوارئ - الرقم</summary>
+    public string? EmergencyContactPhone { get; set; }
+    
+    /// <summary>ملاحظات HR</summary>
+    public string? HrNotes { get; set; }
+
     // ============ الحساب المالي للفني (ملخص محسوب) ============
 
     /// <summary>إجمالي الأجور المترتبة على الفني</summary>

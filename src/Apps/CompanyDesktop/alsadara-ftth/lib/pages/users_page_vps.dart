@@ -10,6 +10,7 @@ import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import 'super_admin/permissions_management_v2_page.dart';
 import '../services/permission_checker.dart';
+import 'hr/employee_profile_page.dart';
 
 /// صفحة إدارة موظفي الشركة عبر VPS
 class UsersPageVPS extends StatefulWidget {
@@ -536,28 +537,19 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     );
   }
 
-  /// عرض تفاصيل الموظف
+  /// عرض الملف الشخصي الشامل للموظف (نظام HR)
   void _showEmployeeDetails(EmployeeModel employee) {
-    showDialog(
-      context: context,
-      builder: (context) => _EmployeeDetailsDialog(
-        employee: employee,
-        onEdit: () {
-          Navigator.pop(context);
-          _editEmployee(employee);
-        },
-        onManagePermissions: () {
-          Navigator.pop(context);
-          _managePermissions(employee);
-        },
-        onDelete: PermissionManager.instance.canDelete('users')
-            ? () async {
-                Navigator.pop(context);
-                await _deleteEmployee(employee);
-              }
-            : null,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EmployeeProfilePage(
+          companyId: widget.companyId,
+          companyName: widget.companyName,
+          employeeId: employee.id,
+          employeeData: employee.rawJson,
+        ),
       ),
-    );
+    ).then((_) => _loadEmployees());
   }
 
   /// إدارة صلاحيات الموظف
@@ -912,6 +904,7 @@ class EmployeeModel {
   final DateTime? createdAt;
   final Map<String, dynamic>? firstSystemPermissions;
   final Map<String, dynamic>? secondSystemPermissions;
+  final Map<String, dynamic> rawJson;
 
   EmployeeModel({
     required this.id,
@@ -928,6 +921,7 @@ class EmployeeModel {
     this.createdAt,
     this.firstSystemPermissions,
     this.secondSystemPermissions,
+    required this.rawJson,
   });
 
   factory EmployeeModel.fromJson(Map<String, dynamic> json) {
@@ -962,6 +956,7 @@ class EmployeeModel {
           json['firstSystemPermissions'] ?? json['FirstSystemPermissions']),
       secondSystemPermissions: _parsePermissions(
           json['secondSystemPermissions'] ?? json['SecondSystemPermissions']),
+      rawJson: json,
     );
   }
 
