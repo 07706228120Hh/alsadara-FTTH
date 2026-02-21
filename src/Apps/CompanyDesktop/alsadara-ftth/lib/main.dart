@@ -26,7 +26,6 @@ import 'dart:async';
 import 'widgets/permissions_gate.dart';
 import 'widgets/app_lifecycle_manager.dart';
 import 'widgets/window_close_handler_fixed.dart';
-import 'widgets/update_dialog.dart'; // ✅ نافذة التحديث التلقائي
 export 'widgets/window_close_handler_fixed.dart' show navigatorKey;
 import 'services/notification_service.dart';
 import 'services/ticket_updates_service.dart';
@@ -337,9 +336,6 @@ class _AppInitializerState extends State<AppInitializer> {
       // تهيئة خدمة النصوص المتجاوبة
       ResponsiveTextService.instance.initialize(context);
 
-      // ✅ فحص التحديثات عند بدء التطبيق
-      _checkForUpdates();
-
       // ✅ الانتقال مباشرة لصفحة تسجيل دخول الشركات
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -359,15 +355,6 @@ class _AppInitializerState extends State<AppInitializer> {
           },
         ),
       );
-    }
-  }
-
-  /// فحص التحديثات في الخلفية
-  Future<void> _checkForUpdates() async {
-    // تأخير بسيط لضمان تحميل الواجهة
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      await UpdateManager.checkAndShowUpdateDialog(context);
     }
   }
 

@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
 import '../../services/permission_checker.dart';
+import '../../widgets/update_dialog.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
 
@@ -407,6 +408,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   void _navigateAfterLogin() async {
+    // ✅ فحص التحديثات بعد تسجيل الدخول مباشرة
+    _checkForUpdatesAfterLogin();
+
     if (_authService.isSuperAdmin) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -447,6 +451,14 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           transitionDuration: const Duration(milliseconds: 150),
         ),
       );
+    }
+  }
+
+  /// فحص التحديثات في الخلفية بعد تسجيل الدخول
+  Future<void> _checkForUpdatesAfterLogin() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      await UpdateManager.checkAndShowUpdateDialog(context);
     }
   }
 
