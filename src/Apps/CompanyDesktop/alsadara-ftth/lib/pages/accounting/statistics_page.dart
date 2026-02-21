@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -13,19 +14,24 @@ class StatisticsPage extends StatefulWidget {
   State<StatisticsPage> createState() => _StatisticsPageState();
 }
 
-class _StatisticsPageState extends State<StatisticsPage> {
+class _StatisticsPageState extends State<StatisticsPage>
+    with TickerProviderStateMixin {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _dashboardData;
   Map<String, dynamic>? _fundsData;
   List<dynamic>? _accountsList;
 
+  // خلفية متحركة
+  late AnimationController _bgAnimController;
+  late AnimationController _particleController;
+  late List<_Particle> _particles;
+
   // ألوان
-  static const _bgPage = Color(0xFFF4F6F9);
-  static const _bgCard = Colors.white;
+  static const _bgCard = Color(0xE6FFFFFF); // شفافية خفيفة
   static const _bgToolbar = Color(0xFF1E2A38);
-  static const _textDark = Color(0xFF2C3E50);
-  static const _textMuted = Color(0xFF7F8C8D);
+  static const _textDark = Color(0xFFE8ECF1);
+  static const _textMuted = Color(0xFF8899AA);
 
   // ألوان المخططات
   static const _clrGreen = Color(0xFF27AE60);
@@ -41,7 +47,31 @@ class _StatisticsPageState extends State<StatisticsPage> {
   @override
   void initState() {
     super.initState();
+
+    // تحريك التدرج اللوني
+    _bgAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+
+    // تحريك الجسيمات العائمة
+    _particleController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+
+    // إنشاء جسيمات عشوائية
+    final rng = Random();
+    _particles = List.generate(30, (_) => _Particle.random(rng));
+
     _loadAllData();
+  }
+
+  @override
+  void dispose() {
+    _bgAnimController.dispose();
+    _particleController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAllData() async {
@@ -111,17 +141,36 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: _bgPage,
-        body: Column(
+        body: Stack(
           children: [
-            _buildToolbar(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: _clrBlue))
-                  : _errorMessage != null
-                      ? _buildErrorView()
-                      : _buildDashboard(),
+            // الخلفية المتحركة
+            AnimatedBuilder(
+              animation:
+                  Listenable.merge([_bgAnimController, _particleController]),
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _AnimatedBgPainter(
+                    progress: _bgAnimController.value,
+                    particles: _particles,
+                    particleProgress: _particleController.value,
+                  ),
+                  size: Size.infinite,
+                );
+              },
+            ),
+            // المحتوى
+            Column(
+              children: [
+                _buildToolbar(),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Colors.white))
+                      : _errorMessage != null
+                          ? _buildErrorView()
+                          : _buildDashboard(),
+                ),
+              ],
             ),
           ],
         ),
@@ -134,11 +183,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Widget _buildToolbar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: _bgToolbar,
-        boxShadow: [
+      decoration: BoxDecoration(
+        color: const Color(0xCC0D1B2A),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+        boxShadow: const [
           BoxShadow(
-              color: Color(0x30000000), blurRadius: 4, offset: Offset(0, 2)),
+              color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -364,12 +416,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: _bgCard,
+          color: const Color(0xCC1A2332),
           borderRadius: BorderRadius.circular(8),
-          border: Border(bottom: BorderSide(color: color, width: 3)),
+          border: Border(
+            bottom: BorderSide(color: color, width: 3),
+          ),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 1)),
+                color: Color(0x20000000), blurRadius: 4, offset: Offset(0, 1)),
           ],
         ),
         child: Row(
@@ -389,14 +443,15 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       style: GoogleFonts.cairo(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: _textDark,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                   Text(label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(fontSize: 9, color: _textMuted)),
+                      style: GoogleFonts.cairo(
+                          fontSize: 9, color: Colors.white60)),
                 ],
               ),
             ),
@@ -465,11 +520,12 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Widget _chartPanel(String title, IconData icon, Color color, Widget child) {
     return Container(
       decoration: BoxDecoration(
-        color: _bgCard,
+        color: const Color(0xCC1A2332),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 1)),
+              color: Color(0x20000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -490,7 +546,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     style: GoogleFonts.cairo(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: _textDark)),
+                        color: Colors.white)),
               ],
             ),
           ),
@@ -998,7 +1054,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       padding: EdgeInsets.zero,
       itemCount: boxes.length,
       separatorBuilder: (_, __) =>
-          Divider(height: 1, color: Colors.grey.shade200),
+          Divider(height: 1, color: Colors.white.withOpacity(0.08)),
       itemBuilder: (_, i) {
         final b = boxes[i];
         return Padding(
@@ -1062,6 +1118,136 @@ class _StatisticsPageState extends State<StatisticsPage> {
     }
     return '$sign${abs.toStringAsFixed(0)}';
   }
+}
+
+// ══════════════════════ ANIMATED BACKGROUND ══════════════════════
+
+/// جسيمة عائمة في الخلفية
+class _Particle {
+  double x, y, radius, speed, opacity;
+  Color color;
+  double angle;
+
+  _Particle({
+    required this.x,
+    required this.y,
+    required this.radius,
+    required this.speed,
+    required this.opacity,
+    required this.color,
+    required this.angle,
+  });
+
+  factory _Particle.random(Random rng) {
+    const colors = [
+      Color(0xFF3498DB),
+      Color(0xFF1ABC9C),
+      Color(0xFF9B59B6),
+      Color(0xFF2ECC71),
+      Color(0xFFE67E22),
+      Color(0xFF5C6BC0),
+      Color(0xFF00BCD4),
+    ];
+    return _Particle(
+      x: rng.nextDouble(),
+      y: rng.nextDouble(),
+      radius: rng.nextDouble() * 40 + 10,
+      speed: rng.nextDouble() * 0.0003 + 0.0001,
+      opacity: rng.nextDouble() * 0.08 + 0.03,
+      color: colors[rng.nextInt(colors.length)],
+      angle: rng.nextDouble() * 2 * pi,
+    );
+  }
+}
+
+/// رسام الخلفية المتحركة
+class _AnimatedBgPainter extends CustomPainter {
+  final double progress;
+  final List<_Particle> particles;
+  final double particleProgress;
+
+  _AnimatedBgPainter({
+    required this.progress,
+    required this.particles,
+    required this.particleProgress,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // === التدرج الرئيسي المتحرك ===
+    final angle = progress * 2 * pi;
+    final shiftX = cos(angle) * 0.15;
+    final shiftY = sin(angle * 0.7) * 0.1;
+
+    final gradient = LinearGradient(
+      begin: Alignment(-0.8 + shiftX, -1.0 + shiftY),
+      end: Alignment(0.8 - shiftX, 1.0 - shiftY),
+      colors: const [
+        Color(0xFF0F1923), // أزرق داكن جداً
+        Color(0xFF162A3A), // أزرق ليلي
+        Color(0xFF1A2940), // أزرق غامق
+        Color(0xFF0F2027), // أخضر مائي داكن
+      ],
+      stops: const [0.0, 0.35, 0.7, 1.0],
+    );
+
+    final bgPaint = Paint()
+      ..shader =
+          gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // === موجات خفيفة ===
+    _drawWave(canvas, size, progress, 0.4, const Color(0x08FFFFFF));
+    _drawWave(canvas, size, progress * 1.3 + 0.5, 0.6, const Color(0x06FFFFFF));
+
+    // === الجسيمات العائمة (فقاعات) ===
+    for (final p in particles) {
+      final t = (progress * 360 * p.speed + p.angle) % (2 * pi);
+      final px = (p.x + sin(t) * 0.04) * size.width;
+      final py = (p.y + cos(t * 0.8) * 0.03) * size.height;
+
+      final particlePaint = Paint()
+        ..color = p.color.withOpacity(p.opacity)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, p.radius * 0.6);
+      canvas.drawCircle(Offset(px, py), p.radius, particlePaint);
+    }
+
+    // === وهج خفيف في الزاوية ===
+    final glowX = size.width * (0.8 + cos(angle * 0.5) * 0.1);
+    final glowY = size.height * (0.2 + sin(angle * 0.3) * 0.1);
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0x0C3498DB),
+          const Color(0x003498DB),
+        ],
+      ).createShader(
+          Rect.fromCircle(center: Offset(glowX, glowY), radius: 250));
+    canvas.drawCircle(Offset(glowX, glowY), 250, glowPaint);
+  }
+
+  void _drawWave(Canvas canvas, Size size, double t, double yPos, Color color) {
+    final path = Path();
+    path.moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 4) {
+      final nx = x / size.width;
+      final y = size.height * yPos +
+          sin((nx * 4 * pi) + (t * 2 * pi)) * 15 +
+          cos((nx * 2 * pi) + (t * 3 * pi)) * 8;
+      if (x == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AnimatedBgPainter old) => true;
 }
 
 // ══════════════════════ DATA MODELS ══════════════════════
