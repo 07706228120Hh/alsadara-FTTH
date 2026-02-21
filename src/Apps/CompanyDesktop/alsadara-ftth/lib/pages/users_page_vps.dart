@@ -192,7 +192,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.groups_rounded, color: Color(0xFF1A1D2E), size: 24),
+                child: const Icon(Icons.groups_rounded,
+                    color: Color(0xFF1A1D2E), size: 24),
               ),
               const SizedBox(width: 14),
               // العنوان
@@ -222,10 +223,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               ),
               // عداد الموظفين
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [_accent.withOpacity(0.2), _accent.withOpacity(0.08)],
+                    colors: [
+                      _accent.withOpacity(0.2),
+                      _accent.withOpacity(0.08)
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: _accent.withOpacity(0.3)),
@@ -233,7 +238,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.people_alt_rounded, size: 15, color: _accentLight),
+                    const Icon(Icons.people_alt_rounded,
+                        size: 15, color: _accentLight),
                     const SizedBox(width: 6),
                     Text(
                       '${_employees.length} / ${widget.maxUsers}',
@@ -260,7 +266,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   }
 
   /// زر زجاجي شفاف
-  Widget _glassButton({required IconData icon, required VoidCallback onTap, double size = 36}) {
+  Widget _glassButton(
+      {required IconData icon, required VoidCallback onTap, double size = 36}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -286,8 +293,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         _buildSearchBar(),
         Expanded(
           child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: _accent))
+              ? const Center(child: CircularProgressIndicator(color: _accent))
               : _error != null
                   ? _buildErrorWidget()
                   : _filteredEmployees.isEmpty
@@ -321,18 +327,21 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           decoration: InputDecoration(
             hintText: 'بحث بالاسم، الهاتف، أو الدور...',
             hintStyle: GoogleFonts.cairo(color: _textGray, fontSize: 13),
-            prefixIcon: const Icon(Icons.search_rounded, color: _accent, size: 20),
+            prefixIcon:
+                const Icon(Icons.search_rounded, color: _accent, size: 20),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     onPressed: () {
                       _searchController.clear();
                       _filterEmployees('');
                     },
-                    icon: const Icon(Icons.close_rounded, color: _textGray, size: 18),
+                    icon: const Icon(Icons.close_rounded,
+                        color: _textGray, size: 18),
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
         ),
       ),
@@ -351,7 +360,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               color: _danger.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.cloud_off_rounded, size: 40, color: _danger),
+            child:
+                const Icon(Icons.cloud_off_rounded, size: 40, color: _danger),
           ),
           const SizedBox(height: 16),
           Text(
@@ -367,7 +377,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _accent,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
@@ -388,7 +399,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               color: _accent.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.person_search_rounded, size: 40, color: _accent),
+            child: const Icon(Icons.person_search_rounded,
+                size: 40, color: _accent),
           ),
           const SizedBox(height: 16),
           Text(
@@ -407,8 +419,10 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accent,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
         ],
@@ -476,10 +490,19 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: employee.isActive
-                          ? [roleColor.withOpacity(0.6), roleColor, roleColor.withOpacity(0.6)]
-                          : [const Color(0xFF3A3F5C), const Color(0xFF4A4F6C), const Color(0xFF3A3F5C)],
+                          ? [
+                              roleColor.withOpacity(0.6),
+                              roleColor,
+                              roleColor.withOpacity(0.6)
+                            ]
+                          : [
+                              const Color(0xFF3A3F5C),
+                              const Color(0xFF4A4F6C),
+                              const Color(0xFF3A3F5C)
+                            ],
                     ),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
                   ),
                 ),
                 Padding(
@@ -493,8 +516,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: employee.isActive
-                                ? [roleColor.withOpacity(0.3), roleColor.withOpacity(0.1)]
-                                : [Colors.grey.withOpacity(0.2), Colors.grey.withOpacity(0.05)],
+                                ? [
+                                    roleColor.withOpacity(0.3),
+                                    roleColor.withOpacity(0.1)
+                                  ]
+                                : [
+                                    Colors.grey.withOpacity(0.2),
+                                    Colors.grey.withOpacity(0.05)
+                                  ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -505,13 +534,15 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                 : Colors.grey.withOpacity(0.2),
                             width: 1.5,
                           ),
-                          boxShadow: employee.isActive ? [
-                            BoxShadow(
-                              color: roleColor.withOpacity(0.15),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ] : null,
+                          boxShadow: employee.isActive
+                              ? [
+                                  BoxShadow(
+                                    color: roleColor.withOpacity(0.15),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
                         ),
                         child: Center(
                           child: Text(
@@ -548,7 +579,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                               children: [
                                 // شارة الدور
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
@@ -557,7 +589,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: roleColor.withOpacity(0.3)),
+                                    border: Border.all(
+                                        color: roleColor.withOpacity(0.3)),
                                   ),
                                   child: Text(
                                     roleLabel,
@@ -570,7 +603,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                 ),
                                 if (employee.employeeCode != null) ...[
                                   const SizedBox(width: 8),
-                                  Icon(Icons.badge_outlined, size: 12, color: _textGray.withOpacity(0.6)),
+                                  Icon(Icons.badge_outlined,
+                                      size: 12,
+                                      color: _textGray.withOpacity(0.6)),
                                   const SizedBox(width: 3),
                                   Text(
                                     employee.employeeCode!,
@@ -586,24 +621,28 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                             // الهاتف
                             Row(
                               children: [
-                                Icon(Icons.phone_rounded, size: 13, color: _accent.withOpacity(0.7)),
+                                Icon(Icons.phone_rounded,
+                                    size: 13, color: _accent.withOpacity(0.7)),
                                 const SizedBox(width: 5),
                                 Text(
                                   employee.phoneNumber,
-                                  style: GoogleFonts.cairo(fontSize: 12, color: _textGray),
+                                  style: GoogleFonts.cairo(
+                                      fontSize: 12, color: _textGray),
                                 ),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      // ═══ حالة + أزرار ═══
+                      // ═══ حالة + سهم ═══
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           // شارة الحالة
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 3),
                             decoration: BoxDecoration(
                               color: employee.isActive
                                   ? _success.withOpacity(0.12)
@@ -622,11 +661,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                   width: 6,
                                   height: 6,
                                   decoration: BoxDecoration(
-                                    color: employee.isActive ? _success : _danger,
+                                    color:
+                                        employee.isActive ? _success : _danger,
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: (employee.isActive ? _success : _danger)
+                                        color: (employee.isActive
+                                                ? _success
+                                                : _danger)
                                             .withOpacity(0.5),
                                         blurRadius: 4,
                                       ),
@@ -639,47 +681,28 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                   style: GoogleFonts.cairo(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: employee.isActive ? _success : _danger,
+                                    color:
+                                        employee.isActive ? _success : _danger,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          // أزرار الإجراءات
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _actionBtn(
-                                icon: Icons.shield_outlined,
-                                color: const Color(0xFFAB47BC),
-                                tooltip: 'الصلاحيات',
-                                onTap: () => _managePermissions(employee),
-                              ),
-                              const SizedBox(width: 6),
-                              if (PermissionManager.instance.canEdit('users'))
-                                _actionBtn(
-                                  icon: Icons.edit_outlined,
-                                  color: _accent,
-                                  tooltip: 'تعديل',
-                                  onTap: () => _editEmployee(employee),
-                                ),
-                              if (PermissionManager.instance.canEdit('users'))
-                                const SizedBox(width: 6),
-                              _actionBtn(
-                                icon: Icons.key_rounded,
-                                color: _gold,
-                                tooltip: 'كلمة المرور',
-                                onTap: () => _showPasswordDialog(employee),
-                              ),
-                              const SizedBox(width: 6),
-                              _actionBtn(
-                                icon: Icons.arrow_back_ios_new_rounded,
-                                color: _textGray,
-                                tooltip: 'الملف الشخصي',
-                                onTap: () => _showEmployeeDetails(employee),
-                              ),
-                            ],
+                          const SizedBox(height: 12),
+                          // سهم للدخول
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: _accent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: _accent.withOpacity(0.2)),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 13,
+                              color: _accent,
+                            ),
                           ),
                         ],
                       ),
@@ -747,7 +770,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         foregroundColor: Colors.white,
         elevation: 0,
         icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-        label: Text('إضافة موظف', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        label: Text('إضافة موظف',
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
       ),
     );
   }
