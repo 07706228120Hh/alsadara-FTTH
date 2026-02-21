@@ -73,7 +73,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
         radius: rng.nextDouble() * 26 + 24, // حجم الرمز 24-50
         speedX: (rng.nextDouble() - 0.5) * 0.25,
         speedY: (rng.nextDouble() - 0.5) * 0.25,
-        opacity: rng.nextDouble() * 0.10 + 0.10, // 10-20% شفافية (فوق البطاقات)
+        opacity: rng.nextDouble() * 0.15 + 0.20, // 20-35% شفافية (خلف البطاقات)
         color: [
           const Color(0xFF3498DB),
           const Color(0xFF1ABC9C),
@@ -208,7 +208,30 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
                   Expanded(
                     child: Stack(
                       children: [
-                        // المحتوى
+                        // 1) خلفية متحركة (تدرج + موجات)
+                        Positioned.fill(
+                          child: AnimatedBuilder(
+                            animation: _bgAnimController,
+                            builder: (context, _) => CustomPaint(
+                              painter: _BgGradientPainter(
+                                animValue: _bgAnimController.value,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 2) رموز محاسبية عائمة (خلف البطاقات)
+                        Positioned.fill(
+                          child: AnimatedBuilder(
+                            animation: Listenable.merge(
+                                [_bgAnimController, _particleController]),
+                            builder: (context, _) => CustomPaint(
+                              painter: _SymbolsPainter(
+                                shapes: _shapes,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 3) المحتوى (بطاقات + أزرار) - فوق الكل
                         _isLoading
                             ? const Center(
                                 child: CircularProgressIndicator(
@@ -216,21 +239,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
                             : _errorMessage != null
                                 ? _buildErrorView()
                                 : _buildContent(),
-                        // رموز محاسبية عائمة فوق المحتوى
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: AnimatedBuilder(
-                              animation: Listenable.merge(
-                                  [_bgAnimController, _particleController]),
-                              builder: (context, _) => CustomPaint(
-                                painter: _LightBgPainter(
-                                  animValue: _bgAnimController.value,
-                                  shapes: _shapes,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -411,7 +419,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
 
   Widget _buildPageToolbar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       decoration: BoxDecoration(
         color: _bgToolbar,
         boxShadow: [
@@ -498,7 +506,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
       padding: EdgeInsets.only(
         left: padding,
         right: padding,
-        top: isCompact ? 4.0 : 8.0,
+        top: 0,
         bottom: padding,
       ),
       child: Column(
@@ -991,16 +999,13 @@ class _FloatingShape {
   });
 }
 
-// ── رسام الخلفية الفاتحة المتحركة ──
-class _LightBgPainter extends CustomPainter {
+// ── رسام الخلفية (تدرج + موجات + توهج) ──
+class _BgGradientPainter extends CustomPainter {
   final double animValue;
-  final List<_FloatingShape> shapes;
-
-  _LightBgPainter({required this.animValue, required this.shapes});
+  _BgGradientPainter({required this.animValue});
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1) خلفية أساسية فاتحة مع تدرج خفيف متحرك
     final bgPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
@@ -1013,14 +1018,13 @@ class _LightBgPainter extends CustomPainter {
         ],
         stops: [
           0.0,
-          (0.3 + 0.1 * sin(animValue * 2 * pi)).clamp(0.0, 1.0),
-          (0.7 + 0.1 * sin(animValue * 2 * pi + 1)).clamp(0.0, 1.0),
+          (0.3 + 0.1 * _sin(animValue * 2 * _pi)).clamp(0.0, 1.0),
+          (0.7 + 0.1 * _sin(animValue * 2 * _pi + 1)).clamp(0.0, 1.0),
           1.0,
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
 
-    // 2) موجة خفيفة في الأسفل
     final wavePaint = Paint()
       ..color = const Color(0x0A3498DB)
       ..style = PaintingStyle.fill;
@@ -1029,15 +1033,14 @@ class _LightBgPainter extends CustomPainter {
     for (double x = 0; x <= size.width; x += 1) {
       final y = size.height -
           40 -
-          sin((x / size.width * 2 * pi) + animValue * 2 * pi) * 12 -
-          sin((x / size.width * 4 * pi) + animValue * 2 * pi * 0.7) * 6;
+          _sin((x / size.width * 2 * _pi) + animValue * 2 * _pi) * 12 -
+          _sin((x / size.width * 4 * _pi) + animValue * 2 * _pi * 0.7) * 6;
       wavePath.lineTo(x, y);
     }
     wavePath.lineTo(size.width, size.height);
     wavePath.close();
     canvas.drawPath(wavePath, wavePaint);
 
-    // موجة ثانية
     final wave2Paint = Paint()
       ..color = const Color(0x081ABC9C)
       ..style = PaintingStyle.fill;
@@ -1046,24 +1049,56 @@ class _LightBgPainter extends CustomPainter {
     for (double x = 0; x <= size.width; x += 1) {
       final y = size.height -
           20 -
-          sin((x / size.width * 3 * pi) + animValue * 2 * pi + 2) * 10 -
-          cos((x / size.width * 2 * pi) + animValue * 2 * pi * 0.5) * 5;
+          _sin((x / size.width * 3 * _pi) + animValue * 2 * _pi + 2) * 10 -
+          _cos((x / size.width * 2 * _pi) + animValue * 2 * _pi * 0.5) * 5;
       wave2Path.lineTo(x, y);
     }
     wave2Path.lineTo(size.width, size.height);
     wave2Path.close();
     canvas.drawPath(wave2Path, wave2Paint);
 
-    // 3) رموز محاسبية عائمة
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment(
+          -0.7 + 0.2 * _sin(animValue * 2 * _pi),
+          -0.8 + 0.15 * _cos(animValue * 2 * _pi),
+        ),
+        radius: 0.7,
+        colors: const [Color(0x083498DB), Color(0x00FFFFFF)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), glowPaint);
+  }
+
+  static double _sin(double x) {
+    x = x % (2 * _pi);
+    double result = 0, term = x;
+    for (int i = 1; i <= 7; i++) {
+      result += term;
+      term *= -x * x / ((2 * i) * (2 * i + 1));
+    }
+    return result;
+  }
+
+  static double _cos(double x) => _sin(x + _pi / 2);
+  static const double _pi = 3.14159265358979;
+
+  @override
+  bool shouldRepaint(covariant _BgGradientPainter oldDelegate) => true;
+}
+
+// ── رسام الرموز العائمة (فوق البطاقات) ──
+class _SymbolsPainter extends CustomPainter {
+  final List<_FloatingShape> shapes;
+  _SymbolsPainter({required this.shapes});
+
+  @override
+  void paint(Canvas canvas, Size size) {
     for (final s in shapes) {
       final cx = s.x * size.width;
       final cy = s.y * size.height;
-
       canvas.save();
       canvas.translate(cx, cy);
       canvas.rotate(s.rotation);
-
-      // رسم الرمز كنص
       final tp = TextPainter(
         text: TextSpan(
           text: s.symbol,
@@ -1077,42 +1112,10 @@ class _LightBgPainter extends CustomPainter {
       );
       tp.layout();
       tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
-
       canvas.restore();
     }
-
-    // 4) توهج خفيف في الزاوية
-    final glowPaint = Paint()
-      ..shader = RadialGradient(
-        center: Alignment(
-          -0.7 + 0.2 * sin(animValue * 2 * pi),
-          -0.8 + 0.15 * cos(animValue * 2 * pi),
-        ),
-        radius: 0.7,
-        colors: const [
-          Color(0x083498DB),
-          Color(0x00FFFFFF),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), glowPaint);
   }
-
-  static double sin(double x) => _sin(x);
-  static double cos(double x) => _cos(x);
-  static double _sin(double x) {
-    x = x % (2 * pi);
-    // Taylor series approx - good enough for smooth animation
-    double result = 0, term = x;
-    for (int i = 1; i <= 7; i++) {
-      result += term;
-      term *= -x * x / ((2 * i) * (2 * i + 1));
-    }
-    return result;
-  }
-
-  static double _cos(double x) => _sin(x + pi / 2);
-  static const double pi = 3.14159265358979;
 
   @override
-  bool shouldRepaint(covariant _LightBgPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _SymbolsPainter oldDelegate) => true;
 }
