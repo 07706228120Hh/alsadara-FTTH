@@ -4,8 +4,10 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import 'super_admin/permissions_management_v2_page.dart';
@@ -115,79 +117,177 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     });
   }
 
+  // ═══════════════ ألوان التصميم الفخم ═══════════════
+  static const _dark1 = Color(0xFF1A1D2E); // خلفية داكنة رئيسية
+  static const _dark2 = Color(0xFF232740); // بطاقات
+  static const _dark3 = Color(0xFF2D3250); // بطاقات ثانوية
+  static const _accent = Color(0xFF6C63FF); // أرجواني عصري
+  static const _accentLight = Color(0xFF8B83FF);
+  static const _gold = Color(0xFFD4AF37); // ذهبي فخم
+  static const _goldLight = Color(0xFFE8D48B);
+  static const _textWhite = Color(0xFFF1F1F5);
+  static const _textGray = Color(0xFF8B8DA3);
+  static const _success = Color(0xFF00E676);
+  static const _danger = Color(0xFFFF5252);
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
-        appBar: _buildAppBar(),
-        body: _buildBody(),
+        backgroundColor: _dark1,
+        body: Column(
+          children: [
+            _buildPremiumHeader(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
         floatingActionButton: _buildFAB(),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'إدارة الموظفين',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            widget.companyName,
-            style:
-                TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8)),
-          ),
-        ],
+  /// شريط علوي فخم بتدرج لوني
+  Widget _buildPremiumHeader() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1A1D2E), Color(0xFF2D3250), Color(0xFF1A1D2E)],
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        ),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFF3A3F5C), width: 1),
+        ),
       ),
-      backgroundColor: const Color(0xFF1976D2),
-      foregroundColor: Colors.white,
-      elevation: 0,
-      actions: [
-        // عدد الموظفين
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(20),
-          ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 8, 14),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.people, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                '${_employees.length}/${widget.maxUsers}',
-                style:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              // زر الرجوع
+              _glassButton(
+                icon: Icons.arrow_forward_rounded,
+                onTap: () => Navigator.of(context).pop(),
+                size: 38,
+              ),
+              const SizedBox(width: 16),
+              // أيقونة فخمة
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_gold, Color(0xFFF5E6A3)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _gold.withOpacity(0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.groups_rounded, color: Color(0xFF1A1D2E), size: 24),
+              ),
+              const SizedBox(width: 14),
+              // العنوان
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'إدارة الموظفين',
+                      style: GoogleFonts.cairo(
+                        color: _textWhite,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      widget.companyName,
+                      style: GoogleFonts.cairo(
+                        color: _goldLight,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // عداد الموظفين
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_accent.withOpacity(0.2), _accent.withOpacity(0.08)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _accent.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.people_alt_rounded, size: 15, color: _accentLight),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${_employees.length} / ${widget.maxUsers}',
+                      style: GoogleFonts.cairo(
+                        color: _accentLight,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _glassButton(
+                icon: Icons.refresh_rounded,
+                onTap: _loadEmployees,
+                size: 38,
               ),
             ],
           ),
         ),
-        // زر التحديث
-        IconButton(
-          onPressed: _loadEmployees,
-          icon: const Icon(Icons.refresh_rounded),
-          tooltip: 'تحديث',
+      ),
+    );
+  }
+
+  /// زر زجاجي شفاف
+  Widget _glassButton({required IconData icon, required VoidCallback onTap, double size = 36}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Icon(icon, color: _textGray, size: 18),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildBody() {
     return Column(
       children: [
-        // شريط البحث
         _buildSearchBar(),
-        // المحتوى
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                  child: CircularProgressIndicator(color: _accent))
               : _error != null
                   ? _buildErrorWidget()
                   : _filteredEmployees.isEmpty
@@ -200,37 +300,40 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
 
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.white,
-      child: TextField(
-        controller: _searchController,
-        onChanged: _filterEmployees,
-        decoration: InputDecoration(
-          hintText: 'بحث عن موظف...',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  onPressed: () {
-                    _searchController.clear();
-                    _filterEmployees('');
-                  },
-                  icon: const Icon(Icons.clear_rounded),
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _dark2,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF3A3F5C)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: _filterEmployees,
+          style: GoogleFonts.cairo(color: _textWhite, fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'بحث بالاسم، الهاتف، أو الدور...',
+            hintStyle: GoogleFonts.cairo(color: _textGray, fontSize: 13),
+            prefixIcon: const Icon(Icons.search_rounded, color: _accent, size: 20),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      _filterEmployees('');
+                    },
+                    icon: const Icon(Icons.close_rounded, color: _textGray, size: 18),
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.grey.shade50,
         ),
       ),
     );
@@ -241,22 +344,31 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline_rounded,
-              size: 64, color: Colors.red.shade300),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: _danger.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.cloud_off_rounded, size: 40, color: _danger),
+          ),
           const SizedBox(height: 16),
           Text(
             _error!,
-            style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+            style: GoogleFonts.cairo(color: _danger, fontSize: 14),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: _loadEmployees,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('إعادة المحاولة'),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1976D2),
+              backgroundColor: _accent,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
         ],
@@ -269,25 +381,34 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline_rounded,
-              size: 64, color: Colors.grey.shade400),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: _accent.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.person_search_rounded, size: 40, color: _accent),
+          ),
           const SizedBox(height: 16),
           Text(
             _searchQuery.isNotEmpty
                 ? 'لا توجد نتائج للبحث "$_searchQuery"'
-                : 'لا يوجد موظفين',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                : 'لا يوجد موظفين بعد',
+            style: GoogleFonts.cairo(color: _textGray, fontSize: 14),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           if (_searchQuery.isEmpty &&
               PermissionManager.instance.canAdd('users'))
             ElevatedButton.icon(
               onPressed: () => _showAddEmployeeDialog(),
-              icon: const Icon(Icons.person_add_rounded),
-              label: const Text('إضافة أول موظف'),
+              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+              label: Text('إضافة أول موظف', style: GoogleFonts.cairo()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
+                backgroundColor: _accent,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
         ],
@@ -297,227 +418,305 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
 
   Widget _buildEmployeesList() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 90),
       itemCount: _filteredEmployees.length,
       itemBuilder: (context, index) {
         final employee = _filteredEmployees[index];
-        return _buildEmployeeCard(employee);
+        return _buildEmployeeCard(employee, index);
       },
     );
   }
 
-  Widget _buildEmployeeCard(EmployeeModel employee) {
+  Widget _buildEmployeeCard(EmployeeModel employee, int index) {
     final roleColor = _getRoleColor(employee.role);
+    final roleLabel = _getRoleNameAr(employee.role);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: InkWell(
-        onTap: () => _showEmployeeDetails(employee),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // الصف الأول: الأفاتار والمعلومات الأساسية
-              Row(
-                children: [
-                  // الأفاتار
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: employee.isActive
-                        ? roleColor.withOpacity(0.1)
-                        : Colors.grey.withOpacity(0.1),
-                    child: Text(
-                      employee.fullName.isNotEmpty
-                          ? employee.fullName[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: employee.isActive ? roleColor : Colors.grey,
-                      ),
-                    ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showEmployeeDetails(employee),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  _dark2,
+                  _dark3.withOpacity(0.7),
+                ],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: employee.isActive
+                    ? roleColor.withOpacity(0.25)
+                    : const Color(0xFF3A3F5C),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+                if (employee.isActive)
+                  BoxShadow(
+                    color: roleColor.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
                   ),
-                  const SizedBox(width: 16),
-                  // المعلومات
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // الاسم والحالة
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                employee.fullName,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // ═══ الشريط العلوي الملون ═══
+                Container(
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: employee.isActive
+                          ? [roleColor.withOpacity(0.6), roleColor, roleColor.withOpacity(0.6)]
+                          : [const Color(0xFF3A3F5C), const Color(0xFF4A4F6C), const Color(0xFF3A3F5C)],
+                    ),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: Row(
+                    children: [
+                      // ═══ أفاتار فخم ═══
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: employee.isActive
+                                ? [roleColor.withOpacity(0.3), roleColor.withOpacity(0.1)]
+                                : [Colors.grey.withOpacity(0.2), Colors.grey.withOpacity(0.05)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: employee.isActive
+                                ? roleColor.withOpacity(0.4)
+                                : Colors.grey.withOpacity(0.2),
+                            width: 1.5,
+                          ),
+                          boxShadow: employee.isActive ? [
+                            BoxShadow(
+                              color: roleColor.withOpacity(0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
-                            // شارة الحالة
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: employee.isActive
-                                    ? const Color(0xFFE8F5E9)
-                                    : const Color(0xFFFFEBEE),
-                                borderRadius: BorderRadius.circular(12),
+                          ] : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            employee.fullName.isNotEmpty
+                                ? employee.fullName[0].toUpperCase()
+                                : '?',
+                            style: GoogleFonts.cairo(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: employee.isActive ? roleColor : _textGray,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // ═══ المعلومات ═══
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // الاسم
+                            Text(
+                              employee.fullName,
+                              style: GoogleFonts.cairo(
+                                color: _textWhite,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
                               ),
-                              child: Text(
-                                employee.isActive ? 'نشط' : 'معطل',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: employee.isActive
-                                      ? const Color(0xFF4CAF50)
-                                      : const Color(0xFFF44336),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            // الدور + الكود + القسم
+                            Row(
+                              children: [
+                                // شارة الدور
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        roleColor.withOpacity(0.2),
+                                        roleColor.withOpacity(0.08),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: roleColor.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    roleLabel,
+                                    style: GoogleFonts.cairo(
+                                      fontSize: 10,
+                                      color: roleColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                if (employee.employeeCode != null) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.badge_outlined, size: 12, color: _textGray.withOpacity(0.6)),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    employee.employeeCode!,
+                                    style: GoogleFonts.cairo(
+                                      fontSize: 10,
+                                      color: _textGray,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            // الهاتف
+                            Row(
+                              children: [
+                                Icon(Icons.phone_rounded, size: 13, color: _accent.withOpacity(0.7)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  employee.phoneNumber,
+                                  style: GoogleFonts.cairo(fontSize: 12, color: _textGray),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        // الدور
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: roleColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _getRoleNameAr(employee.role),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: roleColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                      ),
+                      // ═══ حالة + أزرار ═══
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // شارة الحالة
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: employee.isActive
+                                  ? _success.withOpacity(0.12)
+                                  : _danger.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: employee.isActive
+                                    ? _success.withOpacity(0.3)
+                                    : _danger.withOpacity(0.3),
                               ),
                             ),
-                            if (employee.employeeCode != null) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                employee.employeeCode!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade600,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: employee.isActive ? _success : _danger,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (employee.isActive ? _success : _danger)
+                                            .withOpacity(0.5),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  employee.isActive ? 'نشط' : 'معطل',
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: employee.isActive ? _success : _danger,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          // أزرار الإجراءات
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _actionBtn(
+                                icon: Icons.shield_outlined,
+                                color: const Color(0xFFAB47BC),
+                                tooltip: 'الصلاحيات',
+                                onTap: () => _managePermissions(employee),
+                              ),
+                              const SizedBox(width: 6),
+                              if (PermissionManager.instance.canEdit('users'))
+                                _actionBtn(
+                                  icon: Icons.edit_outlined,
+                                  color: _accent,
+                                  tooltip: 'تعديل',
+                                  onTap: () => _editEmployee(employee),
+                                ),
+                              if (PermissionManager.instance.canEdit('users'))
+                                const SizedBox(width: 6),
+                              _actionBtn(
+                                icon: Icons.key_rounded,
+                                color: _gold,
+                                tooltip: 'كلمة المرور',
+                                onTap: () => _showPasswordDialog(employee),
+                              ),
+                              const SizedBox(width: 6),
+                              _actionBtn(
+                                icon: Icons.arrow_back_ios_new_rounded,
+                                color: _textGray,
+                                tooltip: 'الملف الشخصي',
+                                onTap: () => _showEmployeeDetails(employee),
                               ),
                             ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // الصف الثاني: معلومات الاتصال
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    // الهاتف
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Icon(Icons.phone_rounded,
-                              size: 16, color: Colors.grey.shade600),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              employee.phoneNumber,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
                           ),
                         ],
                       ),
-                    ),
-                    // البريد
-                    if (employee.email != null && employee.email!.isNotEmpty)
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Icon(Icons.email_rounded,
-                                size: 16, color: Colors.grey.shade600),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                employee.email!,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade700,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              // الصف الثالث: أزرار الإجراءات
-              Row(
-                children: [
-                  // زر الصلاحيات
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _managePermissions(employee),
-                      icon: const Icon(Icons.security_rounded, size: 18),
-                      label: const Text('الصلاحيات'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF9C27B0),
-                        side: const BorderSide(color: Color(0xFF9C27B0)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // زر التعديل
-                  if (PermissionManager.instance.canEdit('users'))
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _editEmployee(employee),
-                        icon: const Icon(Icons.edit_rounded, size: 18),
-                        label: const Text('تعديل'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF2196F3),
-                          side: const BorderSide(color: Color(0xFF2196F3)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  // زر كلمة المرور
-                  IconButton(
-                    onPressed: () => _showPasswordDialog(employee),
-                    icon: const Icon(Icons.key_rounded),
-                    color: const Color(0xFFFF9800),
-                    tooltip: 'كلمة المرور',
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// زر إجراء صغير
+  Widget _actionBtn({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: color.withOpacity(0.2)),
+            ),
+            child: Icon(icon, size: 15, color: color),
           ),
         ),
       ),
@@ -528,12 +727,28 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     if (_employees.length >= widget.maxUsers) return null;
     if (!PermissionManager.instance.canAdd('users')) return null;
 
-    return FloatingActionButton.extended(
-      onPressed: () => _showAddEmployeeDialog(),
-      backgroundColor: const Color(0xFF4CAF50),
-      foregroundColor: Colors.white,
-      icon: const Icon(Icons.person_add_rounded),
-      label: const Text('إضافة موظف'),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [_accent, Color(0xFF8B83FF)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _accent.withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: () => _showAddEmployeeDialog(),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+        label: Text('إضافة موظف', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+      ),
     );
   }
 
@@ -850,17 +1065,19 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   Color _getRoleColor(String? role) {
     switch (role?.toLowerCase()) {
       case 'companyadmin':
-        return const Color(0xFF9C27B0);
+        return const Color(0xFFE040FB); // بنفسجي متوهج
       case 'manager':
-        return const Color(0xFF2196F3);
+        return const Color(0xFF448AFF); // أزرق
       case 'technicalleader':
-        return const Color(0xFF00BCD4);
+        return const Color(0xFF00E5FF); // سماوي
       case 'technician':
-        return const Color(0xFF4CAF50);
+        return const Color(0xFF69F0AE); // أخضر فاتح
       case 'viewer':
-        return const Color(0xFF607D8B);
+        return const Color(0xFF90A4AE); // رمادي
+      case 'employee':
+        return const Color(0xFF7C4DFF); // أرجواني
       default:
-        return const Color(0xFF795548);
+        return const Color(0xFFFFAB40); // برتقالي
     }
   }
 
