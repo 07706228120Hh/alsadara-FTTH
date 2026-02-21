@@ -44,8 +44,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data =
-          await _service.getTechnicianTransactions(widget.employeeId);
+      final data = await _service.getTechnicianTransactions(widget.employeeId);
       setState(() {
         _transactions = data;
         _loading = false;
@@ -58,8 +57,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
   List<Map<String, dynamic>> get _filtered {
     if (_filter == 'all') return _transactions;
     return _transactions.where((t) {
-      final type =
-          (t['type'] ?? t['Type'] ?? '').toString().toLowerCase();
+      final type = (t['type'] ?? t['Type'] ?? '').toString().toLowerCase();
       if (_filter == 'charge') {
         return type.contains('charge') || type.contains('تحصيل');
       }
@@ -77,8 +75,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
         const SizedBox(height: 4),
         Expanded(
           child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(color: _accent))
+              ? const Center(child: CircularProgressIndicator(color: _accent))
               : _transactionsList(),
         ),
       ],
@@ -90,8 +87,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
     double totalPayments = 0;
 
     for (final t in _transactions) {
-      final type =
-          (t['type'] ?? t['Type'] ?? '').toString().toLowerCase();
+      final type = (t['type'] ?? t['Type'] ?? '').toString().toLowerCase();
       final amount = _parseDouble(t['amount'] ?? t['Amount'] ?? 0);
       if (type.contains('charge') || type.contains('تحصيل')) {
         totalCharges += amount;
@@ -116,18 +112,14 @@ class _TransactionsTabState extends State<TransactionsTab> {
             Icons.account_balance_wallet,
           ),
           const SizedBox(width: 12),
-          _summaryCard(
-              'عدد العمليات',
-              _transactions.length.toDouble(),
-              _accent,
+          _summaryCard('عدد العمليات', _transactions.length.toDouble(), _accent,
               Icons.receipt_long),
         ],
       ),
     );
   }
 
-  Widget _summaryCard(
-      String label, double val, Color color, IconData icon) {
+  Widget _summaryCard(String label, double val, Color color, IconData icon) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -149,8 +141,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
               style: GoogleFonts.cairo(
                   fontSize: 14, fontWeight: FontWeight.bold, color: color),
             ),
-            Text(label,
-                style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
+            Text(label, style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
           ],
         ),
       ),
@@ -196,11 +187,9 @@ class _TransactionsTabState extends State<TransactionsTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.receipt_long, size: 48,
-                color: _gray.withOpacity(0.5)),
+            Icon(Icons.receipt_long, size: 48, color: _gray.withOpacity(0.5)),
             const SizedBox(height: 8),
-            Text('لا توجد معاملات',
-                style: GoogleFonts.cairo(color: _gray)),
+            Text('لا توجد معاملات', style: GoogleFonts.cairo(color: _gray)),
           ],
         ),
       );
@@ -214,18 +203,14 @@ class _TransactionsTabState extends State<TransactionsTab> {
   }
 
   Widget _txCard(Map<String, dynamic> tx) {
-    final type =
-        (tx['type'] ?? tx['Type'] ?? '').toString();
-    final isCharge = type.toLowerCase().contains('charge') ||
-        type.contains('تحصيل');
+    final type = (tx['type'] ?? tx['Type'] ?? '').toString();
+    final isCharge =
+        type.toLowerCase().contains('charge') || type.contains('تحصيل');
     final amount = _parseDouble(tx['amount'] ?? tx['Amount'] ?? 0);
-    final desc =
-        tx['description'] ?? tx['Description'] ?? tx['notes'] ?? '';
+    final desc = tx['description'] ?? tx['Description'] ?? tx['notes'] ?? '';
     final date = tx['createdAt'] ?? tx['CreatedAt'] ?? tx['date'] ?? '';
-    final customer =
-        tx['customerName'] ?? tx['CustomerName'] ?? '';
-    final receivedBy =
-        tx['receivedBy'] ?? tx['ReceivedBy'] ?? '';
+    final customer = tx['customerName'] ?? tx['CustomerName'] ?? '';
+    final receivedBy = tx['receivedBy'] ?? tx['ReceivedBy'] ?? '';
     final color = isCharge ? _green : _red;
 
     return Container(
@@ -235,8 +220,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: const [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
+          BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
         ],
         border: Border(right: BorderSide(color: color, width: 4)),
       ),
@@ -265,12 +249,10 @@ class _TransactionsTabState extends State<TransactionsTab> {
                 ),
                 if (customer.toString().isNotEmpty)
                   Text('العميل: $customer',
-                      style:
-                          GoogleFonts.cairo(fontSize: 11, color: _gray)),
+                      style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
                 if (desc.toString().isNotEmpty)
                   Text(desc.toString(),
-                      style:
-                          GoogleFonts.cairo(fontSize: 11, color: _gray),
+                      style: GoogleFonts.cairo(fontSize: 11, color: _gray),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
               ],
@@ -283,9 +265,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
               Text(
                 '${isCharge ? '+' : '-'}${_formatCurrency(amount)}',
                 style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: color),
+                    fontWeight: FontWeight.bold, fontSize: 14, color: color),
               ),
               Text(_formatDate(date.toString()),
                   style: GoogleFonts.cairo(fontSize: 10, color: _gray)),

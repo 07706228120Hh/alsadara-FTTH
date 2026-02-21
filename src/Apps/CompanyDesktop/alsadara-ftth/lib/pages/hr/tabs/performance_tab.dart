@@ -78,8 +78,12 @@ class _PerformanceTabState extends State<PerformanceTab> {
       final audits = await _service.getTaskAudits(widget.employeeId);
       _totalAudits = audits.length;
       _goodAudits = audits.where((a) {
-        final rating = (a['rating'] ?? a['Rating'] ?? '').toString().toLowerCase();
-        return rating == 'good' || rating == 'excellent' || rating == 'جيد' || rating == 'ممتاز';
+        final rating =
+            (a['rating'] ?? a['Rating'] ?? '').toString().toLowerCase();
+        return rating == 'good' ||
+            rating == 'excellent' ||
+            rating == 'جيد' ||
+            rating == 'ممتاز';
       }).length;
     } catch (_) {}
     setState(() => _loading = false);
@@ -93,8 +97,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
     return total > 0 ? _attendanceDays / total : 0;
   }
 
-  double get _auditScore =>
-      _totalAudits > 0 ? _goodAudits / _totalAudits : 0;
+  double get _auditScore => _totalAudits > 0 ? _goodAudits / _totalAudits : 0;
 
   double get _overallScore =>
       (_taskCompletion * 0.4 + _attendanceRate * 0.35 + _auditScore * 0.25);
@@ -104,8 +107,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: _accent));
+      return const Center(child: CircularProgressIndicator(color: _accent));
     }
 
     return SingleChildScrollView(
@@ -117,14 +119,17 @@ class _PerformanceTabState extends State<PerformanceTab> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _metricCard('إنجاز المهام', _taskCompletion,
-                  _green, Icons.task_alt, '$_completedTasks / $_totalTasks')),
+              Expanded(
+                  child: _metricCard('إنجاز المهام', _taskCompletion, _green,
+                      Icons.task_alt, '$_completedTasks / $_totalTasks')),
               const SizedBox(width: 16),
-              Expanded(child: _metricCard('الالتزام بالحضور', _attendanceRate,
-                  _accent, Icons.fingerprint, '$_attendanceDays يوم حضور')),
+              Expanded(
+                  child: _metricCard('الالتزام بالحضور', _attendanceRate,
+                      _accent, Icons.fingerprint, '$_attendanceDays يوم حضور')),
               const SizedBox(width: 16),
-              Expanded(child: _metricCard('جودة العمل', _auditScore,
-                  _purple, Icons.verified, '$_goodAudits / $_totalAudits تدقيق')),
+              Expanded(
+                  child: _metricCard('جودة العمل', _auditScore, _purple,
+                      Icons.verified, '$_goodAudits / $_totalAudits تدقيق')),
             ],
           ),
           const SizedBox(height: 20),
@@ -166,8 +171,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
         ],
         border: Border.all(color: scoreColor.withOpacity(0.3)),
       ),
@@ -237,16 +241,15 @@ class _PerformanceTabState extends State<PerformanceTab> {
     );
   }
 
-  Widget _metricCard(
-      String title, double progress, Color color, IconData icon, String detail) {
+  Widget _metricCard(String title, double progress, Color color, IconData icon,
+      String detail) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -254,8 +257,8 @@ class _PerformanceTabState extends State<PerformanceTab> {
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
           Text(title,
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.bold, fontSize: 13)),
+              style:
+                  GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 12),
           SizedBox(
             width: 70,
@@ -272,16 +275,13 @@ class _PerformanceTabState extends State<PerformanceTab> {
                 Text(
                   '${(progress * 100).round()}%',
                   style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: color),
+                      fontWeight: FontWeight.bold, fontSize: 16, color: color),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          Text(detail,
-              style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+          Text(detail, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
         ],
       ),
     );
@@ -293,15 +293,13 @@ class _PerformanceTabState extends State<PerformanceTab> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: _accent.withOpacity(0.08),
               borderRadius:
@@ -318,8 +316,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
             ),
           ),
           _breakdownRow('إنجاز المهام', '40%', _taskCompletion, _green),
-          _breakdownRow(
-              'الالتزام بالحضور', '35%', _attendanceRate, _accent),
+          _breakdownRow('الالتزام بالحضور', '35%', _attendanceRate, _accent),
           _breakdownRow('جودة العمل (تدقيق)', '25%', _auditScore, _purple),
           const SizedBox(height: 12),
           Padding(
@@ -331,8 +328,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
                 Expanded(
                   child: Text(
                     'التقييم يُحسب تلقائياً: 40% مهام + 35% حضور + 25% تدقيق',
-                    style:
-                        GoogleFonts.cairo(fontSize: 10, color: _gray),
+                    style: GoogleFonts.cairo(fontSize: 10, color: _gray),
                   ),
                 ),
               ],
@@ -352,12 +348,9 @@ class _PerformanceTabState extends State<PerformanceTab> {
         children: [
           SizedBox(
             width: 160,
-            child: Text(label,
-                style: GoogleFonts.cairo(fontSize: 12)),
+            child: Text(label, style: GoogleFonts.cairo(fontSize: 12)),
           ),
-          Text(weight,
-              style: GoogleFonts.cairo(
-                  fontSize: 11, color: _gray)),
+          Text(weight, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
           const SizedBox(width: 12),
           Expanded(
             child: ClipRRect(
@@ -373,9 +366,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
           const SizedBox(width: 8),
           Text('${(progress * 100).round()}%',
               style: GoogleFonts.cairo(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: color)),
+                  fontSize: 12, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
