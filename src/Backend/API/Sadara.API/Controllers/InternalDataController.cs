@@ -570,6 +570,10 @@ public class InternalDataController : ControllerBase
                 employee.EmergencyContactName,
                 employee.EmergencyContactPhone,
                 employee.HrNotes,
+                // Schedule fields
+                employee.WorkScheduleId,
+                CustomWorkStartTime = employee.CustomWorkStartTime?.ToString("HH:mm"),
+                CustomWorkEndTime = employee.CustomWorkEndTime?.ToString("HH:mm"),
                 // FTTH Integration
                 employee.FtthUsername,
                 employee.FtthPasswordEncrypted,
@@ -646,6 +650,24 @@ public class InternalDataController : ControllerBase
             employee.EmergencyContactPhone = request.EmergencyContactPhone;
         if (request.HrNotes != null)
             employee.HrNotes = request.HrNotes;
+
+        // Schedule fields
+        if (request.WorkScheduleId.HasValue)
+            employee.WorkScheduleId = request.WorkScheduleId.Value == 0 ? null : request.WorkScheduleId.Value;
+        if (request.CustomWorkStartTime != null)
+        {
+            if (string.IsNullOrEmpty(request.CustomWorkStartTime))
+                employee.CustomWorkStartTime = null;
+            else if (TimeOnly.TryParse(request.CustomWorkStartTime, out var startTime))
+                employee.CustomWorkStartTime = startTime;
+        }
+        if (request.CustomWorkEndTime != null)
+        {
+            if (string.IsNullOrEmpty(request.CustomWorkEndTime))
+                employee.CustomWorkEndTime = null;
+            else if (TimeOnly.TryParse(request.CustomWorkEndTime, out var endTime))
+                employee.CustomWorkEndTime = endTime;
+        }
 
         // Password fields
         if (!string.IsNullOrEmpty(request.NewPassword) && request.NewPassword.Length >= 4)
@@ -2306,6 +2328,10 @@ public class InternalUpdateEmployeeRequest
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? HrNotes { get; set; }
+    // Schedule fields
+    public int? WorkScheduleId { get; set; }
+    public string? CustomWorkStartTime { get; set; }
+    public string? CustomWorkEndTime { get; set; }
     // Password fields
     public string? NewPassword { get; set; }
     public string? FtthPassword { get; set; }

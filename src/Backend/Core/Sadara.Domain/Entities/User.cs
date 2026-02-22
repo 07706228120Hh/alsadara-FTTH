@@ -119,6 +119,17 @@ public class User : BaseEntity<Guid>
     /// <summary>بصمة الجهاز المسجلة للحضور (لا يمكن تسجيل حضور من جهاز مختلف)</summary>
     public string? RegisteredDeviceFingerprint { get; set; }
     
+    // ============ جدول الدوام ============
+    
+    /// <summary>معرف جدول الدوام المربوط بالموظف (null = يستخدم جدول المركز/الشركة الافتراضي)</summary>
+    public int? WorkScheduleId { get; set; }
+    
+    /// <summary>وقت بداية دوام خاص بالموظف (أولوية أعلى من الجدول)</summary>
+    public TimeOnly? CustomWorkStartTime { get; set; }
+    
+    /// <summary>وقت نهاية دوام خاص بالموظف (أولوية أعلى من الجدول)</summary>
+    public TimeOnly? CustomWorkEndTime { get; set; }
+    
     // ============ FTTH Integration ============
     
     /// <summary>اسم المستخدم في نظام FTTH (null = فني فقط، ليس مشغل FTTH)</summary>
@@ -131,6 +142,7 @@ public class User : BaseEntity<Guid>
     
     public virtual Merchant? Merchant { get; set; }
     public virtual Company? Company { get; set; }
+    public virtual WorkSchedule? WorkSchedule { get; set; }
     public virtual ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
     
     // ============ خصائص مساعدة ============

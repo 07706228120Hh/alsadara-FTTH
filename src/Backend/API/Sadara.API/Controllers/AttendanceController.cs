@@ -189,7 +189,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         record.DeviceFingerprint = request.DeviceFingerprint;
 
         // ── حساب التأخير تلقائياً من جدول الدوام ──
-        var schedule = await FindScheduleAsync(companyId, request.CenterName, today);
+        var schedule = await FindScheduleAsync(companyId, request.CenterName, today, user);
         if (schedule != null)
         {
             record.WorkScheduleId = schedule.Id;
@@ -318,7 +318,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
             WorkSchedule? schedule = null;
             if (record.WorkScheduleId.HasValue)
                 schedule = await _unitOfWork.WorkSchedules.GetByIdAsync(record.WorkScheduleId.Value);
-            schedule ??= await FindScheduleAsync(companyId, record.CenterName, today);
+            schedule ??= await FindScheduleAsync(companyId, record.CenterName, today, user);
 
             if (schedule != null)
             {
@@ -539,32 +539,63 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
 
     // ============================================================
     //  البحث عن جدول الدوام المناسب ليوم وشركة/مركز
+    //  الأولوية: وقت خاص بالموظف → جدول مربوط بالموظف → مركز+يوم → مركز+عام → شركة+يوم → شركة افتراضي
     // ============================================================
-    private async Task<WorkSchedule?> FindScheduleAsync(Guid? companyId, string? centerName, DateOnly date)
+    private async Task<WorkSchedule?> FindScheduleAsync(Guid? companyId, string? centerName, DateOnly date, User? user = null)
     {
+        // ══ الأولوية 1: وقت دوام خاص بالموظف ══
+        if (user != null && user.CustomWorkStartTime.HasValue && user.CustomWorkEndTime.HasValue)
+        {
+            // إنشاء جدول مؤقت (بدون حفظه في DB) يمثل وقت الموظف الخاص
+            return new WorkSchedule
+            {
+                Id = -1, // معرف مؤقت
+                Name = "وقت خاص - " + (user.FullName ?? ""),
+                CompanyId = companyId,
+                WorkStartTime = user.CustomWorkStartTime.Value,
+                WorkEndTime = user.CustomWorkEndTime.Value,
+                LateGraceMinutes = 15,
+                EarlyDepartureThresholdMinutes = 15,
+                IsDefault = false,
+                IsActive = true,
+            };
+        }
+
+        // ══ الأولوية 2: جدول دوام مربوط بالموظف ══
+        if (user != null && user.WorkScheduleId.HasValue)
+        {
+            var userSchedule = await _unitOfWork.WorkSchedules.GetByIdAsync(user.WorkScheduleId.Value);
+            if (userSchedule != null && userSchedule.IsActive)
+                return userSchedule;
+        }
+
+        // ══ الأولوية 3-6: البحث بالمركز/الشركة (النظام الأصلي) ══
         var dayOfWeek = (int)date.DayOfWeek; // 0=Sunday .. 6=Saturday
 
         var schedules = await _unitOfWork.WorkSchedules.AsQueryable()
             .Where(s => s.IsActive && (s.CompanyId == companyId || s.CompanyId == null))
             .ToListAsync();
 
-        // الأولوية: مركز + يوم محدد → مركز + يوم عام → افتراضي + يوم محدد → افتراضي + يوم عام
+        // الأولوية 3: مركز + يوم محدد
         var match = schedules
             .Where(s => !string.IsNullOrEmpty(centerName) &&
                         string.Equals(s.CenterName, centerName, StringComparison.OrdinalIgnoreCase) &&
                         s.DayOfWeek == dayOfWeek)
             .FirstOrDefault();
 
+        // الأولوية 4: مركز + يوم عام
         match ??= schedules
             .Where(s => !string.IsNullOrEmpty(centerName) &&
                         string.Equals(s.CenterName, centerName, StringComparison.OrdinalIgnoreCase) &&
                         s.DayOfWeek == null)
             .FirstOrDefault();
 
+        // الأولوية 5: شركة + يوم محدد
         match ??= schedules
             .Where(s => string.IsNullOrEmpty(s.CenterName) && s.DayOfWeek == dayOfWeek)
             .FirstOrDefault();
 
+        // الأولوية 6: شركة افتراضي
         match ??= schedules
             .Where(s => string.IsNullOrEmpty(s.CenterName) && s.DayOfWeek == null && s.IsDefault)
             .FirstOrDefault();

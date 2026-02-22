@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
 import '../../../services/departments_data_service.dart';
 import '../../../services/centers_data_service.dart';
+import '../../../services/attendance_api_service.dart';
 
 class HrInfoTab extends StatefulWidget {
   final Map<String, dynamic> employee;
@@ -66,6 +67,14 @@ class _HrInfoTabState extends State<HrInfoTab> {
   late TextEditingController _newPasswordCtrl;
   late TextEditingController _ftthPasswordCtrl;
 
+  // Schedule fields
+  int? _selectedScheduleId;
+  bool _useCustomTime = false;
+  TimeOfDay? _customStartTime;
+  TimeOfDay? _customEndTime;
+  List<Map<String, dynamic>> _schedulesList = [];
+  bool _isSchedulesLoading = true;
+
   // ═══ ألوان ═══
   static const _cardBg = Colors.white;
   static const _accent = Color(0xFF3498DB);
@@ -91,6 +100,21 @@ class _HrInfoTabState extends State<HrInfoTab> {
     _initControllers();
     _loadDepartments();
     _loadCenters();
+    _loadSchedules();
+  }
+
+  Future<void> _loadSchedules() async {
+    try {
+      final schedules = await AttendanceApiService.instance.getSchedules();
+      if (mounted) {
+        setState(() {
+          _schedulesList = schedules;
+          _isSchedulesLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isSchedulesLoading = false);
+    }
   }
 
   Future<void> _loadDepartments() async {
@@ -141,6 +165,36 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
     _newPasswordCtrl = TextEditingController();
     _ftthPasswordCtrl = TextEditingController();
+
+    // Schedule
+    final scheduleId = e['workScheduleId'] ?? e['WorkScheduleId'];
+    _selectedScheduleId = scheduleId is int
+        ? scheduleId
+        : (scheduleId != null ? int.tryParse(scheduleId.toString()) : null);
+
+    final customStart =
+        (e['customWorkStartTime'] ?? e['CustomWorkStartTime'] ?? '').toString();
+    final customEnd =
+        (e['customWorkEndTime'] ?? e['CustomWorkEndTime'] ?? '').toString();
+    if (customStart.isNotEmpty && customEnd.isNotEmpty) {
+      _useCustomTime = true;
+      final startParts = customStart.split(':');
+      final endParts = customEnd.split(':');
+      if (startParts.length >= 2) {
+        _customStartTime = TimeOfDay(
+            hour: int.tryParse(startParts[0]) ?? 8,
+            minute: int.tryParse(startParts[1]) ?? 0);
+      }
+      if (endParts.length >= 2) {
+        _customEndTime = TimeOfDay(
+            hour: int.tryParse(endParts[0]) ?? 16,
+            minute: int.tryParse(endParts[1]) ?? 0);
+      }
+    } else {
+      _useCustomTime = false;
+      _customStartTime = null;
+      _customEndTime = null;
+    }
 
     // تهيئة الدور
     final role = (e['role'] ?? e['Role'] ?? 'Employee').toString();
@@ -206,6 +260,14 @@ class _HrInfoTabState extends State<HrInfoTab> {
           'newPassword': _newPasswordCtrl.text,
         if (_ftthPasswordCtrl.text.isNotEmpty)
           'ftthPassword': _ftthPasswordCtrl.text,
+        // Schedule fields
+        'workScheduleId': _useCustomTime ? 0 : (_selectedScheduleId ?? 0),
+        'customWorkStartTime': _useCustomTime && _customStartTime != null
+            ? '${_customStartTime!.hour.toString().padLeft(2, '0')}:${_customStartTime!.minute.toString().padLeft(2, '0')}'
+            : '',
+        'customWorkEndTime': _useCustomTime && _customEndTime != null
+            ? '${_customEndTime!.hour.toString().padLeft(2, '0')}:${_customEndTime!.minute.toString().padLeft(2, '0')}'
+            : '',
       };
 
       final ok = await EmployeeProfileService.instance
@@ -348,10 +410,12 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 ],
               ),
               const SizedBox(height: 16),
-              // ═══ صف ثالث: الطوارئ + FTTH ═══
+              // ═══ صف ثالث: جدول الدوام + الطوارئ ═══
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Expanded(child: _scheduleCard()),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: _sectionCard(
                       'جهة اتصال الطوارئ',
@@ -365,17 +429,24 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(child: _ftthCard()),
                 ],
               ),
               const SizedBox(height: 16),
-              // ═══ ملاحظات HR ═══
-              _sectionCard(
-                'ملاحظات HR',
-                Icons.notes_rounded,
-                _labelColor,
-                [_notesField()],
+              // ═══ صف رابع: FTTH + ملاحظات ═══
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _ftthCard()),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _sectionCard(
+                      'ملاحظات HR',
+                      Icons.notes_rounded,
+                      _labelColor,
+                      [_notesField()],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 80), // مسافة للزر العائم
             ],
@@ -1069,6 +1140,241 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════ بطاقة جدول الدوام ═══════════════
+
+  Widget _scheduleCard() {
+    const scheduleColor = Color(0xFF6C5CE7);
+
+    // عرض اسم الجدول الحالي
+    String currentScheduleName = 'افتراضي (حسب المركز)';
+    if (_useCustomTime && _customStartTime != null && _customEndTime != null) {
+      currentScheduleName =
+          'وقت خاص: ${_customStartTime!.hour.toString().padLeft(2, '0')}:${_customStartTime!.minute.toString().padLeft(2, '0')} - ${_customEndTime!.hour.toString().padLeft(2, '0')}:${_customEndTime!.minute.toString().padLeft(2, '0')}';
+    } else if (_selectedScheduleId != null && _schedulesList.isNotEmpty) {
+      final sch = _schedulesList
+          .where((s) => (s['id'] ?? s['Id']) == _selectedScheduleId)
+          .firstOrNull;
+      if (sch != null) {
+        currentScheduleName =
+            '${sch['name'] ?? sch['Name']} (${sch['workStartTime'] ?? sch['WorkStartTime']} - ${sch['workEndTime'] ?? sch['WorkEndTime']})';
+      }
+    }
+
+    return _sectionCard(
+      'جدول الدوام',
+      Icons.schedule_rounded,
+      scheduleColor,
+      [
+        if (!_editing) ...[
+          // عرض فقط
+          _readOnlyField('نوع الدوام', currentScheduleName, Icons.access_time,
+              scheduleColor),
+        ] else ...[
+          // وضع التعديل - اختيار نوع الدوام
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 150,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.toggle_on, size: 15, color: _labelColor),
+                      const SizedBox(width: 6),
+                      Text('وقت خاص',
+                          style: GoogleFonts.cairo(
+                              color: _labelColor, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Switch(
+                  value: _useCustomTime,
+                  activeColor: scheduleColor,
+                  onChanged: (v) => setState(() => _useCustomTime = v),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _useCustomTime ? 'مفعّل' : 'معطّل',
+                  style: GoogleFonts.cairo(
+                      fontSize: 12,
+                      color: _useCustomTime ? scheduleColor : _labelColor),
+                ),
+              ],
+            ),
+          ),
+          if (_useCustomTime) ...[
+            // أوقات مخصصة
+            _timePickerField('وقت البداية', _customStartTime, Icons.login, (t) {
+              setState(() => _customStartTime = t);
+            }),
+            _timePickerField('وقت النهاية', _customEndTime, Icons.logout, (t) {
+              setState(() => _customEndTime = t);
+            }),
+          ] else ...[
+            // اختيار جدول دوام
+            _scheduleDropdownField(),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _scheduleDropdownField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 15, color: _labelColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('جدول الدوام',
+                      style:
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _isSchedulesLoading
+                ? const SizedBox(
+                    height: 30,
+                    child: Center(
+                        child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))))
+                : DropdownButtonFormField<int?>(
+                    value: _selectedScheduleId,
+                    isDense: true,
+                    style: GoogleFonts.cairo(fontSize: 13, color: _valueColor),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      hintText: 'افتراضي (حسب المركز)',
+                      hintStyle:
+                          GoogleFonts.cairo(fontSize: 12, color: _labelColor),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFDDDDDD))),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFDDDDDD))),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide:
+                              const BorderSide(color: _accent, width: 1.5)),
+                    ),
+                    items: [
+                      DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('افتراضي (حسب المركز)',
+                              style: GoogleFonts.cairo(fontSize: 13))),
+                      ..._schedulesList.map((s) {
+                        final id = s['id'] ?? s['Id'];
+                        final name = s['name'] ?? s['Name'] ?? '';
+                        final start =
+                            s['workStartTime'] ?? s['WorkStartTime'] ?? '';
+                        final end = s['workEndTime'] ?? s['WorkEndTime'] ?? '';
+                        return DropdownMenuItem<int?>(
+                          value: id is int ? id : int.tryParse(id.toString()),
+                          child: Text('$name ($start - $end)',
+                              style: GoogleFonts.cairo(fontSize: 13)),
+                        );
+                      }),
+                    ],
+                    onChanged: (v) => setState(() => _selectedScheduleId = v),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timePickerField(String label, TimeOfDay? value, IconData icon,
+      ValueChanged<TimeOfDay> onChanged) {
+    final displayText = value != null
+        ? '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}'
+        : '—';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Row(
+              children: [
+                Icon(icon, size: 15, color: _labelColor),
+                const SizedBox(width: 6),
+                Expanded(
+                    child: Text(label,
+                        style: GoogleFonts.cairo(
+                            color: _labelColor, fontSize: 12))),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _editing
+                ? InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime:
+                            value ?? const TimeOfDay(hour: 8, minute: 0),
+                        builder: (context, child) => Directionality(
+                            textDirection: TextDirection.rtl, child: child!),
+                      );
+                      if (picked != null) onChanged(picked);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFDDDDDD)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(displayText,
+                              style: GoogleFonts.cairo(
+                                  fontSize: 13, color: _valueColor)),
+                          const Icon(Icons.access_time,
+                              size: 16, color: _labelColor),
+                        ],
+                      ),
+                    ),
+                  )
+                : Container(
+                    width: double.infinity,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                    ),
+                    child: Text(displayText,
+                        style: GoogleFonts.cairo(
+                            fontSize: 13,
+                            color: value == null ? _labelColor : _valueColor)),
+                  ),
           ),
         ],
       ),
