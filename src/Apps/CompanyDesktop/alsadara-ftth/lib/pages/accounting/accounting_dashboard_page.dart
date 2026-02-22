@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import 'chart_of_accounts_page.dart';
 import 'salaries_page.dart';
@@ -995,10 +996,12 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     _loadDashboard();
   }
 
+  static final _currencyFmt = NumberFormat('#,##0', 'ar');
+
   String _formatCurrency(dynamic value) {
     if (value == null) return '0';
     final num n = value is num ? value : double.tryParse(value.toString()) ?? 0;
-    return '${n.round()} د.ع';
+    return '${_currencyFmt.format(n.round())} د.ع';
   }
 
   /// تنسيق مع إشارة (مديون/دائن)

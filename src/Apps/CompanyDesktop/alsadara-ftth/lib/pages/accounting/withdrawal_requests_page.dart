@@ -614,8 +614,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   child: Column(
                     children: [
                       Text('صرف سلفة لـ $userName',
-                          style:
-                              GoogleFonts.cairo(fontSize: 13, color: _textDark)),
+                          style: GoogleFonts.cairo(
+                              fontSize: 13, color: _textDark)),
                       const SizedBox(height: 4),
                       Text('${_formatAmount(amount)} د.ع',
                           style: GoogleFonts.cairo(
@@ -655,8 +655,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                     labelStyle: GoogleFonts.cairo(fontSize: 12),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8)),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                   ),
                   style: GoogleFonts.cairo(fontSize: 13),
                   maxLines: 2,
@@ -664,7 +664,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 const SizedBox(height: 8),
                 CheckboxListTile(
                   value: overrideLimit,
-                  onChanged: (v) => setDialogState(() => overrideLimit = v ?? false),
+                  onChanged: (v) =>
+                      setDialogState(() => overrideLimit = v ?? false),
                   title: Text('تجاوز حد السحب',
                       style: GoogleFonts.cairo(fontSize: 12)),
                   subtitle: Text(
@@ -681,7 +682,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
+                child:
+                    Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
@@ -775,13 +777,11 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
   Future<void> _payRequest(int id, String notes, bool overrideLimit) async {
     try {
       await _api.payWithdrawalRequest(id,
-          notes: notes.isNotEmpty ? notes : null,
-          overrideLimit: overrideLimit);
+          notes: notes.isNotEmpty ? notes : null, overrideLimit: overrideLimit);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم صرف السلفة بنجاح',
-              style: GoogleFonts.cairo()),
+          content: Text('تم صرف السلفة بنجاح', style: GoogleFonts.cairo()),
           backgroundColor: _accentGreen,
         ),
       );

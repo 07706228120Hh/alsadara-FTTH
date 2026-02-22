@@ -1136,7 +1136,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 ),
               ),
             ),
-            if ((advances is num && advances > 0) || (advances is double && advances > 0))
+            if ((advances is num && advances > 0) ||
+                (advances is double && advances > 0))
               SizedBox(
                 width: cardW,
                 child: _salaryStatCard(
@@ -1282,8 +1283,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       for (final a in advancesList) {
         final rawDesc = a['Description']?.toString() ?? '';
         final descText = rawDesc.isNotEmpty ? rawDesc : 'سلفة على الراتب';
-        items.add(
-            _DeductionItem('💰 $descText', a['Amount'] ?? 0, _accentBlue));
+        items
+            .add(_DeductionItem('💰 $descText', a['Amount'] ?? 0, _accentBlue));
       }
 
       final bonusesList = _adjustmentsData!['Bonuses'] as List<dynamic>? ?? [];
