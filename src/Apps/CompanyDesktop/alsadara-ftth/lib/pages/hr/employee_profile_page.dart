@@ -69,12 +69,12 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     super.dispose();
   }
 
-  /// بناء قائمة التبويبات المرئية حسب الصلاحيات
+  /// بناء قائمة التبويبات المرئية حسب الصلاحيات V3
   void _buildVisibleTabs() {
     _visibleTabs.clear();
 
-    // 1. HR — يظهر دائماً لمن لديه users.view
-    if (_pm.canView('users')) {
+    // 1. HR — يظهر لمن لديه hr.employees.view أو users.view (توافق عكسي)
+    if (_pm.canView('hr.employees') || _pm.canView('users')) {
       _visibleTabs.add(_TabInfo(
         key: 'hr',
         label: 'بيانات HR',
@@ -82,7 +82,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       ));
     }
 
-    // 2. الحضور — يحتاج attendance.view
+    // 2. الحضور — يحتاج attendance.view أو attendance.records.view
     if (_pm.canView('attendance')) {
       _visibleTabs.add(_TabInfo(
         key: 'attendance',
@@ -100,8 +100,10 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       ));
     }
 
-    // 4. الرواتب — يحتاج accounts.view أو accounting.view
-    if (_pm.canView('accounts') || _pm.canView('accounting')) {
+    // 4. الرواتب — يحتاج hr.salaries.view أو accounting.view
+    if (_pm.canView('hr.salaries') ||
+        _pm.canView('accounts') ||
+        _pm.canView('accounting')) {
       _visibleTabs.add(_TabInfo(
         key: 'salary',
         label: 'الرواتب',
@@ -109,8 +111,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       ));
     }
 
-    // 5. الصلاحيات — فقط CompanyAdmin+ (يفحص users.edit)
-    if (_pm.canEdit('users')) {
+    // 5. الصلاحيات — يحتاج hr.permissions.edit
+    if (_pm.canEdit('hr.permissions') || _pm.canEdit('users')) {
       _visibleTabs.add(_TabInfo(
         key: 'permissions',
         label: 'الصلاحيات',
@@ -125,7 +127,10 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     final role = _employee['role'] ?? _employee['Role'] ?? '';
     final isTechOrOp =
         role == 'Technician' || role == 'TechnicalLeader' || ftthUser != null;
-    if (isTechOrOp && (_pm.canView('accounts') || _pm.canView('accounting'))) {
+    if (isTechOrOp &&
+        (_pm.canView('accounting.ftth_operators') ||
+            _pm.canView('accounts') ||
+            _pm.canView('accounting'))) {
       _visibleTabs.add(_TabInfo(
         key: 'ftth',
         label: 'FTTH',
@@ -133,7 +138,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       ));
     }
 
-    // 7. المعاملات المالية — يحتاج transactions.view أو accounts.view
+    // 7. المعاملات المالية — يحتاج transactions.view أو technicians.view
     if (_pm.canView('transactions') || _pm.canView('technicians')) {
       _visibleTabs.add(_TabInfo(
         key: 'transactions',
@@ -777,7 +782,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         return HrInfoTab(
           employee: _employee,
           companyId: widget.companyId,
-          canEdit: _pm.canEdit('users'),
+          canEdit: _pm.canEdit('hr.employees') || _pm.canEdit('users'),
           onSaved: _loadFullProfile,
         );
       case 'attendance':
@@ -789,22 +794,24 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         return TasksTab(
           employeeId: widget.employeeId,
           employeeName: _employee['fullName'] ?? _employee['FullName'] ?? '',
-          canAddTask: _pm.canAdd('tasks'),
-          canEditTask: _pm.canEdit('tasks'),
+          canAddTask: _pm.canAdd('tasks') || _pm.canAdd('tasks.assign'),
+          canEditTask: _pm.canEdit('tasks') || _pm.canEdit('tasks.assign'),
         );
       case 'salary':
         return SalaryTab(
           employeeId: widget.employeeId,
           employeeName: _employee['fullName'] ?? _employee['FullName'] ?? '',
           baseSalary: _employee['salary'] ?? _employee['Salary'],
-          canEdit: _pm.canEdit('accounts') || _pm.canEdit('accounting'),
+          canEdit: _pm.canEdit('hr.salaries') ||
+              _pm.canEdit('accounts') ||
+              _pm.canEdit('accounting'),
         );
       case 'permissions':
         return PermissionsTab(
           companyId: widget.companyId,
           employeeId: widget.employeeId,
           employeeName: _employee['fullName'] ?? _employee['FullName'] ?? '',
-          canEdit: _pm.canEdit('users'),
+          canEdit: _pm.canEdit('hr.permissions') || _pm.canEdit('users'),
         );
       case 'ftth':
         return FtthTab(

@@ -1,6 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/permission_registry.dart';
 
 /// خدمة إدارة الصلاحيات مع فصل كامل بين النظامين
+/// V3: يستخدم PermissionRegistry كمصدر وحيد للحقيقة
 class PermissionsService {
   // =================
   // النظام الأول (lib/pages/home_page.dart)
@@ -19,6 +21,11 @@ class PermissionsService {
     'sadara_portal', // منصة الصدارة
     'accounting', // النظام المحاسبي
     'diagnostics', // تشخيص النظام
+    // === V3: مفاتيح جديدة ===
+    'hr', // الموارد البشرية
+    'follow_up', // المتابعة
+    'audit_dashboard', // داشبورد التدقيق
+    'my_dashboard', // شاشتي
   ];
 
   static const Map<String, bool> firstSystemDefaults = {
@@ -30,6 +37,11 @@ class PermissionsService {
     'sadara_portal': false,
     'accounting': false,
     'diagnostics': false,
+    // V3
+    'hr': false,
+    'follow_up': false,
+    'audit_dashboard': false,
+    'my_dashboard': false,
   };
 
   // =================
@@ -450,7 +462,7 @@ class PermissionsService {
     'send': 'إرسال',
   };
 
-  /// الحصول على صلاحيات V2 للنظام الأول
+  /// الحصول على صلاحيات V2 للنظام الأول (يشمل المفاتيح الفرعية V3)
   static Future<Map<String, Map<String, bool>>>
       getFirstSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
@@ -458,18 +470,20 @@ class PermissionsService {
 
     Map<String, Map<String, bool>> permissions = {};
 
-    for (String key in firstSystemPermissions) {
+    // V3: استخدم جميع المفاتيح (رئيسية + فرعية) من السجل المركزي
+    final allKeys = PermissionRegistry.allFirstSystemKeys;
+
+    for (String key in allKeys) {
       Map<String, bool> actions = {};
       for (String action in availableActions) {
         if (isConfiguredV2) {
-          // جلب من V2 المحفوظ
           actions[action] =
               prefs.getBool('$_firstSystemPrefixV2${key}_$action') ?? false;
         } else {
-          // Fallback للنظام القديم (V1)
-          // إذا كانت الصلاحية مفعلة في V1، نفعل view فقط
-          final v1Permission = prefs.getBool('$_firstSystemPrefix$key') ??
-              firstSystemDefaults[key] ??
+          // Fallback: المفاتيح الرئيسية القديمة فقط
+          final baseKey = key.contains('.') ? key.split('.').first : key;
+          final v1Permission = prefs.getBool('$_firstSystemPrefix$baseKey') ??
+              firstSystemDefaults[baseKey] ??
               false;
           actions[action] = action == 'view' ? v1Permission : false;
         }
@@ -480,18 +494,18 @@ class PermissionsService {
     return permissions;
   }
 
-  /// حفظ صلاحيات V2 للنظام الأول
+  /// حفظ صلاحيات V2 للنظام الأول (يشمل المفاتيح الفرعية V3)
   static Future<void> saveFirstSystemPermissionsV2(
       Map<String, Map<String, bool>> permissions) async {
     final prefs = await SharedPreferences.getInstance();
 
     try {
-      for (String key in firstSystemPermissions) {
-        if (permissions.containsKey(key)) {
-          for (String action in availableActions) {
-            final value = permissions[key]?[action] ?? false;
-            await prefs.setBool('$_firstSystemPrefixV2${key}_$action', value);
-          }
+      // V3: حفظ جميع المفاتيح الموجودة في البيانات المُمررة
+      for (final entry in permissions.entries) {
+        for (String action in availableActions) {
+          final value = entry.value[action] ?? false;
+          await prefs.setBool(
+              '$_firstSystemPrefixV2${entry.key}_$action', value);
         }
       }
 
@@ -501,7 +515,7 @@ class PermissionsService {
     }
   }
 
-  /// الحصول على صلاحيات V2 للنظام الثاني
+  /// الحصول على صلاحيات V2 للنظام الثاني (يشمل المفاتيح الفرعية V3)
   static Future<Map<String, Map<String, bool>>>
       getSecondSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
@@ -509,18 +523,20 @@ class PermissionsService {
 
     Map<String, Map<String, bool>> permissions = {};
 
-    for (String key in secondSystemPermissions) {
+    // V3: استخدم جميع المفاتيح (رئيسية + فرعية) من السجل المركزي
+    final allKeys = PermissionRegistry.allSecondSystemKeys;
+
+    for (String key in allKeys) {
       Map<String, bool> actions = {};
       for (String action in availableActions) {
         if (isConfiguredV2) {
-          // جلب من V2 المحفوظ
           actions[action] =
               prefs.getBool('$_secondSystemPrefixV2${key}_$action') ?? false;
         } else {
-          // Fallback للنظام القديم (V1)
-          // إذا كانت الصلاحية مفعلة في V1، نفعل view فقط
-          final v1Permission = prefs.getBool('$_secondSystemPrefix$key') ??
-              secondSystemDefaults[key] ??
+          // Fallback: المفاتيح الرئيسية القديمة فقط
+          final baseKey = key.contains('.') ? key.split('.').first : key;
+          final v1Permission = prefs.getBool('$_secondSystemPrefix$baseKey') ??
+              secondSystemDefaults[baseKey] ??
               false;
           actions[action] = action == 'view' ? v1Permission : false;
         }
@@ -531,18 +547,18 @@ class PermissionsService {
     return permissions;
   }
 
-  /// حفظ صلاحيات V2 للنظام الثاني
+  /// حفظ صلاحيات V2 للنظام الثاني (يشمل المفاتيح الفرعية V3)
   static Future<void> saveSecondSystemPermissionsV2(
       Map<String, Map<String, bool>> permissions) async {
     final prefs = await SharedPreferences.getInstance();
 
     try {
-      for (String key in secondSystemPermissions) {
-        if (permissions.containsKey(key)) {
-          for (String action in availableActions) {
-            final value = permissions[key]?[action] ?? false;
-            await prefs.setBool('$_secondSystemPrefixV2${key}_$action', value);
-          }
+      // V3: حفظ جميع المفاتيح الموجودة في البيانات المُمررة
+      for (final entry in permissions.entries) {
+        for (String action in availableActions) {
+          final value = entry.value[action] ?? false;
+          await prefs.setBool(
+              '$_secondSystemPrefixV2${entry.key}_$action', value);
         }
       }
 

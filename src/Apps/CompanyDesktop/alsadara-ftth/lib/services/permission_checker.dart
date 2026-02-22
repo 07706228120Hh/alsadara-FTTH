@@ -1,6 +1,11 @@
-/// 🔐 نظام فحص الصلاحيات الموحد V2
+/// 🔐 نظام فحص الصلاحيات الموحد V3 — هرمي دقيق
 /// يوفر طريقة مركزية للتحقق من الصلاحيات على مستوى الإجراءات
-/// يُستخدم كـ Mixin في أي State يحتاج فحص صلاحيات
+/// يدعم المفاتيح الهرمية مثل 'accounting.journals'
+///
+/// القاعدة الهرمية:
+///   - إذا الأب مغلق ← جميع الأبناء مغلقة تلقائياً
+///   - إذا الأب مفتوح + الابن غير محدد ← يرث من الأب
+///   - إذا الأب مفتوح + الابن محدد ← يستخدم قيمة الابن
 ///
 /// الاستخدام:
 /// ```dart
@@ -8,14 +13,13 @@
 ///   @override
 ///   void initState() {
 ///     super.initState();
-///     initPermissions(); // تحميل الصلاحيات
+///     initPermissions();
 ///   }
 ///
-///   // في الـ build:
-///   if (canView('users')) ... // إظهار الصفحة
-///   if (canAdd('users')) ...  // إظهار زر الإضافة
-///   if (canEdit('users')) ... // إظهار زر التعديل
-///   if (canDelete('users')) ... // إظهار زر الحذف
+///   if (canView('accounting'))            // هل يرى المحاسبة؟
+///   if (canView('accounting.journals'))   // هل يرى القيود اليومية؟
+///   if (canAdd('accounting.journals'))    // هل يضيف قيد؟
+///   if (canEdit('hr.salaries'))           // هل يعدل الرواتب؟
 /// }
 /// ```
 library;
@@ -23,6 +27,7 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'permissions_service.dart';
+import '../config/permission_registry.dart';
 
 /// أنواع الإجراءات المتاحة
 enum PermissionAction {
@@ -60,7 +65,7 @@ extension PermissionActionExt on PermissionAction {
   }
 }
 
-/// مدير الصلاحيات V2 — Singleton للوصول من أي مكان
+/// مدير الصلاحيات V3 — Singleton مع دعم هرمي
 class PermissionManager {
   static PermissionManager? _instance;
   static PermissionManager get instance =>
@@ -84,7 +89,7 @@ class PermissionManager {
       _firstSystemV2 = await PermissionsService.getFirstSystemPermissionsV2();
       _secondSystemV2 = await PermissionsService.getSecondSystemPermissionsV2();
       _loaded = true;
-      debugPrint('✅ PermissionManager: تم تحميل صلاحيات V2');
+      debugPrint('✅ PermissionManager: تم تحميل صلاحيات V3');
       debugPrint('   النظام الأول: ${_firstSystemV2.keys.length} ميزة');
       debugPrint('   النظام الثاني: ${_secondSystemV2.keys.length} ميزة');
     } catch (e) {
@@ -105,7 +110,7 @@ class PermissionManager {
     await PermissionsService.saveFirstSystemPermissionsV2(firstSystem);
     await PermissionsService.saveSecondSystemPermissionsV2(secondSystem);
 
-    debugPrint('💾 PermissionManager: تم حفظ صلاحيات V2');
+    debugPrint('💾 PermissionManager: تم حفظ صلاحيات V3');
   }
 
   /// تحديث صلاحيات V2 من بيانات API خام
@@ -198,12 +203,44 @@ class PermissionManager {
   }
 
   // ══════════════════════════════════════════
-  // دوال الفحص
+  // دوال الفحص الهرمي
   // ══════════════════════════════════════════
 
-  /// فحص إجراء محدد لميزة محددة
+  /// فحص إجراء محدد لميزة محددة مع دعم الهرمية
+  ///
+  /// القاعدة:
+  /// 1. إذا المفتاح فرعي (يحتوي نقطة مثل 'accounting.journals'):
+  ///    - أولاً: تحقق من الأب ('accounting') → إذا مغلق = false فوراً
+  ///    - ثانياً: إذا الأب مفتوح + المفتاح الفرعي موجود → استخدم قيمته
+  ///    - ثالثاً: إذا الأب مفتوح + المفتاح الفرعي غير موجود → ورّث من الأب
+  /// 2. إذا المفتاح رئيسي: تحقق مباشرة
   bool hasAction(String feature, String action) {
-    // بحث في النظام الأول ثم الثاني
+    // تحقق هل هذا مفتاح فرعي
+    final entry = PermissionRegistry.findByKey(feature);
+    if (entry != null && entry.parent != null) {
+      // ──── مفتاح فرعي ← تحقق من الأب أولاً ────
+      final parentAllowed = _checkDirect(entry.parent!, action);
+      if (!parentAllowed) return false; // الأب مغلق = الابن مغلق
+
+      // الأب مفتوح → تحقق من الابن
+      final childResult = _checkDirect(feature, action);
+      // إذا الابن غير محدد في البيانات، ورّث من الأب
+      if (!_hasKey(feature)) return parentAllowed;
+      return childResult;
+    }
+
+    // ──── مفتاح رئيسي ← تحقق مباشرة ────
+    return _checkDirect(feature, action);
+  }
+
+  /// هل المفتاح موجود في البيانات المحملة؟
+  bool _hasKey(String feature) {
+    return _firstSystemV2.containsKey(feature) ||
+        _secondSystemV2.containsKey(feature);
+  }
+
+  /// فحص مباشر بدون هرمية
+  bool _checkDirect(String feature, String action) {
     final firstActions = _firstSystemV2[feature];
     if (firstActions != null) {
       return firstActions[action] ?? false;
@@ -277,6 +314,43 @@ class PermissionManager {
       _firstSystemV2[feature] = actions;
     }
     _loaded = true;
+  }
+
+  /// منح جميع صلاحيات النظامين (للسوبر أدمن)
+  void grantAllSystems() {
+    final actions = <String, bool>{
+      for (final action in PermissionsService.availableActions) action: true,
+    };
+    for (final e in PermissionRegistry.firstSystem) {
+      _firstSystemV2[e.key] = Map.from(actions);
+    }
+    for (final e in PermissionRegistry.secondSystem) {
+      _secondSystemV2[e.key] = Map.from(actions);
+    }
+    _loaded = true;
+  }
+
+  /// تطبيق قالب صلاحيات
+  Future<void> applyTemplate(String templateName) async {
+    final template = PermissionRegistry.getTemplate(templateName);
+    final firstPerms = <String, Map<String, bool>>{};
+    final secondPerms = <String, Map<String, bool>>{};
+
+    for (final entry in template.entries) {
+      final actions = <String, bool>{
+        for (final a in PermissionsService.availableActions)
+          a: entry.value['actions']?.contains(a) ?? false,
+      };
+
+      // حدد أي نظام ينتمي إليه هذا المفتاح
+      if (PermissionRegistry.allFirstSystemKeys.contains(entry.key)) {
+        firstPerms[entry.key] = actions;
+      } else if (PermissionRegistry.allSecondSystemKeys.contains(entry.key)) {
+        secondPerms[entry.key] = actions;
+      }
+    }
+
+    await savePermissions(firstSystem: firstPerms, secondSystem: secondPerms);
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
+import '../../services/permission_checker.dart';
 import 'chart_of_accounts_page.dart';
 import 'salaries_page.dart';
 import 'collections_page.dart';
@@ -324,6 +325,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             icon: Icons.account_tree_rounded,
             label: 'شجرة الحسابات',
             color: const Color(0xFF3498DB),
+            permKey: 'accounting.chart',
             onTap: () =>
                 _navigateTo(ChartOfAccountsPage(companyId: widget.companyId)),
           ),
@@ -331,6 +333,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             icon: Icons.menu_book,
             label: 'القيود المحاسبية',
             color: const Color(0xFF2ECC71),
+            permKey: 'accounting.journals',
             onTap: () =>
                 _navigateTo(JournalEntriesPage(companyId: widget.companyId)),
           ),
@@ -338,12 +341,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             icon: Icons.payments,
             label: 'الرواتب',
             color: const Color(0xFFE91E63),
+            permKey: 'accounting.salaries',
             onTap: () => _navigateTo(SalariesPage(companyId: widget.companyId)),
           ),
           _sidebarBtn(
             icon: Icons.analytics,
             label: 'الإحصائيات',
             color: const Color(0xFF34495E),
+            permKey: 'accounting.statistics',
             onTap: () =>
                 _navigateTo(StatisticsPage(companyId: widget.companyId)),
           ),
@@ -351,6 +356,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             icon: Icons.receipt_long,
             label: 'المصاريف الثابتة',
             color: const Color(0xFFE67E22),
+            permKey: 'accounting.fixed_expenses',
             onTap: () =>
                 _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
           ),
@@ -358,6 +364,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             icon: Icons.money_off,
             label: 'طلبات السحب',
             color: const Color(0xFFE74C3C),
+            permKey: 'accounting.withdrawals',
             onTap: () => _navigateTo(
                 WithdrawalRequestsPage(companyId: widget.companyId)),
           ),
@@ -372,7 +379,12 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     required String label,
     required Color color,
     required VoidCallback onTap,
+    String? permKey,
   }) {
+    // V3: إخفاء العنصر إذا لا يملك صلاحية العرض
+    if (permKey != null && !PermissionManager.instance.canView(permKey)) {
+      return const SizedBox.shrink();
+    }
     final expanded = _sidebarExpanded;
     return Tooltip(
       message: expanded ? '' : label,
@@ -782,69 +794,80 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   }
 
   Widget _buildSectionsGrid() {
-    final sections = [
-      _SectionItem(
-        title: 'قيد مركب',
-        subtitle: 'إدخال قيد محاسبي مركب',
-        icon: Icons.post_add,
-        color: const Color(0xFF8E44AD),
-        onTap: () =>
-            _navigateTo(CompoundJournalEntryPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'المصاريف والإيرادات',
-        subtitle: 'تسجيل ومتابعة المصاريف والإيرادات',
-        icon: Icons.swap_horiz,
-        color: const Color(0xFF1ABC9C),
-        onTap: () => _showExpensesRevenueDialog(),
-      ),
-      _SectionItem(
-        title: 'حسابات العملاء',
-        subtitle: 'إضافة وإدارة حسابات العملاء',
-        icon: Icons.people,
-        color: const Color(0xFF2196F3),
-        onTap: () =>
-            _navigateTo(ClientAccountsPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'تحصيلات الفنيين',
-        subtitle: 'متابعة تحصيلات الفنيين',
-        icon: Icons.engineering,
-        color: const Color(0xFF9B59B6),
-        onTap: () => _navigateTo(CollectionsPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'إدارة الوكلاء',
-        subtitle: 'إضافة وإدارة الوكلاء والمحاسبة',
-        icon: Icons.support_agent,
-        color: const Color(0xFF3F51B5),
-        onTap: () =>
-            _navigateTo(AgentsManagementPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'حسابات التفعيلات',
-        subtitle: 'لوحة متابعة حسابات التفعيلات',
-        icon: Icons.wifi_tethering,
-        color: const Color(0xFF00897B),
-        onTap: () => _navigateTo(
-            FtthOperatorsDashboardPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'مراقبة الأموال',
-        subtitle: 'أرصدة الصناديق والذمم والإيرادات',
-        icon: Icons.account_balance,
-        color: const Color(0xFF5C6BC0),
-        onTap: () =>
-            _navigateTo(FundsOverviewPage(companyId: widget.companyId)),
-      ),
-      _SectionItem(
-        title: 'طلبات سحب الأموال',
-        subtitle: 'مراجعة وصرف طلبات السحب',
-        icon: Icons.money_off,
-        color: const Color(0xFFE74C3C),
-        onTap: () =>
-            _navigateTo(WithdrawalRequestsPage(companyId: widget.companyId)),
-      ),
+    final pm = PermissionManager.instance;
+    final sections = <_SectionItem>[
+      if (pm.canView('accounting.compound_journals'))
+        _SectionItem(
+          title: 'قيد مركب',
+          subtitle: 'إدخال قيد محاسبي مركب',
+          icon: Icons.post_add,
+          color: const Color(0xFF8E44AD),
+          onTap: () => _navigateTo(
+              CompoundJournalEntryPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.expenses') ||
+          pm.canView('accounting.revenue'))
+        _SectionItem(
+          title: 'المصاريف والإيرادات',
+          subtitle: 'تسجيل ومتابعة المصاريف والإيرادات',
+          icon: Icons.swap_horiz,
+          color: const Color(0xFF1ABC9C),
+          onTap: () => _showExpensesRevenueDialog(),
+        ),
+      if (pm.canView('accounting.client_accounts'))
+        _SectionItem(
+          title: 'حسابات العملاء',
+          subtitle: 'إضافة وإدارة حسابات العملاء',
+          icon: Icons.people,
+          color: const Color(0xFF2196F3),
+          onTap: () =>
+              _navigateTo(ClientAccountsPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.collections'))
+        _SectionItem(
+          title: 'تحصيلات الفنيين',
+          subtitle: 'متابعة تحصيلات الفنيين',
+          icon: Icons.engineering,
+          color: const Color(0xFF9B59B6),
+          onTap: () =>
+              _navigateTo(CollectionsPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.agent_transactions'))
+        _SectionItem(
+          title: 'إدارة الوكلاء',
+          subtitle: 'إضافة وإدارة الوكلاء والمحاسبة',
+          icon: Icons.support_agent,
+          color: const Color(0xFF3F51B5),
+          onTap: () => _navigateTo(
+              AgentsManagementPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.ftth_operators'))
+        _SectionItem(
+          title: 'حسابات التفعيلات',
+          subtitle: 'لوحة متابعة حسابات التفعيلات',
+          icon: Icons.wifi_tethering,
+          color: const Color(0xFF00897B),
+          onTap: () => _navigateTo(
+              FtthOperatorsDashboardPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.funds_overview'))
+        _SectionItem(
+          title: 'مراقبة الأموال',
+          subtitle: 'أرصدة الصناديق والذمم والإيرادات',
+          icon: Icons.account_balance,
+          color: const Color(0xFF5C6BC0),
+          onTap: () =>
+              _navigateTo(FundsOverviewPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.withdrawals'))
+        _SectionItem(
+          title: 'طلبات سحب الأموال',
+          subtitle: 'مراجعة وصرف طلبات السحب',
+          icon: Icons.money_off,
+          color: const Color(0xFFE74C3C),
+          onTap: () => _navigateTo(
+              WithdrawalRequestsPage(companyId: widget.companyId)),
+        ),
     ];
 
     return LayoutBuilder(

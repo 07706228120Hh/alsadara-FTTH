@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 
 /// ═══════════════════════════════════════════════════════════════
-/// سجل الصلاحيات المركزي - المصدر الوحيد للحقيقة
+/// سجل الصلاحيات المركزي V3 — هرمي دقيق
 /// ═══════════════════════════════════════════════════════════════
+///
+/// البنية: قسم → ميزة فرعية → إجراء
+/// المفتاح الفرعي يستخدم نقطة: 'accounting.journals'
+///
+/// القاعدة الهرمية:
+///   - إذا الأب مغلق ← جميع الأبناء مغلقة تلقائياً
+///   - إذا الأب مفتوح + الابن غير موجود ← يرث من الأب
+///   - إذا الأب مفتوح + الابن موجود ← يستخدم قيمة الابن
 ///
 /// عند إضافة ميزة جديدة:
 /// 1. أضف [PermissionEntry] في القائمة المناسبة هنا
-/// 2. انتهى! ← تظهر تلقائياً في:
-///    - واجهة إدارة الصلاحيات (V1 + V2)
-///    - PermissionsService (حفظ/استرجاع)
-///    - الفلاتر والحراسات
-///
-/// لا حاجة لتعديل أي ملف آخر.
+/// 2. انتهى! ← تظهر تلقائياً في كل مكان
 /// ═══════════════════════════════════════════════════════════════
 
 /// تعريف صلاحية واحدة
 class PermissionEntry {
-  /// المفتاح الفريد (مثل 'accounting', 'users')
+  /// المفتاح الفريد (مثل 'accounting', 'accounting.journals')
   final String key;
 
   /// الاسم بالعربي
@@ -28,11 +31,17 @@ class PermissionEntry {
   /// الأيقونة
   final IconData icon;
 
-  /// القيمة الافتراضية (دائماً false — لا شيء مفعل تلقائياً)
+  /// القيمة الافتراضية (دائماً false)
   final bool defaultValue;
 
   /// الفئة/القسم في واجهة الإدارة
   final String category;
+
+  /// المفتاح الأب (null = مفتاح رئيسي)
+  final String? parent;
+
+  /// الإجراءات المسموحة لهذه الميزة (null = جميع الإجراءات)
+  final List<String>? allowedActions;
 
   const PermissionEntry({
     required this.key,
@@ -41,7 +50,15 @@ class PermissionEntry {
     required this.icon,
     this.defaultValue = false,
     this.category = 'عام',
+    this.parent,
+    this.allowedActions,
   });
+
+  /// هل هذا مفتاح رئيسي (بدون أب)؟
+  bool get isTopLevel => parent == null;
+
+  /// هل هذا مفتاح فرعي؟
+  bool get isSubKey => parent != null;
 }
 
 /// سجل الصلاحيات المركزي
@@ -53,13 +70,142 @@ class PermissionRegistry {
   // ═══════════════════════════════════════
 
   static const List<PermissionEntry> firstSystem = [
+    // ─── البصمة والحضور ───
     PermissionEntry(
       key: 'attendance',
-      labelAr: 'صفحة البصمة',
+      labelAr: 'البصمة والحضور',
       description: 'تسجيل حضور وانصراف الموظفين',
       icon: Icons.fingerprint_rounded,
       category: 'الموارد البشرية',
     ),
+    PermissionEntry(
+      key: 'attendance.dashboard',
+      labelAr: 'لوحة الحضور',
+      description: 'عرض ملخص حالة الحضور والغياب',
+      icon: Icons.dashboard_rounded,
+      category: 'الموارد البشرية',
+      parent: 'attendance',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'attendance.checkin',
+      labelAr: 'تسجيل الدخول/الخروج',
+      description: 'تسجيل بصمة الحضور والانصراف',
+      icon: Icons.login_rounded,
+      category: 'الموارد البشرية',
+      parent: 'attendance',
+      allowedActions: ['view', 'add'],
+    ),
+    PermissionEntry(
+      key: 'attendance.records',
+      labelAr: 'سجلات الحضور',
+      description: 'عرض وتعديل سجلات الحضور',
+      icon: Icons.list_alt_rounded,
+      category: 'الموارد البشرية',
+      parent: 'attendance',
+      allowedActions: ['view', 'add', 'edit', 'delete', 'export'],
+    ),
+    PermissionEntry(
+      key: 'attendance.reports',
+      labelAr: 'تقارير الحضور',
+      description: 'عرض وطباعة تقارير الحضور',
+      icon: Icons.assessment_rounded,
+      category: 'الموارد البشرية',
+      parent: 'attendance',
+      allowedActions: ['view', 'export', 'print'],
+    ),
+
+    // ─── الموارد البشرية ───
+    PermissionEntry(
+      key: 'hr',
+      labelAr: 'الموارد البشرية',
+      description: 'إدارة شؤون الموظفين والرواتب',
+      icon: Icons.people_alt_rounded,
+      category: 'الموارد البشرية',
+    ),
+    PermissionEntry(
+      key: 'hr.employees',
+      labelAr: 'إدارة الموظفين',
+      description: 'عرض وتعديل بيانات الموظفين',
+      icon: Icons.badge_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'hr.salaries',
+      labelAr: 'الرواتب',
+      description: 'إدارة رواتب الموظفين',
+      icon: Icons.payments_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'add', 'edit', 'export', 'print'],
+    ),
+    PermissionEntry(
+      key: 'hr.leaves',
+      labelAr: 'الإجازات',
+      description: 'إدارة طلبات الإجازات',
+      icon: Icons.event_busy_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'hr.deductions',
+      labelAr: 'الخصومات',
+      description: 'إدارة خصومات الموظفين',
+      icon: Icons.money_off_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'hr.advances',
+      labelAr: 'السلف',
+      description: 'إدارة سلف الموظفين',
+      icon: Icons.request_quote_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'hr.schedules',
+      labelAr: 'جداول العمل',
+      description: 'إدارة مواعيد الدوام',
+      icon: Icons.schedule_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'hr.departments',
+      labelAr: 'الأقسام',
+      description: 'إدارة أقسام الشركة',
+      icon: Icons.account_tree_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'hr.permissions',
+      labelAr: 'صلاحيات الموظف',
+      description: 'تعديل صلاحيات الموظفين',
+      icon: Icons.admin_panel_settings_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'hr.reports',
+      labelAr: 'تقارير HR',
+      description: 'عرض وتصدير تقارير الموارد البشرية',
+      icon: Icons.summarize_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'export', 'print'],
+    ),
+
+    // ─── صفحة الوكيل ───
     PermissionEntry(
       key: 'agent',
       labelAr: 'صفحة الوكيل',
@@ -67,6 +213,8 @@ class PermissionRegistry {
       icon: Icons.support_agent_rounded,
       category: 'المبيعات',
     ),
+
+    // ─── المهام ───
     PermissionEntry(
       key: 'tasks',
       labelAr: 'المهام',
@@ -75,12 +223,34 @@ class PermissionRegistry {
       category: 'التشغيل',
     ),
     PermissionEntry(
+      key: 'tasks.assign',
+      labelAr: 'توزيع المهام',
+      description: 'إسناد المهام للموظفين',
+      icon: Icons.assignment_ind_rounded,
+      category: 'التشغيل',
+      parent: 'tasks',
+      allowedActions: ['view', 'add', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'tasks.audit',
+      labelAr: 'تدقيق المهام',
+      description: 'مراجعة وتدقيق المهام المنجزة',
+      icon: Icons.fact_check_rounded,
+      category: 'التشغيل',
+      parent: 'tasks',
+      allowedActions: ['view', 'edit'],
+    ),
+
+    // ─── الزونات ───
+    PermissionEntry(
       key: 'zones',
       labelAr: 'الزونات',
       description: 'تحديد مناطق العمل والتغطية',
       icon: Icons.map_rounded,
       category: 'التشغيل',
     ),
+
+    // ─── البحث الذكي ───
     PermissionEntry(
       key: 'ai_search',
       labelAr: 'البحث بالذكاء الاصطناعي',
@@ -88,6 +258,8 @@ class PermissionRegistry {
       icon: Icons.auto_awesome_rounded,
       category: 'أدوات',
     ),
+
+    // ─── منصة الصدارة ───
     PermissionEntry(
       key: 'sadara_portal',
       labelAr: 'منصة الصدارة',
@@ -95,6 +267,8 @@ class PermissionRegistry {
       icon: Icons.admin_panel_settings_rounded,
       category: 'الإدارة',
     ),
+
+    // ─── النظام المحاسبي ───
     PermissionEntry(
       key: 'accounting',
       labelAr: 'النظام المحاسبي',
@@ -102,6 +276,197 @@ class PermissionRegistry {
       icon: Icons.account_balance_rounded,
       category: 'المالية',
     ),
+    PermissionEntry(
+      key: 'accounting.dashboard',
+      labelAr: 'لوحة القيادة المحاسبية',
+      description: 'ملخص الوضع المالي والإحصائيات',
+      icon: Icons.dashboard_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'accounting.chart',
+      labelAr: 'شجرة الحسابات',
+      description: 'دليل الحسابات المحاسبية',
+      icon: Icons.account_tree_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'accounting.journals',
+      labelAr: 'القيود اليومية',
+      description: 'إدخال ومراجعة القيود المحاسبية',
+      icon: Icons.menu_book_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'delete', 'print'],
+    ),
+    PermissionEntry(
+      key: 'accounting.compound_journals',
+      labelAr: 'القيود المركبة',
+      description: 'قيود محاسبية متعددة الأطراف',
+      icon: Icons.auto_stories_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'accounting.expenses',
+      labelAr: 'المصروفات',
+      description: 'تسجيل وإدارة المصروفات',
+      icon: Icons.money_off_csred_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'delete', 'export'],
+    ),
+    PermissionEntry(
+      key: 'accounting.fixed_expenses',
+      labelAr: 'المصروفات الثابتة',
+      description: 'المصروفات المتكررة والثابتة',
+      icon: Icons.event_repeat_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'accounting.revenue',
+      labelAr: 'الإيرادات',
+      description: 'تسجيل وتتبع الإيرادات',
+      icon: Icons.trending_up_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'delete', 'export'],
+    ),
+    PermissionEntry(
+      key: 'accounting.salaries',
+      labelAr: 'تحويلات الرواتب',
+      description: 'تحويل ودفع رواتب الموظفين',
+      icon: Icons.price_check_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'export', 'print'],
+    ),
+    PermissionEntry(
+      key: 'accounting.cashbox',
+      labelAr: 'الصندوق',
+      description: 'إدارة الصندوق النقدي',
+      icon: Icons.point_of_sale_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'accounting.collections',
+      labelAr: 'التحصيلات',
+      description: 'متابعة التحصيلات والمبالغ الواردة',
+      icon: Icons.receipt_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'export'],
+    ),
+    PermissionEntry(
+      key: 'accounting.client_accounts',
+      labelAr: 'حسابات العملاء',
+      description: 'كشوف حسابات العملاء والأرصدة',
+      icon: Icons.people_outline_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'export', 'print'],
+    ),
+    PermissionEntry(
+      key: 'accounting.agent_transactions',
+      labelAr: 'معاملات الوكلاء',
+      description: 'معاملات وكلاء المبيعات',
+      icon: Icons.swap_horiz_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'export'],
+    ),
+    PermissionEntry(
+      key: 'accounting.agent_commission',
+      labelAr: 'عمولات الوكلاء',
+      description: 'حساب وإدارة عمولات الوكلاء',
+      icon: Icons.percent_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'edit', 'export'],
+    ),
+    PermissionEntry(
+      key: 'accounting.ftth_operators',
+      labelAr: 'مشغلي FTTH',
+      description: 'لوحة مشغلي الألياف',
+      icon: Icons.cable_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'accounting.withdrawals',
+      labelAr: 'طلبات السحب',
+      description: 'إدارة طلبات السحب والصرف',
+      icon: Icons.call_made_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'accounting.statistics',
+      labelAr: 'الإحصائيات المالية',
+      description: 'رسوم بيانية وإحصائيات',
+      icon: Icons.bar_chart_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'export'],
+    ),
+    PermissionEntry(
+      key: 'accounting.funds_overview',
+      labelAr: 'نظرة عامة على الأموال',
+      description: 'ملخص الأرصدة والتدفقات',
+      icon: Icons.account_balance_wallet_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'accounting.settings',
+      labelAr: 'إعدادات المحاسبة',
+      description: 'إعدادات النظام المحاسبي',
+      icon: Icons.settings_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'edit'],
+    ),
+
+    // ─── المتابعة ───
+    PermissionEntry(
+      key: 'follow_up',
+      labelAr: 'المتابعة',
+      description: 'متابعة المهام والطلبات',
+      icon: Icons.playlist_add_check_rounded,
+      category: 'التشغيل',
+    ),
+
+    // ─── داشبورد التدقيق ───
+    PermissionEntry(
+      key: 'audit_dashboard',
+      labelAr: 'داشبورد التدقيق',
+      description: 'لوحة تدقيق ومراجعة المهام',
+      icon: Icons.verified_rounded,
+      category: 'التشغيل',
+    ),
+
+    // ─── شاشتي ───
+    PermissionEntry(
+      key: 'my_dashboard',
+      labelAr: 'شاشتي',
+      description: 'لوحة المهام الشخصية',
+      icon: Icons.person_pin_rounded,
+      category: 'التشغيل',
+    ),
+
+    // ─── تشخيص النظام ───
     PermissionEntry(
       key: 'diagnostics',
       labelAr: 'تشخيص النظام',
@@ -116,7 +481,7 @@ class PermissionRegistry {
   // ═══════════════════════════════════════
 
   static const List<PermissionEntry> secondSystem = [
-    // إدارة المشتركين
+    // ─── المشتركين ───
     PermissionEntry(
       key: 'users',
       labelAr: 'إدارة المستخدمين',
@@ -131,6 +496,8 @@ class PermissionRegistry {
       icon: Icons.card_membership_rounded,
       category: 'المشتركين',
     ),
+
+    // ─── التشغيل ───
     PermissionEntry(
       key: 'tasks',
       labelAr: 'المهام',
@@ -146,7 +513,7 @@ class PermissionRegistry {
       category: 'التشغيل',
     ),
 
-    // المالية
+    // ─── المالية ───
     PermissionEntry(
       key: 'accounts',
       labelAr: 'الحسابات',
@@ -167,6 +534,7 @@ class PermissionRegistry {
       description: 'عرض أرصدة المحفظة',
       icon: Icons.account_balance_rounded,
       category: 'المالية',
+      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'transactions',
@@ -176,13 +544,14 @@ class PermissionRegistry {
       category: 'المالية',
     ),
 
-    // البيانات والتقارير
+    // ─── التقارير والبيانات ───
     PermissionEntry(
       key: 'export',
       labelAr: 'تصدير البيانات',
       description: 'تصدير البيانات والتقارير',
       icon: Icons.file_download_rounded,
       category: 'التقارير',
+      allowedActions: ['view', 'export'],
     ),
     PermissionEntry(
       key: 'quick_search',
@@ -190,6 +559,7 @@ class PermissionRegistry {
       description: 'البحث السريع في البيانات',
       icon: Icons.search_rounded,
       category: 'التقارير',
+      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'expiring_soon',
@@ -197,6 +567,7 @@ class PermissionRegistry {
       description: 'عرض الاشتراكات القريبة من الانتهاء',
       icon: Icons.warning_amber_rounded,
       category: 'التقارير',
+      allowedActions: ['view', 'export', 'send'],
     ),
     PermissionEntry(
       key: 'notifications',
@@ -204,6 +575,7 @@ class PermissionRegistry {
       description: 'إدارة الإشعارات',
       icon: Icons.notifications_rounded,
       category: 'التقارير',
+      allowedActions: ['view', 'add', 'send'],
     ),
     PermissionEntry(
       key: 'audit_logs',
@@ -211,6 +583,7 @@ class PermissionRegistry {
       description: 'سجل العمليات والتغييرات',
       icon: Icons.history_rounded,
       category: 'التقارير',
+      allowedActions: ['view', 'export'],
     ),
     PermissionEntry(
       key: 'superset_reports',
@@ -218,6 +591,7 @@ class PermissionRegistry {
       description: 'لوحات التقارير والرسوم البيانية',
       icon: Icons.dashboard_rounded,
       category: 'التقارير',
+      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'server_data',
@@ -225,6 +599,7 @@ class PermissionRegistry {
       description: 'عرض ملفات بيانات السيرفر',
       icon: Icons.storage_rounded,
       category: 'التقارير',
+      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'dashboard_project',
@@ -232,6 +607,7 @@ class PermissionRegistry {
       description: 'لوحة بيانات الشارتات والمشاريع',
       icon: Icons.dashboard_customize_rounded,
       category: 'التقارير',
+      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'fetch_server_data',
@@ -239,9 +615,10 @@ class PermissionRegistry {
       description: 'تحميل بيانات من السيرفر',
       icon: Icons.cloud_download_rounded,
       category: 'التقارير',
+      allowedActions: ['view'],
     ),
 
-    // الوكلاء والفنيين
+    // ─── الوكلاء والفنيين ───
     PermissionEntry(
       key: 'agents',
       labelAr: 'الوكلاء',
@@ -257,13 +634,14 @@ class PermissionRegistry {
       category: 'الوكلاء',
     ),
 
-    // واتساب
+    // ─── واتساب ───
     PermissionEntry(
       key: 'whatsapp',
       labelAr: 'رسائل WhatsApp',
       description: 'إرسال رسائل واتساب',
       icon: Icons.chat_rounded,
       category: 'واتساب',
+      allowedActions: ['view', 'send'],
     ),
     PermissionEntry(
       key: 'whatsapp_link',
@@ -271,6 +649,7 @@ class PermissionRegistry {
       description: 'ربط حساب واتساب عبر QR',
       icon: Icons.qr_code_rounded,
       category: 'واتساب',
+      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'whatsapp_settings',
@@ -278,6 +657,7 @@ class PermissionRegistry {
       description: 'إعدادات رسائل واتساب',
       icon: Icons.settings_rounded,
       category: 'واتساب',
+      allowedActions: ['view', 'edit'],
     ),
     PermissionEntry(
       key: 'whatsapp_business_api',
@@ -285,6 +665,7 @@ class PermissionRegistry {
       description: 'إعدادات API الأعمال',
       icon: Icons.business_rounded,
       category: 'واتساب',
+      allowedActions: ['view', 'edit'],
     ),
     PermissionEntry(
       key: 'whatsapp_bulk_sender',
@@ -292,6 +673,7 @@ class PermissionRegistry {
       description: 'إرسال رسائل جماعية',
       icon: Icons.send_rounded,
       category: 'واتساب',
+      allowedActions: ['view', 'send'],
     ),
     PermissionEntry(
       key: 'whatsapp_conversations_fab',
@@ -299,15 +681,17 @@ class PermissionRegistry {
       description: 'عرض زر المحادثات العائم',
       icon: Icons.forum_rounded,
       category: 'واتساب',
+      allowedActions: ['view'],
     ),
 
-    // البيانات والتخزين
+    // ─── البيانات والتخزين ───
     PermissionEntry(
       key: 'google_sheets',
       labelAr: 'حفظ في الخادم',
       description: 'حفظ البيانات في خادم VPS',
       icon: Icons.cloud_upload_rounded,
       category: 'البيانات',
+      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'local_storage',
@@ -322,9 +706,10 @@ class PermissionRegistry {
       description: 'استيراد من التخزين المحلي',
       icon: Icons.upload_file_rounded,
       category: 'البيانات',
+      allowedActions: ['view', 'import'],
     ),
 
-    // خطط وباقات
+    // ─── المبيعات ───
     PermissionEntry(
       key: 'plans_bundles',
       labelAr: 'الباقات والعروض',
@@ -335,22 +720,159 @@ class PermissionRegistry {
   ];
 
   // ═══════════════════════════════════════
-  // دوال مساعدة — تُستخدم من باقي الملفات
+  // قوالب الصلاحيات الجاهزة
   // ═══════════════════════════════════════
 
-  /// قائمة مفاتيح النظام الأول
+  /// قالب: مدير — جميع الصلاحيات
+  static const String templateManager = 'manager';
+
+  /// قالب: محاسب — المحاسبة + التقارير
+  static const String templateAccountant = 'accountant';
+
+  /// قالب: فني — المهام + الحضور فقط
+  static const String templateTechnician = 'technician';
+
+  /// قالب: موظف عادي — عرض فقط
+  static const String templateEmployee = 'employee';
+
+  /// قالب: مشاهد — عرض فقط بدون أي إجراء
+  static const String templateViewer = 'viewer';
+
+  /// تعريف القوالب
+  static Map<String, Map<String, List<String>>> getTemplate(String name) {
+    switch (name) {
+      case 'manager':
+        // جميع الميزات مفتوحة بالكامل
+        return _buildTemplateAll(true);
+      case 'accountant':
+        return _buildAccountantTemplate();
+      case 'technician':
+        return _buildTechnicianTemplate();
+      case 'employee':
+        return _buildEmployeeTemplate();
+      case 'viewer':
+        return _buildViewerTemplate();
+      default:
+        return {};
+    }
+  }
+
+  static Map<String, Map<String, List<String>>> _buildTemplateAll(bool all) {
+    final result = <String, Map<String, List<String>>>{};
+    for (final sys in [firstSystem, secondSystem]) {
+      for (final e in sys) {
+        result[e.key] = {
+          'actions': e.allowedActions ?? _allActions,
+        };
+      }
+    }
+    return result;
+  }
+
+  static const List<String> _allActions = [
+    'view',
+    'add',
+    'edit',
+    'delete',
+    'export',
+    'import',
+    'print',
+    'send'
+  ];
+
+  static Map<String, Map<String, List<String>>> _buildAccountantTemplate() {
+    return {
+      'accounting': {'actions': _allActions},
+      for (final e in firstSystem.where((e) => e.parent == 'accounting'))
+        e.key: {'actions': e.allowedActions ?? _allActions},
+      'attendance': {
+        'actions': ['view']
+      },
+      'hr.salaries': {
+        'actions': ['view', 'export', 'print']
+      },
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildTechnicianTemplate() {
+    return {
+      'attendance': {
+        'actions': ['view', 'add']
+      },
+      'attendance.checkin': {
+        'actions': ['view', 'add']
+      },
+      'tasks': {
+        'actions': ['view', 'add', 'edit']
+      },
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildEmployeeTemplate() {
+    return {
+      'attendance': {
+        'actions': ['view', 'add']
+      },
+      'attendance.checkin': {
+        'actions': ['view', 'add']
+      },
+      'tasks': {
+        'actions': ['view']
+      },
+      'hr': {
+        'actions': ['view']
+      },
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildViewerTemplate() {
+    final result = <String, Map<String, List<String>>>{};
+    for (final sys in [firstSystem, secondSystem]) {
+      for (final e in sys) {
+        if (e.isTopLevel) {
+          result[e.key] = {
+            'actions': ['view'],
+          };
+        }
+      }
+    }
+    return result;
+  }
+
+  /// أسماء القوالب بالعربي
+  static const Map<String, String> templateNames = {
+    'manager': 'مدير — صلاحيات كاملة',
+    'accountant': 'محاسب — المالية والتقارير',
+    'technician': 'فني — المهام والحضور',
+    'employee': 'موظف — أساسية',
+    'viewer': 'مشاهد — عرض فقط',
+  };
+
+  // ═══════════════════════════════════════
+  // دوال مساعدة
+  // ═══════════════════════════════════════
+
+  /// قائمة مفاتيح النظام الأول (الرئيسية فقط — للتوافق مع V1)
   static List<String> get firstSystemKeys =>
+      firstSystem.where((e) => e.isTopLevel).map((e) => e.key).toList();
+
+  /// قائمة مفاتيح النظام الثاني (الرئيسية فقط — للتوافق مع V1)
+  static List<String> get secondSystemKeys =>
+      secondSystem.where((e) => e.isTopLevel).map((e) => e.key).toList();
+
+  /// جميع مفاتيح النظام الأول (رئيسية + فرعية)
+  static List<String> get allFirstSystemKeys =>
       firstSystem.map((e) => e.key).toList();
 
-  /// قائمة مفاتيح النظام الثاني
-  static List<String> get secondSystemKeys =>
+  /// جميع مفاتيح النظام الثاني (رئيسية + فرعية)
+  static List<String> get allSecondSystemKeys =>
       secondSystem.map((e) => e.key).toList();
 
-  /// القيم الافتراضية للنظام الأول (كلها false)
+  /// القيم الافتراضية للنظام الأول
   static Map<String, bool> get firstSystemDefaults =>
       {for (var e in firstSystem) e.key: e.defaultValue};
 
-  /// القيم الافتراضية للنظام الثاني (كلها false)
+  /// القيم الافتراضية للنظام الثاني
   static Map<String, bool> get secondSystemDefaults =>
       {for (var e in secondSystem) e.key: e.defaultValue};
 
@@ -365,7 +887,28 @@ class PermissionRegistry {
     return null;
   }
 
-  /// خريطة الأسماء بالعربي لكل مفتاح (للـ V1 Panel)
+  /// الحصول على أبناء مفتاح رئيسي
+  static List<PermissionEntry> getChildren(String parentKey) {
+    final all = [...firstSystem, ...secondSystem];
+    return all.where((e) => e.parent == parentKey).toList();
+  }
+
+  /// الحصول على المفاتيح الرئيسية فقط من قائمة
+  static List<PermissionEntry> getTopLevel(List<PermissionEntry> entries) {
+    return entries.where((e) => e.isTopLevel).toList();
+  }
+
+  /// الحصول على المفاتيح الرئيسية مع أبنائها مجمعة
+  static Map<PermissionEntry, List<PermissionEntry>> getGrouped(
+      List<PermissionEntry> entries) {
+    final map = <PermissionEntry, List<PermissionEntry>>{};
+    for (final e in entries.where((e) => e.isTopLevel)) {
+      map[e] = entries.where((c) => c.parent == e.key).toList();
+    }
+    return map;
+  }
+
+  /// خريطة الأسماء بالعربي لكل مفتاح
   static Map<String, String> get allLabelsAr {
     final map = <String, String>{};
     for (var e in firstSystem) {
@@ -386,8 +929,16 @@ class PermissionRegistry {
         'label': e.labelAr,
         'icon': e.icon,
         'description': e.description,
+        if (e.parent != null) 'parent': e.parent,
+        if (e.allowedActions != null) 'allowedActions': e.allowedActions,
       };
     }
     return map;
+  }
+
+  /// الإجراءات المسموحة لمفتاح معين
+  static List<String> getAllowedActions(String key) {
+    final entry = findByKey(key);
+    return entry?.allowedActions ?? _allActions;
   }
 }

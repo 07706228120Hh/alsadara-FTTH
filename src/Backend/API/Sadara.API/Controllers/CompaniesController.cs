@@ -766,6 +766,32 @@ public class CompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// تحديث صلاحيات موظف V2 (مع إجراءات مفصلة)
+    /// </summary>
+    [HttpPatch("{id:guid}/employees/{employeeId:guid}/permissions-v2")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> UpdateEmployeePermissionsV2(Guid id, Guid employeeId, [FromBody] UpdatePermissionsV2Request request)
+    {
+        var employee = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
+
+        if (employee == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        if (request.FirstSystemPermissionsV2 != null)
+            employee.FirstSystemPermissionsV2 = JsonSerializer.Serialize(request.FirstSystemPermissionsV2);
+        if (request.SecondSystemPermissionsV2 != null)
+            employee.SecondSystemPermissionsV2 = JsonSerializer.Serialize(request.SecondSystemPermissionsV2);
+
+        employee.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(employee);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم تحديث صلاحيات V2 بنجاح", data = MapUserToEmployeeResponse(employee) });
+    }
+
+    /// <summary>
     /// حذف موظف (Soft Delete)
     /// </summary>
     [HttpDelete("{id:guid}/employees/{employeeId:guid}")]
@@ -1069,6 +1095,12 @@ public class UpdatePermissionsRequest
 {
     public Dictionary<string, bool>? FirstSystemPermissions { get; set; }
     public Dictionary<string, bool>? SecondSystemPermissions { get; set; }
+}
+
+public class UpdatePermissionsV2Request
+{
+    public Dictionary<string, Dictionary<string, bool>>? FirstSystemPermissionsV2 { get; set; }
+    public Dictionary<string, Dictionary<string, bool>>? SecondSystemPermissionsV2 { get; set; }
 }
 
 // ============ Company Authentication DTOs ============

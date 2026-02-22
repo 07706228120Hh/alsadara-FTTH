@@ -265,6 +265,43 @@ class VpsAuthService {
             secondSystemV2Json: data.user.rawSecondSystemV2,
           );
 
+          // 🔑 مدير الشركة: دمج ميزات الشركة المفعلة في V2
+          if (data.user.isAdmin) {
+            final pm = PermissionManager.instance;
+            final allActions = <String, bool>{
+              'view': true,
+              'add': true,
+              'edit': true,
+              'delete': true,
+              'export': true,
+              'import': true,
+              'print': true,
+              'send': true,
+            };
+            bool changed = false;
+
+            company.enabledFirstSystemFeatures.forEach((key, value) {
+              if (value == true && !pm.canView(key)) {
+                pm.firstSystemPermissions[key] = Map.from(allActions);
+                changed = true;
+              }
+            });
+
+            company.enabledSecondSystemFeatures.forEach((key, value) {
+              if (value == true && !pm.canView(key)) {
+                pm.secondSystemPermissions[key] = Map.from(allActions);
+                changed = true;
+              }
+            });
+
+            if (changed) {
+              await pm.savePermissions(
+                firstSystem: pm.firstSystemPermissions,
+                secondSystem: pm.secondSystemPermissions,
+              );
+            }
+          }
+
           // حفظ البيانات
           currentUser = user;
           currentCompany = company;

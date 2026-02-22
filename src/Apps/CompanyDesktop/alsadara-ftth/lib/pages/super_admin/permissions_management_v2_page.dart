@@ -519,15 +519,20 @@ class _PermissionsManagementV2PageState
     );
   }
 
-  /// بناء تاب الصلاحيات
+  /// بناء تاب الصلاحيات — عرض هرمي مع تجميع الأبناء
   Widget _buildPermissionsTab(
     Map<String, Map<String, dynamic>> features,
     Map<String, Map<String, bool>> permissions,
     bool isFirstSystem,
   ) {
-    // فلترة الميزات: إذا كان موظف، نعرض فقط الميزات المفعلة للشركة
-    final filteredEntries = features.entries.where((entry) {
-      return _isFeatureEnabledForCompany(entry.key, isFirstSystem);
+    final entries = isFirstSystem
+        ? PermissionRegistry.firstSystem
+        : PermissionRegistry.secondSystem;
+    final grouped = PermissionRegistry.getGrouped(entries);
+
+    // فلترة: إذا كان موظف، نعرض فقط الميزات المفعلة للشركة
+    final filteredGroups = grouped.entries.where((g) {
+      return _isFeatureEnabledForCompany(g.key.key, isFirstSystem);
     }).toList();
 
     return Padding(
@@ -536,7 +541,7 @@ class _PermissionsManagementV2PageState
         children: [
           // تنبيه إذا كان هناك ميزات محظورة
           if (widget.employeeId != null &&
-              filteredEntries.length < features.length)
+              filteredGroups.length < grouped.length)
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -553,7 +558,7 @@ class _PermissionsManagementV2PageState
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'يتم عرض الصلاحيات المفعلة للشركة فقط (${filteredEntries.length} من ${features.length})',
+                      'يتم عرض الصلاحيات المفعلة للشركة فقط (${filteredGroups.length} من ${grouped.length})',
                       style: const TextStyle(
                           fontSize: 12, color: Color(0xFF795548)),
                     ),
@@ -564,9 +569,9 @@ class _PermissionsManagementV2PageState
           // شريط الإجراءات
           _buildActionsHeader(),
           const SizedBox(height: 12),
-          // قائمة الصلاحيات
+          // قائمة الصلاحيات الهرمية
           Expanded(
-            child: filteredEntries.isEmpty
+            child: filteredGroups.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -582,56 +587,132 @@ class _PermissionsManagementV2PageState
                     ),
                   )
                 : ListView.builder(
-                    itemCount: filteredEntries.length,
+                    itemCount: filteredGroups.length,
                     itemBuilder: (context, index) {
-                      final entry = filteredEntries[index];
-                      final key = entry.key;
-                      final feature = entry.value;
-                      final featurePermissions = permissions[key] ??
-                          {for (var a in _actions) a: false};
+                      final group = filteredGroups[index];
+                      final parent = group.key;
+                      final children = group.value;
 
-                      return _buildPermissionCard(
-                        key: key,
-                        label: feature['label'] as String,
-                        icon: feature['icon'] as IconData,
-                        description: feature['description'] as String,
-                        permissions: featurePermissions,
-                        isFirstSystem: isFirstSystem,
-                        onChanged: (action, value) {
-                          // تحقق إضافي: لا تسمح بتفعيل إجراء غير مفعل للشركة
-                          if (value &&
-                              !_isActionEnabledForCompany(
-                                  key, action, isFirstSystem)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('هذا الإجراء غير مفعل للشركة'),
-                                backgroundColor: Colors.orange,
-                                duration: Duration(seconds: 2),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // بطاقة الأب
+                          _buildPermissionCard(
+                            key: parent.key,
+                            label: parent.labelAr,
+                            icon: parent.icon,
+                            description: parent.description,
+                            permissions: permissions[parent.key] ??
+                                {for (var a in _actions) a: false},
+                            isFirstSystem: isFirstSystem,
+                            allowedActions: parent.allowedActions,
+                            isParent: children.isNotEmpty,
+                            onChanged: (action, value) {
+                              if (value &&
+                                  !_isActionEnabledForCompany(
+                                      parent.key, action, isFirstSystem)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text('هذا الإجراء غير مفعل للشركة'),
+                                    backgroundColor: Colors.orange,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
+                              setState(() {
+                                permissions[parent.key] ??= {};
+                                permissions[parent.key]![action] = value;
+                              });
+                            },
+                            onToggleAll: (value) {
+                              setState(() {
+                                // تبديل الأب
+                                if (value && widget.employeeId != null) {
+                                  permissions[parent.key] = {
+                                    for (var a in _actions)
+                                      a: _isActionEnabledForCompany(
+                                          parent.key, a, isFirstSystem)
+                                  };
+                                } else {
+                                  permissions[parent.key] = {
+                                    for (var a in _actions) a: value
+                                  };
+                                }
+                                // تبديل جميع الأبناء
+                                for (final child in children) {
+                                  if (value && widget.employeeId != null) {
+                                    permissions[child.key] = {
+                                      for (var a in _actions)
+                                        a: _isActionEnabledForCompany(
+                                            child.key, a, isFirstSystem)
+                                    };
+                                  } else {
+                                    permissions[child.key] = {
+                                      for (var a in _actions) a: value
+                                    };
+                                  }
+                                }
+                              });
+                            },
+                          ),
+                          // بطاقات الأبناء (بمسافة إزاحة)
+                          ...children
+                              .where((child) => _isFeatureEnabledForCompany(
+                                  child.key, isFirstSystem))
+                              .map((child) {
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.only(right: 24, bottom: 4),
+                              child: _buildPermissionCard(
+                                key: child.key,
+                                label: child.labelAr,
+                                icon: child.icon,
+                                description: child.description,
+                                permissions: permissions[child.key] ??
+                                    {for (var a in _actions) a: false},
+                                isFirstSystem: isFirstSystem,
+                                allowedActions: child.allowedActions,
+                                isParent: false,
+                                onChanged: (action, value) {
+                                  if (value &&
+                                      !_isActionEnabledForCompany(
+                                          child.key, action, isFirstSystem)) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'هذا الإجراء غير مفعل للشركة'),
+                                        backgroundColor: Colors.orange,
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  setState(() {
+                                    permissions[child.key] ??= {};
+                                    permissions[child.key]![action] = value;
+                                  });
+                                },
+                                onToggleAll: (value) {
+                                  setState(() {
+                                    if (value && widget.employeeId != null) {
+                                      permissions[child.key] = {
+                                        for (var a in _actions)
+                                          a: _isActionEnabledForCompany(
+                                              child.key, a, isFirstSystem)
+                                      };
+                                    } else {
+                                      permissions[child.key] = {
+                                        for (var a in _actions) a: value
+                                      };
+                                    }
+                                  });
+                                },
                               ),
                             );
-                            return;
-                          }
-                          setState(() {
-                            permissions[key] ??= {};
-                            permissions[key]![action] = value;
-                          });
-                        },
-                        onToggleAll: (value) {
-                          setState(() {
-                            if (value && widget.employeeId != null) {
-                              // عند تحديد الكل: فقط الإجراءات المفعلة للشركة
-                              permissions[key] = {
-                                for (var a in _actions)
-                                  a: _isActionEnabledForCompany(
-                                      key, a, isFirstSystem)
-                              };
-                            } else {
-                              permissions[key] = {
-                                for (var a in _actions) a: value
-                              };
-                            }
-                          });
-                        },
+                          }),
+                        ],
                       );
                     },
                   ),
@@ -698,10 +779,13 @@ class _PermissionsManagementV2PageState
     required bool isFirstSystem,
     required Function(String action, bool value) onChanged,
     required Function(bool value) onToggleAll,
+    List<String>? allowedActions,
+    bool isParent = false,
   }) {
-    final allEnabled = _actions.every((a) => permissions[a] == true);
+    final effectiveActions = allowedActions ?? _actions;
+    final allEnabled = effectiveActions.every((a) => permissions[a] == true);
     final someEnabled =
-        _actions.any((a) => permissions[a] == true) && !allEnabled;
+        effectiveActions.any((a) => permissions[a] == true) && !allEnabled;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -783,6 +867,11 @@ class _PermissionsManagementV2PageState
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: _actions.map((action) {
+                final isAllowed = effectiveActions.contains(action);
+                if (!isAllowed) {
+                  // إجراء غير مسموح لهذه الميزة — مربع فارغ
+                  return const SizedBox(width: 70);
+                }
                 final isEnabled = permissions[action] ?? false;
                 final isAllowedByCompany =
                     _isActionEnabledForCompany(key, action, isFirstSystem);
@@ -948,9 +1037,9 @@ class _PermissionsManagementV2PageState
   /// تحديد/إلغاء جميع الصلاحيات
   void _bulkToggleAll(bool value) {
     setState(() {
-      for (var key in _firstSystemFeatures.keys) {
+      for (var entry in PermissionRegistry.firstSystem) {
+        final key = entry.key;
         if (value && widget.employeeId != null) {
-          // عند التفعيل: فقط ضمن حدود الشركة
           if (!_isFeatureEnabledForCompany(key, true)) continue;
           _firstSystemPermissionsV2[key] = {
             for (var a in _actions) a: _isActionEnabledForCompany(key, a, true)
@@ -959,7 +1048,8 @@ class _PermissionsManagementV2PageState
           _firstSystemPermissionsV2[key] = {for (var a in _actions) a: value};
         }
       }
-      for (var key in _secondSystemFeatures.keys) {
+      for (var entry in PermissionRegistry.secondSystem) {
+        final key = entry.key;
         if (value && widget.employeeId != null) {
           if (!_isFeatureEnabledForCompany(key, false)) continue;
           _secondSystemPermissionsV2[key] = {
@@ -983,7 +1073,8 @@ class _PermissionsManagementV2PageState
   /// تفعيل العرض فقط
   void _bulkSetViewOnly() {
     setState(() {
-      for (var key in _firstSystemFeatures.keys) {
+      for (var entry in PermissionRegistry.firstSystem) {
+        final key = entry.key;
         if (widget.employeeId != null &&
             !_isFeatureEnabledForCompany(key, true)) continue;
         _firstSystemPermissionsV2[key] = {
@@ -991,7 +1082,8 @@ class _PermissionsManagementV2PageState
             a: a == 'view' && _isActionEnabledForCompany(key, a, true)
         };
       }
-      for (var key in _secondSystemFeatures.keys) {
+      for (var entry in PermissionRegistry.secondSystem) {
+        final key = entry.key;
         if (widget.employeeId != null &&
             !_isFeatureEnabledForCompany(key, false)) continue;
         _secondSystemPermissionsV2[key] = {

@@ -85,6 +85,10 @@ class _HomePageState extends State<HomePage>
     'sadara_portal': false,
     'accounting': false,
     'diagnostics': false,
+    'hr': false,
+    'follow_up': false,
+    'audit_dashboard': false,
+    'my_dashboard': false,
   };
 
   Map<String, bool> _userPermissions = {};
@@ -1401,7 +1405,7 @@ class _HomePageState extends State<HomePage>
             subtitle: 'الموارد البشرية والحضور والرواتب',
             icon: Icons.groups_rounded,
             gradient: [const Color(0xFF0D47A1), const Color(0xFF1565C0)],
-            permissionKey: 'attendance',
+            permissionKey: 'hr',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -1474,7 +1478,7 @@ class _HomePageState extends State<HomePage>
             subtitle: 'متابعة وتقييم المهام',
             icon: Icons.fact_check_rounded,
             gradient: [Colors.indigo[500]!, Colors.indigo[800]!],
-            permissionKey: 'tasks',
+            permissionKey: 'follow_up',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -1493,7 +1497,7 @@ class _HomePageState extends State<HomePage>
             subtitle: 'إحصائيات وتحليلات شاملة',
             icon: Icons.dashboard_rounded,
             gradient: [const Color(0xFF1A237E), const Color(0xFF283593)],
-            permissionKey: 'tasks',
+            permissionKey: 'audit_dashboard',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -1512,7 +1516,7 @@ class _HomePageState extends State<HomePage>
             subtitle: 'البصمة والمعاملات والراتب',
             icon: Icons.dashboard_rounded,
             gradient: [Colors.teal[500]!, Colors.teal[800]!],
-            permissionKey: 'tasks',
+            permissionKey: 'my_dashboard',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
