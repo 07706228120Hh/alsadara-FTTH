@@ -573,115 +573,133 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
   // ═══════════════════════════════════════════════
   void _showPayDialog(int id, num amount, String userName) {
     final notesCtrl = TextEditingController();
+    bool overrideLimit = false;
     showDialog(
       context: context,
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          title: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                    color: _accentGreen.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.payments_rounded,
-                    color: _accentGreen, size: 22),
-              ),
-              const SizedBox(width: 10),
-              Text('تأكيد الصرف',
-                  style: GoogleFonts.cairo(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _accentGreen.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _accentGreen.withOpacity(0.2)),
-                ),
-                child: Column(
-                  children: [
-                    Text('صرف مبلغ لـ $userName',
-                        style:
-                            GoogleFonts.cairo(fontSize: 13, color: _textDark)),
-                    const SizedBox(height: 4),
-                    Text('${_formatAmount(amount)} د.ع',
-                        style: GoogleFonts.cairo(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: _accentGreen)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _accentOrange.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline,
-                        size: 16, color: _accentOrange),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'سيتم إنشاء قيد حسابي (أجور) على حساب الموظف بهذا المبلغ',
-                        style: GoogleFonts.cairo(
-                            fontSize: 11, color: _accentOrange),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notesCtrl,
-                decoration: InputDecoration(
-                  labelText: 'ملاحظات (اختياري)',
-                  labelStyle: GoogleFonts.cairo(fontSize: 12),
-                  border: OutlineInputBorder(
+        child: StatefulBuilder(
+          builder: (ctx2, setDialogState) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            title: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: _accentGreen.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8)),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: const Icon(Icons.payments_rounded,
+                      color: _accentGreen, size: 22),
                 ),
-                style: GoogleFonts.cairo(fontSize: 13),
-                maxLines: 2,
+                const SizedBox(width: 10),
+                Text('تأكيد الصرف',
+                    style: GoogleFonts.cairo(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _accentGreen.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _accentGreen.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text('صرف سلفة لـ $userName',
+                          style:
+                              GoogleFonts.cairo(fontSize: 13, color: _textDark)),
+                      const SizedBox(height: 4),
+                      Text('${_formatAmount(amount)} د.ع',
+                          style: GoogleFonts.cairo(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: _accentGreen)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline,
+                          size: 16, color: Color(0xFF1565C0)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'سيتم خصم المبلغ كسلفة من راتب الموظف',
+                          style: GoogleFonts.cairo(
+                              fontSize: 11, color: const Color(0xFF1565C0)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notesCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'ملاحظات (اختياري)',
+                    labelStyle: GoogleFonts.cairo(fontSize: 12),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  style: GoogleFonts.cairo(fontSize: 13),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  value: overrideLimit,
+                  onChanged: (v) => setDialogState(() => overrideLimit = v ?? false),
+                  title: Text('تجاوز حد السحب',
+                      style: GoogleFonts.cairo(fontSize: 12)),
+                  subtitle: Text(
+                    'السماح بصرف المبلغ حتى لو تجاوز الراتب المستحق',
+                    style: GoogleFonts.cairo(fontSize: 10, color: _textGray),
+                  ),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: _accentOrange,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accentGreen,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.payments_rounded,
+                    size: 18, color: Colors.white),
+                label: Text('تأكيد الصرف',
+                    style: GoogleFonts.cairo(color: Colors.white)),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _payRequest(id, notesCtrl.text, overrideLimit);
+                },
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
-            ),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accentGreen,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.payments_rounded,
-                  size: 18, color: Colors.white),
-              label: Text('تأكيد الصرف',
-                  style: GoogleFonts.cairo(color: Colors.white)),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await _payRequest(id, notesCtrl.text);
-              },
-            ),
-          ],
         ),
       ),
     );
@@ -754,14 +772,15 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
   // ═══════════════════════════════════════════════
   //  إجراءات API
   // ═══════════════════════════════════════════════
-  Future<void> _payRequest(int id, String notes) async {
+  Future<void> _payRequest(int id, String notes, bool overrideLimit) async {
     try {
       await _api.payWithdrawalRequest(id,
-          notes: notes.isNotEmpty ? notes : null);
+          notes: notes.isNotEmpty ? notes : null,
+          overrideLimit: overrideLimit);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم صرف المبلغ وإنشاء القيد المحاسبي بنجاح',
+          content: Text('تم صرف السلفة بنجاح',
               style: GoogleFonts.cairo()),
           backgroundColor: _accentGreen,
         ),

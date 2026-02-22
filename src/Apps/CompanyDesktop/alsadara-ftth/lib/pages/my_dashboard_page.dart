@@ -700,6 +700,27 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     final amountCtrl = TextEditingController();
     final reasonCtrl = TextEditingController();
 
+    // جلب الحد الأقصى للسحب
+    double? maxAmount;
+    String? maxInfo;
+    try {
+      final userId = VpsAuthService.instance.currentUser?.id ?? '';
+      final maxRes = await _attendanceApi.getMaxWithdrawal(userId);
+      if (maxRes['success'] == true) {
+        final data = maxRes['data'];
+        if (data != null) {
+          maxAmount = (data['AvailableAmount'] ?? 0).toDouble();
+          final earned = (data['EarnedSalary'] ?? 0).toDouble();
+          final existing = (data['ExistingAdvances'] ?? 0).toDouble();
+          final days = data['AttendanceDays'] ?? 0;
+          maxInfo =
+              'أيام الحضور: $days | الراتب المستحق: ${_formatAmount(earned)} | سلف سابقة: ${_formatAmount(existing)}';
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => Directionality(
@@ -710,15 +731,70 @@ class _MyDashboardPageState extends State<MyDashboardPage>
               const Icon(Icons.account_balance_wallet_rounded,
                   color: Color(0xFF11998e)),
               const SizedBox(width: 10),
-              Text('طلب سحب أموال',
+              Text('طلب سلفة على الراتب',
                   style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
             ],
           ),
           content: SizedBox(
-            width: 400,
+            width: 420,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (maxAmount != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: maxAmount > 0
+                          ? const Color(0xFFE8F5E9)
+                          : const Color(0xFFFCE4EC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: maxAmount > 0
+                            ? const Color(0xFF81C784)
+                            : const Color(0xFFE57373),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              maxAmount > 0
+                                  ? Icons.info_outline
+                                  : Icons.warning_amber_rounded,
+                              color: maxAmount > 0
+                                  ? const Color(0xFF388E3C)
+                                  : const Color(0xFFC62828),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'المبلغ المتاح للسحب: ${_formatAmount(maxAmount)} د.ع',
+                                style: GoogleFonts.cairo(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: maxAmount > 0
+                                      ? const Color(0xFF388E3C)
+                                      : const Color(0xFFC62828),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (maxInfo != null) ...[
+                          const SizedBox(height: 6),
+                          Text(maxInfo!,
+                              style: GoogleFonts.cairo(
+                                  fontSize: 11,
+                                  color: const Color(0xFF757575))),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 TextField(
                   controller: amountCtrl,
                   keyboardType: TextInputType.number,
@@ -736,7 +812,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: 'السبب (اختياري)',
-                    hintText: 'اكتب سبب طلب السحب...',
+                    hintText: 'اكتب سبب طلب السلفة...',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.note),
                   ),
@@ -974,9 +1050,11 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         statusColor = _textGray;
     }
 
+    final advances = s['Advances'] ?? 0;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = constraints.maxWidth > 700 ? 5 : 3;
+        final cols = constraints.maxWidth > 700 ? 6 : 3;
         final spacing = 10.0;
         final cardW = (constraints.maxWidth - spacing * (cols - 1)) / cols;
 
@@ -1058,6 +1136,16 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 ),
               ),
             ),
+            if ((advances is num && advances > 0) || (advances is double && advances > 0))
+              SizedBox(
+                width: cardW,
+                child: _salaryStatCard(
+                  'السلف',
+                  advances,
+                  Icons.money_off_rounded,
+                  _accentBlue,
+                ),
+              ),
             SizedBox(
               width: cardW,
               child: _salaryStatCard(
@@ -1187,6 +1275,17 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             rawCat.isNotEmpty ? '$descText (الفئة: $rawCat)' : descText;
         items.add(_DeductionItem(label, d['Amount'] ?? 0, _accentRed));
       }
+
+      // السلف - عرض منفصل بلون مختلف
+      final advancesList =
+          _adjustmentsData!['Advances'] as List<dynamic>? ?? [];
+      for (final a in advancesList) {
+        final rawDesc = a['Description']?.toString() ?? '';
+        final descText = rawDesc.isNotEmpty ? rawDesc : 'سلفة على الراتب';
+        items.add(
+            _DeductionItem('💰 $descText', a['Amount'] ?? 0, _accentBlue));
+      }
+
       final bonusesList = _adjustmentsData!['Bonuses'] as List<dynamic>? ?? [];
       for (final b in bonusesList) {
         final rawDesc = b['Description']?.toString() ?? '';

@@ -434,9 +434,11 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
             var manualAllowances = adjustments.Where(a => a.Type == AdjustmentType.Allowance).ToList();
 
             // حساب الخصومات/المكافآت المعلقة (لم تُطبّق على مسيّر بعد)
-            var pendingDeductions = manualDeductions.Where(a => !a.IsApplied).Sum(a => a.Amount);
+            var pendingDeductions = manualDeductions.Where(a => !a.IsApplied && a.Category != "سلفة").Sum(a => a.Amount);
+            var pendingAdvances = manualDeductions.Where(a => !a.IsApplied && a.Category == "سلفة").Sum(a => a.Amount);
             var pendingBonuses = manualBonuses.Where(a => !a.IsApplied).Sum(a => a.Amount);
             var pendingAllowances = manualAllowances.Where(a => !a.IsApplied).Sum(a => a.Amount);
+            var totalPendingMinus = pendingDeductions + pendingAdvances;
 
             object salaryResponse;
             if (salary != null)
@@ -445,7 +447,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                 var totalDeductions = salary.Deductions + pendingDeductions;
                 var totalBonuses = salary.Bonuses + pendingBonuses;
                 var totalAllowances = salary.Allowances + pendingAllowances;
-                var adjustedNet = salary.NetSalary - pendingDeductions + pendingBonuses + pendingAllowances;
+                var adjustedNet = salary.NetSalary - totalPendingMinus + pendingBonuses + pendingAllowances;
 
                 salaryResponse = new
                 {
@@ -461,17 +463,19 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                     salary.UnpaidLeaveDeduction,
                     salary.OvertimeBonus,
                     ManualDeductions = salary.ManualDeductions + pendingDeductions,
-                    ManualBonuses = salary.ManualBonuses + pendingBonuses
+                    ManualBonuses = salary.ManualBonuses + pendingBonuses,
+                    Advances = pendingAdvances + manualDeductions.Where(a => a.IsApplied && a.Category == "سلفة").Sum(a => a.Amount)
                 };
             }
             else if (employee.Salary > 0 || adjustments.Any())
             {
                 // حساب تقديري قبل إصدار المسيّر
                 var baseSalary = employee.Salary;
-                var totalManualDeductions = manualDeductions.Sum(a => a.Amount);
+                var totalManualDeductions = manualDeductions.Where(a => a.Category != "سلفة").Sum(a => a.Amount);
+                var totalManualAdvances = manualDeductions.Where(a => a.Category == "سلفة").Sum(a => a.Amount);
                 var totalManualBonuses = manualBonuses.Sum(a => a.Amount);
                 var totalManualAllowances = manualAllowances.Sum(a => a.Amount);
-                var estimatedNet = baseSalary + totalManualAllowances + totalManualBonuses - totalManualDeductions;
+                var estimatedNet = baseSalary + totalManualAllowances + totalManualBonuses - totalManualDeductions - totalManualAdvances;
 
                 salaryResponse = new
                 {
@@ -487,7 +491,8 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                     UnpaidLeaveDeduction = 0m,
                     OvertimeBonus = 0m,
                     ManualDeductions = totalManualDeductions,
-                    ManualBonuses = totalManualBonuses
+                    ManualBonuses = totalManualBonuses,
+                    Advances = totalManualAdvances
                 };
             }
             else
@@ -534,7 +539,16 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                     // الخصومات والمكافآت والبدلات اليدوية (تفاصيل كل عملية)
                     Adjustments = new
                     {
-                        Deductions = manualDeductions.Select(a => new
+                        Deductions = manualDeductions.Where(a => a.Category != "سلفة").Select(a => new
+                        {
+                            a.Id,
+                            a.Amount,
+                            a.Category,
+                            a.Description,
+                            a.IsApplied,
+                            CreatedAt = a.CreatedAt.ToString("yyyy-MM-dd")
+                        }),
+                        Advances = manualDeductions.Where(a => a.Category == "سلفة").Select(a => new
                         {
                             a.Id,
                             a.Amount,
@@ -561,7 +575,8 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                             a.IsApplied,
                             CreatedAt = a.CreatedAt.ToString("yyyy-MM-dd")
                         }),
-                        TotalDeductions = manualDeductions.Sum(a => a.Amount),
+                        TotalDeductions = manualDeductions.Where(a => a.Category != "سلفة").Sum(a => a.Amount),
+                        TotalAdvances = manualDeductions.Where(a => a.Category == "سلفة").Sum(a => a.Amount),
                         TotalBonuses = manualBonuses.Sum(a => a.Amount),
                         TotalAllowances = manualAllowances.Sum(a => a.Amount)
                     },

@@ -396,12 +396,23 @@ class AttendanceApiService {
     });
   }
 
-  /// صرف طلب سحب أموال (موافقة + صرف + قيد محاسبي)
+  /// صرف طلب سحب أموال (سلفة على الراتب)
   Future<Map<String, dynamic>> payWithdrawalRequest(int id,
-      {String? notes}) async {
+      {String? notes, bool overrideLimit = false}) async {
     return await _api.post('/withdrawalrequest/requests/$id/pay', body: {
       'Notes': notes,
+      'OverrideLimit': overrideLimit,
     });
+  }
+
+  /// جلب الحد الأقصى للسحب المتاح للموظف بناءً على أيام الحضور
+  Future<Map<String, dynamic>> getMaxWithdrawal(String userId,
+      {int? month, int? year}) async {
+    final params = <String>[];
+    if (month != null) params.add('month=$month');
+    if (year != null) params.add('year=$year');
+    final query = params.isNotEmpty ? '?${params.join('&')}' : '';
+    return await _api.get('/withdrawalrequest/max-withdrawal/$userId$query');
   }
 
   /// رفض طلب سحب أموال

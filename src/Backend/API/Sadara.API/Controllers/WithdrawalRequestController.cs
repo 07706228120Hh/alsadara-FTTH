@@ -217,8 +217,80 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     }
 
     /// <summary>صرف طلب سحب أموال (موافقة + صرف + إنشاء قيد على الموظف)</summary>
+    /// <summary>حساب أقصى مبلغ سحب متاح للموظف بناءً على أيام الحضور</summary>
+    [HttpGet("max-withdrawal/{userId}")]
+    public async Task<IActionResult> GetMaxWithdrawal(Guid userId, [FromQuery] int? month = null, [FromQuery] int? year = null)
+    {
+        var targetMonth = month ?? DateTime.UtcNow.Month;
+        var targetYear = year ?? DateTime.UtcNow.Year;
+
+        var employee = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (employee == null) return NotFound(new { message = "الموظف غير موجود" });
+
+        var result = await CalculateMaxWithdrawal(employee, targetMonth, targetYear);
+        return Ok(result);
+    }
+
+    private async Task<object> CalculateMaxWithdrawal(User employee, int targetMonth, int targetYear)
+    {
+        var baseSalary = employee.Salary;
+        if (baseSalary <= 0)
+            return new { maxAmount = 0m, earnedSalary = 0m, totalAdvances = 0m, availableAmount = 0m, attendanceDays = 0, baseSalary = 0m, dailySalary = 0m };
+
+        // حساب الراتب اليومي (26 يوم عمل افتراضي)
+        var policy = await _unitOfWork.SalaryPolicies.AsQueryable()
+            .Where(p => p.CompanyId == (employee.CompanyId ?? Guid.Empty) && p.IsActive)
+            .FirstOrDefaultAsync();
+        var workDaysPerMonth = policy?.WorkDaysPerMonth ?? 26;
+        var dailySalary = baseSalary / workDaysPerMonth;
+
+        // حساب أيام الحضور الفعلي من البصمة
+        var startDate = new DateOnly(targetYear, targetMonth, 1);
+        var endDate = startDate.AddMonths(1).AddDays(-1);
+
+        var attendance = await _unitOfWork.AttendanceRecords.AsQueryable()
+            .Where(a => a.UserId == employee.Id && a.Date >= startDate && a.Date <= endDate)
+            .ToListAsync();
+
+        var fullDays = attendance.Count(r =>
+            (r.Status == AttendanceStatus.Present || r.Status == AttendanceStatus.Late || r.Status == AttendanceStatus.EarlyDeparture)
+            && r.CheckInTime != null && r.CheckOutTime != null);
+        var halfDays = attendance.Count(r => r.Status == AttendanceStatus.HalfDay && r.CheckInTime != null);
+
+        // إضافة الإجازات المدفوعة
+        var paidLeaves = await _unitOfWork.LeaveRequests.AsQueryable()
+            .Where(l => l.UserId == employee.Id && l.Status == LeaveRequestStatus.Approved
+                && l.StartDate >= startDate && l.StartDate <= endDate
+                && l.LeaveType != LeaveType.Unpaid)
+            .ToListAsync();
+        var paidLeaveDays = paidLeaves.Sum(l => l.TotalDays);
+
+        var attendanceDaysDecimal = fullDays + (halfDays * 0.5m) + paidLeaveDays;
+        var earnedSalary = attendanceDaysDecimal * dailySalary;
+
+        // خصم السلف المصروفة سابقاً هذا الشهر
+        var existingAdvances = await _unitOfWork.EmployeeDeductionBonuses.AsQueryable()
+            .Where(a => a.UserId == employee.Id && a.Month == targetMonth && a.Year == targetYear
+                && a.IsActive && a.Type == AdjustmentType.Deduction && a.Category == "سلفة")
+            .SumAsync(a => a.Amount);
+
+        var availableAmount = earnedSalary - existingAdvances;
+        if (availableAmount < 0m) availableAmount = 0m;
+
+        return new
+        {
+            maxAmount = availableAmount,
+            earnedSalary,
+            totalAdvances = existingAdvances,
+            availableAmount,
+            attendanceDays = attendanceDaysDecimal,
+            baseSalary,
+            dailySalary
+        };
+    }
+
     [HttpPost("requests/{id}/pay")]
-    public async Task<IActionResult> PayWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
+    public async Task<IActionResult> PayWithdrawalRequest(long id, [FromBody] PayWithdrawalDto? review = null)
     {
         try
         {
@@ -237,6 +309,22 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
             var employee = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == req.UserId);
             if (employee == null) return NotFound(new { message = "الموظف غير موجود" });
 
+            // التحقق من حد السحب (إلا إذا المحاسب تجاوز)
+            var overrideLimit = review?.OverrideLimit ?? false;
+            if (!overrideLimit)
+            {
+                var now = DateTime.UtcNow;
+                var maxInfo = await CalculateMaxWithdrawal(employee, now.Month, now.Year);
+                var maxAmount = (decimal)(maxInfo.GetType().GetProperty("maxAmount")?.GetValue(maxInfo) ?? 0m);
+                if (req.Amount > maxAmount)
+                    return BadRequest(new
+                    {
+                        message = $"المبلغ المطلوب ({req.Amount:N0}) يتجاوز الحد المتاح ({maxAmount:N0}) بناءً على أيام الحضور. يمكن تجاوز الحد بتفعيل خيار 'تجاوز الحد'.",
+                        maxAmount,
+                        requestedAmount = req.Amount
+                    });
+            }
+
             // 1. تحديث حالة الطلب إلى مصروف
             req.Status = WithdrawalRequestStatus.Paid;
             req.ReviewedByUserId = reviewer;
@@ -246,29 +334,8 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
             req.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.WithdrawalRequests.Update(req);
 
-            // 2. إنشاء قيد حسابي (Charge) على الموظف - سحب من أجور الراتب
-            employee.TechTotalCharges += req.Amount;
-            employee.TechNetBalance = employee.TechTotalPayments - employee.TechTotalCharges;
-            _unitOfWork.Users.Update(employee);
-
-            var tx = new TechnicianTransaction
-            {
-                TechnicianId = employee.Id,
-                Type = TechnicianTransactionType.Charge,
-                Category = TechnicianTransactionCategory.Other,
-                Amount = req.Amount,
-                BalanceAfter = employee.TechNetBalance,
-                Description = $"سحب أموال - {req.Reason ?? "طلب سحب"}",
-                ReferenceNumber = $"WD-{req.Id}-{DateTime.UtcNow:yyMMddHHmm}",
-                Notes = req.Notes,
-                CreatedById = reviewer,
-                CompanyId = req.CompanyId ?? employee.CompanyId ?? Guid.Empty,
-                CreatedAt = DateTime.UtcNow
-            };
-            await _unitOfWork.TechnicianTransactions.AddAsync(tx);
-
-            // 3. إنشاء خصم على الراتب (التزام) حتى يظهر في كشف الراتب
-            var now = DateTime.UtcNow;
+            // 2. إنشاء سلفة على الراتب (التزام) — بدون TechnicianTransaction
+            var nowUtc = DateTime.UtcNow;
             var deduction = new EmployeeDeductionBonus
             {
                 UserId = employee.Id,
@@ -276,30 +343,30 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
                 Type = AdjustmentType.Deduction,
                 Category = "سلفة",
                 Amount = req.Amount,
-                Month = now.Month,
-                Year = now.Year,
-                Description = $"سحب أموال - {req.Reason ?? "طلب سحب"} (طلب #{req.Id})",
+                Month = nowUtc.Month,
+                Year = nowUtc.Year,
+                Description = $"سلفة - {req.Reason ?? "طلب سحب"} (طلب #{req.Id})",
                 Notes = review?.Notes,
                 IsApplied = false,
                 CreatedById = reviewer ?? Guid.Empty,
                 IsRecurring = false,
                 IsActive = true,
-                CreatedAt = now
+                CreatedAt = nowUtc
             };
             await _unitOfWork.EmployeeDeductionBonuses.AddAsync(deduction);
 
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
-                "💸 تم صرف طلب سحب أموال #{Id} - {Amount} د.ع للموظف {UserName}. قيد Charge تم إنشاؤه. الرصيد الجديد: {Balance}",
-                id, req.Amount, req.UserName, employee.TechNetBalance);
+                "💸 تم صرف سلفة #{Id} - {Amount} د.ع للموظف {UserName}. خصم سلفة على الراتب.",
+                id, req.Amount, req.UserName);
 
             return Ok(new
             {
-                message = $"تم صرف {req.Amount} د.ع للموظف {req.UserName} وإنشاء قيد محاسبي",
+                message = $"تم صرف {req.Amount} د.ع كسلفة للموظف {req.UserName}",
                 request = new { req.Id, req.Amount, req.UserName, Status = req.Status.ToString() },
-                transaction = new { tx.Id, tx.Amount, tx.BalanceAfter, tx.Description },
-                newBalance = employee.TechNetBalance
+                deduction = new { deduction.Id, deduction.Amount, deduction.Category, deduction.Description },
+                overriddenLimit = overrideLimit
             });
         }
         catch (Exception ex)
@@ -375,3 +442,5 @@ public record SubmitWithdrawalDto(
     string? Notes);
 
 public record ReviewWithdrawalDto(string? Notes);
+
+public record PayWithdrawalDto(string? Notes, bool OverrideLimit = false);
