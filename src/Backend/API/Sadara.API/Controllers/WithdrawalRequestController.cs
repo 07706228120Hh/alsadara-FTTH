@@ -267,6 +267,27 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
             };
             await _unitOfWork.TechnicianTransactions.AddAsync(tx);
 
+            // 3. إنشاء خصم على الراتب (التزام) حتى يظهر في كشف الراتب
+            var now = DateTime.UtcNow;
+            var deduction = new EmployeeDeductionBonus
+            {
+                UserId = employee.Id,
+                CompanyId = req.CompanyId ?? employee.CompanyId ?? Guid.Empty,
+                Type = AdjustmentType.Deduction,
+                Category = "سلفة",
+                Amount = req.Amount,
+                Month = now.Month,
+                Year = now.Year,
+                Description = $"سحب أموال - {req.Reason ?? "طلب سحب"} (طلب #{req.Id})",
+                Notes = review?.Notes,
+                IsApplied = false,
+                CreatedById = reviewer ?? Guid.Empty,
+                IsRecurring = false,
+                IsActive = true,
+                CreatedAt = now
+            };
+            await _unitOfWork.EmployeeDeductionBonuses.AddAsync(deduction);
+
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
