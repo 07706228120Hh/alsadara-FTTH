@@ -69,6 +69,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   Map<String, dynamic>? _attendanceReport;
   List<dynamic>? _dailyRecords;
   Map<String, dynamic>? _leavesData;
+  Map<String, dynamic>? _adjustmentsData;
 
   // ── حالة طلبات سحب الأموال ──
   bool _isLoadingWithdrawals = true;
@@ -174,6 +175,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         _attendanceReport = attData;
         _dailyRecords = attData?['DailyRecords'] as List<dynamic>?;
         _leavesData = reportData['Leaves'] as Map<String, dynamic>?;
+        _adjustmentsData = reportData['Adjustments'] as Map<String, dynamic>?;
         _isLoadingReport = false;
       });
     } catch (e) {
@@ -1170,6 +1172,31 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           'خصم إجازة بدون راتب', s['UnpaidLeaveDeduction'] ?? 0, _accentOrange),
       _DeductionItem('مكافأة وقت إضافي', s['OvertimeBonus'] ?? 0, _accentGreen),
     ];
+
+    // إضافة الخصومات والمكافآت والبدلات اليدوية من Adjustments
+    if (_adjustmentsData != null) {
+      final deductionsList = _adjustmentsData!['Deductions'] as List<dynamic>? ?? [];
+      for (final d in deductionsList) {
+        final desc = d['Description']?.toString() ?? d['Category']?.toString() ?? 'خصم يدوي';
+        final category = d['Category']?.toString() ?? '';
+        final label = category.isNotEmpty ? '$desc (الفئة: $category)' : desc;
+        items.add(_DeductionItem(label, d['Amount'] ?? 0, _accentRed));
+      }
+      final bonusesList = _adjustmentsData!['Bonuses'] as List<dynamic>? ?? [];
+      for (final b in bonusesList) {
+        final desc = b['Description']?.toString() ?? b['Category']?.toString() ?? 'مكافأة';
+        final category = b['Category']?.toString() ?? '';
+        final label = category.isNotEmpty ? '$desc (الفئة: $category)' : desc;
+        items.add(_DeductionItem(label, b['Amount'] ?? 0, _accentGreen));
+      }
+      final allowancesList = _adjustmentsData!['Allowances'] as List<dynamic>? ?? [];
+      for (final a in allowancesList) {
+        final desc = a['Description']?.toString() ?? a['Category']?.toString() ?? 'بدل';
+        final category = a['Category']?.toString() ?? '';
+        final label = category.isNotEmpty ? '$desc (الفئة: $category)' : desc;
+        items.add(_DeductionItem(label, a['Amount'] ?? 0, _accentTeal));
+      }
+    }
 
     // لا تعرض إذا كل القيم 0
     final hasValues = items.any((i) {

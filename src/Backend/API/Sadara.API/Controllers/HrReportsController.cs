@@ -423,6 +423,68 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                 .Where(s => s.UserId == userId && s.Month == targetMonth && s.Year == targetYear)
                 .FirstOrDefaultAsync();
 
+            // الخصومات والمكافآت والبدلات اليدوية (من جدول EmployeeDeductionBonuses)
+            var adjustments = await _unitOfWork.EmployeeDeductionBonuses.AsQueryable()
+                .Where(a => a.UserId == userId && a.Month == targetMonth && a.Year == targetYear && a.IsActive)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+
+            var manualDeductions = adjustments.Where(a => a.Type == AdjustmentType.Deduction).ToList();
+            var manualBonuses = adjustments.Where(a => a.Type == AdjustmentType.Bonus).ToList();
+            var manualAllowances = adjustments.Where(a => a.Type == AdjustmentType.Allowance).ToList();
+
+            // إذا لم يتم إنشاء مسيّر الرواتب بعد، نحسب الراتب التقديري
+            object salaryResponse;
+            if (salary != null)
+            {
+                salaryResponse = new
+                {
+                    salary.BaseSalary,
+                    salary.Allowances,
+                    salary.Deductions,
+                    salary.Bonuses,
+                    salary.NetSalary,
+                    Status = salary.Status.ToString(),
+                    salary.LateDeduction,
+                    salary.AbsentDeduction,
+                    salary.EarlyDepartureDeduction,
+                    salary.UnpaidLeaveDeduction,
+                    salary.OvertimeBonus,
+                    salary.ManualDeductions,
+                    salary.ManualBonuses
+                };
+            }
+            else if (employee.Salary > 0 || adjustments.Any())
+            {
+                // حساب تقديري قبل إصدار المسيّر
+                var baseSalary = employee.Salary;
+                var totalManualDeductions = manualDeductions.Sum(a => a.Amount);
+                var totalManualBonuses = manualBonuses.Sum(a => a.Amount);
+                var totalManualAllowances = manualAllowances.Sum(a => a.Amount);
+                var estimatedNet = baseSalary + totalManualAllowances + totalManualBonuses - totalManualDeductions;
+
+                salaryResponse = new
+                {
+                    BaseSalary = baseSalary,
+                    Allowances = totalManualAllowances,
+                    Deductions = totalManualDeductions,
+                    Bonuses = totalManualBonuses,
+                    NetSalary = estimatedNet,
+                    Status = "Draft",
+                    LateDeduction = 0m,
+                    AbsentDeduction = 0m,
+                    EarlyDepartureDeduction = 0m,
+                    UnpaidLeaveDeduction = 0m,
+                    OvertimeBonus = 0m,
+                    ManualDeductions = totalManualDeductions,
+                    ManualBonuses = totalManualBonuses
+                };
+            }
+            else
+            {
+                salaryResponse = null;
+            }
+
             // الإجازات
             var leaves = await _unitOfWork.LeaveRequests.AsQueryable()
                 .Where(l => l.UserId == userId && l.StartDate >= startDate && l.StartDate <= endDate)
@@ -458,19 +520,40 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                             r.EarlyDepartureMinutes
                         })
                     },
-                    Salary = salary == null ? null : new
+                    Salary = salaryResponse,
+                    // الخصومات والمكافآت والبدلات اليدوية (تفاصيل كل عملية)
+                    Adjustments = new
                     {
-                        salary.BaseSalary,
-                        salary.Allowances,
-                        salary.Deductions,
-                        salary.Bonuses,
-                        salary.NetSalary,
-                        Status = salary.Status.ToString(),
-                        salary.LateDeduction,
-                        salary.AbsentDeduction,
-                        salary.EarlyDepartureDeduction,
-                        salary.UnpaidLeaveDeduction,
-                        salary.OvertimeBonus
+                        Deductions = manualDeductions.Select(a => new
+                        {
+                            a.Id,
+                            a.Amount,
+                            a.Category,
+                            a.Description,
+                            a.IsApplied,
+                            CreatedAt = a.CreatedAt.ToString("yyyy-MM-dd")
+                        }),
+                        Bonuses = manualBonuses.Select(a => new
+                        {
+                            a.Id,
+                            a.Amount,
+                            a.Category,
+                            a.Description,
+                            a.IsApplied,
+                            CreatedAt = a.CreatedAt.ToString("yyyy-MM-dd")
+                        }),
+                        Allowances = manualAllowances.Select(a => new
+                        {
+                            a.Id,
+                            a.Amount,
+                            a.Category,
+                            a.Description,
+                            a.IsApplied,
+                            CreatedAt = a.CreatedAt.ToString("yyyy-MM-dd")
+                        }),
+                        TotalDeductions = manualDeductions.Sum(a => a.Amount),
+                        TotalBonuses = manualBonuses.Sum(a => a.Amount),
+                        TotalAllowances = manualAllowances.Sum(a => a.Amount)
                     },
                     Leaves = new
                     {
