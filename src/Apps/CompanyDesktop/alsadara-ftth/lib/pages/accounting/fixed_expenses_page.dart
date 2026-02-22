@@ -24,6 +24,9 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
 
+  /// فلتر الفئة: null = الكل
+  String? _selectedCategoryFilter;
+
   // فئات المصاريف
   static const _categories = [
     {
@@ -180,6 +183,9 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                 children: [
                   // شريط الشهر/السنة + الملخص
                   _buildHeader(),
+                  // فلتر الفئات
+                  _buildCategoryFilter(),
+                  const Divider(height: 1),
                   // المحتوى
                   Expanded(
                     child: Row(
@@ -251,6 +257,75 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
     );
   }
 
+  Widget _buildCategoryFilter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: FilterChip(
+                label: const Text('الكل', style: TextStyle(fontSize: 12)),
+                selected: _selectedCategoryFilter == null,
+                onSelected: (_) =>
+                    setState(() => _selectedCategoryFilter = null),
+                selectedColor: const Color(0xFF1A237E).withValues(alpha: 0.15),
+                checkmarkColor: const Color(0xFF1A237E),
+                labelStyle: TextStyle(
+                  color: _selectedCategoryFilter == null
+                      ? const Color(0xFF1A237E)
+                      : Colors.grey.shade700,
+                  fontWeight: _selectedCategoryFilter == null
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+            ),
+            ..._categories.map((cat) {
+              final catKey = _categoryValueToKey(cat['value'] as int);
+              final isSelected = _selectedCategoryFilter == catKey;
+              final color = cat['color'] as Color;
+              return Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: FilterChip(
+                  avatar: Icon(cat['icon'] as IconData,
+                      size: 16, color: isSelected ? color : Colors.grey),
+                  label: Text(cat['label'] as String,
+                      style: const TextStyle(fontSize: 12)),
+                  selected: isSelected,
+                  onSelected: (_) => setState(() {
+                    _selectedCategoryFilter = isSelected ? null : catKey;
+                  }),
+                  selectedColor: color.withValues(alpha: 0.15),
+                  checkmarkColor: color,
+                  labelStyle: TextStyle(
+                    color: isSelected ? color : Colors.grey.shade700,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _categoryValueToKey(int value) {
+    const map = {
+      0: 'OfficeRent',
+      1: 'GeneratorCost',
+      2: 'Internet',
+      3: 'Electricity',
+      4: 'Water',
+      99: 'Other',
+    };
+    return map[value] ?? 'Other';
+  }
+
   Widget _headerStat(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -274,29 +349,37 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
 
   // ═══ قائمة المصاريف الثابتة (الجانب الأيسر) ═══
   Widget _buildFixedExpensesList() {
+    final filtered = _selectedCategoryFilter == null
+        ? _fixedExpenses
+        : _fixedExpenses
+            .where((e) => e['Category'] == _selectedCategoryFilter)
+            .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
           padding: const EdgeInsets.all(12),
           color: const Color(0xFFE8EAF6),
-          child: const Text('المصاريف الثابتة المسجلة',
-              style: TextStyle(
+          child: Text(
+              _selectedCategoryFilter == null
+                  ? 'المصاريف الثابتة المسجلة'
+                  : 'المصاريف الثابتة المسجلة (${_getCategoryInfo(_selectedCategoryFilter)['label']})',
+              style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                   color: Color(0xFF1A237E))),
         ),
         Expanded(
-          child: _fixedExpenses.isEmpty
+          child: filtered.isEmpty
               ? const Center(
                   child: Text('لا توجد مصاريف ثابتة مسجلة',
                       style: TextStyle(color: Colors.grey)))
               : ListView.separated(
                   padding: const EdgeInsets.all(8),
-                  itemCount: _fixedExpenses.length,
+                  itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
                   itemBuilder: (ctx, i) {
-                    final item = _fixedExpenses[i];
+                    final item = filtered[i];
                     final catInfo = _getCategoryInfo(item['Category']);
                     final isActive = item['IsActive'] == true;
 
@@ -349,6 +432,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
 
   // ═══ سجلات الدفع الشهرية (الجانب الأيمن) ═══
   Widget _buildPaymentsList() {
+    final filtered = _selectedCategoryFilter == null
+        ? _payments
+        : _payments
+            .where((p) => p['Category'] == _selectedCategoryFilter)
+            .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -364,16 +452,16 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
           ),
         ),
         Expanded(
-          child: _payments.isEmpty
+          child: filtered.isEmpty
               ? const Center(
                   child: Text('لا توجد سجلات دفع',
                       style: TextStyle(color: Colors.grey)))
               : ListView.separated(
                   padding: const EdgeInsets.all(8),
-                  itemCount: _payments.length,
+                  itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
                   itemBuilder: (ctx, i) {
-                    final p = _payments[i];
+                    final p = filtered[i];
                     final isPaid = p['IsPaid'] == true;
                     final catInfo = _getCategoryInfo(p['Category']);
 
