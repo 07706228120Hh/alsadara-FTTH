@@ -185,7 +185,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     //  الموافقة والرفض
     // ============================================================
 
-    /// <summary>الموافقة على طلب سحب أموال</summary>
+    /// <summary>الموافقة على طلب سحب أموال (موافقة فقط بدون صرف)</summary>
     [HttpPost("requests/{id}/approve")]
     public async Task<IActionResult> ApproveWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
     {
@@ -214,6 +214,78 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
             id, req.Amount, req.UserName);
 
         return Ok(new { message = "تمت الموافقة على الطلب", request = req });
+    }
+
+    /// <summary>صرف طلب سحب أموال (موافقة + صرف + إنشاء قيد على الموظف)</summary>
+    [HttpPost("requests/{id}/pay")]
+    public async Task<IActionResult> PayWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
+    {
+        try
+        {
+            var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
+            if (req == null) return NotFound(new { message = "الطلب غير موجود" });
+
+            if (req.Status != WithdrawalRequestStatus.Pending && req.Status != WithdrawalRequestStatus.Approved)
+                return BadRequest(new { message = "لا يمكن صرف طلب في هذه الحالة" });
+
+            var reviewer = GetAuthenticatedUserId();
+            var reviewerUser = reviewer.HasValue
+                ? await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == reviewer.Value)
+                : null;
+
+            // جلب بيانات الموظف
+            var employee = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == req.UserId);
+            if (employee == null) return NotFound(new { message = "الموظف غير موجود" });
+
+            // 1. تحديث حالة الطلب إلى مصروف
+            req.Status = WithdrawalRequestStatus.Paid;
+            req.ReviewedByUserId = reviewer;
+            req.ReviewedByUserName = reviewerUser?.FullName;
+            req.ReviewedAt = DateTime.UtcNow;
+            req.ReviewNotes = review?.Notes;
+            req.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.WithdrawalRequests.Update(req);
+
+            // 2. إنشاء قيد حسابي (Charge) على الموظف - سحب من أجور الراتب
+            employee.TechTotalCharges += req.Amount;
+            employee.TechNetBalance = employee.TechTotalPayments - employee.TechTotalCharges;
+            _unitOfWork.Users.Update(employee);
+
+            var tx = new TechnicianTransaction
+            {
+                TechnicianId = employee.Id,
+                Type = TechnicianTransactionType.Charge,
+                Category = TechnicianTransactionCategory.Other,
+                Amount = req.Amount,
+                BalanceAfter = employee.TechNetBalance,
+                Description = $"سحب أموال - {req.Reason ?? "طلب سحب"}",
+                ReferenceNumber = $"WD-{req.Id}-{DateTime.UtcNow:yyMMddHHmm}",
+                Notes = req.Notes,
+                CreatedById = reviewer,
+                CompanyId = req.CompanyId ?? employee.CompanyId ?? Guid.Empty,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.TechnicianTransactions.AddAsync(tx);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "💸 تم صرف طلب سحب أموال #{Id} - {Amount} د.ع للموظف {UserName}. قيد Charge تم إنشاؤه. الرصيد الجديد: {Balance}",
+                id, req.Amount, req.UserName, employee.TechNetBalance);
+
+            return Ok(new
+            {
+                message = $"تم صرف {req.Amount} د.ع للموظف {req.UserName} وإنشاء قيد محاسبي",
+                request = new { req.Id, req.Amount, req.UserName, Status = req.Status.ToString() },
+                transaction = new { tx.Id, tx.Amount, tx.BalanceAfter, tx.Description },
+                newBalance = employee.TechNetBalance
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في صرف طلب سحب أموال #{Id}", id);
+            return StatusCode(500, new { message = "خطأ داخلي في الخادم" });
+        }
     }
 
     /// <summary>رفض طلب سحب أموال</summary>

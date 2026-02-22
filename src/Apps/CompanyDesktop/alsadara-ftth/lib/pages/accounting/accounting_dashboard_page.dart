@@ -16,6 +16,7 @@ import '../super_admin/agents_management_page.dart';
 import 'ftth_operators_dashboard_page.dart';
 import 'funds_overview_page.dart';
 import 'fixed_expenses_page.dart';
+import 'withdrawal_requests_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -351,6 +352,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             color: const Color(0xFFE67E22),
             onTap: () =>
                 _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
+          ),
+          _sidebarBtn(
+            icon: Icons.money_off,
+            label: 'طلبات السحب',
+            color: const Color(0xFFE74C3C),
+            onTap: () => _navigateTo(
+                WithdrawalRequestsPage(companyId: widget.companyId)),
           ),
           const Spacer(),
         ],
@@ -819,6 +827,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
         color: const Color(0xFF5C6BC0),
         onTap: () =>
             _navigateTo(FundsOverviewPage(companyId: widget.companyId)),
+      ),
+      _SectionItem(
+        title: 'طلبات سحب الأموال',
+        subtitle: 'مراجعة وصرف طلبات السحب',
+        icon: Icons.money_off,
+        color: const Color(0xFFE74C3C),
+        onTap: () =>
+            _navigateTo(WithdrawalRequestsPage(companyId: widget.companyId)),
       ),
     ];
 

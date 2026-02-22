@@ -396,6 +396,14 @@ class AttendanceApiService {
     });
   }
 
+  /// صرف طلب سحب أموال (موافقة + صرف + قيد محاسبي)
+  Future<Map<String, dynamic>> payWithdrawalRequest(int id,
+      {String? notes}) async {
+    return await _api.post('/withdrawalrequest/requests/$id/pay', body: {
+      'Notes': notes,
+    });
+  }
+
   /// رفض طلب سحب أموال
   Future<Map<String, dynamic>> rejectWithdrawalRequest(int id,
       {String? notes}) async {
