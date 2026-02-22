@@ -48,7 +48,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   final AttendanceApiService _attendanceApi = AttendanceApiService.instance;
   final _client = ApiClient.instance;
 
-
   int _attendanceCount = 0;
   int _lateDays = 0;
   int _totalLateMinutes = 0;
@@ -71,6 +70,11 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   List<dynamic>? _dailyRecords;
   Map<String, dynamic>? _leavesData;
 
+  // ── حالة طلبات سحب الأموال ──
+  bool _isLoadingWithdrawals = true;
+  List<dynamic> _withdrawalRequests = [];
+  int _withdrawalTotal = 0;
+
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -92,6 +96,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       _fetchAttendanceCount(),
       _loadTransactions(),
       _loadEmployeeReport(),
+      _loadWithdrawalRequests(),
     ]);
   }
 
@@ -177,7 +182,22 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     }
   }
 
-
+  Future<void> _loadWithdrawalRequests() async {
+    try {
+      final data = await _attendanceApi.getMyWithdrawalRequests();
+      if (!mounted) return;
+      setState(() {
+        _withdrawalRequests =
+            List<dynamic>.from(data['requests'] ?? data['Requests'] ?? []);
+        _withdrawalTotal =
+            data['total'] ?? data['Total'] ?? _withdrawalRequests.length;
+        _isLoadingWithdrawals = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading withdrawal requests: $e');
+      if (mounted) setState(() => _isLoadingWithdrawals = false);
+    }
+  }
 
   String _formatAmount(dynamic amount) {
     if (amount == null) return '0';
@@ -217,8 +237,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ═══ 1. زر البصمة ═══
-                      _buildAttendanceButton(),
+                      // ═══ 1. أزرار سريعة (بصمة + إجازة + سحب أموال) ═══
+                      _buildQuickActions(),
                       const SizedBox(height: 20),
                       // ═══ 2. ملخص مالي ═══
                       _buildFinancialSummary(),
@@ -226,7 +246,10 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                       // ═══ 3. الراتب والخصومات ═══
                       _buildSalarySection(),
                       const SizedBox(height: 20),
-                      // ═══ 4. سجل الحضور اليومي ═══
+                      // ═══ 4. طلبات سحب الأموال ═══
+                      _buildWithdrawalSection(),
+                      const SizedBox(height: 20),
+                      // ═══ 5. سجل الحضور اليومي ═══
                       _buildDailyAttendanceSection(),
                       const SizedBox(height: 20),
                       // ═══ 5. المعاملات ═══
@@ -335,81 +358,450 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   }
 
   // ═══════════════════════════════════════════════════════
-  //  1. زر فتح شاشة البصمة
+  //  1. أزرار سريعة (بصمة + إجازة + سحب أموال)
   // ═══════════════════════════════════════════════════════
-  Widget _buildAttendanceButton() {
+  Widget _buildQuickActions() {
+    return Row(
+      children: [
+        // زر البصمة
+        Expanded(
+          child: _quickActionCard(
+            title: 'البصمة',
+            subtitle: 'تسجيل الحضور',
+            icon: Icons.fingerprint_rounded,
+            gradient: const [Color(0xFF667eea), Color(0xFF764ba2)],
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AttendancePage(
+                    username: widget.username,
+                    center: widget.center,
+                    permissions: widget.permissions,
+                  ),
+                ),
+              ).then((_) => _fetchAll());
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        // زر طلب إجازة
+        Expanded(
+          child: _quickActionCard(
+            title: 'طلب إجازة',
+            subtitle: 'تقديم طلب جديد',
+            icon: Icons.beach_access_rounded,
+            gradient: const [Color(0xFFF2994A), Color(0xFFF2C94C)],
+            onTap: _showLeaveRequestDialog,
+          ),
+        ),
+        const SizedBox(width: 12),
+        // زر طلب سحب أموال
+        Expanded(
+          child: _quickActionCard(
+            title: 'سحب أموال',
+            subtitle: 'تقديم طلب سحب',
+            icon: Icons.account_balance_wallet_rounded,
+            gradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
+            onTap: _showWithdrawalRequestDialog,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _quickActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<Color> gradient,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AttendancePage(
-                username: widget.username,
-                center: widget.center,
-                permissions: widget.permissions,
-              ),
-            ),
-          ).then((_) {
-            // تحديث البيانات عند العودة
-            _fetchAll();
-          });
-        },
+        onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+            gradient: LinearGradient(
+              colors: gradient,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF667eea).withOpacity(0.3),
+                color: gradient[0].withOpacity(0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.fingerprint_rounded,
-                    color: Colors.white, size: 28),
+                child: Icon(icon, color: Colors.white, size: 24),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('البصمة',
-                        style: GoogleFonts.cairo(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
-                    Text('تسجيل الحضور والانصراف',
-                        style: GoogleFonts.cairo(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.8))),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white.withOpacity(0.7), size: 20),
+              const SizedBox(height: 10),
+              Text(title,
+                  style: GoogleFonts.cairo(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+              Text(subtitle,
+                  style: GoogleFonts.cairo(
+                      fontSize: 10, color: Colors.white.withOpacity(0.8))),
             ],
           ),
         ),
       ),
     );
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  دايالوج طلب إجازة جديد
+  // ═══════════════════════════════════════════════════════
+  static const List<Map<String, dynamic>> _leaveTypes = [
+    {
+      'value': 0,
+      'label': 'سنوية',
+      'icon': Icons.beach_access,
+      'color': Colors.blue
+    },
+    {
+      'value': 1,
+      'label': 'مرضية',
+      'icon': Icons.local_hospital,
+      'color': Colors.red
+    },
+    {
+      'value': 2,
+      'label': 'بدون راتب',
+      'icon': Icons.money_off,
+      'color': Colors.grey
+    },
+    {
+      'value': 3,
+      'label': 'طارئة',
+      'icon': Icons.emergency,
+      'color': Colors.orange
+    },
+    {'value': 4, 'label': 'رسمية', 'icon': Icons.flag, 'color': Colors.green},
+    {'value': 5, 'label': 'زواج', 'icon': Icons.favorite, 'color': Colors.pink},
+    {
+      'value': 6,
+      'label': 'أبوة/أمومة',
+      'icon': Icons.child_care,
+      'color': Colors.purple
+    },
+    {
+      'value': 7,
+      'label': 'وفاة',
+      'icon': Icons.sentiment_very_dissatisfied,
+      'color': Colors.brown
+    },
+  ];
+
+  Future<void> _showLeaveRequestDialog() async {
+    int selectedType = 0;
+    final reasonCtrl = TextEditingController();
+    DateTimeRange? dateRange;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.beach_access_rounded,
+                    color: Color(0xFFF2994A)),
+                const SizedBox(width: 10),
+                Text('طلب إجازة جديد',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: SizedBox(
+              width: 450,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      value: selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'نوع الإجازة',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.category),
+                      ),
+                      items: _leaveTypes
+                          .map((t) => DropdownMenuItem<int>(
+                                value: t['value'] as int,
+                                child: Row(
+                                  children: [
+                                    Icon(t['icon'] as IconData,
+                                        color: t['color'] as Color, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(t['label'] as String),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (v) =>
+                          setDialogState(() => selectedType = v ?? 0),
+                    ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDateRangePicker(
+                          context: ctx,
+                          firstDate:
+                              DateTime.now().subtract(const Duration(days: 30)),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 365)),
+                          locale: const Locale('ar'),
+                          builder: (context, child) => Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme:
+                                  ColorScheme.light(primary: Colors.blue[700]!),
+                            ),
+                            child: child!,
+                          ),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => dateRange = picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'فترة الإجازة',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.date_range),
+                        ),
+                        child: Text(
+                          dateRange != null
+                              ? '${dateRange!.start.toString().split(' ')[0]}  →  ${dateRange!.end.toString().split(' ')[0]}'
+                              : 'اضغط لاختيار التاريخ',
+                          style: TextStyle(
+                            color: dateRange != null
+                                ? Colors.black87
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (dateRange != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.timer,
+                                size: 18, color: Colors.blue[700]),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${dateRange!.end.difference(dateRange!.start).inDays + 1} أيام',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: reasonCtrl,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'السبب (اختياري)',
+                        hintText: 'اكتب سبب الإجازة...',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.note),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.send),
+                label: const Text('تقديم الطلب'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (result != true || dateRange == null) return;
+
+    try {
+      final userId = VpsAuthService.instance.currentUser?.id ?? '';
+      final res = await _attendanceApi.submitLeaveRequest(
+        userId: userId,
+        leaveType: selectedType,
+        startDate: dateRange!.start.toString().split(' ')[0],
+        endDate: dateRange!.end.toString().split(' ')[0],
+        reason: reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim(),
+      );
+
+      if (mounted) {
+        final msg = res['message'] ?? res['Message'] ?? 'تم التقديم';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: _accentGreen,
+          ),
+        );
+        _fetchAll();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('خطأ: $e', style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: _accentRed,
+          ),
+        );
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  دايالوج طلب سحب أموال
+  // ═══════════════════════════════════════════════════════
+  Future<void> _showWithdrawalRequestDialog() async {
+    final amountCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.account_balance_wallet_rounded,
+                  color: Color(0xFF11998e)),
+              const SizedBox(width: 10),
+              Text('طلب سحب أموال',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    labelText: 'المبلغ (د.ع)',
+                    hintText: 'أدخل المبلغ المطلوب',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.attach_money),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: reasonCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'السبب (اختياري)',
+                    hintText: 'اكتب سبب طلب السحب...',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.note),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.send),
+              label: const Text('تقديم الطلب'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != true) return;
+
+    final amount = double.tryParse(amountCtrl.text.trim());
+    if (amount == null || amount <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يرجى إدخال مبلغ صحيح',
+                style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: _accentRed,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final userId = VpsAuthService.instance.currentUser?.id ?? '';
+      final res = await _attendanceApi.submitWithdrawalRequest(
+        userId: userId,
+        amount: amount,
+        reason: reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim(),
+      );
+
+      if (mounted) {
+        final msg = res['message'] ?? res['Message'] ?? 'تم التقديم';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: _accentGreen,
+          ),
+        );
+        _loadWithdrawalRequests();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('خطأ: $e', style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: _accentRed,
+          ),
+        );
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -890,7 +1282,259 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   }
 
   // ═══════════════════════════════════════════════════════
-  //  4. المعاملات
+  //  طلبات سحب الأموال
+  // ═══════════════════════════════════════════════════════
+  static const _withdrawalStatusInfo = <int, Map<String, dynamic>>{
+    0: {
+      'label': 'بانتظار الموافقة',
+      'color': Color(0xFFF39C12),
+      'icon': Icons.hourglass_empty
+    },
+    1: {
+      'label': 'موافق عليه',
+      'color': Color(0xFF27AE60),
+      'icon': Icons.check_circle
+    },
+    2: {'label': 'مرفوض', 'color': Color(0xFFE74C3C), 'icon': Icons.cancel},
+    3: {'label': 'ملغي', 'color': Color(0xFF95A5A6), 'icon': Icons.block},
+    4: {'label': 'تم الصرف', 'color': Color(0xFF3498DB), 'icon': Icons.paid},
+  };
+
+  Widget _buildWithdrawalSection() {
+    return _sectionCard(
+      title: 'طلبات سحب الأموال ($_withdrawalTotal)',
+      icon: Icons.account_balance_wallet_rounded,
+      iconGradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
+      trailing: IconButton(
+        onPressed: _showWithdrawalRequestDialog,
+        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF11998e)),
+        tooltip: 'طلب سحب جديد',
+      ),
+      child: _isLoadingWithdrawals
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          : _withdrawalRequests.isEmpty
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 30),
+                  child: Column(
+                    children: [
+                      Icon(Icons.account_balance_wallet_outlined,
+                          size: 48, color: _textGray.withOpacity(0.3)),
+                      const SizedBox(height: 8),
+                      Text('لا توجد طلبات سحب',
+                          style: GoogleFonts.cairo(
+                              color: _textGray, fontSize: 14)),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _showWithdrawalRequestDialog,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: Text('تقديم طلب سحب',
+                            style: GoogleFonts.cairo(fontSize: 13)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF11998e),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: _withdrawalRequests.map((req) {
+                    final r = req as Map<String, dynamic>;
+                    final status = r['status'] ?? r['Status'] ?? 0;
+                    final statusInt =
+                        status is int ? status : int.tryParse('$status') ?? 0;
+                    final info = _withdrawalStatusInfo[statusInt] ??
+                        _withdrawalStatusInfo[0]!;
+                    final amount = r['amount'] ?? r['Amount'] ?? 0;
+                    final reason = r['reason'] ?? r['Reason'];
+                    final createdAt = r['createdAt'] ?? r['CreatedAt'];
+                    final reviewNotes = r['reviewNotes'] ?? r['ReviewNotes'];
+                    final reviewedBy =
+                        r['reviewedByUserName'] ?? r['ReviewedByUserName'];
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: (info['color'] as Color).withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: (info['color'] as Color).withOpacity(0.15)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(info['icon'] as IconData,
+                                  color: info['color'] as Color, size: 20),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: (info['color'] as Color)
+                                      .withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(info['label'] as String,
+                                    style: GoogleFonts.cairo(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: info['color'] as Color)),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_formatAmount(amount)} د.ع',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: _textDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (reason != null && '$reason'.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.note_outlined,
+                                    size: 14, color: _textGray),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text('$reason',
+                                      style: GoogleFonts.cairo(
+                                          fontSize: 12, color: _textSubtle)),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (reviewNotes != null &&
+                              '$reviewNotes'.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.comment_outlined,
+                                    size: 14, color: _accentBlue),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text('ملاحظات المراجع: $reviewNotes',
+                                      style: GoogleFonts.cairo(
+                                          fontSize: 11, color: _accentBlue)),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(Icons.access_time,
+                                  size: 13, color: _textGray),
+                              const SizedBox(width: 4),
+                              Text(_formatDate('$createdAt'),
+                                  style: GoogleFonts.cairo(
+                                      fontSize: 11, color: _textGray)),
+                              if (reviewedBy != null) ...[
+                                const SizedBox(width: 12),
+                                Icon(Icons.person_outline,
+                                    size: 13, color: _textGray),
+                                const SizedBox(width: 4),
+                                Text('$reviewedBy',
+                                    style: GoogleFonts.cairo(
+                                        fontSize: 11, color: _textGray)),
+                              ],
+                              const Spacer(),
+                              if (statusInt == 0)
+                                TextButton.icon(
+                                  onPressed: () => _cancelWithdrawal(r),
+                                  icon: const Icon(Icons.close,
+                                      size: 14, color: Color(0xFFE74C3C)),
+                                  label: Text('إلغاء',
+                                      style: GoogleFonts.cairo(
+                                          fontSize: 11,
+                                          color: const Color(0xFFE74C3C))),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+    );
+  }
+
+  Future<void> _cancelWithdrawal(Map<String, dynamic> req) async {
+    final id = req['id'] ?? req['Id'];
+    if (id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تأكيد الإلغاء',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          content: Text(
+              'هل تريد إلغاء طلب سحب ${_formatAmount(req['amount'] ?? req['Amount'])} د.ع؟',
+              style: GoogleFonts.cairo()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('رجوع'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: _accentRed),
+              child: const Text('إلغاء الطلب'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _attendanceApi
+          .cancelWithdrawalRequest(id is int ? id : int.parse('$id'));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم إلغاء الطلب',
+                style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: _accentGreen,
+          ),
+        );
+        _loadWithdrawalRequests();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('خطأ: $e', style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: _accentRed,
+          ),
+        );
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  المعاملات
   // ═══════════════════════════════════════════════════════
   Widget _buildTransactionsSection() {
     return _sectionCard(
@@ -1073,6 +1717,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     required IconData icon,
     required List<Color> iconGradient,
     required Widget child,
+    Widget? trailing,
   }) {
     return Container(
       width: double.infinity,
@@ -1108,6 +1753,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   ),
                 ),
               ),
+              if (trailing != null) trailing,
             ],
           ),
           const Divider(height: 20),
@@ -2265,5 +2911,3 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
     );
   }
 }
-
-

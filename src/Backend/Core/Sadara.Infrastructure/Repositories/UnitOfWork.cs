@@ -78,6 +78,9 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<LeaveRequest, long>? _leaveRequests;
     private IRepository<LeaveBalance, long>? _leaveBalances;
 
+    // Withdrawal Requests (طلبات سحب الأموال)
+    private IRepository<WithdrawalRequest, long>? _withdrawalRequests;
+
     // ISP Data (بيانات مشتركي الإنترنت)
     private IRepository<ISPSubscriber, long>? _ispSubscribers;
     private IRepository<ZoneStatistic, int>? _zoneStatistics;
@@ -246,6 +249,10 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<LeaveBalance, long> LeaveBalances =>
         _leaveBalances ??= new Repository<LeaveBalance, long>(_context);
+
+    // Withdrawal Requests (طلبات سحب الأموال)
+    public IRepository<WithdrawalRequest, long> WithdrawalRequests =>
+        _withdrawalRequests ??= new Repository<WithdrawalRequest, long>(_context);
 
     // ISP Data (بيانات مشتركي الإنترنت)
     public IRepository<ISPSubscriber, long> ISPSubscribers =>

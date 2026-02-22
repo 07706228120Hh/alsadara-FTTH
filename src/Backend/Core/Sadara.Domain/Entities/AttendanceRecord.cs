@@ -316,3 +316,60 @@ public class LeaveBalance : BaseEntity<long>
     // Navigation
     public User? User { get; set; }
 }
+
+// ==================== نظام طلبات سحب الأموال ====================
+
+/// <summary>حالة طلب سحب الأموال</summary>
+public enum WithdrawalRequestStatus
+{
+    /// <summary>بانتظار الموافقة</summary>
+    Pending = 0,
+    /// <summary>تمت الموافقة</summary>
+    Approved = 1,
+    /// <summary>مرفوض</summary>
+    Rejected = 2,
+    /// <summary>ملغي بواسطة الموظف</summary>
+    Cancelled = 3,
+    /// <summary>تم الصرف</summary>
+    Paid = 4,
+}
+
+/// <summary>طلب سحب أموال من الموظف</summary>
+public class WithdrawalRequest : BaseEntity<long>
+{
+    /// <summary>معرف الموظف</summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>اسم الموظف</summary>
+    public string UserName { get; set; } = string.Empty;
+
+    /// <summary>معرف الشركة</summary>
+    public Guid? CompanyId { get; set; }
+
+    /// <summary>المبلغ المطلوب</summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>السبب</summary>
+    public string? Reason { get; set; }
+
+    /// <summary>ملاحظات إضافية</summary>
+    public string? Notes { get; set; }
+
+    /// <summary>حالة الطلب</summary>
+    public WithdrawalRequestStatus Status { get; set; } = WithdrawalRequestStatus.Pending;
+
+    /// <summary>معرف المدير الذي وافق/رفض</summary>
+    public Guid? ReviewedByUserId { get; set; }
+
+    /// <summary>اسم المدير الذي وافق/رفض</summary>
+    public string? ReviewedByUserName { get; set; }
+
+    /// <summary>تاريخ المراجعة</summary>
+    public DateTime? ReviewedAt { get; set; }
+
+    /// <summary>ملاحظات المدير</summary>
+    public string? ReviewNotes { get; set; }
+
+    // Navigation
+    public User? User { get; set; }
+}

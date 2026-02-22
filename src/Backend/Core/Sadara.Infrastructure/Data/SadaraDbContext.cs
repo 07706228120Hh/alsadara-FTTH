@@ -82,6 +82,7 @@ public class SadaraDbContext : DbContext
 
     // ==================== Leave Management (نظام الإجازات) ====================
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<WithdrawalRequest> WithdrawalRequests => Set<WithdrawalRequest>();
     public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
 
     // ==================== ISP Data (بيانات مشتركي الإنترنت) ====================
@@ -140,6 +141,9 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<LeaveBalance>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<LeaveBalance>()
             .Property(e => e.LeaveType).HasConversion<int>();
+        modelBuilder.Entity<WithdrawalRequest>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<WithdrawalRequest>()
+            .Property(e => e.Status).HasConversion<int>().HasDefaultValue(WithdrawalRequestStatus.Pending);
         modelBuilder.Entity<ISPSubscriber>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<ZoneStatistic>().HasQueryFilter(x => !x.IsDeleted);
 

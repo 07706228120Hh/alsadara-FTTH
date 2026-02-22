@@ -330,6 +330,80 @@ class AttendanceApiService {
     return await _api.get(url);
   }
 
+  // ==================== طلبات سحب الأموال - Withdrawal Requests ====================
+
+  /// تقديم طلب سحب أموال
+  Future<Map<String, dynamic>> submitWithdrawalRequest({
+    required String userId,
+    required double amount,
+    String? reason,
+    String? notes,
+  }) async {
+    return await _api.post('/withdrawalrequest/requests', body: {
+      'UserId': userId,
+      'Amount': amount,
+      'Reason': reason,
+      'Notes': notes,
+    });
+  }
+
+  /// جلب طلبات سحب الأموال للموظف الحالي
+  Future<Map<String, dynamic>> getMyWithdrawalRequests({
+    int? status,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final params = <String>[];
+    if (status != null) params.add('status=$status');
+    params.add('page=$page');
+    params.add('pageSize=$pageSize');
+    final url = '/withdrawalrequest/my-requests?${params.join('&')}';
+    return await _api.get(url);
+  }
+
+  /// جلب طلبات سحب الأموال (إدارة)
+  Future<Map<String, dynamic>> getWithdrawalRequests({
+    String? userId,
+    int? status,
+    String? companyId,
+    int? year,
+    int? month,
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    final params = <String>[];
+    if (userId != null) params.add('userId=$userId');
+    if (status != null) params.add('status=$status');
+    if (companyId != null) params.add('companyId=$companyId');
+    if (year != null) params.add('year=$year');
+    if (month != null) params.add('month=$month');
+    params.add('page=$page');
+    params.add('pageSize=$pageSize');
+    final url = '/withdrawalrequest/requests?${params.join('&')}';
+    return await _api.get(url);
+  }
+
+  /// إلغاء طلب سحب أموال
+  Future<Map<String, dynamic>> cancelWithdrawalRequest(int id) async {
+    return await _api.post('/withdrawalrequest/requests/$id/cancel', body: {});
+  }
+
+  /// الموافقة على طلب سحب أموال
+  Future<Map<String, dynamic>> approveWithdrawalRequest(int id,
+      {String? notes}) async {
+    return await _api.post('/withdrawalrequest/requests/$id/approve', body: {
+      'Notes': notes,
+    });
+  }
+
+  /// رفض طلب سحب أموال
+  Future<Map<String, dynamic>> rejectWithdrawalRequest(int id,
+      {String? notes}) async {
+    return await _api.post('/withdrawalrequest/requests/$id/reject', body: {
+      'Notes': notes,
+    });
+  }
+
   // ==================== الخصومات والمكافآت - Employee Adjustments ====================
 
   /// جلب موظفي الشركة (للقوائم المنسدلة)

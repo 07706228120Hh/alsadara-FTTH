@@ -84,6 +84,9 @@ public interface IUnitOfWork : IDisposable
     IRepository<LeaveRequest, long> LeaveRequests { get; }
     IRepository<LeaveBalance, long> LeaveBalances { get; }
 
+    // Withdrawal Requests (طلبات سحب الأموال)
+    IRepository<WithdrawalRequest, long> WithdrawalRequests { get; }
+
     // ISP Data (بيانات مشتركي الإنترنت)
     IRepository<ISPSubscriber, long> ISPSubscribers { get; }
     IRepository<ZoneStatistic, int> ZoneStatistics { get; }
