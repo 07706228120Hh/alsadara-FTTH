@@ -719,56 +719,95 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
     }
   }
 
+  int _categoryKeyToValue(String? key) {
+    const map = {
+      'OfficeRent': 0,
+      'GeneratorCost': 1,
+      'Internet': 2,
+      'Electricity': 3,
+      'Water': 4,
+      'Other': 99,
+    };
+    return map[key] ?? 99;
+  }
+
   Future<void> _showEditDialog(Map<String, dynamic> item) async {
     final nameCtrl = TextEditingController(text: item['Name']);
     final amountCtrl =
         TextEditingController(text: '${item['MonthlyAmount'] ?? 0}');
     final descCtrl = TextEditingController(text: item['Description'] ?? '');
+    int selectedCat = _categoryKeyToValue(item['Category']);
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تعديل المصروف الثابت'),
-        content: SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'اسم المصروف', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                    labelText: 'المبلغ الشهري', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descCtrl,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                    labelText: 'ملاحظات', border: OutlineInputBorder()),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A237E),
-              foregroundColor: Colors.white,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('تعديل المصروف الثابت'),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                      labelText: 'اسم المصروف', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: selectedCat,
+                  decoration: const InputDecoration(
+                    labelText: 'الفئة',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _categories.map((c) {
+                    return DropdownMenuItem(
+                      value: c['value'] as int,
+                      child: Row(
+                        children: [
+                          Icon(c['icon'] as IconData,
+                              color: c['color'] as Color, size: 18),
+                          const SizedBox(width: 8),
+                          Text(c['label'] as String),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) setDialogState(() => selectedCat = v);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                      labelText: 'المبلغ الشهري', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                      labelText: 'ملاحظات', border: OutlineInputBorder()),
+                ),
+              ],
             ),
-            child: const Text('حفظ'),
           ),
-        ],
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A237E),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -778,6 +817,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         'Name': nameCtrl.text,
         'MonthlyAmount': double.tryParse(amountCtrl.text),
         'Description': descCtrl.text,
+        'Category': selectedCat,
       });
       if (res['success'] == true) {
         _showSuccess('تم التعديل');
