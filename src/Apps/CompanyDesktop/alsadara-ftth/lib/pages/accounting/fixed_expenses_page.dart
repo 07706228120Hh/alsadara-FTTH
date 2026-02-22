@@ -186,19 +186,8 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                   // فلتر الفئات
                   _buildCategoryFilter(),
                   const Divider(height: 1),
-                  // المحتوى
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // قائمة المصاريف الثابتة
-                        Expanded(flex: 2, child: _buildFixedExpensesList()),
-                        const VerticalDivider(width: 1),
-                        // سجلات الدفع الشهرية
-                        Expanded(flex: 3, child: _buildPaymentsList()),
-                      ],
-                    ),
-                  ),
+                  // المحتوى - بطاقات موحدة
+                  Expanded(child: _buildUnifiedList()),
                 ],
               ),
       ),
@@ -347,188 +336,247 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
     );
   }
 
-  // ═══ قائمة المصاريف الثابتة (الجانب الأيسر) ═══
-  Widget _buildFixedExpensesList() {
+  /// ربط كل مصروف بسجل الدفع للشهر المحدد
+  Map<String, dynamic>? _findPaymentForExpense(Map<String, dynamic> expense) {
+    final expenseId = expense['Id'];
+    for (final p in _payments) {
+      if (p['FixedExpenseId'] == expenseId) return p as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  // ═══ قائمة موحدة: كل بطاقة = مصروف + حالة الدفع ═══
+  Widget _buildUnifiedList() {
     final filtered = _selectedCategoryFilter == null
         ? _fixedExpenses
         : _fixedExpenses
             .where((e) => e['Category'] == _selectedCategoryFilter)
             .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           color: const Color(0xFFE8EAF6),
-          child: Text(
-              _selectedCategoryFilter == null
-                  ? 'المصاريف الثابتة المسجلة'
-                  : 'المصاريف الثابتة المسجلة (${_getCategoryInfo(_selectedCategoryFilter)['label']})',
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Color(0xFF1A237E))),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? const Center(
-                  child: Text('لا توجد مصاريف ثابتة مسجلة',
-                      style: TextStyle(color: Colors.grey)))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (ctx, i) {
-                    final item = filtered[i];
-                    final catInfo = _getCategoryInfo(item['Category']);
-                    final isActive = item['IsActive'] == true;
-
-                    return Card(
-                      elevation: 1,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: (catInfo['color'] as Color)
-                              .withValues(alpha: 0.15),
-                          child: Icon(catInfo['icon'] as IconData,
-                              color: catInfo['color'] as Color, size: 20),
-                        ),
-                        title: Text(item['Name'] ?? '',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              decoration:
-                                  isActive ? null : TextDecoration.lineThrough,
-                            )),
-                        subtitle: Text(
-                          '${item['CategoryAr']} • ${_formatNumber(item['MonthlyAmount'])} شهرياً',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade600),
-                        ),
-                        trailing: PopupMenuButton(
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(
-                                value: 'edit', child: Text('تعديل')),
-                            PopupMenuItem(
-                              value: 'toggle',
-                              child: Text(isActive ? 'إيقاف' : 'تفعيل'),
-                            ),
-                            const PopupMenuItem(
-                                value: 'delete',
-                                child: Text('حذف',
-                                    style: TextStyle(color: Colors.red))),
-                          ],
-                          onSelected: (v) => _onExpenseAction(v, item),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  // ═══ سجلات الدفع الشهرية (الجانب الأيمن) ═══
-  Widget _buildPaymentsList() {
-    final filtered = _selectedCategoryFilter == null
-        ? _payments
-        : _payments
-            .where((p) => p['Category'] == _selectedCategoryFilter)
-            .toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          color: const Color(0xFFE8EAF6),
-          child: Text(
-            'سجلات الدفع - ${_arabicMonth(_selectedMonth)} $_selectedYear',
-            style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Color(0xFF1A237E)),
+          child: Row(
+            children: [
+              const Icon(Icons.receipt_long,
+                  size: 18, color: Color(0xFF1A237E)),
+              const SizedBox(width: 8),
+              Text(
+                _selectedCategoryFilter == null
+                    ? 'المصاريف الثابتة - ${_arabicMonth(_selectedMonth)} $_selectedYear'
+                    : '${_getCategoryInfo(_selectedCategoryFilter)['label']} - ${_arabicMonth(_selectedMonth)} $_selectedYear',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF1A237E)),
+              ),
+              const Spacer(),
+              Text('${filtered.length} مصروف',
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.grey.shade600)),
+            ],
           ),
         ),
         Expanded(
           child: filtered.isEmpty
               ? const Center(
-                  child: Text('لا توجد سجلات دفع',
-                      style: TextStyle(color: Colors.grey)))
+                  child: Text('لا توجد مصاريف ثابتة مسجلة',
+                      style: TextStyle(color: Colors.grey, fontSize: 14)))
               : ListView.separated(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(12),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (ctx, i) {
-                    final p = filtered[i];
-                    final isPaid = p['IsPaid'] == true;
-                    final catInfo = _getCategoryInfo(p['Category']);
+                    final item = filtered[i] as Map<String, dynamic>;
+                    final catInfo = _getCategoryInfo(item['Category']);
+                    final isActive = item['IsActive'] == true;
+                    final payment = _findPaymentForExpense(item);
+                    final isPaid = payment?['IsPaid'] == true;
+                    final catColor = catInfo['color'] as Color;
 
                     return Card(
-                      elevation: 1,
+                      elevation: 2,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: isPaid
+                              ? Colors.green.withValues(alpha: 0.4)
+                              : Colors.red.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
+                      ),
                       color: isPaid
-                          ? Colors.green.withValues(alpha: 0.04)
-                          : Colors.red.withValues(alpha: 0.04),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: isPaid
-                              ? Colors.green.withValues(alpha: 0.15)
-                              : Colors.red.withValues(alpha: 0.15),
-                          child: Icon(
-                            isPaid ? Icons.check_circle : Icons.pending,
-                            color: isPaid ? Colors.green : Colors.red,
-                            size: 22,
-                          ),
-                        ),
-                        title: Text(p['ExpenseName'] ?? '',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13)),
-                        subtitle: Text(
-                          '${p['CategoryAr']} • ${_formatNumber(p['Amount'])} د.ع',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade600),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                          ? Colors.green.withValues(alpha: 0.03)
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Row(
                           children: [
-                            if (isPaid) ...[
-                              const Icon(Icons.check,
-                                  color: Colors.green, size: 18),
-                              const SizedBox(width: 4),
-                              const Text('مدفوع',
-                                  style: TextStyle(
-                                      color: Colors.green,
+                            // أيقونة الفئة
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor:
+                                  catColor.withValues(alpha: 0.15),
+                              child: Icon(catInfo['icon'] as IconData,
+                                  color: catColor, size: 22),
+                            ),
+                            const SizedBox(width: 14),
+                            // معلومات المصروف
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['Name'] ?? '',
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 12)),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.undo, size: 18),
-                                tooltip: 'إلغاء الدفع',
-                                onPressed: () => _unpayExpense(p),
-                                color: Colors.orange,
+                                      fontSize: 14,
+                                      decoration: isActive
+                                          ? null
+                                          : TextDecoration.lineThrough,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: catColor
+                                              .withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          item['CategoryAr'] ?? '',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: catColor,
+                                              fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        '${_formatNumber(item['MonthlyAmount'])} د.ع',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1A237E),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ] else
+                            ),
+                            // حالة الدفع + أزرار
+                            if (isPaid) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Colors.green.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: Colors.green
+                                          .withValues(alpha: 0.3)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        color: Colors.green, size: 16),
+                                    SizedBox(width: 4),
+                                    Text('مدفوع',
+                                        style: TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton(
+                                icon: const Icon(Icons.undo, size: 20),
+                                tooltip: 'إلغاء الدفع',
+                                onPressed: () => _unpayExpense(payment!),
+                                color: Colors.orange,
+                                splashRadius: 20,
+                              ),
+                            ] else ...[
                               ElevatedButton.icon(
-                                onPressed: () => _payExpense(p),
-                                icon: const Icon(Icons.payment, size: 16),
+                                onPressed: isActive
+                                    ? () => _payExpenseFromItem(item)
+                                    : null,
+                                icon:
+                                    const Icon(Icons.payment, size: 16),
                                 label: const Text('تسديد',
                                     style: TextStyle(fontSize: 12)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1A237E),
+                                  backgroundColor:
+                                      const Color(0xFF1A237E),
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
+                                      horizontal: 14, vertical: 8),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(8)),
                                 ),
                               ),
+                            ],
                             const SizedBox(width: 4),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18),
-                              tooltip: 'حذف سجل الدفع',
-                              onPressed: () => _deletePayment(p),
-                              color: Colors.red.shade400,
+                            // قائمة الإجراءات
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert,
+                                  color: Colors.grey),
+                              splashRadius: 20,
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit,
+                                            size: 18, color: Colors.blue),
+                                        SizedBox(width: 8),
+                                        Text('تعديل'),
+                                      ],
+                                    )),
+                                PopupMenuItem(
+                                  value: 'toggle',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                          isActive
+                                              ? Icons.pause_circle
+                                              : Icons.play_circle,
+                                          size: 18,
+                                          color: Colors.orange),
+                                      const SizedBox(width: 8),
+                                      Text(isActive ? 'إيقاف' : 'تفعيل'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete,
+                                            size: 18, color: Colors.red),
+                                        SizedBox(width: 8),
+                                        Text('حذف',
+                                            style: TextStyle(
+                                                color: Colors.red)),
+                                      ],
+                                    )),
+                              ],
+                              onSelected: (v) =>
+                                  _onExpenseAction(v, item),
                             ),
                           ],
                         ),
@@ -822,6 +870,27 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       if (res['success'] == true) {
         _showSuccess('تم التعديل');
         _loadData();
+      }
+    } catch (e) {
+      _showError('خطأ: $e');
+    }
+  }
+
+  // ═══ تسديد من بطاقة المصروف مباشرة ═══
+  Future<void> _payExpenseFromItem(Map<String, dynamic> item) async {
+    if (_companyId == null) return;
+    try {
+      final res = await _api.payFixedExpense(
+        fixedExpenseId: item['Id'],
+        month: _selectedMonth,
+        year: _selectedYear,
+        companyId: _companyId!,
+      );
+      if (res['success'] == true) {
+        _showSuccess('تم تسجيل الدفع');
+        _loadData();
+      } else {
+        _showError(res['message'] ?? 'خطأ');
       }
     } catch (e) {
       _showError('خطأ: $e');
