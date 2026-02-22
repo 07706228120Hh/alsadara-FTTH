@@ -195,9 +195,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                         initialZoom: _currentZoom,
                         onTap: _onTap,
                         onPositionChanged: (pos, _) {
-                          if (pos.zoom != null) {
-                            _currentZoom = pos.zoom!;
-                          }
+                          _currentZoom = pos.zoom!;
                         },
                       ),
                       children: [

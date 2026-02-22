@@ -9,11 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart'; // Lottie animations
 import 'package:alsadara/pages/track_users_map_page.dart';
 import '../task/task_list_screen.dart';
-import 'attendance_page.dart';
-import 'work_schedules_page.dart';
-import 'leave_management_page.dart';
-import 'salary_management_page.dart';
-import 'hr_reports_page.dart';
 import 'hr_hub_page.dart';
 import 'search_users_page.dart';
 import 'users_page.dart';
@@ -38,7 +33,7 @@ import 'super_admin/sadara_portal_page.dart'; // منصة الصدارة
 import 'accounting/accounting_dashboard_page.dart'; // نظام المحاسبة
 import '../task/follow_up_page.dart'; // صفحة المتابعة
 import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق
-import '../task/technician_transactions_page.dart'; // شاشتي - معاملات الفني
+// شاشتي - معاملات الفني
 import 'my_dashboard_page.dart'; // شاشتي - لوحة الموظف الشخصية
 import '../widgets/feature_gate.dart'; // حارس الصلاحيات
 import '../config/permission_registry.dart'; // سجل الصلاحيات المركزي

@@ -1502,7 +1502,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
       }
     }
 
-    int selectedStatus = isEdit ? statusToInt(existingRecord?['Status']) : 0;
+    int selectedStatus = isEdit ? statusToInt(existingRecord['Status']) : 0;
     final checkInCtrl =
         TextEditingController(text: existingRecord?['CheckIn'] ?? '');
     final checkOutCtrl =
@@ -1688,7 +1688,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                         setDialogState(() => saving = true);
                         try {
                           if (isEdit) {
-                            final recordId = existingRecord!['Id'];
+                            final recordId = existingRecord['Id'];
                             if (recordId == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(

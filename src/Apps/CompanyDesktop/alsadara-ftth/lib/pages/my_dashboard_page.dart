@@ -785,7 +785,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                         ),
                         if (maxInfo != null) ...[
                           const SizedBox(height: 6),
-                          Text(maxInfo!,
+                          Text(maxInfo,
                               style: GoogleFonts.cairo(
                                   fontSize: 11,
                                   color: const Color(0xFF757575))),
@@ -1136,17 +1136,22 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 ),
               ),
             ),
-            if ((advances is num && advances > 0) ||
-                (advances is double && advances > 0))
-              SizedBox(
-                width: cardW,
-                child: _salaryStatCard(
-                  'السلف',
-                  advances,
-                  Icons.money_off_rounded,
-                  _accentBlue,
+            SizedBox(
+              width: cardW,
+              child: _salaryStatCard(
+                'السلف',
+                advances,
+                Icons.money_off_rounded,
+                Colors.deepOrange,
+                onTap: () => _showAdjustmentsDialog(
+                  title: 'السلف المخصومة',
+                  type: -1, // special type for advances
+                  color: Colors.deepOrange,
+                  icon: Icons.money_off_rounded,
+                  attendanceItems: [],
                 ),
               ),
+            ),
             SizedBox(
               width: cardW,
               child: _salaryStatCard(
@@ -2665,12 +2670,14 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
         return;
       }
 
+      // type=-1 means advances (سلف) - fetch deductions (type=0) and filter by category
+      final apiType = widget.type == -1 ? 0 : widget.type;
       final data = await widget.attendanceApi.getEmployeeAdjustments(
         companyId: companyId,
         userId: userId,
         month: widget.month,
         year: widget.year,
-        type: widget.type,
+        type: apiType,
       );
 
       if (!mounted) return;
@@ -2680,7 +2687,17 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
         _records = rawRecords
             .map((r) => r as Map<String, dynamic>)
             .where((r) => r['IsApplied'] == true || r['isApplied'] == true)
-            .toList();
+            .where((r) {
+          final cat = (r['Category'] ?? r['category'] ?? '').toString();
+          if (widget.type == -1) {
+            // سلف فقط
+            return cat == 'سلفة';
+          } else if (widget.type == 0) {
+            // خصومات بدون سلف
+            return cat != 'سلفة';
+          }
+          return true;
+        }).toList();
         _isLoading = false;
       });
     } catch (e) {

@@ -443,8 +443,11 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
             object salaryResponse;
             if (salary != null)
             {
-                // إضافة الخصومات المعلقة التي أُضيفت بعد إنشاء المسيّر
-                var totalDeductions = salary.Deductions + pendingDeductions;
+                // فصل السلف عن الخصومات - السلف المطبقة موجودة ضمن salary.Deductions أصلاً
+                var appliedAdvances = manualDeductions.Where(a => a.IsApplied && a.Category == "سلفة").Sum(a => a.Amount);
+                var totalAdvances = pendingAdvances + appliedAdvances;
+                // الخصومات بدون السلف = salary.Deductions - appliedAdvances + pendingDeductions
+                var totalDeductions = salary.Deductions - appliedAdvances + pendingDeductions;
                 var totalBonuses = salary.Bonuses + pendingBonuses;
                 var totalAllowances = salary.Allowances + pendingAllowances;
                 var adjustedNet = salary.NetSalary - totalPendingMinus + pendingBonuses + pendingAllowances;
@@ -462,9 +465,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                     salary.EarlyDepartureDeduction,
                     salary.UnpaidLeaveDeduction,
                     salary.OvertimeBonus,
-                    ManualDeductions = salary.ManualDeductions + pendingDeductions,
+                    ManualDeductions = salary.ManualDeductions + pendingDeductions - appliedAdvances,
                     ManualBonuses = salary.ManualBonuses + pendingBonuses,
-                    Advances = pendingAdvances + manualDeductions.Where(a => a.IsApplied && a.Category == "سلفة").Sum(a => a.Amount)
+                    Advances = totalAdvances
                 };
             }
             else if (employee.Salary > 0 || adjustments.Any())
