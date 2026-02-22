@@ -3326,13 +3326,13 @@ public class AccountingController : ControllerBase
             // تم حسابه أعلاه: salaryPayable2120
             var salaryPayableBalance = salaryPayable2120;
 
-            // ═══ إجمالي السلف المدفوعة هذا الشهر ═══
-            var advancesQuery = _unitOfWork.EmployeeDeductionBonuses.AsQueryable()
-                .Where(a => a.IsActive && a.Type == AdjustmentType.Deduction && a.Category == "سلفة"
-                    && a.Month == now.Month && a.Year == now.Year);
-            if (companyId.HasValue) advancesQuery = advancesQuery.Where(a => a.CompanyId == companyId);
-            var totalAdvancesPaid = await advancesQuery.SumAsync(a => (decimal?)a.Amount) ?? 0;
-            var advancesCount = await advancesQuery.CountAsync();
+            // ═══ إجمالي السلف المدفوعة هذا الشهر (من طلبات السحب المصروفة) ═══
+            var withdrawalQuery = _unitOfWork.WithdrawalRequests.AsQueryable()
+                .Where(w => w.Status == WithdrawalRequestStatus.Paid
+                    && w.ReviewedAt.HasValue && w.ReviewedAt.Value.Month == now.Month && w.ReviewedAt.Value.Year == now.Year);
+            if (companyId.HasValue) withdrawalQuery = withdrawalQuery.Where(w => w.CompanyId == companyId);
+            var totalAdvancesPaid = await withdrawalQuery.SumAsync(w => (decimal?)w.Amount) ?? 0;
+            var advancesCount = await withdrawalQuery.CountAsync();
 
             return Ok(new
             {
