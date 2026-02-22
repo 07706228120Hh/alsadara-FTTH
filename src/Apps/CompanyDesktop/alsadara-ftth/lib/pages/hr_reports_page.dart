@@ -1502,8 +1502,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
       }
     }
 
-    int selectedStatus =
-        isEdit ? statusToInt(existingRecord?['Status']) : 0;
+    int selectedStatus = isEdit ? statusToInt(existingRecord?['Status']) : 0;
     final checkInCtrl =
         TextEditingController(text: existingRecord?['CheckIn'] ?? '');
     final checkOutCtrl =
@@ -1530,9 +1529,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                     color: isEdit ? Colors.blue : Colors.green),
                 const SizedBox(width: 8),
                 Text(
-                  isEdit
-                      ? 'تعديل بصمة - $dateStr'
-                      : 'إضافة بصمة - $dateStr',
+                  isEdit ? 'تعديل بصمة - $dateStr' : 'إضافة بصمة - $dateStr',
                   style: const TextStyle(fontSize: 16),
                 ),
               ],
@@ -1549,8 +1546,8 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                       decoration: const InputDecoration(
                         labelText: 'الحالة',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                       items: statusOptions
                           .map((s) => DropdownMenuItem<int>(
@@ -1671,8 +1668,8 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                       decoration: const InputDecoration(
                         labelText: 'ملاحظات',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                     ),
                   ],
@@ -1701,7 +1698,9 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                               return;
                             }
                             await widget.api.updateAttendanceRecord(
-                              recordId is int ? recordId : int.parse(recordId.toString()),
+                              recordId is int
+                                  ? recordId
+                                  : int.parse(recordId.toString()),
                               status: selectedStatus,
                               checkInTime: checkInCtrl.text.isNotEmpty
                                   ? checkInCtrl.text
@@ -1711,8 +1710,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                                   : null,
                               clearCheckIn: checkInCtrl.text.isEmpty,
                               clearCheckOut: checkOutCtrl.text.isEmpty,
-                              lateMinutes:
-                                  int.tryParse(lateCtrl.text) ?? 0,
+                              lateMinutes: int.tryParse(lateCtrl.text) ?? 0,
                               overtimeMinutes:
                                   int.tryParse(overtimeCtrl.text) ?? 0,
                               earlyDepartureMinutes:
@@ -1730,8 +1728,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                               checkOutTime: checkOutCtrl.text.isNotEmpty
                                   ? checkOutCtrl.text
                                   : null,
-                              lateMinutes:
-                                  int.tryParse(lateCtrl.text) ?? 0,
+                              lateMinutes: int.tryParse(lateCtrl.text) ?? 0,
                               overtimeMinutes:
                                   int.tryParse(overtimeCtrl.text) ?? 0,
                               earlyDepartureMinutes:
@@ -1820,8 +1817,9 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
               onPressed: () async {
                 Navigator.pop(ctx);
                 try {
-                  final id =
-                      recordId is int ? recordId : int.parse(recordId.toString());
+                  final id = recordId is int
+                      ? recordId
+                      : int.parse(recordId.toString());
                   await widget.api.deleteAttendanceRecord(id);
                   _loadData();
                   if (mounted) {
@@ -1844,8 +1842,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child:
-                  const Text('حذف', style: TextStyle(color: Colors.white)),
+              child: const Text('حذف', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
