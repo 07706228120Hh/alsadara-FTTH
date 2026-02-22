@@ -7,11 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
+
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 import '../services/api/api_client.dart';
+import 'attendance_page.dart';
 
 class MyDashboardPage extends StatefulWidget {
   final String username;
@@ -48,15 +48,12 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   final AttendanceApiService _attendanceApi = AttendanceApiService.instance;
   final _client = ApiClient.instance;
 
-  // ── حالة البصمة ──
-  bool _isCheckingIn = false;
-  bool _isCheckingOut = false;
+
   int _attendanceCount = 0;
   int _lateDays = 0;
   int _totalLateMinutes = 0;
   int _totalOvertimeMinutes = 0;
   int _totalWorkedMinutes = 0;
-  String? _savedCode;
   String? _userId;
 
   // ── حالة المعاملات ──
@@ -87,7 +84,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    _loadSavedCode();
     _fetchAll();
   }
 
@@ -181,112 +177,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     }
   }
 
-  Future<void> _loadSavedCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _savedCode = prefs.getString('attendance_code') ?? '';
-    });
-  }
 
-  Future<void> _submitAttendance(String attendanceType) async {
-    try {
-      final authUser = VpsAuthService.instance.currentUser;
-      final realUserId = authUser?.id ?? _userId ?? widget.username;
-      final centerName = widget.center;
-
-      double? userLat;
-      double? userLng;
-      try {
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
-        if (permission == LocationPermission.deniedForever) {
-          if (!mounted) return;
-          _showSnack(
-              'يرجى تفعيل صلاحية الموقع من إعدادات النظام', Colors.orange);
-          return;
-        }
-        final userPosition = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
-          ),
-        );
-        userLat = userPosition.latitude;
-        userLng = userPosition.longitude;
-      } catch (e) {
-        debugPrint('خطأ في الحصول على الموقع: $e');
-      }
-
-      Map<String, dynamic> result;
-      if (attendanceType == 'خروج') {
-        result = await _attendanceApi.checkOut(
-          userId: realUserId,
-          latitude: userLat,
-          longitude: userLng,
-        );
-      } else {
-        result = await _attendanceApi.checkIn(
-          userId: realUserId,
-          userName: widget.username,
-          centerName: centerName,
-          latitude: userLat,
-          longitude: userLng,
-          securityCode: _savedCode,
-        );
-      }
-
-      if (!mounted) return;
-
-      if (result['success'] == false) {
-        final message = result['message'] ?? result['error'] ?? 'خطأ غير معروف';
-        _showSnack(message, _accentRed);
-        return;
-      }
-
-      // رسالة النجاح
-      final record = result['record'] ?? result['Record'];
-      String successMsg = 'تم تسجيل $attendanceType بنجاح!';
-      Color successColor = _accentGreen;
-
-      if (record is Map) {
-        final status = '${record['Status'] ?? record['status'] ?? ''}';
-        final lateMins = record['LateMinutes'] ?? record['lateMinutes'];
-        final overtime = record['OvertimeMinutes'] ?? record['overtimeMinutes'];
-        final workedMins = record['WorkedMinutes'] ?? record['workedMinutes'];
-
-        if (status == 'Late' || status == '1') {
-          successMsg += '\n⚠️ متأخر $lateMins دقيقة';
-          successColor = _accentOrange;
-        }
-        if (overtime != null && overtime > 0) {
-          successMsg += '\n⏰ وقت إضافي: $overtime دقيقة';
-        }
-        if (workedMins != null && workedMins > 0 && attendanceType == 'خروج') {
-          final hours = (workedMins / 60).toStringAsFixed(1);
-          successMsg += '\n⏱️ ساعات العمل: $hours ساعة';
-        }
-      }
-
-      _showSnack(successMsg, successColor);
-      _fetchAttendanceCount();
-    } catch (error) {
-      debugPrint('Error submitting attendance: $error');
-      if (!mounted) return;
-      _showSnack('خطأ: $error', _accentRed);
-    }
-  }
-
-  void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
-        backgroundColor: color,
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  }
 
   String _formatAmount(dynamic amount) {
     if (amount == null) return '0';
@@ -326,8 +217,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ═══ 1. قسم البصمة ═══
-                      _buildAttendanceSection(),
+                      // ═══ 1. زر البصمة ═══
+                      _buildAttendanceButton(),
                       const SizedBox(height: 20),
                       // ═══ 2. ملخص مالي ═══
                       _buildFinancialSummary(),
@@ -444,112 +335,80 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   }
 
   // ═══════════════════════════════════════════════════════
-  //  1. قسم البصمة
+  //  1. زر فتح شاشة البصمة
   // ═══════════════════════════════════════════════════════
-  Widget _buildAttendanceSection() {
-    return _sectionCard(
-      title: 'البصمة',
-      icon: Icons.fingerprint_rounded,
-      iconGradient: const [Color(0xFF667eea), Color(0xFF764ba2)],
-      child: Column(
-        children: [
-          // إحصائيات الحضور
-          _buildAttendanceStats(),
-          const SizedBox(height: 16),
-          // أزرار تسجيل الدخول والخروج
-          _buildAttendanceButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAttendanceStats() {
-    final stats = [
-      _StatData('حضور', '$_attendanceCount', Icons.check_circle_outline,
-          _accentGreen),
-      _StatData('تأخير', '$_lateDays', Icons.schedule_rounded, _accentOrange),
-      _StatData('د. تأخير', '$_totalLateMinutes', Icons.timer_off_outlined,
-          _accentRed),
-      _StatData('د. إضافي', '$_totalOvertimeMinutes', Icons.more_time_rounded,
-          _accentBlue),
-      _StatData('ساعات عمل', (_totalWorkedMinutes / 60).toStringAsFixed(1),
-          Icons.work_history_outlined, const Color(0xFF9B59B6)),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: const Color(0xFFF8F9FA),
-        border: Border.all(color: const Color(0xFFECF0F1)),
-      ),
-      child: Row(
-        children: stats
-            .map((s) => Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(s.icon, color: s.color, size: 18),
-                      const SizedBox(height: 6),
-                      Text(
-                        s.value,
+  Widget _buildAttendanceButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AttendancePage(
+                username: widget.username,
+                center: widget.center,
+                permissions: widget.permissions,
+              ),
+            ),
+          ).then((_) {
+            // تحديث البيانات عند العودة
+            _fetchAll();
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF667eea).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.fingerprint_rounded,
+                    color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('البصمة',
                         style: GoogleFonts.cairo(
-                          color: _textDark,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        s.label,
-                        style:
-                            GoogleFonts.cairo(color: _textGray, fontSize: 10),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ))
-            .toList(),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
+                    Text('تسجيل الحضور والانصراف',
+                        style: GoogleFonts.cairo(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.8))),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white.withOpacity(0.7), size: 20),
+            ],
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _buildAttendanceButtons() {
-    return Row(
-      children: [
-        // زر تسجيل الدخول
-        Expanded(
-          child: _AttendanceBtn(
-            label: 'تسجيل الدخول',
-            icon: Icons.login_rounded,
-            gradient: const [Color(0xFF43A047), Color(0xFF66BB6A)],
-            isLoading: _isCheckingIn,
-            onTap: () async {
-              setState(() => _isCheckingIn = true);
-              await _submitAttendance('دخول');
-              if (mounted) setState(() => _isCheckingIn = false);
-            },
-          ),
-        ),
-        const SizedBox(width: 14),
-        // زر تسجيل الخروج
-        Expanded(
-          child: _AttendanceBtn(
-            label: 'تسجيل الخروج',
-            icon: Icons.logout_rounded,
-            gradient: const [Color(0xFFE53935), Color(0xFFEF5350)],
-            isLoading: _isCheckingOut,
-            onTap: () async {
-              setState(() => _isCheckingOut = true);
-              await _submitAttendance('خروج');
-              if (mounted) setState(() => _isCheckingOut = false);
-            },
-          ),
-        ),
-      ],
     );
   }
 
@@ -2110,66 +1969,70 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-          // ── عناصر مبنية على الحضور (تأخير، غياب..) ──
-          if (widget.attendanceItems.isNotEmpty) ...[
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text('حسب الحضور',
-                    style: GoogleFonts.cairo(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: _textGray)),
-              ),
-            ),
-            ...widget.attendanceItems.map((item) => _buildItemRow(
-                  item.label,
-                  item.amount,
-                  item.color,
-                )),
-          ],
+                  // ── عناصر مبنية على الحضور (تأخير، غياب..) ──
+                  if (widget.attendanceItems.isNotEmpty) ...[
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text('حسب الحضور',
+                            style: GoogleFonts.cairo(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _textGray)),
+                      ),
+                    ),
+                    ...widget.attendanceItems.map((item) => _buildItemRow(
+                          item.label,
+                          item.amount,
+                          item.color,
+                        )),
+                  ],
 
-          // ── العمليات اليدوية من الخادم ──
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(_error!,
-                  style: GoogleFonts.cairo(fontSize: 13, color: _textGray)),
-            )
-          else if (_records.isNotEmpty) ...[
-            if (widget.attendanceItems.isNotEmpty) const Divider(height: 20),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text('عمليات يدوية',
-                    style: GoogleFonts.cairo(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: _textGray)),
-              ),
-            ),
-            ..._records.map((r) => _buildDetailedCard(r)),
-          ] else if (widget.attendanceItems.isEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Column(
-                children: [
-                  Icon(Icons.info_outline,
-                      size: 36, color: _textGray.withOpacity(0.4)),
-                  const SizedBox(height: 8),
-                  Text('لا توجد عمليات لهذا الشهر',
-                      style: GoogleFonts.cairo(fontSize: 13, color: _textGray)),
-                ],
-              ),
-            ),
-          ],
+                  // ── العمليات اليدوية من الخادم ──
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  else if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Text(_error!,
+                          style: GoogleFonts.cairo(
+                              fontSize: 13, color: _textGray)),
+                    )
+                  else if (_records.isNotEmpty) ...[
+                    if (widget.attendanceItems.isNotEmpty)
+                      const Divider(height: 20),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text('عمليات يدوية',
+                            style: GoogleFonts.cairo(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _textGray)),
+                      ),
+                    ),
+                    ..._records.map((r) => _buildDetailedCard(r)),
+                  ] else if (widget.attendanceItems.isEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 36, color: _textGray.withOpacity(0.4)),
+                          const SizedBox(height: 8),
+                          Text('لا توجد عمليات لهذا الشهر',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 13, color: _textGray)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -2257,8 +2120,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
     final notes = '${r['Notes'] ?? r['notes'] ?? ''}'.trim();
     final createdByName =
         '${r['CreatedByName'] ?? r['createdByName'] ?? ''}'.trim();
-    final isRecurring =
-        r['IsRecurring'] == true || r['isRecurring'] == true;
+    final isRecurring = r['IsRecurring'] == true || r['isRecurring'] == true;
     final createdAtRaw = r['CreatedAt'] ?? r['createdAt'] ?? '';
     String createdAtFormatted = '';
     if (createdAtRaw is String && createdAtRaw.isNotEmpty) {
@@ -2359,7 +2221,8 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.repeat, size: 12, color: Color(0xFFF39C12)),
+                      const Icon(Icons.repeat,
+                          size: 12, color: Color(0xFFF39C12)),
                       const SizedBox(width: 4),
                       Text('متكرر',
                           style: GoogleFonts.cairo(
@@ -2403,93 +2266,4 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
   }
 }
 
-class _AttendanceBtn extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final List<Color> gradient;
-  final bool isLoading;
-  final VoidCallback onTap;
 
-  const _AttendanceBtn({
-    required this.label,
-    required this.icon,
-    required this.gradient,
-    required this.isLoading,
-    required this.onTap,
-  });
-
-  @override
-  State<_AttendanceBtn> createState() => _AttendanceBtnState();
-}
-
-class _AttendanceBtnState extends State<_AttendanceBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 70,
-        transform: _hovered
-            ? (Matrix4.identity()..translate(0.0, -2.0))
-            : Matrix4.identity(),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: widget.isLoading ? null : widget.onTap,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: widget.gradient,
-                ),
-                border: Border.all(
-                  color: Colors.white.withOpacity(_hovered ? 0.3 : 0.1),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.gradient[0].withOpacity(_hovered ? 0.4 : 0.2),
-                    blurRadius: _hovered ? 16 : 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: widget.isLoading
-                  ? const Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2.5),
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(widget.icon, color: Colors.white, size: 24),
-                        const SizedBox(width: 10),
-                        Text(
-                          widget.label,
-                          style: GoogleFonts.cairo(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
