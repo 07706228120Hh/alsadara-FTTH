@@ -525,6 +525,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                         TotalWorkedMinutes = attendance.Sum(r => r.WorkedMinutes ?? 0),
                         DailyRecords = attendance.Select(r => new
                         {
+                            r.Id,
                             Date = r.Date.ToString("yyyy-MM-dd"),
                             CheckIn = r.CheckInTime?.ToString("HH:mm"),
                             CheckOut = r.CheckOutTime?.ToString("HH:mm"),
@@ -532,7 +533,8 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
                             r.LateMinutes,
                             r.OvertimeMinutes,
                             r.WorkedMinutes,
-                            r.EarlyDepartureMinutes
+                            r.EarlyDepartureMinutes,
+                            r.Notes
                         })
                     },
                     Salary = salaryResponse,

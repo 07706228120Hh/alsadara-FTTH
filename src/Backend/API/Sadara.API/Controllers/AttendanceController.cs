@@ -655,6 +655,201 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         return Ok(new { total, page, pageSize, logs });
     }
 
+    // ============================================================
+    //  تعديل سجل حضور (للمديرين)
+    // ============================================================
+
+    /// <summary>تعديل سجل حضور موظف</summary>
+    [HttpPut("records/{id}")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> UpdateAttendanceRecord(long id, [FromBody] UpdateAttendanceRequest request)
+    {
+        try
+        {
+            var record = await _unitOfWork.AttendanceRecords.FirstOrDefaultAsync(r => r.Id == id);
+            if (record == null)
+                return NotFound(new { success = false, message = "سجل الحضور غير موجود" });
+
+            // تحديث الحقول
+            if (request.Status.HasValue)
+                record.Status = request.Status.Value;
+
+            if (!string.IsNullOrEmpty(request.CheckInTime))
+            {
+                var parts = request.CheckInTime.Split(':');
+                record.CheckInTime = record.Date.ToDateTime(new TimeOnly(int.Parse(parts[0]), int.Parse(parts[1])));
+            }
+            else if (request.ClearCheckIn == true)
+                record.CheckInTime = null;
+
+            if (!string.IsNullOrEmpty(request.CheckOutTime))
+            {
+                var parts = request.CheckOutTime.Split(':');
+                record.CheckOutTime = record.Date.ToDateTime(new TimeOnly(int.Parse(parts[0]), int.Parse(parts[1])));
+            }
+            else if (request.ClearCheckOut == true)
+                record.CheckOutTime = null;
+
+            if (request.LateMinutes.HasValue)
+                record.LateMinutes = request.LateMinutes.Value;
+            if (request.OvertimeMinutes.HasValue)
+                record.OvertimeMinutes = request.OvertimeMinutes.Value;
+            if (request.EarlyDepartureMinutes.HasValue)
+                record.EarlyDepartureMinutes = request.EarlyDepartureMinutes.Value;
+            if (request.Notes != null)
+                record.Notes = request.Notes;
+
+            // إعادة حساب دقائق العمل إذا تغير وقت الدخول أو الخروج
+            if (record.CheckInTime.HasValue && record.CheckOutTime.HasValue)
+            {
+                record.WorkedMinutes = (int)(record.CheckOutTime.Value - record.CheckInTime.Value).TotalMinutes;
+                if (record.WorkedMinutes < 0) record.WorkedMinutes = 0;
+            }
+            else
+            {
+                record.WorkedMinutes = 0;
+            }
+
+            record.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.AttendanceRecords.Update(record);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("📝 تم تعديل سجل حضور #{Id} للموظف {UserName} بتاريخ {Date}",
+                id, record.UserName, record.Date);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم تعديل سجل حضور {record.UserName} بتاريخ {record.Date}",
+                record = new
+                {
+                    record.Id,
+                    Date = record.Date.ToString("yyyy-MM-dd"),
+                    CheckIn = record.CheckInTime?.ToString("HH:mm"),
+                    CheckOut = record.CheckOutTime?.ToString("HH:mm"),
+                    Status = record.Status.ToString(),
+                    record.LateMinutes,
+                    record.OvertimeMinutes,
+                    record.WorkedMinutes,
+                    record.EarlyDepartureMinutes,
+                    record.Notes
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تعديل سجل الحضور #{Id}", id);
+            return StatusCode(500, new { success = false, message = "خطأ داخلي في الخادم" });
+        }
+    }
+
+    /// <summary>إنشاء سجل حضور يدوي (للمديرين)</summary>
+    [HttpPost("records")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> CreateAttendanceRecord([FromBody] CreateAttendanceRecordRequest request)
+    {
+        try
+        {
+            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+            if (user == null)
+                return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+            // التحقق من عدم وجود سجل لهذا اليوم
+            var date = DateOnly.Parse(request.Date);
+            var existing = await _unitOfWork.AttendanceRecords.FirstOrDefaultAsync(
+                r => r.UserId == request.UserId && r.Date == date);
+            if (existing != null)
+                return BadRequest(new { success = false, message = "يوجد سجل حضور لهذا اليوم بالفعل. استخدم التعديل بدلاً من الإنشاء." });
+
+            var record = new AttendanceRecord
+            {
+                UserId = request.UserId,
+                UserName = user.FullName,
+                CompanyId = user.CompanyId,
+                Date = date,
+                Status = request.Status,
+                Notes = request.Notes ?? "سجل يدوي",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            if (!string.IsNullOrEmpty(request.CheckInTime))
+            {
+                var timeParts = request.CheckInTime.Split(':');
+                record.CheckInTime = date.ToDateTime(new TimeOnly(int.Parse(timeParts[0]), int.Parse(timeParts[1])));
+            }
+            if (!string.IsNullOrEmpty(request.CheckOutTime))
+            {
+                var timeParts = request.CheckOutTime.Split(':');
+                record.CheckOutTime = date.ToDateTime(new TimeOnly(int.Parse(timeParts[0]), int.Parse(timeParts[1])));
+            }
+
+            if (record.CheckInTime.HasValue && record.CheckOutTime.HasValue)
+                record.WorkedMinutes = (int)(record.CheckOutTime.Value - record.CheckInTime.Value).TotalMinutes;
+
+            record.LateMinutes = request.LateMinutes ?? 0;
+            record.OvertimeMinutes = request.OvertimeMinutes ?? 0;
+            record.EarlyDepartureMinutes = request.EarlyDepartureMinutes ?? 0;
+
+            await _unitOfWork.AttendanceRecords.AddAsync(record);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("➕ تم إنشاء سجل حضور يدوي للموظف {UserName} بتاريخ {Date}",
+                user.FullName, date);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم إنشاء سجل حضور {user.FullName} بتاريخ {date}",
+                record = new
+                {
+                    record.Id,
+                    Date = record.Date.ToString("yyyy-MM-dd"),
+                    CheckIn = record.CheckInTime?.ToString("HH:mm"),
+                    CheckOut = record.CheckOutTime?.ToString("HH:mm"),
+                    Status = record.Status.ToString(),
+                    record.LateMinutes,
+                    record.OvertimeMinutes,
+                    record.WorkedMinutes,
+                    record.EarlyDepartureMinutes,
+                    record.Notes
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إنشاء سجل حضور يدوي");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي في الخادم" });
+        }
+    }
+
+    /// <summary>حذف سجل حضور (للمديرين)</summary>
+    [HttpDelete("records/{id}")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> DeleteAttendanceRecord(long id)
+    {
+        try
+        {
+            var record = await _unitOfWork.AttendanceRecords.FirstOrDefaultAsync(r => r.Id == id);
+            if (record == null)
+                return NotFound(new { success = false, message = "سجل الحضور غير موجود" });
+
+            record.IsDeleted = true;
+            record.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.AttendanceRecords.Update(record);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("🗑️ تم حذف سجل حضور #{Id} للموظف {UserName} بتاريخ {Date}",
+                id, record.UserName, record.Date);
+
+            return Ok(new { success = true, message = $"تم حذف سجل حضور {record.UserName} بتاريخ {record.Date}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف سجل الحضور #{Id}", id);
+            return StatusCode(500, new { success = false, message = "خطأ داخلي في الخادم" });
+        }
+    }
+
     /// <summary>إعادة تعيين بصمة الجهاز لموظف (للمديرين)</summary>
     [HttpPost("reset-device/{userId}")]
     [Authorize(Policy = "Admin")]
@@ -700,3 +895,25 @@ public record AddScheduleRequest(
     int? LateGraceMinutes, 
     int? EarlyDepartureThresholdMinutes, 
     bool? IsDefault);
+
+public record UpdateAttendanceRequest(
+    AttendanceStatus? Status,
+    string? CheckInTime,    // "HH:mm" format
+    string? CheckOutTime,   // "HH:mm" format
+    bool? ClearCheckIn,
+    bool? ClearCheckOut,
+    int? LateMinutes,
+    int? OvertimeMinutes,
+    int? EarlyDepartureMinutes,
+    string? Notes);
+
+public record CreateAttendanceRecordRequest(
+    Guid UserId,
+    string Date,           // "yyyy-MM-dd" format
+    AttendanceStatus Status,
+    string? CheckInTime,   // "HH:mm" format
+    string? CheckOutTime,  // "HH:mm" format
+    int? LateMinutes,
+    int? OvertimeMinutes,
+    int? EarlyDepartureMinutes,
+    string? Notes);

@@ -777,4 +777,66 @@ class AttendanceApiService {
     if (year != null) endpoint += '&year=$year';
     return await _api.getBytes(endpoint);
   }
+
+  // ============================================================
+  //  تعديل/إنشاء/حذف سجلات الحضور
+  // ============================================================
+
+  /// تعديل سجل حضور موجود
+  Future<Map<String, dynamic>> updateAttendanceRecord(
+    int id, {
+    int? status,
+    String? checkInTime,
+    String? checkOutTime,
+    bool? clearCheckIn,
+    bool? clearCheckOut,
+    int? lateMinutes,
+    int? overtimeMinutes,
+    int? earlyDepartureMinutes,
+    String? notes,
+  }) async {
+    final body = <String, dynamic>{};
+    if (status != null) body['Status'] = status;
+    if (checkInTime != null) body['CheckInTime'] = checkInTime;
+    if (checkOutTime != null) body['CheckOutTime'] = checkOutTime;
+    if (clearCheckIn == true) body['ClearCheckIn'] = true;
+    if (clearCheckOut == true) body['ClearCheckOut'] = true;
+    if (lateMinutes != null) body['LateMinutes'] = lateMinutes;
+    if (overtimeMinutes != null) body['OvertimeMinutes'] = overtimeMinutes;
+    if (earlyDepartureMinutes != null) {
+      body['EarlyDepartureMinutes'] = earlyDepartureMinutes;
+    }
+    if (notes != null) body['Notes'] = notes;
+    return await _api.put('/attendance/records/$id', body: body);
+  }
+
+  /// إنشاء سجل حضور يدوي
+  Future<Map<String, dynamic>> createAttendanceRecord({
+    required String userId,
+    required String date,
+    required int status,
+    String? checkInTime,
+    String? checkOutTime,
+    int? lateMinutes,
+    int? overtimeMinutes,
+    int? earlyDepartureMinutes,
+    String? notes,
+  }) async {
+    return await _api.post('/attendance/records', body: {
+      'UserId': userId,
+      'Date': date,
+      'Status': status,
+      'CheckInTime': checkInTime,
+      'CheckOutTime': checkOutTime,
+      'LateMinutes': lateMinutes,
+      'OvertimeMinutes': overtimeMinutes,
+      'EarlyDepartureMinutes': earlyDepartureMinutes,
+      'Notes': notes,
+    });
+  }
+
+  /// حذف سجل حضور
+  Future<Map<String, dynamic>> deleteAttendanceRecord(int id) async {
+    return await _api.delete('/attendance/records/$id');
+  }
 }

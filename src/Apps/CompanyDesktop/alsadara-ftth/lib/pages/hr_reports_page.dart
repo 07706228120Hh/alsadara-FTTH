@@ -1311,10 +1311,10 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
 
     return SingleChildScrollView(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 860),
+        constraints: const BoxConstraints(minWidth: 960),
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
-          columnSpacing: 14,
+          columnSpacing: 10,
           dataRowMinHeight: 36,
           dataRowMaxHeight: 42,
           columns: const [
@@ -1341,6 +1341,9 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                     style: TextStyle(fontWeight: FontWeight.bold))),
             DataColumn(
                 label: Text('إضافي (د)',
+                    style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(
+                label: Text('إجراءات',
                     style: TextStyle(fontWeight: FontWeight.bold))),
           ],
           rows: List.generate(_daysInMonth, (i) {
@@ -1429,9 +1432,422 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                         color: overtime != null && overtime > 0
                             ? Colors.teal
                             : Colors.grey))),
+                // زر التعديل/الإنشاء
+                DataCell(Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        record != null ? Icons.edit : Icons.add_circle_outline,
+                        size: 18,
+                        color: record != null
+                            ? Colors.blue
+                            : Colors.green.shade600,
+                      ),
+                      tooltip: record != null ? 'تعديل' : 'إضافة بصمة',
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 28, minHeight: 28),
+                      onPressed: () =>
+                          _showEditAttendanceDialog(dateStr, record),
+                    ),
+                    if (record != null)
+                      IconButton(
+                        icon: Icon(Icons.delete_outline,
+                            size: 18, color: Colors.red.shade400),
+                        tooltip: 'حذف',
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 28, minHeight: 28),
+                        onPressed: () =>
+                            _confirmDeleteAttendance(record['Id'], dateStr),
+                      ),
+                  ],
+                )),
               ],
             );
           }),
+        ),
+      ),
+    );
+  }
+
+  // ==================== دايالوج تعديل/إنشاء سجل حضور ====================
+
+  void _showEditAttendanceDialog(
+      String dateStr, Map<String, dynamic>? existingRecord) {
+    final isEdit = existingRecord != null;
+    final statusOptions = [
+      {'value': 0, 'label': 'حاضر', 'key': 'Present'},
+      {'value': 1, 'label': 'متأخر', 'key': 'Late'},
+      {'value': 2, 'label': 'غائب', 'key': 'Absent'},
+      {'value': 3, 'label': 'نصف يوم', 'key': 'HalfDay'},
+      {'value': 4, 'label': 'مغادرة مبكرة', 'key': 'EarlyDeparture'},
+    ];
+
+    int statusToInt(String? s) {
+      switch (s) {
+        case 'Present':
+          return 0;
+        case 'Late':
+          return 1;
+        case 'Absent':
+          return 2;
+        case 'HalfDay':
+          return 3;
+        case 'EarlyDeparture':
+          return 4;
+        default:
+          return 0;
+      }
+    }
+
+    int selectedStatus =
+        isEdit ? statusToInt(existingRecord?['Status']) : 0;
+    final checkInCtrl =
+        TextEditingController(text: existingRecord?['CheckIn'] ?? '');
+    final checkOutCtrl =
+        TextEditingController(text: existingRecord?['CheckOut'] ?? '');
+    final lateCtrl = TextEditingController(
+        text: (existingRecord?['LateMinutes'] ?? 0).toString());
+    final overtimeCtrl = TextEditingController(
+        text: (existingRecord?['OvertimeMinutes'] ?? 0).toString());
+    final earlyDepCtrl = TextEditingController(
+        text: (existingRecord?['EarlyDepartureMinutes'] ?? 0).toString());
+    final notesCtrl =
+        TextEditingController(text: existingRecord?['Notes'] ?? '');
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: Row(
+              children: [
+                Icon(isEdit ? Icons.edit : Icons.add_circle,
+                    color: isEdit ? Colors.blue : Colors.green),
+                const SizedBox(width: 8),
+                Text(
+                  isEdit
+                      ? 'تعديل بصمة - $dateStr'
+                      : 'إضافة بصمة - $dateStr',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 450,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // الحالة
+                    DropdownButtonFormField<int>(
+                      value: selectedStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'الحالة',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                      items: statusOptions
+                          .map((s) => DropdownMenuItem<int>(
+                                value: s['value'] as int,
+                                child: Text(s['label'] as String),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setDialogState(() => selectedStatus = v);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    // وقت الدخول والخروج
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: checkInCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'وقت الدخول (HH:mm)',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.access_time, size: 20),
+                                onPressed: () async {
+                                  final time = await showTimePicker(
+                                    context: ctx,
+                                    initialTime: _parseTime(checkInCtrl.text),
+                                  );
+                                  if (time != null) {
+                                    checkInCtrl.text =
+                                        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: checkOutCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'وقت الخروج (HH:mm)',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.access_time, size: 20),
+                                onPressed: () async {
+                                  final time = await showTimePicker(
+                                    context: ctx,
+                                    initialTime: _parseTime(checkOutCtrl.text),
+                                  );
+                                  if (time != null) {
+                                    checkOutCtrl.text =
+                                        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // دقائق التأخير والإضافي والمغادرة المبكرة
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: lateCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'دقائق التأخير',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: overtimeCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'دقائق إضافية',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: earlyDepCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'مغادرة مبكرة (د)',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // ملاحظات
+                    TextFormField(
+                      controller: notesCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'ملاحظات',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        setDialogState(() => saving = true);
+                        try {
+                          if (isEdit) {
+                            final recordId = existingRecord!['Id'];
+                            if (recordId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('خطأ: لا يوجد معرف للسجل')),
+                              );
+                              setDialogState(() => saving = false);
+                              return;
+                            }
+                            await widget.api.updateAttendanceRecord(
+                              recordId is int ? recordId : int.parse(recordId.toString()),
+                              status: selectedStatus,
+                              checkInTime: checkInCtrl.text.isNotEmpty
+                                  ? checkInCtrl.text
+                                  : null,
+                              checkOutTime: checkOutCtrl.text.isNotEmpty
+                                  ? checkOutCtrl.text
+                                  : null,
+                              clearCheckIn: checkInCtrl.text.isEmpty,
+                              clearCheckOut: checkOutCtrl.text.isEmpty,
+                              lateMinutes:
+                                  int.tryParse(lateCtrl.text) ?? 0,
+                              overtimeMinutes:
+                                  int.tryParse(overtimeCtrl.text) ?? 0,
+                              earlyDepartureMinutes:
+                                  int.tryParse(earlyDepCtrl.text) ?? 0,
+                              notes: notesCtrl.text,
+                            );
+                          } else {
+                            await widget.api.createAttendanceRecord(
+                              userId: widget.userId,
+                              date: dateStr,
+                              status: selectedStatus,
+                              checkInTime: checkInCtrl.text.isNotEmpty
+                                  ? checkInCtrl.text
+                                  : null,
+                              checkOutTime: checkOutCtrl.text.isNotEmpty
+                                  ? checkOutCtrl.text
+                                  : null,
+                              lateMinutes:
+                                  int.tryParse(lateCtrl.text) ?? 0,
+                              overtimeMinutes:
+                                  int.tryParse(overtimeCtrl.text) ?? 0,
+                              earlyDepartureMinutes:
+                                  int.tryParse(earlyDepCtrl.text) ?? 0,
+                              notes: notesCtrl.text.isNotEmpty
+                                  ? notesCtrl.text
+                                  : null,
+                            );
+                          }
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          // إعادة تحميل البيانات
+                          _loadData();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(isEdit
+                                    ? 'تم تعديل سجل الحضور بنجاح'
+                                    : 'تم إضافة سجل الحضور بنجاح'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => saving = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('خطأ: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                icon: saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Icon(isEdit ? Icons.save : Icons.add),
+                label: Text(isEdit ? 'حفظ التعديلات' : 'إضافة'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isEdit ? Colors.blue : Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  TimeOfDay _parseTime(String text) {
+    if (text.isEmpty) return TimeOfDay.now();
+    final parts = text.split(':');
+    if (parts.length != 2) return TimeOfDay.now();
+    return TimeOfDay(
+      hour: int.tryParse(parts[0]) ?? 0,
+      minute: int.tryParse(parts[1]) ?? 0,
+    );
+  }
+
+  void _confirmDeleteAttendance(dynamic recordId, String dateStr) {
+    if (recordId == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('تأكيد الحذف', style: TextStyle(fontSize: 16)),
+            ],
+          ),
+          content: Text('هل تريد حذف سجل حضور $dateStr؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  final id =
+                      recordId is int ? recordId : int.parse(recordId.toString());
+                  await widget.api.deleteAttendanceRecord(id);
+                  _loadData();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم حذف سجل الحضور'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('خطأ في الحذف: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child:
+                  const Text('حذف', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
       ),
     );
