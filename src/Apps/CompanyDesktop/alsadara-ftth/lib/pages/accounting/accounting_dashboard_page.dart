@@ -572,6 +572,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     final paidCount = salaries['PaidCount'] ?? 0;
     final pendingCount = salaries['PendingCount'] ?? 0;
     final totalEmployees = salaries['TotalEmployees'] ?? 0;
+    final advances = data['Advances'] as Map<String, dynamic>? ?? {};
 
     final items = <_SummaryItem>[
       _SummaryItem(
@@ -640,6 +641,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
         subtitle: 'من $totalEmployees موظف',
         icon: Icons.check_circle_outline,
         color: const Color(0xFF4CAF50),
+      ),
+      _SummaryItem(
+        title: 'سلف مدفوعة',
+        value: _formatCurrency(advances['TotalPaid']),
+        subtitle: '${advances['Count'] ?? 0} سلفة هذا الشهر',
+        icon: Icons.money_off,
+        color: const Color(0xFFFF5722),
       ),
       _SummaryItem(
         title: 'إيجارات المكاتب',

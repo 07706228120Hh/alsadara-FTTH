@@ -375,8 +375,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
               ),
               const Spacer(),
               Text('${filtered.length} مصروف',
-                  style: TextStyle(
-                      fontSize: 12, color: Colors.grey.shade600)),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             ],
           ),
         ),
@@ -408,9 +407,8 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                           width: 1,
                         ),
                       ),
-                      color: isPaid
-                          ? Colors.green.withValues(alpha: 0.03)
-                          : null,
+                      color:
+                          isPaid ? Colors.green.withValues(alpha: 0.03) : null,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
@@ -419,8 +417,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                             // أيقونة الفئة
                             CircleAvatar(
                               radius: 22,
-                              backgroundColor:
-                                  catColor.withValues(alpha: 0.15),
+                              backgroundColor: catColor.withValues(alpha: 0.15),
                               child: Icon(catInfo['icon'] as IconData,
                                   color: catColor, size: 22),
                             ),
@@ -447,8 +444,8 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: catColor
-                                              .withValues(alpha: 0.1),
+                                          color:
+                                              catColor.withValues(alpha: 0.1),
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
@@ -480,12 +477,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color:
-                                      Colors.green.withValues(alpha: 0.1),
+                                  color: Colors.green.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                      color: Colors.green
-                                          .withValues(alpha: 0.3)),
+                                      color:
+                                          Colors.green.withValues(alpha: 0.3)),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -514,19 +510,16 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                 onPressed: isActive
                                     ? () => _payExpenseFromItem(item)
                                     : null,
-                                icon:
-                                    const Icon(Icons.payment, size: 16),
+                                icon: const Icon(Icons.payment, size: 16),
                                 label: const Text('تسديد',
                                     style: TextStyle(fontSize: 12)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      const Color(0xFF1A237E),
+                                  backgroundColor: const Color(0xFF1A237E),
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 8),
                                   shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(8)),
+                                      borderRadius: BorderRadius.circular(8)),
                                 ),
                               ),
                             ],
@@ -570,13 +563,12 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                             size: 18, color: Colors.red),
                                         SizedBox(width: 8),
                                         Text('حذف',
-                                            style: TextStyle(
-                                                color: Colors.red)),
+                                            style:
+                                                TextStyle(color: Colors.red)),
                                       ],
                                     )),
                               ],
-                              onSelected: (v) =>
-                                  _onExpenseAction(v, item),
+                              onSelected: (v) => _onExpenseAction(v, item),
                             ),
                           ],
                         ),
