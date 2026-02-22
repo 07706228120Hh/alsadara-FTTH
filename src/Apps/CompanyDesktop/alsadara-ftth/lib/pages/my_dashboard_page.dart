@@ -1671,7 +1671,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 550),
             child: _AdjustmentsDialogContent(
               title: title,
               type: type,
@@ -2104,6 +2104,12 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
           ),
           const SizedBox(height: 16),
 
+          // ── المحتوى القابل للتمرير ──
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
           // ── عناصر مبنية على الحضور (تأخير، غياب..) ──
           if (widget.attendanceItems.isNotEmpty) ...[
             Align(
@@ -2149,22 +2155,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                         color: _textGray)),
               ),
             ),
-            ..._records.map((r) {
-              final amount = r['Amount'] ?? r['amount'] ?? 0;
-              final category = r['Category'] ?? r['category'] ?? '';
-              final description = r['Description'] ?? r['description'] ?? '';
-              final label = category.isNotEmpty
-                  ? category
-                  : (description.isNotEmpty ? description : widget.title);
-              return _buildItemRow(
-                label,
-                amount,
-                widget.color,
-                subtitle: description.isNotEmpty && category.isNotEmpty
-                    ? description
-                    : null,
-              );
-            }),
+            ..._records.map((r) => _buildDetailedCard(r)),
           ] else if (widget.attendanceItems.isEmpty) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
@@ -2179,6 +2170,10 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
               ),
             ),
           ],
+                ],
+              ),
+            ),
+          ),
 
           const Divider(height: 20),
           // ── الإجمالي ──
@@ -2252,6 +2247,158 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDetailedCard(Map<String, dynamic> r) {
+    final amount = r['Amount'] ?? r['amount'] ?? 0;
+    final category = '${r['Category'] ?? r['category'] ?? ''}'.trim();
+    final description = '${r['Description'] ?? r['description'] ?? ''}'.trim();
+    final notes = '${r['Notes'] ?? r['notes'] ?? ''}'.trim();
+    final createdByName =
+        '${r['CreatedByName'] ?? r['createdByName'] ?? ''}'.trim();
+    final isRecurring =
+        r['IsRecurring'] == true || r['isRecurring'] == true;
+    final createdAtRaw = r['CreatedAt'] ?? r['createdAt'] ?? '';
+    String createdAtFormatted = '';
+    if (createdAtRaw is String && createdAtRaw.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(createdAtRaw).toLocal();
+        createdAtFormatted =
+            '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: widget.color.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: widget.color.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── السطر الأول: التصنيف + المبلغ ──
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  category.isNotEmpty ? category : widget.title,
+                  style: GoogleFonts.cairo(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark),
+                ),
+              ),
+              Text(
+                '${widget.formatAmount(amount)} د.ع',
+                style: GoogleFonts.cairo(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: widget.color,
+                ),
+              ),
+            ],
+          ),
+          // ── الوصف ──
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _detailRow(Icons.description_outlined, 'الوصف', description),
+          ],
+          // ── الملاحظات ──
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _detailRow(Icons.sticky_note_2_outlined, 'ملاحظات', notes),
+          ],
+          const SizedBox(height: 8),
+          // ── السطر السفلي: من أنشأها + التاريخ + متكرر ──
+          Row(
+            children: [
+              if (createdByName.isNotEmpty) ...[
+                Icon(Icons.person_outline,
+                    size: 14, color: _textGray.withOpacity(0.7)),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    createdByName,
+                    style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              if (createdAtFormatted.isNotEmpty) ...[
+                Icon(Icons.calendar_today,
+                    size: 13, color: _textGray.withOpacity(0.7)),
+                const SizedBox(width: 4),
+                Text(
+                  createdAtFormatted,
+                  style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+                ),
+                const SizedBox(width: 12),
+              ],
+              if (isRecurring)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF39C12).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.repeat, size: 12, color: Color(0xFFF39C12)),
+                      const SizedBox(width: 4),
+                      Text('متكرر',
+                          style: GoogleFonts.cairo(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFF39C12))),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 14, color: _textGray.withOpacity(0.7)),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: GoogleFonts.cairo(fontSize: 12, color: _textGray),
+              children: [
+                TextSpan(
+                    text: '$label: ',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                TextSpan(text: value),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
