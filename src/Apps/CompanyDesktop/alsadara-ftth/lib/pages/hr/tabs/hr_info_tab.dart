@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
+import '../../../services/departments_data_service.dart';
+import '../../../services/centers_data_service.dart';
 
 class HrInfoTab extends StatefulWidget {
   final Map<String, dynamic> employee;
@@ -49,6 +51,17 @@ class _HrInfoTabState extends State<HrInfoTab> {
   DateTime? _dateOfBirth;
   DateTime? _hireDate;
 
+  // الدور المحدد
+  late String _selectedRole;
+
+  // الأقسام
+  List<String> _departments = [];
+  bool _isDepartmentsLoading = true;
+
+  // المراكز
+  List<String> _centersList = [];
+  bool _isCentersLoading = true;
+
   // Password controllers
   late TextEditingController _newPasswordCtrl;
   late TextEditingController _ftthPasswordCtrl;
@@ -63,10 +76,41 @@ class _HrInfoTabState extends State<HrInfoTab> {
   static const _warning = Color(0xFFFF9800);
   static const _ftthColor = Color(0xFF00BCD4);
 
+  static const List<Map<String, String>> _roles = [
+    {'value': 'Employee', 'label': 'موظف'},
+    {'value': 'Viewer', 'label': 'مشاهد'},
+    {'value': 'Technician', 'label': 'فني'},
+    {'value': 'TechnicalLeader', 'label': 'ليدر فني'},
+    {'value': 'Manager', 'label': 'مدير'},
+    {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
+  ];
+
   @override
   void initState() {
     super.initState();
     _initControllers();
+    _loadDepartments();
+    _loadCenters();
+  }
+
+  Future<void> _loadDepartments() async {
+    final depts = await DepartmentsDataService.instance.fetchDepartments();
+    if (mounted) {
+      setState(() {
+        _departments = depts;
+        _isDepartmentsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadCenters() async {
+    final names = await CentersDataService.instance.fetchCenters();
+    if (mounted) {
+      setState(() {
+        _centersList = names;
+        _isCentersLoading = false;
+      });
+    }
   }
 
   void _initControllers() {
@@ -97,6 +141,15 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
     _newPasswordCtrl = TextEditingController();
     _ftthPasswordCtrl = TextEditingController();
+
+    // تهيئة الدور
+    final role = (e['role'] ?? e['Role'] ?? 'Employee').toString();
+    final roleExists =
+        _roles.any((r) => r['value']!.toLowerCase() == role.toLowerCase());
+    _selectedRole = roleExists
+        ? _roles.firstWhere(
+            (r) => r['value']!.toLowerCase() == role.toLowerCase())['value']!
+        : 'Employee';
 
     _contractType = e['contractType'] ?? e['ContractType'];
 
@@ -134,6 +187,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
       final data = {
         'fullName': _fullNameCtrl.text,
         'phoneNumber': _phoneCtrl.text,
+        'role': _selectedRole,
         'department': _deptCtrl.text,
         'employeeCode': _empCodeCtrl.text,
         'center': _centerCtrl.text,
@@ -243,11 +297,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       Icons.work_outline_rounded,
                       const Color(0xFF8E44AD),
                       [
-                        _readOnlyField('الدور', _getRoleLabel(_role),
-                            Icons.admin_panel_settings, _getRoleColor(_role)),
-                        _field('القسم', _deptCtrl, Icons.business),
+                        _roleDropdownField(),
+                        _departmentDropdownField(),
                         _field('كود الموظف', _empCodeCtrl, Icons.badge),
-                        _field('المركز', _centerCtrl, Icons.location_on),
+                        _centerDropdownField(),
                       ],
                     ),
                   ),
@@ -558,6 +611,304 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 color: badgeColor,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════ حقل الدور (dropdown عند التعديل) ═══════════════
+
+  Widget _roleDropdownField() {
+    final badgeColor = _getRoleColor(_selectedRole);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Row(
+              children: [
+                const Icon(Icons.admin_panel_settings,
+                    size: 15, color: _labelColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('الدور',
+                      style:
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _editing
+                ? DropdownButtonFormField<String>(
+                    value: _selectedRole,
+                    isDense: true,
+                    style: GoogleFonts.cairo(fontSize: 13, color: _valueColor),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            const BorderSide(color: _accent, width: 1.5),
+                      ),
+                    ),
+                    items: _roles
+                        .map((r) => DropdownMenuItem<String>(
+                              value: r['value'],
+                              child: Text(r['label']!,
+                                  style: GoogleFonts.cairo(fontSize: 13)),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _selectedRole = v);
+                    },
+                  )
+                : Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: badgeColor.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      _getRoleLabel(_selectedRole),
+                      style: GoogleFonts.cairo(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════ حقل القسم (dropdown عند التعديل) ═══════════════
+
+  Widget _departmentDropdownField() {
+    final currentDept = _deptCtrl.text;
+    // بناء قائمة الأقسام مع القسم الحالي إن لم يكن في القائمة
+    final allDepts = <String>[..._departments];
+    if (currentDept.isNotEmpty && !allDepts.contains(currentDept)) {
+      allDepts.insert(0, currentDept);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Row(
+              children: [
+                const Icon(Icons.business, size: 15, color: _labelColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('القسم',
+                      style:
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _editing
+                ? (_isDepartmentsLoading
+                    ? const SizedBox(
+                        height: 30,
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      )
+                    : DropdownButtonFormField<String>(
+                        value: allDepts.contains(currentDept) &&
+                                currentDept.isNotEmpty
+                            ? currentDept
+                            : null,
+                        isDense: true,
+                        style:
+                            GoogleFonts.cairo(fontSize: 13, color: _valueColor),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          hintText: 'اختر القسم',
+                          hintStyle: GoogleFonts.cairo(
+                              fontSize: 12, color: _labelColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFDDDDDD)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFDDDDDD)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: _accent, width: 1.5),
+                          ),
+                        ),
+                        items: allDepts
+                            .map((d) => DropdownMenuItem<String>(
+                                  value: d,
+                                  child: Text(d,
+                                      style: GoogleFonts.cairo(fontSize: 13)),
+                                ))
+                            .toList(),
+                        onChanged: (v) {
+                          setState(() {
+                            _deptCtrl.text = v ?? '';
+                          });
+                        },
+                      ))
+                : Container(
+                    width: double.infinity,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                    ),
+                    child: Text(
+                      currentDept.isEmpty ? '—' : currentDept,
+                      style: GoogleFonts.cairo(
+                        fontSize: 13,
+                        color: currentDept.isEmpty ? _labelColor : _valueColor,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _centerDropdownField() {
+    final currentCenter = _centerCtrl.text;
+    final allCenters = <String>[..._centersList];
+    if (currentCenter.isNotEmpty && !allCenters.contains(currentCenter)) {
+      allCenters.insert(0, currentCenter);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Row(
+              children: [
+                const Icon(Icons.location_on, size: 15, color: _labelColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('المركز',
+                      style:
+                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _editing
+                ? (_isCentersLoading
+                    ? const SizedBox(
+                        height: 30,
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      )
+                    : DropdownButtonFormField<String>(
+                        value: allCenters.contains(currentCenter) &&
+                                currentCenter.isNotEmpty
+                            ? currentCenter
+                            : null,
+                        isDense: true,
+                        style:
+                            GoogleFonts.cairo(fontSize: 13, color: _valueColor),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          hintText: 'اختر المركز',
+                          hintStyle: GoogleFonts.cairo(
+                              fontSize: 12, color: _labelColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFDDDDDD)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFDDDDDD)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                const BorderSide(color: _accent, width: 1.5),
+                          ),
+                        ),
+                        items: allCenters
+                            .map((c) => DropdownMenuItem<String>(
+                                  value: c,
+                                  child: Text(c,
+                                      style: GoogleFonts.cairo(fontSize: 13)),
+                                ))
+                            .toList(),
+                        onChanged: (v) {
+                          setState(() {
+                            _centerCtrl.text = v ?? '';
+                          });
+                        },
+                      ))
+                : Container(
+                    width: double.infinity,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                    ),
+                    child: Text(
+                      currentCenter.isEmpty ? '—' : currentCenter,
+                      style: GoogleFonts.cairo(
+                        fontSize: 13,
+                        color:
+                            currentCenter.isEmpty ? _labelColor : _valueColor,
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),

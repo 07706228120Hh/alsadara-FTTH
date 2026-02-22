@@ -32,10 +32,12 @@ dependencies:
   shared_preferences: ^2.3.3
   excel: ^4.0.6
 
-  # مكتبات Google Services
-  google_sign_in: ^6.2.2
-  google_fonts: ^6.2.1
+  # مكتبات الخرائط والـ GIS
   google_maps_flutter: ^2.12.2
+  google_fonts: ^6.1.0
+  flutter_map: ^7.0.2
+  flutter_map_mbtiles: ^1.0.4
+  latlong2: ^0.9.1
 
   # مكتبات الأمان والمصادقة
   crypto: ^3.0.3  # ✅ للتشفير SHA-256
@@ -123,6 +125,7 @@ flutter:
   - assets/config.json
   - assets/fonts/
   - assets/animations/
+  - assets/maps/
   - .env
 
 # ⚠️ SECURITY WARNING

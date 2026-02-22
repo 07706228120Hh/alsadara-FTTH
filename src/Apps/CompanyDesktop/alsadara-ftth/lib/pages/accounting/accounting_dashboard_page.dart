@@ -15,6 +15,7 @@ import 'statistics_page.dart';
 import '../super_admin/agents_management_page.dart';
 import 'ftth_operators_dashboard_page.dart';
 import 'funds_overview_page.dart';
+import 'fixed_expenses_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -344,6 +345,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             onTap: () =>
                 _navigateTo(StatisticsPage(companyId: widget.companyId)),
           ),
+          _sidebarBtn(
+            icon: Icons.receipt_long,
+            label: 'المصاريف الثابتة',
+            color: const Color(0xFFE67E22),
+            onTap: () =>
+                _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
+          ),
           const Spacer(),
         ],
       ),
@@ -543,11 +551,18 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
         data['AccountBalances'] as Map<String, dynamic>? ?? {};
     final pendingDetails =
         data['PendingDetails'] as Map<String, dynamic>? ?? {};
+    final fixedExpenses = data['FixedExpenses'] as Map<String, dynamic>? ?? {};
 
     final agentNet = (pendingDetails['AgentNet'] ?? 0) as num;
     final techNet = (pendingDetails['TechnicianNet'] ?? 0) as num;
     final agentIsDebtor = agentNet < 0;
     final techIsDebtor = techNet < 0;
+
+    // بيانات الرواتب
+    final unpaidSalaries = salaries['UnpaidTotal'] ?? 0;
+    final paidCount = salaries['PaidCount'] ?? 0;
+    final pendingCount = salaries['PendingCount'] ?? 0;
+    final totalEmployees = salaries['TotalEmployees'] ?? 0;
 
     final items = <_SummaryItem>[
       _SummaryItem(
@@ -581,6 +596,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
         color: const Color(0xFFE67E22),
       ),
       _SummaryItem(
+        title: 'رواتب غير مدفوعة',
+        value: _formatCurrency(unpaidSalaries),
+        subtitle: '$pendingCount معلق من $totalEmployees موظف',
+        icon: Icons.payments_outlined,
+        color: const Color(0xFFD32F2F),
+      ),
+      _SummaryItem(
         title: 'مستحقات المشغلين',
         value: _formatCurrency(accountBalances['OperatorReceivables']),
         icon: Icons.people,
@@ -603,12 +625,38 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
         icon: Icons.engineering,
         color: techIsDebtor ? const Color(0xFF8E44AD) : const Color(0xFF27AE60),
       ),
+      _SummaryItem(
+        title: 'رواتب مدفوعة',
+        value: '$paidCount',
+        subtitle: 'من $totalEmployees موظف',
+        icon: Icons.check_circle_outline,
+        color: const Color(0xFF4CAF50),
+      ),
+      _SummaryItem(
+        title: 'إيجارات المكاتب',
+        value: _formatCurrency(fixedExpenses['OfficeRent']),
+        icon: Icons.business,
+        color: const Color(0xFFE67E22),
+      ),
+      _SummaryItem(
+        title: 'تكلفة المولد',
+        value: _formatCurrency(fixedExpenses['GeneratorCost']),
+        icon: Icons.flash_on,
+        color: const Color(0xFFF39C12),
+      ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
-        final cols = (items.length / 2).ceil(); // صفين
+        // 5 أعمدة للشاشات الكبيرة، 4 للمتوسطة، 2 للصغيرة
+        final cols = maxW > 1200
+            ? 5
+            : maxW > 800
+                ? 4
+                : maxW > 500
+                    ? 3
+                    : 2;
         final spacing = 10.0;
         final cardWidth = (maxW - spacing * (cols - 1)) / cols;
         return Wrap(
@@ -696,6 +744,18 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
                     ),
                   ),
                 ),
+                if (item.subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    item.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.cairo(
+                      fontSize: 10,
+                      color: item.color.withOpacity(0.7),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -922,17 +982,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   String _formatCurrency(dynamic value) {
     if (value == null) return '0';
     final num n = value is num ? value : double.tryParse(value.toString()) ?? 0;
-    // تنسيق العدد بفاصلة الآلاف
-    final abs = n.abs();
-    final parts = abs.toStringAsFixed(0).split('');
-    final buffer = StringBuffer();
-    for (int i = 0; i < parts.length; i++) {
-      if (i > 0 && (parts.length - i) % 3 == 0) {
-        buffer.write(',');
-      }
-      buffer.write(parts[i]);
-    }
-    return '${buffer.toString()} د.ع';
+    return '${n.round()} د.ع';
   }
 
   /// تنسيق مع إشارة (مديون/دائن)
@@ -947,12 +997,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
 class _SummaryItem {
   final String title;
   final String value;
+  final String? subtitle;
   final IconData icon;
   final Color color;
 
   _SummaryItem({
     required this.title,
     required this.value,
+    this.subtitle,
     required this.icon,
     required this.color,
   });

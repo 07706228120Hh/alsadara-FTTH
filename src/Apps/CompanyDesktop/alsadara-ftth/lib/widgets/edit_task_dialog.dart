@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
+import '../services/departments_data_service.dart';
 
 /// نافذة تعديل المهمة الشاملة - جميع الحقول قابلة للتعديل
 class EditTaskDialog extends StatefulWidget {
@@ -156,15 +157,18 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       if (mounted) {
         setState(() {
           _isDataLoading = false;
-          // قيم افتراضية
-          _departments = [
-            'الحسابات',
-            'الفنيين',
-            'الوكلاء',
-            'الاتصالات',
-            'اللحام',
-            'الصيانة'
-          ];
+          // جلب الأقسام من الخدمة المركزية
+          _departments = DepartmentsDataService.instance.isLoaded
+              ? List<String>.from(
+                  DepartmentsDataService.instance.departmentNames)
+              : [
+                  'الحسابات',
+                  'الفنيين',
+                  'الوكلاء',
+                  'الاتصالات',
+                  'اللحام',
+                  'الصيانة'
+                ];
           if (!_departments.contains(_selectedDepartment) &&
               _selectedDepartment.isNotEmpty) {
             _departments.add(_selectedDepartment);

@@ -10,6 +10,11 @@ import 'package:lottie/lottie.dart'; // Lottie animations
 import 'package:alsadara/pages/track_users_map_page.dart';
 import '../task/task_list_screen.dart';
 import 'attendance_page.dart';
+import 'work_schedules_page.dart';
+import 'leave_management_page.dart';
+import 'salary_management_page.dart';
+import 'hr_reports_page.dart';
+import 'hr_hub_page.dart';
 import 'search_users_page.dart';
 import 'users_page.dart';
 import 'users_page_firebase.dart';
@@ -28,11 +33,13 @@ import 'login/premium_login_page.dart'; // ✨ صفحة تسجيل الدخول 
 import '../ftth/whatsapp/whatsapp_bottom_window.dart'; // WhatsApp floating button
 import 'super_admin/super_admin_dashboard.dart'; // لوحة تحكم Super Admin
 import 'company_diagnostics_page.dart'; // صفحة تشخيص الشركة
+import 'company_settings_page.dart'; // إعدادات الشركة
 import 'super_admin/sadara_portal_page.dart'; // منصة الصدارة
 import 'accounting/accounting_dashboard_page.dart'; // نظام المحاسبة
 import '../task/follow_up_page.dart'; // صفحة المتابعة
 import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق
 import '../task/technician_transactions_page.dart'; // شاشتي - معاملات الفني
+import 'my_dashboard_page.dart'; // شاشتي - لوحة الموظف الشخصية
 import '../widgets/feature_gate.dart'; // حارس الصلاحيات
 import '../config/permission_registry.dart'; // سجل الصلاحيات المركزي
 import '../services/permission_checker.dart'; // نظام الصلاحيات V2
@@ -260,6 +267,7 @@ class _HomePageState extends State<HomePage>
     );
   }
   */
+
   Widget _buildEnhancedMenuItem({
     required String title,
     required String subtitle,
@@ -277,263 +285,114 @@ class _HomePageState extends State<HomePage>
         color: Colors.transparent,
         child: InkWell(
           onTap: hasPermission ? onTap : null,
-          borderRadius: BorderRadius.circular(22),
-          splashColor: Colors.white.withValues(alpha: 0.2),
-          highlightColor: Colors.white.withValues(alpha: 0.1),
-          child: Stack(
-            children: [
-              // الطبقة الخلفية - الظل الخارجي
-              Container(
-                height: 72,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: hasPermission
-                      ? [
-                          // ظل ملون أسفل الزر
-                          BoxShadow(
-                            color: gradient[1].withValues(alpha: 0.5),
-                            blurRadius: 30,
-                            offset: const Offset(0, 15),
-                            spreadRadius: -10,
-                          ),
-                          // توهج خفيف حول الزر
-                          BoxShadow(
-                            color: gradient[0].withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 5),
-                          ),
-                        ]
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                ),
+          borderRadius: BorderRadius.circular(16),
+          splashColor: gradient[0].withOpacity(0.1),
+          highlightColor: gradient[0].withOpacity(0.05),
+          child: Container(
+            height: 72,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFFE8E8E8),
+                width: 1,
               ),
-              // الطبقة الرئيسية
-              Container(
-                height: 72,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  gradient: hasPermission
-                      ? LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            gradient[0],
-                            gradient[1],
-                            Color.lerp(gradient[1], Colors.black, 0.2)!,
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
-                        )
-                      : LinearGradient(
-                          colors: [
-                            Colors.grey[600]!.withValues(alpha: 0.6),
-                            Colors.grey[800]!.withValues(alpha: 0.6),
-                          ],
-                        ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-                child: Stack(
-                  children: [
-                    // تأثير اللمعان العلوي (Glass effect)
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 35,
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(22),
-                          ),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.white.withValues(
-                                  alpha: hasPermission ? 0.25 : 0.1),
-                              Colors.white.withValues(alpha: 0.0),
-                            ],
-                          ),
-                        ),
-                      ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  // أيقونة دائرية ملونة
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: hasPermission
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: gradient,
+                            )
+                          : LinearGradient(
+                              colors: [Colors.grey[400]!, Colors.grey[500]!],
+                            ),
+                      boxShadow: hasPermission
+                          ? [
+                              BoxShadow(
+                                color: gradient[0].withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
                     ),
-                    // خط لامع على الحافة العلوية
-                    Positioned(
-                      top: 1,
-                      left: 20,
-                      right: 20,
-                      child: Container(
-                        height: 1,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withValues(alpha: 0.0),
-                              Colors.white
-                                  .withValues(alpha: hasPermission ? 0.5 : 0.2),
-                              Colors.white.withValues(alpha: 0.0),
-                            ],
-                          ),
-                        ),
-                      ),
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 24,
                     ),
-                    // المحتوى الرئيسي
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          // أيقونة بتصميم 3D
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                center: const Alignment(-0.3, -0.3),
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.3),
-                                  Colors.white.withValues(alpha: 0.1),
-                                  Colors.white.withValues(alpha: 0.05),
-                                ],
-                              ),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                // ظل داخلي
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                                // توهج خارجي
-                                if (hasPermission)
-                                  BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    blurRadius: 15,
-                                    spreadRadius: -2,
-                                  ),
-                              ],
-                            ),
-                            child: Icon(
-                              icon,
-                              color: Colors.white,
-                              size: 24,
-                              shadows: const [
-                                Shadow(
-                                  color: Colors.black26,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          // النص
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.8,
-                                    shadows: [
-                                      Shadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.3),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  subtitle,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.85),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w400,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // سهم/قفل بتصميم فاخر
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                center: const Alignment(-0.3, -0.3),
-                                colors: hasPermission
-                                    ? [
-                                        Colors.white.withValues(alpha: 0.35),
-                                        Colors.white.withValues(alpha: 0.15),
-                                        Colors.white.withValues(alpha: 0.05),
-                                      ]
-                                    : [
-                                        Colors.red.withValues(alpha: 0.3),
-                                        Colors.red.withValues(alpha: 0.1),
-                                      ],
-                              ),
-                              border: Border.all(
-                                color: hasPermission
-                                    ? Colors.white.withValues(alpha: 0.5)
-                                    : Colors.red.withValues(alpha: 0.3),
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: hasPermission
-                                      ? Colors.white.withValues(alpha: 0.15)
-                                      : Colors.red.withValues(alpha: 0.2),
-                                  blurRadius: 12,
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              hasPermission
-                                  ? Icons.arrow_forward_ios_rounded
-                                  : Icons.lock_rounded,
-                              color: hasPermission
-                                  ? Colors.white
-                                  : Colors.red[200],
-                              size: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // حدود متوهجة
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
+                  ),
+                  const SizedBox(width: 14),
+                  // النص
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
                             color: hasPermission
-                                ? Colors.white.withValues(alpha: 0.2)
-                                : Colors.grey.withValues(alpha: 0.2),
-                            width: 1.5,
+                                ? const Color(0xFF333333)
+                                : const Color(0xFF999999),
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: hasPermission
+                                ? const Color(0xFF999999)
+                                : const Color(0xFFBBBBBB),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  // سهم/قفل
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: hasPermission
+                          ? gradient[0].withOpacity(0.1)
+                          : Colors.red.withOpacity(0.08),
+                    ),
+                    child: Icon(
+                      hasPermission
+                          ? Icons.arrow_forward_ios_rounded
+                          : Icons.lock_rounded,
+                      color: hasPermission ? gradient[0] : Colors.red[300],
+                      size: 14,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -635,7 +494,7 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  // Animated circular background for AppBar action icons (fiber-like sweep)
+  // Simple action button for AppBar
   Widget _buildAnimatedActionButton({
     required Icon icon,
     required VoidCallback onPressed,
@@ -645,76 +504,20 @@ class _HomePageState extends State<HomePage>
   }) {
     return Container(
       margin: margin,
-      child: AnimatedBuilder(
-        animation: _fiberController,
-        builder: (context, _) {
-          final angle = _fiberController.value * 2 * math.pi;
-          return SizedBox(
-            width: 48,
-            height: 48,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Outer animated glow ring
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: SweepGradient(
-                      colors: [
-                        glowColor.withValues(alpha: 0.0),
-                        glowColor.withValues(alpha: 0.36),
-                        glowColor.withValues(alpha: 0.0),
-                      ],
-                      stops: const [0.08, 0.42, 0.92],
-                      transform: GradientRotation(angle),
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: glowColor.withValues(alpha: 0.36),
-                        blurRadius: 14,
-                        spreadRadius: 1.0,
-                      ),
-                    ],
-                  ),
-                ),
-                // Subtle inner fill to improve contrast
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.14),
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
-                      stops: const [0.0, 1.0],
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      width: 0.8,
-                    ),
-                  ),
-                ),
-                // Tappable icon
-                IconButton(
-                  padding: const EdgeInsets.all(10),
-                  constraints:
-                      const BoxConstraints(minWidth: 48, minHeight: 48),
-                  icon: icon,
-                  tooltip: tooltip,
-                  onPressed: onPressed,
-                ),
-              ],
-            ),
-          );
-        },
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: IconButton(
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          icon: icon,
+          tooltip: tooltip,
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.white.withOpacity(0.12),
+            shape: const CircleBorder(),
+          ),
+        ),
       ),
     );
   }
@@ -837,22 +640,11 @@ class _HomePageState extends State<HomePage>
     if (_isLoading) {
       return Scaffold(
         body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF0D2137),
-                Color(0xFF0A1628),
-                Color(0xFF050D14),
-              ],
-            ),
-          ),
+          color: const Color(0xFFF5F6FA),
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // شعار متوهج
                 Container(
                   width: 120,
                   height: 120,
@@ -860,14 +652,9 @@ class _HomePageState extends State<HomePage>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
-                        blurRadius: 30,
-                        spreadRadius: 5,
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
-                        blurRadius: 60,
-                        spreadRadius: 20,
+                        color: const Color(0xFF3498DB).withOpacity(0.2),
+                        blurRadius: 20,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
@@ -880,14 +667,13 @@ class _HomePageState extends State<HomePage>
                   ),
                 ),
                 const SizedBox(height: 32),
-                // مؤشر تحميل فاخر
-                SizedBox(
+                const SizedBox(
                   width: 50,
                   height: 50,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF00E5FF).withValues(alpha: 0.8),
+                      Color(0xFF3498DB),
                     ),
                   ),
                 ),
@@ -895,10 +681,10 @@ class _HomePageState extends State<HomePage>
                 Text(
                   'جاري التحميل...',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: const Color(0xFF666666).withOpacity(0.8),
                     fontSize: 16,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 2,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 1,
                   ),
                 ),
               ],
@@ -924,49 +710,33 @@ class _HomePageState extends State<HomePage>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF1A237E),
-                Color(0xFF0D47A1),
-                Color(0xFF01579B),
+                Color(0xFF2C3E50),
+                Color(0xFF34495E),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF00E5FF).withValues(alpha: 0.2),
-                blurRadius: 20,
+                color: const Color(0xFF2C3E50).withOpacity(0.3),
+                blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(24)),
-              border: Border.all(
-                color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
-                width: 1,
-              ),
-            ),
-          ),
         ),
         centerTitle: true,
-        title: ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFF00E5FF), Colors.white, Color(0xFF00E5FF)],
-          ).createShader(bounds),
-          child: const Text(
-            '⚡ رمز الصدارة',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 1.5,
-            ),
+        title: const Text(
+          '⚡ رمز الصدارة',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: 1.5,
           ),
         ),
         backgroundColor: Colors.transparent,
         iconTheme: const IconThemeData(
           color: Colors.white,
-          size: 30.0, // تكبير حجم الأيقونات قليلاً
+          size: 28,
         ),
         actions: [
           // زر العودة للوحة تحكم Super Admin
@@ -1282,6 +1052,30 @@ class _HomePageState extends State<HomePage>
                         },
                       ),
 
+                    // Company Settings Button (Admin Only)
+                    if (_isAdminUser)
+                      _buildCompactDrawerButton(
+                        icon: Icons.settings,
+                        label: 'إعدادات الشركة',
+                        colors: [Colors.amber[600]!, Colors.amber[800]!],
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CompanySettingsPage(
+                                companyId: widget.tenantId ??
+                                    VpsAuthService.instance.currentCompanyId,
+                                companyCode: widget.tenantCode ??
+                                    VpsAuthService.instance.currentCompanyCode,
+                                currentUserRole: widget.permissions,
+                                currentUsername: widget.username,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
                     // Logout button
                     _buildCompactDrawerButton(
                       icon: Icons.logout,
@@ -1367,199 +1161,9 @@ class _HomePageState extends State<HomePage>
 
     return Stack(
       children: [
-        // Dark gradient background for high contrast
+        // Light background
         Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0A2342), // deep blue
-                Color(0xFF00101A), // dark teal
-                Color(0xFF000000), // black
-              ],
-              stops: [0.0, 0.5, 1.0],
-            ),
-          ),
-        ),
-        // Full-screen fiber beams layer
-        Positioned.fill(
-          child: IgnorePointer(
-            child: AnimatedBuilder(
-              animation: _fiberController,
-              builder: (context, _) {
-                final t = _fiberController.value;
-                return Stack(
-                  children: [
-                    // Many beams RTL across whole screen (softer to make photons pop)
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.10,
-                        phase: 0.00,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 7.5,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.09,
-                        phase: 0.11,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 7.0,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.08,
-                        phase: 0.22,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 6.5,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.07,
-                        phase: 0.33,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 8.0,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.06,
-                        phase: 0.44,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 6.5,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.05,
-                        phase: 0.55,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 7.0,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.045,
-                        phase: 0.66,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 7.5,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.04,
-                        phase: 0.77,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 6.5,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.035,
-                        phase: 0.88,
-                        widthFactor: 1.80,
-                        angleRad: -math.pi / 6,
-                        thickness: 7.0,
-                        color: _fiberColor,
-                        rightToLeft: true),
-                    // a couple of crisp beams for definition
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.18,
-                        phase: 0.12,
-                        widthFactor: 1.65,
-                        angleRad: -math.pi / 6,
-                        thickness: 4.0,
-                        color: Colors.cyanAccent,
-                        rightToLeft: true),
-                    _buildFiberBeam(
-                        progress: t,
-                        opacity: 0.16,
-                        phase: 0.64,
-                        widthFactor: 1.65,
-                        angleRad: -math.pi / 6,
-                        thickness: 4.0,
-                        color: Colors.lightBlueAccent,
-                        rightToLeft: true),
-
-                    // Light photons passing through the fiber paths
-                    // A few lanes across the vertical axis, with varying speeds and phases
-                    for (final lane in const [
-                      -0.82,
-                      -0.62,
-                      -0.42,
-                      -0.22,
-                      -0.02,
-                      0.18,
-                      0.38,
-                      0.58,
-                      0.78
-                    ]) ...[
-                      _buildPhoton(
-                          progress: t,
-                          phase: 0.05 + lane.abs() * 0.12,
-                          y: lane,
-                          speed: 1.15,
-                          size: 7.0,
-                          length: 56,
-                          color: _fiberColor.withValues(alpha: 1.0),
-                          rightToLeft: true),
-                      _buildPhoton(
-                          progress: t,
-                          phase: 0.33 + lane.abs() * 0.18,
-                          y: lane + 0.03,
-                          speed: 1.5,
-                          size: 7.5,
-                          length: 62,
-                          color: Colors.cyanAccent,
-                          rightToLeft: true),
-                      _buildPhoton(
-                          progress: t,
-                          phase: 0.66 + lane.abs() * 0.21,
-                          y: lane - 0.02,
-                          speed: 1.8,
-                          size: 6.5,
-                          length: 52,
-                          color: Colors.white,
-                          rightToLeft: true),
-                    ],
-                    // A couple of counter-direction photons for depth
-                    _buildPhoton(
-                        progress: t,
-                        phase: 0.18,
-                        y: -0.35,
-                        speed: 0.85,
-                        size: 6.0,
-                        length: 44,
-                        color: Colors.white70,
-                        rightToLeft: false,
-                        angleRad: -math.pi / 6),
-                    _buildPhoton(
-                        progress: t,
-                        phase: 0.62,
-                        y: 0.41,
-                        speed: 0.95,
-                        size: 5.5,
-                        length: 40,
-                        color: Colors.lightBlueAccent,
-                        rightToLeft: false,
-                        angleRad: -math.pi / 6),
-                  ],
-                );
-              },
-            ),
-          ),
+          color: const Color(0xFFF5F6FA),
         ),
         SafeArea(
           child: Column(
@@ -1573,56 +1177,43 @@ class _HomePageState extends State<HomePage>
                 child: Column(
                   children: [
                     const SizedBox(height: 4),
-                    // بطاقة ترحيب فاخرة مع تأثير زجاجي
+                    // بطاقة ترحيب بتصميم فاتح
                     Container(
                       margin: const EdgeInsets.only(bottom: 10),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 14),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.15),
-                            Colors.white.withValues(alpha: 0.05),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(28),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
-                          width: 1.5,
+                          color: const Color(0xFFE8E8E8),
+                          width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                const Color(0xFF00E5FF).withValues(alpha: 0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Row(
                         children: [
-                          // صورة مستخدم متوهجة
+                          // صورة مستخدم
                           Container(
                             width: 46,
                             height: 46,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF00E5FF), Color(0xFF1DE9B6)],
+                                colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF00E5FF)
-                                      .withValues(alpha: 0.4),
-                                  blurRadius: 15,
-                                  spreadRadius: 2,
+                                  color:
+                                      const Color(0xFF3498DB).withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
                                 ),
                               ],
                             ),
@@ -1630,7 +1221,7 @@ class _HomePageState extends State<HomePage>
                             child: Container(
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Color(0xFF0A1628),
+                                color: Colors.white,
                               ),
                               padding: const EdgeInsets.all(2),
                               child: ClipRRect(
@@ -1649,37 +1240,26 @@ class _HomePageState extends State<HomePage>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // رسالة ترحيب فاخرة
-                                ShaderMask(
-                                  shaderCallback: (bounds) =>
-                                      const LinearGradient(
-                                    colors: [
-                                      Color(0xFF00E5FF),
-                                      Color(0xFF64FFDA)
-                                    ],
-                                  ).createShader(bounds),
-                                  child: const Text(
-                                    '✨ مرحبا بكم في شركة الصدارة',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
-                                    ),
+                                const Text(
+                                  '✨ مرحبا بكم في شركة الصدارة',
+                                  style: TextStyle(
+                                    color: Color(0xFF3498DB),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'مرحباً ${widget.username}',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Color(0xFF333333),
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-
                                 if (_isAdminUser) ...[
                                   const SizedBox(height: 4),
                                   Container(
@@ -1701,7 +1281,7 @@ class _HomePageState extends State<HomePage>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // زر معلومات متوهج
+                          // زر معلومات
                           InkWell(
                             onTap: () => _showUserInfo(context),
                             borderRadius: BorderRadius.circular(18),
@@ -1709,24 +1289,17 @@ class _HomePageState extends State<HomePage>
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFF00E5FF)
-                                        .withValues(alpha: 0.3),
-                                    const Color(0xFF00E5FF)
-                                        .withValues(alpha: 0.1),
-                                  ],
-                                ),
+                                color: const Color(0xFF3498DB).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: const Color(0xFF00E5FF)
-                                      .withValues(alpha: 0.5),
+                                  color:
+                                      const Color(0xFF3498DB).withOpacity(0.3),
                                   width: 1.5,
                                 ),
                               ),
                               child: const Icon(
                                 Icons.info_outline,
-                                color: Color(0xFF00E5FF),
+                                color: Color(0xFF3498DB),
                                 size: 18,
                               ),
                             ),
@@ -1827,20 +1400,24 @@ class _HomePageState extends State<HomePage>
               ),
             ),
           ),
-          // 4) Attendance
+          // 4) HR - الموارد البشرية
           _buildEnhancedMenuItem(
-            title: 'البصمة',
-            subtitle: 'تسجيل الحضور والانصراف',
-            icon: Icons.fingerprint,
-            gradient: [Colors.blue[600]!, Colors.blue[800]!],
+            title: 'HR',
+            subtitle: 'الموارد البشرية والحضور والرواتب',
+            icon: Icons.groups_rounded,
+            gradient: [const Color(0xFF0D47A1), const Color(0xFF1565C0)],
             permissionKey: 'attendance',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => AttendancePage(
+                builder: (context) => HrHubPage(
                   username: widget.username,
-                  center: widget.center,
                   permissions: widget.permissions,
+                  department: widget.department,
+                  center: widget.center,
+                  pageAccess: widget.pageAccess,
+                  tenantId: widget.tenantId,
+                  tenantCode: widget.tenantCode,
                 ),
               ),
             ),
@@ -1934,18 +1511,20 @@ class _HomePageState extends State<HomePage>
               ),
             ),
           ),
-          // 10) شاشتي - معاملات الفني المالية
+          // 10) شاشتي - لوحة الموظف الشخصية
           _buildEnhancedMenuItem(
             title: 'شاشتي',
-            subtitle: 'معاملاتي المالية والأجور',
-            icon: Icons.account_circle_rounded,
+            subtitle: 'البصمة والمعاملات والراتب',
+            icon: Icons.dashboard_rounded,
             gradient: [Colors.teal[500]!, Colors.teal[800]!],
             permissionKey: 'tasks',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => TechnicianTransactionsPage(
+                builder: (context) => MyDashboardPage(
                   username: widget.username,
+                  permissions: widget.permissions,
+                  center: widget.center,
                 ),
               ),
             ),

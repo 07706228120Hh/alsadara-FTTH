@@ -2,7 +2,6 @@
 /// يحسب نسبة الإنجاز + الالتزام + تقييم نجومي
 library;
 
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';

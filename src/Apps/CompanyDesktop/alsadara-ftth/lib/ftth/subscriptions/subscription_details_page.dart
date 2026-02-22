@@ -446,9 +446,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     }
   }
 
-  // Formatter for numbers with thousands separators (Arabic locale)
-  final NumberFormat _thousandsFmt = NumberFormat.decimalPattern('ar');
-  String _formatNumber(num value) => _thousandsFmt.format(value);
+  // Formatter for numbers
+  String _formatNumber(num value) => value.round().toString();
 
   bool get isNewSubscription {
     return widget.subscriptionId.startsWith('T');

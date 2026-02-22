@@ -41,24 +41,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   // Format numbers with thousands separators and optional decimals
   String _formatNumber(num number, {int decimals = 0}) {
-    if (decimals > 0) {
-      final s = number.toStringAsFixed(decimals);
-      final parts = s.split('.');
-      final intPart = parts[0];
-      final decPart = parts[1];
-      final formattedInt = intPart.replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-        (m) => '${m[1]},',
-      );
-      return '$formattedInt.$decPart';
-    } else {
-      final intPart = number.round().toString();
-      final formattedInt = intPart.replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-        (m) => '${m[1]},',
-      );
-      return formattedInt;
-    }
+    return number.round().toString();
   }
 
   Widget _animatedNumber(num target,

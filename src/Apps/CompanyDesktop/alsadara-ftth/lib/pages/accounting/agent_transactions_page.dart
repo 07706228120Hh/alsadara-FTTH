@@ -852,12 +852,6 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     final n = (value is num)
         ? value.toDouble()
         : (double.tryParse(value.toString()) ?? 0);
-    if (n == n.truncateToDouble()) {
-      return n.toInt().toString().replaceAllMapped(
-            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-            (m) => '${m[1]},',
-          );
-    }
-    return n.toStringAsFixed(1);
+    return n.round().toString();
   }
 }

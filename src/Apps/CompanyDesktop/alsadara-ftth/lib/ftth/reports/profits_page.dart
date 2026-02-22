@@ -637,8 +637,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
   }
 
   String _formatCurrency(double amount) {
-    final formatter = NumberFormat('#,##0', 'en_US');
-    return formatter.format(amount);
+    return amount.round().toString();
   }
 
   String _translateTransactionType(String type) {

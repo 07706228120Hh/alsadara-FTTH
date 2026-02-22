@@ -878,4 +878,103 @@ class AccountingService {
     );
     return _toMap(response);
   }
+
+  // ═══════════════════════════════════════════
+  // المصاريف الثابتة الشهرية - Fixed Monthly Expenses
+  // ═══════════════════════════════════════════
+
+  /// جلب المصاريف الثابتة
+  Future<Map<String, dynamic>> getFixedExpenses({String? companyId}) async {
+    String query = '/accounting/fixed-expenses';
+    if (companyId != null) query += '?companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// إضافة مصروف ثابت
+  Future<Map<String, dynamic>> createFixedExpense({
+    required String name,
+    required int category,
+    required double monthlyAmount,
+    String? description,
+    required String companyId,
+  }) async {
+    final body = {
+      'Name': name,
+      'Category': category,
+      'MonthlyAmount': monthlyAmount,
+      'Description': description,
+      'CompanyId': companyId,
+    };
+    body.removeWhere((key, value) => value == null);
+    final response =
+        await _client.post('/accounting/fixed-expenses', body, (json) => json);
+    return _toMap(response);
+  }
+
+  /// تعديل مصروف ثابت
+  Future<Map<String, dynamic>> updateFixedExpense(
+      int id, Map<String, dynamic> body) async {
+    final response = await _client.put(
+        '/accounting/fixed-expenses/$id', body, (json) => json);
+    return _toMap(response);
+  }
+
+  /// حذف مصروف ثابت
+  Future<Map<String, dynamic>> deleteFixedExpense(int id) async {
+    final response =
+        await _client.delete('/accounting/fixed-expenses/$id', (json) => json);
+    return _toMap(response);
+  }
+
+  /// جلب سجلات الدفع لشهر معين
+  Future<Map<String, dynamic>> getFixedExpensePayments({
+    String? companyId,
+    int? month,
+    int? year,
+  }) async {
+    String query = '/accounting/fixed-expenses/payments?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (month != null) query += 'month=$month&';
+    if (year != null) query += 'year=$year&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// تسديد مصروف ثابت
+  Future<Map<String, dynamic>> payFixedExpense({
+    required int fixedExpenseId,
+    required int month,
+    required int year,
+    double? amount,
+    String? notes,
+    required String companyId,
+  }) async {
+    final body = <String, dynamic>{
+      'FixedExpenseId': fixedExpenseId,
+      'Month': month,
+      'Year': year,
+      'Amount': amount,
+      'Notes': notes,
+      'CompanyId': companyId,
+    };
+    body.removeWhere((key, value) => value == null);
+    final response = await _client.post(
+        '/accounting/fixed-expenses/pay', body, (json) => json);
+    return _toMap(response);
+  }
+
+  /// إلغاء دفع مصروف ثابت
+  Future<Map<String, dynamic>> unpayFixedExpense(int paymentId) async {
+    final response = await _client.post(
+        '/accounting/fixed-expenses/unpay/$paymentId', {}, (json) => json);
+    return _toMap(response);
+  }
+
+  /// حذف سجل دفع مصروف ثابت
+  Future<Map<String, dynamic>> deleteFixedExpensePayment(int paymentId) async {
+    final response = await _client.delete(
+        '/accounting/fixed-expenses/payments/$paymentId', (json) => json);
+    return _toMap(response);
+  }
 }

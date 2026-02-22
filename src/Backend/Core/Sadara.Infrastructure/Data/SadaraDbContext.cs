@@ -77,6 +77,12 @@ public class SadaraDbContext : DbContext
     // ==================== Attendance & Work Centers (الحضور والمراكز) ====================
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<WorkCenter> WorkCenters => Set<WorkCenter>();
+    public DbSet<AttendanceAuditLog> AttendanceAuditLogs => Set<AttendanceAuditLog>();
+    public DbSet<WorkSchedule> WorkSchedules => Set<WorkSchedule>();
+
+    // ==================== Leave Management (نظام الإجازات) ====================
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
 
     // ==================== ISP Data (بيانات مشتركي الإنترنت) ====================
     public DbSet<ISPSubscriber> ISPSubscribers => Set<ISPSubscriber>();
@@ -89,12 +95,20 @@ public class SadaraDbContext : DbContext
     public DbSet<CashBox> CashBoxes => Set<CashBox>();
     public DbSet<CashTransaction> CashTransactions => Set<CashTransaction>();
     public DbSet<EmployeeSalary> EmployeeSalaries => Set<EmployeeSalary>();
+    public DbSet<SalaryPolicy> SalaryPolicies => Set<SalaryPolicy>();
     public DbSet<TechnicianCollection> TechnicianCollections => Set<TechnicianCollection>();
     public DbSet<TechnicianTransaction> TechnicianTransactions => Set<TechnicianTransaction>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<EmployeeDeductionBonus> EmployeeDeductionBonuses => Set<EmployeeDeductionBonus>();
+    public DbSet<FixedExpense> FixedExpenses => Set<FixedExpense>();
+    public DbSet<FixedExpensePayment> FixedExpensePayments => Set<FixedExpensePayment>();
 
     // ==================== Task Audit (تدقيق المهام) ====================
     public DbSet<TaskAudit> TaskAudits => Set<TaskAudit>();
+
+    // ==================== Departments (أقسام الشركة ومهامها) ====================
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<DepartmentTask> DepartmentTasks => Set<DepartmentTask>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,7 +125,21 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<AgentTransaction>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<AgentCommissionRate>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<AttendanceRecord>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<AttendanceRecord>()
+            .Property(e => e.Status).HasConversion<int>().HasDefaultValue(AttendanceStatus.Present);
+        modelBuilder.Entity<AttendanceRecord>()
+            .HasOne(e => e.WorkSchedule).WithMany().HasForeignKey(e => e.WorkScheduleId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<WorkCenter>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<AttendanceAuditLog>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<WorkSchedule>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<LeaveRequest>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<LeaveRequest>()
+            .Property(e => e.LeaveType).HasConversion<int>();
+        modelBuilder.Entity<LeaveRequest>()
+            .Property(e => e.Status).HasConversion<int>().HasDefaultValue(LeaveRequestStatus.Pending);
+        modelBuilder.Entity<LeaveBalance>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<LeaveBalance>()
+            .Property(e => e.LeaveType).HasConversion<int>();
         modelBuilder.Entity<ISPSubscriber>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<ZoneStatistic>().HasQueryFilter(x => !x.IsDeleted);
 
@@ -122,10 +150,18 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<CashBox>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<CashTransaction>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<EmployeeSalary>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SalaryPolicy>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<TechnicianCollection>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<TechnicianTransaction>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<Expense>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<EmployeeDeductionBonus>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FixedExpense>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FixedExpensePayment>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<TaskAudit>().HasQueryFilter(x => !x.IsDeleted);
+
+        // Department entities query filters
+        modelBuilder.Entity<Department>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<DepartmentTask>().HasQueryFilter(x => !x.IsDeleted);
 
         // User
         modelBuilder.Entity<User>(entity =>
@@ -375,6 +411,28 @@ public class SadaraDbContext : DbContext
             entity.HasOne(e => e.Company).WithMany(c => c.CompanyServices).HasForeignKey(e => e.CompanyId);
             entity.HasOne(e => e.Service).WithMany(s => s.CompanyServices).HasForeignKey(e => e.ServiceId);
             entity.Property(e => e.CustomSettings).HasColumnType("text"); // JSON
+        });
+
+        // Department (أقسام الشركة)
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => new { e.CompanyId, e.NameAr }).IsUnique();
+            entity.Property(e => e.NameAr).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // DepartmentTask (مهام القسم)
+        modelBuilder.Entity<DepartmentTask>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.DepartmentId);
+            entity.HasIndex(e => new { e.DepartmentId, e.NameAr }).IsUnique();
+            entity.Property(e => e.NameAr).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.HasOne(e => e.Department).WithMany(d => d.Tasks).HasForeignKey(e => e.DepartmentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // User-Company relationship update
@@ -873,9 +931,29 @@ public class SadaraDbContext : DbContext
             entity.Property(e => e.Deductions).HasPrecision(18, 2);
             entity.Property(e => e.Bonuses).HasPrecision(18, 2);
             entity.Property(e => e.NetSalary).HasPrecision(18, 2);
+            entity.Property(e => e.LateDeduction).HasPrecision(18, 2);
+            entity.Property(e => e.AbsentDeduction).HasPrecision(18, 2);
+            entity.Property(e => e.EarlyDepartureDeduction).HasPrecision(18, 2);
+            entity.Property(e => e.UnpaidLeaveDeduction).HasPrecision(18, 2);
+            entity.Property(e => e.OvertimeBonus).HasPrecision(18, 2);
             entity.Property(e => e.Notes).HasColumnType("text");
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.JournalEntry).WithMany().HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SalaryPolicy (سياسة الرواتب)
+        modelBuilder.Entity<SalaryPolicy>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.DeductionPerLateMinute).HasPrecision(18, 4);
+            entity.Property(e => e.MaxLateDeductionPercent).HasPrecision(5, 2);
+            entity.Property(e => e.AbsentDayMultiplier).HasPrecision(5, 2);
+            entity.Property(e => e.DeductionPerEarlyDepartureMinute).HasPrecision(18, 4);
+            entity.Property(e => e.OvertimeHourlyMultiplier).HasPrecision(5, 2);
+            entity.Property(e => e.UnpaidLeaveDayMultiplier).HasPrecision(5, 2);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -917,6 +995,31 @@ public class SadaraDbContext : DbContext
             entity.HasOne(e => e.PaidFromCashBox).WithMany().HasForeignKey(e => e.PaidFromCashBoxId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // EmployeeDeductionBonus (خصومات ومكافآت الموظفين)
+        modelBuilder.Entity<EmployeeDeductionBonus>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.Year, e.Month });
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.Type);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Description).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.Property(e => e.Type).HasConversion<int>();
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.AppliedToSalary).WithMany().HasForeignKey(e => e.AppliedToSalaryId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // EmployeeSalary precision for new fields
+        modelBuilder.Entity<EmployeeSalary>(entity =>
+        {
+            entity.Property(e => e.ManualDeductions).HasPrecision(18, 2);
+            entity.Property(e => e.ManualBonuses).HasPrecision(18, 2);
         });
     }
 

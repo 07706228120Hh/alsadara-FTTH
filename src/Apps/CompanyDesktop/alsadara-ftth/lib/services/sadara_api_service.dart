@@ -147,6 +147,29 @@ class SadaraApiService {
     return _request('DELETE', endpoint);
   }
 
+  /// طلب GET يعيد بيانات ثنائية (bytes) - مثل تصدير CSV
+  Future<List<int>> getBytes(String endpoint) async {
+    try {
+      final uri = Uri.parse('$baseUrl$endpoint');
+      final headers = _getHeaders();
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.bodyBytes;
+      }
+
+      if (response.statusCode == 401) {
+        _jwtToken = null;
+        throw Exception('انتهت صلاحية الجلسة - يرجى تسجيل الدخول مرة أخرى');
+      }
+
+      throw Exception('خطأ في تحميل الملف (${response.statusCode})');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('خطأ في طلب getBytes: $e');
+    }
+  }
+
   /// طلب مع رفع ملف
   Future<Map<String, dynamic>> uploadFile(String endpoint, File file,
       {Map<String, String>? fields}) async {
@@ -233,7 +256,15 @@ class SadaraApiService {
   /// معالجة الاستجابة
   Map<String, dynamic> _handleResponse(http.Response response) {
     try {
-      final data = json.decode(response.body) as Map<String, dynamic>;
+      final decoded = json.decode(response.body);
+
+      // بعض الـ endpoints تعيد List مباشرة بدلاً من Map
+      final Map<String, dynamic> data;
+      if (decoded is List) {
+        data = {'data': decoded};
+      } else {
+        data = decoded as Map<String, dynamic>;
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return data;

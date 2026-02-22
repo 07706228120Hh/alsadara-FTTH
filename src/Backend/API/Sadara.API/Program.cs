@@ -129,8 +129,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CompanyEmployee", policy => 
         policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager", "TechnicalLeader", "Technician", "Employee", "Viewer"));
     
-    // سياسات قديمة للتوافق مع E-commerce
-    options.AddPolicy("Admin", policy => policy.RequireRole("SuperAdmin", "Admin"));
+    // سياسات قديمة للتوافق مع E-commerce + HR
+    options.AddPolicy("Admin", policy => policy.RequireRole("SuperAdmin", "Admin", "CompanyAdmin", "Manager", "TechnicalLeader", "Technician", "Employee"));
     options.AddPolicy("Merchant", policy => policy.RequireRole("SuperAdmin", "Admin", "Merchant"));
 });
 

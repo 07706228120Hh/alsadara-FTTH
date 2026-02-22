@@ -77,6 +77,12 @@ public interface IUnitOfWork : IDisposable
     // Attendance & Work Centers (الحضور والمراكز)
     IRepository<AttendanceRecord, long> AttendanceRecords { get; }
     IRepository<WorkCenter, int> WorkCenters { get; }
+    IRepository<AttendanceAuditLog, long> AttendanceAuditLogs { get; }
+    IRepository<WorkSchedule, int> WorkSchedules { get; }
+
+    // Leave Management (نظام الإجازات)
+    IRepository<LeaveRequest, long> LeaveRequests { get; }
+    IRepository<LeaveBalance, long> LeaveBalances { get; }
 
     // ISP Data (بيانات مشتركي الإنترنت)
     IRepository<ISPSubscriber, long> ISPSubscribers { get; }
@@ -89,12 +95,20 @@ public interface IUnitOfWork : IDisposable
     IRepository<CashBox, Guid> CashBoxes { get; }
     IRepository<CashTransaction, long> CashTransactions { get; }
     IRepository<EmployeeSalary, long> EmployeeSalaries { get; }
+    IRepository<SalaryPolicy, int> SalaryPolicies { get; }
     IRepository<TechnicianCollection, long> TechnicianCollections { get; }
     IRepository<TechnicianTransaction, long> TechnicianTransactions { get; }
     IRepository<Expense, long> Expenses { get; }
+    IRepository<EmployeeDeductionBonus, long> EmployeeDeductionBonuses { get; }
+    IRepository<FixedExpense, long> FixedExpenses { get; }
+    IRepository<FixedExpensePayment, long> FixedExpensePayments { get; }
 
     // Task Audit (تدقيق المهام)
     IRepository<TaskAudit, long> TaskAudits { get; }
+
+    // Departments (الأقسام ومهامها)
+    IRepository<Department, int> Departments { get; }
+    IRepository<DepartmentTask, int> DepartmentTasks { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);

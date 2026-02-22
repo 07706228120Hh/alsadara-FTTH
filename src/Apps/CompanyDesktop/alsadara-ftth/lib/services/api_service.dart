@@ -159,4 +159,22 @@ class ApiService {
       throw Exception('خطأ في الطلب المخصص: $e');
     }
   }
+
+  /// تحميل ملف كـ bytes (لتصدير CSV)
+  Future<List<int>> getBytes(String endpoint) async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        '$baseUrl$endpoint',
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.bodyBytes;
+      } else {
+        throw Exception('خطأ في التحميل: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('خطأ في تحميل الملف: $e');
+    }
+  }
 }

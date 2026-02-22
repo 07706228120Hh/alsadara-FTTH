@@ -283,9 +283,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
   }
 
   String _formatCurrency(double v) {
-    final formatted = v.abs().toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return '$formatted د.ع';
+    return '${v.abs().round()} د.ع';
   }
 
   String _formatDate(String raw) {

@@ -199,8 +199,8 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
 
   String _formatCurrency(dynamic value) {
     if (value == null) return '0';
-    double amount = (value is int) ? value.toDouble() : (value as double);
-    return NumberFormat('#,##0').format(amount);
+    final amount = (value is int) ? value : (value as double).round();
+    return amount.toString();
   }
 
   // حساب المجموع الكلي لجميع المبالغ
@@ -877,7 +877,8 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                 width: 1.5), // حدود أفتح للتباين مع الخلفية البيضاء
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15), // تقليل قوة الظل قليلاً
+                color: Colors.black
+                    .withValues(alpha: 0.15), // تقليل قوة الظل قليلاً
                 blurRadius: 8, // تقليل الضبابية
                 offset: const Offset(0, 4), // تقليل الإزاحة
               ),

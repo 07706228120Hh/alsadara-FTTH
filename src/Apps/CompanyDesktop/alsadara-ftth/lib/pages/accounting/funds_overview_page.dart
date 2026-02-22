@@ -492,15 +492,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
 
   String _formatNumber(double v) {
     if (v == 0) return '0';
-    final isNeg = v < 0;
-    final abs = v.abs();
-    final parts = abs.toStringAsFixed(0).split('');
-    final buffer = StringBuffer();
-    for (int i = 0; i < parts.length; i++) {
-      if (i > 0 && (parts.length - i) % 3 == 0) buffer.write(',');
-      buffer.write(parts[i]);
-    }
-    return '${isNeg ? '-' : ''}${buffer.toString()}';
+    return v.round().toString();
   }
 }
 

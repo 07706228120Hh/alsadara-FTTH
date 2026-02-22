@@ -266,9 +266,7 @@ class _SalaryTabState extends State<SalaryTab> {
   }
 
   String _formatCurrency(double v) {
-    final formatted = v.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-    return '$formatted د.ع';
+    return '${v.round()} د.ع';
   }
 
   String _formatDate(String raw) {

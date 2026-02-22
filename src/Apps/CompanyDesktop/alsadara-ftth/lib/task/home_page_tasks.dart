@@ -7,6 +7,8 @@ import '../ftth/tickets/tickets_login_page.dart';
 import 'reports_page.dart';
 import '../services/whatsapp_template_storage.dart';
 import '../pages/settings_page.dart';
+import '../pages/company_settings_page.dart';
+import '../services/vps_auth_service.dart';
 
 class HomePageTasks extends StatefulWidget {
   final String username;
@@ -1906,6 +1908,31 @@ class HomePageTasksState extends State<HomePageTasks> {
                           _showWhatsAppTemplateEditor();
                         },
                         color: Colors.green,
+                      ),
+
+                    // إعدادات الشركة (للمدير فقط)
+                    if (widget.currentUserRole == 'مدير')
+                      _buildDrawerItem(
+                        icon: Icons.business_center,
+                        title: 'إعدادات الشركة',
+                        subtitle: 'عرض معلومات الشركة والاشتراك',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CompanySettingsPage(
+                                companyId:
+                                    VpsAuthService.instance.currentCompanyId,
+                                companyCode:
+                                    VpsAuthService.instance.currentCompanyCode,
+                                currentUserRole: widget.currentUserRole,
+                                currentUsername: widget.username,
+                              ),
+                            ),
+                          );
+                        },
+                        color: Colors.amber,
                       ),
 
                     // خط فاصل

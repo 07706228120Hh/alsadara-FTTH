@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
+import '../../services/attendance_api_service.dart';
 import '../../theme/accounting_theme.dart';
 
 /// صفحة إدارة الرواتب
@@ -223,21 +224,31 @@ class _SalariesPageState extends State<SalariesPage> {
         0, (s, e) => s + ((e['BaseSalary'] ?? 0) as num).toDouble());
     final totalNet = _salaries.fold<double>(
         0, (s, e) => s + ((e['NetSalary'] ?? 0) as num).toDouble());
+    final totalDeductions = _salaries.fold<double>(
+        0, (s, e) => s + ((e['Deductions'] ?? 0) as num).toDouble());
     final paidCount = _salaries.where((s) => s['Status'] == 'Paid').length;
+    final pendingCount =
+        _salaries.where((s) => s['Status'] == 'Pending').length;
 
     return Container(
-      padding: const EdgeInsets.all(12),
-      child: Wrap(
-        spacing: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
         children: [
-          _summaryChip(
-              'عدد الموظفين', '${_salaries.length}', AccountingTheme.info),
-          _summaryChip(
-              'إجمالي الأساسي', _fmt(totalBase), AccountingTheme.accent),
-          _summaryChip(
-              'إجمالي الصافي', _fmt(totalNet), AccountingTheme.success),
-          _summaryChip('مدفوع', '$paidCount / ${_salaries.length}',
-              AccountingTheme.neonGreen),
+          Expanded(
+              child: _summaryChip(
+                  'إجمالي صافي', _fmt(totalNet), const Color(0xFF2196F3))),
+          const SizedBox(width: 8),
+          Expanded(
+              child: _summaryChip(
+                  'الخصومات', _fmt(totalDeductions), AccountingTheme.danger)),
+          const SizedBox(width: 8),
+          Expanded(
+              child: _summaryChip(
+                  'مصروفة', '$paidCount', const Color(0xFF4CAF50))),
+          const SizedBox(width: 8),
+          Expanded(
+              child: _summaryChip(
+                  'معلقة', '$pendingCount', const Color(0xFFF39C12))),
         ],
       ),
     );
@@ -290,113 +301,243 @@ class _SalariesPageState extends State<SalariesPage> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _salaries.length,
-      itemBuilder: (_, i) {
-        final s = _salaries[i];
-        final status = s['Status'] ?? 'Pending';
-        final statusColor = AccountingTheme.salaryStatusColors[status] ??
-            AccountingTheme.textMuted;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: SizedBox(
+        width: double.infinity,
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
+          dataRowColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.hovered)) {
+              return const Color(0xFF1E293B).withValues(alpha: 0.5);
+            }
+            return AccountingTheme.bgCard;
+          }),
+          border: TableBorder.all(
+              color: AccountingTheme.borderColor.withValues(alpha: 0.3),
+              width: 0.5),
+          columnSpacing: 12,
+          horizontalMargin: 12,
+          headingRowHeight: 42,
+          dataRowMinHeight: 40,
+          dataRowMaxHeight: 44,
+          showCheckboxColumn: false,
+          columns: const [
+            DataColumn(
+                label: Text('الموظف',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('الأساسي',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('البدلات',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('المكافآت',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('الخصومات',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('الصافي',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                label: Text('الحالة',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('أيام حضور',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('غياب',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('خصم تأخير',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('خصم غياب',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('مكافأة إضافي',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('أجر الأيام',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+          ],
+          rows: _salaries.map((s) {
+            final status = s['Status'] ?? 'Pending';
+            final statusColor = AccountingTheme.salaryStatusColors[status] ??
+                AccountingTheme.textMuted;
+            final attendanceDays = (s['AttendanceDays'] ?? 0) as num;
+            final expectedWorkDays = (s['ExpectedWorkDays'] ?? 26) as num;
+            final baseSalary = (s['BaseSalary'] ?? 0) as num;
+            final dailyWage =
+                expectedWorkDays > 0 ? baseSalary / expectedWorkDays : 0;
+            final earnedByDays = (dailyWage * attendanceDays.toDouble());
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              // اسم الموظف
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      s['EmployeeName'] ?? s['UserId'] ?? '',
-                      style: const TextStyle(
-                          color: AccountingTheme.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    ),
-                    if (s['Notes'] != null && s['Notes'].toString().isNotEmpty)
-                      Text(s['Notes'],
-                          style: const TextStyle(
-                              color: AccountingTheme.textMuted, fontSize: 11)),
-                  ],
-                ),
-              ),
-              // الأساسي
-              _salaryColumn(
-                  'الأساسي', s['BaseSalary'], AccountingTheme.textMuted),
-              // البدلات
-              _salaryColumn('بدلات', s['Allowances'], AccountingTheme.accent),
-              // الخصومات
-              _salaryColumn('خصومات', s['Deductions'], AccountingTheme.danger),
-              // المكافآت
-              _salaryColumn('مكافآت', s['Bonuses'], AccountingTheme.info),
-              // الصافي
-              _salaryColumn('الصافي', s['NetSalary'], AccountingTheme.accent),
-              const SizedBox(width: 8),
-              // الحالة
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _statusLabels[status] ?? status,
-                  style: TextStyle(
-                      color: statusColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // أزرار
-              if (status == 'Pending') ...[
-                IconButton(
-                  icon: const Icon(Icons.edit,
-                      color: AccountingTheme.textMuted, size: 18),
-                  onPressed: () => _showEditDialog(s),
-                  tooltip: 'تعديل',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: AccountingTheme.danger, size: 18),
-                  onPressed: () => _confirmDeleteSalary(s),
-                  tooltip: 'حذف',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.payment,
-                      color: AccountingTheme.success, size: 18),
-                  onPressed: () => _paySalary(s),
-                  tooltip: 'صرف',
-                ),
+            return DataRow(
+              onSelectChanged: (_) => _showAttendanceDetail(s),
+              cells: [
+                DataCell(Text(
+                  s['EmployeeName'] ?? s['UserName'] ?? s['UserId'] ?? '',
+                  style: const TextStyle(
+                      color: AccountingTheme.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12),
+                )),
+                DataCell(Text(_fmt(s['BaseSalary']),
+                    style: const TextStyle(
+                        color: AccountingTheme.textSecondary, fontSize: 12))),
+                DataCell(Text(_fmt(s['Allowances']),
+                    style: const TextStyle(
+                        color: AccountingTheme.textSecondary, fontSize: 12))),
+                DataCell(Text(_fmt(s['Bonuses']),
+                    style: const TextStyle(
+                        color: AccountingTheme.info, fontSize: 12))),
+                DataCell(Text(_fmt(s['Deductions']),
+                    style: const TextStyle(
+                        color: AccountingTheme.danger, fontSize: 12))),
+                DataCell(Text(_fmt(s['NetSalary']),
+                    style: const TextStyle(
+                        color: AccountingTheme.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+                DataCell(Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _statusLabels[status] ?? status,
+                    style: TextStyle(
+                        color: statusColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold),
+                  ),
+                )),
+                DataCell(Text('${s['AttendanceDays'] ?? 0}',
+                    style: const TextStyle(
+                        color: AccountingTheme.textSecondary, fontSize: 12))),
+                DataCell(Text('${s['AbsentDays'] ?? 0}',
+                    style: const TextStyle(
+                        color: AccountingTheme.textSecondary, fontSize: 12))),
+                DataCell(Text(_fmt(s['LateDeduction']),
+                    style: const TextStyle(
+                        color: AccountingTheme.danger, fontSize: 12))),
+                DataCell(Text(_fmt(s['AbsentDeduction']),
+                    style: const TextStyle(
+                        color: AccountingTheme.danger, fontSize: 12))),
+                DataCell(Text(_fmt(s['OvertimeBonus']),
+                    style: const TextStyle(
+                        color: AccountingTheme.success, fontSize: 12))),
+                DataCell(Text(_fmt(earnedByDays),
+                    style: const TextStyle(
+                        color: Color(0xFF2196F3),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
               ],
-            ],
-          ),
-        );
-      },
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
-  Widget _salaryColumn(String label, dynamic value, Color color) {
-    return SizedBox(
-      width: 80,
-      child: Column(
-        children: [
-          Text(label,
-              style: const TextStyle(
-                  color: AccountingTheme.textMuted, fontSize: 10)),
-          Text(_fmt(value),
-              style: TextStyle(
-                  color: color, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
+  /// عرض تفاصيل حضور الموظف عند الضغط على الصف
+  Future<void> _showAttendanceDetail(dynamic salary) async {
+    final userId = salary['UserId'];
+    if (userId == null) return;
+
+    final employeeName =
+        salary['EmployeeName'] ?? salary['UserName'] ?? salary['UserId'] ?? '';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AccountingTheme.bgCard,
+          title: Row(
+            children: [
+              const Icon(Icons.schedule, color: AccountingTheme.info, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'سجل حضور: $employeeName - ${_months[_selectedMonth - 1]} $_selectedYear',
+                  style: const TextStyle(
+                      color: AccountingTheme.textPrimary, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 900,
+            height: 500,
+            child: _AttendanceDetailWidget(
+              userId: userId.toString(),
+              month: _selectedMonth,
+              year: _selectedYear,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إغلاق',
+                  style: TextStyle(color: AccountingTheme.textMuted)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -658,5 +799,220 @@ class _SalariesPageState extends State<SalariesPage> {
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (m) => '${m[1]},',
         );
+  }
+}
+
+/// ويدجت تفاصيل حضور الموظف (يُستخدم داخل Dialog)
+class _AttendanceDetailWidget extends StatefulWidget {
+  final String userId;
+  final int month;
+  final int year;
+
+  const _AttendanceDetailWidget({
+    required this.userId,
+    required this.month,
+    required this.year,
+  });
+
+  @override
+  State<_AttendanceDetailWidget> createState() =>
+      _AttendanceDetailWidgetState();
+}
+
+class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
+  bool _loading = true;
+  String? _error;
+  List<dynamic> _records = [];
+
+  final _statusAr = {
+    'Present': 'حاضر',
+    'Late': 'متأخر',
+    'Absent': 'غائب',
+    'HalfDay': 'نصف يوم',
+    'EarlyDeparture': 'مغادرة مبكرة',
+    'OnLeave': 'إجازة',
+    'Holiday': 'عطلة',
+  };
+
+  final _statusColors = {
+    'Present': const Color(0xFF4CAF50),
+    'Late': const Color(0xFFF39C12),
+    'Absent': const Color(0xFFE74C3C),
+    'HalfDay': const Color(0xFF9B59B6),
+    'EarlyDeparture': const Color(0xFFE67E22),
+    'OnLeave': const Color(0xFF3498DB),
+    'Holiday': const Color(0xFF1ABC9C),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final data = await AttendanceApiService.instance.getMonthlyAttendance(
+        userId: widget.userId,
+        month: widget.month,
+        year: widget.year,
+      );
+      _records = (data['records'] is List) ? data['records'] : [];
+    } catch (e) {
+      _error = 'خطأ في جلب البيانات: $e';
+    }
+    setState(() {
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(
+          child: CircularProgressIndicator(color: AccountingTheme.neonGreen));
+    }
+    if (_error != null) {
+      return Center(
+          child: Text(_error!,
+              style: const TextStyle(color: AccountingTheme.danger)));
+    }
+    if (_records.isEmpty) {
+      return const Center(
+          child: Text('لا توجد سجلات حضور لهذا الشهر',
+              style: TextStyle(color: AccountingTheme.textMuted)));
+    }
+
+    return SingleChildScrollView(
+      child: SizedBox(
+        width: double.infinity,
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
+          dataRowColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.hovered)) {
+              return const Color(0xFF1E293B).withValues(alpha: 0.3);
+            }
+            return AccountingTheme.bgCard;
+          }),
+          border: TableBorder.all(
+              color: AccountingTheme.borderColor.withValues(alpha: 0.3),
+              width: 0.5),
+          columnSpacing: 16,
+          horizontalMargin: 10,
+          headingRowHeight: 38,
+          dataRowMinHeight: 34,
+          dataRowMaxHeight: 38,
+          columns: const [
+            DataColumn(
+                label: Text('التاريخ',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                label: Text('وقت الحضور',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                label: Text('وقت الانصراف',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                label: Text('الحالة',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('ساعات العمل',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('تأخير (دقيقة)',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                numeric: true,
+                label: Text('إضافي (دقيقة)',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+            DataColumn(
+                label: Text('ملاحظات',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12))),
+          ],
+          rows: _records.map((r) {
+            final status = r['status'] ?? '';
+            final color = _statusColors[status] ?? AccountingTheme.textMuted;
+            final workedMin = (r['workedMinutes'] ?? 0) as num;
+            final hours = (workedMin / 60).toStringAsFixed(1);
+
+            return DataRow(cells: [
+              DataCell(Text(r['date'] ?? '',
+                  style: const TextStyle(
+                      color: AccountingTheme.textPrimary, fontSize: 12))),
+              DataCell(Text(r['checkInTime'] ?? '-',
+                  style: const TextStyle(
+                      color: AccountingTheme.success,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12))),
+              DataCell(Text(r['checkOutTime'] ?? '-',
+                  style: const TextStyle(
+                      color: AccountingTheme.danger,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12))),
+              DataCell(Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _statusAr[status] ?? status,
+                  style: TextStyle(
+                      color: color, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              )),
+              DataCell(Text(hours,
+                  style: const TextStyle(
+                      color: AccountingTheme.textSecondary, fontSize: 12))),
+              DataCell(Text('${r['lateMinutes'] ?? 0}',
+                  style: TextStyle(
+                      color: (r['lateMinutes'] ?? 0) > 0
+                          ? AccountingTheme.danger
+                          : AccountingTheme.textMuted,
+                      fontSize: 12))),
+              DataCell(Text('${r['overtimeMinutes'] ?? 0}',
+                  style: TextStyle(
+                      color: (r['overtimeMinutes'] ?? 0) > 0
+                          ? AccountingTheme.success
+                          : AccountingTheme.textMuted,
+                      fontSize: 12))),
+              DataCell(Text(r['notes'] ?? '',
+                  style: const TextStyle(
+                      color: AccountingTheme.textMuted, fontSize: 11))),
+            ]);
+          }).toList(),
+        ),
+      ),
+    );
   }
 }

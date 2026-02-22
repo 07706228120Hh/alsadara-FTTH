@@ -262,6 +262,176 @@ public class EmployeeSalary : BaseEntity<long>
     /// <summary>الشركة</summary>
     public Guid CompanyId { get; set; }
     public Company? Company { get; set; }
+
+    // ========== تفاصيل الحضور (تُحسب تلقائياً) ==========
+
+    /// <summary>إجمالي أيام الحضور</summary>
+    public int AttendanceDays { get; set; }
+
+    /// <summary>إجمالي أيام الغياب</summary>
+    public int AbsentDays { get; set; }
+
+    /// <summary>إجمالي دقائق التأخير</summary>
+    public int TotalLateMinutes { get; set; }
+
+    /// <summary>إجمالي دقائق الساعات الإضافية</summary>
+    public int TotalOvertimeMinutes { get; set; }
+
+    /// <summary>إجمالي دقائق المغادرة المبكرة</summary>
+    public int TotalEarlyDepartureMinutes { get; set; }
+
+    /// <summary>أيام الإجازات بدون راتب</summary>
+    public int UnpaidLeaveDays { get; set; }
+
+    /// <summary>أيام الإجازات المدفوعة</summary>
+    public int PaidLeaveDays { get; set; }
+
+    /// <summary>خصم التأخير</summary>
+    public decimal LateDeduction { get; set; }
+
+    /// <summary>خصم الغياب</summary>
+    public decimal AbsentDeduction { get; set; }
+
+    /// <summary>خصم المغادرة المبكرة</summary>
+    public decimal EarlyDepartureDeduction { get; set; }
+
+    /// <summary>خصم الإجازات بدون راتب</summary>
+    public decimal UnpaidLeaveDeduction { get; set; }
+
+    /// <summary>مكافأة الساعات الإضافية</summary>
+    public decimal OvertimeBonus { get; set; }
+
+    /// <summary>أيام العمل المتوقعة في الشهر</summary>
+    public int ExpectedWorkDays { get; set; }
+
+    /// <summary>خصومات يدوية (من صفحة الخصومات والمكافآت)</summary>
+    public decimal ManualDeductions { get; set; } = 0;
+
+    /// <summary>مكافآت يدوية (من صفحة الخصومات والمكافآت)</summary>
+    public decimal ManualBonuses { get; set; } = 0;
+}
+
+/// <summary>
+/// سياسة الرواتب - تحدد قواعد الخصم والمكافأة لكل شركة
+/// </summary>
+public class SalaryPolicy : BaseEntity<int>
+{
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+
+    /// <summary>اسم السياسة</summary>
+    public string Name { get; set; } = "سياسة افتراضية";
+
+    /// <summary>هل هي السياسة الافتراضية</summary>
+    public bool IsDefault { get; set; } = true;
+
+    // ========== قواعد خصم التأخير ==========
+
+    /// <summary>خصم لكل دقيقة تأخير (بالعملة)</summary>
+    public decimal DeductionPerLateMinute { get; set; } = 0;
+
+    /// <summary>حد أقصى لخصم التأخير شهرياً (%)</summary>
+    public decimal MaxLateDeductionPercent { get; set; } = 25;
+
+    // ========== قواعد خصم الغياب ==========
+
+    /// <summary>خصم يوم غياب = راتب يومي × هذا المعامل</summary>
+    public decimal AbsentDayMultiplier { get; set; } = 1;
+
+    // ========== قواعد المغادرة المبكرة ==========
+
+    /// <summary>خصم لكل دقيقة مغادرة مبكرة</summary>
+    public decimal DeductionPerEarlyDepartureMinute { get; set; } = 0;
+
+    // ========== قواعد الساعات الإضافية ==========
+
+    /// <summary>معامل أجر الساعة الإضافية (1.5 = ساعة ونصف)</summary>
+    public decimal OvertimeHourlyMultiplier { get; set; } = 1.5m;
+
+    /// <summary>حد أقصى ساعات إضافية شهرياً</summary>
+    public int MaxOvertimeHoursPerMonth { get; set; } = 40;
+
+    // ========== قواعد الإجازات بدون راتب ==========
+
+    /// <summary>خصم يوم إجازة بدون راتب = راتب يومي × هذا المعامل</summary>
+    public decimal UnpaidLeaveDayMultiplier { get; set; } = 1;
+
+    /// <summary>أيام العمل المتوقعة شهرياً (لحساب الراتب اليومي)</summary>
+    public int WorkDaysPerMonth { get; set; } = 26;
+
+    /// <summary>مفعّل</summary>
+    public bool IsActive { get; set; } = true;
+}
+
+// ==================== خصومات ومكافآت الموظفين - Employee Deductions & Bonuses ====================
+
+/// <summary>
+/// نوع التعديل اليدوي على الراتب
+/// </summary>
+public enum AdjustmentType
+{
+    /// <summary>خصم</summary>
+    Deduction = 0,
+
+    /// <summary>مكافأة</summary>
+    Bonus = 1,
+
+    /// <summary>بدل</summary>
+    Allowance = 2
+}
+
+/// <summary>
+/// خصم أو مكافأة يدوية للموظف
+/// تُضاف يدوياً وتُحتسب تلقائياً عند إنشاء مسيّر الرواتب
+/// </summary>
+public class EmployeeDeductionBonus : BaseEntity<long>
+{
+    /// <summary>الموظف المستهدف</summary>
+    public Guid UserId { get; set; }
+    public User? User { get; set; }
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+
+    /// <summary>نوع التعديل (خصم / مكافأة / بدل)</summary>
+    public AdjustmentType Type { get; set; }
+
+    /// <summary>الفئة (سلفة، غرامة، مكافأة أداء، بدل نقل...)</summary>
+    public string Category { get; set; } = string.Empty;
+
+    /// <summary>المبلغ (دائماً موجب)</summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>الشهر الذي تُطبّق فيه (1-12)</summary>
+    public int Month { get; set; }
+
+    /// <summary>السنة التي تُطبّق فيها</summary>
+    public int Year { get; set; }
+
+    /// <summary>وصف/سبب التعديل</summary>
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>ملاحظات إضافية</summary>
+    public string? Notes { get; set; }
+
+    /// <summary>هل تم تطبيقها على الراتب</summary>
+    public bool IsApplied { get; set; } = false;
+
+    /// <summary>معرّف سجل الراتب الذي طُبّقت عليه</summary>
+    public long? AppliedToSalaryId { get; set; }
+    public EmployeeSalary? AppliedToSalary { get; set; }
+
+    /// <summary>المستخدم الذي أنشأ التعديل</summary>
+    public Guid CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
+
+    /// <summary>هل هو تعديل متكرر شهرياً</summary>
+    public bool IsRecurring { get; set; } = false;
+
+    /// <summary>مفعّل</summary>
+    public bool IsActive { get; set; } = true;
 }
 
 /// <summary>
@@ -471,4 +641,88 @@ public class TechnicianTransaction : BaseEntity<long>
 
     /// <summary>الشركة</summary>
     public virtual Company? Company { get; set; }
+}
+
+// ==================== المصاريف الثابتة الشهرية - Fixed Monthly Expenses ====================
+
+/// <summary>
+/// فئة المصروف الثابت
+/// </summary>
+public enum FixedExpenseCategory
+{
+    /// <summary>إيجار مكتب</summary>
+    OfficeRent = 0,
+    /// <summary>تكلفة مولد كهرباء</summary>
+    GeneratorCost = 1,
+    /// <summary>إنترنت</summary>
+    Internet = 2,
+    /// <summary>كهرباء</summary>
+    Electricity = 3,
+    /// <summary>ماء</summary>
+    Water = 4,
+    /// <summary>أخرى</summary>
+    Other = 99
+}
+
+/// <summary>
+/// المصاريف الثابتة الشهرية (إيجارات، مولد، خدمات)
+/// يتم تسجيلها شهرياً كالتزامات مستحقة وعند الدفع تُخصم
+/// </summary>
+public class FixedExpense : BaseEntity<long>
+{
+    /// <summary>اسم المصروف (مثل: إيجار المكتب الرئيسي)</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>الفئة</summary>
+    public FixedExpenseCategory Category { get; set; }
+
+    /// <summary>المبلغ الشهري</summary>
+    public decimal MonthlyAmount { get; set; }
+
+    /// <summary>الوصف / ملاحظات</summary>
+    public string? Description { get; set; }
+
+    /// <summary>نشط (يُحسب ضمن الالتزامات الشهرية)</summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+}
+
+/// <summary>
+/// سجل دفع مصروف ثابت شهري
+/// كل شهر يُنشأ سجل لكل مصروف ثابت (مستحق أو مدفوع)
+/// </summary>
+public class FixedExpensePayment : BaseEntity<long>
+{
+    /// <summary>المصروف الثابت</summary>
+    public long FixedExpenseId { get; set; }
+    public FixedExpense? FixedExpense { get; set; }
+
+    /// <summary>الشهر</summary>
+    public int Month { get; set; }
+
+    /// <summary>السنة</summary>
+    public int Year { get; set; }
+
+    /// <summary>المبلغ المستحق</summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>هل تم الدفع</summary>
+    public bool IsPaid { get; set; } = false;
+
+    /// <summary>تاريخ الدفع</summary>
+    public DateTime? PaidAt { get; set; }
+
+    /// <summary>القيد المحاسبي المرتبط بالدفع</summary>
+    public Guid? JournalEntryId { get; set; }
+    public JournalEntry? JournalEntry { get; set; }
+
+    /// <summary>ملاحظات</summary>
+    public string? Notes { get; set; }
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
 }

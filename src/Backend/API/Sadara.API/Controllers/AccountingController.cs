@@ -81,20 +81,74 @@ public class AccountingController : ControllerBase
             var allAccounts = await query.OrderBy(a => a.Code).ToListAsync();
             var rootAccounts = allAccounts.Where(a => a.ParentAccountId == null).ToList();
 
+            // ── حساب التزامات المصاريف الثابتة غير المدفوعة ──
+            var fixedExpenseBalances = new Dictionary<string, decimal>(); // accountCode → amount
+            try
+            {
+                var feQuery = _unitOfWork.FixedExpensePayments.AsQueryable();
+                if (companyId.HasValue)
+                    feQuery = feQuery.Where(p => p.CompanyId == companyId);
+
+                var unpaidPayments = await feQuery
+                    .Where(p => !p.IsPaid)
+                    .Join(
+                        _unitOfWork.FixedExpenses.AsQueryable(),
+                        p => p.FixedExpenseId,
+                        fe => fe.Id,
+                        (p, fe) => new { fe.Category, p.Amount }
+                    )
+                    .ToListAsync();
+
+                foreach (var p in unpaidPayments)
+                {
+                    var code = p.Category switch
+                    {
+                        FixedExpenseCategory.OfficeRent => "2210",
+                        FixedExpenseCategory.GeneratorCost => "2220",
+                        FixedExpenseCategory.Internet => "2230",
+                        FixedExpenseCategory.Electricity => "2240",
+                        FixedExpenseCategory.Water => "2250",
+                        _ => "2260"
+                    };
+                    if (fixedExpenseBalances.ContainsKey(code))
+                        fixedExpenseBalances[code] += p.Amount;
+                    else
+                        fixedExpenseBalances[code] = p.Amount;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not load fixed expense balances for tree");
+            }
+
             // حساب الرصيد التراكمي للشجرة الفرعية
             decimal CalculateSubtreeBalance(Account account, List<Account> all)
             {
                 var children = all.Where(a => a.ParentAccountId == account.Id).ToList();
-                if (!children.Any()) return account.CurrentBalance;
+                if (!children.Any())
+                {
+                    var balance = account.CurrentBalance;
+                    if (fixedExpenseBalances.TryGetValue(account.Code, out var feBalance))
+                        balance += feBalance;
+                    return balance;
+                }
                 return children.Sum(c => CalculateSubtreeBalance(c, all));
             }
 
             object BuildTree(Account account)
             {
                 var children = allAccounts.Where(a => a.ParentAccountId == account.Id).ToList();
-                var subtreeBalance = children.Any()
-                    ? children.Sum(c => CalculateSubtreeBalance(c, allAccounts))
-                    : account.CurrentBalance;
+                decimal subtreeBalance;
+                if (children.Any())
+                {
+                    subtreeBalance = children.Sum(c => CalculateSubtreeBalance(c, allAccounts));
+                }
+                else
+                {
+                    subtreeBalance = account.CurrentBalance;
+                    if (fixedExpenseBalances.TryGetValue(account.Code, out var feBalance))
+                        subtreeBalance += feBalance;
+                }
                 return new
                 {
                     account.Id,
@@ -880,6 +934,7 @@ public class AccountingController : ControllerBase
                     s.Id,
                     s.UserId,
                     UserName = s.User != null ? s.User.FullName : "",
+                    EmployeeName = s.User != null ? s.User.FullName : "",
                     s.Month,
                     s.Year,
                     s.BaseSalary,
@@ -891,7 +946,23 @@ public class AccountingController : ControllerBase
                     s.PaidAt,
                     s.JournalEntryId,
                     s.Notes,
-                    s.CompanyId
+                    s.CompanyId,
+                    // تفاصيل الحضور
+                    s.AttendanceDays,
+                    s.AbsentDays,
+                    s.TotalLateMinutes,
+                    s.TotalOvertimeMinutes,
+                    s.TotalEarlyDepartureMinutes,
+                    s.UnpaidLeaveDays,
+                    s.PaidLeaveDays,
+                    s.LateDeduction,
+                    s.AbsentDeduction,
+                    s.EarlyDepartureDeduction,
+                    s.UnpaidLeaveDeduction,
+                    s.OvertimeBonus,
+                    s.ExpectedWorkDays,
+                    s.ManualDeductions,
+                    s.ManualBonuses
                 }).ToListAsync();
 
             var summary = new
@@ -901,6 +972,8 @@ public class AccountingController : ControllerBase
                 TotalDeductions = salaries.Sum(s => s.Deductions),
                 TotalBonuses = salaries.Sum(s => s.Bonuses),
                 TotalNet = salaries.Sum(s => s.NetSalary),
+                TotalManualDeductions = salaries.Sum(s => s.ManualDeductions),
+                TotalManualBonuses = salaries.Sum(s => s.ManualBonuses),
                 Count = salaries.Count
             };
 
@@ -921,11 +994,23 @@ public class AccountingController : ControllerBase
     {
         try
         {
-            // التحقق من عدم وجود مسيّر مسبق
-            var exists = await _unitOfWork.EmployeeSalaries.AnyAsync(
+            // التحقق من عدم وجود مسيّر مسبق (يشمل المحذوفات الناعمة لتجنب تعارض الفهرس الفريد)
+            var existsActive = await _unitOfWork.EmployeeSalaries.AnyAsync(
                 s => s.CompanyId == dto.CompanyId && s.Month == dto.Month && s.Year == dto.Year);
-            if (exists)
+            if (existsActive)
                 return BadRequest(new { success = false, message = "مسيّر الرواتب لهذا الشهر موجود مسبقاً" });
+
+            // حذف السجلات المحذوفة ناعماً (soft-deleted) لتجنب تعارض unique constraint
+            var softDeletedSalaries = await _unitOfWork.EmployeeSalaries.AsQueryable()
+                .IgnoreQueryFilters()
+                .Where(s => s.CompanyId == dto.CompanyId && s.Month == dto.Month && s.Year == dto.Year && s.IsDeleted)
+                .ToListAsync();
+            if (softDeletedSalaries.Any())
+            {
+                foreach (var sd in softDeletedSalaries)
+                    _unitOfWork.EmployeeSalaries.Delete(sd);
+                await _unitOfWork.SaveChangesAsync();
+            }
 
             // جلب موظفي الشركة الذين لديهم رواتب
             var employees = await _unitOfWork.Users.AsQueryable()
@@ -935,37 +1020,306 @@ public class AccountingController : ControllerBase
             if (!employees.Any())
                 return BadRequest(new { success = false, message = "لا يوجد موظفون بالشركة لهم رواتب محددة" });
 
+            // جلب سياسة الرواتب للشركة
+            var policy = await _unitOfWork.SalaryPolicies.FirstOrDefaultAsync(
+                p => p.CompanyId == dto.CompanyId && p.IsDefault && p.IsActive);
+
+            // حساب نطاق التاريخ للشهر
+            var startDate = new DateTime(dto.Year, dto.Month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
+            // جلب سجلات الحضور للشهر
+            var attendanceRecords = await _unitOfWork.AttendanceRecords.AsQueryable()
+                .Where(a => a.CompanyId == dto.CompanyId
+                    && a.Date >= DateOnly.FromDateTime(startDate)
+                    && a.Date <= DateOnly.FromDateTime(endDate))
+                .ToListAsync();
+
+            // جلب طلبات الإجازة المعتمدة للشهر
+            var leaveRequests = await _unitOfWork.LeaveRequests.AsQueryable()
+                .Where(lr => lr.CompanyId == dto.CompanyId
+                    && lr.Status == LeaveRequestStatus.Approved
+                    && lr.StartDate <= DateOnly.FromDateTime(endDate)
+                    && lr.EndDate >= DateOnly.FromDateTime(startDate))
+                .ToListAsync();
+
+            // جلب الخصومات والمكافآت اليدوية للشهر (غير المتكررة)
+            var manualAdjustments = await _unitOfWork.EmployeeDeductionBonuses.AsQueryable()
+                .Where(a => a.CompanyId == dto.CompanyId
+                    && a.Month == dto.Month && a.Year == dto.Year
+                    && a.IsActive && !a.IsApplied && !a.IsRecurring)
+                .ToListAsync();
+
+            // جلب الخصومات المتكررة النشطة (بغض النظر عن IsApplied)
+            // المتكررة تبقى نشطة وتُنسخ لكل شهر
+            var recurringAdjustments = await _unitOfWork.EmployeeDeductionBonuses.AsQueryable()
+                .Where(a => a.CompanyId == dto.CompanyId
+                    && a.IsRecurring && a.IsActive)
+                .ToListAsync();
+
+            int workDaysPerMonth = policy?.WorkDaysPerMonth ?? 26;
+
+            // === بدء معاملة قاعدة البيانات لضمان التكامل ===
+            await _unitOfWork.BeginTransactionAsync();
+
             var salaries = new List<EmployeeSalary>();
+            var newRecurringCopies = new List<EmployeeDeductionBonus>();
             foreach (var emp in employees)
             {
+                decimal baseSalary = emp.Salary ?? 0;
+                decimal dailySalary = workDaysPerMonth > 0 ? baseSalary / workDaysPerMonth : 0;
+                decimal hourlySalary = dailySalary / 8; // 8 ساعات عمل يومياً
+
+                // سجلات حضور هذا الموظف
+                var empAttendance = attendanceRecords.Where(a => a.UserId == emp.Id).ToList();
+
+                // === معالجة حالات الحضور المختلفة ===
+                // يوم كامل = بصمة دخول + بصمة خروج مع حالة Present أو Late
+                int fullDays = empAttendance.Count(a =>
+                    (a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late)
+                    && a.CheckInTime.HasValue && a.CheckOutTime.HasValue);
+
+                // نصف يوم = حالة HalfDay مع بصمة دخول على الأقل
+                int halfDays = empAttendance.Count(a =>
+                    a.Status == AttendanceStatus.HalfDay && a.CheckInTime.HasValue);
+
+                // انصراف مبكر = حالة EarlyDeparture مع بصمة دخول وخروج (يحسب يوم كامل)
+                int earlyDepartureDays = empAttendance.Count(a =>
+                    a.Status == AttendanceStatus.EarlyDeparture
+                    && a.CheckInTime.HasValue && a.CheckOutTime.HasValue);
+
+                // مجموع أيام الحضور الفعلية (أنصاف الأيام تُحسب 0.5)
+                decimal attendanceDaysDecimal = fullDays + earlyDepartureDays + (halfDays * 0.5m);
+                int attendanceDays = fullDays + earlyDepartureDays + halfDays; // عدد الأيام للعرض
+
+                // أيام الغياب = الغائبون + الذين لم يسجلوا بصمة دخول وخروج
+                int absentDays = empAttendance.Count(a => a.Status == AttendanceStatus.Absent)
+                    + empAttendance.Count(a =>
+                        (a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late)
+                        && (!a.CheckInTime.HasValue || !a.CheckOutTime.HasValue))
+                    + empAttendance.Count(a =>
+                        a.Status == AttendanceStatus.HalfDay && !a.CheckInTime.HasValue)
+                    + empAttendance.Count(a =>
+                        a.Status == AttendanceStatus.EarlyDeparture
+                        && (!a.CheckInTime.HasValue || !a.CheckOutTime.HasValue));
+
+                int totalLateMinutes = empAttendance.Sum(a => a.LateMinutes ?? 0);
+                int totalOvertimeMinutes = empAttendance.Sum(a => a.OvertimeMinutes ?? 0);
+                int totalEarlyDepartureMinutes = empAttendance.Sum(a => a.EarlyDepartureMinutes ?? 0);
+
+                // === الإجازات - حساب الأيام الفعلية ضمن الشهر فقط ===
+                var empLeaves = leaveRequests.Where(lr => lr.UserId == emp.Id).ToList();
+                int unpaidLeaveDays = 0;
+                int paidLeaveDays = 0;
+                var monthStartOnly = DateOnly.FromDateTime(startDate);
+                var monthEndOnly = DateOnly.FromDateTime(endDate);
+                foreach (var leave in empLeaves)
+                {
+                    // حساب الأيام المتداخلة مع الشهر فقط
+                    var effectiveStart = leave.StartDate < monthStartOnly ? monthStartOnly : leave.StartDate;
+                    var effectiveEnd = leave.EndDate > monthEndOnly ? monthEndOnly : leave.EndDate;
+                    int daysInMonth = effectiveEnd.DayNumber - effectiveStart.DayNumber + 1;
+                    if (daysInMonth < 0) daysInMonth = 0;
+
+                    if (leave.LeaveType == LeaveType.Unpaid)
+                        unpaidLeaveDays += daysInMonth;
+                    else
+                        paidLeaveDays += daysInMonth;
+                }
+
+                // ========== النظام الجديد: الراتب مبني على أيام الحضور الفعلية ==========
+                // الراتب المستحق = أيام الحضور الفعلية × الأجر اليومي (بدلاً من الراتب الكامل - الخصومات)
+                // أنصاف الأيام تُحسب 0.5 يوم
+                // الإجازات المدفوعة تُحسب أيام حضور كاملة
+                decimal earnedSalary = (attendanceDaysDecimal + paidLeaveDays) * dailySalary;
+
+                // ========== حساب الخصومات (من الراتب المكتسب وليس الراتب الكامل) ==========
+                decimal lateDeduction = 0;
+                decimal absentDeduction = 0; // لم يعد مستخدماً - الغياب لا يُحسب أصلاً
+                decimal earlyDepartureDeduction = 0;
+                decimal unpaidLeaveDeduction = 0; // لم يعد مستخدماً - الإجازات غير المدفوعة لا تُحسب أصلاً
+                decimal overtimeBonus = 0;
+                decimal halfDayDeduction = 0; // لم يعد مستخدماً - أنصاف الأيام محسوبة كـ 0.5
+
+                if (policy != null)
+                {
+                    // خصم التأخير (من دقائق التأخير فقط)
+                    lateDeduction = totalLateMinutes * policy.DeductionPerLateMinute;
+                    decimal maxLateDeduction = earnedSalary * (policy.MaxLateDeductionPercent / 100m);
+                    if (lateDeduction > maxLateDeduction) lateDeduction = maxLateDeduction;
+
+                    // خصم المغادرة المبكرة (من دقائق الانصراف المبكر)
+                    earlyDepartureDeduction = totalEarlyDepartureMinutes * policy.DeductionPerEarlyDepartureMinute;
+
+                    // مكافأة الساعات الإضافية
+                    int maxOvertimeMinutes = policy.MaxOvertimeHoursPerMonth * 60;
+                    int effectiveOvertimeMinutes = Math.Min(totalOvertimeMinutes, maxOvertimeMinutes);
+                    overtimeBonus = (effectiveOvertimeMinutes / 60m) * hourlySalary * policy.OvertimeHourlyMultiplier;
+                }
+
+                decimal totalDeductions = lateDeduction + earlyDepartureDeduction;
+                decimal totalBonuses = overtimeBonus;
+                
+                // ========== الخصومات والمكافآت اليدوية ==========
+                var empAdjustments = manualAdjustments.Where(a => a.UserId == emp.Id).ToList();
+
+                // إنشاء نسخ من التعديلات المتكررة لهذا الشهر
+                var empRecurring = recurringAdjustments.Where(a => a.UserId == emp.Id).ToList();
+                var recurringCopiesForEmp = new List<EmployeeDeductionBonus>();
+                foreach (var recurring in empRecurring)
+                {
+                    // التحقق من عدم وجود نسخة مطبقة مسبقاً لهذا الشهر
+                    var alreadyApplied = await _unitOfWork.EmployeeDeductionBonuses.AnyAsync(
+                        a => a.CompanyId == dto.CompanyId && a.UserId == emp.Id
+                            && a.Month == dto.Month && a.Year == dto.Year
+                            && a.IsApplied && a.Category == recurring.Category
+                            && a.Type == recurring.Type && a.Amount == recurring.Amount);
+                    if (alreadyApplied) continue;
+
+                    var copy = new EmployeeDeductionBonus
+                    {
+                        UserId = recurring.UserId,
+                        CompanyId = recurring.CompanyId,
+                        Type = recurring.Type,
+                        Category = recurring.Category,
+                        Amount = recurring.Amount,
+                        Month = dto.Month,
+                        Year = dto.Year,
+                        Description = recurring.Description + " (متكرر)",
+                        Notes = recurring.Notes,
+                        IsRecurring = false, // النسخة ليست متكررة - هي نسخة شهرية
+                        IsActive = true,
+                        IsApplied = false,
+                        CreatedById = recurring.CreatedById
+                    };
+                    recurringCopiesForEmp.Add(copy);
+                    newRecurringCopies.Add(copy);
+                    await _unitOfWork.EmployeeDeductionBonuses.AddAsync(copy);
+                }
+
+                var allAdjustments = empAdjustments.Concat(recurringCopiesForEmp).ToList();
+
+                decimal manualDeductions = allAdjustments
+                    .Where(a => a.Type == AdjustmentType.Deduction).Sum(a => a.Amount);
+                decimal manualBonuses = allAdjustments
+                    .Where(a => a.Type == AdjustmentType.Bonus).Sum(a => a.Amount);
+                decimal manualAllowances = allAdjustments
+                    .Where(a => a.Type == AdjustmentType.Allowance).Sum(a => a.Amount);
+
+                totalDeductions += manualDeductions;
+                totalBonuses += manualBonuses;
+                decimal totalAllowances = manualAllowances;
+
+                // الراتب الصافي = الراتب المكتسب (من الحضور الفعلي) + البدلات + المكافآت - الخصومات
+                decimal netSalary = earnedSalary + totalAllowances + totalBonuses - totalDeductions;
+                if (netSalary < 0) netSalary = 0;
+
                 var salary = new EmployeeSalary
                 {
                     UserId = emp.Id,
                     Month = dto.Month,
                     Year = dto.Year,
-                    BaseSalary = emp.Salary ?? 0,
-                    Allowances = 0,
-                    Deductions = 0,
-                    Bonuses = 0,
-                    NetSalary = emp.Salary ?? 0,
+                    BaseSalary = baseSalary,
+                    Allowances = totalAllowances,
+                    Deductions = totalDeductions,
+                    Bonuses = totalBonuses,
+                    NetSalary = netSalary,
                     Status = SalaryStatus.Pending,
-                    CompanyId = dto.CompanyId
+                    CompanyId = dto.CompanyId,
+                    // تفاصيل الحضور
+                    AttendanceDays = attendanceDays,
+                    AbsentDays = absentDays,
+                    TotalLateMinutes = totalLateMinutes,
+                    TotalOvertimeMinutes = totalOvertimeMinutes,
+                    TotalEarlyDepartureMinutes = totalEarlyDepartureMinutes,
+                    UnpaidLeaveDays = unpaidLeaveDays,
+                    PaidLeaveDays = paidLeaveDays,
+                    LateDeduction = lateDeduction,
+                    AbsentDeduction = absentDeduction,
+                    EarlyDepartureDeduction = earlyDepartureDeduction,
+                    UnpaidLeaveDeduction = unpaidLeaveDeduction,
+                    OvertimeBonus = overtimeBonus,
+                    ExpectedWorkDays = workDaysPerMonth,
+                    ManualDeductions = manualDeductions,
+                    ManualBonuses = manualBonuses
                 };
                 salaries.Add(salary);
                 await _unitOfWork.EmployeeSalaries.AddAsync(salary);
             }
 
+            // === حفظ الرواتب أولاً للحصول على الـ IDs الصحيحة ===
             await _unitOfWork.SaveChangesAsync();
+
+            // === الآن تحديث الخصومات/المكافآت اليدوية بـ AppliedToSalaryId الصحيح ===
+            foreach (var salary in salaries)
+            {
+                var empAdjustmentsToUpdate = manualAdjustments.Where(a => a.UserId == salary.UserId).ToList();
+                var recurringCopiesToUpdate = newRecurringCopies.Where(a => a.UserId == salary.UserId).ToList();
+                foreach (var adj in empAdjustmentsToUpdate.Concat(recurringCopiesToUpdate))
+                {
+                    adj.IsApplied = true;
+                    adj.AppliedToSalaryId = salary.Id; // الآن salary.Id له قيمة صحيحة بعد SaveChanges
+                    _unitOfWork.EmployeeDeductionBonuses.Update(adj);
+                }
+            }
+            await _unitOfWork.SaveChangesAsync();
+
+            // === إنشاء قيد محاسبي استحقاق للرواتب ===
+            // مدين: 5100 مصروف الرواتب ، دائن: 2120 رواتب مستحقة (التزام)
+            var totalNetAmount = salaries.Sum(s => s.NetSalary);
+            Guid? accrualJournalId = null;
+            if (totalNetAmount > 0)
+            {
+                var salaryExpenseAcct = await FindAccountByCode("5100", dto.CompanyId);
+                var salaryPayableAcct = await FindAccountByCode("2120", dto.CompanyId);
+                if (salaryExpenseAcct != null && salaryPayableAcct != null)
+                {
+                    var accrualLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                    {
+                        (salaryExpenseAcct.Id, totalNetAmount, 0, $"استحقاق رواتب {dto.Month}/{dto.Year}"),
+                        (salaryPayableAcct.Id, 0, totalNetAmount, $"رواتب مستحقة {dto.Month}/{dto.Year}")
+                    };
+                    var firstEmpId = employees.First().Id;
+                    accrualJournalId = await CreateAndPostJournalEntryReturningId(
+                        dto.CompanyId, firstEmpId,
+                        $"استحقاق رواتب شهر {dto.Month}/{dto.Year}",
+                        JournalReferenceType.Salary, $"payroll-{dto.Month}-{dto.Year}",
+                        accrualLines);
+
+                    // ربط القيد المحاسبي بسجلات الرواتب
+                    if (accrualJournalId.HasValue)
+                    {
+                        foreach (var salary in salaries)
+                        {
+                            salary.JournalEntryId = accrualJournalId.Value;
+                            _unitOfWork.EmployeeSalaries.Update(salary);
+                        }
+                    }
+                }
+            }
+
+            // حفظ نهائي (القيد المحاسبي + ربط JournalEntryId)
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
             return Ok(new
             {
                 success = true,
                 message = $"تم إنشاء مسيّر رواتب لـ {salaries.Count} موظف",
                 total = salaries.Count,
-                totalAmount = salaries.Sum(s => s.NetSalary)
+                totalAmount = salaries.Sum(s => s.NetSalary),
+                totalDeductions = salaries.Sum(s => s.Deductions),
+                totalBonuses = salaries.Sum(s => s.Bonuses),
+                totalManualDeductions = salaries.Sum(s => s.ManualDeductions),
+                totalManualBonuses = salaries.Sum(s => s.ManualBonuses),
+                totalAllowances = salaries.Sum(s => s.Allowances),
+                hasPolicy = policy != null,
+                journalEntryId = accrualJournalId
             });
         }
         catch (Exception ex)
         {
+            await _unitOfWork.RollbackTransactionAsync();
             _logger.LogError(ex, "خطأ في إنشاء مسيّر الرواتب");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
@@ -991,7 +1345,10 @@ public class AccountingController : ControllerBase
             salary.Deductions = dto.Deductions ?? salary.Deductions;
             salary.Bonuses = dto.Bonuses ?? salary.Bonuses;
             salary.Notes = dto.Notes ?? salary.Notes;
+            // الصافي = الأساسي + البدلات + المكافآت - الخصومات
+            // ملاحظة: ManualDeductions مضمنة في Deductions و ManualBonuses مضمنة في Bonuses
             salary.NetSalary = salary.BaseSalary + salary.Allowances + salary.Bonuses - salary.Deductions;
+            if (salary.NetSalary < 0) salary.NetSalary = 0;
 
             _unitOfWork.EmployeeSalaries.Update(salary);
             await _unitOfWork.SaveChangesAsync();
@@ -1054,7 +1411,7 @@ public class AccountingController : ControllerBase
             _unitOfWork.EmployeeSalaries.Update(salary);
 
             // === إنشاء قيد محاسبي تلقائي للراتب ===
-            // مدين: حساب فرعي للموظف تحت 5100
+            // مدين: 2120 رواتب مستحقة (عكس الاستحقاق)
             // دائن: حساب النقدية 1110
             var cashAcctSal = await FindAccountByCode("1110", salary.CompanyId);
             if (cashAcctSal != null)
@@ -1062,11 +1419,12 @@ public class AccountingController : ControllerBase
                 // جلب اسم الموظف
                 var empUser = await _unitOfWork.Users.GetByIdAsync(salary.UserId);
                 var empName = empUser?.FullName ?? "موظف";
-                var empSubAcct = await FindOrCreateSubAccount("5100", salary.UserId, empName, salary.CompanyId);
+                var salaryPayableAcctPay = await FindAccountByCode("2120", salary.CompanyId);
+                var payDebitAcct = salaryPayableAcctPay ?? await FindOrCreateSubAccount("5100", salary.UserId, empName, salary.CompanyId);
 
                 var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                 {
-                    (empSubAcct.Id, salary.NetSalary, 0, $"راتب {empName} - {salary.Month}/{salary.Year}"),
+                    (payDebitAcct.Id, salary.NetSalary, 0, $"صرف راتب {empName} - {salary.Month}/{salary.Year}"),
                     (cashAcctSal.Id, 0, salary.NetSalary, $"صرف راتب {empName} من النقدية {salary.Month}/{salary.Year}")
                 };
                 await CreateAndPostJournalEntry(
@@ -1076,6 +1434,7 @@ public class AccountingController : ControllerBase
                     journalLines);
             }
 
+            await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
             return Ok(new { success = true, message = "تم صرف الراتب" });
         }
@@ -1139,33 +1498,29 @@ public class AccountingController : ControllerBase
                 _unitOfWork.EmployeeSalaries.Update(salary);
             }
 
-            // === إنشاء قيد محاسبي تلقائي لجميع الرواتب ===
-            // مدين: حساب فرعي لكل موظف تحت 5100
-            // دائن: حساب النقدية 1110
+            // === إنشاء قيد محاسبي: عكس الاستحقاق ===
+            // مدين: 2120 رواتب مستحقة (تقليل الالتزام)
+            // دائن: 1110 النقدية (خروج المبلغ)
             var cashAcctAll = await FindAccountByCode("1110", dto.CompanyId);
-            if (cashAcctAll != null)
+            var salaryPayableAcctAll = await FindAccountByCode("2120", dto.CompanyId);
+            if (cashAcctAll != null && salaryPayableAcctAll != null)
             {
-                var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
-
-                // سطر مدين لكل موظف بحسابه الفرعي
-                foreach (var sal in pending)
+                var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                 {
-                    var empUser = await _unitOfWork.Users.GetByIdAsync(sal.UserId);
-                    var empName = empUser?.FullName ?? "موظف";
-                    var empSubAcct = await FindOrCreateSubAccount("5100", sal.UserId, empName, dto.CompanyId);
-                    journalLines.Add((empSubAcct.Id, sal.NetSalary, 0, $"راتب {empName} - {dto.Month}/{dto.Year}"));
-                }
-
-                // سطر دائن واحد بإجمالي المبلغ من النقدية
-                journalLines.Add((cashAcctAll.Id, 0, totalAmount, $"صرف رواتب {pending.Count} موظف - {dto.Month}/{dto.Year}"));
+                    // مدين: 2120 رواتب مستحقة - عكس الاستحقاق
+                    (salaryPayableAcctAll.Id, totalAmount, 0, $"صرف رواتب شهر {dto.Month}/{dto.Year} - {pending.Count} موظف"),
+                    // دائن: 1110 النقدية
+                    (cashAcctAll.Id, 0, totalAmount, $"صرف رواتب {pending.Count} موظف - {dto.Month}/{dto.Year}")
+                };
 
                 await CreateAndPostJournalEntry(
                     dto.CompanyId, dto.PaidById,
                     $"صرف رواتب جماعي - شهر {dto.Month}/{dto.Year} ({pending.Count} موظف)",
-                    JournalReferenceType.Salary, $"{dto.Year}-{dto.Month:D2}",
+                    JournalReferenceType.Salary, $"pay-{dto.Year}-{dto.Month:D2}",
                     journalLines);
             }
 
+            await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
             return Ok(new { success = true, message = $"تم صرف {pending.Count} راتب بإجمالي {totalAmount}", count = pending.Count, totalAmount });
         }
@@ -1173,6 +1528,536 @@ public class AccountingController : ControllerBase
         {
             await _unitOfWork.RollbackTransactionAsync();
             _logger.LogError(ex, "خطأ في صرف الرواتب الجماعي");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ==================== سياسة الرواتب - Salary Policy ====================
+
+    /// <summary>
+    /// جلب سياسات الرواتب للشركة
+    /// </summary>
+    [HttpGet("salary-policies")]
+    public async Task<IActionResult> GetSalaryPolicies([FromQuery] Guid companyId)
+    {
+        try
+        {
+            var policies = await _unitOfWork.SalaryPolicies.AsQueryable()
+                .Where(p => p.CompanyId == companyId)
+                .OrderByDescending(p => p.IsDefault)
+                .Select(p => new
+                {
+                    p.Id, p.CompanyId, p.Name, p.IsDefault, p.IsActive,
+                    p.DeductionPerLateMinute, p.MaxLateDeductionPercent,
+                    p.AbsentDayMultiplier, p.DeductionPerEarlyDepartureMinute,
+                    p.OvertimeHourlyMultiplier, p.MaxOvertimeHoursPerMonth,
+                    p.UnpaidLeaveDayMultiplier, p.WorkDaysPerMonth,
+                    p.CreatedAt, p.UpdatedAt
+                }).ToListAsync();
+
+            return Ok(new { success = true, data = policies });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب سياسات الرواتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// إنشاء أو تحديث سياسة رواتب
+    /// </summary>
+    [HttpPost("salary-policies")]
+    public async Task<IActionResult> CreateSalaryPolicy([FromBody] SalaryPolicyDto dto)
+    {
+        try
+        {
+            // إذا تم تعيينها كافتراضية، إزالة الافتراضية من السياسات الأخرى
+            if (dto.IsDefault)
+            {
+                var existing = await _unitOfWork.SalaryPolicies.AsQueryable()
+                    .Where(p => p.CompanyId == dto.CompanyId && p.IsDefault)
+                    .ToListAsync();
+                foreach (var ep in existing)
+                {
+                    ep.IsDefault = false;
+                    _unitOfWork.SalaryPolicies.Update(ep);
+                }
+            }
+
+            var policy = new SalaryPolicy
+            {
+                CompanyId = dto.CompanyId,
+                Name = dto.Name ?? "سياسة افتراضية",
+                IsDefault = dto.IsDefault,
+                DeductionPerLateMinute = dto.DeductionPerLateMinute,
+                MaxLateDeductionPercent = dto.MaxLateDeductionPercent,
+                AbsentDayMultiplier = dto.AbsentDayMultiplier,
+                DeductionPerEarlyDepartureMinute = dto.DeductionPerEarlyDepartureMinute,
+                OvertimeHourlyMultiplier = dto.OvertimeHourlyMultiplier,
+                MaxOvertimeHoursPerMonth = dto.MaxOvertimeHoursPerMonth,
+                UnpaidLeaveDayMultiplier = dto.UnpaidLeaveDayMultiplier,
+                WorkDaysPerMonth = dto.WorkDaysPerMonth,
+                IsActive = true
+            };
+
+            await _unitOfWork.SalaryPolicies.AddAsync(policy);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم إنشاء سياسة الرواتب", id = policy.Id });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إنشاء سياسة الرواتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// تحديث سياسة رواتب
+    /// </summary>
+    [HttpPut("salary-policies/{id}")]
+    public async Task<IActionResult> UpdateSalaryPolicy(int id, [FromBody] SalaryPolicyDto dto)
+    {
+        try
+        {
+            var policy = await _unitOfWork.SalaryPolicies.GetByIdAsync(id);
+            if (policy == null)
+                return NotFound(new { success = false, message = "السياسة غير موجودة" });
+
+            if (dto.IsDefault)
+            {
+                var existing = await _unitOfWork.SalaryPolicies.AsQueryable()
+                    .Where(p => p.CompanyId == policy.CompanyId && p.IsDefault && p.Id != id)
+                    .ToListAsync();
+                foreach (var ep in existing)
+                {
+                    ep.IsDefault = false;
+                    _unitOfWork.SalaryPolicies.Update(ep);
+                }
+            }
+
+            policy.Name = dto.Name ?? policy.Name;
+            policy.IsDefault = dto.IsDefault;
+            policy.DeductionPerLateMinute = dto.DeductionPerLateMinute;
+            policy.MaxLateDeductionPercent = dto.MaxLateDeductionPercent;
+            policy.AbsentDayMultiplier = dto.AbsentDayMultiplier;
+            policy.DeductionPerEarlyDepartureMinute = dto.DeductionPerEarlyDepartureMinute;
+            policy.OvertimeHourlyMultiplier = dto.OvertimeHourlyMultiplier;
+            policy.MaxOvertimeHoursPerMonth = dto.MaxOvertimeHoursPerMonth;
+            policy.UnpaidLeaveDayMultiplier = dto.UnpaidLeaveDayMultiplier;
+            policy.WorkDaysPerMonth = dto.WorkDaysPerMonth;
+            policy.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.SalaryPolicies.Update(policy);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم تحديث سياسة الرواتب" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تحديث سياسة الرواتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// حذف سياسة رواتب (حذف ناعم)
+    /// </summary>
+    [HttpDelete("salary-policies/{id}")]
+    public async Task<IActionResult> DeleteSalaryPolicy(int id)
+    {
+        try
+        {
+            var policy = await _unitOfWork.SalaryPolicies.GetByIdAsync(id);
+            if (policy == null)
+                return NotFound(new { success = false, message = "السياسة غير موجودة" });
+
+            policy.IsDeleted = true;
+            policy.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.SalaryPolicies.Update(policy);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم حذف سياسة الرواتب" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف سياسة الرواتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// جلب تفاصيل كشف راتب موظف واحد
+    /// </summary>
+    [HttpGet("salaries/{id}/details")]
+    public async Task<IActionResult> GetSalaryDetails(long id)
+    {
+        try
+        {
+            var salary = await _unitOfWork.EmployeeSalaries.AsQueryable()
+                .Where(s => s.Id == id)
+                .Select(s => new
+                {
+                    s.Id, s.UserId,
+                    UserName = s.User != null ? s.User.FullName : "",
+                    UserPhone = s.User != null ? s.User.PhoneNumber : "",
+                    s.Month, s.Year, s.BaseSalary, s.Allowances,
+                    s.Deductions, s.Bonuses, s.NetSalary,
+                    Status = s.Status.ToString(),
+                    s.PaidAt, s.Notes, s.CompanyId,
+                    s.AttendanceDays, s.AbsentDays,
+                    s.TotalLateMinutes, s.TotalOvertimeMinutes,
+                    s.TotalEarlyDepartureMinutes,
+                    s.UnpaidLeaveDays, s.PaidLeaveDays,
+                    s.LateDeduction, s.AbsentDeduction,
+                    s.EarlyDepartureDeduction, s.UnpaidLeaveDeduction,
+                    s.OvertimeBonus, s.ExpectedWorkDays,
+                    s.ManualDeductions, s.ManualBonuses
+                }).FirstOrDefaultAsync();
+
+            if (salary == null)
+                return NotFound(new { success = false, message = "سجل الراتب غير موجود" });
+
+            return Ok(new { success = true, data = salary });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب تفاصيل الراتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// حذف مسيّر رواتب شهر (فقط إذا كانت جميعها Pending) - مع عكس قيد الاستحقاق
+    /// </summary>
+    [HttpDelete("salaries/payroll")]
+    public async Task<IActionResult> DeletePayroll([FromQuery] Guid companyId, [FromQuery] int month, [FromQuery] int year)
+    {
+        try
+        {
+            var salaries = await _unitOfWork.EmployeeSalaries.AsQueryable()
+                .Where(s => s.CompanyId == companyId && s.Month == month && s.Year == year)
+                .ToListAsync();
+
+            if (!salaries.Any())
+                return NotFound(new { success = false, message = "لا يوجد مسيّر رواتب لهذا الشهر" });
+
+            if (salaries.Any(s => s.Status == SalaryStatus.Paid))
+                return BadRequest(new { success = false, message = "لا يمكن حذف مسيّر يحتوي على رواتب مصروفة" });
+
+            await _unitOfWork.BeginTransactionAsync();
+
+            var totalNetAmount = salaries.Sum(s => s.NetSalary);
+
+            // عكس قيد الاستحقاق إذا وُجد
+            if (totalNetAmount > 0)
+            {
+                var salaryExpenseAcct = await FindAccountByCode("5100", companyId);
+                var salaryPayableAcct = await FindAccountByCode("2120", companyId);
+                if (salaryExpenseAcct != null && salaryPayableAcct != null)
+                {
+                    var reversalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                    {
+                        (salaryPayableAcct.Id, totalNetAmount, 0, $"عكس استحقاق رواتب {month}/{year}"),
+                        (salaryExpenseAcct.Id, 0, totalNetAmount, $"عكس مصروف رواتب {month}/{year}")
+                    };
+                    var firstUserId = salaries.First().UserId;
+                    await CreateAndPostJournalEntry(
+                        companyId, firstUserId,
+                        $"عكس استحقاق رواتب شهر {month}/{year} - حذف مسيّر",
+                        JournalReferenceType.Salary, $"payroll-reversal-{month}-{year}",
+                        reversalLines);
+                }
+            }
+
+            // إعادة تفعيل الخصومات/المكافآت اليدوية المطبّقة على هذه الرواتب
+            foreach (var s in salaries)
+            {
+                var appliedAdjs = await _unitOfWork.EmployeeDeductionBonuses.AsQueryable()
+                    .Where(a => a.AppliedToSalaryId == s.Id && a.IsApplied)
+                    .ToListAsync();
+                foreach (var adj in appliedAdjs)
+                {
+                    adj.IsApplied = false;
+                    adj.AppliedToSalaryId = null;
+                    _unitOfWork.EmployeeDeductionBonuses.Update(adj);
+                }
+
+                s.IsDeleted = true;
+                s.DeletedAt = DateTime.UtcNow;
+                _unitOfWork.EmployeeSalaries.Update(s);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+            return Ok(new { success = true, message = $"تم حذف مسيّر الرواتب ({salaries.Count} سجل) وعكس القيد المحاسبي" });
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "خطأ في حذف مسيّر الرواتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// إصلاح رواتب بدون قيود محاسبية - إنشاء قيود الاستحقاق المفقودة
+    /// </summary>
+    [HttpPost("salaries/repair-journal-entries")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> RepairSalaryJournalEntries([FromQuery] Guid companyId)
+    {
+        try
+        {
+            // جلب جميع مسيّرات الرواتب بدون قيود استحقاق (JournalEntryId == null أو Guid.Empty)
+            var salariesWithoutJE = await _unitOfWork.EmployeeSalaries.AsQueryable()
+                .Where(s => s.CompanyId == companyId
+                    && (s.JournalEntryId == null || s.JournalEntryId == Guid.Empty)
+                    && s.Status == SalaryStatus.Pending)
+                .ToListAsync();
+
+            if (!salariesWithoutJE.Any())
+                return Ok(new { success = true, message = "لا توجد رواتب تحتاج إصلاح", repairedCount = 0 });
+
+            // تجميع حسب الشهر/السنة
+            var groupedByMonth = salariesWithoutJE
+                .GroupBy(s => new { s.Month, s.Year })
+                .ToList();
+
+            await _unitOfWork.BeginTransactionAsync();
+            int repairedCount = 0;
+
+            foreach (var group in groupedByMonth)
+            {
+                var month = group.Key.Month;
+                var year = group.Key.Year;
+                var salaries = group.ToList();
+                var totalNet = salaries.Sum(s => s.NetSalary);
+
+                if (totalNet <= 0) continue;
+
+                // البحث عن حسابات المصروف والالتزام
+                var salaryExpenseAcct = await FindAccountByCode("5100", companyId);
+                var salaryPayableAcct = await FindAccountByCode("2120", companyId);
+                if (salaryExpenseAcct == null || salaryPayableAcct == null)
+                {
+                    _logger.LogWarning("حساب 5100 أو 2120 غير موجود - تعذّر إصلاح رواتب {Month}/{Year}", month, year);
+                    continue;
+                }
+
+                var jeLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                {
+                    (salaryExpenseAcct.Id, totalNet, 0, $"إصلاح: مصروف رواتب {month}/{year}"),
+                    (salaryPayableAcct.Id, 0, totalNet, $"إصلاح: استحقاق رواتب {month}/{year}")
+                };
+
+                var firstUserId = salaries.First().UserId;
+                var jeId = await CreateAndPostJournalEntryReturningId(
+                    companyId, firstUserId,
+                    $"إصلاح: استحقاق رواتب شهر {month}/{year} ({salaries.Count} موظف)",
+                    JournalReferenceType.Salary, $"salary-repair-{month}-{year}",
+                    jeLines);
+
+                // ربط القيد بجميع سجلات الرواتب
+                foreach (var s in salaries)
+                {
+                    s.JournalEntryId = jeId;
+                    _unitOfWork.EmployeeSalaries.Update(s);
+                }
+
+                repairedCount += salaries.Count;
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم إصلاح {repairedCount} سجل راتب في {groupedByMonth.Count} مسيّر",
+                repairedCount,
+                monthsRepaired = groupedByMonth.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "خطأ في إصلاح القيود المحاسبية للرواتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي أثناء الإصلاح" });
+        }
+    }
+
+    // ==================== خصومات ومكافآت الموظفين - Employee Deductions & Bonuses ====================
+
+    /// <summary>
+    /// جلب خصومات ومكافآت شهر معين
+    /// </summary>
+    [HttpGet("employee-adjustments")]
+    public async Task<IActionResult> GetEmployeeAdjustments(
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] Guid? userId = null,
+        [FromQuery] int? month = null,
+        [FromQuery] int? year = null,
+        [FromQuery] AdjustmentType? type = null)
+    {
+        try
+        {
+            var query = _unitOfWork.EmployeeDeductionBonuses.AsQueryable();
+            if (companyId.HasValue) query = query.Where(a => a.CompanyId == companyId);
+            if (userId.HasValue) query = query.Where(a => a.UserId == userId);
+            if (month.HasValue) query = query.Where(a => a.Month == month);
+            if (year.HasValue) query = query.Where(a => a.Year == year);
+            if (type.HasValue) query = query.Where(a => a.Type == type);
+
+            var adjustments = await query.OrderByDescending(a => a.CreatedAt)
+                .Select(a => new
+                {
+                    a.Id,
+                    a.UserId,
+                    UserName = a.User != null ? a.User.FullName : "",
+                    a.CompanyId,
+                    Type = a.Type.ToString(),
+                    TypeValue = (int)a.Type,
+                    a.Category,
+                    a.Amount,
+                    a.Month,
+                    a.Year,
+                    a.Description,
+                    a.Notes,
+                    a.IsApplied,
+                    a.AppliedToSalaryId,
+                    a.CreatedById,
+                    CreatedByName = a.CreatedBy != null ? a.CreatedBy.FullName : "",
+                    a.IsRecurring,
+                    a.IsActive,
+                    a.CreatedAt
+                }).ToListAsync();
+
+            var summary = new
+            {
+                TotalDeductions = adjustments.Where(a => a.TypeValue == 0).Sum(a => a.Amount),
+                TotalBonuses = adjustments.Where(a => a.TypeValue == 1).Sum(a => a.Amount),
+                TotalAllowances = adjustments.Where(a => a.TypeValue == 2).Sum(a => a.Amount),
+                Count = adjustments.Count
+            };
+
+            return Ok(new { success = true, data = adjustments, summary });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب الخصومات والمكافآت");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// إضافة خصم أو مكافأة يدوية
+    /// </summary>
+    [HttpPost("employee-adjustments")]
+    public async Task<IActionResult> CreateEmployeeAdjustment([FromBody] CreateAdjustmentDto dto)
+    {
+        try
+        {
+            // التحقق من أن الموظف موجود
+            var employee = await _unitOfWork.Users.GetByIdAsync(dto.UserId);
+            if (employee == null)
+                return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+            var adjustment = new EmployeeDeductionBonus
+            {
+                UserId = dto.UserId,
+                CompanyId = dto.CompanyId,
+                Type = dto.Type,
+                Category = dto.Category ?? "",
+                Amount = dto.Amount,
+                Month = dto.Month,
+                Year = dto.Year,
+                Description = dto.Description ?? "",
+                Notes = dto.Notes,
+                CreatedById = dto.CreatedById,
+                IsRecurring = dto.IsRecurring,
+                IsActive = true
+            };
+
+            await _unitOfWork.EmployeeDeductionBonuses.AddAsync(adjustment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = adjustment.Type == AdjustmentType.Deduction ? "تم إضافة الخصم" :
+                          adjustment.Type == AdjustmentType.Bonus ? "تم إضافة المكافأة" : "تم إضافة البدل",
+                data = new { adjustment.Id, adjustment.Amount, Type = adjustment.Type.ToString() }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إضافة خصم/مكافأة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// تعديل خصم أو مكافأة
+    /// </summary>
+    [HttpPut("employee-adjustments/{id}")]
+    public async Task<IActionResult> UpdateEmployeeAdjustment(long id, [FromBody] UpdateAdjustmentDto dto)
+    {
+        try
+        {
+            var adjustment = await _unitOfWork.EmployeeDeductionBonuses.GetByIdAsync(id);
+            if (adjustment == null)
+                return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            if (adjustment.IsApplied)
+                return BadRequest(new { success = false, message = "لا يمكن تعديل تعديل تم تطبيقه على الراتب" });
+
+            if (dto.Type.HasValue) adjustment.Type = dto.Type.Value;
+            if (dto.Category != null) adjustment.Category = dto.Category;
+            if (dto.Amount.HasValue) adjustment.Amount = dto.Amount.Value;
+            if (dto.Description != null) adjustment.Description = dto.Description;
+            if (dto.Notes != null) adjustment.Notes = dto.Notes;
+            if (dto.IsRecurring.HasValue) adjustment.IsRecurring = dto.IsRecurring.Value;
+            if (dto.IsActive.HasValue) adjustment.IsActive = dto.IsActive.Value;
+
+            _unitOfWork.EmployeeDeductionBonuses.Update(adjustment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم تحديث السجل" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تعديل الخصم/المكافأة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// حذف خصم أو مكافأة
+    /// </summary>
+    [HttpDelete("employee-adjustments/{id}")]
+    public async Task<IActionResult> DeleteEmployeeAdjustment(long id)
+    {
+        try
+        {
+            var adjustment = await _unitOfWork.EmployeeDeductionBonuses.GetByIdAsync(id);
+            if (adjustment == null)
+                return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            if (adjustment.IsApplied)
+                return BadRequest(new { success = false, message = "لا يمكن حذف تعديل تم تطبيقه على الراتب" });
+
+            adjustment.IsDeleted = true;
+            adjustment.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.EmployeeDeductionBonuses.Update(adjustment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم حذف السجل" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف الخصم/المكافأة");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -2326,6 +3211,18 @@ public class AccountingController : ControllerBase
                 .Where(s => s.Status == SalaryStatus.Pending)
                 .SumAsync(s => (decimal?)s.NetSalary) ?? 0;
 
+            // أجمالي الموظفين الذين لديهم رواتب
+            var employeeCountQuery = _unitOfWork.Users.AsQueryable();
+            if (companyId.HasValue) employeeCountQuery = employeeCountQuery.Where(u => u.CompanyId == companyId);
+            var totalEmployeesWithSalary = await employeeCountQuery
+                .CountAsync(u => u.IsActive && u.Salary.HasValue && u.Salary > 0);
+
+            // عدد الرواتب المدفوعة والمعلقة هذا الشهر
+            var paidSalariesCount = await salariesQuery
+                .CountAsync(s => s.Year == now.Year && s.Month == now.Month && s.Status == SalaryStatus.Paid);
+            var pendingSalariesCount = await salariesQuery
+                .CountAsync(s => s.Year == now.Year && s.Month == now.Month && s.Status == SalaryStatus.Pending);
+
             // عدد القيود
             var journalQuery = _unitOfWork.JournalEntries.AsQueryable();
             if (companyId.HasValue) journalQuery = journalQuery.Where(j => j.CompanyId == companyId);
@@ -2338,10 +3235,35 @@ public class AccountingController : ControllerBase
             var leafAccounts = await accountsQuery.ToListAsync();
 
             var totalAssets = leafAccounts.Where(a => a.AccountType == AccountType.Assets).Sum(a => a.CurrentBalance);
-            var totalLiabilities = leafAccounts.Where(a => a.AccountType == AccountType.Liabilities).Sum(a => a.CurrentBalance);
+            var totalLiabilitiesFromAccounts = leafAccounts.Where(a => a.AccountType == AccountType.Liabilities).Sum(a => a.CurrentBalance);
             var totalEquity = leafAccounts.Where(a => a.AccountType == AccountType.Equity).Sum(a => a.CurrentBalance);
             var totalRevenue = leafAccounts.Where(a => a.AccountType == AccountType.Revenue).Sum(a => a.CurrentBalance);
             var totalExpensesFromAccounts = leafAccounts.Where(a => a.AccountType == AccountType.Expenses).Sum(a => a.CurrentBalance);
+
+            // ═══ تعديل الالتزامات: إذا كانت رواتب غير مدفوعة لم تنعكس بعد في حساب 2120 ═══
+            // حساب الفجوة بين الرواتب المستحقة الفعلية ورصيد 2120 المحاسبي
+            var salaryPayable2120 = leafAccounts
+                .Where(a => a.Code != null && a.Code.StartsWith("2120"))
+                .Sum(a => a.CurrentBalance);
+            var salaryGap = Math.Max(0, unpaidSalaries - salaryPayable2120);
+
+            // ═══ المصاريف الثابتة غير المدفوعة (إيجارات + مولد + ...) ═══
+            var fixedExpQuery = _unitOfWork.FixedExpensePayments.AsQueryable()
+                .Where(p => !p.IsPaid);
+            if (companyId.HasValue) fixedExpQuery = fixedExpQuery.Where(p => p.CompanyId == companyId);
+            var unpaidFixedExpenses = await fixedExpQuery.SumAsync(p => (decimal?)p.Amount) ?? 0;
+
+            // المصاريف الثابتة الشهرية النشطة (تفصيل)
+            var activeFixedExpenses = _unitOfWork.FixedExpenses.AsQueryable().Where(f => f.IsActive);
+            if (companyId.HasValue) activeFixedExpenses = activeFixedExpenses.Where(f => f.CompanyId == companyId);
+            var fixedExpensesList = await activeFixedExpenses.ToListAsync();
+            var totalMonthlyFixedExpenses = fixedExpensesList.Sum(f => f.MonthlyAmount);
+
+            // حساب إجمالي الإيجارات وتكلفة المولد من المصاريف الثابتة
+            var officeRentMonthly = fixedExpensesList.Where(f => f.Category == FixedExpenseCategory.OfficeRent).Sum(f => f.MonthlyAmount);
+            var generatorCostMonthly = fixedExpensesList.Where(f => f.Category == FixedExpenseCategory.GeneratorCost).Sum(f => f.MonthlyAmount);
+
+            var totalLiabilities = totalLiabilitiesFromAccounts + salaryGap + unpaidFixedExpenses;
 
             // رصيد حساب النقد و الصندوق (1110 وفروعه)
             var cashAccount1110 = await _unitOfWork.Accounts.AsQueryable()
@@ -2400,6 +3322,10 @@ public class AccountingController : ControllerBase
                 .Sum(a => a.CurrentBalance);
             var operatorReceivables = operatorCashBoxes + operatorCredit;
 
+            // ═══ رصيد حساب رواتب مستحقة (2120) - الالتزام الفعلي من شجرة الحسابات ═══
+            // تم حسابه أعلاه: salaryPayable2120
+            var salaryPayableBalance = salaryPayable2120;
+
             return Ok(new
             {
                 success = true,
@@ -2415,7 +3341,11 @@ public class AccountingController : ControllerBase
                     Salaries = new
                     {
                         MonthlyTotal = monthlySalaries,
-                        UnpaidTotal = unpaidSalaries
+                        UnpaidTotal = unpaidSalaries,
+                        SalaryPayableBalance = salaryPayableBalance, // رصيد حساب 2120 (الالتزام من شجرة الحسابات)
+                        TotalEmployees = totalEmployeesWithSalary,
+                        PaidCount = paidSalariesCount,
+                        PendingCount = pendingSalariesCount
                     },
                     JournalEntries = new
                     {
@@ -2445,6 +3375,20 @@ public class AccountingController : ControllerBase
                         TechnicianNet = techNetTotal,    // سالب = مديون، موجب = دائن
                         Total = totalNet,               // سالب = مديون، موجب = دائن
                         IsDebtor = totalNet < 0          // true = عليهم للشركة
+                    },
+                    // المصاريف الثابتة الشهرية
+                    FixedExpenses = new
+                    {
+                        TotalMonthly = totalMonthlyFixedExpenses,
+                        UnpaidTotal = unpaidFixedExpenses,
+                        OfficeRent = officeRentMonthly,
+                        GeneratorCost = generatorCostMonthly,
+                        Items = fixedExpensesList.Select(f => new
+                        {
+                            f.Id, f.Name, Category = f.Category.ToString(),
+                            CategoryAr = GetCategoryArabic(f.Category),
+                            f.MonthlyAmount
+                        })
                     }
                 }
             });
@@ -2985,6 +3929,65 @@ public class AccountingController : ControllerBase
     }
 
     /// <summary>
+    /// إنشاء قيد محاسبي تلقائي وإرجاع معرفه - نفس CreateAndPostJournalEntry لكن يرجع الـ Id
+    /// </summary>
+    private async Task<Guid?> CreateAndPostJournalEntryReturningId(
+        Guid companyId,
+        Guid createdById,
+        string description,
+        JournalReferenceType referenceType,
+        string? referenceId,
+        List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
+    {
+        var entryNumber = await GenerateEntryNumber(companyId);
+        var entryId = Guid.NewGuid();
+        var entry = new JournalEntry
+        {
+            Id = entryId,
+            EntryNumber = entryNumber,
+            EntryDate = DateTime.UtcNow,
+            Description = description,
+            TotalDebit = lines.Sum(l => l.DebitAmount),
+            TotalCredit = lines.Sum(l => l.CreditAmount),
+            ReferenceType = referenceType,
+            ReferenceId = referenceId,
+            Status = JournalEntryStatus.Posted,
+            CompanyId = companyId,
+            CreatedById = createdById,
+            ApprovedById = createdById,
+            ApprovedAt = DateTime.UtcNow,
+            Lines = lines.Select(l => new JournalEntryLine
+            {
+                AccountId = l.AccountId,
+                DebitAmount = l.DebitAmount,
+                CreditAmount = l.CreditAmount,
+                Description = l.LineDescription
+            }).ToList()
+        };
+
+        await _unitOfWork.JournalEntries.AddAsync(entry);
+
+        // تحديث أرصدة الحسابات فوراً
+        foreach (var line in lines)
+        {
+            var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+            if (account == null) continue;
+
+            if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+            {
+                account.CurrentBalance += line.DebitAmount - line.CreditAmount;
+            }
+            else
+            {
+                account.CurrentBalance += line.CreditAmount - line.DebitAmount;
+            }
+            _unitOfWork.Accounts.Update(account);
+        }
+
+        return entryId;
+    }
+
+    /// <summary>
     /// البحث عن حساب بالكود - يرجع أول حساب leaf نشط مطابق
     /// </summary>
     private async Task<Account?> FindAccountByCode(string code, Guid companyId)
@@ -3103,6 +4106,13 @@ public class AccountingController : ControllerBase
         Add("2110", "الدائنون", "Accounts Payable", AccountType.Liabilities, "2100", true);
         Add("2120", "رواتب مستحقة", "Salaries Payable", AccountType.Liabilities, "2100", true);
         Add("2130", "أمانات الوكلاء", "Agent Deposits", AccountType.Liabilities, "2100", true);
+        Add("2200", "مصاريف ثابتة مستحقة", "Accrued Fixed Expenses", AccountType.Liabilities, "2000");
+        Add("2210", "إيجار مستحق", "Rent Payable", AccountType.Liabilities, "2200", true);
+        Add("2220", "تكلفة مولد مستحقة", "Generator Cost Payable", AccountType.Liabilities, "2200", true);
+        Add("2230", "إنترنت مستحق", "Internet Payable", AccountType.Liabilities, "2200", true);
+        Add("2240", "كهرباء مستحقة", "Electricity Payable", AccountType.Liabilities, "2200", true);
+        Add("2250", "ماء مستحق", "Water Payable", AccountType.Liabilities, "2200", true);
+        Add("2260", "مصاريف ثابتة أخرى مستحقة", "Other Fixed Expenses Payable", AccountType.Liabilities, "2200", true);
 
         // === حقوق ملكية ===
         Add("3000", "حقوق الملكية", "Equity", AccountType.Equity, null);
@@ -3136,6 +4146,398 @@ public class AccountingController : ControllerBase
 
         return accounts;
     }
+
+    /// <summary>
+    /// إضافة حسابات المصاريف الثابتة المستحقة للشركات الموجودة
+    /// </summary>
+    [HttpPost("accounts/seed-fixed-expense-liabilities")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> SeedFixedExpenseLiabilities([FromBody] SeedAccountsDto dto)
+    {
+        try
+        {
+            // تحقق من وجود حساب 2000 (الالتزامات) للشركة
+            var liabilities2000 = await _unitOfWork.Accounts.FirstOrDefaultAsync(
+                a => a.CompanyId == dto.CompanyId && a.Code == "2000");
+            if (liabilities2000 == null)
+                return BadRequest(new { success = false, message = "لا توجد شجرة حسابات لهذه الشركة" });
+
+            // تحقق إن كانت الحسابات موجودة مسبقاً
+            var exists2200 = await _unitOfWork.Accounts.AnyAsync(
+                a => a.CompanyId == dto.CompanyId && a.Code == "2200");
+            if (exists2200)
+                return Ok(new { success = true, message = "حسابات المصاريف الثابتة موجودة بالفعل", added = 0 });
+
+            // جلب حساب الالتزامات المتداولة أو الالتزامات الرئيسي
+            var parent2000 = liabilities2000;
+
+            var newAccounts = new List<(string code, string name, string nameEn, string parentCode, bool isLeaf)>
+            {
+                ("2200", "مصاريف ثابتة مستحقة", "Accrued Fixed Expenses", "2000", false),
+                ("2210", "إيجار مستحق", "Rent Payable", "2200", true),
+                ("2220", "تكلفة مولد مستحقة", "Generator Cost Payable", "2200", true),
+                ("2230", "إنترنت مستحق", "Internet Payable", "2200", true),
+                ("2240", "كهرباء مستحقة", "Electricity Payable", "2200", true),
+                ("2250", "ماء مستحق", "Water Payable", "2200", true),
+                ("2260", "مصاريف ثابتة أخرى مستحقة", "Other Fixed Expenses Payable", "2200", true),
+            };
+
+            var createdAccounts = new List<Account>();
+            foreach (var (code, name, nameEn, parentCode, isLeaf) in newAccounts)
+            {
+                var parentAcc = parentCode == "2000"
+                    ? parent2000
+                    : createdAccounts.FirstOrDefault(a => a.Code == parentCode);
+                var acc = new Account
+                {
+                    Id = Guid.NewGuid(),
+                    Code = code,
+                    Name = name,
+                    NameEn = nameEn,
+                    AccountType = AccountType.Liabilities,
+                    ParentAccountId = parentAcc?.Id,
+                    Level = parentAcc != null ? parentAcc.Level + 1 : 2,
+                    IsLeaf = isLeaf,
+                    IsSystemAccount = true,
+                    CompanyId = dto.CompanyId
+                };
+                await _unitOfWork.Accounts.AddAsync(acc);
+                createdAccounts.Add(acc);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            return Ok(new { success = true, message = $"تم إضافة {createdAccounts.Count} حساب مصاريف ثابتة مستحقة", added = createdAccounts.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error seeding fixed expense liabilities");
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    // ==================== المصاريف الثابتة الشهرية - Fixed Monthly Expenses ====================
+
+    /// <summary>جلب جميع المصاريف الثابتة للشركة</summary>
+    [HttpGet("fixed-expenses")]
+    public async Task<IActionResult> GetFixedExpenses([FromQuery] Guid? companyId = null)
+    {
+        try
+        {
+            var query = _unitOfWork.FixedExpenses.AsQueryable();
+            if (companyId.HasValue) query = query.Where(f => f.CompanyId == companyId);
+
+            var items = await query.OrderBy(f => f.Category).ThenBy(f => f.Name).ToListAsync();
+            return Ok(new
+            {
+                success = true,
+                data = items.Select(f => new
+                {
+                    f.Id,
+                    f.Name,
+                    Category = f.Category.ToString(),
+                    CategoryAr = GetCategoryArabic(f.Category),
+                    f.MonthlyAmount,
+                    f.Description,
+                    f.IsActive,
+                    f.CompanyId,
+                    f.CreatedAt
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting fixed expenses");
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>إضافة مصروف ثابت جديد</summary>
+    [HttpPost("fixed-expenses")]
+    public async Task<IActionResult> CreateFixedExpense([FromBody] CreateFixedExpenseDto dto)
+    {
+        try
+        {
+            var expense = new FixedExpense
+            {
+                Name = dto.Name,
+                Category = dto.Category,
+                MonthlyAmount = dto.MonthlyAmount,
+                Description = dto.Description,
+                IsActive = true,
+                CompanyId = dto.CompanyId
+            };
+            await _unitOfWork.FixedExpenses.AddAsync(expense);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, data = new { expense.Id, expense.Name, expense.MonthlyAmount } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating fixed expense");
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>تعديل مصروف ثابت</summary>
+    [HttpPut("fixed-expenses/{id}")]
+    public async Task<IActionResult> UpdateFixedExpense(long id, [FromBody] UpdateFixedExpenseDto dto)
+    {
+        try
+        {
+            var expense = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == id);
+            if (expense == null) return NotFound(new { success = false, message = "المصروف غير موجود" });
+
+            if (dto.Name != null) expense.Name = dto.Name;
+            if (dto.Category.HasValue) expense.Category = dto.Category.Value;
+            if (dto.MonthlyAmount.HasValue) expense.MonthlyAmount = dto.MonthlyAmount.Value;
+            if (dto.Description != null) expense.Description = dto.Description;
+            if (dto.IsActive.HasValue) expense.IsActive = dto.IsActive.Value;
+            expense.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.FixedExpenses.Update(expense);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating fixed expense {Id}", id);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>حذف مصروف ثابت (حذف ناعم) مع حذف سجلات الدفع المرتبطة</summary>
+    [HttpDelete("fixed-expenses/{id}")]
+    public async Task<IActionResult> DeleteFixedExpense(long id)
+    {
+        try
+        {
+            var expense = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == id);
+            if (expense == null) return NotFound(new { success = false, message = "المصروف غير موجود" });
+
+            // حذف ناعم لجميع سجلات الدفع المرتبطة
+            var relatedPayments = await _unitOfWork.FixedExpensePayments.AsQueryable()
+                .Where(p => p.FixedExpenseId == id)
+                .ToListAsync();
+            foreach (var payment in relatedPayments)
+            {
+                payment.IsDeleted = true;
+                payment.DeletedAt = DateTime.UtcNow;
+                _unitOfWork.FixedExpensePayments.Update(payment);
+            }
+
+            expense.IsDeleted = true;
+            expense.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.FixedExpenses.Update(expense);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = $"تم حذف المصروف و {relatedPayments.Count} سجل دفع مرتبط" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting fixed expense {Id}", id);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>حذف سجل دفع مصروف ثابت (حذف ناعم)</summary>
+    [HttpDelete("fixed-expenses/payments/{paymentId}")]
+    public async Task<IActionResult> DeleteFixedExpensePayment(long paymentId)
+    {
+        try
+        {
+            var payment = await _unitOfWork.FixedExpensePayments.FirstOrDefaultAsync(p => p.Id == paymentId);
+            if (payment == null) return NotFound(new { success = false, message = "سجل الدفع غير موجود" });
+
+            payment.IsDeleted = true;
+            payment.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.FixedExpensePayments.Update(payment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم حذف سجل الدفع" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting fixed expense payment {Id}", paymentId);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>جلب سجلات الدفع لشهر معين</summary>
+    [HttpGet("fixed-expenses/payments")]
+    public async Task<IActionResult> GetFixedExpensePayments(
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] int? month = null,
+        [FromQuery] int? year = null)
+    {
+        try
+        {
+            var m = month ?? DateTime.UtcNow.Month;
+            var y = year ?? DateTime.UtcNow.Year;
+
+            var query = _unitOfWork.FixedExpensePayments.AsQueryable()
+                .Where(p => p.Month == m && p.Year == y);
+            if (companyId.HasValue) query = query.Where(p => p.CompanyId == companyId);
+
+            var payments = await query.ToListAsync();
+
+            // جلب المصاريف الثابتة النشطة
+            var expQuery = _unitOfWork.FixedExpenses.AsQueryable().Where(f => f.IsActive);
+            if (companyId.HasValue) expQuery = expQuery.Where(f => f.CompanyId == companyId);
+            var fixedExpenses = await expQuery.ToListAsync();
+
+            // إنشاء سجلات لم تُنشأ بعد لهذا الشهر
+            var existingExpenseIds = payments.Select(p => p.FixedExpenseId).ToHashSet();
+            var newPayments = new List<FixedExpensePayment>();
+            foreach (var fe in fixedExpenses.Where(f => !existingExpenseIds.Contains(f.Id)))
+            {
+                var payment = new FixedExpensePayment
+                {
+                    FixedExpenseId = fe.Id,
+                    Month = m,
+                    Year = y,
+                    Amount = fe.MonthlyAmount,
+                    IsPaid = false,
+                    CompanyId = fe.CompanyId
+                };
+                newPayments.Add(payment);
+                await _unitOfWork.FixedExpensePayments.AddAsync(payment);
+            }
+            if (newPayments.Any()) await _unitOfWork.SaveChangesAsync();
+
+            // إعادة قراءة
+            var allPayments = await _unitOfWork.FixedExpensePayments.AsQueryable()
+                .Where(p => p.Month == m && p.Year == y)
+                .Where(p => companyId == null || p.CompanyId == companyId)
+                .ToListAsync();
+
+            var result = allPayments.Select(p =>
+            {
+                var fe = fixedExpenses.FirstOrDefault(f => f.Id == p.FixedExpenseId);
+                return new
+                {
+                    p.Id,
+                    p.FixedExpenseId,
+                    ExpenseName = fe?.Name ?? "غير معروف",
+                    Category = fe?.Category.ToString() ?? "",
+                    CategoryAr = fe != null ? GetCategoryArabic(fe.Category) : "",
+                    p.Amount,
+                    p.IsPaid,
+                    p.PaidAt,
+                    p.Month,
+                    p.Year,
+                    p.Notes
+                };
+            });
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    data = result,
+                    summary = new
+                    {
+                        TotalAmount = allPayments.Sum(p => p.Amount),
+                        PaidAmount = allPayments.Where(p => p.IsPaid).Sum(p => p.Amount),
+                        UnpaidAmount = allPayments.Where(p => !p.IsPaid).Sum(p => p.Amount),
+                        PaidCount = allPayments.Count(p => p.IsPaid),
+                        UnpaidCount = allPayments.Count(p => !p.IsPaid)
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting fixed expense payments");
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>تسديد مصروف ثابت لشهر معين</summary>
+    [HttpPost("fixed-expenses/pay")]
+    public async Task<IActionResult> PayFixedExpense([FromBody] PayFixedExpenseDto dto)
+    {
+        try
+        {
+            // ابحث عن السجل
+            var payment = await _unitOfWork.FixedExpensePayments.FirstOrDefaultAsync(
+                p => p.FixedExpenseId == dto.FixedExpenseId && p.Month == dto.Month && p.Year == dto.Year);
+
+            if (payment == null)
+            {
+                // أنشئ سجل جديد
+                var fe = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == dto.FixedExpenseId);
+                if (fe == null) return NotFound(new { success = false, message = "المصروف غير موجود" });
+
+                payment = new FixedExpensePayment
+                {
+                    FixedExpenseId = dto.FixedExpenseId,
+                    Month = dto.Month,
+                    Year = dto.Year,
+                    Amount = dto.Amount ?? fe.MonthlyAmount,
+                    IsPaid = true,
+                    PaidAt = DateTime.UtcNow,
+                    Notes = dto.Notes,
+                    CompanyId = dto.CompanyId
+                };
+                await _unitOfWork.FixedExpensePayments.AddAsync(payment);
+            }
+            else
+            {
+                if (payment.IsPaid) return BadRequest(new { success = false, message = "تم الدفع مسبقاً" });
+                payment.IsPaid = true;
+                payment.PaidAt = DateTime.UtcNow;
+                if (dto.Amount.HasValue) payment.Amount = dto.Amount.Value;
+                if (dto.Notes != null) payment.Notes = dto.Notes;
+                payment.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.FixedExpensePayments.Update(payment);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            return Ok(new { success = true, message = "تم تسجيل الدفع بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error paying fixed expense");
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>إلغاء دفع مصروف ثابت</summary>
+    [HttpPost("fixed-expenses/unpay/{paymentId}")]
+    public async Task<IActionResult> UnpayFixedExpense(long paymentId)
+    {
+        try
+        {
+            var payment = await _unitOfWork.FixedExpensePayments.FirstOrDefaultAsync(p => p.Id == paymentId);
+            if (payment == null) return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            payment.IsPaid = false;
+            payment.PaidAt = null;
+            payment.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.FixedExpensePayments.Update(payment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error unpaying fixed expense {Id}", paymentId);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    private static string GetCategoryArabic(FixedExpenseCategory cat) => cat switch
+    {
+        FixedExpenseCategory.OfficeRent => "إيجار مكتب",
+        FixedExpenseCategory.GeneratorCost => "تكلفة مولد",
+        FixedExpenseCategory.Internet => "إنترنت",
+        FixedExpenseCategory.Electricity => "كهرباء",
+        FixedExpenseCategory.Water => "ماء",
+        FixedExpenseCategory.Other => "أخرى",
+        _ => "غير معروف"
+    };
 }
 
 // ==================== DTOs ====================
@@ -3302,4 +4704,70 @@ public record PlanCommissionRateItem(
 
 public record UpdatePlanProfitDto(
     decimal ProfitAmount
+);
+
+public record SalaryPolicyDto(
+    Guid CompanyId,
+    string? Name,
+    bool IsDefault,
+    decimal DeductionPerLateMinute,
+    decimal MaxLateDeductionPercent,
+    decimal AbsentDayMultiplier,
+    decimal DeductionPerEarlyDepartureMinute,
+    decimal OvertimeHourlyMultiplier,
+    int MaxOvertimeHoursPerMonth,
+    decimal UnpaidLeaveDayMultiplier,
+    int WorkDaysPerMonth
+);
+
+// ==================== DTOs for Employee Adjustments ====================
+
+public record CreateAdjustmentDto(
+    Guid UserId,
+    Guid CompanyId,
+    AdjustmentType Type,
+    string? Category,
+    decimal Amount,
+    int Month,
+    int Year,
+    string? Description,
+    string? Notes,
+    Guid CreatedById,
+    bool IsRecurring = false
+);
+
+public record UpdateAdjustmentDto(
+    AdjustmentType? Type,
+    string? Category,
+    decimal? Amount,
+    string? Description,
+    string? Notes,
+    bool? IsRecurring,
+    bool? IsActive
+);
+
+// ==================== DTOs للمصاريف الثابتة ====================
+public record CreateFixedExpenseDto(
+    string Name,
+    FixedExpenseCategory Category,
+    decimal MonthlyAmount,
+    string? Description,
+    Guid CompanyId
+);
+
+public record UpdateFixedExpenseDto(
+    string? Name,
+    FixedExpenseCategory? Category,
+    decimal? MonthlyAmount,
+    string? Description,
+    bool? IsActive
+);
+
+public record PayFixedExpenseDto(
+    long FixedExpenseId,
+    int Month,
+    int Year,
+    decimal? Amount,
+    string? Notes,
+    Guid CompanyId
 );

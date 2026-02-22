@@ -116,6 +116,9 @@ public class User : BaseEntity<Guid>
     public string? LastLoginDeviceId { get; set; }
     public string? LastLoginDeviceInfo { get; set; }
     
+    /// <summary>بصمة الجهاز المسجلة للحضور (لا يمكن تسجيل حضور من جهاز مختلف)</summary>
+    public string? RegisteredDeviceFingerprint { get; set; }
+    
     // ============ FTTH Integration ============
     
     /// <summary>اسم المستخدم في نظام FTTH (null = فني فقط، ليس مشغل FTTH)</summary>

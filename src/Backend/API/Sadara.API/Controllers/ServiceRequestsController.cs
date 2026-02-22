@@ -1305,10 +1305,51 @@ public class ServiceRequestsController : ControllerBase
     /// </summary>
     [HttpGet("task-lookup")]
     [Authorize(Policy = "TechnicianOrAbove")]
-    public IActionResult GetTaskLookupData()
+    public async Task<IActionResult> GetTaskLookupData()
     {
-        var data = new
+        // جلب companyId من التوكن
+        var companyIdClaim = User.FindFirst("company_id")?.Value;
+        Guid? companyId = null;
+        if (!string.IsNullOrEmpty(companyIdClaim) && Guid.TryParse(companyIdClaim, out var parsedId))
+            companyId = parsedId;
+
+        // جلب الأقسام من قاعدة البيانات إن وجدت
+        var dbDepartments = companyId.HasValue
+            ? await _unitOfWork.Departments.AsQueryable()
+                .Where(d => d.CompanyId == companyId.Value && d.IsActive)
+                .OrderBy(d => d.SortOrder).ThenBy(d => d.NameAr)
+                .Include(d => d.Tasks.Where(t => !t.IsDeleted && t.IsActive))
+                .ToListAsync()
+            : new List<Department>();
+
+        object departments;
+        object departmentTasks;
+        object taskTypes;
+
+        if (dbDepartments.Count > 0)
         {
+            // استخدام الأقسام والمهام من قاعدة البيانات
+            departments = dbDepartments.Select(d => new { id = d.Id.ToString(), nameAr = d.NameAr, name = d.Name ?? d.NameAr }).ToArray();
+
+            var deptTasksDict = new Dictionary<string, string[]>();
+            var allTaskTypes = new HashSet<string>();
+            foreach (var dept in dbDepartments)
+            {
+                var tasks = dept.Tasks
+                    .OrderBy(t => t.SortOrder).ThenBy(t => t.NameAr)
+                    .Select(t => t.NameAr).ToArray();
+                if (tasks.Length > 0)
+                {
+                    deptTasksDict[dept.NameAr] = tasks;
+                    foreach (var t in tasks) allTaskTypes.Add(t);
+                }
+            }
+            departmentTasks = deptTasksDict;
+            taskTypes = allTaskTypes.ToArray();
+        }
+        else
+        {
+            // القيم الافتراضية إذا لم توجد أقسام في قاعدة البيانات
             departments = new[]
             {
                 new { id = "maintenance", nameAr = "الصيانة", name = "Maintenance" },
@@ -1317,15 +1358,7 @@ public class ServiceRequestsController : ControllerBase
                 new { id = "agents", nameAr = "الوكلاء", name = "Agents" },
                 new { id = "communications", nameAr = "الاتصالات", name = "Communications" },
                 new { id = "welding", nameAr = "اللحام", name = "Welding" }
-            },
-            priorities = new[]
-            {
-                new { value = 1, label = "عاجل", color = "#EF4444" },
-                new { value = 2, label = "عالي", color = "#F59E0B" },
-                new { value = 3, label = "متوسط", color = "#3B82F6" },
-                new { value = 4, label = "منخفض", color = "#10B981" }
-            },
-            // مهام كل قسم - بديل عن Google Sheets (ورقة ALKSM)
+            };
             departmentTasks = new Dictionary<string, string[]>
             {
                 ["الصيانة"] = new[] { "تركيب", "إصلاح", "صيانة دورية", "فحص", "استبدال", "طوارئ" },
@@ -1334,13 +1367,27 @@ public class ServiceRequestsController : ControllerBase
                 ["الوكلاء"] = new[] { "شراء اشتراك", "تجديد اشتراك", "استشارة" },
                 ["الاتصالات"] = new[] { "إصلاح", "فحص", "صيانة دورية", "طوارئ" },
                 ["اللحام"] = new[] { "لحام ألياف", "إصلاح كابل", "تمديد", "فحص" }
-            },
+            };
             taskTypes = new[]
             {
                 "شراء اشتراك", "تركيب", "إصلاح", "صيانة دورية",
                 "فحص", "استبدال", "طوارئ", "استشارة",
                 "تجديد اشتراك", "مراجعة حساب", "لحام ألياف", "إصلاح كابل", "تمديد"
+            };
+        }
+
+        var data = new
+        {
+            departments,
+            priorities = new[]
+            {
+                new { value = 1, label = "عاجل", color = "#EF4444" },
+                new { value = 2, label = "عالي", color = "#F59E0B" },
+                new { value = 3, label = "متوسط", color = "#3B82F6" },
+                new { value = 4, label = "منخفض", color = "#10B981" }
             },
+            departmentTasks,
+            taskTypes,
             serviceTypes = new[] { "35", "50", "75", "150" },
             subscriptionDurations = new[]
             {
@@ -1362,7 +1409,6 @@ public class ServiceRequestsController : ControllerBase
                 new { value = "Rejected", label = "مرفوضة" },
                 new { value = "OnHold", label = "معلقة" }
             },
-            // خيارات FBG - بديل عن Google Sheets (ورقة Sheet1)
             fbgOptions = new[]
             {
                 "FBG-01", "FBG-02", "FBG-03", "FBG-04", "FBG-05",

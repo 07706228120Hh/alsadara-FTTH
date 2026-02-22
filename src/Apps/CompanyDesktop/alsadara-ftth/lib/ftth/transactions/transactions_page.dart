@@ -2482,8 +2482,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   String _formatCurrency(dynamic value) {
     if (value == null) return '0';
-    double amount = (value is int) ? value.toDouble() : (value as double);
-    return NumberFormat('#,##0').format(amount);
+    final amount = (value is int) ? value : (value as double).round();
+    return amount.toString();
   }
 
   String _translateChangeType(String changeType) {

@@ -71,6 +71,12 @@ public class UnitOfWork : IUnitOfWork
     // Attendance & Work Centers (الحضور والمراكز)
     private IRepository<AttendanceRecord, long>? _attendanceRecords;
     private IRepository<WorkCenter, int>? _workCenters;
+    private IRepository<AttendanceAuditLog, long>? _attendanceAuditLogs;
+    private IRepository<WorkSchedule, int>? _workSchedules;
+
+    // Leave Management (نظام الإجازات)
+    private IRepository<LeaveRequest, long>? _leaveRequests;
+    private IRepository<LeaveBalance, long>? _leaveBalances;
 
     // ISP Data (بيانات مشتركي الإنترنت)
     private IRepository<ISPSubscriber, long>? _ispSubscribers;
@@ -83,10 +89,16 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<CashBox, Guid>? _cashBoxes;
     private IRepository<CashTransaction, long>? _cashTransactions;
     private IRepository<EmployeeSalary, long>? _employeeSalaries;
+    private IRepository<SalaryPolicy, int>? _salaryPolicies;
     private IRepository<TechnicianCollection, long>? _technicianCollections;
     private IRepository<TechnicianTransaction, long>? _technicianTransactions;
     private IRepository<Expense, long>? _expenses;
+    private IRepository<EmployeeDeductionBonus, long>? _employeeDeductionBonuses;
+    private IRepository<FixedExpense, long>? _fixedExpenses;
+    private IRepository<FixedExpensePayment, long>? _fixedExpensePayments;
     private IRepository<TaskAudit, long>? _taskAudits;
+    private IRepository<Department, int>? _departments;
+    private IRepository<DepartmentTask, int>? _departmentTasks;
 
     public UnitOfWork(SadaraDbContext context)
     {
@@ -222,6 +234,19 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<WorkCenter, int> WorkCenters =>
         _workCenters ??= new Repository<WorkCenter, int>(_context);
 
+    public IRepository<AttendanceAuditLog, long> AttendanceAuditLogs =>
+        _attendanceAuditLogs ??= new Repository<AttendanceAuditLog, long>(_context);
+
+    public IRepository<WorkSchedule, int> WorkSchedules =>
+        _workSchedules ??= new Repository<WorkSchedule, int>(_context);
+
+    // Leave Management (نظام الإجازات)
+    public IRepository<LeaveRequest, long> LeaveRequests =>
+        _leaveRequests ??= new Repository<LeaveRequest, long>(_context);
+
+    public IRepository<LeaveBalance, long> LeaveBalances =>
+        _leaveBalances ??= new Repository<LeaveBalance, long>(_context);
+
     // ISP Data (بيانات مشتركي الإنترنت)
     public IRepository<ISPSubscriber, long> ISPSubscribers =>
         _ispSubscribers ??= new Repository<ISPSubscriber, long>(_context);
@@ -248,6 +273,9 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<EmployeeSalary, long> EmployeeSalaries =>
         _employeeSalaries ??= new Repository<EmployeeSalary, long>(_context);
 
+    public IRepository<SalaryPolicy, int> SalaryPolicies =>
+        _salaryPolicies ??= new Repository<SalaryPolicy, int>(_context);
+
     public IRepository<TechnicianCollection, long> TechnicianCollections =>
         _technicianCollections ??= new Repository<TechnicianCollection, long>(_context);
 
@@ -257,9 +285,25 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Expense, long> Expenses =>
         _expenses ??= new Repository<Expense, long>(_context);
 
+    public IRepository<EmployeeDeductionBonus, long> EmployeeDeductionBonuses =>
+        _employeeDeductionBonuses ??= new Repository<EmployeeDeductionBonus, long>(_context);
+
+    public IRepository<FixedExpense, long> FixedExpenses =>
+        _fixedExpenses ??= new Repository<FixedExpense, long>(_context);
+
+    public IRepository<FixedExpensePayment, long> FixedExpensePayments =>
+        _fixedExpensePayments ??= new Repository<FixedExpensePayment, long>(_context);
+
     // Task Audit (تدقيق المهام)
     public IRepository<TaskAudit, long> TaskAudits =>
         _taskAudits ??= new Repository<TaskAudit, long>(_context);
+
+    // Departments (الأقسام ومهامها)
+    public IRepository<Department, int> Departments =>
+        _departments ??= new Repository<Department, int>(_context);
+
+    public IRepository<DepartmentTask, int> DepartmentTasks =>
+        _departmentTasks ??= new Repository<DepartmentTask, int>(_context);
 
     #endregion
 

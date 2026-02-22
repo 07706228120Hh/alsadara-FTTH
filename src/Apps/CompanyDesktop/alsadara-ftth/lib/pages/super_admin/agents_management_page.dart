@@ -2203,8 +2203,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
 
   String _formatCurrency(double amount) {
     if (amount == 0) return '0';
-    final formatter = NumberFormat('#,###', 'en');
-    return formatter.format(amount.round());
+    return amount.round().toString();
   }
 }
 

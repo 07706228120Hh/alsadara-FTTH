@@ -1581,10 +1581,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
   String _formatNumber(dynamic value) {
     if (value == null || value == 0) return '0';
     final n = value is num ? value : double.tryParse(value.toString()) ?? 0;
-    return n.toStringAsFixed(0).replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (m) => '${m[1]},',
-        );
+    return n.round().toString();
   }
 
   String _formatDate(dynamic date) {

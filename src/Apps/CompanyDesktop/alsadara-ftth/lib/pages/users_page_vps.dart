@@ -4,12 +4,14 @@
 library;
 
 import 'dart:convert';
-import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
+import '../services/departments_data_service.dart';
+import '../services/centers_data_service.dart';
 import 'super_admin/permissions_management_v2_page.dart';
 import '../services/permission_checker.dart';
 import 'hr/employee_profile_page.dart';
@@ -1443,20 +1445,19 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
     {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
   ];
 
-  static const List<String> _departments = [
-    'الصيانة',
-    'الحسابات',
-    'الفنيين',
-    'الوكلاء',
-    'الاتصالات',
-    'اللحام',
-  ];
+  List<String> _departments = [];
+  bool _isDepartmentsLoading = true;
+
+  List<String> _centersList = [];
+  bool _isCentersLoading = true;
 
   bool get isEditing => widget.employee != null;
 
   @override
   void initState() {
     super.initState();
+    _loadDepartments();
+    _loadCenters();
     if (isEditing) {
       final emp = widget.employee!;
       _nameController.text = emp.fullName;
@@ -1474,6 +1475,26 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
               (r) => r['value']!.toLowerCase() == role.toLowerCase())['value']!
           : 'Employee';
       _isActive = emp.isActive;
+    }
+  }
+
+  Future<void> _loadDepartments() async {
+    final depts = await DepartmentsDataService.instance.fetchDepartments();
+    if (mounted) {
+      setState(() {
+        _departments = depts;
+        _isDepartmentsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadCenters() async {
+    final names = await CentersDataService.instance.fetchCenters();
+    if (mounted) {
+      setState(() {
+        _centersList = names;
+        _isCentersLoading = false;
+      });
     }
   }
 
@@ -1733,11 +1754,41 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: TextFormField(
-                              controller: _centerController,
-                              decoration: _inputDecoration(
-                                  'المركز', Icons.location_on_outlined),
-                            ),
+                            child: _isCentersLoading
+                                ? const SizedBox(
+                                    height: 48,
+                                    child: Center(
+                                        child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2))))
+                                : DropdownButtonFormField<String>(
+                                    value: _centersList.contains(
+                                                _centerController.text) &&
+                                            _centerController.text.isNotEmpty
+                                        ? _centerController.text
+                                        : null,
+                                    decoration: _inputDecoration(
+                                        'المركز', Icons.location_on_outlined),
+                                    items: [
+                                      if (_centerController.text.isNotEmpty &&
+                                          !_centersList
+                                              .contains(_centerController.text))
+                                        DropdownMenuItem(
+                                            value: _centerController.text,
+                                            child:
+                                                Text(_centerController.text)),
+                                      ..._centersList.map((c) =>
+                                          DropdownMenuItem(
+                                              value: c, child: Text(c))),
+                                    ],
+                                    onChanged: (v) {
+                                      setState(() {
+                                        _centerController.text = v ?? '';
+                                      });
+                                    },
+                                  ),
                           ),
                         ],
                       ),

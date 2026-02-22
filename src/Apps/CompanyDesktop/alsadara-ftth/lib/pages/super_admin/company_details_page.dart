@@ -8,6 +8,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/api/auth/super_admin_api.dart';
 import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
+import '../../services/departments_data_service.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'edit_company_page.dart';
 import '../../theme/energy_dashboard_theme.dart';
@@ -3209,14 +3210,9 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
     bool isActive = user.isActive;
     bool isSaving = false;
 
-    final departments = [
-      'الصيانة',
-      'الحسابات',
-      'الفنيين',
-      'الوكلاء',
-      'الاتصالات',
-      'اللحام',
-    ];
+    // جلب الأقسام من API ديناميكياً
+    List<String> departments =
+        await DepartmentsDataService.instance.fetchDepartments();
     String? selectedDepartment =
         departments.contains(user.department) ? user.department : null;
 
