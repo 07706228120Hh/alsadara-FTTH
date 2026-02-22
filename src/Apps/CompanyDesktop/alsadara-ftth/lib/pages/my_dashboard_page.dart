@@ -747,7 +747,13 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 allowances,
                 Icons.workspace_premium,
                 _accentTeal,
-                onTap: () => _showFilteredTransactions('Adjustment', 'البدلات'),
+                onTap: () => _showAdjustmentsDialog(
+                  title: 'البدلات',
+                  type: 2, // Allowance
+                  color: _accentTeal,
+                  icon: Icons.workspace_premium,
+                  attendanceItems: [],
+                ),
               ),
             ),
             SizedBox(
@@ -757,8 +763,17 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 bonuses,
                 Icons.star_rounded,
                 _accentGreen,
-                onTap: () =>
-                    _showFilteredTransactions('Adjustment', 'المكافآت'),
+                onTap: () => _showAdjustmentsDialog(
+                  title: 'المكافآت',
+                  type: 1, // Bonus
+                  color: _accentGreen,
+                  icon: Icons.star_rounded,
+                  attendanceItems: [
+                    if ((s['OvertimeBonus'] ?? 0) > 0)
+                      _DeductionItem('مكافأة وقت إضافي',
+                          s['OvertimeBonus'] ?? 0, _accentGreen),
+                  ],
+                ),
               ),
             ),
             SizedBox(
@@ -768,7 +783,26 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 deductions,
                 Icons.remove_circle_outline,
                 _accentRed,
-                onTap: () => _showFilteredTransactions('Discount', 'الخصومات'),
+                onTap: () => _showAdjustmentsDialog(
+                  title: 'الخصومات',
+                  type: 0, // Deduction
+                  color: _accentRed,
+                  icon: Icons.remove_circle_outline,
+                  attendanceItems: [
+                    if ((s['LateDeduction'] ?? 0) > 0)
+                      _DeductionItem(
+                          'خصم التأخير', s['LateDeduction'] ?? 0, _accentRed),
+                    if ((s['AbsentDeduction'] ?? 0) > 0)
+                      _DeductionItem(
+                          'خصم الغياب', s['AbsentDeduction'] ?? 0, _accentRed),
+                    if ((s['EarlyDepartureDeduction'] ?? 0) > 0)
+                      _DeductionItem('خصم الخروج المبكر',
+                          s['EarlyDepartureDeduction'] ?? 0, _accentOrange),
+                    if ((s['UnpaidLeaveDeduction'] ?? 0) > 0)
+                      _DeductionItem('خصم إجازة بدون راتب',
+                          s['UnpaidLeaveDeduction'] ?? 0, _accentOrange),
+                  ],
+                ),
               ),
             ),
             SizedBox(
@@ -1618,6 +1652,44 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     );
   }
 
+  // ───── عرض تفاصيل بند الراتب مع جلب العمليات الفعلية من الخادم ─────
+  void _showAdjustmentsDialog({
+    required String title,
+    required int type, // 0=Deduction, 1=Bonus, 2=Allowance
+    required Color color,
+    required IconData icon,
+    List<_DeductionItem> attendanceItems = const [],
+  }) {
+    final now = DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          backgroundColor: _bgPage,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: _AdjustmentsDialogContent(
+              title: title,
+              type: type,
+              color: color,
+              icon: icon,
+              attendanceItems: attendanceItems,
+              month: now.month,
+              year: now.year,
+              attendanceApi: _attendanceApi,
+              formatAmount: _formatAmount,
+              arabicMonth: _arabicMonth,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ═══════════════════════════════════════════════════════
   //  سجل الحضور اليومي
   // ═══════════════════════════════════════════════════════
@@ -1888,8 +1960,302 @@ class _DeductionItem {
 }
 
 // ═══════════════════════════════════════════════════════
-//  زر البصمة
+//  محتوى حوار الخصومات/المكافآت/البدلات (يجلب من الخادم)
 // ═══════════════════════════════════════════════════════
+class _AdjustmentsDialogContent extends StatefulWidget {
+  final String title;
+  final int type;
+  final Color color;
+  final IconData icon;
+  final List<_DeductionItem> attendanceItems;
+  final int month;
+  final int year;
+  final AttendanceApiService attendanceApi;
+  final String Function(dynamic) formatAmount;
+  final String Function(int) arabicMonth;
+
+  const _AdjustmentsDialogContent({
+    required this.title,
+    required this.type,
+    required this.color,
+    required this.icon,
+    required this.attendanceItems,
+    required this.month,
+    required this.year,
+    required this.attendanceApi,
+    required this.formatAmount,
+    required this.arabicMonth,
+  });
+
+  @override
+  State<_AdjustmentsDialogContent> createState() =>
+      _AdjustmentsDialogContentState();
+}
+
+class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
+  static const _textDark = Color(0xFF2C3E50);
+  static const _textGray = Color(0xFF95A5A6);
+
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _records = [];
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAdjustments();
+  }
+
+  Future<void> _fetchAdjustments() async {
+    try {
+      final authUser = VpsAuthService.instance.currentUser;
+      final userId = authUser?.id;
+      final companyId = VpsAuthService.instance.currentCompanyId;
+
+      if (userId == null) {
+        setState(() {
+          _error = 'لا يمكن تحديد المستخدم';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final data = await widget.attendanceApi.getEmployeeAdjustments(
+        companyId: companyId,
+        userId: userId,
+        month: widget.month,
+        year: widget.year,
+        type: widget.type,
+      );
+
+      if (!mounted) return;
+
+      final List<dynamic> rawRecords = data['data'] ?? [];
+      setState(() {
+        _records = rawRecords
+            .map((r) => r as Map<String, dynamic>)
+            .where((r) => r['IsApplied'] == true || r['isApplied'] == true)
+            .toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error fetching adjustments: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'تعذّر جلب البيانات';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // حساب الإجمالي (عناصر الحضور + العمليات اليدوية)
+    double attendanceTotal = widget.attendanceItems.fold<double>(0.0, (sum, i) {
+      final v = i.amount;
+      return sum + (v is num ? v.toDouble() : 0);
+    });
+    double manualTotal = _records.fold<double>(0.0, (sum, r) {
+      final v = r['Amount'] ?? r['amount'] ?? 0;
+      return sum + (v is num ? v.toDouble() : 0);
+    });
+    double grandTotal = attendanceTotal + manualTotal;
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── العنوان ──
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: widget.color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(widget.icon, color: widget.color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.title,
+                        style: GoogleFonts.cairo(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: _textDark)),
+                    Text(
+                      '${widget.arabicMonth(widget.month)} ${widget.year}',
+                      style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ── عناصر مبنية على الحضور (تأخير، غياب..) ──
+          if (widget.attendanceItems.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text('حسب الحضور',
+                    style: GoogleFonts.cairo(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _textGray)),
+              ),
+            ),
+            ...widget.attendanceItems.map((item) => _buildItemRow(
+                  item.label,
+                  item.amount,
+                  item.color,
+                )),
+          ],
+
+          // ── العمليات اليدوية من الخادم ──
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(_error!,
+                  style: GoogleFonts.cairo(fontSize: 13, color: _textGray)),
+            )
+          else if (_records.isNotEmpty) ...[
+            if (widget.attendanceItems.isNotEmpty) const Divider(height: 20),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text('عمليات يدوية',
+                    style: GoogleFonts.cairo(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _textGray)),
+              ),
+            ),
+            ..._records.map((r) {
+              final amount = r['Amount'] ?? r['amount'] ?? 0;
+              final category = r['Category'] ?? r['category'] ?? '';
+              final description = r['Description'] ?? r['description'] ?? '';
+              final label = category.isNotEmpty
+                  ? category
+                  : (description.isNotEmpty ? description : widget.title);
+              return _buildItemRow(
+                label,
+                amount,
+                widget.color,
+                subtitle: description.isNotEmpty && category.isNotEmpty
+                    ? description
+                    : null,
+              );
+            }),
+          ] else if (widget.attendanceItems.isEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 36, color: _textGray.withOpacity(0.4)),
+                  const SizedBox(height: 8),
+                  Text('لا توجد عمليات لهذا الشهر',
+                      style: GoogleFonts.cairo(fontSize: 13, color: _textGray)),
+                ],
+              ),
+            ),
+          ],
+
+          const Divider(height: 20),
+          // ── الإجمالي ──
+          Row(
+            children: [
+              Text('الإجمالي',
+                  style: GoogleFonts.cairo(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark)),
+              const Spacer(),
+              Text(
+                '${widget.formatAmount(grandTotal)} د.ع',
+                style: GoogleFonts.cairo(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: widget.color),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemRow(String label, dynamic amount, Color color,
+      {String? subtitle}) {
+    final v = amount;
+    final isZero = v is num && v == 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isZero ? const Color(0xFFF5F5F5) : color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isZero ? const Color(0xFFE0E0E0) : color.withOpacity(0.18),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: isZero ? _textGray.withOpacity(0.3) : color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: GoogleFonts.cairo(
+                        fontSize: 13, color: isZero ? _textGray : _textDark)),
+                if (subtitle != null)
+                  Text(subtitle,
+                      style: GoogleFonts.cairo(fontSize: 11, color: _textGray)),
+              ],
+            ),
+          ),
+          Text(
+            '${widget.formatAmount(v)} د.ع',
+            style: GoogleFonts.cairo(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isZero ? _textGray : color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AttendanceBtn extends StatefulWidget {
   final String label;
   final IconData icon;
