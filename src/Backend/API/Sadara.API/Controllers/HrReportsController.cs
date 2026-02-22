@@ -433,25 +433,35 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
             var manualBonuses = adjustments.Where(a => a.Type == AdjustmentType.Bonus).ToList();
             var manualAllowances = adjustments.Where(a => a.Type == AdjustmentType.Allowance).ToList();
 
-            // إذا لم يتم إنشاء مسيّر الرواتب بعد، نحسب الراتب التقديري
+            // حساب الخصومات/المكافآت المعلقة (لم تُطبّق على مسيّر بعد)
+            var pendingDeductions = manualDeductions.Where(a => !a.IsApplied).Sum(a => a.Amount);
+            var pendingBonuses = manualBonuses.Where(a => !a.IsApplied).Sum(a => a.Amount);
+            var pendingAllowances = manualAllowances.Where(a => !a.IsApplied).Sum(a => a.Amount);
+
             object salaryResponse;
             if (salary != null)
             {
+                // إضافة الخصومات المعلقة التي أُضيفت بعد إنشاء المسيّر
+                var totalDeductions = salary.Deductions + pendingDeductions;
+                var totalBonuses = salary.Bonuses + pendingBonuses;
+                var totalAllowances = salary.Allowances + pendingAllowances;
+                var adjustedNet = salary.NetSalary - pendingDeductions + pendingBonuses + pendingAllowances;
+
                 salaryResponse = new
                 {
                     salary.BaseSalary,
-                    salary.Allowances,
-                    salary.Deductions,
-                    salary.Bonuses,
-                    salary.NetSalary,
+                    Allowances = totalAllowances,
+                    Deductions = totalDeductions,
+                    Bonuses = totalBonuses,
+                    NetSalary = adjustedNet,
                     Status = salary.Status.ToString(),
                     salary.LateDeduction,
                     salary.AbsentDeduction,
                     salary.EarlyDepartureDeduction,
                     salary.UnpaidLeaveDeduction,
                     salary.OvertimeBonus,
-                    salary.ManualDeductions,
-                    salary.ManualBonuses
+                    ManualDeductions = salary.ManualDeductions + pendingDeductions,
+                    ManualBonuses = salary.ManualBonuses + pendingBonuses
                 };
             }
             else if (employee.Salary > 0 || adjustments.Any())

@@ -1175,25 +1175,38 @@ class _MyDashboardPageState extends State<MyDashboardPage>
 
     // إضافة الخصومات والمكافآت والبدلات اليدوية من Adjustments
     if (_adjustmentsData != null) {
-      final deductionsList = _adjustmentsData!['Deductions'] as List<dynamic>? ?? [];
+      final deductionsList =
+          _adjustmentsData!['Deductions'] as List<dynamic>? ?? [];
       for (final d in deductionsList) {
-        final desc = d['Description']?.toString() ?? d['Category']?.toString() ?? 'خصم يدوي';
-        final category = d['Category']?.toString() ?? '';
-        final label = category.isNotEmpty ? '$desc (الفئة: $category)' : desc;
+        final rawDesc = d['Description']?.toString() ?? '';
+        final rawCat = d['Category']?.toString() ?? '';
+        final descText = rawDesc.isNotEmpty
+            ? rawDesc
+            : (rawCat.isNotEmpty ? rawCat : 'خصم يدوي');
+        final label =
+            rawCat.isNotEmpty ? '$descText (الفئة: $rawCat)' : descText;
         items.add(_DeductionItem(label, d['Amount'] ?? 0, _accentRed));
       }
       final bonusesList = _adjustmentsData!['Bonuses'] as List<dynamic>? ?? [];
       for (final b in bonusesList) {
-        final desc = b['Description']?.toString() ?? b['Category']?.toString() ?? 'مكافأة';
-        final category = b['Category']?.toString() ?? '';
-        final label = category.isNotEmpty ? '$desc (الفئة: $category)' : desc;
+        final rawDesc = b['Description']?.toString() ?? '';
+        final rawCat = b['Category']?.toString() ?? '';
+        final descText = rawDesc.isNotEmpty
+            ? rawDesc
+            : (rawCat.isNotEmpty ? rawCat : 'مكافأة');
+        final label =
+            rawCat.isNotEmpty ? '$descText (الفئة: $rawCat)' : descText;
         items.add(_DeductionItem(label, b['Amount'] ?? 0, _accentGreen));
       }
-      final allowancesList = _adjustmentsData!['Allowances'] as List<dynamic>? ?? [];
+      final allowancesList =
+          _adjustmentsData!['Allowances'] as List<dynamic>? ?? [];
       for (final a in allowancesList) {
-        final desc = a['Description']?.toString() ?? a['Category']?.toString() ?? 'بدل';
-        final category = a['Category']?.toString() ?? '';
-        final label = category.isNotEmpty ? '$desc (الفئة: $category)' : desc;
+        final rawDesc = a['Description']?.toString() ?? '';
+        final rawCat = a['Category']?.toString() ?? '';
+        final descText =
+            rawDesc.isNotEmpty ? rawDesc : (rawCat.isNotEmpty ? rawCat : 'بدل');
+        final label =
+            rawCat.isNotEmpty ? '$descText (الفئة: $rawCat)' : descText;
         items.add(_DeductionItem(label, a['Amount'] ?? 0, _accentTeal));
       }
     }
