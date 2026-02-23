@@ -13,7 +13,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:excel/excel.dart' as excel;
-import '../../services/permissions_service.dart';
+import '../../permissions/permissions.dart';
 import '../../services/auth_service.dart';
 
 class CaounterDetailsPage extends StatefulWidget {
@@ -830,8 +830,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
     // جلب كلمة المرور من نظام الصلاحيات
     String? storedPassword;
     try {
-      storedPassword =
-          await PermissionsService.getSecondSystemDefaultPassword();
+      storedPassword = await PermissionService.getSecondSystemDefaultPassword();
     } catch (e) {
       print('خطأ في جلب كلمة المرور: $e');
     }

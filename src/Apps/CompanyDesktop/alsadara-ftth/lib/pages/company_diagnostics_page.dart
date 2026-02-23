@@ -10,6 +10,7 @@ import '../services/vps_auth_service.dart';
 import '../services/sadara_api_service.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
+import '../permissions/permissions.dart';
 
 /// صفحة تشخيص نظام الشركة
 class CompanyDiagnosticsPage extends StatefulWidget {
@@ -319,25 +320,19 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             ],
           ),
           const SizedBox(height: 16),
-          // pageAccess المُمرر للصفحة
+          // صلاحيات V2 من PermissionManager
           _buildSectionCard(
-            title: '📄 pageAccess (المُمرر للواجهة)',
+            title: '📄 صلاحيات الصفحات (من PermissionManager)',
             icon: Icons.pages,
             color: Colors.brown,
             children: [
-              if (widget.pageAccess?.isEmpty ?? true)
-                const ListTile(
-                  leading: Icon(Icons.warning, color: Colors.orange),
-                  title: Text('لا توجد صلاحيات صفحات'),
-                )
-              else
-                ...widget.pageAccess!.entries.map(
-                  (e) => _buildInfoTile(
-                    e.key,
-                    e.value ? '✅ مفعل' : '❌ معطل',
-                    e.value ? Icons.check_circle : Icons.cancel,
+              ...PermissionManager.instance.buildPageAccess().entries.map(
+                    (e) => _buildInfoTile(
+                      e.key,
+                      e.value ? '✅ مفعل' : '❌ معطل',
+                      e.value ? Icons.check_circle : Icons.cancel,
+                    ),
                   ),
-                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -781,8 +776,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       buffer.writeln('لا توجد شركة');
     }
 
-    buffer.writeln('\n=== pageAccess ===');
-    buffer.writeln(widget.pageAccess?.toString() ?? 'غير محدد');
+    buffer.writeln('\n=== صلاحيات V2 (من PermissionManager) ===');
+    buffer.writeln(PermissionManager.instance.buildPageAccess().toString());
 
     buffer.writeln('\n=== معلومات API ===');
     buffer.writeln('عنوان API: ${ApiConfig.baseUrl}');

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import '../services/unified_auth_manager.dart';
 import '../widgets/auth_status_monitor.dart';
 import 'login/premium_login_page.dart';
-import '../services/permission_checker.dart';
+import '../permissions/permissions.dart';
 
 /// صفحة رئيسية محسنة مع نظام المصادقة الموحد
 class EnhancedHomePage extends StatefulWidget {
@@ -17,6 +17,7 @@ class EnhancedHomePage extends StatefulWidget {
   final String department;
   final String salary;
   final String center;
+  @Deprecated('استخدم PermissionManager.instance.canView() مباشرة')
   final Map<String, bool> pageAccess;
 
   const EnhancedHomePage({
@@ -26,7 +27,7 @@ class EnhancedHomePage extends StatefulWidget {
     required this.department,
     required this.salary,
     required this.center,
-    required this.pageAccess,
+    this.pageAccess = const {},
   });
 
   @override
@@ -267,10 +268,9 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
   }
 
   Widget _buildPagesGrid() {
-    // V2: بناء قائمة الصفحات المتاحة من PermissionManager
+    // V2: بناء قائمة الصفحات المتاحة من PermissionManager فقط
     final pm = PermissionManager.instance;
-    final pageAccessMap =
-        pm.isLoaded ? pm.buildPageAccess() : widget.pageAccess;
+    final pageAccessMap = pm.buildPageAccess();
     final availablePages = pageAccessMap.entries
         .where((entry) => entry.value)
         .map((entry) => entry.key)

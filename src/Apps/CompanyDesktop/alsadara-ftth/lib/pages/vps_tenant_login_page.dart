@@ -11,7 +11,7 @@ import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import 'home_page.dart';
 import 'super_admin/super_admin_dashboard.dart';
-import '../services/permission_checker.dart';
+import '../permissions/permissions.dart';
 
 /// نموذج بيانات تسجيل الدخول المحفوظة
 class SavedCredential {

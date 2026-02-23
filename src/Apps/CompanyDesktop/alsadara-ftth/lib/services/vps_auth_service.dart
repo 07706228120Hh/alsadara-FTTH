@@ -10,7 +10,7 @@ import 'api/api_response.dart';
 import 'api/auth/auth_models.dart';
 import 'api/auth/super_admin_api.dart';
 import 'api/auth/company_auth_api.dart';
-import 'permission_checker.dart';
+import '../permissions/permissions.dart';
 
 /// نوع المستخدم المسجل
 enum VpsAuthUserType {

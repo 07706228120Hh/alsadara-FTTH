@@ -20,7 +20,7 @@ import '../login/premium_login_page.dart'; // ✨ صفحة تسجيل الدخو
 import '../home_page.dart';
 import '../../theme/energy_dashboard_theme.dart'; // 🔋 ثيم Energy Dashboard الموحد
 import '../diagnostics/system_diagnostics_page.dart'; // 🔧 صفحة التشخيص
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 import '../account/account_info_page.dart'; // ✅ صفحة معلومات الحساب
 import '../admin/database_admin_page.dart'; // ✅ صفحة إدارة قاعدة البيانات
 import 'energy_dashboard_home.dart'; // 🔋 الشاشة الرئيسية بتصميم Energy Dashboard

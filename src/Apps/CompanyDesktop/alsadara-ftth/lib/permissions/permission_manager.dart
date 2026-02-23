@@ -1,6 +1,6 @@
-/// 🔐 نظام فحص الصلاحيات الموحد V3 — هرمي دقيق
-/// يوفر طريقة مركزية للتحقق من الصلاحيات على مستوى الإجراءات
-/// يدعم المفاتيح الهرمية مثل 'accounting.journals'
+/// ═══════════════════════════════════════════════════════════════
+/// مدير الصلاحيات الموحد — Singleton مع دعم هرمي
+/// ═══════════════════════════════════════════════════════════════
 ///
 /// القاعدة الهرمية:
 ///   - إذا الأب مغلق ← جميع الأبناء مغلقة تلقائياً
@@ -9,25 +9,17 @@
 ///
 /// الاستخدام:
 /// ```dart
-/// class _MyPageState extends State<MyPage> with PermissionCheckerMixin {
-///   @override
-///   void initState() {
-///     super.initState();
-///     initPermissions();
-///   }
-///
-///   if (canView('accounting'))            // هل يرى المحاسبة؟
-///   if (canView('accounting.journals'))   // هل يرى القيود اليومية؟
-///   if (canAdd('accounting.journals'))    // هل يضيف قيد؟
-///   if (canEdit('hr.salaries'))           // هل يعدل الرواتب؟
-/// }
+/// final pm = PermissionManager.instance;
+/// if (pm.canView('accounting.journals'))  // ...
+/// if (pm.canAdd('hr.employees'))          // ...
+/// if (pm.hasAction('tasks', 'edit'))      // ...
 /// ```
 library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'permissions_service.dart';
-import '../config/permission_registry.dart';
+import 'permission_service.dart';
+import 'permission_registry.dart';
 
 /// أنواع الإجراءات المتاحة
 enum PermissionAction {
@@ -63,9 +55,30 @@ extension PermissionActionExt on PermissionAction {
         return 'send';
     }
   }
+
+  String get labelAr {
+    switch (this) {
+      case PermissionAction.view:
+        return 'عرض';
+      case PermissionAction.add:
+        return 'إضافة';
+      case PermissionAction.edit:
+        return 'تعديل';
+      case PermissionAction.delete:
+        return 'حذف';
+      case PermissionAction.export:
+        return 'تصدير';
+      case PermissionAction.import_:
+        return 'استيراد';
+      case PermissionAction.print_:
+        return 'طباعة';
+      case PermissionAction.send:
+        return 'إرسال';
+    }
+  }
 }
 
-/// مدير الصلاحيات V3 — Singleton مع دعم هرمي
+/// مدير الصلاحيات الموحد — Singleton
 class PermissionManager {
   static PermissionManager? _instance;
   static PermissionManager get instance =>
@@ -83,13 +96,17 @@ class PermissionManager {
   bool _loaded = false;
   bool get isLoaded => _loaded;
 
-  /// تحميل الصلاحيات من PermissionsService (SharedPreferences)
+  // ══════════════════════════════════════════
+  // تحميل وحفظ الصلاحيات
+  // ══════════════════════════════════════════
+
+  /// تحميل الصلاحيات من PermissionService (SharedPreferences)
   Future<void> loadPermissions() async {
     try {
-      _firstSystemV2 = await PermissionsService.getFirstSystemPermissionsV2();
-      _secondSystemV2 = await PermissionsService.getSecondSystemPermissionsV2();
+      _firstSystemV2 = await PermissionService.getFirstSystemPermissionsV2();
+      _secondSystemV2 = await PermissionService.getSecondSystemPermissionsV2();
       _loaded = true;
-      debugPrint('✅ PermissionManager: تم تحميل صلاحيات V3');
+      debugPrint('✅ PermissionManager: تم تحميل الصلاحيات');
       debugPrint('   النظام الأول: ${_firstSystemV2.keys.length} ميزة');
       debugPrint('   النظام الثاني: ${_secondSystemV2.keys.length} ميزة');
     } catch (e) {
@@ -106,11 +123,10 @@ class PermissionManager {
     _secondSystemV2 = secondSystem;
     _loaded = true;
 
-    // حفظ في SharedPreferences
-    await PermissionsService.saveFirstSystemPermissionsV2(firstSystem);
-    await PermissionsService.saveSecondSystemPermissionsV2(secondSystem);
+    await PermissionService.saveFirstSystemPermissionsV2(firstSystem);
+    await PermissionService.saveSecondSystemPermissionsV2(secondSystem);
 
-    debugPrint('💾 PermissionManager: تم حفظ صلاحيات V3');
+    debugPrint('💾 PermissionManager: تم حفظ الصلاحيات');
   }
 
   /// تحديث صلاحيات V2 من بيانات API خام
@@ -141,7 +157,7 @@ class PermissionManager {
       v2Data.forEach((feature, value) {
         if (value is Map) {
           result[feature] = {};
-          for (final action in PermissionsService.availableActions) {
+          for (final action in PermissionService.availableActions) {
             result[feature]![action] = value[action] == true;
           }
         } else if (value == true) {
@@ -157,9 +173,8 @@ class PermissionManager {
       v1Data.forEach((feature, value) {
         if (!result.containsKey(feature)) {
           if (value is Map) {
-            // V2 format في حقل V1
             result[feature] = {};
-            for (final action in PermissionsService.availableActions) {
+            for (final action in PermissionService.availableActions) {
               result[feature]![action] = value[action] == true;
             }
           } else {
@@ -173,11 +188,9 @@ class PermissionManager {
   }
 
   /// تحويل V1 (bool) إلى V2 (actions map)
-  /// إذا كان true → view=true والباقي false
-  /// إذا كان false → الكل false
   Map<String, bool> _v1ToV2Actions(bool v1Value) {
     return {
-      for (final action in PermissionsService.availableActions)
+      for (final action in PermissionService.availableActions)
         action: action == 'view' ? v1Value : false,
     };
   }
@@ -254,6 +267,10 @@ class PermissionManager {
     return false;
   }
 
+  // ══════════════════════════════════════════
+  // اختصارات للإجراءات الشائعة
+  // ══════════════════════════════════════════
+
   /// هل يمكن عرض هذه الميزة؟
   bool canView(String feature) => hasAction(feature, 'view');
 
@@ -278,6 +295,10 @@ class PermissionManager {
   /// هل يمكن إرسال من هذه الميزة؟
   bool canSend(String feature) => hasAction(feature, 'send');
 
+  // ══════════════════════════════════════════
+  // إدارة الصلاحيات
+  // ══════════════════════════════════════════
+
   /// مسح جميع الصلاحيات (عند تسجيل الخروج)
   void clear() {
     _firstSystemV2.clear();
@@ -291,8 +312,8 @@ class PermissionManager {
   /// الحصول على جميع صلاحيات النظام الثاني
   Map<String, Map<String, bool>> get secondSystemPermissions => _secondSystemV2;
 
-  /// بناء خريطة pageAccess (V1 style) من صلاحيات V2
-  /// تُستخدم للتوافق مع الكود القديم الذي يتوقع Map<String, bool>
+  /// بناء خريطة pageAccess (V1 style) — للتوافق مع الكود القديم
+  @Deprecated('استخدم canView() مباشرة بدلاً من pageAccess')
   Map<String, bool> buildPageAccess() {
     final map = <String, bool>{};
     for (final entry in _firstSystemV2.entries) {
@@ -308,7 +329,7 @@ class PermissionManager {
   void grantAll(List<String> features) {
     for (final feature in features) {
       final actions = <String, bool>{};
-      for (final action in PermissionsService.availableActions) {
+      for (final action in PermissionService.availableActions) {
         actions[action] = true;
       }
       _firstSystemV2[feature] = actions;
@@ -319,7 +340,7 @@ class PermissionManager {
   /// منح جميع صلاحيات النظامين (للسوبر أدمن)
   void grantAllSystems() {
     final actions = <String, bool>{
-      for (final action in PermissionsService.availableActions) action: true,
+      for (final action in PermissionService.availableActions) action: true,
     };
     for (final e in PermissionRegistry.firstSystem) {
       _firstSystemV2[e.key] = Map.from(actions);
@@ -338,11 +359,10 @@ class PermissionManager {
 
     for (final entry in template.entries) {
       final actions = <String, bool>{
-        for (final a in PermissionsService.availableActions)
+        for (final a in PermissionService.availableActions)
           a: entry.value['actions']?.contains(a) ?? false,
       };
 
-      // حدد أي نظام ينتمي إليه هذا المفتاح
       if (PermissionRegistry.allFirstSystemKeys.contains(entry.key)) {
         firstPerms[entry.key] = actions;
       } else if (PermissionRegistry.allSecondSystemKeys.contains(entry.key)) {
@@ -351,71 +371,5 @@ class PermissionManager {
     }
 
     await savePermissions(firstSystem: firstPerms, secondSystem: secondPerms);
-  }
-}
-
-/// Mixin لاستخدامه في أي StatefulWidget يحتاج فحص صلاحيات
-mixin PermissionCheckerMixin<T extends StatefulWidget> on State<T> {
-  PermissionManager get _pm => PermissionManager.instance;
-
-  /// تحميل الصلاحيات — يُستدعى في initState
-  Future<void> initPermissions() async {
-    if (!_pm.isLoaded) {
-      await _pm.loadPermissions();
-    }
-  }
-
-  /// هل يمكن عرض هذه الميزة؟
-  bool canView(String feature) => _pm.canView(feature);
-
-  /// هل يمكن إضافة عنصر؟
-  bool canAdd(String feature) => _pm.canAdd(feature);
-
-  /// هل يمكن تعديل عنصر؟
-  bool canEdit(String feature) => _pm.canEdit(feature);
-
-  /// هل يمكن حذف عنصر؟
-  bool canDelete(String feature) => _pm.canDelete(feature);
-
-  /// هل يمكن تصدير؟
-  bool canExport(String feature) => _pm.canExport(feature);
-
-  /// هل يمكن استيراد؟
-  bool canImport(String feature) => _pm.canImport(feature);
-
-  /// هل يمكن طباعة؟
-  bool canPrint(String feature) => _pm.canPrint(feature);
-
-  /// هل يمكن إرسال؟
-  bool canSend(String feature) => _pm.canSend(feature);
-
-  /// فحص إجراء مخصص
-  bool hasAction(String feature, String action) =>
-      _pm.hasAction(feature, action);
-}
-
-/// Widget لإخفاء/إظهار عنصر حسب الصلاحية
-/// أبسط من FeatureGate — يُخفي العنصر بدون رسالة
-class PermissionGuard extends StatelessWidget {
-  final String feature;
-  final String action;
-  final Widget child;
-  final Widget? fallback;
-
-  const PermissionGuard({
-    super.key,
-    required this.feature,
-    this.action = 'view',
-    required this.child,
-    this.fallback,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pm = PermissionManager.instance;
-    if (pm.hasAction(feature, action)) {
-      return child;
-    }
-    return fallback ?? const SizedBox.shrink();
   }
 }

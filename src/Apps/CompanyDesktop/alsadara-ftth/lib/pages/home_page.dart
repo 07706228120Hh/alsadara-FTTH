@@ -35,9 +35,7 @@ import '../task/follow_up_page.dart'; // صفحة المتابعة
 import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق
 // شاشتي - معاملات الفني
 import 'my_dashboard_page.dart'; // شاشتي - لوحة الموظف الشخصية
-import '../widgets/feature_gate.dart'; // حارس الصلاحيات
-import '../config/permission_registry.dart'; // سجل الصلاحيات المركزي
-import '../services/permission_checker.dart'; // نظام الصلاحيات V2
+import '../permissions/permissions.dart';
 // تم نقل زر جلب بيانات الموقع إلى النظام الثاني
 
 class HomePage extends StatefulWidget {
@@ -46,6 +44,7 @@ class HomePage extends StatefulWidget {
   final String department;
   final String center;
   final String salary;
+  @Deprecated('استخدم PermissionManager.instance.canView() مباشرة')
   final Map<String, bool> pageAccess;
   final String? tenantId; // معرف الشركة
   final String? tenantCode; // كود الشركة
@@ -58,7 +57,7 @@ class HomePage extends StatefulWidget {
     required this.department,
     required this.center,
     required this.salary,
-    required this.pageAccess,
+    this.pageAccess = const {},
     this.tenantId,
     this.tenantCode,
     this.isSuperAdminMode = false,
@@ -1461,9 +1460,8 @@ class _HomePageState extends State<HomePage>
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => PageGuard(
+                builder: (context) => PermissionGate.page(
                   permission: 'accounting',
-                  system: PermissionSystem.first,
                   pageName: 'الحسابات',
                   child: AccountingDashboardPage(
                     companyId: widget.tenantId,

@@ -15,7 +15,7 @@ import '../../theme/energy_dashboard_theme.dart';
 import '../home_page.dart';
 import '../../multi_tenant.dart';
 import 'permissions_management_v2_page.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 
 /// حالة الاشتراك
 enum CompanyStatus {

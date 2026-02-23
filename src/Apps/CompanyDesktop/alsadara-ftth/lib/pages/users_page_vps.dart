@@ -13,7 +13,7 @@ import '../services/api/api_config.dart';
 import '../services/departments_data_service.dart';
 import '../services/centers_data_service.dart';
 import 'super_admin/permissions_management_v2_page.dart';
-import '../services/permission_checker.dart';
+import '../permissions/permissions.dart';
 import 'hr/employee_profile_page.dart';
 
 /// صفحة إدارة موظفي الشركة عبر VPS

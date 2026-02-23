@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/employee_profile_service.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
 import '../super_admin/permissions_management_v2_page.dart';

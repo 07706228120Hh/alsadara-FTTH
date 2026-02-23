@@ -13,9 +13,8 @@ import '../services/sync_service.dart';
 import '../services/sync_settings_service.dart';
 import '../services/auth_service.dart';
 import '../services/background_sync_service.dart';
-import '../services/permissions_service.dart';
+import '../permissions/permissions.dart';
 import 'local_subscriber_details_page.dart';
-import '../services/permission_checker.dart';
 
 class LocalStoragePage extends StatefulWidget {
   final String? authToken;
@@ -122,13 +121,11 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   }
 
   Future<void> _loadPermissions() async {
-    final hasImport = await PermissionsService.hasSecondSystemPermission(
-        'local_storage_import');
-    // Also check V2 import action
+    // V2: استخدام PermissionManager مباشرة
     final hasV2Import = PermissionManager.instance.canImport('local_storage');
     if (mounted) {
       setState(() {
-        _hasImportPermission = hasImport || hasV2Import;
+        _hasImportPermission = hasV2Import;
       });
     }
   }

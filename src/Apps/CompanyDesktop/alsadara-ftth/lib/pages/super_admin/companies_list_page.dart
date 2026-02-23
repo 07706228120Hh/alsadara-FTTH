@@ -11,7 +11,7 @@ import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
 import 'edit_company_page.dart';
 import '../home_page.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 
 class CompaniesListPage extends StatefulWidget {
   const CompaniesListPage({super.key});

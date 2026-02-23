@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Authorization;
 
 namespace Sadara.API.Controllers;
 
@@ -13,6 +14,7 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[RequirePermission("accounting", "view")]
 [Tags("Accounting")]
 public class AccountingController : ControllerBase
 {

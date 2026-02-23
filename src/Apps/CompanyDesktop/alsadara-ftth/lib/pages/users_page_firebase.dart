@@ -12,13 +12,14 @@ import 'user_details_page.dart';
 class UsersPageFirebase extends StatefulWidget {
   final String tenantId; // معرف الشركة
   final String permissions; // صلاحيات المستخدم الحالي
+  @Deprecated('استخدم PermissionManager.instance.canView() مباشرة')
   final Map<String, bool> pageAccess; // صلاحيات الصفحات
 
   const UsersPageFirebase({
     super.key,
     required this.tenantId,
     required this.permissions,
-    required this.pageAccess,
+    this.pageAccess = const {},
   });
 
   @override

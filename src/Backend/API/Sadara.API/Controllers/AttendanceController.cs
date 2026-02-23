@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Authorization;
 using System.Security.Claims;
 
 namespace Sadara.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[RequirePermission("attendance", "view")]
 public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceController> logger) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;

@@ -9,7 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';

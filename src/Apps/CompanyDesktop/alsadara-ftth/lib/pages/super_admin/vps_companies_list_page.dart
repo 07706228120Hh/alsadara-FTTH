@@ -10,7 +10,7 @@ import '../../services/api/api_config.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
 import '../home_page.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 
 /// حالة الاشتراك
 enum VpsSubscriptionStatus {

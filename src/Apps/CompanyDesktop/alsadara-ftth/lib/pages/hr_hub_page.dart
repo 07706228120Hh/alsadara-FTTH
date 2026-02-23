@@ -20,6 +20,7 @@ class HrHubPage extends StatelessWidget {
   final String permissions;
   final String department;
   final String center;
+  @Deprecated('استخدم PermissionManager.instance.canView() مباشرة')
   final Map<String, bool> pageAccess;
   final String? tenantId;
   final String? tenantCode;
@@ -30,7 +31,7 @@ class HrHubPage extends StatelessWidget {
     required this.permissions,
     required this.department,
     required this.center,
-    required this.pageAccess,
+    this.pageAccess = const {},
     this.tenantId,
     this.tenantCode,
   });

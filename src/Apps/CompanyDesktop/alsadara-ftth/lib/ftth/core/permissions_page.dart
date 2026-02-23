@@ -5,7 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../../services/permissions_service.dart';
+import '../../permissions/permissions.dart';
 
 class PermissionsPage extends StatefulWidget {
   final Map<String, bool> userPermissions;
@@ -45,7 +45,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
   }
 
   Future<void> _loadDefaultPassword() async {
-    final pwd = await PermissionsService.getSecondSystemDefaultPassword();
+    final pwd = await PermissionService.getSecondSystemDefaultPassword();
     if (mounted) {
       setState(() {
         _loadedPassword = pwd;
@@ -378,7 +378,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
   Future<void> _saveDefaultPassword() async {
     setState(() => _savingPassword = true);
     try {
-      await PermissionsService.saveSecondSystemDefaultPassword(
+      await PermissionService.saveSecondSystemDefaultPassword(
           _defaultPasswordController.text);
       if (mounted) {
         setState(() {
@@ -469,8 +469,15 @@ class _PermissionsPageState extends State<PermissionsPage> {
 
   Future<void> _saveAllPermissions(Map<String, bool> permissions) async {
     try {
-      // استخدام خدمة الصلاحيات الجديدة للنظام الثاني (FTTH)
-      await PermissionsService.saveSecondSystemPermissions(permissions);
+      // V2: تحويل Map<String,bool> إلى Map<String,Map<String,bool>> وحفظها
+      final v2Perms = <String, Map<String, bool>>{};
+      for (final entry in permissions.entries) {
+        v2Perms[entry.key] = {
+          for (final action in PermissionService.availableActions)
+            action: action == 'view' ? entry.value : false,
+        };
+      }
+      await PermissionService.saveSecondSystemPermissionsV2(v2Perms);
     } catch (e) {
       throw Exception('فشل في حفظ الصلاحيات: $e');
     }

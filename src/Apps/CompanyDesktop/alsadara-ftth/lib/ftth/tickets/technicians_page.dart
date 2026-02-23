@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة محلية لإدارة فني التوصيل (اسم + رقم)
 /// يتم حفظ البيانات محلياً في SharedPreferences تحت المفتاح 'local_technicians_list'

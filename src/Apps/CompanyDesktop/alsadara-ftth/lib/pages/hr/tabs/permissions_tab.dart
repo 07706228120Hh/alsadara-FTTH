@@ -5,7 +5,7 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../config/permission_registry.dart';
+import '../../../permissions/permissions.dart';
 import '../../../services/employee_profile_service.dart';
 
 class PermissionsTab extends StatefulWidget {
@@ -162,8 +162,7 @@ class _PermissionsTabState extends State<PermissionsTab> {
         }
 
         // حدد أي نظام ينتمي إليه المفتاح
-        final isFirst =
-            PermissionRegistry.firstSystem.any((e) => e.key == key);
+        final isFirst = PermissionRegistry.firstSystem.any((e) => e.key == key);
         if (isFirst) {
           _firstPerms[key] = actionMap;
         } else {
@@ -331,8 +330,8 @@ class _PermissionsTabState extends State<PermissionsTab> {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _summaryChip(
-              'النظام الثاني', enabledSecond, totalSecond, Icons.router_rounded),
+          child: _summaryChip('النظام الثاني', enabledSecond, totalSecond,
+              Icons.router_rounded),
         ),
       ],
     );
@@ -357,7 +356,8 @@ class _PermissionsTabState extends State<PermissionsTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+                Text(label,
+                    style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
                 Text('$enabled / $total مفعّل',
                     style: GoogleFonts.cairo(
                         fontWeight: FontWeight.bold, fontSize: 13)),
@@ -452,8 +452,8 @@ class _PermissionsTabState extends State<PermissionsTab> {
   }
 
   /// مجموعة صلاحيات (أب + أبناء)
-  Widget _buildPermGroup(PermissionEntry parent,
-      List<PermissionEntry> children, Map<String, dynamic> perms) {
+  Widget _buildPermGroup(PermissionEntry parent, List<PermissionEntry> children,
+      Map<String, dynamic> perms) {
     final hasChildren = children.isNotEmpty;
     final parentHasView = _getAction(perms, parent.key, 'view');
 
@@ -584,7 +584,8 @@ class _PermissionsTabState extends State<PermissionsTab> {
             child: Row(
               children: [
                 Icon(child.icon,
-                    size: 16, color: hasView ? _accent : _gray.withOpacity(0.5)),
+                    size: 16,
+                    color: hasView ? _accent : _gray.withOpacity(0.5)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(child.labelAr,
@@ -617,8 +618,7 @@ class _PermissionsTabState extends State<PermissionsTab> {
                           visualDensity: VisualDensity.compact,
                           onChanged: (v) {
                             setState(() {
-                              _setAction(
-                                  perms, child.key, action, v ?? false);
+                              _setAction(perms, child.key, action, v ?? false);
                             });
                           },
                         ),
@@ -641,8 +641,9 @@ class _PermissionsTabState extends State<PermissionsTab> {
       Map<String, dynamic> perms, PermissionEntry entry) {
     final allowedActions = entry.allowedActions ?? _allActions;
     // عرض أول 4 إجراءات أساسية فقط للأب (المساحة محدودة)
-    final shownActions =
-        allowedActions.where((a) => ['view', 'add', 'edit', 'delete'].contains(a)).toList();
+    final shownActions = allowedActions
+        .where((a) => ['view', 'add', 'edit', 'delete'].contains(a))
+        .toList();
 
     return shownActions.map((action) {
       final enabled = _getAction(perms, entry.key, action);
@@ -681,8 +682,9 @@ class _PermissionsTabState extends State<PermissionsTab> {
   Widget _buildReadOnlyActions(
       Map<String, dynamic> perms, PermissionEntry entry) {
     final allowedActions = entry.allowedActions ?? _allActions;
-    final shownActions =
-        allowedActions.where((a) => ['view', 'add', 'edit', 'delete'].contains(a)).toList();
+    final shownActions = allowedActions
+        .where((a) => ['view', 'add', 'edit', 'delete'].contains(a))
+        .toList();
 
     return Row(
       mainAxisSize: MainAxisSize.min,

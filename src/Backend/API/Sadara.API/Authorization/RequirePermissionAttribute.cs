@@ -107,7 +107,8 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
     /// </summary>
     public static bool HasPermission(string? jsonPermissions, string key, string action)
     {
-        if (string.IsNullOrEmpty(jsonPermissions)) return false;
+        // إذا لم يتم تعيين صلاحيات V2 بعد → السماح (لعدم حظر المستخدمين القدامى)
+        if (string.IsNullOrEmpty(jsonPermissions)) return true;
 
         try
         {

@@ -13,8 +13,7 @@ import 'dart:io';
 import 'package:excel/excel.dart' as ex;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
-import '../../services/permissions_service.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 
 // تم تحديث الواجهة لتصبح أكثر عصرية وحداثة بدون إضافة حزم خارجية
 // ركزنا على: ألوان متدرجة، بطاقات تفاعلية، حركات انتقالية، وتحسين عرض التقدم والرسائل
@@ -249,7 +248,7 @@ class _ExportPageState extends State<ExportPage>
   Future<void> _showPasswordDialog() async {
     // جلب كلمة المرور الافتراضية المخزنة من خدمة الصلاحيات (يمكن تعديلها من صفحة الصلاحيات)
     final storedPassword =
-        await PermissionsService.getSecondSystemDefaultPassword();
+        await PermissionService.getSecondSystemDefaultPassword();
     final expectedPassword = storedPassword?.trim() ?? '';
 
     final result = await showDialog<bool>(

@@ -14,12 +14,11 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import '../../utils/smart_text_color.dart';
 import 'package:intl/intl.dart';
-import '../../services/permissions_service.dart';
+import '../../permissions/permissions.dart';
 import '../../services/local_database_service.dart';
 import '../../services/whatsapp_bulk_sender_service.dart';
 import '../../services/whatsapp_business_service.dart';
 import '../../pages/whatsapp_batch_reports_page.dart';
-import '../../services/permission_checker.dart';
 
 // استثناء خاص لإلغاء عمليات التصدير
 class _CancelledExport implements Exception {
@@ -1507,7 +1506,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     }
 
     // التحقق من كلمة المرور المدخلة
-    final stored = await PermissionsService.getSecondSystemDefaultPassword();
+    final stored = await PermissionService.getSecondSystemDefaultPassword();
     final expected =
         (stored == null || stored.trim().isEmpty) ? '0770' : stored.trim();
     final entered = _exportPasswordController.text.trim();

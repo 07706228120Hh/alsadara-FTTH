@@ -19,7 +19,7 @@ import 'edit_company_page.dart';
 import 'company_details_page.dart';
 import '../../theme/energy_dashboard_theme.dart';
 import '../home_page.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 import '../../multi_tenant.dart';
 
 /// حالة الاشتراك

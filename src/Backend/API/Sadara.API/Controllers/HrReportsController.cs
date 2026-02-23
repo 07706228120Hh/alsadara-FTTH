@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Authorization;
 using System.Globalization;
 using System.Text;
 
@@ -15,6 +16,7 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/hr-reports")]
 [Authorize]
+[RequirePermission("hr.reports", "view")]
 public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsController> logger) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;

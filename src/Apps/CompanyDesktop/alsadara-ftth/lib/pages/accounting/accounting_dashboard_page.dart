@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 import 'chart_of_accounts_page.dart';
 import 'salaries_page.dart';
 import 'collections_page.dart';
@@ -805,8 +805,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
           onTap: () => _navigateTo(
               CompoundJournalEntryPage(companyId: widget.companyId)),
         ),
-      if (pm.canView('accounting.expenses') ||
-          pm.canView('accounting.revenue'))
+      if (pm.canView('accounting.expenses') || pm.canView('accounting.revenue'))
         _SectionItem(
           title: 'المصاريف والإيرادات',
           subtitle: 'تسجيل ومتابعة المصاريف والإيرادات',
@@ -838,8 +837,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
           subtitle: 'إضافة وإدارة الوكلاء والمحاسبة',
           icon: Icons.support_agent,
           color: const Color(0xFF3F51B5),
-          onTap: () => _navigateTo(
-              AgentsManagementPage(companyId: widget.companyId)),
+          onTap: () =>
+              _navigateTo(AgentsManagementPage(companyId: widget.companyId)),
         ),
       if (pm.canView('accounting.ftth_operators'))
         _SectionItem(
@@ -865,8 +864,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
           subtitle: 'مراجعة وصرف طلبات السحب',
           icon: Icons.money_off,
           color: const Color(0xFFE74C3C),
-          onTap: () => _navigateTo(
-              WithdrawalRequestsPage(companyId: widget.companyId)),
+          onTap: () =>
+              _navigateTo(WithdrawalRequestsPage(companyId: widget.companyId)),
         ),
     ];
 

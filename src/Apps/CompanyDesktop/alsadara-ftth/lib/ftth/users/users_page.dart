@@ -14,8 +14,7 @@ import '../auth/login_page.dart';
 import 'dart:io';
 import '../../services/api_service.dart';
 import '../../utils/smart_text_color.dart';
-import '../../services/permissions_service.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 
 class UsersPage extends StatefulWidget {
   final String authToken;
@@ -831,7 +830,7 @@ class _UsersPageState extends State<UsersPage> {
     }
 
     // جلب كلمة المرور المحفوظة (أو الافتراضية إذا لم تُحفظ)
-    final stored = await PermissionsService.getSecondSystemDefaultPassword();
+    final stored = await PermissionService.getSecondSystemDefaultPassword();
     final expected =
         (stored == null || stored.trim().isEmpty) ? '0770' : stored.trim();
 

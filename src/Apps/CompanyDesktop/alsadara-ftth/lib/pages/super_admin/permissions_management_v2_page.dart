@@ -6,9 +6,8 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../services/api/api_client.dart';
-import '../../services/permissions_service.dart';
+import '../../permissions/permissions.dart';
 import '../../theme/energy_dashboard_theme.dart';
-import '../../config/permission_registry.dart';
 
 /// صفحة إدارة صلاحيات V2 للشركة أو الموظف
 class PermissionsManagementV2Page extends StatefulWidget {
@@ -52,8 +51,8 @@ class _PermissionsManagementV2PageState
   Map<String, Map<String, bool>> _companySecondFeaturesV2 = {};
 
   // قائمة الإجراءات المتاحة
-  final List<String> _actions = PermissionsService.availableActions;
-  final Map<String, String> _actionNames = PermissionsService.actionNamesAr;
+  final List<String> _actions = PermissionService.availableActions;
+  final Map<String, String> _actionNames = PermissionService.actionNamesAr;
 
   // أسماء الصلاحيات - النظام الأول (تُولّد تلقائياً من السجل المركزي)
   final Map<String, Map<String, dynamic>> _firstSystemFeatures =
@@ -681,8 +680,8 @@ class _PermissionsManagementV2PageState
                                           child.key, action, isFirstSystem)) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text(
-                                            'هذا الإجراء غير مفعل للشركة'),
+                                        content:
+                                            Text('هذا الإجراء غير مفعل للشركة'),
                                         backgroundColor: Colors.orange,
                                         duration: Duration(seconds: 2),
                                       ),

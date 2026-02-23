@@ -26,7 +26,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'dart:io';
 import '../../services/auth_service.dart';
-import '../../services/permissions_service.dart';
+import '../../permissions/permissions.dart';
 import '../../utils/smart_text_color.dart';
 import '../../pages/home_page.dart' as firstSystem; // استيراد صفحة النظام الأول
 import '../auth/auth_error_handler.dart';
@@ -60,7 +60,7 @@ import '../widgets/pikachu_overlay.dart';
 import '../../pages/super_admin/super_admin_dashboard.dart'; // ✅ لوحة تحكم Super Admin
 import '../../test_webview_standalone.dart'; // صفحة اختبار WebView للتقارير
 import '../../pages/server_data_page.dart'; // صفحة بيانات السيرفر
-import '../../services/permission_checker.dart'; // فاحص الصلاحيات V2
+
 import '../diagnostic/diagnostic_page.dart'; // 🔧 صفحة التشخيص
 
 class HomePage extends StatefulWidget {
@@ -343,7 +343,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _initializeApp() async {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       // إزالة إعادة تعيين الصلاحيات - للاحتفاظ بالإعدادات المحفوظة
-      // تم حذف: await PermissionsService.resetSecondSystemPermissions();
+      // تم حذف: await PermissionService.resetSecondSystemPermissions();
       // محاولة تحميل بيانات dashboard و wallet من الكاش لتسريع الظهور الأول
       final cachedDash = await FtthCacheService.loadDashboard();
       final cachedWallet = await FtthCacheService.loadWallet();
@@ -883,9 +883,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               });
 
               try {
-                // تحميل كلمة المرور المحفوظة من PermissionsService
+                // تحميل كلمة المرور المحفوظة من PermissionService
                 final savedPassword =
-                    await PermissionsService.getSecondSystemDefaultPassword();
+                    await PermissionService.getSecondSystemDefaultPassword();
 
                 // التحقق من كلمة المرور
                 if (savedPassword != null &&

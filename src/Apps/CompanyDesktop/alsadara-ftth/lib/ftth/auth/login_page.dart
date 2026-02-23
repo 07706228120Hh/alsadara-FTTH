@@ -13,7 +13,7 @@ import '../../services/auth_service.dart';
 import '../../pages/home_page.dart' as firstSystem;
 import '../core/home_page.dart';
 import '../../services/auth/session_manager.dart';
-import '../../services/permission_checker.dart';
+import '../../permissions/permissions.dart';
 
 class LoginPage extends StatefulWidget {
   // إضافة معاملات لاستقبال بيانات المستخدم من النظام الأول
