@@ -11,7 +11,7 @@ import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
-import '../home_page.dart';
+import '../modern_home_page.dart'; // ✨ الصفحة الرئيسية العصرية
 import '../super_admin/super_admin_dashboard.dart';
 
 // ============================================
@@ -435,13 +435,12 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => HomePage(
+          pageBuilder: (_, __, ___) => ModernHomePage(
             username: user.fullName.isNotEmpty ? user.fullName : user.username,
             permissions: user.isAdmin ? 'مدير' : _mapRoleToArabic(user.role),
             department: company.name,
             center: company.code,
             salary: '0',
-            pageAccess: pageAccess,
             tenantId: company.id,
             tenantCode: company.code,
           ),
