@@ -12,11 +12,13 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.24.0'
+  FLUTTER_VERSION: '3.29.0'
 
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     
     steps:
       # 1. استنساخ المشروع
