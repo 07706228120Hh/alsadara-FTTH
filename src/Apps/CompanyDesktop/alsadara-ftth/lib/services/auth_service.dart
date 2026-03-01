@@ -406,7 +406,7 @@ class AuthService {
       final authHeaders = await getAuthHeaders();
       final allHeaders = {...authHeaders, ...?headers};
 
-      const requestTimeout = Duration(seconds: 15);
+      const requestTimeout = Duration(seconds: 30);
       http.Response response;
       switch (method.toUpperCase()) {
         case 'GET':

@@ -15,6 +15,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
@@ -27,12 +28,9 @@ import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'dart:io';
 import '../../services/auth_service.dart';
 import '../../permissions/permissions.dart';
-import '../../utils/smart_text_color.dart';
-import '../../pages/home_page.dart' as firstSystem; // استيراد صفحة النظام الأول
 import '../auth/auth_error_handler.dart';
 import '../widgets/notification_filter.dart';
 import '../whatsapp/whatsapp_bottom_window.dart'; // استيراد نظام الواتساب العائم
-import '../../widgets/logout_dialog.dart';
 import '../../pages/whatsapp_conversations_page.dart'; // صفحة محادثات WhatsApp
 import '../../pages/whatsapp_bulk_sender_page.dart'; // صفحة إرسال رسائل جماعية (تحتوي على إعدادات API والتقارير)
 
@@ -60,8 +58,6 @@ import '../widgets/pikachu_overlay.dart';
 import '../../pages/super_admin/super_admin_dashboard.dart'; // ✅ لوحة تحكم Super Admin
 import '../../test_webview_standalone.dart'; // صفحة اختبار WebView للتقارير
 import '../../pages/server_data_page.dart'; // صفحة بيانات السيرفر
-
-import '../diagnostic/diagnostic_page.dart'; // 🔧 صفحة التشخيص
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -122,13 +118,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Timer? _timer; // تغيير إلى nullable لتجنب الأخطاء
   // مؤقت مستقل لتحديث رصيد المحفظة والعمولة ومحفظة عضو الفريق بصورة أسرع من تحديث لوحة التحكم
   Timer? _walletTimer;
-  final Duration _walletRefreshInterval =
-      const Duration(minutes: 1); // يمكن تعديلها لاحقاً بسهولة
+  final Duration _walletRefreshInterval = const Duration(
+    minutes: 1,
+  ); // يمكن تعديلها لاحقاً بسهولة
   bool _walletFetchInProgress = false; // منع تداخل طلبات الرصيد
   late AnimationController _refreshAnimationController;
   late AnimationController _cardAnimationController;
-  late AnimationController _fiberLightController; // حركة أضواء الألياف
-  late Animation<double> _fiberAnim;
+  late AnimationController _counterAnimationController;
+
 
   // ⚡ بيكاتشو الآن في Overlay عالمي (pikachu_overlay.dart)
 
@@ -236,7 +233,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           content: Row(
             children: [
               Icon(
-                success ? Icons.check_circle : Icons.error,
+                success
+                    ? IconsaxPlusBold.tick_circle
+                    : IconsaxPlusBold.close_circle,
                 color: Colors.white,
               ),
               const SizedBox(width: 8),
@@ -310,7 +309,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           permissionsToCheck.contains('admin') ||
           permissionsToCheck.contains('administrator')) {
         debugPrint(
-            'تم تحديد المدير من خلال صلاحيات النظام الأول: ${widget.firstSystemPermissions}');
+          'تم تحديد المدير من خلال صلاحيات النظام الأول: ${widget.firstSystemPermissions}',
+        );
         return true;
       }
     }
@@ -329,38 +329,57 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       vsync: this,
     );
 
-    // حركة أضواء الخلفية بشكل هادئ
-    _fiberLightController = AnimationController(
-      duration: const Duration(seconds: 8),
+    _counterAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1800),
       vsync: this,
-    )..repeat();
-    _fiberAnim =
-        CurvedAnimation(parent: _fiberLightController, curve: Curves.linear);
+    );
 
     // بيكاتشو الآن في Overlay عالمي
   }
 
   Future<void> _initializeApp() async {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
-      // إزالة إعادة تعيين الصلاحيات - للاحتفاظ بالإعدادات المحفوظة
-      // تم حذف: await PermissionService.resetSecondSystemPermissions();
-      // محاولة تحميل بيانات dashboard و wallet من الكاش لتسريع الظهور الأول
-      final cachedDash = await FtthCacheService.loadDashboard();
-      final cachedWallet = await FtthCacheService.loadWallet();
-      if (mounted && cachedDash != null) {
+      // ⚡ تحميل جميع الكاش بالتوازي لتسريع الظهور الأول
+      final cacheResults = await Future.wait([
+        FtthCacheService.loadDashboard(),
+        FtthCacheService.loadWallet(),
+        FtthCacheService.loadCurrentUser(),
+      ]);
+      final cachedDash = cacheResults[0];
+      final cachedWallet = cacheResults[1];
+      final cachedUser = cacheResults[2];
+
+      // دمج كل setState في استدعاء واحد لتقليل إعادة البناء
+      if (mounted) {
         setState(() {
-          dashboardData = cachedDash;
-          isLoadingDashboard = false; // نظهر البيانات فوراً ثم نحدث لاحقاً
-        });
-      }
-      if (mounted && cachedWallet != null) {
-        setState(() {
-          walletBalance = cachedWallet['balance'] ?? walletBalance;
-          commission = cachedWallet['commission'] ?? commission;
-          if (cachedWallet['teamMemberWallet'] is Map) {
-            final tmw = cachedWallet['teamMemberWallet'];
-            hasTeamMemberWallet = tmw['hasWallet'] == true;
-            teamMemberWalletBalance = (tmw['balance'] ?? 0.0) * 1.0;
+          if (cachedDash != null) {
+            dashboardData = cachedDash;
+            isLoadingDashboard = false;
+          }
+          if (cachedWallet != null) {
+            walletBalance = cachedWallet['balance'] ?? walletBalance;
+            commission = cachedWallet['commission'] ?? commission;
+            if (cachedWallet['teamMemberWallet'] is Map) {
+              final tmw = cachedWallet['teamMemberWallet'];
+              hasTeamMemberWallet = tmw['hasWallet'] == true;
+              teamMemberWalletBalance = (tmw['balance'] ?? 0.0) * 1.0;
+            }
+          }
+          if (cachedUser != null && cachedUser['self'] != null) {
+            partnerId = cachedUser['self']['id']?.toString();
+            partnerName = cachedUser['self']['displayValue'];
+            userApiData = cachedUser;
+            userPermissions = List<Map<String, dynamic>>.from(
+              cachedUser['permissions'] ?? [],
+            );
+            userZones = List<Map<String, dynamic>>.from(
+              cachedUser['zones'] ?? [],
+            );
+            userRoles = List<Map<String, dynamic>>.from(
+              cachedUser['roles'] ?? [],
+            );
+            isAdmin = _checkAdminPermissions();
+            isLoadingDashboard = false;
           }
         });
       }
@@ -374,7 +393,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         });
       }
 
-      await fetchCurrentUser(); // لم نعد ننتظر داخله dashboard + wallet (تم نقل جزء مبكر)
+      await fetchCurrentUser(); // يستخدم الكاش + تحديث في الخلفية
       // تحميل الصلاحيات بعد تحديد حالة المدير
       await _loadUserPermissions();
 
@@ -384,6 +403,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
 
       _cardAnimationController.forward();
+      _counterAnimationController.forward(from: 0.0);
     });
   }
 
@@ -427,14 +447,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
     _refreshAnimationController.dispose();
     _cardAnimationController.dispose();
-    _fiberLightController.dispose();
+    _counterAnimationController.dispose();
 
-    // إخفاء زر محادثات API فقط عند الخروج من FTTH (زر واتساب ويب يبقى ظاهراً)
-    try {
-      WhatsAppBottomWindow.hideConversationsFloatingButton();
-    } catch (e) {
-      debugPrint('⚠️ خطأ في إخفاء زر محادثات الواتساب: $e');
-    }
+    // إخفاء زر محادثات API فقط عند الخروج من FTTH — مؤجّل لعدم إبطاء الـ dispose
+    Future.microtask(() {
+      try {
+        WhatsAppBottomWindow.hideConversationsFloatingButton();
+      } catch (e) {
+        debugPrint('⚠️ خطأ في إخفاء زر محادثات الواتساب: $e');
+      }
+    });
     super.dispose();
   }
 
@@ -445,8 +467,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _timer = null;
     _walletTimer?.cancel();
     _walletTimer = null;
-    _fiberLightController.stop();
     _cardAnimationController.stop();
+    _counterAnimationController.stop();
     super.deactivate();
   }
 
@@ -456,8 +478,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // إعادة تشغيل المؤقتات والأنيميشن عند العودة للصفحة
     startAutoRefresh();
     startWalletAutoRefresh();
-    _fiberLightController.repeat();
     _cardAnimationController.forward();
+    _counterAnimationController.forward(from: 0.0);
   }
 
   /// معالجة خطأ 401 - توجيه إلى صفحة تسجيل الدخول
@@ -479,6 +501,86 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   List<Map<String, dynamic>> userZones = [];
   List<Map<String, dynamic>> userRoles = [];
   Future<void> fetchCurrentUser() async {
+    // ⚡ محاولة تحميل بيانات المستخدم من الكاش أولاً لتسريع الظهور
+    final cachedUser = await FtthCacheService.loadCurrentUser();
+    if (cachedUser != null && cachedUser['self'] != null) {
+      if (mounted) {
+        setState(() {
+          partnerId = cachedUser['self']['id']?.toString();
+          partnerName = cachedUser['self']['displayValue'];
+          userApiData = cachedUser;
+          userPermissions = List<Map<String, dynamic>>.from(
+            cachedUser['permissions'] ?? [],
+          );
+          userZones = List<Map<String, dynamic>>.from(
+            cachedUser['zones'] ?? [],
+          );
+          userRoles = List<Map<String, dynamic>>.from(
+            cachedUser['roles'] ?? [],
+          );
+          isAdmin = _checkAdminPermissions();
+        });
+
+        if (!_dashboardRequested) {
+          _dashboardRequested = true;
+          fetchDashboardData();
+        }
+        if (!_walletRequested && partnerId != null) {
+          _walletRequested = true;
+          fetchWalletBalance();
+        }
+        startAutoRefresh();
+        startWalletAutoRefresh();
+      }
+      // تحديث في الخلفية بدون إعادة عرض التحميل
+      _refreshCurrentUserInBackground();
+      return;
+    }
+
+    // لا يوجد كاش — جلب من السيرفر مع إعادة محاولة
+    await _fetchCurrentUserFromServer();
+  }
+
+  /// تحديث بيانات المستخدم من السيرفر في الخلفية (بدون تأثير على واجهة المستخدم)
+  Future<void> _refreshCurrentUserInBackground() async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://api.ftth.iq/api/current-user',
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['model'] != null && data['model']['self'] != null) {
+          final model = data['model'];
+          // حفظ في الكاش
+          FtthCacheService.saveCurrentUser(model);
+          if (mounted) {
+            setState(() {
+              partnerId = model['self']['id']?.toString();
+              partnerName = model['self']['displayValue'];
+              userApiData = model;
+              userPermissions = List<Map<String, dynamic>>.from(
+                model['permissions'] ?? [],
+              );
+              userZones = List<Map<String, dynamic>>.from(model['zones'] ?? []);
+              userRoles = List<Map<String, dynamic>>.from(model['roles'] ?? []);
+              isAdmin = _checkAdminPermissions();
+            });
+          }
+        }
+      } else if (response.statusCode == 401) {
+        _handle401Error();
+      }
+    } catch (e) {
+      if (e.toString().contains('انتهت جلسة المستخدم')) {
+        _handle401Error();
+      }
+      // أخطاء أخرى تُتجاهل بصمت — لأن لدينا كاش يعمل
+    }
+  }
+
+  /// جلب بيانات المستخدم من السيرفر (مع إعادة محاولة)
+  Future<void> _fetchCurrentUserFromServer() async {
     // إضافة إعادة محاولة لتقليل الأخطاء المؤقتة (شبكة / استجابة بطيئة)
     const int maxRetries = 2; // الحد الأقصى للمحاولات
     int attempt = 0;
@@ -498,20 +600,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           final data = jsonDecode(response.body);
           if (data['model'] != null && data['model']['self'] != null) {
             if (!mounted) return;
+            final model = data['model'];
+            // حفظ في الكاش للاستخدام عند العودة للصفحة
+            FtthCacheService.saveCurrentUser(model);
             setState(() {
-              partnerId = data['model']['self']['id'];
-              partnerName = data['model']['self']['displayValue'];
-              userApiData = data['model'];
+              partnerId = model['self']['id'];
+              partnerName = model['self']['displayValue'];
+              userApiData = model;
               userPermissions = List<Map<String, dynamic>>.from(
-                  data['model']['permissions'] ?? []);
-              userZones =
-                  List<Map<String, dynamic>>.from(data['model']['zones'] ?? []);
-              userRoles =
-                  List<Map<String, dynamic>>.from(data['model']['roles'] ?? []);
+                model['permissions'] ?? [],
+              );
+              userZones = List<Map<String, dynamic>>.from(model['zones'] ?? []);
+              userRoles = List<Map<String, dynamic>>.from(model['roles'] ?? []);
               isAdmin = _checkAdminPermissions();
             });
 
-            partnerId = data['model']['self']['id']?.toString();
+            partnerId = model['self']['id']?.toString();
             if (!_dashboardRequested) {
               _dashboardRequested = true;
               fetchDashboardData();
@@ -582,7 +686,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _checkAdminPermissions() {
     // V2: فحص صلاحية المستخدمين من PermissionManager
     if (PermissionManager.instance.canView('users')) {
-      print('✅ مدير معتمد من V2 - صلاحية users: view=true');
+      debugPrint('✅ مدير معتمد من V2 - صلاحية users: view=true');
       return true;
     }
 
@@ -593,7 +697,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           perms.contains('مدير') ||
           perms.contains('admin') ||
           perms.contains('administrator')) {
-        print('✅ مدير معتمد من permissions: ${widget.permissions}');
+        debugPrint('✅ مدير معتمد من permissions: ${widget.permissions}');
         return true;
       }
     }
@@ -605,12 +709,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (permissionsToCheck.contains('مدير') ||
           permissionsToCheck.contains('admin') ||
           permissionsToCheck.contains('administrator')) {
-        print('مدير معتمد من النظام الأول: ${widget.firstSystemPermissions}');
+        debugPrint(
+            'مدير معتمد من النظام الأول: ${widget.firstSystemPermissions}');
         return true;
       }
     }
 
-    print('مستخدم عادي - لم توجد صلاحيات مدير');
+    debugPrint('مستخدم عادي - لم توجد صلاحيات مدير');
     return false;
   }
 
@@ -651,7 +756,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         try {
           final c = model['customers'] ?? {};
           debugPrint(
-              '[CustomersRefresh] total=${c['totalCount']?.toString() ?? 'null'} active=${c['totalActive']?.toString() ?? 'null'} inactive=${c['totalInactive']?.toString() ?? 'null'}');
+            '[CustomersRefresh] total=${c['totalCount']?.toString() ?? 'null'} active=${c['totalActive']?.toString() ?? 'null'} inactive=${c['totalInactive']?.toString() ?? 'null'}',
+          );
         } catch (_) {}
         // حفظ كاش
         try {
@@ -678,7 +784,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _handle401Error();
         return;
       }
-      showError("حدث خطأ أثناء جلب البيانات: $e");
+      // إذا كان لدينا بيانات مخزنة → لا نُظهر الخطأ، نبقى على الكاش بصمت
+      if (dashboardData.isEmpty) {
+        showError("حدث خطأ أثناء جلب البيانات: $e");
+      } else {
+        debugPrint('⚠️ [Dashboard] تعذر تحديث البيانات (${e.toString().split('\n').first}) - يُعرض الكاش');
+      }
       if (mounted) {
         setState(() {
           isLoadingDashboard = false;
@@ -772,10 +883,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     try {
       await refreshToken();
-      await Future.wait([
-        fetchDashboardData(),
-        fetchWalletBalance(),
-      ]);
+      await Future.wait([fetchDashboardData(), fetchWalletBalance()]);
       // تم تعطيل إشعار نجاح التحديث (تحديث بيانات) ليكون صامتاً
     } catch (e) {
       // التحقق من أن الخطأ ليس متعلقاً بانتهاء الجلسة
@@ -851,18 +959,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!pm.isLoaded) {
       await pm.loadPermissions();
     }
-    print('تحميل الصلاحيات V2 - مدير النظام الأول: ${_isFirstSystemAdmin()}');
-    print('اسم المستخدم: ${widget.username}');
+    debugPrint(
+        'تحميل الصلاحيات V2 - مدير النظام الأول: ${_isFirstSystemAdmin()}');
+    debugPrint('اسم المستخدم: ${widget.username}');
 
     // تحويل صلاحيات V2 إلى صلاحيات الصفحة المحلية
     final permissions = <String, bool>{};
     for (var key in _defaultPermissions.keys) {
       permissions[key] = pm.canView(key);
-      print('صلاحية $key: ${permissions[key]} (V2 canView)');
+      debugPrint('صلاحية $key: ${permissions[key]} (V2 canView)');
     }
 
     setState(() => _userPermissions = permissions);
-    print('تم تحميل الصلاحيات النهائية: $_userPermissions');
+    debugPrint('تم تحميل الصلاحيات النهائية: $_userPermissions');
   }
 
   // نافذة إدخال كلمة المرور للدخول لصفحة التحويلات
@@ -901,13 +1010,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ScaffoldMessenger.of(this.context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                            'لم يتم تعيين كلمة مرور افتراضية بعد. يرجى تعيينها من صفحة الصلاحيات.'),
+                          'لم يتم تعيين كلمة مرور افتراضية بعد. يرجى تعيينها من صفحة الصلاحيات.',
+                        ),
                         backgroundColor: Colors.orange,
                         duration: Duration(seconds: 3),
                       ),
                     );
-                    Navigator.of(context)
-                        .pop(true); // السماح بالدخول إذا لم تكن هناك كلمة مرور
+                    Navigator.of(
+                      context,
+                    ).pop(true); // السماح بالدخول إذا لم تكن هناك كلمة مرور
                   }
                 } else {
                   // كلمة المرور خاطئة
@@ -954,7 +1065,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: const Icon(
-                      Icons.lock_outline_rounded,
+                      IconsaxPlusLinear.lock,
                       color: Color(0xFF1A237E),
                       size: 24,
                     ),
@@ -986,7 +1097,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور',
                       hintText: 'أدخل كلمة المرور',
-                      prefixIcon: const Icon(Icons.password_outlined),
+                      prefixIcon: Icon(IconsaxPlusLinear.password_check),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -1000,8 +1111,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       suffixIcon: IconButton(
                         icon: Icon(
                           passwordObscured
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                              ? IconsaxPlusLinear.eye
+                              : IconsaxPlusLinear.eye_slash,
                         ),
                         onPressed: () {
                           setState(() {
@@ -1057,11 +1168,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
-                      : const Icon(Icons.check_rounded),
+                      : Icon(IconsaxPlusBold.tick_circle),
                   label: Text(isVerifying ? 'جاري التحقق...' : 'تأكيد'),
                 ),
               ],
@@ -1259,7 +1371,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            icon: const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            icon: Icon(IconsaxPlusBold.warning_2, color: Colors.red, size: 48),
             title: const Text('خطأ في ربط الواتساب'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1275,7 +1387,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   const Text('الحل:'),
                   const SizedBox(height: 4),
                   const Text(
-                      '1. قم بتحميل وتثبيت Microsoft Edge WebView2 Runtime'),
+                    '1. قم بتحميل وتثبيت Microsoft Edge WebView2 Runtime',
+                  ),
                   const Text('2. أعد تشغيل التطبيق'),
                   const SizedBox(height: 12),
                 ],
@@ -1312,16 +1425,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       } else {
         if (mounted) {
           showMessage(
-              'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
-              Colors.orange);
+            'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
+            Colors.orange,
+          );
         }
       }
     } catch (e) {
       debugPrint('❌ خطأ في فتح رابط التحميل: $e');
       if (mounted) {
         showMessage(
-            'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
-            Colors.orange);
+          'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
+          Colors.orange,
+        );
       }
     }
   }
@@ -1356,11 +1471,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: SwitchListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('واتساب ويب داخلي',
-                        style: TextStyle(fontSize: 13)),
+                    title: const Text(
+                      'واتساب ويب داخلي',
+                      style: TextStyle(fontSize: 13),
+                    ),
                     subtitle: const Text(
-                        'إرسال عبر نافذة واتساب ويب داخل التطبيق',
-                        style: TextStyle(fontSize: 11)),
+                      'إرسال عبر نافذة واتساب ويب داخل التطبيق',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     value: _useWhatsAppWeb,
                     onChanged: (v) {
                       setState(() => _useWhatsAppWeb = v);
@@ -1377,11 +1495,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: SwitchListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('الإرسال التلقائي',
-                        style: TextStyle(fontSize: 13)),
+                    title: const Text(
+                      'الإرسال التلقائي',
+                      style: TextStyle(fontSize: 13),
+                    ),
                     subtitle: const Text(
-                        'إرسال الرسالة تلقائياً بعد لصق النص (TAB×16 + Enter)',
-                        style: TextStyle(fontSize: 11)),
+                      'إرسال الرسالة تلقائياً بعد لصق النص (TAB×16 + Enter)',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     value: _whatsAppAutoSend,
                     onChanged: (v) {
                       setState(() => _whatsAppAutoSend = v);
@@ -1410,10 +1531,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             try {
                               // استخدام رابط wa.me المباشر
                               final msg = Uri.encodeComponent(
-                                  'رسالة تجريبية من نظام الصفحة الرئيسية');
+                                'رسالة تجريبية من نظام الصفحة الرئيسية',
+                              );
                               final url = 'https://wa.me/$val?text=$msg';
-                              await launchUrl(Uri.parse(url),
-                                  mode: LaunchMode.externalApplication);
+                              await launchUrl(
+                                Uri.parse(url),
+                                mode: LaunchMode.externalApplication,
+                              );
                             } catch (e) {
                               if (mounted) {
                                 showMessage('خطأ: $e', Colors.red);
@@ -1421,7 +1545,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             } finally {
                               if (mounted) {
                                 setState(
-                                    () => _isGeneratingWhatsAppLink = false);
+                                  () => _isGeneratingWhatsAppLink = false,
+                                );
                               }
                             }
                           },
@@ -1429,8 +1554,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.chat_outlined),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(IconsaxPlusLinear.message),
                     label: const Text('إرسال تجريبي'),
                   ),
                 ),
@@ -1457,9 +1583,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 showMessage('تم الحفظ', Colors.green);
               }
             },
-            icon: const Icon(Icons.save),
+            icon: Icon(IconsaxPlusBold.directbox_send),
             label: const Text('حفظ'),
-          )
+          ),
         ],
       ),
     );
@@ -1475,12 +1601,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void navigateToPage(Widget page) {
+    // ⚡ إيقاف الأنيميشنات قبل الانتقال لتحرير الـ UI thread
+    _cardAnimationController.stop();
+
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => page),
+      PageRouteBuilder(
+        pageBuilder: (ctx, animation, secondaryAnimation) => page,
+        // تقليل مدة الانتقال من 300ms إلى 180ms لتجربة أسرع على الهاتف
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        transitionsBuilder: (ctx, animation, secondaryAnimation, child) =>
+            child,
+      ),
     ).then((_) {
       // إعادة إظهار زر الواتساب العائم عند العودة من أي صفحة
       if (mounted) {
+        _cardAnimationController.forward();
         _showGlobalWhatsAppButton();
       }
     });
@@ -1503,8 +1640,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   color: const Color(0xFF1A237E).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(50),
                 ),
-                child: const Icon(
-                  Icons.person_pin_rounded,
+                child: Icon(
+                  IconsaxPlusBold.user_square,
                   color: Color(0xFF1A237E),
                   size: 24,
                 ),
@@ -1547,7 +1684,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.table_chart, color: Colors.green[700]),
+                              Icon(
+                                IconsaxPlusBold.chart,
+                                color: Colors.green[700],
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'النظام الأول',
@@ -1560,24 +1700,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          _buildInfoRow('اسم المستخدم',
-                              widget.firstSystemUsername!, Icons.person),
                           _buildInfoRow(
-                              'الصلاحيات',
-                              widget.firstSystemPermissions ?? 'غير محدد',
-                              Icons.security),
+                            'اسم المستخدم',
+                            widget.firstSystemUsername!,
+                            IconsaxPlusLinear.user,
+                          ),
                           _buildInfoRow(
-                              'القسم',
-                              widget.firstSystemDepartment ?? 'غير محدد',
-                              Icons.business),
+                            'الصلاحيات',
+                            widget.firstSystemPermissions ?? 'غير محدد',
+                            IconsaxPlusLinear.shield_tick,
+                          ),
                           _buildInfoRow(
-                              'المركز',
-                              widget.firstSystemCenter ?? 'غير محدد',
-                              Icons.location_city),
+                            'القسم',
+                            widget.firstSystemDepartment ?? 'غير محدد',
+                            IconsaxPlusLinear.building,
+                          ),
                           _buildInfoRow(
-                              'الراتب',
-                              widget.firstSystemSalary ?? 'غير محدد',
-                              Icons.attach_money),
+                            'المركز',
+                            widget.firstSystemCenter ?? 'غير محدد',
+                            IconsaxPlusLinear.building_4,
+                          ),
+                          _buildInfoRow(
+                            'الراتب',
+                            widget.firstSystemSalary ?? 'غير محدد',
+                            IconsaxPlusLinear.money_recive,
+                          ),
                         ],
                       ),
                     ),
@@ -1599,8 +1746,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.fiber_smart_record,
-                                color: Colors.blue[700]),
+                            Icon(
+                              IconsaxPlusBold.global_search,
+                              color: Colors.blue[700],
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'نظام FTTH - المعلومات الأساسية',
@@ -1614,29 +1763,41 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 12),
                         _buildInfoRow(
-                            'اسم المستخدم',
-                            userApiData['username'] ?? widget.username,
-                            Icons.person),
-                        _buildInfoRow('الاسم الكامل', partnerName ?? 'غير محدد',
-                            Icons.badge),
+                          'اسم المستخدم',
+                          userApiData['username'] ?? widget.username,
+                          IconsaxPlusLinear.user,
+                        ),
+                        _buildInfoRow(
+                          'الاسم الكامل',
+                          partnerName ?? 'غير محدد',
+                          IconsaxPlusLinear.card,
+                        ),
                         _buildCopyableInfoRow(
                           'معرف الشريك',
                           partnerId ?? 'غير محدد',
-                          Icons.fingerprint,
+                          IconsaxPlusLinear.finger_scan,
                           partnerId ?? '',
                         ),
-                        _buildInfoRow('البريد الإلكتروني',
-                            userApiData['email'] ?? 'غير محدد', Icons.email),
                         _buildInfoRow(
-                            'حالة المدير',
-                            isAdmin ? 'مدير' : 'مستخدم عادي',
-                            Icons.admin_panel_settings),
-                        _buildInfoRow('نوع الأعمال', _getBusinessLineText(),
-                            Icons.business_center),
+                          'البريد الإلكتروني',
+                          userApiData['email'] ?? 'غير محدد',
+                          IconsaxPlusLinear.sms,
+                        ),
                         _buildInfoRow(
-                            'حالة التمثيل',
-                            userApiData['impersonated'] == true ? 'نعم' : 'لا',
-                            Icons.swap_horiz),
+                          'حالة المدير',
+                          isAdmin ? 'مدير' : 'مستخدم عادي',
+                          IconsaxPlusLinear.security_user,
+                        ),
+                        _buildInfoRow(
+                          'نوع الأعمال',
+                          _getBusinessLineText(),
+                          IconsaxPlusLinear.briefcase,
+                        ),
+                        _buildInfoRow(
+                          'حالة التمثيل',
+                          userApiData['impersonated'] == true ? 'نعم' : 'لا',
+                          IconsaxPlusLinear.arrow_swap_horizontal,
+                        ),
                       ],
                     ),
                   ),
@@ -1659,8 +1820,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.verified_user,
-                                  color: Colors.purple[700]),
+                              Icon(
+                                IconsaxPlusBold.verify,
+                                color: Colors.purple[700],
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'صلاحيات النظام (${userPermissions.length})',
@@ -1674,25 +1837,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 12),
                           // عرض الصلاحيات المهمة فقط
-                          ..._getImportantPermissions().map((perm) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.check_circle,
-                                        size: 16, color: Colors.green),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        perm,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.purple[700],
-                                        ),
+                          ..._getImportantPermissions().map(
+                            (perm) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    IconsaxPlusBold.tick_circle,
+                                    size: 16,
+                                    color: Colors.green,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      perm,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.purple[700],
                                       ),
                                     ),
-                                  ],
-                                ),
-                              )),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           if (userPermissions.length >
                               _getImportantPermissions().length)
                             Padding(
@@ -1728,8 +1896,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.work_outline,
-                                  color: Colors.orange[700]),
+                              Icon(
+                                IconsaxPlusLinear.briefcase,
+                                color: Colors.orange[700],
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'الأدوار والمناصب (${userRoles.length})',
@@ -1742,26 +1912,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          ...userRoles.take(5).map((role) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.star,
-                                        size: 16, color: Colors.orange[600]),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        _translateRole(
-                                            role['displayValue'] ?? ''),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.orange[700],
+                          ...userRoles.take(5).map(
+                                (role) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        IconsaxPlusBold.star_1,
+                                        size: 16,
+                                        color: Colors.orange[600],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _translateRole(
+                                            role['displayValue'] ?? '',
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.orange[700],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              )),
+                              ),
                         ],
                       ),
                     ),
@@ -1784,7 +1960,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.map, color: Colors.teal[700]),
+                              Icon(
+                                IconsaxPlusBold.map,
+                                color: Colors.teal[700],
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'الزونات المصرح بها (${userZones.length})',
@@ -1803,22 +1982,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             runSpacing: 4,
                             children: userZones
                                 .take(10)
-                                .map((zone) => Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.teal[200],
-                                        borderRadius: BorderRadius.circular(8),
+                                .map(
+                                  (zone) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.teal[200],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      zone['displayValue'] ?? '',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.teal[800],
                                       ),
-                                      child: Text(
-                                        zone['displayValue'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.teal[800],
-                                        ),
-                                      ),
-                                    ))
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                           ),
                           if (userZones.length > 10)
@@ -1853,7 +2036,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.settings, color: Colors.indigo[700]),
+                            Icon(
+                              IconsaxPlusBold.setting_2,
+                              color: Colors.indigo[700],
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'صلاحيات النظام المحلي',
@@ -1873,8 +2059,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               children: [
                                 Icon(
                                   permission.value
-                                      ? Icons.check_circle
-                                      : Icons.cancel,
+                                      ? IconsaxPlusBold.tick_circle
+                                      : IconsaxPlusBold.close_circle,
                                   size: 16,
                                   color: permission.value
                                       ? Colors.green
@@ -1915,15 +2101,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
               ),
               child: const Text(
                 'إغلاق',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1938,11 +2123,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: Colors.grey[600],
-          ),
+          Icon(icon, size: 16, color: Colors.grey[600]),
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
@@ -1974,7 +2155,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // صف معلومات مع زر نسخ للقيمة (مثلاً معرف الشريك)
   Widget _buildCopyableInfoRow(
-      String label, String value, IconData icon, String toCopy) {
+    String label,
+    String value,
+    IconData icon,
+    String toCopy,
+  ) {
     final bool hasValue = value.trim().isNotEmpty && value != 'غير محدد';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -2011,7 +2196,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
                 const SizedBox(width: 6),
                 IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  icon: Icon(IconsaxPlusLinear.copy, size: 18),
                   color: Colors.blueGrey,
                   tooltip: 'نسخ',
                   onPressed: hasValue
@@ -2062,12 +2247,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       'Can Manage',
       'Can Create',
       'Can Cancel',
-      'Can Transfer'
+      'Can Transfer',
     ];
 
     return userPermissions
-        .where((perm) => importantKeywords
-            .any((keyword) => perm['displayValue']?.contains(keyword) == true))
+        .where(
+          (perm) => importantKeywords.any(
+            (keyword) => perm['displayValue']?.contains(keyword) == true,
+          ),
+        )
         .take(8)
         .map((perm) => _translatePermission(perm['displayValue'] ?? ''))
         .toList();
@@ -2088,7 +2276,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       'Can Query Customer Wallet': 'الاستعلام عن محافظ العملاء',
       'Can Query Partner Wallet': 'الاستعلام عن محفظة الشريك',
       'SuperAdminMember': 'عضو مدير عام',
-      'ContractorMember': 'عضو مقاول'
+      'ContractorMember': 'عضو مقاول',
     };
 
     return translations[permission] ?? permission;
@@ -2103,7 +2291,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       'view-profile': 'عرض الملف الشخصي',
       'default-roles-partners': 'أدوار الشركاء الافتراضية',
       'offline_access': 'الوصول غير المتصل',
-      'uma_authorization': 'تفويض UMA'
+      'uma_authorization': 'تفويض UMA',
     };
 
     return translations[role] ?? role;
@@ -2117,8 +2305,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       // التحقق من صلاحية إظهار الزر العائم للمحادثات (الزر الأيسر)
       if (_hasPermission('whatsapp_conversations_fab')) {
-        WhatsAppBottomWindow.showConversationsFloatingButton(context,
-            isAdmin: isAdmin);
+        WhatsAppBottomWindow.showConversationsFloatingButton(
+          context,
+          isAdmin: isAdmin,
+        );
       } else {
         // إخفاء الزر العائم إذا لم تكن هناك صلاحية
         WhatsAppBottomWindow.hideConversationsFloatingButton();
@@ -2140,8 +2330,81 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return RepaintBoundary(
       child: Stack(
         children: [
+          // خلفية Aurora فاخرة داكنة مع كرات ضوئية متحركة
+          // خلفية ثابتة (بدون أنيميشن)
+          Builder(builder: (context) {
+            final size = MediaQuery.of(context).size;
+            return Stack(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFF5F6FA),
+                        Color(0xFFEEF1F8),
+                        Color(0xFFF0F4FF),
+                        Color(0xFFF5F6FA),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: size.width * 0.1,
+                  top: size.height * 0.05,
+                  child: Container(
+                    width: size.width * 0.7,
+                    height: size.width * 0.7,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [Color(0x0F3498DB), Color(0x003498DB)],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: size.width * 0.65,
+                  top: size.height * 0.5,
+                  child: Container(
+                    width: size.width * 0.6,
+                    height: size.width * 0.6,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [Color(0x0D1ABC9C), Color(0x001ABC9C)],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: size.width * 0.35,
+                  top: size.height * 0.75,
+                  child: Container(
+                    width: size.width * 0.5,
+                    height: size.width * 0.5,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [Color(0x0A9B59B6), Color(0x009B59B6)],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _InternetIconsBackgroundPainter(
+                      animValue: 0,
+                      color: const Color(0xFF3498DB).withValues(alpha: 0.07),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
           Scaffold(
-            backgroundColor: const Color(0xFFF5F7FA),
+            backgroundColor: Colors.transparent,
             appBar: _buildAppBar(isTablet, isSmallPhone, screenWidth),
             drawer: _buildDrawer(isTablet, isSmallPhone, screenWidth),
             body: isLoadingDashboard
@@ -2175,18 +2438,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF1A237E),
-                    const Color(0xFF3949AB),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: const Color(0xFF3498DB).withValues(alpha: 0.06),
+                    blurRadius: 20,
+                    spreadRadius: -3,
+                    offset: const Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -2201,9 +2466,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       value: progress.total > 0
                           ? progress.current / progress.total
                           : null,
-                      valueColor:
-                          const AlwaysStoppedAnimation<Color>(Colors.white),
-                      backgroundColor: Colors.white.withValues(alpha: 0.3),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Color(0xFF3B82F6),
+                      ),
+                      backgroundColor: const Color(
+                        0xFF3B82F6,
+                      ).withValues(alpha: 0.2),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -2216,7 +2484,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         Text(
                           'جلب البيانات في الخلفية',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF1A1A1A),
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2225,7 +2493,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         Text(
                           progress.message,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color: const Color(0xFF555555),
                             fontSize: 11,
                           ),
                           maxLines: 1,
@@ -2236,18 +2504,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
                   // النسبة المئوية
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
+                        width: 1,
+                      ),
                     ),
                     child: Text(
                       '${progress.percentage.toStringAsFixed(0)}%',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF93C5FD),
                         fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
@@ -2257,15 +2531,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     onTap: () => syncService.cancelSync(),
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: const Color(0xFFDC2626).withValues(alpha: 0.15),
                         shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFDC2626).withValues(alpha: 0.3),
+                          width: 1,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 18,
+                      child: Icon(
+                        IconsaxPlusBold.close_circle,
+                        color: const Color(0xFFFCA5A5),
+                        size: 16,
                       ),
                     ),
                   ),
@@ -2279,39 +2557,62 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   PreferredSizeWidget _buildAppBar(
-      bool isTablet, bool isSmallPhone, double screenWidth) {
-    // الألوان المستخدمة في التدرج - فخم وأنيق
+    bool isTablet,
+    bool isSmallPhone,
+    double screenWidth,
+  ) {
+    // ألوان فاخرة - تيل أخضر مع تدرج عصري
     final gradientColors = [
-      const Color(0xFF0D1B2A), // أزرق داكن فاخر
-      const Color(0xFF1B263B), // أزرق متوسط
-      const Color(0xFF415A77), // أزرق فاتح أنيق
+      const Color(0xFF2C3E50), // أساس (نمط الحسابات)
+      const Color(0xFF34495E), // متوسط
+      const Color(0xFF2C3E50), // عودة
     ];
 
-    // تحديد لون النص والأيقونات بطريقة ذكية
-    final smartTextColor =
-        SmartTextColor.getAppBarTextColorWithGradient(context, gradientColors);
+    // أحجام متجاوبة للشريط العلوي
+    final appBarHeight = isSmallPhone ? 56.0 : (isTablet ? 72.0 : 64.0);
+    final leadingMargin = isSmallPhone ? 6.0 : 10.0;
+    final leadingRadius = isSmallPhone ? 10.0 : 14.0;
+    final actionMarginH = isSmallPhone ? 1.0 : 2.0;
+    final actionRadius = isSmallPhone ? 10.0 : 14.0;
+    final actionBorderW = isSmallPhone ? 1.5 : 2.0;
+    final actionPadding = isSmallPhone ? 6.0 : (isTablet ? 10.0 : 8.0);
+    final actionIconSize = isSmallPhone ? 20.0 : (isTablet ? 28.0 : 24.0);
 
     return AppBar(
       elevation: 0,
-      toolbarHeight: 64,
+      toolbarHeight: appBarHeight,
       shadowColor: Colors.transparent,
       backgroundColor: Colors.transparent,
       leading: Builder(
         builder: (BuildContext context) {
           return Container(
-            margin: const EdgeInsets.all(8),
+            margin: EdgeInsets.all(leadingMargin),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF8B5CF6).withValues(alpha: 0.25),
+                  const Color(0xFF8B5CF6).withValues(alpha: 0.10),
+                ],
               ),
+              borderRadius: BorderRadius.circular(leadingRadius),
+              border: Border.all(
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.5),
+                width: actionBorderW,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: IconButton(
               icon: Icon(
-                Icons.menu_rounded,
-                color: smartTextColor,
+                IconsaxPlusBold.menu_1,
+                color: const Color(0xFFC4B5FD),
                 size: isSmallPhone ? 22.0 : (isTablet ? 26.0 : 24.0),
               ),
               onPressed: () => Scaffold.of(context).openDrawer(),
@@ -2325,16 +2626,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: gradientColors,
-            stops: const [0.0, 0.5, 1.0],
+            colors: [
+              const Color(0xFF2C3E50), // أساس
+              const Color(0xFF34495E), // متوسط
+              const Color(0xFF2C3E50), // عودة
+              const Color(0xFF34495E), // تكرار
+            ],
+            stops: const [0.0, 0.3, 0.7, 1.0],
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0D1B2A).withValues(alpha: 0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
+              color: const Color(0xFF2C3E50).withValues(alpha: 0.15),
+              blurRadius: 30,
+              spreadRadius: 2,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: const Color(0xFF2C3E50).withValues(alpha: 0.3),
+              blurRadius: 40,
+              spreadRadius: -5,
+              offset: const Offset(0, 10),
             ),
           ],
+        ),
+        // طبقة بريق شفافة فوق التدرج
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFF3498DB).withValues(alpha: 0.05),
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.05),
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
         ),
       ),
       centerTitle: true,
@@ -2342,46 +2670,62 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ? GestureDetector(
               onTap: _showUserInfoDialog,
               child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: screenWidth * 0.4, // تحديد العرض الأقصى
-                ),
+                constraints: BoxConstraints(maxWidth: screenWidth * 0.4),
                 padding: EdgeInsets.symmetric(
-                    horizontal: isSmallPhone ? 8.0 : 10.0,
-                    vertical: isSmallPhone ? 4.0 : 6.0),
+                  horizontal: isSmallPhone ? 8.0 : 10.0,
+                  vertical: isSmallPhone ? 4.0 : 6.0,
+                ),
                 decoration: BoxDecoration(
-                  color: smartTextColor == Colors.white
-                      ? Colors.white.withValues(alpha: 0.15)
-                      : Colors.black.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(
-                    color: smartTextColor.withValues(alpha: 0.3),
-                    width: 0.5,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF3B82F6).withValues(alpha: 0.18),
+                      const Color(0xFF3B82F6).withValues(alpha: 0.06),
+                    ],
                   ),
+                  borderRadius: BorderRadius.circular(12.0),
+                  border: Border.all(
+                    color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.person_outline,
-                        color: smartTextColor,
-                        size: isSmallPhone ? 18.0 : (isTablet ? 20.0 : 19.0)),
+                    Icon(
+                      IconsaxPlusLinear.user,
+                      color: Colors.white,
+                      size: isSmallPhone ? 18.0 : (isTablet ? 20.0 : 19.0),
+                    ),
                     SizedBox(width: isSmallPhone ? 4.0 : 6.0),
                     Flexible(
                       child: Text(
                         partnerName!,
                         style: TextStyle(
-                          color: smartTextColor,
+                          color: Colors.white,
                           fontSize:
                               isSmallPhone ? 12.0 : (isTablet ? 14.0 : 13.0),
                           fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
                     ),
                     SizedBox(width: isSmallPhone ? 2.0 : 4.0),
-                    Icon(Icons.info_outline,
-                        color: smartTextColor.withValues(alpha: 0.8),
-                        size: isSmallPhone ? 16.0 : (isTablet ? 18.0 : 17.0)),
+                    Icon(
+                      IconsaxPlusLinear.info_circle,
+                      color: Colors.white.withValues(alpha: 0.7),
+                      size: isSmallPhone ? 16.0 : (isTablet ? 18.0 : 17.0),
+                    ),
                   ],
                 ),
               ),
@@ -2389,32 +2733,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           : Text(
               'لوحة التحكم',
               style: TextStyle(
-                color: smartTextColor,
+                color: Colors.white,
                 fontSize: isSmallPhone ? 16.0 : (isTablet ? 20.0 : 18.0),
                 fontWeight: FontWeight.bold,
               ),
             ),
       actions: [
-        // 🔧 زر التشخيص (مؤقت)
-        IconButton(
-          icon: const Icon(Icons.bug_report, color: Colors.amber, size: 24),
-          tooltip: 'تشخيص التطبيق',
-          onPressed: () {
-            navigateToPage(DiagnosticPage(
-              authToken: currentToken,
-              activatedBy: widget.username,
-              firstSystemPermissions: widget.firstSystemPermissions,
-              isAdminFlag: isAdmin,
-            ));
-          },
-        ),
         // ✅ زر العودة للوحة تحكم Super Admin
         if (widget.isSuperAdminMode)
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            margin: EdgeInsets.symmetric(horizontal: actionMarginH * 2),
             decoration: BoxDecoration(
               color: Colors.amber.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(actionRadius - 2),
               border: Border.all(
                 color: Colors.amber.withValues(alpha: 0.4),
                 width: 1,
@@ -2422,9 +2753,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
             child: IconButton(
               icon: Icon(
-                Icons.admin_panel_settings,
+                IconsaxPlusBold.security_user,
                 color: Colors.amber,
-                size: isSmallPhone ? 22.0 : (isTablet ? 28.0 : 26.0),
+                size: actionIconSize,
               ),
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
@@ -2437,78 +2768,89 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               tooltip: 'العودة للوحة تحكم مدير النظام',
             ),
           ),
-        IconButton(
-          icon: Icon(
-            Icons.logout_rounded,
-            color: smartTextColor,
-            size: isSmallPhone ? 24.0 : (isTablet ? 30.0 : 28.0),
-          ),
-          onPressed: () async {
-            final result = await LogoutDialogHelper.show(
-              context,
-              title: 'تسجيل الخروج',
-              message: 'هل تريد العودة إلى النظام الأول؟',
-              confirmText: 'تسجيل الخروج',
-              icon: Icons.logout_rounded,
-            );
-
-            if (result != null && result['confirmed'] == true) {
-              // تنفيذ تسجيل الخروج بناءً على خيار المستخدم
-              if (result['clearCredentials'] == true) {
-                await AuthService.instance.logoutAndClearAll();
-              } else {
-                await AuthService.instance.logout();
-              }
-
-              if (mounted) {
-                // إظهار الزر العائم للواتساب قبل الانتقال لضمان عدم اختفائه
-                try {
-                  WhatsAppBottomWindow.ensureFloatingButton(context);
-                } catch (e) {
-                  debugPrint('⚠️ خطأ في إظهار زر الواتساب قبل الانتقال: $e');
-                }
-
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => firstSystem.HomePage(
-                      username: widget.firstSystemUsername ?? 'مستخدم',
-                      permissions: widget.firstSystemPermissions ?? 'default',
-                      department: widget.firstSystemDepartment ?? 'عام',
-                      center: widget.firstSystemCenter ?? 'الرئيسي',
-                      salary: widget.firstSystemSalary ?? '0',
-                      pageAccess: widget.firstSystemPageAccess ?? {},
-                    ),
-                  ),
-                );
-              }
-            }
-          },
-          tooltip: 'العودة للنظام الأول',
-          padding: EdgeInsets.all(isSmallPhone ? 10.0 : 12.0),
-        ),
-        AnimatedBuilder(
-          animation: _refreshAnimationController,
-          builder: (context, child) {
-            return Transform.rotate(
-              angle: _refreshAnimationController.value * 2 * 3.14159,
-              child: IconButton(
-                icon: Icon(
-                  Icons.refresh_rounded,
-                  color: smartTextColor,
-                  size: isSmallPhone ? 24.0 : (isTablet ? 30.0 : 28.0),
-                ),
-                onPressed: isRefreshing ? null : _manualFullRefresh,
-                tooltip: 'تحديث كامل',
-                padding: EdgeInsets.all(isSmallPhone ? 10.0 : 12.0),
+        Container(
+          margin: EdgeInsets.symmetric(horizontal: actionMarginH),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFEC4899).withValues(alpha: 0.22),
+                const Color(0xFFEC4899).withValues(alpha: 0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(actionRadius),
+            border: Border.all(
+              color: const Color(0xFFEC4899).withValues(alpha: 0.45),
+              width: actionBorderW,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFEC4899).withValues(alpha: 0.15),
+                blurRadius: isSmallPhone ? 6 : 10,
+                offset: const Offset(0, 2),
               ),
-            );
-          },
+            ],
+          ),
+          child: IconButton(
+            icon: Icon(
+              IconsaxPlusBold.arrow_right_1,
+              color: const Color(0xFFF9A8D4),
+              size: actionIconSize,
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            tooltip: 'رجوع',
+            padding: EdgeInsets.all(actionPadding),
+          ),
+        ),
+        Container(
+          margin: EdgeInsets.symmetric(horizontal: actionMarginH),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF10B981).withValues(alpha: 0.22),
+                const Color(0xFF10B981).withValues(alpha: 0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(actionRadius),
+            border: Border.all(
+              color: const Color(0xFF10B981).withValues(alpha: 0.45),
+              width: actionBorderW,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                blurRadius: isSmallPhone ? 6 : 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: AnimatedBuilder(
+            animation: _refreshAnimationController,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: _refreshAnimationController.value * 2 * 3.14159,
+                child: IconButton(
+                  icon: Icon(
+                    IconsaxPlusBold.refresh,
+                    color: const Color(0xFF6EE7B7),
+                    size: actionIconSize + 2,
+                  ),
+                  onPressed: isRefreshing ? null : _manualFullRefresh,
+                  tooltip: 'تحديث كامل',
+                  padding: EdgeInsets.all(actionPadding),
+                ),
+              );
+            },
+          ),
         ),
       ],
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(12.0),
-        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24.0)),
       ),
     );
   }
@@ -2520,8 +2862,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-            stops: [0.0, 0.3],
+            colors: [Color(0xFFF5F6FA), Color(0xFFEEF1F8)],
+            stops: [0.0, 1.0],
           ),
         ),
         child: ListView(
@@ -2529,7 +2871,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           children: [
             _buildDrawerHeader(isTablet, isSmallPhone),
             Container(
-              color: Colors.white,
+              color: const Color(0xFFF5F6FA),
               child: Column(
                 children: [
                   // ============ الأزرار التالية تظهر فقط في الواجهة الرئيسية (الوصول السريع) ============
@@ -2543,20 +2885,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 0 تقارير Superset (WebView)
                   if (_hasPermission('superset_reports'))
                     _buildDrawerItem(
-                      icon: Icons.dashboard_rounded,
+                      icon: IconsaxPlusBold.chart_21,
                       title: 'تقارير Superset',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.blue,
-                      onTap: () => navigateToPage(
-                        const TestWebViewPage(),
-                      ),
+                      onTap: () => navigateToPage(const TestWebViewPage()),
                     ),
 
                   // 0.5 بيانات السيرفر (ملفات JSON المحلية)
                   if (_hasPermission('server_data'))
                     _buildDrawerItem(
-                      icon: Icons.storage_rounded,
+                      icon: IconsaxPlusBold.data,
                       title: 'بيانات السيرفر',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
@@ -2569,7 +2909,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 0.6 مشروع Dashboard (جلب بيانات الشارتات)
                   if (_hasPermission('dashboard_project'))
                     _buildDrawerItem(
-                      icon: Icons.dashboard_customize_rounded,
+                      icon: IconsaxPlusBold.element_3,
                       title: 'مشروع Dashboard',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
@@ -2582,33 +2922,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 1 بيانات (تفاصيل الوكلاء + بيانات المستخدمين)
                   if (_hasPermission('agents'))
                     _buildDrawerItem(
-                      icon: Icons.folder_shared_rounded,
+                      icon: IconsaxPlusBold.folder_open,
                       title: 'بيانات',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.deepPurple,
-                      onTap: () => navigateToPage(
-                        DataPage(authToken: currentToken),
-                      ),
+                      onTap: () =>
+                          navigateToPage(DataPage(authToken: currentToken)),
                     ),
 
                   // 2 إدارة الزونات
                   if (_hasPermission('zones'))
                     _buildDrawerItem(
-                      icon: Icons.location_on_rounded,
+                      icon: IconsaxPlusBold.location,
                       title: 'إدارة الزونات',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.teal,
-                      onTap: () => navigateToPage(
-                        ZonesPage(authToken: currentToken),
-                      ),
+                      onTap: () =>
+                          navigateToPage(ZonesPage(authToken: currentToken)),
                     ),
 
                   // 3 سجل التدقيق
                   if (_hasPermission('audit_logs'))
                     _buildDrawerItem(
-                      icon: Icons.history_rounded,
+                      icon: IconsaxPlusBold.clock,
                       title: 'سجل التدقيق',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
@@ -2624,14 +2962,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 4 تصدير البيانات
                   if (_hasPermission('export'))
                     _buildDrawerItem(
-                      icon: Icons.import_export_rounded,
+                      icon: IconsaxPlusBold.export_1,
                       title: 'تصدير البيانات',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.brown,
-                      onTap: () => navigateToPage(
-                        ExportPage(authToken: currentToken),
-                      ),
+                      onTap: () =>
+                          navigateToPage(ExportPage(authToken: currentToken)),
                     ),
 
                   // ═══════════════════════════════════════════════════════════════════
@@ -2641,7 +2978,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 5 التحويلات
                   if (_hasPermission('transactions'))
                     _buildDrawerItem(
-                      icon: Icons.account_balance_wallet_rounded,
+                      icon: IconsaxPlusBold.wallet_2,
                       title: 'التحويلات',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
@@ -2656,32 +2993,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 6 محادثات WhatsApp
                   if (_hasPermission('whatsapp_conversations_fab'))
                     _buildDrawerItem(
-                      icon: Icons.chat_rounded,
+                      icon: IconsaxPlusBold.message,
                       title: 'محادثات WhatsApp',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.green,
                       onTap: () => navigateToPage(
-                          WhatsAppConversationsPage(isAdmin: isAdmin)),
+                        WhatsAppConversationsPage(isAdmin: isAdmin),
+                      ),
                     ),
 
                   // 7 إرسال رسائل جماعية (يحتوي على إعدادات API والتقارير)
                   if (_hasPermission('whatsapp_bulk_sender'))
                     _buildDrawerItem(
-                      icon: Icons.send_rounded,
+                      icon: IconsaxPlusBold.send_2,
                       title: 'إرسال رسائل جماعية',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.teal,
-                      onTap: () => navigateToPage(
-                        const WhatsAppBulkSenderPage(),
-                      ),
+                      onTap: () =>
+                          navigateToPage(const WhatsAppBulkSenderPage()),
                     ),
 
                   // 8 إعدادات الواتساب
                   if (_hasPermission('whatsapp_settings'))
                     _buildDrawerItem(
-                      icon: Icons.settings_applications_rounded,
+                      icon: IconsaxPlusBold.setting_2,
                       title: 'إعدادات الواتساب',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
@@ -2696,7 +3033,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 10 فني التوصيل
                   if (_hasPermission('technicians'))
                     _buildDrawerItem(
-                      icon: Icons.engineering_rounded,
+                      icon: IconsaxPlusBold.user_octagon,
                       title: 'فني التوصيل',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
@@ -2707,19 +3044,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 11 التخزين الداخلي
                   if (_hasPermission('local_storage'))
                     _buildDrawerItem(
-                      icon: Icons.storage_rounded,
+                      icon: IconsaxPlusBold.box_1,
                       title: 'التخزين الداخلي',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.cyan,
                       onTap: () => navigateToPage(
-                          LocalStoragePage(authToken: currentToken)),
+                        LocalStoragePage(authToken: currentToken),
+                      ),
                     ),
 
                   // 12 جلب بيانات الموقع
                   if (_hasPermission('fetch_server_data'))
                     _buildDrawerItem(
-                      icon: Icons.cloud_download_rounded,
+                      icon: IconsaxPlusBold.cloud_connection,
                       title: 'جلب بيانات الموقع',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
@@ -2764,7 +3102,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       child: Column(
                         children: [
                           Icon(
-                            Icons.lock_outline,
+                            IconsaxPlusLinear.lock,
                             color: Colors.orange[600],
                             size: isSmallPhone ? 24 : 32,
                           ),
@@ -2803,66 +3141,99 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Container(
       height: headerHeight,
       margin: EdgeInsets.zero,
-      padding:
-          EdgeInsets.symmetric(horizontal: 20, vertical: isSmallPhone ? 8 : 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isSmallPhone ? 8 : 12,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0D1B2A),
-            Color(0xFF1B263B),
-            Color(0xFF415A77),
-          ],
+          colors: [Color(0xFF2C3E50), Color(0xFF34495E), Color(0xFF2C3E50)],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0D1B2A).withValues(alpha: 0.5),
-            blurRadius: 15,
+            color: const Color(0xFF2C3E50).withValues(alpha: 0.12),
+            blurRadius: 20,
             offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          // أيقونة فخمة
-          Container(
-            padding: EdgeInsets.all(isSmallPhone ? 4 : 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.amber.withValues(alpha: 0.5),
-                width: 1.5,
+          // طبقة بريق شفافة
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFF59E0B).withValues(alpha: 0.06),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.2),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
               ),
-            ),
-            child: Icon(
-              Icons.diamond_rounded,
-              color: Colors.amber[300],
-              size: isSmallPhone ? 16 : 24,
             ),
           ),
-          SizedBox(height: isSmallPhone ? 2 : 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              'القائمة الرئيسية',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isSmallPhone ? 12 : (isTablet ? 18 : 16),
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                shadows: [
-                  Shadow(
-                    color: Colors.black54,
-                    offset: const Offset(1, 2),
-                    blurRadius: 4,
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // أيقونة فخمة متوهجة
+                Container(
+                  padding: EdgeInsets.all(isSmallPhone ? 6 : 10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                        const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.55),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        spreadRadius: -2,
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                        blurRadius: 30,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              textAlign: TextAlign.center,
+                  child: Icon(
+                    IconsaxPlusBold.shield_tick,
+                    color: const Color(0xFFFCD34D),
+                    size: isSmallPhone ? 18 : 26,
+                  ),
+                ),
+                SizedBox(height: isSmallPhone ? 4 : 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'القائمة الرئيسية',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isSmallPhone ? 13 : (isTablet ? 18 : 16),
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -2895,8 +3266,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     final double baseBox = isTablet ? 52 : 48;
-    final double boxSize =
-        ((isSmallPhone ? 40 : baseBox * scale).clamp(36, 52)).toDouble();
+    final double boxSize = ((isSmallPhone ? 40 : baseBox * scale).clamp(
+      36,
+      52,
+    )).toDouble();
     final double iconSize =
         ((isSmallPhone ? 18 : (isTablet ? 24 : 20)) * scale).toDouble();
     final double titleFont = ((isSmallPhone ? 12 : (isTablet ? 14 : 13)) *
@@ -2910,31 +3283,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 3),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            color.shade50,
-          ],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.shade200.withValues(alpha: 0.5),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.15),
-            spreadRadius: 0,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.8),
+            color: color.withValues(alpha: 0.1),
             spreadRadius: -2,
-            blurRadius: 6,
-            offset: const Offset(0, -2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -2947,21 +3304,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [color.shade300, color.shade600],
+              colors: [
+                color.shade300.withValues(alpha: 0.12),
+                color.shade500.withValues(alpha: 0.25),
+              ],
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: color.shade400.withValues(alpha: 0.55),
+              width: 2.0,
+            ),
             boxShadow: [
               BoxShadow(
-                color: color.withValues(alpha: 0.4),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                color: color.shade400.withValues(alpha: 0.2),
+                blurRadius: 14,
+                spreadRadius: -2,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: color.shade300.withValues(alpha: 0.08),
+                blurRadius: 24,
+                spreadRadius: 0,
               ),
             ],
           ),
           child: Icon(
             icon,
             size: iconSize.clamp(16, 26).toDouble(),
-            color: Colors.white,
+            color: color.shade300,
           ),
         ),
         title: Text(
@@ -2969,22 +3339,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           style: TextStyle(
             fontSize: titleFont.clamp(11, 15).toDouble(),
             fontWeight: FontWeight.w600,
-            color: color.shade900,
+            color: const Color(0xFF1A1A1A),
             height: 1.15,
           ),
         ),
         trailing: Icon(
-          Icons.arrow_forward_ios,
+          IconsaxPlusBold.arrow_left_2,
           size: trailingSize.clamp(14, 20).toDouble(),
-          color: color.shade600,
+          color: const Color(0xFF555555),
         ),
         onTap: () {
           Navigator.pop(context);
           onTap();
         },
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         contentPadding: EdgeInsets.symmetric(
           horizontal: horizPad.clamp(8, 16).toDouble(),
           vertical: vertPad.clamp(4, 12).toDouble(),
@@ -3000,80 +3368,105 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // حلقة تحميل فخمة متوهجة
+          // حلقة تحميل فخمة - ثيم داكن
           Container(
-            padding: const EdgeInsets.all(30),
+            padding: const EdgeInsets.all(35),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white,
-                  const Color(0xFFF0F4FF),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(30),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF0D1B2A).withValues(alpha: 0.15),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
+                  color: const Color(0xFF3498DB).withValues(alpha: 0.06),
+                  blurRadius: 40,
+                  spreadRadius: -5,
+                  offset: const Offset(0, 15),
                 ),
                 BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 60,
+                  spreadRadius: -10,
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // حلقة خارجية متوهجة
+                // حلقة خارجية كبيرة - أزرق فاتح
                 SizedBox(
-                  width: 70,
-                  height: 70,
+                  width: 80,
+                  height: 80,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      const Color(0xFF3498DB).withValues(alpha: 0.25),
+                    ),
+                  ),
+                ),
+                // حلقة وسطى - أزرق
+                SizedBox(
+                  width: 60,
+                  height: 60,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF415A77).withValues(alpha: 0.3),
+                      const Color(0xFF3498DB).withValues(alpha: 0.5),
                     ),
                   ),
                 ),
-                // حلقة داخلية
+                // حلقة داخلية أساسية - أزرق
                 SizedBox(
-                  width: 50,
-                  height: 50,
+                  width: 42,
+                  height: 42,
                   child: CircularProgressIndicator(
                     strokeWidth: 4,
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF0D1B2A),
+                      Color(0xFF3498DB),
                     ),
                   ),
                 ),
-                // أيقونة في المنتصف
-                Icon(
-                  Icons.diamond_outlined,
-                  color: const Color(0xFF415A77),
-                  size: 20,
+                // أيقونة في المنتصف مع توهج
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        spreadRadius: -2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    IconsaxPlusBold.verify,
+                    color: const Color(0xFFFCD34D),
+                    size: 18,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          // نص متحرك
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Color(0xFF0D1B2A), Color(0xFF415A77), Color(0xFF0D1B2A)],
-            ).createShader(bounds),
-            child: Text(
-              'جاري تحميل البيانات...',
-              style: TextStyle(
-                fontSize: isLargeScreen ? 18 : 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
+          const SizedBox(height: 28),
+          // نص التحميل
+          Text(
+            'جاري تحميل البيانات...',
+            style: TextStyle(
+              fontSize: isLargeScreen ? 18 : 16,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1A1A1A),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'يرجى الانتظار لحظات',
+            style: TextStyle(
+              fontSize: isLargeScreen ? 14 : 12,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF555555),
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -3088,55 +3481,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: SizedBox.expand(
         child: Stack(
           children: [
-            // طبقة حركة الاضواء (ألياف)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: AnimatedBuilder(
-                  animation: _fiberAnim,
-                  builder: (context, _) => CustomPaint(
-                    painter: _FiberLightPainter(progress: _fiberAnim.value),
-                  ),
-                ),
-              ),
-            ),
-            // خلفية زخرفية خفيفة مستوحاة من الألياف (دوائر متدرجة)
-            Positioned(
-              top: -80,
-              right: -60,
-              child: _decorCircle(const Color(0xFF00BCD4), 180, 0.10),
-            ),
-            Positioned(
-              bottom: -100,
-              left: -60,
-              child: _decorCircle(const Color(0xFF1A237E), 220, 0.08),
-            ),
             // المحتوى القابل للتمرير
             SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.all(isLargeScreen ? 20 : 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // بطاقة العملاء الحديثة في الأعلى فقط
-                  _buildTopStatsRow(isLargeScreen),
-                  const SizedBox(height: 16),
-                  // كروت المحفظة في الأعلى (للمديرين فقط أو المصرح لهم)
-                  if (hasWalletBalancePermission())
-                    _buildWalletCards(isLargeScreen),
+              padding: EdgeInsets.symmetric(
+                horizontal: isLargeScreen ? 28 : 16,
+                vertical: isLargeScreen ? 16 : 10,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // بطاقة العملاء الحديثة في الأعلى فقط
+                      _buildTopStatsRow(isLargeScreen),
+                      const SizedBox(height: 12),
+                      // كروت المحفظة في الأعلى (للمديرين فقط أو المصرح لهم)
+                      if (hasWalletBalancePermission())
+                        _buildWalletCards(isLargeScreen),
 
-                  if (hasWalletBalancePermission()) const SizedBox(height: 20),
+                      if (hasWalletBalancePermission())
+                        const SizedBox(height: 10),
 
-                  // بطاقة محفظة عضو الفريق تظهر دائماً إذا كانت المحفظة متوفرة حتى بدون صلاحية المحفظة العامة
-                  if (!hasWalletBalancePermission() && hasTeamMemberWallet) ...[
-                    _buildTeamMemberWalletCard(),
-                    const SizedBox(height: 20),
-                  ],
+                      // بطاقة محفظة عضو الفريق تظهر دائماً إذا كانت المحفظة متوفرة حتى بدون صلاحية المحفظة العامة
+                      if (!hasWalletBalancePermission() &&
+                          hasTeamMemberWallet) ...[
+                        _buildTeamMemberWalletCard(),
+                        const SizedBox(height: 10),
+                      ],
 
-                  // شريط الأدوات السريعة المحدث
-                  _buildQuickActionsBar(isLargeScreen, screenWidth),
-                  const SizedBox(
-                      height: 80), // مسافة سفلية حتى لا يغطيها شريط "آخر تحديث"
-                ],
+                      // شريط الأدوات السريعة المحدث
+                      _buildQuickActionsBar(isLargeScreen, screenWidth),
+                      const SizedBox(
+                        height: 80,
+                      ), // مسافة سفلية حتى لا يغطيها شريط "آخر تحديث"
+                    ],
+                  ),
+                ),
               ),
             ),
             // معلومات آخر تحديث - مثبتة أسفل الشاشة
@@ -3148,8 +3530,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: SafeArea(
                   top: false,
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     child: _buildLastUpdateInfo(isLargeScreen),
                   ),
                 ),
@@ -3161,32 +3545,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // عنصر زخرفي دائري بخلفية شعاعية
-  Widget _decorCircle(Color color, double size, double opacity) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color.withValues(alpha: opacity), Colors.transparent],
-          ),
-        ),
-      ),
-    );
-  }
-
   // صف علوي عصري لبطاقة العملاء فقط
   Widget _buildTopStatsRow(bool isLargeScreen) {
-    return Row(
-      children: [
-        Expanded(child: _buildCustomersCard()),
-      ],
-    );
+    return Row(children: [Expanded(child: _buildCustomersCard())]);
   }
 
-  // بطاقة مخصصة لعرض العملاء بشكل حديث وفخم
+  // بطاقة مخصصة لعرض العملاء بشكل حديث ونظيف
   Widget _buildCustomersCard() {
     final total = (dashboardData['customers']?['totalCount'] ?? 0) as int;
     final active = (dashboardData['customers']?['totalActive'] ?? 0) as int;
@@ -3194,338 +3558,271 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
 
-    return Container(
-      padding: EdgeInsets.all(isTablet ? 16 : 14),
-      decoration: BoxDecoration(
-        // خلفية زجاجية فاخرة
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF0D1B2A).withValues(alpha: 0.95),
-            const Color(0xFF1B263B).withValues(alpha: 0.9),
-            const Color(0xFF415A77).withValues(alpha: 0.85),
-          ],
-          stops: const [0.0, 0.5, 1.0],
+    // فاصل بين البطاقات يتأقلم مع حجم الشاشة
+    final gap = screenWidth < 360 ? 6.0 : (screenWidth < 420 ? 8.0 : 12.0);
+
+    return Row(
+      children: [
+        Expanded(
+          child: _buildCleanStatCard(
+            label: 'إجمالي العملاء',
+            value: total,
+            icon: IconsaxPlusBold.people,
+            color: const Color(0xFF2563EB),
+            changeText: '100%',
+            isPositive: true,
+          ),
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 1.5,
+        SizedBox(width: gap),
+        Expanded(
+          child: _buildCleanStatCard(
+            label: 'نشط',
+            value: active,
+            icon: IconsaxPlusBold.tick_circle,
+            color: const Color(0xFF059669),
+            changeText: total > 0
+                ? '${(active / total * 100).toStringAsFixed(1)}%'
+                : '0%',
+            isPositive: true,
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0D1B2A).withValues(alpha: 0.5),
-            blurRadius: 30,
-            offset: const Offset(0, 15),
+        SizedBox(width: gap),
+        Expanded(
+          child: _buildCleanStatCard(
+            label: 'منتهي',
+            value: inactive,
+            icon: IconsaxPlusBold.close_circle,
+            color: const Color(0xFFDC2626),
+            changeText: total > 0
+                ? '${(inactive / total * 100).toStringAsFixed(1)}%'
+                : '0%',
+            isPositive: false,
           ),
-          BoxShadow(
-            color: const Color(0xFF415A77).withValues(alpha: 0.3),
-            blurRadius: 20,
-            spreadRadius: -5,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // البطاقات الإحصائية الفخمة
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final availableWidth = constraints.maxWidth;
-              final cardWidth = (availableWidth - 24) / 3;
-              return Row(
-                children: [
-                  Expanded(
-                    child: _buildLuxuryStatCard(
-                      label: 'إجمالي العملاء',
-                      value: total,
-                      icon: Icons.groups_rounded,
-                      gradientColors: const [
-                        Color(0xFFFF9800),
-                        Color(0xFFFF5722)
-                      ],
-                      glowColor: const Color(0xFFFF9800),
-                      isTotal: true,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildLuxuryStatCard(
-                      label: 'نشط',
-                      value: active,
-                      icon: Icons.check_circle_rounded,
-                      gradientColors: const [
-                        Color(0xFF4CAF50),
-                        Color(0xFF2E7D32)
-                      ],
-                      glowColor: const Color(0xFF4CAF50),
-                      percent: total > 0 ? (active / total * 100).round() : 0,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildLuxuryStatCard(
-                      label: 'منتهي',
-                      value: inactive,
-                      icon: Icons.cancel_rounded,
-                      gradientColors: const [
-                        Color(0xFFE53935),
-                        Color(0xFFB71C1C)
-                      ],
-                      glowColor: const Color(0xFFE53935),
-                      percent: total > 0 ? (inactive / total * 100).round() : 0,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  // بطاقة إحصائية فخمة مع تأثيرات بصرية
-  Widget _buildLuxuryStatCard({
+  // بطاقة إحصائية دائرية (Donut) مع عداد متحرك وتأثيرات hover
+  Widget _buildCleanStatCard({
     required String label,
     required int value,
     required IconData icon,
-    required List<Color> gradientColors,
-    required Color glowColor,
-    int? percent,
-    bool isTotal = false,
+    required Color color,
+    required String changeText,
+    required bool isPositive,
   }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmall = screenWidth < 400;
+    // استخراج النسبة المئوية من changeText (مثل "75.5%" → 0.755)
+    double percent = 1.0;
+    final parsed = double.tryParse(changeText.replaceAll('%', '').trim());
+    if (parsed != null) percent = (parsed / 100.0).clamp(0.0, 1.0);
 
-    return Container(
-      padding: EdgeInsets.all(isSmall ? 10 : 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isTotal
-              ? [
-                  gradientColors[0].withValues(alpha: 0.3),
-                  gradientColors[1].withValues(alpha: 0.2),
-                ]
-              : [
-                  Colors.white.withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.05),
-                ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isTotal
-              ? gradientColors[0].withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.2),
-          width: isTotal ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: glowColor.withValues(alpha: isTotal ? 0.4 : 0.2),
-            blurRadius: isTotal ? 25 : 20,
-            spreadRadius: isTotal ? 0 : -5,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // الأيقونة المتوهجة
-          Container(
-            padding: EdgeInsets.all(isSmall ? 8 : 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: gradientColors,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: glowColor.withValues(alpha: 0.6),
-                  blurRadius: 15,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: isSmall ? 18 : 20,
-            ),
-          ),
-          SizedBox(height: isSmall ? 8 : 10),
-          // الرقم البارز جداً
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  gradientColors[0].withValues(alpha: 0.2),
-                  Colors.transparent,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              NumberFormat('#,##0').format(value),
-              style: TextStyle(
-                fontSize: isSmall ? 22 : 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 1,
-                height: 1,
-                shadows: [
-                  Shadow(
-                    color: gradientColors[0].withValues(alpha: 0.8),
-                    offset: const Offset(0, 0),
-                    blurRadius: 20,
-                  ),
-                  Shadow(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    offset: const Offset(0, 2),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          // شريط النسبة أو شارة الإجمالي
-          if (percent != null) ...[
-            // شريط النسبة المتحرك
-            Container(
-              height: 4,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerRight,
-                widthFactor: percent / 100,
-                child: Container(
+    final hoverNotifier = ValueNotifier<bool>(false);
+
+    // ألوان التدرج لكل بطاقة
+    final Color glowColor1 = color;
+    final Color glowColor2 = HSLColor.fromColor(
+      color,
+    ).withHue((HSLColor.fromColor(color).hue + 40) % 360).toColor();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth;
+        // أحجام متجاوبة حسب عرض البطاقة المتاح
+        final circleSize = (cardWidth * 0.72).clamp(60.0, 90.0);
+        final valueFontSize = (cardWidth * 0.14).clamp(12.0, 17.0);
+        final pctFontSize = (cardWidth * 0.08).clamp(7.0, 9.0);
+        final labelFontSize = (cardWidth * 0.09).clamp(8.0, 10.0);
+        final iconSize = (cardWidth * 0.1).clamp(9.0, 12.0);
+        final vPad = cardWidth < 100 ? 8.0 : (cardWidth < 120 ? 10.0 : 14.0);
+        final hPad = cardWidth < 100 ? 6.0 : (cardWidth < 120 ? 8.0 : 10.0);
+
+        return ValueListenableBuilder<bool>(
+          valueListenable: hoverNotifier,
+          builder: (context, isHovered, child) {
+            return MouseRegion(
+              onEnter: (_) => hoverNotifier.value = true,
+              onExit: (_) => hoverNotifier.value = false,
+              child: AnimatedScale(
+                scale: isHovered ? 1.03 : 1.0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  padding:
+                      EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: gradientColors),
-                    borderRadius: BorderRadius.circular(3),
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.circular(cardWidth < 100 ? 12 : 18),
+                    border: Border.all(
+                      color: isHovered
+                          ? color.withValues(alpha: 0.35)
+                          : const Color(0xFFE0E0E0),
+                      width: isHovered ? 2.5 : 2.0,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: glowColor.withValues(alpha: 0.7),
-                        blurRadius: 8,
-                        spreadRadius: 1,
+                        color: isHovered
+                            ? color.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.04),
+                        blurRadius: isHovered ? 16 : 6,
+                        spreadRadius: isHovered ? -1 : -2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // دائرة الأمواج الشعاعية — التصميم المستقبلي
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: percent),
+                        duration: const Duration(milliseconds: 1600),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, animPercent, _) {
+                          return AnimatedBuilder(
+                            animation: _counterAnimationController,
+                            builder: (context, child) {
+                              final curvedVal = Curves.easeOutExpo.transform(
+                                _counterAnimationController.value,
+                              );
+                              final displayValue = (value * curvedVal).round();
+                              return SizedBox(
+                                width: circleSize,
+                                height: circleSize,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CustomPaint(
+                                      size: Size.square(circleSize),
+                                      painter: _RadialWavePainter(
+                                        progress: animPercent,
+                                        color1: glowColor1,
+                                        color2: glowColor2,
+                                        animValue: 0,
+                                      ),
+                                    ),
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            _formatCounterNumber(displayValue),
+                                            style: TextStyle(
+                                              fontSize: valueFontSize,
+                                              fontWeight: FontWeight.w900,
+                                              color: const Color(0xFF1A1A1A),
+                                              letterSpacing: -0.3,
+                                              height: 1.0,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          changeText,
+                                          style: TextStyle(
+                                            fontSize: pctFontSize,
+                                            fontWeight: FontWeight.w700,
+                                            color: color,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      SizedBox(height: cardWidth < 100 ? 4 : 8),
+                      // أيقونة + تسمية
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, color: color, size: iconSize),
+                          SizedBox(width: cardWidth < 100 ? 2 : 4),
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                color: const Color(0xFF1A1A1A),
+                                fontSize: labelFontSize,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 4),
-            // النسبة المئوية بارزة
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    gradientColors[0].withValues(alpha: 0.3),
-                    gradientColors[1].withValues(alpha: 0.2),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: gradientColors[0].withValues(alpha: 0.5),
-                ),
-              ),
-              child: Text(
-                '$percent%',
-                style: TextStyle(
-                  fontSize: isSmall ? 12 : 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  shadows: [
-                    Shadow(
-                      color: gradientColors[0],
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ] else ...[
-            // شارة "الكل" للإجمالي
-            Container(
-              height: 4,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: gradientColors),
-                borderRadius: BorderRadius.circular(3),
-                boxShadow: [
-                  BoxShadow(
-                    color: glowColor.withValues(alpha: 0.7),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    gradientColors[0].withValues(alpha: 0.3),
-                    gradientColors[1].withValues(alpha: 0.2),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: gradientColors[0].withValues(alpha: 0.5),
-                ),
-              ),
-              child: Text(
-                '100%',
-                style: TextStyle(
-                  fontSize: isSmall ? 12 : 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  shadows: [
-                    Shadow(
-                      color: gradientColors[0],
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          SizedBox(height: isSmall ? 6 : 8),
-          // العنوان
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isSmall ? 10 : 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.5,
-              shadows: [
-                Shadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 4,
-                ),
-              ],
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
+  }
+
+  // تنسيق رقم العداد مع فواصل الآلاف
+  String _formatCounterNumber(int number) {
+    if (number < 1000) return number.toString();
+    final str = number.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      buffer.write(str[i]);
+      count++;
+      if (count % 3 == 0 && i > 0) buffer.write(',');
+    }
+    return buffer.toString().split('').reversed.join('');
+  }
+
+  // نقاط الزوايا الزخرفية المتحركة
+  List<Widget> _buildAnimatedCornerDots(Color color, bool isHovered) {
+    final positions = [
+      {'top': 6.0, 'left': 6.0},
+      {'top': 6.0, 'right': 6.0},
+      {'bottom': 6.0, 'left': 6.0},
+      {'bottom': 6.0, 'right': 6.0},
+    ];
+
+    return positions.map((pos) {
+      return Positioned(
+        top: pos.containsKey('top') ? pos['top'] : null,
+        bottom: pos.containsKey('bottom') ? pos['bottom'] : null,
+        left: pos.containsKey('left') ? pos['left'] : null,
+        right: pos.containsKey('right') ? pos['right'] : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          width: isHovered ? 7 : 5,
+          height: isHovered ? 7 : 5,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withValues(alpha: isHovered ? 0.8 : 0.45),
+            boxShadow: isHovered
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.5),
+                      blurRadius: 6,
+                      spreadRadius: 0,
+                    ),
+                  ]
+                : [],
+          ),
+        ),
+      );
+    }).toList();
   }
 
   // عنصر إحصائي بدائرة نسبية (Donut)
@@ -3544,21 +3841,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // حاوية خارجية مع ظلال فخمة
+        // حاوية خارجية مع ظلال - ثيم فاتح
         Container(
           width: size + 8,
           height: size + 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
+            border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
             boxShadow: [
               BoxShadow(
-                color: color.withValues(alpha: 0.25),
+                color: const Color(0xFF3498DB).withValues(alpha: 0.06),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.9),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 10,
                 spreadRadius: -3,
                 offset: const Offset(0, -3),
@@ -3594,10 +3892,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           style: TextStyle(
                             fontSize: valueFont,
                             fontWeight: FontWeight.w900,
-                            color: color.shade800,
+                            color: const Color(0xFF1A1A1A),
                             shadows: [
                               Shadow(
-                                color: color.withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFF3498DB,
+                                ).withValues(alpha: 0.1),
                                 offset: const Offset(0, 1),
                                 blurRadius: 2,
                               ),
@@ -3607,9 +3907,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         const SizedBox(height: 2),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: color.shade50,
+                            color: const Color(
+                              0xFF3498DB,
+                            ).withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -3619,7 +3923,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             style: TextStyle(
                               fontSize: pctFont,
                               fontWeight: FontWeight.w700,
-                              color: color.shade700,
+                              color: const Color(0xFF3498DB),
                             ),
                           ),
                         ),
@@ -3632,25 +3936,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 10),
-        // العنوان مع تصميم فخم
+        // العنوان مع تصميم فاتح
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color.shade100, color.shade50],
-            ),
+            color: const Color(0xFF3498DB).withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.shade200,
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFFE8E8E8), width: 1),
           ),
           child: Text(
             label,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: color.shade800,
+              color: const Color(0xFF3498DB),
             ),
           ),
         ),
@@ -3660,128 +3959,101 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // شريط الأد��ات السريعة المحدث
   Widget _buildQuickActionsBar(bool isLargeScreen, double screenWidth) {
-    // تحديد عدد الأعمدة حسب حجم الشاشة
+    // تحديد عدد الأعمدة حسب حجم الشاشة - تصميم أفقي
     int crossAxisCount;
     double childAspectRatio;
 
     if (screenWidth < 320) {
-      crossAxisCount = 1; // شاشة صغيرة جداً - عمود واحد
-      // تقليل النسبة لزيادة الارتفاع لاستيعاب حجم أكبر للأزرار
-      childAspectRatio = 3.0;
+      crossAxisCount = 1;
+      childAspectRatio = 3.5;
     } else if (screenWidth < 380) {
-      crossAxisCount = 2; // شاشة صغيرة - عمودين
-      childAspectRatio = 2.4;
+      crossAxisCount = 1;
+      childAspectRatio = 3.8;
     } else if (screenWidth < 500) {
-      crossAxisCount = 2; // شاشة متوسطة - عمودين
-      childAspectRatio = 2.2;
+      crossAxisCount = 2;
+      childAspectRatio = 2.8;
     } else if (screenWidth < 600) {
-      crossAxisCount = 3; // شاشة كبيرة - ثلاثة أعمدة
-      childAspectRatio = 2.0;
+      crossAxisCount = 2;
+      childAspectRatio = 3.0;
     } else {
-      crossAxisCount = 4; // تابلت - أربعة أعمدة
-      childAspectRatio = 2.4;
+      crossAxisCount = 3;
+      childAspectRatio = 3.2;
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // خط فاصل فخم أسود وذهبي
+        // فاصل فاخر مزخرف بأيقونة
         Container(
           margin: EdgeInsets.symmetric(
-            horizontal: screenWidth < 380 ? 16 : 24,
-            vertical: screenWidth < 380 ? 12 : 16,
+            horizontal: screenWidth < 380 ? 16 : 32,
+            vertical: screenWidth < 380 ? 6 : 8,
           ),
-          child: Stack(
-            alignment: Alignment.center,
+          child: Row(
             children: [
-              // الخط الأساسي الأسود
-              Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      const Color(0xFF1a1a1a),
-                      const Color(0xFF000000),
-                      const Color(0xFF1a1a1a),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.15, 0.5, 0.85, 1.0],
-                  ),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              // الخط الذهبي المتوهج فوق الأسود
-              Container(
-                height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 30),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      const Color(0xFFFFD700).withValues(alpha: 0.5),
-                      const Color(0xFFFFD700),
-                      const Color(0xFFFFD700).withValues(alpha: 0.5),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
-                  ),
-                  borderRadius: BorderRadius.circular(1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.6),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+              Expanded(
+                child: Container(
+                  height: 1.5,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        const Color(0xFF3498DB).withValues(alpha: 0.3),
+                      ],
                     ),
-                  ],
+                    borderRadius: BorderRadius.circular(1),
+                  ),
                 ),
               ),
-              // ماسة ذهبية بإطار أسود في الوسط
               Container(
-                width: 14,
-                height: 14,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFFFD700),
-                      Color(0xFFFFA500),
-                      Color(0xFFFFD700),
-                    ],
-                  ),
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.circular(2),
+                  color: const Color(0xFF3498DB).withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.black,
-                    width: 2,
+                    color: const Color(0xFF3498DB).withValues(alpha: 0.2),
+                    width: 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.8),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 6,
-                      spreadRadius: 1,
+                      color: const Color(0xFF3498DB).withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      spreadRadius: -2,
                     ),
                   ],
                 ),
-                transform: Matrix4.rotationZ(0.785398), // 45 درجة
+                child: Icon(
+                  IconsaxPlusBold.element_2,
+                  size: 16,
+                  color: const Color(0xFF3498DB),
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  height: 1.5,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF3498DB).withValues(alpha: 0.3),
+                        Colors.transparent,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
               ),
             ],
           ),
         ),
-        SizedBox(height: screenWidth < 380 ? 8 : 12),
+        SizedBox(height: screenWidth < 380 ? 6 : 8),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: crossAxisCount,
           childAspectRatio: childAspectRatio,
-          mainAxisSpacing: screenWidth < 380 ? 8 : 12,
-          crossAxisSpacing: screenWidth < 380 ? 8 : 12,
+          mainAxisSpacing: screenWidth < 380 ? 6 : 8,
+          crossAxisSpacing: screenWidth < 380 ? 6 : 8,
           children: _buildQuickActionItems(screenWidth),
         ),
       ],
@@ -3793,64 +4065,78 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // البحث السريع - يخضع لصلاحية quick_search
     if (_hasPermission('quick_search')) {
-      actions.add(_buildQuickActionItem(
-        'البحث السريع',
-        Icons.search_rounded,
-        Colors.green,
-        () => navigateToPage(QuickSearchUsersPage(
-          authToken: currentToken,
-          activatedBy: widget.username,
-          hasServerSavePermission: hasServerSavePermission(),
-          hasWhatsAppPermission: hasWhatsAppPermission(),
-          firstSystemPermissions: widget.firstSystemPermissions,
-          isAdminFlag: isAdmin,
-          importantFtthApiPermissions: _getImportantPermissions(),
-        )),
-      ));
+      actions.add(
+        _buildQuickActionItem(
+          'البحث السريع',
+          IconsaxPlusBold.search_normal_1,
+          Colors.green,
+          () => navigateToPage(
+            QuickSearchUsersPage(
+              authToken: currentToken,
+              activatedBy: widget.username,
+              hasServerSavePermission: hasServerSavePermission(),
+              hasWhatsAppPermission: hasWhatsAppPermission(),
+              firstSystemPermissions: widget.firstSystemPermissions,
+              isAdminFlag: isAdmin,
+              importantFtthApiPermissions: _getImportantPermissions(),
+            ),
+          ),
+        ),
+      );
     }
 
     // المشتركين - أداة سريعة (تم تقديمها مكان الانتهاء قريباً)
     if (_hasPermission('users')) {
-      actions.add(_buildQuickActionItem(
-        'المشتركين',
-        Icons.people_alt_rounded,
-        Colors.purple,
-        () => navigateToPage(UsersPage(
-          authToken: currentToken,
-          activatedBy: widget.username,
-          hasServerSavePermission: hasServerSavePermission(),
-          hasWhatsAppPermission: hasWhatsAppPermission(),
-          firstSystemPermissions: widget.firstSystemPermissions,
-          isAdminFlag: isAdmin,
-          importantFtthApiPermissions: _getImportantPermissions(),
-        )),
-      ));
+      actions.add(
+        _buildQuickActionItem(
+          'المشتركين',
+          IconsaxPlusBold.profile_2user,
+          Colors.purple,
+          () => navigateToPage(
+            UsersPage(
+              authToken: currentToken,
+              activatedBy: widget.username,
+              hasServerSavePermission: hasServerSavePermission(),
+              hasWhatsAppPermission: hasWhatsAppPermission(),
+              firstSystemPermissions: widget.firstSystemPermissions,
+              isAdminFlag: isAdmin,
+              importantFtthApiPermissions: _getImportantPermissions(),
+            ),
+          ),
+        ),
+      );
     }
 
     // الاشتراكات - أداة سريعة
     if (_hasPermission('subscriptions')) {
-      actions.add(_buildQuickActionItem(
-        'الاشتراكات',
-        Icons.subscriptions_rounded,
-        Colors.blue,
-        () => navigateToPage(SubscriptionsPage(authToken: currentToken)),
-      ));
+      actions.add(
+        _buildQuickActionItem(
+          'الاشتراكات',
+          IconsaxPlusBold.receipt_2,
+          Colors.blue,
+          () => navigateToPage(SubscriptionsPage(authToken: currentToken)),
+        ),
+      );
     }
 
     // الاشتراكات المنتهية قريباً - يخضع لصلاحية expiring_soon
     if (_hasPermission('expiring_soon')) {
-      actions.add(_buildQuickActionItem(
-        'الانتهاء قريباً',
-        Icons.schedule_rounded,
-        Colors.red,
-        () => navigateToPage(ExpiringSoonPage(
-          activatedBy: widget.username,
-          hasServerSavePermission: hasServerSavePermission(),
-          hasWhatsAppPermission: hasWhatsAppPermission(),
-          firstSystemPermissions: widget.firstSystemPermissions,
-          importantFtthApiPermissions: _getImportantPermissions(),
-        )),
-      ));
+      actions.add(
+        _buildQuickActionItem(
+          'الانتهاء قريباً',
+          IconsaxPlusBold.timer_1,
+          Colors.red,
+          () => navigateToPage(
+            ExpiringSoonPage(
+              activatedBy: widget.username,
+              hasServerSavePermission: hasServerSavePermission(),
+              hasWhatsAppPermission: hasWhatsAppPermission(),
+              firstSystemPermissions: widget.firstSystemPermissions,
+              importantFtthApiPermissions: _getImportantPermissions(),
+            ),
+          ),
+        ),
+      );
     }
 
     // المهام - أداة سريعة
@@ -3860,33 +4146,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // سجلات الحسابات - أداة سريعة (صلاحية مستقلة account_records)
     if (_hasPermission('account_records')) {
-      actions.add(_buildQuickActionItem(
-        'سجلات الحسابات',
-        Icons.table_chart_rounded,
-        Colors.cyan,
-        () => navigateToPage(
-          AccountRecordsPage(
-            authToken: currentToken,
-            activatedBy: widget.username,
-            permissions: _userPermissions,
-            firstSystemUsername: widget.firstSystemUsername,
-            firstSystemPermissions: widget.firstSystemPermissions,
-            firstSystemDepartment: widget.firstSystemDepartment,
-            firstSystemCenter: widget.firstSystemCenter,
+      actions.add(
+        _buildQuickActionItem(
+          'سجلات الحسابات',
+          IconsaxPlusBold.document_text,
+          Colors.cyan,
+          () => navigateToPage(
+            AccountRecordsPage(
+              authToken: currentToken,
+              activatedBy: widget.username,
+              permissions: _userPermissions,
+              firstSystemUsername: widget.firstSystemUsername,
+              firstSystemPermissions: widget.firstSystemPermissions,
+              firstSystemDepartment: widget.firstSystemDepartment,
+              firstSystemCenter: widget.firstSystemCenter,
+            ),
           ),
         ),
-      ));
+      );
     }
 
     return actions;
   }
 
   Widget _buildQuickActionItem(
-      String title, IconData icon, MaterialColor color, VoidCallback onTap) {
-    // الحصول على عرض الشاشة من MediaQuery
+    String title,
+    IconData icon,
+    MaterialColor color,
+    VoidCallback onTap,
+  ) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // تحديد الأحجام المناسبة لكل شاشة مع تحسينات إضافية
     double iconSize;
     double fontSize;
     double padding;
@@ -3916,52 +4206,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       fontSize = 14;
       padding = 14;
       verticalSpacing = 7;
-      maxLines = 2; // نجبر الكل لسطرين لضبط الارتفاع
+      maxLines = 2;
     } else {
       iconSize = 32;
       fontSize = 16;
       padding = 16;
       verticalSpacing = 8;
-      maxLines = 2; // أيضاً سطران على الشاشات الكبيرة
+      maxLines = 2;
     }
 
-    // نمط فخم بتدرجات لونية وتأثيرات بصرية
-    final labelColor = Colors.white;
-    final iconFg = Colors.white;
+    final circleSize = iconSize + 22;
+    final hoverNotifier = ValueNotifier<bool>(false);
 
-    final circleSize = iconSize + 14;
-    final circleIcon = Container(
-      width: circleSize,
-      height: circleSize,
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.3),
-            Colors.white.withValues(alpha: 0.1),
-          ],
-        ),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.2),
-            blurRadius: 8,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: Icon(icon, size: iconSize, color: iconFg),
-    );
-
-    // جعل الزر يملأ ارتفاع خلية الشبكة لمنع تفاوت الأطوال
     return LayoutBuilder(
       builder: (context, constraints) {
         final cellHeight = constraints.maxHeight;
-        // ضمان ألا يكون أصغر من حد أدنى منطقي
         final effectiveHeight = cellHeight.isFinite && cellHeight > 0
             ? cellHeight
             : (padding * 6 + iconSize);
@@ -3969,79 +4228,315 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return SizedBox(
           height: effectiveHeight,
           width: double.infinity,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  color.shade400,
-                  color.shade600,
-                  color.shade800,
-                ],
-                stops: const [0.0, 0.5, 1.0],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.black,
-                width: 2.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.4),
-                  blurRadius: 15,
-                  offset: const Offset(0, 6),
-                ),
-                BoxShadow(
-                  color: color.shade300.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  spreadRadius: -2,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: FilledButton.tonal(
-              onPressed: () {
-                if (mounted) onTap();
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: labelColor,
-                minimumSize: Size(double.infinity, effectiveHeight),
-                padding: EdgeInsets.symmetric(
-                    horizontal: padding, vertical: verticalSpacing),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  circleIcon,
-                  SizedBox(height: verticalSpacing),
-                  Text(
-                    title,
-                    maxLines: maxLines,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.bold,
-                      height: 1.15,
-                      letterSpacing: 0.3,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          offset: const Offset(0, 1),
-                          blurRadius: 2,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: hoverNotifier,
+            builder: (context, isHovered, _) {
+              return MouseRegion(
+                onEnter: (_) => hoverNotifier.value = true,
+                onExit: (_) => hoverNotifier.value = false,
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () {
+                    if (mounted) onTap();
+                  },
+                  child: AnimatedScale(
+                    scale: isHovered ? 1.045 : 1.0,
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isHovered
+                              ? [
+                                  Color.lerp(Colors.white, color, 0.08)!,
+                                  Color.lerp(
+                                    const Color(0xFFF5F6FA),
+                                    color,
+                                    0.10,
+                                  )!,
+                                ]
+                              : [Colors.white, const Color(0xFFF5F6FA)],
                         ),
-                      ],
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: isHovered
+                              ? color.withValues(alpha: 0.35)
+                              : const Color(0xFFE0E0E0),
+                          width: isHovered ? 2.8 : 2.0,
+                        ),
+                        boxShadow: isHovered
+                            ? [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.15),
+                                  blurRadius: 20,
+                                  spreadRadius: -4,
+                                  offset: const Offset(0, 10),
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 20,
+                                  spreadRadius: -8,
+                                  offset: const Offset(0, 16),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.06),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(22),
+                        child: Stack(
+                          children: [
+                            // توهج خلفي متحرك عند المرور
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.easeOutCubic,
+                              right: isHovered ? -10 : -70,
+                              top: isHovered ? -10 : -70,
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 400),
+                                opacity: isHovered ? 1.0 : 0.0,
+                                child: Container(
+                                  width: circleSize * 3,
+                                  height: circleSize * 3,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        color.withValues(alpha: 0.12),
+                                        color.withValues(alpha: 0.04),
+                                        Colors.transparent,
+                                      ],
+                                      stops: const [0.0, 0.45, 1.0],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // توهج سفلي
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeOutCubic,
+                              left: isHovered ? -20 : -80,
+                              bottom: isHovered ? -20 : -80,
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 400),
+                                opacity: isHovered ? 0.7 : 0.0,
+                                child: Container(
+                                  width: circleSize * 2,
+                                  height: circleSize * 2,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        color.withValues(alpha: 0.08),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // شريط ملون جانبي أيمن متحرك
+                            Positioned(
+                              top: 0,
+                              bottom: 0,
+                              right: 0,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 380),
+                                curve: Curves.easeOutCubic,
+                                width: isHovered ? 6 : 4,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: isHovered
+                                        ? [
+                                            color.shade200,
+                                            color.shade500,
+                                            color.shade200,
+                                          ]
+                                        : [
+                                            color.withValues(alpha: 0.3),
+                                            color,
+                                            color.withValues(alpha: 0.3),
+                                          ],
+                                  ),
+                                  boxShadow: isHovered
+                                      ? [
+                                          BoxShadow(
+                                            color: color.withValues(
+                                              alpha: 0.55,
+                                            ),
+                                            blurRadius: 14,
+                                            spreadRadius: -1,
+                                          ),
+                                        ]
+                                      : [],
+                                ),
+                              ),
+                            ),
+                            // المحتوى الرئيسي
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: padding,
+                                vertical: verticalSpacing,
+                              ),
+                              child: Row(
+                                children: [
+                                  // الأيقونة الملونة مع تأثيرات
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 380),
+                                    curve: Curves.easeOutCubic,
+                                    width:
+                                        isHovered ? circleSize + 6 : circleSize,
+                                    height:
+                                        isHovered ? circleSize + 6 : circleSize,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: isHovered
+                                            ? [color.shade300, color.shade800]
+                                            : [color.shade400, color.shade700],
+                                      ),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: color.withValues(
+                                            alpha: isHovered ? 0.6 : 0.3,
+                                          ),
+                                          blurRadius: isHovered ? 22 : 10,
+                                          spreadRadius: isHovered ? 0 : -2,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                        if (isHovered)
+                                          BoxShadow(
+                                            color: color.withValues(alpha: 0.2),
+                                            blurRadius: 32,
+                                            spreadRadius: -4,
+                                          ),
+                                      ],
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: AnimatedRotation(
+                                      turns: isHovered ? 0.04 : 0.0,
+                                      duration: const Duration(
+                                        milliseconds: 400,
+                                      ),
+                                      curve: Curves.easeOutCubic,
+                                      child: Icon(
+                                        icon,
+                                        size: iconSize,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: padding * 0.6),
+                                  // النص مع تأثير متحرك
+                                  Expanded(
+                                    child: AnimatedDefaultTextStyle(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.easeOut,
+                                      style: TextStyle(
+                                        fontSize: isHovered
+                                            ? fontSize + 0.5
+                                            : fontSize,
+                                        fontWeight: isHovered
+                                            ? FontWeight.w800
+                                            : FontWeight.w700,
+                                        color: isHovered
+                                            ? color.shade700
+                                            : const Color(0xFF1A1A1A),
+                                        height: 1.2,
+                                        letterSpacing: isHovered ? 0.4 : 0.2,
+                                      ),
+                                      child: Text(
+                                        title,
+                                        maxLines: maxLines,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: padding * 0.3),
+                                  // سهم التنقل متحرك
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 380),
+                                    curve: Curves.easeOutCubic,
+                                    width: isHovered ? 36 : 28,
+                                    height: isHovered ? 36 : 28,
+                                    decoration: BoxDecoration(
+                                      gradient: isHovered
+                                          ? LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                color.shade400,
+                                                color.shade700,
+                                              ],
+                                            )
+                                          : null,
+                                      color: isHovered
+                                          ? null
+                                          : color.withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                      boxShadow: isHovered
+                                          ? [
+                                              BoxShadow(
+                                                color: color.withValues(
+                                                  alpha: 0.4,
+                                                ),
+                                                blurRadius: 12,
+                                                spreadRadius: -2,
+                                              ),
+                                            ]
+                                          : [],
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: AnimatedSlide(
+                                      duration: const Duration(
+                                        milliseconds: 350,
+                                      ),
+                                      curve: Curves.easeOutCubic,
+                                      offset: isHovered
+                                          ? const Offset(-0.2, 0)
+                                          : Offset.zero,
+                                      child: Icon(
+                                        IconsaxPlusLinear.arrow_left_2,
+                                        size: isHovered ? 16 : 14,
+                                        color: isHovered
+                                            ? Colors.white
+                                            : color.shade600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -4056,7 +4551,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // نستخدم Stack لكن بدون إزاحات سالبة، مع محاذاة الشارة داخل حدود الزر
         final taskButton = _buildQuickActionItem(
           'المهام',
-          Icons.task_alt_rounded,
+          IconsaxPlusBold.task_square,
           Colors.orange,
           () {
             BadgeService.instance.clear();
@@ -4081,7 +4576,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       duration: const Duration(milliseconds: 200),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.red[700],
                           borderRadius: BorderRadius.circular(14),
@@ -4122,7 +4619,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           color: Colors.blue,
         ),
       ),
-      const SizedBox(width: 16),
+      const SizedBox(width: 12),
       Expanded(
         child: _buildWalletCard(
           title: 'العمولة',
@@ -4134,7 +4631,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // إضافة بطاقة محفظة عضو الفريق إذا كانت متوفرة
     if (hasTeamMemberWallet) {
-      cards.add(const SizedBox(width: 16));
+      cards.add(const SizedBox(width: 12));
       cards.add(
         Expanded(
           child: _buildWalletCard(
@@ -4193,105 +4690,233 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required double value,
     required MaterialColor color,
   }) {
-    // الحصول على عرض الشاشة لتحديد الأحجام المناسبة
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeScreen = screenWidth > 600;
-    final isDesktop = screenWidth > 1024;
+    // تصميم أفقي متناسق مع بطاقات الإحصائيات
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth;
+        // أحجام متجاوبة مع عرض البطاقة
+        final isVeryCompact = cardWidth < 160;
+        final isCompact = cardWidth < 240;
+        final iconBoxSize = isVeryCompact ? 34.0 : (isCompact ? 40.0 : 52.0);
+        final iconSize = isVeryCompact ? 18.0 : (isCompact ? 20.0 : 26.0);
+        final valueFontSize = isVeryCompact ? 14.0 : (isCompact ? 17.0 : 24.0);
+        final titleFontSize = isVeryCompact ? 9.0 : (isCompact ? 10.0 : 12.0);
+        final hPadding = isVeryCompact ? 8.0 : (isCompact ? 12.0 : 18.0);
+        final vPadding = isVeryCompact ? 10.0 : (isCompact ? 12.0 : 16.0);
+        final stripHeight = isVeryCompact ? 36.0 : (isCompact ? 44.0 : 56.0);
+        final cardRadius = isVeryCompact ? 12.0 : 18.0;
 
-    // تحديد أحجام النصوص حسب حجم الشاشة - أحجام أكبر
-    double titleFontSize = isDesktop ? 14 : (isLargeScreen ? 15 : 16);
-    double valueFontSize = isDesktop ? 22 : (isLargeScreen ? 24 : 26);
-    double cardPadding = isDesktop ? 16 : (isLargeScreen ? 18 : 20);
-
-    return Container(
-      padding: EdgeInsets.all(cardPadding),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color[300]!,
-            color[500]!,
-            color[700]!,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(cardRadius),
+            border: Border.all(
+                color: const Color(0xFFD5D5D5),
+                width: isVeryCompact ? 1.5 : 2.0),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.08),
+                blurRadius: 20,
+                spreadRadius: -2,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          BoxShadow(
-            color: color[200]!.withValues(alpha: 0.3),
-            blurRadius: 10,
-            spreadRadius: -2,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          _animatedCount(
-            value,
-            TextStyle(
-              color: Colors.white,
-              fontSize: valueFontSize,
-              fontWeight: FontWeight.bold,
-              shadows: [
-                Shadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  offset: const Offset(0, 2),
-                  blurRadius: 4,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(cardRadius),
+            child: Stack(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: hPadding,
+                    vertical: vPadding,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(cardRadius),
+                  ),
+                  child: Row(
+                    children: [
+                      // شريط تدرجي جانبي بلون البطاقة
+                      Container(
+                        width: isVeryCompact ? 2.5 : 3.5,
+                        height: stripHeight,
+                        margin: EdgeInsets.only(left: isVeryCompact ? 4 : 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              color.withValues(alpha: 0.4),
+                              color,
+                              color.withValues(alpha: 0.4),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.4),
+                              blurRadius: 6,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: isVeryCompact ? 6 : 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                title,
+                                style: TextStyle(
+                                  color: const Color(0xFF555555),
+                                  fontSize: titleFontSize,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(height: isVeryCompact ? 4 : 8),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: _animatedCount(
+                                value,
+                                TextStyle(
+                                  color: const Color(0xFF1A1A1A),
+                                  fontSize: valueFontSize,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // أيقونة بلون البطاقة
+                      Container(
+                        width: iconBoxSize,
+                        height: iconBoxSize,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              color.withValues(alpha: 0.08),
+                              color.withValues(alpha: 0.2),
+                            ],
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(isVeryCompact ? 10 : 14),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.4),
+                            width: isVeryCompact ? 1.5 : 2.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              spreadRadius: -2,
+                              offset: const Offset(0, 4),
+                            ),
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.1),
+                              blurRadius: 20,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          title.contains('عمولة')
+                              ? IconsaxPlusBold.trend_up
+                              : title.contains('فريق')
+                                  ? IconsaxPlusBold.people
+                                  : IconsaxPlusBold.wallet_2,
+                          color: color,
+                          size: iconSize,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // نقاط زوايا زخرفية
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 6,
+                  left: 6,
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 6,
+                  right: 6,
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color.withValues(alpha: 0.5),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          // تم إزالة كتابة العملة حسب الطلب
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildLastUpdateInfo(bool isLargeScreen) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 14.0),
       margin: const EdgeInsets.symmetric(horizontal: 4.0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.95),
-            const Color(0xFFF8FAFF).withValues(alpha: 0.9),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF415A77).withValues(alpha: 0.1),
-          width: 1,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0D1B2A).withValues(alpha: 0.08),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
             offset: const Offset(0, -2),
           ),
         ],
@@ -4302,12 +4927,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF415A77).withValues(alpha: 0.1),
+              color: const Color(0xFF10B981).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                width: 1,
+              ),
             ),
             child: Icon(
-              Icons.access_time_rounded,
-              color: const Color(0xFF415A77),
+              IconsaxPlusBold.clock,
+              color: const Color(0xFF6EE7B7),
               size: 16,
             ),
           ),
@@ -4316,7 +4945,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             'آخر تحديث: ${DateFormat('yyyy/MM/dd - HH:mm:ss').format(lastUpdateTime!)}',
             style: TextStyle(
               fontSize: isLargeScreen ? 13 : 11,
-              color: const Color(0xFF415A77),
+              color: const Color(0xFF1A1A1A),
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
             ),
@@ -4327,81 +4956,459 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 }
 
-// رسام خلفية لأشعة ضوئية تتحرك بشكل مائل لمحاكاة الألياف (Top-level)
-class _FiberLightPainter extends CustomPainter {
+// رسام أمواج شعاعية مستقبلي — خطوط/أشواك تشع من دائرة بأطوال متفاوتة
+class _RadialWavePainter extends CustomPainter {
   final double progress; // 0..1
-  _FiberLightPainter({required this.progress});
+  final Color color1;
+  final Color color2;
+  final double animValue; // 0..1 لتحريك الأمواج
+
+  _RadialWavePainter({
+    required this.progress,
+    required this.color1,
+    required this.color2,
+    required this.animValue,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // خطوط رفيعة تشبه الألياف مع نبضات ضوء تتحرك خلالها
-    final double angle = -0.35; // ~ -20° لميول الألياف
-    canvas.save();
-    canvas.translate(size.width / 2, size.height / 2);
-    canvas.rotate(angle);
-    canvas.translate(-size.width / 2, -size.height / 2);
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = math.min(size.width, size.height) / 2;
+    final innerRadius = outerRadius * 0.52; // نصف قطر الدائرة الداخلية
+    final spikeCount = 72; // عدد الأشواك
 
-    final double height = size.height * 1.6;
-    final double top = -(height - size.height) / 2;
-    final double left = -size.width * 0.2; // تمديد بسيط يمين/يسار
-    final double right = size.width * 1.2;
+    // رسم الدائرة الداخلية البيضاء
+    final innerCirclePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, innerRadius + 2, innerCirclePaint);
 
-    // خصائص الخطوط
-    final int linesCount = 12;
-    final double spacing = height / (linesCount + 1);
-    final double baseWidth = 1.4;
-    final Color baseColor =
-        const Color(0xFF80DEEA).withValues(alpha: 0.22); // سماوي خافت
-    final Color pulseColor =
-        const Color(0xFF00E5FF).withValues(alpha: 0.75); // نبضة فاتحة
-
-    final Paint basePaint = Paint()
-      ..color = baseColor
+    // حلقة داخلية خفيفة
+    final innerRingPaint = Paint()
+      ..color = color1.withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = baseWidth
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = 0.8;
+    canvas.drawCircle(center, innerRadius, innerRingPaint);
 
-    for (int i = 0; i < linesCount; i++) {
-      final double y = top + (i + 1) * spacing + (i % 2 == 0 ? 0 : 3);
+    // رسم الأشواك الشعاعية
+    for (int i = 0; i < spikeCount; i++) {
+      final angle = (i / spikeCount) * 2 * math.pi - math.pi / 2;
+      final spikeProgress = i / spikeCount;
 
-      // خط أساسي ممتد عبر العرض
-      canvas.drawLine(Offset(left, y), Offset(right, y), basePaint);
+      // موجة متعددة الطبقات لتنويع أطول الأشواك
+      final wave1 =
+          math.sin(spikeProgress * math.pi * 6 + animValue * math.pi * 2) * 0.4;
+      final wave2 =
+          math.sin(spikeProgress * math.pi * 10 + animValue * math.pi * 3) *
+              0.25;
+      final wave3 =
+          math.cos(spikeProgress * math.pi * 14 + animValue * math.pi * 1.5) *
+              0.15;
+      final waveHeight =
+          0.3 + (wave1 + wave2 + wave3 + 0.8).clamp(0.0, 1.0) * 0.7;
 
-      // نبضتان تتحركان بسرعات/مراحل مختلفة
-      for (int k = 0; k < 2; k++) {
-        final double speed = 1.0 + k * 0.25 + (i % 3) * 0.05; // اختلاف بسيط
-        final double phase = (progress * speed + i * 0.07 + k * 0.33) % 1.0;
-        final double trackWidth = right - left;
-        final double pulseLen = math.max(28.0, size.width * 0.08);
-        final double px = left + phase * trackWidth;
-        final double x0 = px - pulseLen * 0.5;
-        final double x1 = px + pulseLen * 0.5;
+      // الطول الأقصى للشوكة
+      final maxSpikeLen = (outerRadius - innerRadius - 2) * waveHeight;
 
-        final Paint glow = Paint()
-          ..color = pulseColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3.6
+      // حساب نقاط البداية والنهاية
+      final startX = center.dx + (innerRadius + 2) * math.cos(angle);
+      final startY = center.dy + (innerRadius + 2) * math.sin(angle);
+      final start = Offset(startX, startY);
+
+      // تحديد إذا كانت الشوكة في المنطقة النشطة
+      final isActive = spikeProgress <= progress;
+
+      if (isActive) {
+        // شوكة نشطة — ملونة بتدرج
+        final t = spikeProgress; // 0..1 على مدار الدائرة
+        final spikeColor = Color.lerp(color1, color2, t)!;
+
+        final endX = startX + maxSpikeLen * math.cos(angle);
+        final endY = startY + maxSpikeLen * math.sin(angle);
+        final end = Offset(endX, endY);
+
+        // هالة خفيفة حول الأشواك النشطة
+        final glowPaint = Paint()
+          ..color = spikeColor.withValues(alpha: 0.15)
+          ..strokeWidth = 2.5
           ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+        canvas.drawLine(start, end, glowPaint);
 
-        final Paint pulse = Paint()
-          ..color = pulseColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4
+        // الشوكة الرئيسية
+        final spikePaint = Paint()
+          ..color = spikeColor.withValues(alpha: 0.85)
+          ..strokeWidth = 1.5
           ..strokeCap = StrokeCap.round;
+        canvas.drawLine(start, end, spikePaint);
 
-        // توهّج خفيف ثم النبضة
-        canvas.drawLine(Offset(x0, y), Offset(x1, y), glow);
-        canvas.drawLine(Offset(x0, y), Offset(x1, y), pulse);
+        // نقطة مضيئة في نهاية الأشواك الطويلة
+        if (waveHeight > 0.65) {
+          final tipPaint = Paint()
+            ..color = spikeColor.withValues(alpha: 0.6)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+          canvas.drawCircle(end, 1.2, tipPaint);
+        }
+      } else {
+        // شوكة غير نشطة — خافتة
+        final dimLen = maxSpikeLen * 0.3;
+        final endX = startX + dimLen * math.cos(angle);
+        final endY = startY + dimLen * math.sin(angle);
+        final end = Offset(endX, endY);
+
+        final dimPaint = Paint()
+          ..color = color1.withValues(alpha: 0.10)
+          ..strokeWidth = 1.0
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(start, end, dimPaint);
       }
     }
 
-    canvas.restore();
+    // هالة ملونة خارجية خفيفة عند التقدم
+    if (progress > 0.01) {
+      final glowAngle = progress * 2 * math.pi;
+      final glowPaint = Paint()
+        ..shader = SweepGradient(
+          startAngle: -math.pi / 2,
+          endAngle: -math.pi / 2 + 2 * math.pi,
+          colors: [
+            color1.withValues(alpha: 0.0),
+            color1.withValues(alpha: 0.08),
+            color2.withValues(alpha: 0.12),
+            color2.withValues(alpha: 0.0),
+          ],
+          stops: const [0.0, 0.3, 0.6, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: outerRadius))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = outerRadius - innerRadius
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+      canvas.drawArc(
+        Rect.fromCircle(
+          center: center,
+          radius: (outerRadius + innerRadius) / 2,
+        ),
+        -math.pi / 2,
+        glowAngle,
+        false,
+        glowPaint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _FiberLightPainter oldDelegate) {
-    return oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _RadialWavePainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.color1 != color1 ||
+        oldDelegate.color2 != color2 ||
+        oldDelegate.animValue != animValue;
+  }
+}
+
+// رسام خلفية رموز الإنترنت المتحركة (واي فاي، إشارة، سحابة، كرة أرضية، راوتر...)
+class _InternetIconsBackgroundPainter extends CustomPainter {
+  final double animValue; // 0..1
+  final Color color;
+
+  _InternetIconsBackgroundPainter({
+    required this.animValue,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+
+    // مواقع الرموز على الشاشة بشكل عشوائي ثابت
+    final icons = <_IconDef>[
+      // WiFi symbols
+      _IconDef(0.08, 0.12, 0, 18),
+      _IconDef(0.85, 0.08, 0, 14),
+      _IconDef(0.45, 0.88, 0, 16),
+      _IconDef(0.92, 0.55, 0, 12),
+      _IconDef(0.15, 0.72, 0, 15),
+      // Globe symbols
+      _IconDef(0.72, 0.18, 1, 16),
+      _IconDef(0.25, 0.42, 1, 13),
+      _IconDef(0.60, 0.65, 1, 14),
+      _IconDef(0.05, 0.45, 1, 11),
+      // Signal bars
+      _IconDef(0.55, 0.10, 2, 14),
+      _IconDef(0.35, 0.58, 2, 12),
+      _IconDef(0.80, 0.78, 2, 15),
+      _IconDef(0.18, 0.25, 2, 11),
+      // Cloud symbols
+      _IconDef(0.40, 0.22, 3, 18),
+      _IconDef(0.75, 0.42, 3, 14),
+      _IconDef(0.10, 0.88, 3, 16),
+      _IconDef(0.90, 0.30, 3, 12),
+      // Ethernet/connection dots
+      _IconDef(0.30, 0.78, 4, 13),
+      _IconDef(0.65, 0.48, 4, 11),
+      _IconDef(0.50, 0.35, 4, 14),
+      _IconDef(0.20, 0.55, 4, 10),
+      // Router symbol
+      _IconDef(0.82, 0.88, 5, 16),
+      _IconDef(0.12, 0.05, 5, 13),
+      _IconDef(0.55, 0.52, 5, 11),
+    ];
+
+    for (int i = 0; i < icons.length; i++) {
+      final def = icons[i];
+      // حركة عائمة لكل رمز
+      final phase = i * 0.37;
+      final floatX = math.sin(animValue * math.pi * 2 + phase) * 6;
+      final floatY = math.cos(animValue * math.pi * 2 + phase * 1.3) * 5;
+      final alpha = 0.6 + math.sin(animValue * math.pi * 2 + phase * 0.7) * 0.4;
+
+      final cx = size.width * def.x + floatX;
+      final cy = size.height * def.y + floatY;
+      final s = def.size;
+
+      final iconColor = color.withValues(alpha: color.a * alpha);
+      paint.color = iconColor;
+      paint.strokeWidth = s * 0.08;
+      fillPaint.color = iconColor;
+
+      switch (def.type) {
+        case 0: // WiFi — 3 أقواس
+          _drawWifi(canvas, cx, cy, s, paint);
+          break;
+        case 1: // Globe — دائرة + خطوط
+          _drawGlobe(canvas, cx, cy, s, paint);
+          break;
+        case 2: // Signal bars
+          _drawSignal(canvas, cx, cy, s, fillPaint);
+          break;
+        case 3: // Cloud
+          _drawCloud(canvas, cx, cy, s, paint);
+          break;
+        case 4: // Ethernet dots
+          _drawEthernet(canvas, cx, cy, s, fillPaint, paint);
+          break;
+        case 5: // Router
+          _drawRouter(canvas, cx, cy, s, paint, fillPaint);
+          break;
+      }
+    }
+  }
+
+  void _drawWifi(Canvas canvas, double cx, double cy, double s, Paint p) {
+    final rect1 = Rect.fromCenter(center: Offset(cx, cy), width: s, height: s);
+    final rect2 = Rect.fromCenter(
+      center: Offset(cx, cy),
+      width: s * 0.65,
+      height: s * 0.65,
+    );
+    final rect3 = Rect.fromCenter(
+      center: Offset(cx, cy),
+      width: s * 0.3,
+      height: s * 0.3,
+    );
+    p.strokeWidth = s * 0.07;
+    canvas.drawArc(rect1, -math.pi * 0.75, math.pi * 0.5, false, p);
+    canvas.drawArc(rect2, -math.pi * 0.75, math.pi * 0.5, false, p);
+    canvas.drawArc(rect3, -math.pi * 0.75, math.pi * 0.5, false, p);
+    canvas.drawCircle(
+      Offset(cx, cy + s * 0.15),
+      s * 0.06,
+      p..style = PaintingStyle.fill,
+    );
+    p.style = PaintingStyle.stroke;
+  }
+
+  void _drawGlobe(Canvas canvas, double cx, double cy, double s, Paint p) {
+    final r = s * 0.45;
+    p.strokeWidth = s * 0.06;
+    canvas.drawCircle(Offset(cx, cy), r, p);
+    // خط أفقي
+    canvas.drawLine(Offset(cx - r, cy), Offset(cx + r, cy), p);
+    // خط عمودي (قوس)
+    final ovalRect = Rect.fromCenter(
+      center: Offset(cx, cy),
+      width: r,
+      height: r * 2,
+    );
+    canvas.drawOval(ovalRect, p);
+  }
+
+  void _drawSignal(Canvas canvas, double cx, double cy, double s, Paint p) {
+    final barW = s * 0.14;
+    final gap = s * 0.06;
+    final totalW = barW * 4 + gap * 3;
+    final startX = cx - totalW / 2;
+    for (int i = 0; i < 4; i++) {
+      final barH = s * (0.25 + i * 0.2);
+      final x = startX + i * (barW + gap);
+      final y = cy + s * 0.4 - barH;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, y, barW, barH),
+          Radius.circular(barW * 0.3),
+        ),
+        p,
+      );
+    }
+  }
+
+  void _drawCloud(Canvas canvas, double cx, double cy, double s, Paint p) {
+    p.strokeWidth = s * 0.06;
+    final path = Path();
+    // شكل سحابة مبسط
+    path.moveTo(cx - s * 0.35, cy + s * 0.1);
+    path.quadraticBezierTo(
+      cx - s * 0.45,
+      cy - s * 0.15,
+      cx - s * 0.15,
+      cy - s * 0.2,
+    );
+    path.quadraticBezierTo(
+      cx - s * 0.05,
+      cy - s * 0.45,
+      cx + s * 0.15,
+      cy - s * 0.2,
+    );
+    path.quadraticBezierTo(
+      cx + s * 0.4,
+      cy - s * 0.25,
+      cx + s * 0.35,
+      cy + s * 0.1,
+    );
+    path.close();
+    canvas.drawPath(path, p);
+  }
+
+  void _drawEthernet(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double s,
+    Paint fill,
+    Paint stroke,
+  ) {
+    // 3 نقاط متصلة بخطوط
+    final r = s * 0.08;
+    final pts = [
+      Offset(cx - s * 0.25, cy - s * 0.15),
+      Offset(cx + s * 0.25, cy - s * 0.15),
+      Offset(cx, cy + s * 0.2),
+    ];
+    stroke.strokeWidth = s * 0.05;
+    canvas.drawLine(pts[0], pts[1], stroke);
+    canvas.drawLine(pts[1], pts[2], stroke);
+    canvas.drawLine(pts[2], pts[0], stroke);
+    for (final pt in pts) {
+      canvas.drawCircle(pt, r, fill);
+    }
+  }
+
+  void _drawRouter(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double s,
+    Paint stroke,
+    Paint fill,
+  ) {
+    stroke.strokeWidth = s * 0.06;
+    // جسم الراوتر
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(cx, cy + s * 0.1),
+        width: s * 0.6,
+        height: s * 0.3,
+      ),
+      Radius.circular(s * 0.05),
+    );
+    canvas.drawRRect(bodyRect, stroke);
+    // هوائيان
+    canvas.drawLine(
+      Offset(cx - s * 0.12, cy - s * 0.05),
+      Offset(cx - s * 0.2, cy - s * 0.3),
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(cx + s * 0.12, cy - s * 0.05),
+      Offset(cx + s * 0.2, cy - s * 0.3),
+      stroke,
+    );
+    // نقاط صغيرة على الهوائيات
+    canvas.drawCircle(Offset(cx - s * 0.2, cy - s * 0.3), s * 0.04, fill);
+    canvas.drawCircle(Offset(cx + s * 0.2, cy - s * 0.3), s * 0.04, fill);
+  }
+
+  @override
+  bool shouldRepaint(covariant _InternetIconsBackgroundPainter oldDelegate) {
+    return oldDelegate.animValue != animValue || oldDelegate.color != color;
+  }
+}
+
+// بيان رمز واحد في الخلفية
+class _IconDef {
+  final double x; // 0..1 نسبي
+  final double y; // 0..1 نسبي
+  final int type; // 0=wifi, 1=globe, 2=signal, 3=cloud, 4=ethernet, 5=router
+  final double size;
+  const _IconDef(this.x, this.y, this.type, this.size);
+}
+
+// رسام Donut مخصص لبطاقات الإحصائيات — تصميم فاخر مع تدرج ونقطة نهاية
+class _StatDonutPainter extends CustomPainter {
+  final double progress; // 0..1
+  final Color color;
+  final double strokeWidth;
+
+  _StatDonutPainter({
+    required this.progress,
+    required this.color,
+    this.strokeWidth = 8.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (math.min(size.width, size.height) - strokeWidth) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final bgPaint = Paint()
+      ..color = color.withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    if (progress <= 0.001) return;
+
+    final sweepAngle = (progress.clamp(0.0, 1.0)) * 2 * math.pi;
+
+    final sweepPaint = Paint()
+      ..shader = SweepGradient(
+        startAngle: -math.pi / 2,
+        endAngle: -math.pi / 2 + 2 * math.pi,
+        colors: [
+          color.withValues(alpha: 0.5),
+          color,
+          color,
+          color.withValues(alpha: 0.7),
+        ],
+        stops: const [0.0, 0.3, 0.7, 1.0],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, -math.pi / 2, sweepAngle, false, sweepPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StatDonutPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }
 
@@ -4443,11 +5450,7 @@ class _DonutProgressPainter extends CustomPainter {
       ..shader = SweepGradient(
         startAngle: -math.pi / 2,
         endAngle: -math.pi / 2 + 2 * math.pi,
-        colors: [
-          color.shade400,
-          color.shade600,
-          color.shade400,
-        ],
+        colors: [color.shade400, color.shade600, color.shade400],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
@@ -4558,23 +5561,26 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
     try {
       final c = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setNavigationDelegate(NavigationDelegate(
-          onPageStarted: (_) =>
-              {if (mounted) setState(() => _isLoading = true)},
-          onPageFinished: (_) {
-            if (mounted) setState(() => _isLoading = false);
-            _checkLoginOnce();
-          },
-          onWebResourceError: (e) {
-            debugPrint('❌ خطأ في تحميل الصفحة: ${e.description}');
-            if (mounted) {
-              setState(() {
-                _error = 'تعذر التحميل: ${e.description}';
-                _isLoading = false;
-              });
-            }
-          },
-        ))
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageStarted: (_) => {
+              if (mounted) setState(() => _isLoading = true),
+            },
+            onPageFinished: (_) {
+              if (mounted) setState(() => _isLoading = false);
+              _checkLoginOnce();
+            },
+            onWebResourceError: (e) {
+              debugPrint('❌ خطأ في تحميل الصفحة: ${e.description}');
+              if (mounted) {
+                setState(() {
+                  _error = 'تعذر التحميل: ${e.description}';
+                  _isLoading = false;
+                });
+              }
+            },
+          ),
+        )
         ..loadRequest(Uri.parse('https://web.whatsapp.com'));
 
       if (mounted) {
@@ -4589,8 +5595,10 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
 
   void _startMonitor() {
     _loginMonitor?.cancel();
-    _loginMonitor =
-        Timer.periodic(const Duration(seconds: 3), (_) => _checkLoginOnce());
+    _loginMonitor = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _checkLoginOnce(),
+    );
   }
 
   Future<void> _checkLoginOnce() async {
@@ -4599,11 +5607,13 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
       String res = '';
       if (Platform.isWindows && _winController != null) {
         res = await _winController!.executeScript(
-                "(function(){return document.querySelector('#pane-side')?'LOGGED':'NOT';})()") ??
+              "(function(){return document.querySelector('#pane-side')?'LOGGED':'NOT';})()",
+            ) ??
             '';
       } else if (!Platform.isWindows && _controller != null) {
         final r = await _controller!.runJavaScriptReturningResult(
-            "(function(){return document.querySelector('#pane-side')?'LOGGED':'NOT';})()");
+          "(function(){return document.querySelector('#pane-side')?'LOGGED':'NOT';})()",
+        );
         res = r.toString().replaceAll('"', '');
       }
       if (res.contains('LOGGED')) {
@@ -4622,7 +5632,8 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
     } catch (_) {}
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ تم تسجيل الدخول إلى WhatsApp Web')));
+        const SnackBar(content: Text('✅ تم تسجيل الدخول إلى WhatsApp Web')),
+      );
 
       Timer(const Duration(seconds: 2), () {
         if (mounted) {
@@ -4636,8 +5647,9 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
     try {
       if (Platform.isWindows && _winController != null) {
         try {
-          await _winController!
-              .executeScript("localStorage.clear(); sessionStorage.clear();");
+          await _winController!.executeScript(
+            "localStorage.clear(); sessionStorage.clear();",
+          );
         } catch (_) {}
         await _winController!.loadUrl('https://web.whatsapp.com');
       } else if (!Platform.isWindows && _controller != null) {
@@ -4661,12 +5673,14 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('🚪 تم تسجيل الخروج (محلي)')));
+          const SnackBar(content: Text('🚪 تم تسجيل الخروج (محلي)')),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('فشل تسجيل الخروج: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل تسجيل الخروج: $e')));
       }
     }
   }
@@ -4683,7 +5697,8 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                  'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.'),
+                'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
+              ),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 5),
             ),
@@ -4696,7 +5711,8 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.'),
+              'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
+            ),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 5),
           ),
@@ -4721,25 +5737,27 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              Icon(IconsaxPlusBold.warning_2, size: 48, color: Colors.red),
               const SizedBox(height: 12),
-              Text(_error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16)),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton.icon(
                     onPressed: _initWeb,
-                    icon: const Icon(Icons.refresh),
+                    icon: Icon(IconsaxPlusLinear.refresh),
                     label: const Text('إعادة المحاولة'),
                   ),
                   if (Platform.isWindows && _error!.contains('WebView2')) ...[
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: _launchWebView2Download,
-                      icon: const Icon(Icons.download),
+                      icon: Icon(IconsaxPlusLinear.document_download),
                       label: const Text('تحميل WebView2'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
@@ -4757,19 +5775,23 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
       if (_winController == null) {
         content = const Center(child: CircularProgressIndicator());
       } else {
-        content = Column(children: [
-          Expanded(child: wvwin.Webview(_winController!)),
-          _bottomBar()
-        ]);
+        content = Column(
+          children: [
+            Expanded(child: wvwin.Webview(_winController!)),
+            _bottomBar(),
+          ],
+        );
       }
     } else {
       if (_controller == null) {
         content = const Center(child: CircularProgressIndicator());
       } else {
-        content = Column(children: [
-          Expanded(child: WebViewWidget(controller: _controller!)),
-          _bottomBar()
-        ]);
+        content = Column(
+          children: [
+            Expanded(child: WebViewWidget(controller: _controller!)),
+            _bottomBar(),
+          ],
+        );
       }
     }
 
@@ -4781,7 +5803,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         actions: [
           IconButton(
             tooltip: 'تحديث',
-            icon: const Icon(Icons.refresh),
+            icon: Icon(IconsaxPlusLinear.refresh),
             onPressed: () {
               if (Platform.isWindows && _winController != null) {
                 _winController!.reload();
@@ -4793,18 +5815,21 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
           ),
           IconButton(
             tooltip: 'تسجيل خروج',
-            icon: const Icon(Icons.logout),
+            icon: Icon(IconsaxPlusLinear.logout),
             onPressed: _logout,
           ),
         ],
       ),
-      body: Stack(children: [
-        content,
-        if (_isLoading)
-          Container(
+      body: Stack(
+        children: [
+          content,
+          if (_isLoading)
+            Container(
               color: Colors.black.withValues(alpha: 0.05),
-              child: const Center(child: CircularProgressIndicator())),
-      ]),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      ),
     );
   }
 
@@ -4812,25 +5837,32 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            border: Border(top: BorderSide(color: Colors.grey.shade300))),
-        child: Row(children: [
-          Expanded(
+          color: Colors.grey.shade100,
+          border: Border(top: BorderSide(color: Colors.grey.shade300)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
               child: Text(
-            _loggedIn
-                ? '✅ متصل - جلسة محلية (قد تُفقد عند إغلاق التطبيق)'
-                : 'افتح واتساب بالهاتف > الأجهزة المرتبطة > اربط جهازًا لمسح QR',
-            style: TextStyle(
-                fontSize: 11.5,
-                color: _loggedIn ? Colors.green.shade700 : null),
-            overflow: TextOverflow.ellipsis,
-          )),
-          IconButton(
-            tooltip: 'فتح خارجي',
-            icon: const Icon(Icons.open_in_browser, size: 20),
-            onPressed: () => launchUrl(Uri.parse('https://web.whatsapp.com'),
-                mode: LaunchMode.externalApplication),
-          ),
-        ]),
+                _loggedIn
+                    ? '✅ متصل - جلسة محلية (قد تُفقد عند إغلاق التطبيق)'
+                    : 'افتح واتساب بالهاتف > الأجهزة المرتبطة > اربط جهازًا لمسح QR',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: _loggedIn ? Colors.green.shade700 : null,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              tooltip: 'فتح خارجي',
+              icon: Icon(IconsaxPlusLinear.global, size: 20),
+              onPressed: () => launchUrl(
+                Uri.parse('https://web.whatsapp.com'),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ],
+        ),
       );
 }
