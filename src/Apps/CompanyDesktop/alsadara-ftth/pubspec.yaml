@@ -2,7 +2,7 @@ name: alsadara
 description: "Alsadara Flutter application - تطبيق الصدارة لإدارة شبكات FTTH"
 publish_to: 'none'
 
-version: 1.6.3+163
+version: 1.6.4+164
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
