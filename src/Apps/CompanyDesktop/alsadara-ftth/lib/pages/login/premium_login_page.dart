@@ -3,15 +3,19 @@
 library;
 
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
-import '../modern_home_page.dart'; // ✨ الصفحة الرئيسية العصرية
+import '../../services/dual_auth_service.dart';
+import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
 
 // ============================================
@@ -120,6 +124,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   // State
   bool _isLoading = false;
+  bool _isNavigating = false; // حالة التحميل بعد نجاح الدخول
   bool _obscurePassword = true;
   String? _errorMessage;
   bool _rememberMe = false;
@@ -391,27 +396,36 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       if (!mounted) return;
 
       if (result.success) {
-        await _saveCredential();
+        // حفظ بيانات الدخول في الخلفية (بدون انتظار)
+        _saveCredential();
         HapticFeedback.heavyImpact();
+        // إظهار شاشة التحميل الجميلة والانتقال فوراً
+        setState(() => _isNavigating = true);
         _navigateAfterLogin();
       } else {
         HapticFeedback.vibrate();
-        setState(
-            () => _errorMessage = result.errorMessage ?? 'حدث خطأ غير متوقع');
+        setState(() {
+          _isLoading = false;
+          _errorMessage = result.errorMessage ?? 'حدث خطأ غير متوقع';
+        });
       }
     } catch (e) {
       HapticFeedback.vibrate();
-      setState(() => _errorMessage = 'حدث خطأ في الاتصال');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'حدث خطأ في الاتصال';
+      });
     }
   }
 
   void _navigateAfterLogin() async {
-    // ✅ فحص التحديثات بعد تسجيل الدخول مباشرة - ننتظر انتهاء الفحص قبل الانتقال
-    await _checkForUpdatesAfterLogin();
+    // مسح بيانات FTTH القديمة قبل الانتقال لمنع رؤية home_page لبيانات المستخدم السابق
+    await DualAuthService.instance.clearFtthData();
+    // 🔄 تسجيل دخول FTTH الصامت في الخلفية (لا ينتظر)
+    _performSilentFtthLogin();
 
     if (_authService.isSuperAdmin) {
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const SuperAdminDashboard(),
@@ -421,6 +435,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           transitionDuration: const Duration(milliseconds: 150),
         ),
       );
+      // فحص التحديثات بعد الانتقال (بدون حظر)
+      _checkForUpdatesAfterLogin();
     } else if (_authService.currentUser != null &&
         _authService.currentCompany != null) {
       final user = _authService.currentUser!;
@@ -433,14 +449,16 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       }
       final Map<String, bool> pageAccess = pm.buildPageAccess();
 
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => ModernHomePage(
+          pageBuilder: (_, __, ___) => HomePage(
             username: user.fullName.isNotEmpty ? user.fullName : user.username,
             permissions: user.isAdmin ? 'مدير' : _mapRoleToArabic(user.role),
             department: company.name,
             center: company.code,
             salary: '0',
+            pageAccess: pageAccess,
             tenantId: company.id,
             tenantCode: company.code,
           ),
@@ -450,15 +468,37 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           transitionDuration: const Duration(milliseconds: 150),
         ),
       );
+      // فحص التحديثات بعد الانتقال (بدون حظر)
+      _checkForUpdatesAfterLogin();
     }
   }
 
-  /// فحص التحديثات في الخلفية بعد تسجيل الدخول
-  Future<void> _checkForUpdatesAfterLogin() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      await UpdateManager.checkAndShowUpdateDialog(context);
+  /// تسجيل دخول FTTH صامت في الخلفية (لا يمنع التنقل)
+  Future<void> _performSilentFtthLogin() async {
+    try {
+      final result = await DualAuthService.instance.silentFtthLogin();
+      if (result.success) {
+        print('✅ [Login] تم تسجيل دخول FTTH بصمت: ${result.ftthUsername}');
+      } else if (result.noCredentials) {
+        print(
+            'ℹ️ [Login] لا توجد بيانات FTTH مربوطة - سيتم عرض صفحة تسجيل الدخول عند الحاجة');
+      } else {
+        print('⚠️ [Login] فشل تسجيل دخول FTTH الصامت: ${result.message}');
+      }
+    } catch (e) {
+      print('⚠️ [Login] خطأ في تسجيل دخول FTTH الصامت: $e');
     }
+  }
+
+  /// فحص التحديثات في الخلفية بعد تسجيل الدخول (بدون حظر)
+  /// يعمل فقط على Windows — على Android التحديث يدوي
+  void _checkForUpdatesAfterLogin() {
+    if (!Platform.isWindows) return;
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        UpdateManager.checkAndShowUpdateDialog(context);
+      }
+    });
   }
 
   /// تحويل الدور من الإنجليزية (VPS API) إلى العربية
@@ -537,9 +577,114 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                   ),
                 ),
               ),
+
+              // شاشة تحميل جميلة أثناء تسجيل الدخول أو الانتقال
+              if (_isLoading || _isNavigating) _buildLoginLoadingOverlay(),
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// شاشة تحميل جميلة تظهر أثناء تسجيل الدخول وعند الانتقال
+  Widget _buildLoginLoadingOverlay() {
+    final isAfterLogin = _isNavigating;
+    final title =
+        isAfterLogin ? 'جاري تحضير لوحة التحكم...' : 'جاري تسجيل الدخول...';
+    final subtitle =
+        isAfterLogin ? 'يرجى الانتظار لحظات' : 'جاري التحقق من بياناتك';
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: child,
+        );
+      },
+      child: Container(
+        color: const Color(0xFF1a1535).withOpacity(0.97),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // أيقونة Lottie جميلة
+              Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primaryGradient[0].withOpacity(0.3),
+                      blurRadius: 40,
+                      spreadRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Lottie.asset(
+                  'assets/animations/login_security.json',
+                  fit: BoxFit.contain,
+                  repeat: true,
+                ),
+              ),
+              const SizedBox(height: 32),
+              // نص التحميل الرئيسي
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  title,
+                  key: ValueKey(title),
+                  style: GoogleFonts.cairo(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // نص فرعي
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  subtitle,
+                  key: ValueKey(subtitle),
+                  style: GoogleFonts.cairo(
+                    fontSize: 15,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 36),
+              // شريط تحميل متدرج
+              SizedBox(
+                width: 260,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    minHeight: 5,
+                    backgroundColor: Colors.white10,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _primaryGradient[0],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // نقاط متحركة
+              SizedBox(
+                width: 60,
+                child: _AnimatedDots(
+                  color: _primaryGradient[0].withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1334,6 +1479,69 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         borderSide: const BorderSide(color: Colors.red),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    );
+  }
+}
+
+/// نقاط متحركة تعطي إحساس بالتحميل
+class _AnimatedDots extends StatefulWidget {
+  final Color color;
+  const _AnimatedDots({required this.color});
+
+  @override
+  State<_AnimatedDots> createState() => _AnimatedDotsState();
+}
+
+class _AnimatedDotsState extends State<_AnimatedDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (index) {
+            final delay = index * 0.33;
+            final t = ((_controller.value + delay) % 1.0);
+            final sinVal = math.sin(t * math.pi);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Transform.scale(
+                scale: 0.5 + 0.5 * sinVal,
+                child: Opacity(
+                  opacity: (0.3 + 0.7 * sinVal).clamp(0.0, 1.0),
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: widget.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

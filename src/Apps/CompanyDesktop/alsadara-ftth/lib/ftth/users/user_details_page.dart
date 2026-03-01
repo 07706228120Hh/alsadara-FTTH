@@ -70,6 +70,8 @@ class UserDetailsPage extends StatefulWidget {
 
 class UserDetailsPageState extends State<UserDetailsPage> {
   Map<String, dynamic>? subscriptionDetails;
+  List<Map<String, dynamic>> _allSubscriptions = [];
+  int _selectedSubscriptionIndex = 0;
   Map<String, dynamic>? deviceOntInfo;
   Map<String, dynamic>? _customerDataMain;
   bool isLoading = true;
@@ -156,9 +158,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         final items = data['items'] as List?;
+        debugPrint('[fetchDetails] keys=${data.keys.toList()} totalCount=${data['totalCount']} itemsCount=${items?.length}');
         if (mounted) {
-          setState(() => subscriptionDetails =
-              (items != null && items.isNotEmpty) ? items.first : null);
+          setState(() {
+            _allSubscriptions =
+                items?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
+            _selectedSubscriptionIndex = 0;
+            subscriptionDetails =
+                (_allSubscriptions.isNotEmpty) ? _allSubscriptions.first : null;
+          });
         }
       } else if (mounted) {
         setState(
@@ -188,8 +196,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           });
       if (r.statusCode == 200 && mounted && subscriptionDetails != null) {
         final full = jsonDecode(r.body);
-        setState(
-            () => subscriptionDetails = {...subscriptionDetails!, ...full});
+        final merged = Map<String, dynamic>.from({...subscriptionDetails!, ...full});
+        setState(() {
+          subscriptionDetails = merged;
+          // تحديث _allSubscriptions[i] بالبيانات الكاملة حتى لا تُفقد عند التبديل بين الاشتراكات
+          if (_selectedSubscriptionIndex < _allSubscriptions.length) {
+            _allSubscriptions[_selectedSubscriptionIndex] = Map<String, dynamic>.from(merged);
+          }
+        });
       }
     } catch (_) {}
   }
@@ -201,6 +215,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       errorMessage = '';
       ontErrorMessage = '';
       deviceOntInfo = null;
+      _allSubscriptions = [];
+      _selectedSubscriptionIndex = 0;
     });
     fetchDetails();
   }
@@ -1579,8 +1595,10 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final status = _safeGetMap(mergedSub['status']);
     final deviceDetails = _safeGetMap(mergedSub['deviceDetails']);
     final services = _safeGetList(mergedSub['services']);
-    final endDate = _safeGetString(mergedSub['endDate']);
-    final startedAt = _safeGetString(mergedSub['startedAt']);
+    final endDate = _safeGetString(mergedSub['endDate']) ??
+        _safeGetString(mergedSub['expires']);
+    final startedAt = _safeGetString(mergedSub['startedAt']) ??
+        _safeGetString(mergedSub['startDate']);
     final currentStatusRaw = _safeGetString(status?['displayValue']) ?? '';
     final currentStatus = _localizedSubscriptionStatus(currentStatusRaw);
     final deviceUsername = _safeGetString(deviceDetails?['username']) ?? '';
@@ -1928,6 +1946,94 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                             .copyWith(
                                                 fontSize: titleSize,
                                                 color: header)),
+                                    if (_allSubscriptions.length > 1) ...[
+                                      SizedBox(height: gap),
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          children: List.generate(
+                                            _allSubscriptions.length,
+                                            (i) {
+                                              final sub = _allSubscriptions[i];
+                                              final devDetails = _safeGetMap(sub['deviceDetails']);
+                                              final devUsername = _safeGetString(devDetails?['username']) ?? '';
+                                              final subStatus = sub['status'] is String
+                                                  ? sub['status'] as String
+                                                  : _safeGetString((sub['status'] as Map?)?['displayValue']) ?? '';
+                                              final isActive = subStatus.toLowerCase() == 'active';
+                                              final isSelected = _selectedSubscriptionIndex == i;
+                                              // لون الـ pill: أزرق للمختار، أخضر للفعّال، رمادي للمنتهي
+                                              final pillColor = isSelected
+                                                  ? Colors.blue[700]!
+                                                  : isActive
+                                                      ? Colors.green[100]!
+                                                      : Colors.grey[200]!;
+                                              final textColor = isSelected
+                                                  ? Colors.white
+                                                  : isActive
+                                                      ? Colors.green[800]!
+                                                      : Colors.black87;
+                                              final pillLabel = devUsername.isNotEmpty
+                                                  ? devUsername
+                                                  : 'اشتراك ${i + 1}';
+                                              return GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedSubscriptionIndex = i;
+                                                    subscriptionDetails = _allSubscriptions[i];
+                                                    deviceOntInfo = null;
+                                                    ontErrorMessage = '';
+                                                  });
+                                                  fetchDeviceOntInfo();
+                                                  final id = _extractSubscriptionId(_allSubscriptions[i]);
+                                                  if (id != null && id.isNotEmpty)
+                                                    fetchFullSubscriptionDetails(id);
+                                                },
+                                                child: Container(
+                                                  margin: const EdgeInsetsDirectional.only(end: 8),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                                  decoration: BoxDecoration(
+                                                    color: pillColor,
+                                                    borderRadius: BorderRadius.circular(20),
+                                                    border: Border.all(
+                                                      color: isSelected
+                                                          ? Colors.blue[700]!
+                                                          : isActive
+                                                              ? Colors.green[400]!
+                                                              : Colors.grey[400]!,
+                                                    ),
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        pillLabel,
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w700,
+                                                          color: textColor,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        isActive ? 'فعّال' : 'منتهي',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: isSelected
+                                                              ? Colors.white70
+                                                              : isActive
+                                                                  ? Colors.green[700]!
+                                                                  : Colors.red[400]!,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                     SizedBox(height: gap),
                                     _subscriptionDetails(),
                                   ],

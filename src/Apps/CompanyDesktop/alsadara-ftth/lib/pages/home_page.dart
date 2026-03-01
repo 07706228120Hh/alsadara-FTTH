@@ -6,7 +6,8 @@ library;
 
 import 'dart:async'; // NEW
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart'; // Lottie animations
+import 'package:google_fonts/google_fonts.dart';
+
 import 'package:alsadara/pages/track_users_map_page.dart';
 import '../task/task_list_screen.dart';
 import 'hr_hub_page.dart';
@@ -15,15 +16,18 @@ import 'users_page.dart';
 import 'users_page_firebase.dart';
 import 'users_page_vps.dart';
 import '../ftth/auth/login_page.dart' as ftth_login;
+import '../ftth/core/home_page.dart' as ftth_home;
+import '../services/dual_auth_service.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http; // NEW
 import 'dart:convert'; // NEW
 import 'dart:math' as math; // NEW: for rotations
 import 'aria_page.dart';
-import '../utils/breakpoints.dart';
+import '../utils/responsive_helper.dart';
 import '../widgets/maintenance_messages_dialog.dart'; // إضافة حوار إعدادات الرسائل
 import '../services/vps_auth_service.dart'; // ✅ خدمة VPS لتسجيل الخروج
+import '../services/api/api_client.dart'; // ✅ ApiClient للتحقق من التوكن
 import 'login/premium_login_page.dart'; // ✨ صفحة تسجيل الدخول الفخمة
 import '../ftth/whatsapp/whatsapp_bottom_window.dart'; // WhatsApp floating button
 import 'super_admin/super_admin_dashboard.dart'; // لوحة تحكم Super Admin
@@ -36,6 +40,9 @@ import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق
 // شاشتي - معاملات الفني
 import 'my_dashboard_page.dart'; // شاشتي - لوحة الموظف الشخصية
 import '../permissions/permissions.dart';
+import '../services/task_api_service.dart';
+import '../services/attendance_api_service.dart';
+import '../widgets/update_dialog.dart'; // فحص التحديث التلقائي
 // تم نقل زر جلب بيانات الموقع إلى النظام الثاني
 
 class HomePage extends StatefulWidget {
@@ -67,8 +74,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isAdminUser = false;
   bool _isLoading = true;
 
@@ -91,18 +97,38 @@ class _HomePageState extends State<HomePage>
   };
 
   Map<String, bool> _userPermissions = {};
-  // Animation controller for AppBar fiber effect
-  late final AnimationController _fiberController;
+  // حالة تسجيل دخول FTTH (النظام الثاني)
+  bool _isFtthConnected = false;
+  String? _ftthConnectedUsername;
+  StreamSubscription<bool>? _ftthStateSubscription;
+  // ===== عدادات الصفحة الرئيسية =====
+  int _pendingAgentRequests = 0;
+  int _openTasksCount = 0;
+  int _pendingEmployeeRequests = 0; // إجازات + سلف
+  bool _countersLoading = true;
+  bool _counterRetried = false; // لمحاولة إعادة جلب العدادات مرة واحدة
+  late final AnimationController _counterAnimController;
+
   // Unified fiber optic color
   final Color _fiberColor = const Color(0xFF00E5FF);
+
+  // ===== القائمة الجانبية =====
+  bool _sidebarExpanded = false;
+  Timer? _autoCollapseTimer;
+  // ألوان ثيم القائمة الجانبية (مطابقة لشاشة الحسابات)
+  static const _sidebarBg = Colors.white;
+  static const _sidebarBorder = Color(0xFFE8E8E8);
+  static const _sidebarToolbar = Color(0xFF2C3E50);
+  static const _sidebarTextDark = Color(0xFF333333);
+  static const _sidebarTextGray = Color(0xFF999999);
 
   @override
   void initState() {
     super.initState();
-    _fiberController = AnimationController(
+    _counterAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 6),
-    )..repeat();
+      duration: const Duration(milliseconds: 1800),
+    );
     _initializeApp();
   }
 
@@ -125,6 +151,31 @@ class _HomePageState extends State<HomePage>
         setState(() => _isAdminUser = isAdmin);
       }();
       await _loadUserPermissions();
+
+      // فحص حالة تسجيل دخول FTTH
+      _checkFtthStatus();
+
+      // الاستماع لتغييرات حالة FTTH (يُحدّث الواجهة عند اكتمال silentFtthLogin)
+      _ftthStateSubscription =
+          DualAuthService.instance.ftthStateStream.listen((isLoggedIn) {
+        if (mounted) {
+          setState(() {
+            _isFtthConnected = isLoggedIn;
+            _ftthConnectedUsername =
+                isLoggedIn ? DualAuthService.instance.ftthUsername : null;
+          });
+        }
+      });
+
+      // جلب العدادات
+      _fetchCounters();
+
+      // فحص التحديث التلقائي بعد 5 ثوانٍ
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          UpdateManager.checkAndShowUpdateDialog(context);
+        }
+      });
 
       // إظهار زر واتساب ويب بعد التهيئة وإخفاء زر المحادثات
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -152,6 +203,173 @@ class _HomePageState extends State<HomePage>
   //     });
   //   }  //   // if (_isAdminUser)
   // }
+
+  /// فحص حالة تسجيل دخول النظام الثاني (FTTH)
+  Future<void> _checkFtthStatus() async {
+    try {
+      final dual = DualAuthService.instance;
+      final connected = await dual.checkFtthSession();
+      if (mounted) {
+        setState(() {
+          _isFtthConnected = connected;
+          _ftthConnectedUsername = dual.ftthUsername;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ خطأ في فحص FTTH: $e');
+    }
+  }
+
+  /// جلب عدادات الصفحة الرئيسية (طلبات الوكلاء، المهام المفتوحة، طلبات الموظفين)
+  Future<void> _fetchCounters() async {
+    debugPrint('━━━━ _fetchCounters بدأ ━━━━');
+    debugPrint(
+        '🔑 ApiClient.authToken: ${ApiClient.instance.authToken != null ? "موجود (${ApiClient.instance.authToken!.length} حرف)" : "NULL"}');
+    debugPrint(
+        '🔑 VpsAuth.accessToken: ${VpsAuthService.instance.accessToken != null ? "موجود (${VpsAuthService.instance.accessToken!.length} حرف)" : "NULL"}');
+    try {
+      // ✅ التأكد من وجود التوكن قبل جلب البيانات
+      if (ApiClient.instance.authToken == null ||
+          ApiClient.instance.authToken!.isEmpty) {
+        final vpsToken = VpsAuthService.instance.accessToken;
+        if (vpsToken != null && vpsToken.isNotEmpty) {
+          debugPrint('🔑 _fetchCounters: تعيين التوكن من VpsAuthService');
+          ApiClient.instance.setAuthToken(vpsToken);
+        } else {
+          debugPrint('⚠️ _fetchCounters: لا يوجد توكن بتاتاً - تأجيل الجلب');
+          if (!_counterRetried) {
+            _counterRetried = true;
+            Future.delayed(const Duration(seconds: 3), () {
+              if (mounted) {
+                _counterRetried = false;
+                _fetchCounters();
+              }
+            });
+          }
+          if (mounted) setState(() => _countersLoading = false);
+          return;
+        }
+      }
+
+      debugPrint('✅ التوكن موجود، جاري جلب البيانات...');
+
+      // جلب البيانات بالتوازي
+      final results = await Future.wait([
+        // 1) إحصائيات طلبات الخدمة (تشمل طلبات الوكلاء والمهام)
+        TaskApiService.instance.getStatistics().catchError((e) {
+          debugPrint('❌ خطأ في جلب الإحصائيات: $e');
+          return <String, dynamic>{};
+        }),
+        // 2) ملخص الإجازات
+        AttendanceApiService.instance.getLeaveSummary().catchError((e) {
+          debugPrint('❌ خطأ في جلب الإجازات: $e');
+          return <String, dynamic>{};
+        }),
+        // 3) طلبات السحب المعلقة (status=0 = Pending)
+        AttendanceApiService.instance
+            .getWithdrawalRequests(status: 0, page: 1, pageSize: 1)
+            .catchError((e) {
+          debugPrint('❌ خطأ في جلب السحب: $e');
+          return <String, dynamic>{};
+        }),
+      ]);
+
+      final statsRaw = results[0];
+      final leaveSummaryRaw = results[1];
+      final withdrawalsRaw = results[2];
+
+      debugPrint('📊 RAW statsRaw=$statsRaw');
+      debugPrint('📊 RAW leaveSummaryRaw=$leaveSummaryRaw');
+      debugPrint('📊 RAW withdrawalsRaw=$withdrawalsRaw');
+
+      // التحقق من نجاح استدعاء الإحصائيات
+      if (statsRaw['success'] == false) {
+        debugPrint(
+            '⚠️ فشل جلب الإحصائيات: ${statsRaw['message']} (status: ${statsRaw['statusCode']})');
+      }
+
+      // استخراج البيانات من داخل wrapper الـ API (data key)
+      final stats = (statsRaw['data'] is Map)
+          ? statsRaw['data'] as Map<String, dynamic>
+          : statsRaw;
+      final leaveSummary = (leaveSummaryRaw['data'] is Map)
+          ? leaveSummaryRaw['data'] as Map<String, dynamic>
+          : leaveSummaryRaw;
+      final withdrawals = (withdrawalsRaw['data'] is Map)
+          ? withdrawalsRaw['data'] as Map<String, dynamic>
+          : withdrawalsRaw;
+
+      // طلبات الوكلاء الجديدة = Pending
+      final pendingAgent = _safeInt(stats, 'Pending', 'pending');
+
+      // المهام المفتوحة = Total - Completed - Cancelled - Rejected
+      // (أفضل من جمع الحالات لأن بعض الحالات قد لا تكون في الاستجابة)
+      final total = _safeInt(stats, 'Total', 'total');
+      final completed = _safeInt(stats, 'Completed', 'completed');
+      final cancelled = _safeInt(stats, 'Cancelled', 'cancelled');
+      final rejected = _safeInt(stats, 'Rejected', 'rejected');
+      final openTasks = total - completed - cancelled - rejected;
+      debugPrint(
+          '📊 حساب المهام: total=$total - completed=$completed - cancelled=$cancelled - rejected=$rejected = open=$openTasks');
+
+      // طلبات الموظفين = إجازات معلقة + سحب معلقة
+      final pendingLeaves = _safeInt(leaveSummary, 'Pending', 'pending');
+      final pendingWithdrawals = _safeInt(withdrawals, 'Total', 'total');
+      final employeeRequests = pendingLeaves + pendingWithdrawals;
+
+      debugPrint('📊 عدادات: stats=$stats');
+      debugPrint(
+          '📊 agent=$pendingAgent, tasks=$openTasks, emp=$employeeRequests');
+
+      if (mounted) {
+        setState(() {
+          _pendingAgentRequests = pendingAgent;
+          _openTasksCount = openTasks;
+          _pendingEmployeeRequests = employeeRequests;
+          _countersLoading = false;
+        });
+        _counterAnimController.forward(from: 0.0);
+
+        // إعادة المحاولة تلقائياً إذا فشلت الإحصائيات (مثل التوكن لم يكن جاهزاً)
+        if (statsRaw['success'] == false && !_counterRetried) {
+          _counterRetried = true;
+          debugPrint('🔄 إعادة محاولة جلب العدادات بعد 5 ثوانٍ...');
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) _fetchCounters();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ خطأ في جلب العدادات: $e');
+      if (mounted) {
+        setState(() => _countersLoading = false);
+        // إعادة المحاولة مرة واحدة في حالة الخطأ
+        if (!_counterRetried) {
+          _counterRetried = true;
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) _fetchCounters();
+          });
+        }
+      }
+    }
+  }
+
+  /// استخراج قيمة int من Map بشكل آمن (لتجنب أخطاء type cast)
+  int _extractInt(Map<String, dynamic> map, String key) {
+    final val = map[key];
+    if (val == null) return 0;
+    if (val is int) return val;
+    if (val is double) return val.toInt();
+    if (val is String) return int.tryParse(val) ?? 0;
+    return 0;
+  }
+
+  /// استخراج int مع محاولة مفتاحين (PascalCase ثم camelCase) لتجنب التكرار
+  int _safeInt(Map<String, dynamic> map, String key1, String key2) {
+    final v1 = _extractInt(map, key1);
+    if (v1 > 0) return v1;
+    return _extractInt(map, key2);
+  }
 
   Future<void> _loadUserPermissions() async {
     // V2: استخدام PermissionManager كمصدر وحيد للصلاحيات
@@ -218,9 +436,9 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _logout() async {
-    // تسجيل الخروج من VPS API
+    // تسجيل الخروج من كلا النظامين (VPS + FTTH)
     try {
-      await VpsAuthService.instance.logout();
+      await DualAuthService.instance.logoutAll();
     } catch (e) {
       debugPrint('⚠️ خطأ في تسجيل الخروج: $e');
     }
@@ -273,8 +491,10 @@ class _HomePageState extends State<HomePage>
     required List<Color> gradient,
     required VoidCallback onTap,
     required String permissionKey,
+    int badgeCount = 0,
   }) {
     final hasPermission = PermissionManager.instance.canView(permissionKey);
+    final r = context.responsive;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -283,17 +503,17 @@ class _HomePageState extends State<HomePage>
         color: Colors.transparent,
         child: InkWell(
           onTap: hasPermission ? onTap : null,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(r.cardRadius),
           splashColor: gradient[0].withOpacity(0.1),
           highlightColor: gradient[0].withOpacity(0.05),
           child: Container(
-            height: 72,
+            constraints: BoxConstraints(minHeight: r.menuItemHeight),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(r.cardRadius),
               border: Border.all(
-                color: const Color(0xFFE8E8E8),
-                width: 1,
+                color: const Color(0xFFD5D5D5),
+                width: 2.0,
               ),
               boxShadow: [
                 BoxShadow(
@@ -304,67 +524,116 @@ class _HomePageState extends State<HomePage>
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                  horizontal: r.isMobile ? 10 : 16,
+                  vertical: r.isMobile ? 6 : 8),
               child: Row(
                 children: [
-                  // أيقونة دائرية ملونة
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: hasPermission
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: gradient,
-                            )
-                          : LinearGradient(
-                              colors: [Colors.grey[400]!, Colors.grey[500]!],
+                  // أيقونة دائرية ملونة + badge
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: r.menuIconCircleSize,
+                        height: r.menuIconCircleSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: hasPermission
+                              ? LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: gradient,
+                                )
+                              : LinearGradient(
+                                  colors: [
+                                    Colors.grey[400]!,
+                                    Colors.grey[500]!
+                                  ],
+                                ),
+                          boxShadow: hasPermission
+                              ? [
+                                  BoxShadow(
+                                    color: gradient[0].withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Icon(
+                          icon,
+                          color: Colors.white,
+                          size: r.menuIconInnerSize,
+                        ),
+                      ),
+                      if (badgeCount > 0)
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.4),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
                             ),
-                      boxShadow: hasPermission
-                          ? [
-                              BoxShadow(
-                                color: gradient[0].withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                            constraints: const BoxConstraints(
+                                minWidth: 18, minHeight: 16),
+                            child: Text(
+                              badgeCount > 99 ? '99+' : badgeCount.toString(),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: r.captionSize,
+                                fontWeight: FontWeight.w900,
                               ),
-                            ]
-                          : null,
-                    ),
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: r.isMobile ? 10 : 14),
                   // النص
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            color: hasPermission
-                                ? const Color(0xFF333333)
-                                : const Color(0xFF999999),
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              color: hasPermission
+                                  ? const Color(0xFF000000)
+                                  : const Color(0xFF888888),
+                              fontSize: r.menuItemTitleSize,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: hasPermission
-                                ? const Color(0xFF999999)
-                                : const Color(0xFFBBBBBB),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
+                        SizedBox(height: r.isMobile ? 1 : 3),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            subtitle,
+                            style: TextStyle(
+                              color: hasPermission
+                                  ? const Color(0xFF1A1A1A)
+                                  : const Color(0xFFBBBBBB),
+                              fontSize: r.menuItemSubtitleSize,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -372,8 +641,8 @@ class _HomePageState extends State<HomePage>
                   ),
                   // سهم/قفل
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: r.menuArrowCircleSize,
+                    height: r.menuArrowCircleSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: hasPermission
@@ -385,7 +654,7 @@ class _HomePageState extends State<HomePage>
                           ? Icons.arrow_forward_ios_rounded
                           : Icons.lock_rounded,
                       color: hasPermission ? gradient[0] : Colors.red[300],
-                      size: 14,
+                      size: r.menuArrowIconSize,
                     ),
                   ),
                 ],
@@ -399,8 +668,10 @@ class _HomePageState extends State<HomePage>
 
   @override
   void dispose() {
+    _ftthStateSubscription?.cancel();
     _locationTimer?.cancel(); // NEW
-    _fiberController.dispose();
+    _autoCollapseTimer?.cancel();
+    _counterAnimController.dispose();
     WhatsAppBottomWindow.hideBottomWindow(
         clearContent: true); // Hide WhatsApp floating button
     super.dispose();
@@ -408,18 +679,9 @@ class _HomePageState extends State<HomePage>
 
   @override
   void deactivate() {
-    // إيقاف الأنيميشن والمؤقتات عند مغادرة الصفحة (Navigator.push فوقها)
-    _fiberController.stop();
     _locationTimer?.cancel();
     _locationTimer = null;
     super.deactivate();
-  }
-
-  @override
-  void activate() {
-    super.activate();
-    // إعادة تشغيل الأنيميشن عند العودة للصفحة
-    _fiberController.repeat();
   }
 
   // Animated diagonal "fiber optic" beam used in AppBar background
@@ -679,9 +941,9 @@ class _HomePageState extends State<HomePage>
                 Text(
                   'جاري التحميل...',
                   style: TextStyle(
-                    color: const Color(0xFF666666).withOpacity(0.8),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF000000),
+                    fontSize: context.responsive.titleSize,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 1,
                   ),
                 ),
@@ -692,11 +954,29 @@ class _HomePageState extends State<HomePage>
       );
     }
 
+    final r = context.responsive;
+
     return Scaffold(
+      // ── درج جانبي للشاشات الصغيرة ──
+      drawer: r.showSidebar
+          ? null
+          : Drawer(
+              width: 260,
+              child: SafeArea(child: _buildDrawerContent()),
+            ),
       appBar: AppBar(
-        toolbarHeight: 70,
+        toolbarHeight: r.appBarHeight,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         elevation: 0,
+        leading: r.showSidebar
+            ? null
+            : Builder(
+                builder: (ctx) => IconButton(
+                  icon: Icon(Icons.menu,
+                      color: Colors.white, size: r.appBarIconSize),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+                ),
+              ),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
         ),
@@ -722,28 +1002,72 @@ class _HomePageState extends State<HomePage>
           ),
         ),
         centerTitle: true,
-        title: const Text(
-          '⚡ رمز الصدارة',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 1.5,
-          ),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '⚡ رمز الصدارة',
+              style: TextStyle(
+                fontSize: r.appBarTitleSize,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isFtthConnected
+                        ? Colors.greenAccent
+                        : Colors.orangeAccent,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isFtthConnected
+                                ? Colors.greenAccent
+                                : Colors.orangeAccent)
+                            .withOpacity(0.6),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  _isFtthConnected
+                      ? 'FTTH متصل ✓ ($_ftthConnectedUsername)'
+                      : 'FTTH غير متصل',
+                  style: TextStyle(
+                    color: _isFtthConnected
+                        ? Colors.greenAccent
+                        : Colors.orangeAccent,
+                    fontSize: r.labelSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           color: Colors.white,
-          size: 28,
+          size: r.appBarIconSize,
         ),
         actions: [
           // زر العودة للوحة تحكم Super Admin
           if (widget.isSuperAdminMode)
             _buildAnimatedActionButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.admin_panel_settings,
                 color: Colors.amber,
-                size: 30.0,
+                size: r.appBarIconSize,
               ),
               tooltip: 'العودة للوحة تحكم مدير النظام',
               glowColor: Colors.amber,
@@ -761,7 +1085,7 @@ class _HomePageState extends State<HomePage>
             icon: Icon(
               _isLocationActive ? Icons.location_on : Icons.location_off,
               color: _isLocationActive ? Colors.greenAccent : Colors.redAccent,
-              size: 30.0,
+              size: r.appBarIconSize,
             ),
             tooltip: _isLocationActive
                 ? 'إيقاف مشاركة الموقع'
@@ -800,10 +1124,10 @@ class _HomePageState extends State<HomePage>
           const SizedBox(width: 6),
           if (_isAdminUser)
             _buildAnimatedActionButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.location_searching,
                 color: Colors.white,
-                size: 30.0,
+                size: r.appBarIconSize,
               ),
               tooltip: 'تتبع الكادر على الخريطة',
               glowColor: Colors.cyanAccent,
@@ -816,330 +1140,418 @@ class _HomePageState extends State<HomePage>
             ),
         ],
       ),
-      drawer: _buildDrawer(),
-      body: _buildBody(),
+      body: Row(
+        children: [
+          // ═══ القائمة الجانبية - فقط على الشاشات العريضة ═══
+          if (r.showSidebar) _buildSidebar(),
+          // ═══ المحتوى الرئيسي ═══
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 
-  Widget _buildDrawer() {
-    return Drawer(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue[900]!,
-              Colors.blue[700]!,
-              Colors.white,
-            ],
-            stops: const [0.0, 0.4, 1.0],
+  // ═══ محتوى الدرج الجانبي للشاشات الصغيرة ═══
+  Widget _buildDrawerContent() {
+    final r = context.responsive;
+    return Container(
+      color: _sidebarBg,
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          // عنوان القائمة
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.menu_open,
+                    color: _sidebarToolbar, size: r.iconSizeSmall),
+                const SizedBox(width: 8),
+                Text(
+                  'القائمة',
+                  style: GoogleFonts.cairo(
+                    fontSize: r.sectionTitleSize,
+                    fontWeight: FontWeight.bold,
+                    color: _sidebarToolbar,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            // Compact drawer header
-            Container(
-              height: 100,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.blue[900]!, Colors.blue[600]!],
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Compact company logo
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(23),
-                      child: Image.asset(
-                        'assets/splash_background.jpg',
-                        width: 45,
-                        height: 45,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+          const Divider(height: 1, color: _sidebarBorder),
+          const SizedBox(height: 8),
+          // عناصر القائمة
+          if (_isAdminUser)
+            _drawerBtn(
+              icon: Icons.people,
+              label: 'إدارة المستخدمين',
+              color: const Color(0xFF3498DB),
+              onTap: () {
+                Navigator.pop(context); // أغلق الدرج
+                final companyId =
+                    widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
+                final companyCode = widget.tenantCode ??
+                    VpsAuthService.instance.currentCompanyCode;
+                final companyName = widget.department.isNotEmpty
+                    ? widget.department
+                    : (VpsAuthService.instance.currentCompanyName ?? 'الشركة');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        companyId != null && companyCode != null
+                            ? UsersPageVPS(
+                                companyId: companyId,
+                                companyName: companyName,
+                                permissions: {'users': true})
+                            : companyId != null
+                                ? UsersPageFirebase(
+                                    tenantId: companyId,
+                                    permissions: widget.permissions,
+                                    pageAccess: widget.pageAccess)
+                                : UsersPage(permissions: widget.permissions),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'شركة رمز الصدارة',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'النظام الإداري',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 11,
-                          ),
-                        ),
-                        if (_isAdminUser)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.amber,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Text(
-                              'مدير النظام',
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-            const SizedBox(height: 6),
-
-            // Compact user info section
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 10),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue[50]!, Colors.blue[100]!],
-                ),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.blue[200]!,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.person, color: Colors.blue[700], size: 14),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      widget.username,
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.business, color: Colors.blue[700], size: 14),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      widget.department,
-                      style: TextStyle(
-                        color: Colors.blue[600],
-                        fontSize: 10,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+          if (!_isAdminUser)
+            _drawerBtn(
+              icon: Icons.people_outline,
+              label: 'المستخدمين',
+              color: Colors.grey,
+              onTap: () {
+                Navigator.pop(context);
+                _showPermissionDenied();
+              },
             ),
-
-            const SizedBox(height: 8),
-
-            // Buttons section - Expanded to fill remaining space
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Column(
-                  children: [
-                    // Users Management Button (Admin Only)
-                    if (_isAdminUser)
-                      _buildCompactDrawerButton(
-                        icon: Icons.people,
-                        label: 'إدارة المستخدمين',
-                        colors: [Colors.blue[500]!, Colors.blue[700]!],
-                        onTap: () {
-                          Navigator.pop(context);
-                          // استخدام VpsAuthService كمصدر بديل لمعرف الشركة
-                          final companyId = widget.tenantId ??
-                              VpsAuthService.instance.currentCompanyId;
-                          final companyCode = widget.tenantCode ??
-                              VpsAuthService.instance.currentCompanyCode;
-                          final companyName = widget.department.isNotEmpty
-                              ? widget.department
-                              : (VpsAuthService.instance.currentCompanyName ??
-                                  'الشركة');
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  companyId != null && companyCode != null
-                                      ? UsersPageVPS(
-                                          companyId: companyId,
-                                          companyName: companyName,
-                                          permissions: {'users': true},
-                                        )
-                                      : companyId != null
-                                          ? UsersPageFirebase(
-                                              tenantId: companyId,
-                                              permissions: widget.permissions,
-                                              pageAccess: widget.pageAccess,
-                                            )
-                                          : UsersPage(
-                                              permissions: widget.permissions),
-                            ),
-                          );
-                        },
+          if (PermissionManager.instance.canView('diagnostics'))
+            _drawerBtn(
+              icon: Icons.bug_report,
+              label: 'تشخيص النظام',
+              color: const Color(0xFFE67E22),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CompanyDiagnosticsPage(
+                        tenantId: widget.tenantId,
+                        tenantCode: widget.tenantCode,
+                        pageAccess: widget.pageAccess,
                       ),
-
-                    // Non-Admin Users Button
-                    if (!_isAdminUser)
-                      _buildCompactDrawerButton(
-                        icon: Icons.people_outline,
-                        label: 'المستخدمين (محظور)',
-                        colors: [Colors.grey[400]!, Colors.grey[600]!],
-                        trailingIcon: Icons.lock,
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showPermissionDenied();
-                        },
-                      ),
-
-                    // زر تشخيص النظام
-                    if (PermissionManager.instance.canView('diagnostics'))
-                      _buildCompactDrawerButton(
-                        icon: Icons.bug_report,
-                        label: 'تشخيص النظام',
-                        colors: [Colors.orange[500]!, Colors.orange[700]!],
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CompanyDiagnosticsPage(
-                                tenantId: widget.tenantId,
-                                tenantCode: widget.tenantCode,
-                                pageAccess: widget.pageAccess,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                    // Company Settings Button (Admin Only)
-                    if (_isAdminUser)
-                      _buildCompactDrawerButton(
-                        icon: Icons.settings,
-                        label: 'إعدادات الشركة',
-                        colors: [Colors.amber[600]!, Colors.amber[800]!],
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CompanySettingsPage(
-                                companyId: widget.tenantId ??
-                                    VpsAuthService.instance.currentCompanyId,
-                                companyCode: widget.tenantCode ??
-                                    VpsAuthService.instance.currentCompanyCode,
-                                currentUserRole: widget.permissions,
-                                currentUsername: widget.username,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                    // Logout button
-                    _buildCompactDrawerButton(
-                      icon: Icons.logout,
-                      label: 'تسجيل الخروج',
-                      colors: [Colors.red[400]!, Colors.red[600]!],
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showLogoutConfirmation();
-                      },
-                    ),
-
-                    const SizedBox(height: 10),
-                  ],
-                ),
-              ),
+                    ));
+              },
             ),
-          ],
+          if (_isAdminUser)
+            _drawerBtn(
+              icon: Icons.settings,
+              label: 'إعدادات الشركة',
+              color: const Color(0xFFF39C12),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CompanySettingsPage(
+                        companyId: widget.tenantId ??
+                            VpsAuthService.instance.currentCompanyId,
+                        companyCode: widget.tenantCode ??
+                            VpsAuthService.instance.currentCompanyCode,
+                        currentUserRole: widget.permissions,
+                        currentUsername: widget.username,
+                      ),
+                    ));
+              },
+            ),
+          _drawerBtn(
+            icon: Icons.logout,
+            label: 'تسجيل الخروج',
+            color: const Color(0xFFE74C3C),
+            onTap: () {
+              Navigator.pop(context);
+              _showLogoutConfirmation();
+            },
+          ),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  /// زر الدرج الجانبي (للشاشات الصغيرة)
+  Widget _drawerBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final r = context.responsive;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: color.withOpacity(0.08),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: r.iconSizeSmall),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(label,
+                      style: GoogleFonts.cairo(
+                        fontSize: r.subtitleSize,
+                        fontWeight: FontWeight.w600,
+                        color: _sidebarTextDark,
+                      )),
+                ),
+                Icon(Icons.chevron_left,
+                    color: _sidebarTextGray, size: r.iconSizeSmall),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  /// زر مضغوط للقائمة الجانبية
-  Widget _buildCompactDrawerButton({
-    required IconData icon,
-    required String label,
-    required List<Color> colors,
-    required VoidCallback onTap,
-    IconData trailingIcon = Icons.arrow_forward_ios,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: colors),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: colors[0].withValues(alpha: 0.3),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+  // ═══ القائمة الجانبية (بنفس تصميم شاشة الحسابات) ═══
+  Widget _buildSidebar() {
+    final r = context.responsive;
+    final expanded = _sidebarExpanded;
+    final width = expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      width: width,
+      decoration: BoxDecoration(
+        color: _sidebarBg,
+        border: const Border(
+          left: BorderSide(color: _sidebarBorder, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(-2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          // زر طي/فتح القائمة
+          InkWell(
+            onTap: () {
+              _autoCollapseTimer?.cancel();
+              setState(() => _sidebarExpanded = !_sidebarExpanded);
+              if (_sidebarExpanded) {
+                _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
+                  if (mounted && _sidebarExpanded) {
+                    setState(() => _sidebarExpanded = false);
+                  }
+                });
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                mainAxisAlignment: expanded
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.center,
+                children: [
+                  AnimatedRotation(
+                    turns: expanded ? 0.0 : 0.5,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.menu_open,
+                        color: _sidebarToolbar, size: r.iconSizeSmall),
+                  ),
+                  if (expanded) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'القائمة',
+                      style: GoogleFonts.cairo(
+                        fontSize: r.bodySize,
+                        fontWeight: FontWeight.bold,
+                        color: _sidebarToolbar,
+                      ),
                     ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: _sidebarBorder),
+          const SizedBox(height: 8),
+          // ── عناصر القائمة ──
+          // إدارة المستخدمين (مدير فقط)
+          if (_isAdminUser)
+            _sidebarBtn(
+              icon: Icons.people,
+              label: 'إدارة المستخدمين',
+              color: const Color(0xFF3498DB),
+              onTap: () {
+                final companyId =
+                    widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
+                final companyCode = widget.tenantCode ??
+                    VpsAuthService.instance.currentCompanyCode;
+                final companyName = widget.department.isNotEmpty
+                    ? widget.department
+                    : (VpsAuthService.instance.currentCompanyName ?? 'الشركة');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        companyId != null && companyCode != null
+                            ? UsersPageVPS(
+                                companyId: companyId,
+                                companyName: companyName,
+                                permissions: {'users': true},
+                              )
+                            : companyId != null
+                                ? UsersPageFirebase(
+                                    tenantId: companyId,
+                                    permissions: widget.permissions,
+                                    pageAccess: widget.pageAccess,
+                                  )
+                                : UsersPage(permissions: widget.permissions),
+                  ),
+                );
+              },
+            ),
+          // المستخدمين (محظور) لغير المدراء
+          if (!_isAdminUser)
+            _sidebarBtn(
+              icon: Icons.people_outline,
+              label: 'المستخدمين',
+              color: Colors.grey,
+              onTap: () => _showPermissionDenied(),
+            ),
+          // تشخيص النظام
+          if (PermissionManager.instance.canView('diagnostics'))
+            _sidebarBtn(
+              icon: Icons.bug_report,
+              label: 'تشخيص النظام',
+              color: const Color(0xFFE67E22),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CompanyDiagnosticsPage(
+                    tenantId: widget.tenantId,
+                    tenantCode: widget.tenantCode,
+                    pageAccess: widget.pageAccess,
                   ),
                 ),
-                Icon(trailingIcon, color: Colors.white, size: 14),
-              ],
+              ),
+            ),
+          // إعدادات الشركة (مدير فقط)
+          if (_isAdminUser)
+            _sidebarBtn(
+              icon: Icons.settings,
+              label: 'إعدادات الشركة',
+              color: const Color(0xFFF39C12),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CompanySettingsPage(
+                    companyId: widget.tenantId ??
+                        VpsAuthService.instance.currentCompanyId,
+                    companyCode: widget.tenantCode ??
+                        VpsAuthService.instance.currentCompanyCode,
+                    currentUserRole: widget.permissions,
+                    currentUsername: widget.username,
+                  ),
+                ),
+              ),
+            ),
+          // تسجيل الخروج
+          _sidebarBtn(
+            icon: Icons.logout,
+            label: 'تسجيل الخروج',
+            color: const Color(0xFFE74C3C),
+            onTap: () => _showLogoutConfirmation(),
+          ),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  /// زر القائمة الجانبية (بنفس تصميم شاشة الحسابات)
+  Widget _sidebarBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final r = context.responsive;
+    final expanded = _sidebarExpanded;
+    return Tooltip(
+      message: expanded ? '' : label,
+      preferBelow: false,
+      child: Padding(
+        padding:
+            EdgeInsets.symmetric(horizontal: expanded ? 8 : 6, vertical: 2),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            hoverColor: color.withOpacity(0.08),
+            splashColor: color.withOpacity(0.15),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: expanded ? 10 : 0, vertical: 10),
+              child: expanded
+                  ? Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child:
+                              Icon(icon, color: color, size: r.iconSizeSmall),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: GoogleFonts.cairo(
+                              fontSize: r.subtitleSize,
+                              fontWeight: FontWeight.w600,
+                              color: _sidebarTextDark,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.chevron_left,
+                            color: _sidebarTextGray, size: r.iconSizeSmall),
+                      ],
+                    )
+                  : Center(
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(icon, color: color, size: r.iconSizeSmall),
+                      ),
+                    ),
             ),
           ),
         ),
@@ -1148,191 +1560,462 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildBody() {
-    final width = MediaQuery.of(context).size.width;
-    final maxContentWidth = AppBreakpoints.isLargeDesktop(width)
-        ? 1200.0
-        : AppBreakpoints.isDesktop(width)
-            ? 1000.0
-            : AppBreakpoints.isTablet(width)
-                ? 800.0
-                : double.infinity;
+    final r = context.responsive;
+    final maxContentWidth = r.maxContentWidth;
 
     return Stack(
-      children: [
-        // Light background
-        Container(
-          color: const Color(0xFFF5F6FA),
-        ),
-        SafeArea(
-          child: Column(
-            children: [
-              // Add small top spacing to lower the company title a bit on phones
-              const SizedBox(height: 2),
-              // Compact header section
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 4),
-                    // بطاقة ترحيب بتصميم فاتح
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFFE8E8E8),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          // صورة مستخدم
-                          Container(
-                            width: 46,
-                            height: 46,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color:
-                                      const Color(0xFF3498DB).withOpacity(0.3),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(3),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                              padding: const EdgeInsets.all(2),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(25),
-                                child: Image.asset(
-                                  'assets/splash_background.jpg',
-                                  width: 38,
-                                  height: 38,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  '✨ مرحبا بكم في شركة الصدارة',
-                                  style: TextStyle(
-                                    color: Color(0xFF3498DB),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'مرحباً ${widget.username}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF333333),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                if (_isAdminUser) ...[
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 2),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          // شخصية متحركة ترحيبية
-                          SizedBox(
-                            width: 56,
-                            height: 56,
-                            child: Lottie.asset(
-                              'assets/animations/welcome_person.json',
-                              repeat: true,
-                              animate: true,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // زر معلومات
-                          InkWell(
-                            onTap: () => _showUserInfo(context),
-                            borderRadius: BorderRadius.circular(18),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3498DB).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color:
-                                      const Color(0xFF3498DB).withOpacity(0.3),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.info_outline,
-                                color: Color(0xFF3498DB),
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ), // Enhanced menu section
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: maxContentWidth),
-                      child: _buildMenuGrid(),
-                    ),
-                  ),
+          children: [
+            // Light background
+            Container(
+              color: const Color(0xFFF5F6FA),
+            ),
+            // رموز إنترنت ثابتة في الخلفية
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _InternetIconsBgPainter(
+                  animValue: 0,
+                  color: const Color(0xFF3498DB).withValues(alpha: 0.35),
                 ),
               ),
-            ],
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  // Add small top spacing to lower the company title a bit on phones
+                  const SizedBox(height: 2),
+                  // Compact header section
+                  Container(
+                    width: double.infinity,
+                    padding:
+                        EdgeInsets.symmetric(horizontal: r.contentPaddingH),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 4),
+                        // بطاقة ترحيب بتصميم فاتح
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: r.isMobile ? 10 : 16,
+                              vertical: r.isMobile ? 8 : 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFD5D5D5),
+                              width: 2.0,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              // صورة مستخدم
+                              Container(
+                                width: r.userAvatarSize,
+                                height: r.userAvatarSize,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF3498DB),
+                                      Color(0xFF2980B9)
+                                    ],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF3498DB)
+                                          .withOpacity(0.3),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.all(2),
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                  padding: const EdgeInsets.all(2),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(25),
+                                    child: Image.asset(
+                                      'assets/splash_background.jpg',
+                                      width: r.userAvatarSize - 8,
+                                      height: r.userAvatarSize - 8,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: r.isMobile ? 8 : 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '✨ مرحبا بكم في شركة الصدارة',
+                                      style: TextStyle(
+                                        color: const Color(0xFF000000),
+                                        fontSize: r.captionSize + 1,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'مرحباً ${widget.username}',
+                                      style: TextStyle(
+                                        color: const Color(0xFF000000),
+                                        fontSize: r.subtitleSize + 1,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    if (_isAdminUser) ...[
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 2),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              // شخصية ترحيبية ثابتة
+                              Text('🧔',
+                                  style:
+                                      TextStyle(fontSize: r.statValueSize)),
+                              const SizedBox(width: 6),
+                              // زر معلومات
+                              InkWell(
+                                onTap: () => _showUserInfo(context),
+                                borderRadius: BorderRadius.circular(14),
+                                child: Container(
+                                  width: r.infoButtonSize,
+                                  height: r.infoButtonSize,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3498DB)
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFF3498DB)
+                                          .withOpacity(0.3),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    color: const Color(0xFF3498DB),
+                                    size: r.iconSizeSmall - 2,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ), // Enhanced menu section
+                  // ===== عدادات سريعة =====
+                  Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: r.contentPaddingH),
+                    child: _buildCountersRow(),
+                  ),
+                  SizedBox(height: r.isMobile ? 4 : 8),
+                  Expanded(
+                    child: Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: r.contentPaddingH),
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(maxWidth: maxContentWidth),
+                          child: _buildMenuGrid(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+  }
+
+  // التنقل إلى صفحة FTTH - مباشرة إذا كان مسجل دخول، أو عبر صفحة تسجيل الدخول
+  Future<void> _navigateToFtth() async {
+    final dual = DualAuthService.instance;
+
+    // فحص إذا كان FTTH مسجل دخول بالفعل
+    final hasSession = await dual.checkFtthSession();
+
+    if (hasSession && dual.ftthToken != null && dual.ftthUsername != null) {
+      // ✅ FTTH مسجل دخول - انتقل مباشرة بدون صفحة تسجيل الدخول
+      final ftthUsername = dual.ftthUsername!;
+      final ftthIsAdmin = ftthUsername.toLowerCase().contains('admin') ||
+          ftthUsername.toLowerCase().contains('مدير');
+
+      // بناء الصلاحيات المجمعة
+      final pm = PermissionManager.instance;
+      Map<String, bool> combinedPermissions;
+      if (pm.isLoaded) {
+        combinedPermissions = pm.buildPageAccess();
+      } else {
+        combinedPermissions = widget.pageAccess;
+      }
+
+      // تحديد الصلاحيات النهائية
+      final isFirstSystemAdmin =
+          widget.permissions.toLowerCase().contains('مدير') ||
+              widget.permissions.toLowerCase().contains('admin');
+      final finalPermissions =
+          (isFirstSystemAdmin || ftthIsAdmin) ? 'مدير مجمع' : 'مستخدم مجمع';
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ftth_home.HomePage(
+            username: ftthUsername,
+            authToken: dual.ftthToken!,
+            permissions: finalPermissions,
+            department: widget.department,
+            center: widget.center,
+            salary: widget.salary,
+            pageAccess: combinedPermissions,
+            firstSystemUsername: widget.username,
+            firstSystemPermissions: widget.permissions,
+            firstSystemDepartment: widget.department,
+            firstSystemCenter: widget.center,
+            firstSystemSalary: widget.salary,
+            firstSystemPageAccess: widget.pageAccess,
+          ),
+        ),
+      );
+    } else {
+      // ❌ FTTH غير مسجل دخول - فتح صفحة تسجيل الدخول العادية
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ftth_login.LoginPage(
+            firstSystemUsername: widget.username,
+            firstSystemPermissions: widget.permissions,
+            firstSystemDepartment: widget.department,
+            firstSystemCenter: widget.center,
+            firstSystemSalary: widget.salary,
+            firstSystemPageAccess: widget.pageAccess,
+          ),
+        ),
+      );
+    }
+  }
+
+  // ===== صف العدادات السريعة (تصميم FTTH) =====
+  Widget _buildCountersRow() {
+    final r = context.responsive;
+    return Row(
+      children: [
+        Expanded(
+          child: _buildFtthCounterCard(
+            label: 'طلبات الوكلاء',
+            value: _pendingAgentRequests,
+            icon: Icons.person_add_alt_1_rounded,
+            color: const Color(0xFFE74C3C),
+            loading: _countersLoading,
+          ),
+        ),
+        SizedBox(width: r.counterSpacing),
+        Expanded(
+          child: _buildFtthCounterCard(
+            label: 'المهام المفتوحة',
+            value: _openTasksCount,
+            icon: Icons.assignment_late_rounded,
+            color: const Color(0xFFF39C12),
+            loading: _countersLoading,
+          ),
+        ),
+        SizedBox(width: r.counterSpacing),
+        Expanded(
+          child: _buildFtthCounterCard(
+            label: 'طلبات الموظفين',
+            value: _pendingEmployeeRequests,
+            icon: Icons.request_page_rounded,
+            color: const Color(0xFF8E44AD),
+            loading: _countersLoading,
           ),
         ),
       ],
     );
   }
 
+  /// بطاقة عداد بتصميم FTTH مع مقياس الأمواج الشعاعية
+  Widget _buildFtthCounterCard({
+    required String label,
+    required int value,
+    required IconData icon,
+    required Color color,
+    required bool loading,
+  }) {
+    // لون ثانوي للتدرج
+    final Color color2 = HSLColor.fromColor(color)
+        .withHue((HSLColor.fromColor(color).hue + 40) % 360)
+        .toColor();
+
+    final hoverNotifier = ValueNotifier<bool>(false);
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: hoverNotifier,
+      builder: (context, isHovered, child) {
+        final r = context.responsive;
+        return MouseRegion(
+          onEnter: (_) => hoverNotifier.value = true,
+          onExit: (_) => hoverNotifier.value = false,
+          child: AnimatedScale(
+            scale: isHovered ? 1.04 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              padding: r.counterCardPadding,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isHovered
+                      ? color.withValues(alpha: 0.35)
+                      : const Color(0xFFE0E0E0),
+                  width: isHovered ? 2.5 : 2.0,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isHovered
+                        ? color.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.04),
+                    blurRadius: isHovered ? 16 : 6,
+                    spreadRadius: isHovered ? -1 : -2,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // دائرة الأمواج الشعاعية
+                  loading
+                      ? SizedBox(
+                          width: r.counterCircleSize,
+                          height: r.counterCircleSize,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: color,
+                            ),
+                          ),
+                        )
+                      : AnimatedBuilder(
+                          animation: _counterAnimController,
+                          builder: (context, child) {
+                            final curvedVal = Curves.easeOutExpo
+                                .transform(_counterAnimController.value);
+                            final displayValue = (value * curvedVal).round();
+                            return SizedBox(
+                              width: r.counterCircleSize,
+                              height: r.counterCircleSize,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  CustomPaint(
+                                    size: Size.square(r.counterCircleSize),
+                                    painter: _HomeRadialWavePainter(
+                                      progress: 1.0,
+                                      color1: color,
+                                      color2: color2,
+                                      animValue: 0,
+                                    ),
+                                  ),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _formatCounter(displayValue),
+                                        style: TextStyle(
+                                          fontSize: r.counterValueSize,
+                                          fontWeight: FontWeight.w900,
+                                          color: const Color(0xFF1A1A1A),
+                                          letterSpacing: -0.3,
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                  SizedBox(height: r.isMobile ? 4 : 8),
+                  // أيقونة + تسمية
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, color: color, size: r.counterLabelSize + 1),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: r.counterLabelSize,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// تنسيق عداد مع فواصل الآلاف
+  String _formatCounter(int number) {
+    if (number < 1000) return number.toString();
+    final str = number.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      buffer.write(str[i]);
+      count++;
+      if (count % 3 == 0 && i > 0) buffer.write(',');
+    }
+    return buffer.toString().split('').reversed.join('');
+  }
+
   // شبكة عناصر القائمة - تخطيط شبكي فاخر
   Widget _buildMenuGrid() {
+    final r = context.responsive;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 700 ? 3 : 2;
-        const spacing = 14.0;
+        final crossAxisCount = r.gridColumns;
+        final spacing = r.gridSpacing;
         final itemWidth =
             (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
                 crossAxisCount;
@@ -1345,19 +2028,8 @@ class _HomePageState extends State<HomePage>
             icon: Icons.person_outline,
             gradient: [Colors.green[500]!, Colors.green[700]!],
             permissionKey: 'agent',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ftth_login.LoginPage(
-                  firstSystemUsername: widget.username,
-                  firstSystemPermissions: widget.permissions,
-                  firstSystemDepartment: widget.department,
-                  firstSystemCenter: widget.center,
-                  firstSystemSalary: widget.salary,
-                  firstSystemPageAccess: widget.pageAccess,
-                ),
-              ),
-            ),
+            badgeCount: _pendingAgentRequests,
+            onTap: () => _navigateToFtth(),
           ),
           // 2) Tasks
           _buildEnhancedMenuItem(
@@ -1366,6 +2038,7 @@ class _HomePageState extends State<HomePage>
             icon: Icons.task_alt,
             gradient: [Colors.orange[500]!, Colors.orange[700]!],
             permissionKey: 'tasks',
+            badgeCount: _openTasksCount,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -1405,6 +2078,7 @@ class _HomePageState extends State<HomePage>
             icon: Icons.groups_rounded,
             gradient: [const Color(0xFF0D47A1), const Color(0xFF1565C0)],
             permissionKey: 'hr',
+            badgeCount: _pendingEmployeeRequests,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -1530,7 +2204,7 @@ class _HomePageState extends State<HomePage>
 
         return Wrap(
           spacing: spacing,
-          runSpacing: 12,
+          runSpacing: r.isMobile ? 8 : 12,
           children: items
               .map((item) => SizedBox(width: itemWidth, child: item))
               .toList(),
@@ -1540,18 +2214,19 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
+    final r = context.responsive;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue[600], size: 14),
+          Icon(icon, color: Colors.blue[600], size: r.iconSizeSmall),
           const SizedBox(width: 6),
           Text(
             '$label: ',
             style: TextStyle(
-              color: Colors.blue[700],
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+              color: Colors.black,
+              fontWeight: FontWeight.w700,
+              fontSize: r.subtitleSize,
             ),
           ),
           Expanded(
@@ -1559,7 +2234,7 @@ class _HomePageState extends State<HomePage>
               value,
               style: TextStyle(
                 color: Colors.grey[700],
-                fontSize: 12,
+                fontSize: r.captionSize,
               ),
             ),
           ),
@@ -1569,6 +2244,7 @@ class _HomePageState extends State<HomePage>
   }
 
   void _showLogoutConfirmation() {
+    final r = context.responsive;
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1583,9 +2259,9 @@ class _HomePageState extends State<HomePage>
               const Text('تأكيد تسجيل الخروج'),
             ],
           ),
-          content: const Text(
+          content: Text(
             'هل أنت متأكد من رغبتك في تسجيل الخروج من التطبيق؟',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: r.titleSize),
           ),
           actions: [
             TextButton(
@@ -1618,6 +2294,7 @@ class _HomePageState extends State<HomePage>
   }
 
   void _showPermissionDenied() {
+    final r = context.responsive;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1631,7 +2308,7 @@ class _HomePageState extends State<HomePage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('حسنًا', style: TextStyle(fontSize: 16)),
+            child: Text('حسنًا', style: TextStyle(fontSize: r.titleSize)),
           ),
         ],
       ),
@@ -1677,15 +2354,16 @@ class PermissionsManagementPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(r.contentPaddingH),
       height: MediaQuery.of(context).size.height * 0.7,
       child: Column(
         children: [
-          const Text(
+          Text(
             'إدارة صلاحيات المستخدمين',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: r.titleSize,
               fontWeight: FontWeight.bold,
               color: Colors.blue,
             ),
@@ -1705,14 +2383,14 @@ class PermissionsManagementPanel extends StatelessWidget {
             child: ListView(
               children: [
                 // ═══ صلاحيات النظام الأول (تُولّد تلقائياً من السجل المركزي) ═══
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
                     '— النظام الأول —',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.amber,
-                      fontSize: 13,
+                      fontSize: r.subtitleSize,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -1725,14 +2403,14 @@ class PermissionsManagementPanel extends StatelessWidget {
                   ),
                 ),
                 // ═══ صلاحيات النظام الثاني (تُولّد تلقائياً من السجل المركزي) ═══
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
                     '— النظام الثاني (FTTH) —',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.cyan,
-                      fontSize: 13,
+                      fontSize: r.subtitleSize,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -1793,34 +2471,35 @@ class UserInfoDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
       title: Container(
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(r.cardPadding),
         decoration: BoxDecoration(
           color: Colors.blue[100],
           borderRadius: BorderRadius.circular(15),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.person_pin, color: Colors.blue, size: 30),
-            SizedBox(width: 10),
+            Icon(Icons.person_pin, color: Colors.blue, size: r.iconSizeLarge),
+            const SizedBox(width: 10),
             Text(
               'معلومات المستخدم',
               style: TextStyle(
                 color: Colors.blue,
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: r.titleSize,
               ),
             ),
           ],
         ),
       ),
       content: Container(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(r.contentPaddingH),
         decoration: BoxDecoration(
           color: Colors.grey[50],
           borderRadius: BorderRadius.circular(15),
@@ -1828,18 +2507,19 @@ class UserInfoDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _infoTile(Icons.person, 'ا��م المستخدم', username),
+            _infoTile(context, Icons.person, 'اسم المستخدم', username),
             const Divider(height: 20),
-            _infoTile(Icons.admin_panel_settings, 'الصلاحيات', permissions),
+            _infoTile(
+                context, Icons.admin_panel_settings, 'الصلاحيات', permissions),
             const Divider(height: 20),
-            _infoTile(Icons.business, 'القسم', department),
+            _infoTile(context, Icons.business, 'القسم', department),
             const Divider(height: 20),
-            _infoTile(Icons.location_on, 'المركز', center),
+            _infoTile(context, Icons.location_on, 'المركز', center),
             const Divider(height: 20),
-            _infoTile(Icons.attach_money, 'الراتب', salary),
+            _infoTile(context, Icons.attach_money, 'الراتب', salary),
             if (isAdmin) ...[
               const Divider(height: 20),
-              _infoTile(Icons.security, 'حالة المدير', 'مفعل'),
+              _infoTile(context, Icons.security, 'حالة المدير', 'مفعل'),
             ],
           ],
         ),
@@ -1858,7 +2538,9 @@ class UserInfoDialog extends StatelessWidget {
     );
   }
 
-  Widget _infoTile(IconData icon, String title, String value) {
+  Widget _infoTile(
+      BuildContext context, IconData icon, String title, String value) {
+    final r = context.responsive;
     return Row(
       children: [
         Container(
@@ -1867,7 +2549,7 @@ class UserInfoDialog extends StatelessWidget {
             color: Colors.blue[50],
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: Colors.blue[700], size: 24),
+          child: Icon(icon, color: Colors.blue[700], size: r.iconSizeMedium),
         ),
         const SizedBox(width: 15),
         Expanded(
@@ -1878,14 +2560,14 @@ class UserInfoDialog extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: Colors.grey[600],
-                  fontSize: 14,
+                  fontSize: r.bodySize,
                 ),
               ),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: r.titleSize,
                 ),
               ),
             ],
@@ -1894,4 +2576,405 @@ class UserInfoDialog extends StatelessWidget {
       ],
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// رسام الأمواج الشعاعية (مقياس الأمواج) — نفس تصميم FTTH
+// ═══════════════════════════════════════════════════════════════════
+class _HomeRadialWavePainter extends CustomPainter {
+  final double progress; // 0..1
+  final Color color1;
+  final Color color2;
+  final double animValue; // 0..1 لتحريك الأمواج
+
+  _HomeRadialWavePainter({
+    required this.progress,
+    required this.color1,
+    required this.color2,
+    required this.animValue,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = math.min(size.width, size.height) / 2;
+    final innerRadius = outerRadius * 0.52;
+    final spikeCount = 72;
+
+    // دائرة داخلية بيضاء
+    final innerCirclePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, innerRadius + 2, innerCirclePaint);
+
+    // حلقة داخلية خفيفة
+    final innerRingPaint = Paint()
+      ..color = color1.withValues(alpha: 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawCircle(center, innerRadius, innerRingPaint);
+
+    // رسم الأشواك الشعاعية
+    for (int i = 0; i < spikeCount; i++) {
+      final angle = (i / spikeCount) * 2 * math.pi - math.pi / 2;
+      final spikeProgress = i / spikeCount;
+
+      final wave1 =
+          math.sin(spikeProgress * math.pi * 6 + animValue * math.pi * 2) * 0.4;
+      final wave2 =
+          math.sin(spikeProgress * math.pi * 10 + animValue * math.pi * 3) *
+              0.25;
+      final wave3 =
+          math.cos(spikeProgress * math.pi * 14 + animValue * math.pi * 1.5) *
+              0.15;
+      final waveHeight =
+          0.3 + (wave1 + wave2 + wave3 + 0.8).clamp(0.0, 1.0) * 0.7;
+
+      final maxSpikeLen = (outerRadius - innerRadius - 2) * waveHeight;
+
+      final startX = center.dx + (innerRadius + 2) * math.cos(angle);
+      final startY = center.dy + (innerRadius + 2) * math.sin(angle);
+      final start = Offset(startX, startY);
+
+      final isActive = spikeProgress <= progress;
+
+      if (isActive) {
+        final t = spikeProgress;
+        final spikeColor = Color.lerp(color1, color2, t)!;
+
+        final endX = startX + maxSpikeLen * math.cos(angle);
+        final endY = startY + maxSpikeLen * math.sin(angle);
+        final end = Offset(endX, endY);
+
+        // هالة
+        final glowPaint = Paint()
+          ..color = spikeColor.withValues(alpha: 0.15)
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+        canvas.drawLine(start, end, glowPaint);
+
+        // الشوكة
+        final spikePaint = Paint()
+          ..color = spikeColor.withValues(alpha: 0.85)
+          ..strokeWidth = 1.5
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(start, end, spikePaint);
+
+        // نقطة مضيئة
+        if (waveHeight > 0.65) {
+          final tipPaint = Paint()
+            ..color = spikeColor.withValues(alpha: 0.6)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+          canvas.drawCircle(end, 1.2, tipPaint);
+        }
+      } else {
+        final dimLen = maxSpikeLen * 0.3;
+        final endX = startX + dimLen * math.cos(angle);
+        final endY = startY + dimLen * math.sin(angle);
+        final end = Offset(endX, endY);
+
+        final dimPaint = Paint()
+          ..color = color1.withValues(alpha: 0.10)
+          ..strokeWidth = 1.0
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(start, end, dimPaint);
+      }
+    }
+
+    // هالة ملونة خارجية
+    if (progress > 0.01) {
+      final glowAngle = progress * 2 * math.pi;
+      final glowPaint = Paint()
+        ..shader = SweepGradient(
+          startAngle: -math.pi / 2,
+          endAngle: -math.pi / 2 + 2 * math.pi,
+          colors: [
+            color1.withValues(alpha: 0.0),
+            color1.withValues(alpha: 0.08),
+            color2.withValues(alpha: 0.12),
+            color2.withValues(alpha: 0.0),
+          ],
+          stops: const [0.0, 0.3, 0.6, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: outerRadius))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = outerRadius - innerRadius
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+      canvas.drawArc(
+        Rect.fromCircle(
+            center: center, radius: (outerRadius + innerRadius) / 2),
+        -math.pi / 2,
+        glowAngle,
+        false,
+        glowPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HomeRadialWavePainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.color1 != color1 ||
+        oldDelegate.color2 != color2 ||
+        oldDelegate.animValue != animValue;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// رسام خلفية رموز الإنترنت المتحركة
+// ═══════════════════════════════════════════════════════════════════
+class _InternetIconsBgPainter extends CustomPainter {
+  final double animValue;
+  final Color color;
+
+  _InternetIconsBgPainter({
+    required this.animValue,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+
+    final icons = <_HomeIconDef>[
+      // WiFi
+      _HomeIconDef(0.08, 0.12, 0, 42),
+      _HomeIconDef(0.85, 0.08, 0, 36),
+      _HomeIconDef(0.45, 0.88, 0, 40),
+      _HomeIconDef(0.92, 0.55, 0, 34),
+      _HomeIconDef(0.15, 0.72, 0, 38),
+      // Globe
+      _HomeIconDef(0.72, 0.18, 1, 40),
+      _HomeIconDef(0.25, 0.42, 1, 34),
+      _HomeIconDef(0.60, 0.65, 1, 36),
+      _HomeIconDef(0.05, 0.45, 1, 30),
+      // Signal bars
+      _HomeIconDef(0.55, 0.10, 2, 36),
+      _HomeIconDef(0.35, 0.58, 2, 32),
+      _HomeIconDef(0.80, 0.78, 2, 38),
+      _HomeIconDef(0.18, 0.25, 2, 30),
+      // Cloud
+      _HomeIconDef(0.40, 0.22, 3, 42),
+      _HomeIconDef(0.75, 0.42, 3, 36),
+      _HomeIconDef(0.10, 0.88, 3, 40),
+      _HomeIconDef(0.90, 0.30, 3, 32),
+      // Ethernet
+      _HomeIconDef(0.30, 0.78, 4, 34),
+      _HomeIconDef(0.65, 0.48, 4, 30),
+      _HomeIconDef(0.50, 0.35, 4, 36),
+      _HomeIconDef(0.20, 0.55, 4, 28),
+      // Router
+      _HomeIconDef(0.82, 0.88, 5, 40),
+      _HomeIconDef(0.12, 0.05, 5, 34),
+      _HomeIconDef(0.55, 0.52, 5, 30),
+      // Server
+      _HomeIconDef(0.03, 0.32, 6, 38),
+      _HomeIconDef(0.68, 0.02, 6, 32),
+      _HomeIconDef(0.95, 0.68, 6, 28),
+      // Shield
+      _HomeIconDef(0.38, 0.05, 7, 34),
+      _HomeIconDef(0.78, 0.60, 7, 30),
+      _HomeIconDef(0.22, 0.90, 7, 36),
+    ];
+
+    for (int i = 0; i < icons.length; i++) {
+      final def = icons[i];
+      final phase = i * 0.37;
+      final floatX = math.sin(animValue * math.pi * 2 + phase) * 12;
+      final floatY = math.cos(animValue * math.pi * 2 + phase * 1.3) * 10;
+      final alpha = 0.6 + math.sin(animValue * math.pi * 2 + phase * 0.7) * 0.4;
+
+      final cx = size.width * def.x + floatX;
+      final cy = size.height * def.y + floatY;
+      final s = def.size;
+
+      final iconColor = color.withValues(alpha: color.a * alpha);
+      paint.color = iconColor;
+      paint.strokeWidth = s * 0.12;
+      fillPaint.color = iconColor;
+
+      switch (def.type) {
+        case 0:
+          _drawWifi(canvas, cx, cy, s, paint);
+          break;
+        case 1:
+          _drawGlobe(canvas, cx, cy, s, paint);
+          break;
+        case 2:
+          _drawSignal(canvas, cx, cy, s, fillPaint);
+          break;
+        case 3:
+          _drawCloud(canvas, cx, cy, s, paint);
+          break;
+        case 4:
+          _drawEthernet(canvas, cx, cy, s, fillPaint, paint);
+          break;
+        case 5:
+          _drawRouter(canvas, cx, cy, s, paint, fillPaint);
+          break;
+        case 6:
+          _drawServer(canvas, cx, cy, s, paint, fillPaint);
+          break;
+        case 7:
+          _drawShield(canvas, cx, cy, s, paint);
+          break;
+      }
+    }
+  }
+
+  void _drawWifi(Canvas canvas, double cx, double cy, double s, Paint p) {
+    final rect1 = Rect.fromCenter(center: Offset(cx, cy), width: s, height: s);
+    final rect2 = Rect.fromCenter(
+        center: Offset(cx, cy), width: s * 0.65, height: s * 0.65);
+    final rect3 = Rect.fromCenter(
+        center: Offset(cx, cy), width: s * 0.3, height: s * 0.3);
+    p.strokeWidth = s * 0.07;
+    canvas.drawArc(rect1, -math.pi * 0.75, math.pi * 0.5, false, p);
+    canvas.drawArc(rect2, -math.pi * 0.75, math.pi * 0.5, false, p);
+    canvas.drawArc(rect3, -math.pi * 0.75, math.pi * 0.5, false, p);
+    canvas.drawCircle(
+        Offset(cx, cy + s * 0.15), s * 0.06, p..style = PaintingStyle.fill);
+    p.style = PaintingStyle.stroke;
+  }
+
+  void _drawGlobe(Canvas canvas, double cx, double cy, double s, Paint p) {
+    final r = s * 0.45;
+    p.strokeWidth = s * 0.06;
+    canvas.drawCircle(Offset(cx, cy), r, p);
+    canvas.drawLine(Offset(cx - r, cy), Offset(cx + r, cy), p);
+    final ovalRect =
+        Rect.fromCenter(center: Offset(cx, cy), width: r, height: r * 2);
+    canvas.drawOval(ovalRect, p);
+  }
+
+  void _drawSignal(Canvas canvas, double cx, double cy, double s, Paint p) {
+    final barW = s * 0.14;
+    final gap = s * 0.06;
+    final totalW = barW * 4 + gap * 3;
+    final startX = cx - totalW / 2;
+    for (int i = 0; i < 4; i++) {
+      final barH = s * (0.25 + i * 0.2);
+      final x = startX + i * (barW + gap);
+      final y = cy + s * 0.4 - barH;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, y, barW, barH),
+          Radius.circular(barW * 0.3),
+        ),
+        p,
+      );
+    }
+  }
+
+  void _drawCloud(Canvas canvas, double cx, double cy, double s, Paint p) {
+    p.strokeWidth = s * 0.06;
+    final path = Path();
+    path.moveTo(cx - s * 0.35, cy + s * 0.1);
+    path.quadraticBezierTo(
+        cx - s * 0.45, cy - s * 0.15, cx - s * 0.15, cy - s * 0.2);
+    path.quadraticBezierTo(
+        cx - s * 0.05, cy - s * 0.45, cx + s * 0.15, cy - s * 0.2);
+    path.quadraticBezierTo(
+        cx + s * 0.4, cy - s * 0.25, cx + s * 0.35, cy + s * 0.1);
+    path.close();
+    canvas.drawPath(path, p);
+  }
+
+  void _drawEthernet(
+      Canvas canvas, double cx, double cy, double s, Paint fill, Paint stroke) {
+    final r = s * 0.08;
+    final pts = [
+      Offset(cx - s * 0.25, cy - s * 0.15),
+      Offset(cx + s * 0.25, cy - s * 0.15),
+      Offset(cx, cy + s * 0.2),
+    ];
+    stroke.strokeWidth = s * 0.05;
+    canvas.drawLine(pts[0], pts[1], stroke);
+    canvas.drawLine(pts[1], pts[2], stroke);
+    canvas.drawLine(pts[2], pts[0], stroke);
+    for (final pt in pts) {
+      canvas.drawCircle(pt, r, fill);
+    }
+  }
+
+  void _drawRouter(
+      Canvas canvas, double cx, double cy, double s, Paint stroke, Paint fill) {
+    stroke.strokeWidth = s * 0.06;
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+          center: Offset(cx, cy + s * 0.1), width: s * 0.6, height: s * 0.3),
+      Radius.circular(s * 0.05),
+    );
+    canvas.drawRRect(bodyRect, stroke);
+    canvas.drawLine(
+      Offset(cx - s * 0.12, cy - s * 0.05),
+      Offset(cx - s * 0.2, cy - s * 0.3),
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(cx + s * 0.12, cy - s * 0.05),
+      Offset(cx + s * 0.2, cy - s * 0.3),
+      stroke,
+    );
+    canvas.drawCircle(Offset(cx - s * 0.2, cy - s * 0.3), s * 0.04, fill);
+    canvas.drawCircle(Offset(cx + s * 0.2, cy - s * 0.3), s * 0.04, fill);
+  }
+
+  void _drawServer(
+      Canvas canvas, double cx, double cy, double s, Paint stroke, Paint fill) {
+    stroke.strokeWidth = s * 0.06;
+    final top = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cx - s * 0.3, cy - s * 0.3, s * 0.6, s * 0.25),
+      Radius.circular(s * 0.04),
+    );
+    final bot = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cx - s * 0.3, cy + s * 0.02, s * 0.6, s * 0.25),
+      Radius.circular(s * 0.04),
+    );
+    canvas.drawRRect(top, stroke);
+    canvas.drawRRect(bot, stroke);
+    canvas.drawCircle(Offset(cx + s * 0.15, cy - s * 0.17), s * 0.035, fill);
+    canvas.drawCircle(Offset(cx + s * 0.15, cy + s * 0.15), s * 0.035, fill);
+  }
+
+  void _drawShield(Canvas canvas, double cx, double cy, double s, Paint p) {
+    p.strokeWidth = s * 0.07;
+    final path = Path();
+    path.moveTo(cx, cy - s * 0.4);
+    path.lineTo(cx - s * 0.3, cy - s * 0.2);
+    path.lineTo(cx - s * 0.3, cy + s * 0.1);
+    path.quadraticBezierTo(cx, cy + s * 0.4, cx + s * 0.3, cy + s * 0.1);
+    path.lineTo(cx + s * 0.3, cy - s * 0.2);
+    path.close();
+    canvas.drawPath(path, p);
+    p.strokeWidth = s * 0.08;
+    canvas.drawLine(
+      Offset(cx - s * 0.1, cy),
+      Offset(cx - s * 0.02, cy + s * 0.1),
+      p,
+    );
+    canvas.drawLine(
+      Offset(cx - s * 0.02, cy + s * 0.1),
+      Offset(cx + s * 0.12, cy - s * 0.08),
+      p,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _InternetIconsBgPainter oldDelegate) {
+    return oldDelegate.animValue != animValue || oldDelegate.color != color;
+  }
+}
+
+class _HomeIconDef {
+  final double x;
+  final double y;
+  final int type;
+  final double size;
+  const _HomeIconDef(this.x, this.y, this.type, this.size);
 }

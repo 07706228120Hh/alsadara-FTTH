@@ -2951,7 +2951,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           return AlertDialog(
             title: const Text('تعديل قالب الطباعة'),
             content: SizedBox(
-              width: 520,
+              width: double.maxFinite,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -3590,7 +3590,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           ],
         ),
         content: SizedBox(
-          width: 360,
+          width: double.maxFinite,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -4536,7 +4536,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         barrierDismissible: false,
         builder: (_) => const AlertDialog(
           content: SizedBox(
-            width: 230,
+            width: double.maxFinite,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -4770,7 +4770,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         barrierDismissible: false,
         builder: (_) => const AlertDialog(
           content: SizedBox(
-            width: 220,
+            width: double.maxFinite,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -8653,18 +8653,22 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   Map<String, dynamic> _normalizePriceModel(Map<String, dynamic> model) {
     final dynamic total = model['totalPrice'];
     final dynamic base = model['basePrice'];
-    final dynamic discount = model['discount'];
+    // الخصم: يأتي من 'discount' (bundles API) أو 'totalOffersDiscount' (calculate-price API)
+    final dynamic discount = model['discount'] ?? model['totalOffersDiscount'];
 
     String currency = 'IQD';
     if (total is Map && total['currency'] != null) {
       currency = total['currency'].toString();
+    } else if (discount is Map && discount['currency'] != null) {
+      currency = discount['currency'].toString();
     } else if (model['currency'] != null) {
       currency = model['currency'].toString();
     }
 
     final double totalVal = _asDouble(total);
-    final double baseVal = _asDouble(base ?? totalVal);
     final double discVal = _asDouble(discount ?? 0);
+    // السعر الأساسي = totalPrice + discount (إذا لم يكن basePrice متاحاً في الـ API)
+    final double baseVal = _asDouble(base) > 0 ? _asDouble(base) : (totalVal + discVal);
 
     return {
       'totalPrice': {'value': totalVal, 'currency': currency},
