@@ -4,7 +4,6 @@ library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PikachuOverlay {
@@ -128,18 +127,10 @@ class PikachuOverlay {
               child: IgnorePointer(
                 child: Transform.scale(
                   scaleX: _facingRight ? 1 : -1,
-                  child: SizedBox(
+                  child: const SizedBox(
                     width: 200,
                     height: 200,
-                    child: Lottie.asset(
-                      'assets/animations/Pikachu.json',
-                      fit: BoxFit.contain,
-                      repeat: true,
-                      animate: true,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Text('⚡', style: TextStyle(fontSize: 80));
-                      },
-                    ),
+                    child: Text('⚡', style: TextStyle(fontSize: 80)),
                   ),
                 ),
               ),

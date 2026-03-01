@@ -5,7 +5,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -414,22 +413,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           // أنيميشن تسجيل الدخول
-                                          SizedBox(
+                                          const SizedBox(
                                             height: 100,
                                             width: 100,
-                                            child: Lottie.network(
-                                              'https://assets2.lottiefiles.com/packages/lf20_kkflmtur.json',
-                                              fit: BoxFit.contain,
-                                              repeat: true,
-                                              animate: true,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                return const Icon(
-                                                  Icons.person,
-                                                  size: 60,
-                                                  color: Color(0xFF667eea),
-                                                );
-                                              },
+                                            child: Icon(
+                                              Icons.person,
+                                              size: 60,
+                                              color: Color(0xFF667eea),
                                             ),
                                           ),
                                           const SizedBox(height: 16),

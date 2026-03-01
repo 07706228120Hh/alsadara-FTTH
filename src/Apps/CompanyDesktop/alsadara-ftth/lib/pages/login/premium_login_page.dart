@@ -8,7 +8,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
@@ -625,10 +624,10 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     ),
                   ],
                 ),
-                child: Lottie.asset(
-                  'assets/animations/login_security.json',
-                  fit: BoxFit.contain,
-                  repeat: true,
+                child: const Icon(
+                  Icons.security,
+                  size: 80,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 32),
