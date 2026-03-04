@@ -37,6 +37,7 @@ class _WhatsAppServerSettingsPageState
   bool _isLoadingQR = false;
   DateTime? _lastQRFetch;
   static const int _qrValiditySeconds = 120;
+  String? _statusMessage;
 
   // عام
   bool _isLoading = true;
@@ -118,7 +119,7 @@ class _WhatsAppServerSettingsPageState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '⚠️ انقطع اتصال الواتساب — يرجى مسح QR جديد',
+                '⚠️ انقطع اتصال الواتساب — اضغط "إنشاء جلسة" لإعادة الاتصال',
                 style: const TextStyle(fontFamily: 'Cairo'),
               ),
               backgroundColor: Colors.orange,
@@ -126,15 +127,13 @@ class _WhatsAppServerSettingsPageState
             ),
           );
         }
-        // إنشاء جلسة جديدة تلقائياً
-        await _createSession();
         return;
       }
 
       if (!_isConnected && !_isLoadingQR) {
-        // إذا لا يوجد QR أو انتهت صلاحيته → أنشئ جلسة جديدة
+        // عند التهيئة: فقط اجلب QR موجود دون إنشاء جلسة جديدة
         if (_qrImage == null || _isQRExpired()) {
-          await _createSession();
+          _fetchQR();
         }
       }
 
@@ -170,14 +169,13 @@ class _WhatsAppServerSettingsPageState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '⚠️ انقطع اتصال الواتساب — يتم إنشاء جلسة جديدة...',
+                '⚠️ انقطع اتصال الواتساب — اضغط "إنشاء جلسة" لإعادة الاتصال',
                 style: const TextStyle(fontFamily: 'Cairo'),
               ),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 5),
             ),
           );
-          await _createSession();
         }
       },
     );
@@ -193,22 +191,120 @@ class _WhatsAppServerSettingsPageState
     setState(() {
       _isLoadingQR = true;
       _qrImage = null;
+      _statusMessage = 'جاري إنشاء الجلسة...';
     });
 
-    await WhatsAppServerService.createSession(widget.tenantId);
-    await Future.delayed(const Duration(seconds: 3));
+    // أولاً حذف أي جلسة عالقة (قد تكون في حالة "connecting")
+    await WhatsAppServerService.disconnect(widget.tenantId);
+    await Future.delayed(const Duration(seconds: 2));
 
-    final qr = await WhatsAppServerService.getQRImage(widget.tenantId);
+    if (!mounted) return;
+
+    final sessionRaw =
+        await WhatsAppServerService.createSessionRaw(widget.tenantId);
+    debugPrint('📤 createSession response: $sessionRaw');
+
+    // محاولات متعددة للحصول على QR (كل 2 ثانية، أقصى 30 محاولة = 60 ثانية)
+    String? qr;
+    for (int i = 0; i < 30; i++) {
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+      setState(() => _statusMessage = 'جاري توليد كود QR... (${i + 1}/30)');
+
+      // جرب /qr-image أولاً ثم /status
+      qr = await WhatsAppServerService.getQRImage(widget.tenantId);
+      qr ??= await WhatsAppServerService.getQRFromStatus(widget.tenantId);
+      if (qr != null) break;
+    }
 
     if (mounted) {
       setState(() {
         _qrImage = qr;
         _lastQRFetch = qr != null ? DateTime.now() : null;
         _isLoadingQR = false;
+        _statusMessage = null;
       });
 
       if (qr != null) {
         _startConnectionMonitor();
+      } else {
+        // جلب الردود الخام لعرضها للتشخيص
+        final rawResponse =
+            await WhatsAppServerService.getQRImageRaw(widget.tenantId);
+        final statusRaw =
+            await WhatsAppServerService.getStatusRaw(widget.tenantId);
+
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text('❌ تعذّر توليد QR',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('TenantId: ${widget.tenantId}',
+                        style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 12),
+                    Text('POST /session (إنشاء جلسة):',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        sessionRaw,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('GET /qr-image:',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        rawResponse,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('GET /status:',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        statusRaw,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('حسناً', style: GoogleFonts.cairo()),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }
@@ -248,6 +344,7 @@ class _WhatsAppServerSettingsPageState
 
   Future<void> _fetchQR() async {
     if (_isLoadingQR) return;
+    if (!mounted) return;
     setState(() => _isLoadingQR = true);
 
     final qr = await WhatsAppServerService.getQRImage(widget.tenantId);
@@ -619,10 +716,23 @@ class _WhatsAppServerSettingsPageState
 
             // QR Code
             if (_isLoadingQR)
-              const SizedBox(
+              SizedBox(
                 width: 250,
                 height: 250,
-                child: Center(child: CircularProgressIndicator()),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(),
+                    if (_statusMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        _statusMessage!,
+                        style: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ],
+                ),
               )
             else if (_qrImage != null)
               Container(
