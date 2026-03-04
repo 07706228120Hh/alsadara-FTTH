@@ -429,39 +429,84 @@ class _WhatsAppServerSettingsPageState
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
+            // --- حالة السيرفر ---
             Container(
-              width: 50,
-              height: 50,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: _isServerOnline
                     ? Colors.green.withOpacity(0.1)
                     : Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 _isServerOnline ? Icons.cloud_done : Icons.cloud_off,
                 color: _isServerOnline ? Colors.green : Colors.red,
-                size: 28,
+                size: 24,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'حالة السيرفر',
+                    'السيرفر',
                     style: GoogleFonts.cairo(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                        fontSize: 12, color: Colors.grey[600]),
                   ),
                   Text(
-                    _isServerOnline ? 'متصل ✅' : 'غير متصل ❌',
+                    _isServerOnline ? 'يعمل ✅' : 'متوقف ❌',
                     style: GoogleFonts.cairo(
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: _isServerOnline ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // فاصل عمودي
+            Container(
+              width: 1,
+              height: 40,
+              color: Colors.grey[300],
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+
+            // --- حالة جلسة واتساب ---
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _isConnected
+                    ? Colors.green.withOpacity(0.1)
+                    : Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                _isConnected ? Icons.phone_android : Icons.phone_disabled,
+                color: _isConnected ? Colors.green : Colors.orange,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'جلسة واتساب',
+                    style: GoogleFonts.cairo(
+                        fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  Text(
+                    _isConnected ? 'متصل ✅' : 'غير متصل ⚠️',
+                    style: GoogleFonts.cairo(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: _isConnected ? Colors.green : Colors.orange[800],
                     ),
                   ),
                 ],
