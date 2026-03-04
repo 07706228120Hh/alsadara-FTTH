@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../utils/responsive_helper.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
 
@@ -409,7 +410,9 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: _bgDark,
-        body: _isLoading ? _buildLoading() : _buildDashboard(),
+        body: SafeArea(
+          child: _isLoading ? _buildLoading() : _buildDashboard(),
+        ),
       ),
     );
   }
@@ -482,12 +485,13 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
   // ═══════════════════════════════════════════════════════════════
 
   Widget _buildDashboard() {
+    final r = context.responsive;
     return Column(
       children: [
         _buildTopBar(),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(r.contentPaddingH),
             child: Column(
               children: [
                 // 1. Top Key Metrics Cards
@@ -498,19 +502,35 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
                 _staggerChild(
                     1,
                     3,
-                    SizedBox(
-                      height: 420,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                              flex: 2, child: _buildTechnicianTableSection()),
-                          const SizedBox(width: 20),
-                          Expanded(
-                              flex: 1, child: _buildSecondaryStatsColumn()),
-                        ],
-                      ),
-                    )),
+                    r.isMobile
+                        ? Column(
+                            children: [
+                              SizedBox(
+                                height: 350,
+                                child: _buildTechnicianTableSection(),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 300,
+                                child: _buildSecondaryStatsColumn(),
+                              ),
+                            ],
+                          )
+                        : SizedBox(
+                            height: 420,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                    flex: 2,
+                                    child: _buildTechnicianTableSection()),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                    flex: 1,
+                                    child: _buildSecondaryStatsColumn()),
+                              ],
+                            ),
+                          )),
                 const SizedBox(height: 20),
               ],
             ),
@@ -676,10 +696,14 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
   // ═══════════════════════════════════════════════════════════════
 
   Widget _buildTopBar() {
+    final r = context.responsive;
     final issues = _issueTasks;
     return ClipRRect(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: r.contentPaddingH,
+          vertical: r.isMobile ? 8 : 10,
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [

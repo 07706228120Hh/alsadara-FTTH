@@ -6,10 +6,12 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_auth_service.dart';
+import 'firebase_availability.dart';
 
 /// خدمة إدارة الشركات - Multi-Tenant Isolation
 class OrganizationsService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// تحميل كسول لتجنب خطأ [core/no-app]
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   /// إنشاء شركة جديدة (للمدير فقط)
   static Future<Map<String, dynamic>> createOrganization({
@@ -17,6 +19,8 @@ class OrganizationsService {
     required String description,
     String? logoUrl,
   }) async {
+    if (!FirebaseAvailability.isAvailable)
+      return {'success': false, 'message': 'Firebase غير متاح'};
     try {
       // التحقق من صلاحيات المدير
       final currentRole = await FirebaseAuthService.getUserRole();
@@ -70,6 +74,7 @@ class OrganizationsService {
 
   /// جلب جميع الشركات (للمدير فقط)
   static Future<List<Map<String, dynamic>>> getAllOrganizations() async {
+    if (!FirebaseAvailability.isAvailable) return [];
     try {
       final currentRole = await FirebaseAuthService.getUserRole();
       if (currentRole != 'super_admin') {
@@ -98,6 +103,7 @@ class OrganizationsService {
   /// جلب شركة واحدة
   static Future<Map<String, dynamic>?> getOrganization(
       String organizationId) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       final doc = await _firestore
           .collection('organizations')
@@ -118,6 +124,7 @@ class OrganizationsService {
   /// تحديث بيانات الشركة
   static Future<bool> updateOrganization(
       String organizationId, Map<String, dynamic> updates) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final currentRole = await FirebaseAuthService.getUserRole();
       if (currentRole != 'super_admin') {
@@ -146,6 +153,7 @@ class OrganizationsService {
 
   /// حذف شركة (حذف ناعم)
   static Future<bool> deleteOrganization(String organizationId) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final currentRole = await FirebaseAuthService.getUserRole();
       if (currentRole != 'super_admin') {
@@ -169,6 +177,7 @@ class OrganizationsService {
   /// جلب مستخدمي شركة معينة
   static Future<List<Map<String, dynamic>>> getOrganizationUsers(
       String organizationId) async {
+    if (!FirebaseAvailability.isAvailable) return [];
     try {
       final currentRole = await FirebaseAuthService.getUserRole();
       final currentOrgId = await FirebaseAuthService.getStoredOrganizationId();
@@ -205,6 +214,8 @@ class OrganizationsService {
     required String displayName,
     String role = 'user',
   }) async {
+    if (!FirebaseAvailability.isAvailable)
+      return {'success': false, 'message': 'Firebase غير متاح'};
     try {
       final currentRole = await FirebaseAuthService.getUserRole();
       if (currentRole != 'super_admin') {
@@ -245,6 +256,7 @@ class OrganizationsService {
   /// نقل مستخدم من شركة لأخرى
   static Future<bool> moveUserToOrganization(
       String userId, String newOrganizationId) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final currentRole = await FirebaseAuthService.getUserRole();
       if (currentRole != 'super_admin') {
@@ -284,6 +296,7 @@ class OrganizationsService {
 
   /// الاستماع للشركات (Real-time)
   static Stream<List<Map<String, dynamic>>> watchOrganizations() {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     return _firestore
         .collection('organizations')
         .orderBy('createdAt', descending: true)

@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -245,12 +246,14 @@ class _HrReportsPageState extends State<HrReportsPage>
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('تقارير الموارد البشرية',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text('تقارير الموارد البشرية',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: r.appBarTitleSize)),
           backgroundColor: const Color(0xFF1A237E),
           foregroundColor: Colors.white,
           bottom: TabBar(

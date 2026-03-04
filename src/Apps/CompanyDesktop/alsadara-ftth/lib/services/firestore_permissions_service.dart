@@ -7,16 +7,19 @@ library;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_auth_service.dart';
+import 'firebase_availability.dart';
 
 /// خدمة الصلاحيات من Firestore - Multi-Tenant Support
 class FirestorePermissionsService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// تحميل كسول لتجنب خطأ [core/no-app]
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   /// جلب الصلاحيات من Firestore حسب Organization ID + User ID
   static Future<Map<String, bool>> getPermissionsFromFirestore({
     required String organizationId,
     required String userId,
   }) async {
+    if (!FirebaseAvailability.isAvailable) return _getDefaultPermissions();
     try {
       // 1. جلب بيانات المستخدم
       final userDoc = await _firestore.collection('users').doc(userId).get();
@@ -210,6 +213,7 @@ class FirestorePermissionsService {
     required String userId,
     required Map<String, bool> permissions,
   }) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       // التحقق من أن المستخدم الحالي super_admin أو admin
       final currentRole = await FirebaseAuthService.getUserRole();

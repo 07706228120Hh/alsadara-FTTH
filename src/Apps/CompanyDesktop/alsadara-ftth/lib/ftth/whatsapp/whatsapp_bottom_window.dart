@@ -236,47 +236,80 @@ class WhatsAppBottomWindow {
     }
 
     _fabEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: 80,
-        right: 20,
-        child: Material(
-          elevation: 8,
-          borderRadius: BorderRadius.circular(28),
-          child: FloatingActionButton(
-            onPressed: () {
-              try {
-                debugPrint('🔘 ضغط زر واتساب العائم');
-                if (_isShowing && _isHidden) {
-                  // فقط استرجاع بدون تحميل جديد
-                  _restoreMinimizedWindow();
-                  debugPrint('✅ تم استرجاع النافذة المصغرة');
-                } else {
-                  showBottomWindow(context, '', '');
-                  debugPrint('✅ تم فتح/إظهار نافذة الواتساب');
-                }
-              } catch (e) {
-                debugPrint('❌ خطأ في التعامل مع زر الواتساب العائم: $e');
-              }
-            },
-            backgroundColor: const Color(0xFF25D366),
-            heroTag: "whatsapp_fab",
-            tooltip: 'فتح واتساب ويب',
-            child: Container(
-              width: 35,
-              height: 35,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(17.5),
-                color: Colors.white,
-              ),
-              child: const Icon(
-                Icons.chat,
-                color: Color(0xFF25D366),
-                size: 24,
+      builder: (context) {
+        final mq = MediaQuery.of(context).size;
+        final isPhone = mq.width < 600;
+        final isTablet = mq.width >= 600 && mq.width < 1024;
+        final fabSize = isPhone
+            ? 44.0
+            : isTablet
+                ? 52.0
+                : 56.0;
+        final iconSize = isPhone
+            ? 20.0
+            : isTablet
+                ? 24.0
+                : 28.0;
+        final innerSize = isPhone
+            ? 28.0
+            : isTablet
+                ? 33.0
+                : 38.0;
+        final bottomPos = isPhone
+            ? 24.0
+            : isTablet
+                ? 40.0
+                : 80.0;
+        final rightPos = isPhone
+            ? 12.0
+            : isTablet
+                ? 16.0
+                : 20.0;
+        return Positioned(
+          bottom: bottomPos,
+          right: rightPos,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(fabSize / 2),
+            child: SizedBox(
+              width: fabSize,
+              height: fabSize,
+              child: FloatingActionButton(
+                onPressed: () {
+                  try {
+                    debugPrint('🔘 ضغط زر واتساب العائم');
+                    if (_isShowing && _isHidden) {
+                      _restoreMinimizedWindow();
+                      debugPrint('✅ تم استرجاع النافذة المصغرة');
+                    } else {
+                      showBottomWindow(context, '', '');
+                      debugPrint('✅ تم فتح/إظهار نافذة الواتساب');
+                    }
+                  } catch (e) {
+                    debugPrint('❌ خطأ في التعامل مع زر الواتساب العائم: $e');
+                  }
+                },
+                backgroundColor: const Color(0xFF25D366),
+                heroTag: "whatsapp_fab",
+                tooltip: 'فتح واتساب ويب',
+                child: Container(
+                  width: innerSize,
+                  height: innerSize,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(innerSize / 2),
+                    color: Colors.white,
+                  ),
+                  child: Icon(
+                    Icons.chat,
+                    color: const Color(0xFF25D366),
+                    size: iconSize,
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     try {
@@ -312,86 +345,119 @@ class WhatsAppBottomWindow {
     }
 
     _conversationsFabEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: 80,
-        left: 20, // على الجهة اليسرى
-        child: StreamBuilder<int>(
-          stream: WhatsAppConversationService.getUnreadCount(),
-          builder: (context, snapshot) {
-            final unreadCount = snapshot.data ?? 0;
-
-            return Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(28),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  FloatingActionButton(
-                    onPressed: () {
-                      try {
-                        debugPrint('🔘 ضغط زر المحادثات العائم');
-                        // فتح صفحة المحادثات
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                conv_page.WhatsAppConversationsPage(
-                                    isAdmin: _isAdminUser),
-                          ),
-                        );
-                      } catch (e) {
-                        debugPrint('❌ خطأ في فتح صفحة المحادثات: $e');
-                      }
-                    },
-                    backgroundColor: const Color(0xFF128C7E),
-                    heroTag: "whatsapp_conversations_fab",
-                    tooltip: 'محادثات الواتساب',
-                    child: Container(
-                      width: 35,
-                      height: 35,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(17.5),
-                        color: Colors.white,
-                      ),
-                      child: const Icon(
-                        Icons.chat_bubble,
-                        color: Color(0xFF128C7E),
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                  // Badge للرسائل غير المقروءة
-                  if (unreadCount > 0)
-                    Positioned(
-                      top: -5,
-                      right: -5,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : '$unreadCount',
-                          style: const TextStyle(
+      builder: (context) {
+        final mq = MediaQuery.of(context).size;
+        final isPhone = mq.width < 600;
+        final isTablet = mq.width >= 600 && mq.width < 1024;
+        final fabSize = isPhone
+            ? 44.0
+            : isTablet
+                ? 52.0
+                : 56.0;
+        final iconSize = isPhone
+            ? 20.0
+            : isTablet
+                ? 24.0
+                : 28.0;
+        final innerSize = isPhone
+            ? 28.0
+            : isTablet
+                ? 33.0
+                : 38.0;
+        final bottomPos = isPhone
+            ? 24.0
+            : isTablet
+                ? 40.0
+                : 80.0;
+        final leftPos = isPhone
+            ? 12.0
+            : isTablet
+                ? 16.0
+                : 20.0;
+        final badgeSize = isPhone ? 16.0 : 20.0;
+        final badgeFontSize = isPhone ? 8.0 : 10.0;
+        return Positioned(
+          bottom: bottomPos,
+          left: leftPos,
+          child: StreamBuilder<int>(
+            stream: WhatsAppConversationService.getUnreadCount(),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(fabSize / 2),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    SizedBox(
+                      width: fabSize,
+                      height: fabSize,
+                      child: FloatingActionButton(
+                        onPressed: () {
+                          try {
+                            debugPrint('🔘 ضغط زر المحادثات العائم');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    conv_page.WhatsAppConversationsPage(
+                                        isAdmin: _isAdminUser),
+                              ),
+                            );
+                          } catch (e) {
+                            debugPrint('❌ خطأ في فتح صفحة المحادثات: $e');
+                          }
+                        },
+                        backgroundColor: const Color(0xFF128C7E),
+                        heroTag: "whatsapp_conversations_fab",
+                        tooltip: 'محادثات الواتساب',
+                        child: Container(
+                          width: innerSize,
+                          height: innerSize,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(innerSize / 2),
                             color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
                           ),
-                          textAlign: TextAlign.center,
+                          child: Icon(
+                            Icons.chat_bubble,
+                            color: const Color(0xFF128C7E),
+                            size: iconSize,
+                          ),
                         ),
                       ),
                     ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: -5,
+                        right: -5,
+                        child: Container(
+                          padding: EdgeInsets.all(isPhone ? 3 : 4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: badgeSize,
+                            minHeight: badgeSize,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : '$unreadCount',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: badgeFontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
 
     try {

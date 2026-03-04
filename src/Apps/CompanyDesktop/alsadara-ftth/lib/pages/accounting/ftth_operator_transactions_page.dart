@@ -1,9 +1,10 @@
-/// صفحة عرض جميع عمليات مشغل معين من لوحة تحكم FTTH
+﻿/// صفحة عرض جميع عمليات مشغل معين من لوحة تحكم FTTH
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../theme/accounting_responsive.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/plan_pricing_service.dart';
 
@@ -253,10 +254,13 @@ class _FtthOperatorTransactionsPageState
       'PLAN_CHANGE',
       'PLAN_SUBSCRIBE',
       'AUTO_RENEW',
-      'PLAN_SCHEDULE',
-      'SCHEDULE_CHANGE',
       'PLAN_EMI_RENEW',
       'PurchaseSubscriptionFromTrial',
+    };
+    const sched = {
+      'PLAN_SCHEDULE',
+      'SCHEDULE_CHANGE',
+      'SCHEDULE_CANCEL',
     };
     const comm = {
       'PURCHASE_COMMISSION',
@@ -281,6 +285,7 @@ class _FtthOperatorTransactionsPageState
       'WALLET_TRANSFER_FEE',
     };
     if (sub.contains(type)) return 'subscription';
+    if (sched.contains(type)) return 'scheduled';
     if (comm.contains(type)) return 'commission';
     if (rev.contains(type)) return 'reversal';
     if (wal.contains(type)) return 'wallet';
@@ -291,6 +296,8 @@ class _FtthOperatorTransactionsPageState
     switch (_categorizeType(type)) {
       case 'subscription':
         return 'اشتراكات';
+      case 'scheduled':
+        return 'مجدول';
       case 'commission':
         return 'عمولات';
       case 'reversal':
@@ -348,6 +355,9 @@ class _FtthOperatorTransactionsPageState
       case 'subscription':
       case 'اشتراكات':
         return Colors.teal;
+      case 'scheduled':
+      case 'مجدول':
+        return Colors.indigo;
       case 'commission':
       case 'عمولات':
         return Colors.purple;
@@ -400,6 +410,7 @@ class _FtthOperatorTransactionsPageState
     final categories = [
       'الكل',
       'اشتراكات',
+      'مجدول',
       'عمولات',
       'عكس/ارتجاع',
       'محفظة',
@@ -412,7 +423,7 @@ class _FtthOperatorTransactionsPageState
         appBar: AppBar(
           title: Text(
             'عمليات: ${widget.operatorName}',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: context.accR.headingSmall),
           ),
           backgroundColor: Colors.teal.shade700,
           foregroundColor: Colors.white,
@@ -440,21 +451,21 @@ class _FtthOperatorTransactionsPageState
 
   Widget _buildStatsBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM, vertical: context.accR.spaceS),
       color: Colors.grey.shade50,
       child: Row(
         children: [
           _statCard('الإجمالي', '${_filtered.length}', Colors.teal),
-          const SizedBox(width: 8),
+          SizedBox(width: context.accR.spaceS),
           _statCard(
               'السالب',
               '${_currencyFormat.format(_negativeAmount.abs())} د.ع',
               Colors.red),
-          const SizedBox(width: 8),
+          SizedBox(width: context.accR.spaceS),
           _statCard('الموجب', '${_currencyFormat.format(_positiveAmount)} د.ع',
               Colors.green),
           if (widget.attributedOps > 0) ...[
-            const SizedBox(width: 8),
+            SizedBox(width: context.accR.spaceS),
             _statCard(
                 'منسوب تلقائياً', '${widget.attributedOps}', Colors.indigo),
           ],
@@ -466,7 +477,7 @@ class _FtthOperatorTransactionsPageState
   Widget _statCard(String label, String value, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        padding: EdgeInsets.symmetric(vertical: context.accR.spaceS, horizontal: context.accR.spaceS),
         decoration: BoxDecoration(
           color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(8),
@@ -477,13 +488,13 @@ class _FtthOperatorTransactionsPageState
           children: [
             Text(label,
                 style: TextStyle(
-                    fontSize: 10,
+                    fontSize: context.accR.caption,
                     color: color.shade700,
                     fontWeight: FontWeight.w600)),
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             Text(value,
                 style: TextStyle(
-                    fontSize: 12,
+                    fontSize: context.accR.small,
                     fontWeight: FontWeight.bold,
                     color: color.shade800),
                 textAlign: TextAlign.center),
@@ -495,7 +506,7 @@ class _FtthOperatorTransactionsPageState
 
   Widget _buildSearchAndFilters(List<String> categories) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
       decoration: BoxDecoration(
         color: Colors.white,
         border:
@@ -513,11 +524,11 @@ class _FtthOperatorTransactionsPageState
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'بحث بالعميل، الباقة، النوع...',
-                      hintStyle: const TextStyle(fontSize: 12),
-                      prefixIcon: const Icon(Icons.search, size: 18),
+                      hintStyle: TextStyle(fontSize: context.accR.small),
+                      prefixIcon: Icon(Icons.search, size: context.accR.iconM),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear, size: 16),
+                              icon: Icon(Icons.clear, size: context.accR.iconS),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() {
@@ -533,7 +544,7 @@ class _FtthOperatorTransactionsPageState
                           horizontal: 10, vertical: 0),
                       isDense: true,
                     ),
-                    style: const TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: context.accR.small),
                     onChanged: (v) {
                       setState(() {
                         _searchQuery = v;
@@ -543,11 +554,11 @@ class _FtthOperatorTransactionsPageState
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.accR.spaceS),
               // الترتيب
               PopupMenuButton<String>(
                 tooltip: 'ترتيب',
-                icon: const Icon(Icons.sort, size: 20),
+                icon: Icon(Icons.sort, size: context.accR.iconM),
                 onSelected: (v) {
                   setState(() {
                     if (_sortBy == v) {
@@ -568,13 +579,13 @@ class _FtthOperatorTransactionsPageState
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.accR.spaceXS),
           // فلتر Fiber + فلاتر التصنيف
           Row(
             children: [
               // زر Fiber فقط
               FilterChip(
-                label: Text('Fiber فقط', style: TextStyle(fontSize: 11)),
+                label: Text('Fiber فقط', style: TextStyle(fontSize: context.accR.small)),
                 selected: _fiberOnly,
                 selectedColor: Colors.green.shade100,
                 checkmarkColor: Colors.green.shade800,
@@ -588,7 +599,7 @@ class _FtthOperatorTransactionsPageState
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.accR.spaceS),
               // فلاتر التصنيف
               Expanded(
                 child: SizedBox(
@@ -596,12 +607,12 @@ class _FtthOperatorTransactionsPageState
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: categories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 6),
+                    separatorBuilder: (_, __) => SizedBox(width: context.accR.spaceXS),
                     itemBuilder: (_, i) {
                       final cat = categories[i];
                       final isSelected = _selectedCategory == cat;
                       return ChoiceChip(
-                        label: Text(cat, style: TextStyle(fontSize: 11)),
+                        label: Text(cat, style: TextStyle(fontSize: context.accR.small)),
                         selected: isSelected,
                         selectedColor: Colors.teal.shade100,
                         onSelected: (_) {
@@ -634,11 +645,11 @@ class _FtthOperatorTransactionsPageState
           if (_sortBy == value)
             Icon(
               _isAscending ? Icons.arrow_upward : Icons.arrow_downward,
-              size: 14,
+              size: context.accR.iconS,
               color: Colors.teal,
             ),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
+          SizedBox(width: context.accR.spaceXS),
+          Text(label, style: TextStyle(fontSize: context.accR.small)),
         ],
       ),
     );
@@ -650,8 +661,8 @@ class _FtthOperatorTransactionsPageState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inbox_outlined, size: 48, color: Colors.grey.shade400),
-            const SizedBox(height: 8),
+            Icon(Icons.inbox_outlined, size: context.accR.iconXL, color: Colors.grey.shade400),
+            SizedBox(height: context.accR.spaceS),
             Text('لا توجد عمليات',
                 style: TextStyle(color: Colors.grey.shade600)),
           ],
@@ -694,9 +705,9 @@ class _FtthOperatorTransactionsPageState
                 dataRowMinHeight: 24,
                 dataRowMaxHeight: 36,
                 headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
-                headingTextStyle: const TextStyle(
+                headingTextStyle: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: context.accR.financialSmall,
                     color: Colors.black87),
                 sortColumnIndex: sortKeys.contains(_sortBy)
                     ? sortKeys.indexOf(_sortBy)
@@ -778,9 +789,9 @@ class _FtthOperatorTransactionsPageState
                     }),
                     cells: [
                       DataCell(Text('${i + 1}',
-                          style: const TextStyle(fontSize: 11))),
+                          style: TextStyle(fontSize: context.accR.small))),
                       DataCell(Text(_formatDate(tx.occuredAt),
-                          style: const TextStyle(fontSize: 10))),
+                          style: TextStyle(fontSize: context.accR.caption))),
                       DataCell(
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -794,7 +805,7 @@ class _FtthOperatorTransactionsPageState
                           child: Text(
                             _translateType(tx.type),
                             style: TextStyle(
-                                fontSize: 10,
+                                fontSize: context.accR.caption,
                                 fontWeight: FontWeight.w600,
                                 color: catColor.shade700),
                           ),
@@ -802,8 +813,8 @@ class _FtthOperatorTransactionsPageState
                       ),
                       DataCell(
                         Text(tx.customerName.isNotEmpty ? tx.customerName : '-',
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                                fontSize: context.accR.small, fontWeight: FontWeight.w500),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis),
                       ),
@@ -813,9 +824,9 @@ class _FtthOperatorTransactionsPageState
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(tx.customerId,
-                                      style: const TextStyle(fontSize: 10),
+                                      style: TextStyle(fontSize: context.accR.caption),
                                       overflow: TextOverflow.ellipsis),
-                                  const SizedBox(width: 2),
+                                  SizedBox(width: 2),
                                   InkWell(
                                     onTap: () {
                                       Clipboard.setData(
@@ -826,18 +837,18 @@ class _FtthOperatorTransactionsPageState
                                               duration: Duration(seconds: 1)));
                                     },
                                     child: Icon(Icons.copy,
-                                        size: 12, color: Colors.grey.shade500),
+                                        size: context.accR.iconXS, color: Colors.grey.shade500),
                                   ),
                                 ],
                               )
-                            : const Text('-', style: TextStyle(fontSize: 10)),
+                            : Text('-', style: TextStyle(fontSize: context.accR.caption)),
                       ),
                       DataCell(
                         SizedBox(
                           width: 120,
                           child: Text(tx.planName,
                               style: TextStyle(
-                                  fontSize: 10, color: Colors.grey.shade700),
+                                  fontSize: context.accR.caption, color: Colors.grey.shade700),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis),
                         ),
@@ -845,7 +856,7 @@ class _FtthOperatorTransactionsPageState
                       DataCell(Text(
                         '${_currencyFormat.format(tx.amount.abs())} د.ع',
                         style: TextStyle(
-                            fontSize: 11,
+                            fontSize: context.accR.small,
                             fontWeight: FontWeight.bold,
                             color: tx.amount < 0
                                 ? Colors.red.shade700
@@ -864,7 +875,7 @@ class _FtthOperatorTransactionsPageState
                         if (!renewChangeTypes.contains(tx.type)) {
                           return Text('-',
                               style: TextStyle(
-                                  fontSize: 10, color: Colors.grey.shade400));
+                                  fontSize: context.accR.caption, color: Colors.grey.shade400));
                         }
                         final discount = PlanPricingService.instance
                             .getDiscount(tx.planName, tx.amount);
@@ -872,38 +883,38 @@ class _FtthOperatorTransactionsPageState
                           return Text(
                             _currencyFormat.format(discount),
                             style: TextStyle(
-                                fontSize: 10,
+                                fontSize: context.accR.caption,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.orange.shade800),
                           );
                         }
                         return Text('-',
                             style: TextStyle(
-                                fontSize: 10, color: Colors.grey.shade400));
+                                fontSize: context.accR.caption, color: Colors.grey.shade400));
                       }()),
                       DataCell(Text(
                         tx.remainingBalance != 0
                             ? _currencyFormat.format(tx.remainingBalance.abs())
                             : '-',
                         style: TextStyle(
-                            fontSize: 10, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: Colors.grey.shade600),
                       )),
                       DataCell(Text(
                         tx.planDuration > 0
                             ? '${tx.planDuration} يوم'
                             : _calcDuration(tx.startsAt, tx.endsAt),
                         style: TextStyle(
-                            fontSize: 10, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: Colors.grey.shade600),
                       )),
                       DataCell(Text(
                         tx.startsAt.isNotEmpty ? _formatDate(tx.startsAt) : '-',
                         style: TextStyle(
-                            fontSize: 10, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: Colors.grey.shade600),
                       )),
                       DataCell(Text(
                         tx.endsAt.isNotEmpty ? _formatDate(tx.endsAt) : '-',
                         style: TextStyle(
-                            fontSize: 10, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: Colors.grey.shade600),
                       )),
                       DataCell(Text(
                         tx.paymentMode.isNotEmpty
@@ -912,12 +923,12 @@ class _FtthOperatorTransactionsPageState
                                 ? tx.paymentMethod
                                 : '-',
                         style: TextStyle(
-                            fontSize: 10, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: Colors.grey.shade600),
                       )),
                       DataCell(Text(
                         tx.zoneId.isNotEmpty ? tx.zoneId : '-',
                         style: TextStyle(
-                            fontSize: 10, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: Colors.grey.shade600),
                       )),
                       DataCell(
                         Column(
@@ -936,7 +947,7 @@ class _FtthOperatorTransactionsPageState
                                 ),
                                 child: Text('منسوب تلقائياً',
                                     style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: context.accR.caption,
                                         color: Colors.indigo.shade700,
                                         fontWeight: FontWeight.w600)),
                               ),
@@ -953,14 +964,14 @@ class _FtthOperatorTransactionsPageState
                                 ),
                                 child: Text('audit: ${tx.auditCreator}',
                                     style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: context.accR.caption,
                                         color: Colors.green.shade800,
                                         fontWeight: FontWeight.w600)),
                               ),
                             if (tx.deviceUsername.isNotEmpty)
                               Text('📡 ${tx.deviceUsername}',
                                   style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: context.accR.caption,
                                       color: Colors.grey.shade500)),
                           ],
                         ),

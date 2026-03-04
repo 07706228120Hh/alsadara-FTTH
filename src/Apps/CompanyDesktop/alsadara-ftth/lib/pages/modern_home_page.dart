@@ -44,18 +44,19 @@ class ModernHomePage extends StatefulWidget {
   State<ModernHomePage> createState() => _ModernHomePageState();
 }
 
-class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProviderStateMixin {
+class _ModernHomePageState extends State<ModernHomePage>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   bool _isSidebarExpanded = true;
   late AnimationController _animationController;
-  
+
   // الألوان الفخمة
   final Color _primaryColor = const Color(0xFF0F172A); // Slate 900
   final Color _secondaryColor = const Color(0xFF1E293B); // Slate 800
   final Color _accentColor = const Color(0xFF38BDF8); // Cyan 400
   final Color _goldColor = const Color(0xFFF59E0B); // Amber 500
   final Color _surfaceColor = const Color(0xFFF8FAFC); // Slate 50
-  
+
   late Timer _timeTimer;
   String _currentTime = '';
   String _currentDate = '';
@@ -68,7 +69,8 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
       duration: const Duration(milliseconds: 300),
     );
     _updateTime();
-    _timeTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
+    _timeTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
   }
 
   @override
@@ -100,19 +102,23 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
             Text('تسجيل الخروج', style: TextStyle(fontFamily: 'Cairo')),
           ],
         ),
-        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟', style: TextStyle(fontFamily: 'Cairo')),
+        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟',
+            style: TextStyle(fontFamily: 'Cairo')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء', style: TextStyle(color: Colors.grey, fontFamily: 'Cairo')),
+            child: const Text('إلغاء',
+                style: TextStyle(color: Colors.grey, fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('تأكيد', style: TextStyle(color: Colors.white, fontFamily: 'Cairo')),
+            child: const Text('تأكيد',
+                style: TextStyle(color: Colors.white, fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -133,38 +139,59 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
   List<_SidebarItem> _getAvailableItems() {
     final pm = PermissionManager.instance;
     final items = <_SidebarItem>[
-      _SidebarItem(title: 'الرئيسية', icon: Icons.dashboard_rounded, id: 'dashboard'),
+      _SidebarItem(
+          title: 'الرئيسية', icon: Icons.dashboard_rounded, id: 'dashboard'),
     ];
 
     if (pm.canView('agent')) {
-      items.add(_SidebarItem(title: 'صفحة الوكيل', icon: Icons.support_agent_rounded, id: 'agent'));
+      items.add(_SidebarItem(
+          title: 'صفحة الوكيل',
+          icon: Icons.support_agent_rounded,
+          id: 'agent'));
     }
     if (pm.canView('tasks')) {
-      items.add(_SidebarItem(title: 'المهام', icon: Icons.task_alt_rounded, id: 'tasks'));
+      items.add(_SidebarItem(
+          title: 'المهام', icon: Icons.task_alt_rounded, id: 'tasks'));
     }
     if (pm.canView('zones')) {
-      items.add(_SidebarItem(title: 'الزونات', icon: Icons.map_rounded, id: 'zones'));
+      items.add(
+          _SidebarItem(title: 'الزونات', icon: Icons.map_rounded, id: 'zones'));
     }
     if (pm.canView('hr')) {
-      items.add(_SidebarItem(title: 'الموارد البشرية', icon: Icons.people_alt_rounded, id: 'hr'));
+      items.add(_SidebarItem(
+          title: 'الموارد البشرية', icon: Icons.people_alt_rounded, id: 'hr'));
     }
     if (pm.canView('ai_search')) {
-      items.add(_SidebarItem(title: 'البحث الذكي', icon: Icons.psychology_rounded, id: 'ai_search'));
+      items.add(_SidebarItem(
+          title: 'البحث الذكي',
+          icon: Icons.psychology_rounded,
+          id: 'ai_search'));
     }
     if (pm.canView('sadara_portal')) {
-      items.add(_SidebarItem(title: 'منصة الصدارة', icon: Icons.hub_rounded, id: 'sadara_portal'));
+      items.add(_SidebarItem(
+          title: 'منصة الصدارة', icon: Icons.hub_rounded, id: 'sadara_portal'));
     }
     if (pm.canView('accounting')) {
-      items.add(_SidebarItem(title: 'الحسابات', icon: Icons.account_balance_wallet_rounded, id: 'accounting'));
+      items.add(_SidebarItem(
+          title: 'الحسابات',
+          icon: Icons.account_balance_wallet_rounded,
+          id: 'accounting'));
     }
     if (pm.canView('follow_up')) {
-      items.add(_SidebarItem(title: 'المتابعة', icon: Icons.track_changes_rounded, id: 'follow_up'));
+      items.add(_SidebarItem(
+          title: 'المتابعة',
+          icon: Icons.track_changes_rounded,
+          id: 'follow_up'));
     }
     if (pm.canView('audit_dashboard')) {
-      items.add(_SidebarItem(title: 'التدقيق', icon: Icons.analytics_rounded, id: 'audit_dashboard'));
+      items.add(_SidebarItem(
+          title: 'التدقيق',
+          icon: Icons.analytics_rounded,
+          id: 'audit_dashboard'));
     }
     if (pm.canView('my_dashboard')) {
-      items.add(_SidebarItem(title: 'شاشتي', icon: Icons.person_pin_rounded, id: 'my_dashboard'));
+      items.add(_SidebarItem(
+          title: 'شاشتي', icon: Icons.person_pin_rounded, id: 'my_dashboard'));
     }
 
     return items;
@@ -232,7 +259,7 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final items = _getAvailableItems();
-    
+
     return Scaffold(
       backgroundColor: _surfaceColor,
       body: Row(
@@ -259,7 +286,9 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   alignment: Alignment.center,
                   child: Row(
-                    mainAxisAlignment: _isSidebarExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                    mainAxisAlignment: _isSidebarExpanded
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.center,
                     children: [
                       Icon(Icons.bolt_rounded, color: _accentColor, size: 32),
                       if (_isSidebarExpanded) ...[
@@ -278,20 +307,23 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                   ),
                 ),
                 const Divider(color: Colors.white12, height: 1),
-                
+
                 // زر طي/توسيع الشريط
                 InkWell(
-                  onTap: () => setState(() => _isSidebarExpanded = !_isSidebarExpanded),
+                  onTap: () =>
+                      setState(() => _isSidebarExpanded = !_isSidebarExpanded),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     alignment: Alignment.center,
                     child: Icon(
-                      _isSidebarExpanded ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+                      _isSidebarExpanded
+                          ? Icons.chevron_right_rounded
+                          : Icons.chevron_left_rounded,
                       color: Colors.white54,
                     ),
                   ),
                 ),
-                
+
                 // قائمة العناصر
                 Expanded(
                   child: ListView.builder(
@@ -300,9 +332,10 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                     itemBuilder: (context, index) {
                       final item = items[index];
                       final isSelected = _selectedIndex == index;
-                      
+
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
@@ -311,21 +344,30 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                             hoverColor: Colors.white.withOpacity(0.05),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 12),
                               decoration: BoxDecoration(
-                                color: isSelected ? _accentColor.withOpacity(0.15) : Colors.transparent,
+                                color: isSelected
+                                    ? _accentColor.withOpacity(0.15)
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isSelected ? _accentColor.withOpacity(0.5) : Colors.transparent,
+                                  color: isSelected
+                                      ? _accentColor.withOpacity(0.5)
+                                      : Colors.transparent,
                                   width: 1,
                                 ),
                               ),
                               child: Row(
-                                mainAxisAlignment: _isSidebarExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                                mainAxisAlignment: _isSidebarExpanded
+                                    ? MainAxisAlignment.start
+                                    : MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     item.icon,
-                                    color: isSelected ? _accentColor : Colors.white70,
+                                    color: isSelected
+                                        ? _accentColor
+                                        : Colors.white70,
                                     size: 24,
                                   ),
                                   if (_isSidebarExpanded) ...[
@@ -334,8 +376,12 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                                       child: Text(
                                         item.title,
                                         style: TextStyle(
-                                          color: isSelected ? Colors.white : Colors.white70,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.white70,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
                                           fontFamily: 'Cairo',
                                           fontSize: 15,
                                         ),
@@ -353,7 +399,7 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                     },
                   ),
                 ),
-                
+
                 // تذييل الشريط الجانبي (تسجيل الخروج)
                 const Divider(color: Colors.white12, height: 1),
                 Padding(
@@ -363,11 +409,15 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                     borderRadius: BorderRadius.circular(12),
                     hoverColor: Colors.red.withOpacity(0.1),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 16),
                       child: Row(
-                        mainAxisAlignment: _isSidebarExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                        mainAxisAlignment: _isSidebarExpanded
+                            ? MainAxisAlignment.start
+                            : MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 24),
+                          const Icon(Icons.logout_rounded,
+                              color: Colors.redAccent, size: 24),
                           if (_isSidebarExpanded) ...[
                             const SizedBox(width: 16),
                             const Text(
@@ -387,7 +437,7 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
               ],
             ),
           ),
-          
+
           // منطقة المحتوى الرئيسية
           Expanded(
             child: Container(
@@ -403,116 +453,121 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
               ),
               child: Column(
                 children: [
-                // الشريط العلوي (Header)
-                Container(
-                  height: 80,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      // عنوان الصفحة الحالية
-                      Text(
-                        items[_selectedIndex].title,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Cairo',
-                          color: Color(0xFF1E293B),
+                  // الشريط العلوي (Header)
+                  Container(
+                    height: 80,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                      const Spacer(),
-                      
-                      // الوقت والتاريخ
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            _currentTime,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF334155),
-                            ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // عنوان الصفحة الحالية
+                        Text(
+                          items[_selectedIndex].title,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Cairo',
+                            color: Color(0xFF1E293B),
                           ),
-                          Text(
-                            _currentDate,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                              fontFamily: 'Cairo',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 24),
-                      
-                      // معلومات المستخدم
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _surfaceColor,
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.grey.shade200),
                         ),
-                        child: Row(
+                        const Spacer(),
+
+                        // الوقت والتاريخ
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: _accentColor.withOpacity(0.2),
-                              child: Text(
-                                widget.username.isNotEmpty ? widget.username[0] : 'U',
-                                style: TextStyle(color: _accentColor, fontWeight: FontWeight.bold),
+                            Text(
+                              _currentTime,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF334155),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.username,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Cairo',
-                                  ),
-                                ),
-                                Text(
-                                  widget.permissions,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                    fontFamily: 'Cairo',
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              _currentDate,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                                fontFamily: 'Cairo',
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 24),
+
+                        // معلومات المستخدم
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _surfaceColor,
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: _accentColor.withOpacity(0.2),
+                                child: Text(
+                                  widget.username.isNotEmpty
+                                      ? widget.username[0]
+                                      : 'U',
+                                  style: TextStyle(
+                                      color: _accentColor,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.username,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Cairo',
+                                    ),
+                                  ),
+                                  Text(
+                                    widget.permissions,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                      fontFamily: 'Cairo',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                
-                // المحتوى المتغير
-                Expanded(
-                  child: ClipRRect(
-                    child: _getPageForId(items[_selectedIndex].id),
+
+                  // المحتوى المتغير
+                  Expanded(
+                    child: ClipRRect(
+                      child: _getPageForId(items[_selectedIndex].id),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           ),
         ],
       ),
@@ -572,7 +627,7 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                     ),
                   ),
                 ),
-                
+
                 // المحتوى
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,7 +640,8 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                             color: Colors.white.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.waving_hand_rounded, color: Colors.amber, size: 32),
+                          child: const Icon(Icons.waving_hand_rounded,
+                              color: Colors.amber, size: 32),
                         ),
                         const SizedBox(width: 16),
                         Column(
@@ -614,15 +670,18 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
                       ],
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // معلومات إضافية
                     Row(
                       children: [
-                        _buildHeroInfoChip(Icons.business_rounded, 'القسم', widget.department),
+                        _buildHeroInfoChip(
+                            Icons.business_rounded, 'القسم', widget.department),
                         const SizedBox(width: 24),
-                        _buildHeroInfoChip(Icons.location_on_rounded, 'المركز', widget.center),
+                        _buildHeroInfoChip(
+                            Icons.location_on_rounded, 'المركز', widget.center),
                         const SizedBox(width: 24),
-                        _buildHeroInfoChip(Icons.shield_rounded, 'الصلاحية', widget.permissions),
+                        _buildHeroInfoChip(Icons.shield_rounded, 'الصلاحية',
+                            widget.permissions),
                       ],
                     ),
                   ],
@@ -630,9 +689,9 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
               ],
             ),
           ),
-          
+
           const SizedBox(height: 40),
-          
+
           // الإحصائيات السريعة
           const Text(
             'نظرة عامة',
@@ -644,21 +703,29 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
             ),
           ),
           const SizedBox(height: 16),
-          
+
           Row(
             children: [
-              Expanded(child: _buildStatCard('المهام المنجزة', '124', Icons.task_alt_rounded, Colors.green)),
+              Expanded(
+                  child: _buildStatCard('المهام المنجزة', '124',
+                      Icons.task_alt_rounded, Colors.green)),
               const SizedBox(width: 24),
-              Expanded(child: _buildStatCard('التذاكر المفتوحة', '18', Icons.support_agent_rounded, Colors.orange)),
+              Expanded(
+                  child: _buildStatCard('التذاكر المفتوحة', '18',
+                      Icons.support_agent_rounded, Colors.orange)),
               const SizedBox(width: 24),
-              Expanded(child: _buildStatCard('الموظفين الحاضرين', '45', Icons.people_alt_rounded, Colors.blue)),
+              Expanded(
+                  child: _buildStatCard('الموظفين الحاضرين', '45',
+                      Icons.people_alt_rounded, Colors.blue)),
               const SizedBox(width: 24),
-              Expanded(child: _buildStatCard('الإيرادات اليومية', 'IQD 2.5M', Icons.account_balance_wallet_rounded, Colors.purple)),
+              Expanded(
+                  child: _buildStatCard('الإيرادات اليومية', 'IQD 2.5M',
+                      Icons.account_balance_wallet_rounded, Colors.purple)),
             ],
           ),
-          
+
           const SizedBox(height: 40),
-          
+
           // الوصول السريع
           const Text(
             'الوصول السريع',
@@ -670,7 +737,7 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
             ),
           ),
           const SizedBox(height: 16),
-          
+
           Wrap(
             spacing: 16,
             runSpacing: 16,
@@ -698,18 +765,26 @@ class _ModernHomePageState extends State<ModernHomePage> with SingleTickerProvid
           const SizedBox(width: 8),
           Text(
             '$label: ',
-            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14, fontFamily: 'Cairo'),
+            style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+                fontFamily: 'Cairo'),
           ),
           Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Cairo'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(

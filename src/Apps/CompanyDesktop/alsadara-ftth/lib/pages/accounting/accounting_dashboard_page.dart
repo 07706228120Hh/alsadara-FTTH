@@ -1,8 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../utils/responsive_helper.dart';
+import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
 import '../../permissions/permissions.dart';
 import 'chart_of_accounts_page.dart';
@@ -31,17 +33,14 @@ class AccountingDashboardPage extends StatefulWidget {
       _AccountingDashboardPageState();
 }
 
-class _AccountingDashboardPageState extends State<AccountingDashboardPage>
-    with TickerProviderStateMixin {
+class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _dashboardData;
   bool _sidebarExpanded = false;
   Timer? _autoCollapseTimer;
 
-  // ── خلفية متحركة ──
-  late final AnimationController _bgAnimController;
-  late final AnimationController _particleController;
+  // ── خلفية ثابتة (رموز عائمة بمواضع ثابتة) ──
   final List<_FloatingShape> _shapes = [];
 
   // رموز محاسبية ومالية
@@ -98,34 +97,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   @override
   void dispose() {
     _autoCollapseTimer?.cancel();
-    _bgAnimController.dispose();
-    _particleController.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _bgAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    )..repeat();
-    _particleController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat();
     _initShapes();
-    _particleController.addListener(() {
-      for (final s in _shapes) {
-        s.x += s.speedX * 0.003;
-        s.y += s.speedY * 0.003;
-        s.rotation += s.rotationSpeed * 0.05;
-        if (s.x < -0.08) s.x = 1.08;
-        if (s.x > 1.08) s.x = -0.08;
-        if (s.y < -0.08) s.y = 1.08;
-        if (s.y > 1.08) s.y = -0.08;
-      }
-    });
     _loadDashboard();
   }
 
@@ -196,72 +174,152 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: _bgPage,
-        body: Column(
-          children: [
-            _buildPageToolbar(),
-            Expanded(
-              child: Row(
-                children: [
-                  // ═══ القائمة الجانبية ═══
-                  _buildSidebar(),
-                  // ═══ المحتوى الرئيسي ═══
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        // 1) خلفية متحركة (تدرج + موجات)
-                        Positioned.fill(
-                          child: AnimatedBuilder(
-                            animation: _bgAnimController,
-                            builder: (context, _) => CustomPaint(
-                              painter: _BgGradientPainter(
-                                animValue: _bgAnimController.value,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // 2) رموز محاسبية عائمة (خلف البطاقات)
-                        Positioned.fill(
-                          child: AnimatedBuilder(
-                            animation: Listenable.merge(
-                                [_bgAnimController, _particleController]),
-                            builder: (context, _) => CustomPaint(
-                              painter: _SymbolsPainter(
-                                shapes: _shapes,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // 3) المحتوى (بطاقات + أزرار) - فوق الكل
-                        _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: Color(0xFF3498DB)))
-                            : _errorMessage != null
-                                ? _buildErrorView()
-                                : _buildContent(),
-                      ],
-                    ),
-                  ),
-                ],
+        drawer: r.showSidebar
+            ? null
+            : Drawer(
+                width: 260,
+                child:
+                    SafeArea(child: _buildSidebarContent(alwaysExpanded: true)),
               ),
-            ),
-          ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildPageToolbar(),
+              Expanded(
+                child: Row(
+                  children: [
+                    // ═══ القائمة الجانبية - فقط على الشاشات العريضة ═══
+                    if (r.showSidebar) _buildSidebar(),
+                    // ═══ المحتوى الرئيسي ═══
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          // 1) خلفية ثابتة (تدرج)
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _BgGradientPainter(animValue: 0),
+                            ),
+                          ),
+                          // 2) رموز محاسبية ثابتة (خلف البطاقات)
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _SymbolsPainter(shapes: _shapes),
+                            ),
+                          ),
+                          // 3) المحتوى (بطاقات + أزرار) - فوق الكل
+                          Positioned.fill(
+                            child: _isLoading
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                        color: Color(0xFF3498DB)))
+                                : _errorMessage != null
+                                    ? _buildErrorView()
+                                    : _buildContent(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  /// محتوى القائمة الجانبية - يستخدم في كل من Sidebar والدرج
+  Widget _buildSidebarContent({bool alwaysExpanded = false}) {
+    final expanded = alwaysExpanded || _sidebarExpanded;
+    return Column(
+      children: [
+        SizedBox(height: context.accR.spaceS),
+        if (alwaysExpanded)
+          Builder(builder: (ctx) {
+            final ar = ctx.accR;
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: ar.spaceXL, vertical: ar.spaceM),
+              child: Row(children: [
+                Icon(Icons.menu_open, color: _textSubtle, size: ar.iconM),
+                SizedBox(width: ar.spaceS),
+                Text('القائمة',
+                    style: GoogleFonts.cairo(
+                        fontSize: ar.headingMedium,
+                        fontWeight: FontWeight.bold,
+                        color: _textSubtle)),
+              ]),
+            );
+          }),
+        Divider(height: 1, color: _dividerColor),
+        SizedBox(height: context.accR.spaceS),
+        _sidebarBtn(
+            icon: Icons.account_tree_rounded,
+            label: 'شجرة الحسابات',
+            color: const Color(0xFF3498DB),
+            permKey: 'accounting.chart',
+            onTap: () =>
+                _navigateTo(ChartOfAccountsPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.menu_book,
+            label: 'القيود المحاسبية',
+            color: const Color(0xFF2ECC71),
+            permKey: 'accounting.journals',
+            onTap: () =>
+                _navigateTo(JournalEntriesPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.payments,
+            label: 'الرواتب',
+            color: const Color(0xFFE91E63),
+            permKey: 'accounting.salaries',
+            onTap: () => _navigateTo(SalariesPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.analytics,
+            label: 'الإحصائيات',
+            color: const Color(0xFF34495E),
+            permKey: 'accounting.statistics',
+            onTap: () =>
+                _navigateTo(StatisticsPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.receipt_long,
+            label: 'المصاريف الثابتة',
+            color: const Color(0xFFE67E22),
+            permKey: 'accounting.fixed_expenses',
+            onTap: () =>
+                _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.money_off,
+            label: 'طلبات السحب',
+            color: const Color(0xFFE74C3C),
+            permKey: 'accounting.withdrawals',
+            onTap: () => _navigateTo(
+                WithdrawalRequestsPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        const Spacer(),
+      ],
+    );
+  }
+
   Widget _buildSidebar() {
+    final r = context.responsive;
     final expanded = _sidebarExpanded;
-    final width = expanded ? 200.0 : 56.0;
+    final width = expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       width: width,
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: _bgCard,
         border: const Border(
@@ -275,101 +333,110 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
           ),
         ],
       ),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          // زر طي/فتح القائمة
-          InkWell(
-            onTap: () {
-              _autoCollapseTimer?.cancel();
-              setState(() => _sidebarExpanded = !_sidebarExpanded);
-              if (_sidebarExpanded) {
-                _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
-                  if (mounted && _sidebarExpanded) {
-                    setState(() => _sidebarExpanded = false);
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: AlignmentDirectional.topStart,
+          maxWidth: expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth,
+          child: Column(
+            children: [
+              SizedBox(height: context.accR.spaceS),
+              // زر طي/فتح القائمة
+              InkWell(
+                onTap: () {
+                  _autoCollapseTimer?.cancel();
+                  setState(() => _sidebarExpanded = !_sidebarExpanded);
+                  if (_sidebarExpanded) {
+                    _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
+                      if (mounted && _sidebarExpanded) {
+                        setState(() => _sidebarExpanded = false);
+                      }
+                    });
                   }
-                });
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                mainAxisAlignment: expanded
-                    ? MainAxisAlignment.start
-                    : MainAxisAlignment.center,
-                children: [
-                  AnimatedRotation(
-                    turns: expanded ? 0.0 : 0.5,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.menu_open,
-                        color: _bgToolbar, size: 20),
-                  ),
-                  if (expanded) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'القائمة',
-                      style: GoogleFonts.cairo(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _bgToolbar,
+                },
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceL,
+                      vertical: context.accR.spaceM),
+                  child: Row(
+                    mainAxisAlignment: expanded
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.center,
+                    children: [
+                      AnimatedRotation(
+                        turns: expanded ? 0.0 : 0.5,
+                        duration: Duration(milliseconds: 200),
+                        child: Icon(Icons.menu_open,
+                            color: _bgToolbar, size: context.accR.iconM),
                       ),
-                    ),
-                  ],
-                ],
+                      if (expanded) ...[
+                        SizedBox(width: context.accR.spaceS),
+                        Text(
+                          'القائمة',
+                          style: GoogleFonts.cairo(
+                            fontSize: context.accR.headingSmall,
+                            fontWeight: FontWeight.bold,
+                            color: _bgToolbar,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+              Divider(height: 1, color: _dividerColor),
+              SizedBox(height: context.accR.spaceS),
+              _sidebarBtn(
+                icon: Icons.account_tree_rounded,
+                label: 'شجرة الحسابات',
+                color: const Color(0xFF3498DB),
+                permKey: 'accounting.chart',
+                onTap: () => _navigateTo(
+                    ChartOfAccountsPage(companyId: widget.companyId)),
+              ),
+              _sidebarBtn(
+                icon: Icons.menu_book,
+                label: 'القيود المحاسبية',
+                color: const Color(0xFF2ECC71),
+                permKey: 'accounting.journals',
+                onTap: () => _navigateTo(
+                    JournalEntriesPage(companyId: widget.companyId)),
+              ),
+              _sidebarBtn(
+                icon: Icons.payments,
+                label: 'الرواتب',
+                color: const Color(0xFFE91E63),
+                permKey: 'accounting.salaries',
+                onTap: () =>
+                    _navigateTo(SalariesPage(companyId: widget.companyId)),
+              ),
+              _sidebarBtn(
+                icon: Icons.analytics,
+                label: 'الإحصائيات',
+                color: const Color(0xFF34495E),
+                permKey: 'accounting.statistics',
+                onTap: () =>
+                    _navigateTo(StatisticsPage(companyId: widget.companyId)),
+              ),
+              _sidebarBtn(
+                icon: Icons.receipt_long,
+                label: 'المصاريف الثابتة',
+                color: const Color(0xFFE67E22),
+                permKey: 'accounting.fixed_expenses',
+                onTap: () =>
+                    _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
+              ),
+              _sidebarBtn(
+                icon: Icons.money_off,
+                label: 'طلبات السحب',
+                color: const Color(0xFFE74C3C),
+                permKey: 'accounting.withdrawals',
+                onTap: () => _navigateTo(
+                    WithdrawalRequestsPage(companyId: widget.companyId)),
+              ),
+              const Spacer(),
+            ],
           ),
-          const Divider(height: 1, color: _dividerColor),
-          const SizedBox(height: 8),
-          _sidebarBtn(
-            icon: Icons.account_tree_rounded,
-            label: 'شجرة الحسابات',
-            color: const Color(0xFF3498DB),
-            permKey: 'accounting.chart',
-            onTap: () =>
-                _navigateTo(ChartOfAccountsPage(companyId: widget.companyId)),
-          ),
-          _sidebarBtn(
-            icon: Icons.menu_book,
-            label: 'القيود المحاسبية',
-            color: const Color(0xFF2ECC71),
-            permKey: 'accounting.journals',
-            onTap: () =>
-                _navigateTo(JournalEntriesPage(companyId: widget.companyId)),
-          ),
-          _sidebarBtn(
-            icon: Icons.payments,
-            label: 'الرواتب',
-            color: const Color(0xFFE91E63),
-            permKey: 'accounting.salaries',
-            onTap: () => _navigateTo(SalariesPage(companyId: widget.companyId)),
-          ),
-          _sidebarBtn(
-            icon: Icons.analytics,
-            label: 'الإحصائيات',
-            color: const Color(0xFF34495E),
-            permKey: 'accounting.statistics',
-            onTap: () =>
-                _navigateTo(StatisticsPage(companyId: widget.companyId)),
-          ),
-          _sidebarBtn(
-            icon: Icons.receipt_long,
-            label: 'المصاريف الثابتة',
-            color: const Color(0xFFE67E22),
-            permKey: 'accounting.fixed_expenses',
-            onTap: () =>
-                _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
-          ),
-          _sidebarBtn(
-            icon: Icons.money_off,
-            label: 'طلبات السحب',
-            color: const Color(0xFFE74C3C),
-            permKey: 'accounting.withdrawals',
-            onTap: () => _navigateTo(
-                WithdrawalRequestsPage(companyId: widget.companyId)),
-          ),
-          const Spacer(),
-        ],
+        ),
       ),
     );
   }
@@ -380,63 +447,67 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     required Color color,
     required VoidCallback onTap,
     String? permKey,
+    bool forceExpanded = false,
   }) {
     // V3: إخفاء العنصر إذا لا يملك صلاحية العرض
     if (permKey != null && !PermissionManager.instance.canView(permKey)) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
-    final expanded = _sidebarExpanded;
+    final expanded = forceExpanded || _sidebarExpanded;
+    final ar = context.accR;
     return Tooltip(
       message: expanded ? '' : label,
       preferBelow: false,
       child: Padding(
-        padding:
-            EdgeInsets.symmetric(horizontal: expanded ? 8 : 6, vertical: 2),
+        padding: EdgeInsets.symmetric(
+            horizontal: expanded ? ar.spaceS : 4, vertical: 2),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(ar.btnRadius),
             hoverColor: color.withOpacity(0.08),
             splashColor: color.withOpacity(0.15),
             child: Container(
               padding: EdgeInsets.symmetric(
-                  horizontal: expanded ? 10 : 0, vertical: 10),
+                  horizontal: expanded ? ar.spaceM : 0,
+                  vertical: expanded ? ar.spaceM : 6),
               child: expanded
                   ? Row(
                       children: [
                         Container(
-                          width: 32,
-                          height: 32,
+                          width: ar.iconL,
+                          height: ar.iconL,
                           decoration: BoxDecoration(
                             color: color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(ar.btnRadius),
                           ),
-                          child: Icon(icon, color: color, size: 17),
+                          child: Icon(icon, color: color, size: ar.iconS),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: ar.spaceM),
                         Expanded(
                           child: Text(
                             label,
                             style: GoogleFonts.cairo(
-                              fontSize: 12,
+                              fontSize: ar.body,
                               fontWeight: FontWeight.w600,
                               color: _textDark,
                             ),
                           ),
                         ),
-                        Icon(Icons.chevron_left, color: _textGray, size: 16),
+                        Icon(Icons.chevron_left,
+                            color: _textGray, size: ar.iconS),
                       ],
                     )
                   : Center(
                       child: Container(
-                        width: 36,
-                        height: 36,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(icon, color: color, size: 19),
+                        child: Icon(icon, color: color, size: 18),
                       ),
                     ),
             ),
@@ -447,8 +518,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   }
 
   Widget _buildPageToolbar() {
+    final r = context.responsive;
+    final ar = context.accR;
+    final isMob = r.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 6 : ar.spaceXL,
+          vertical: isMob ? 2 : ar.spaceXS + 2),
       decoration: BoxDecoration(
         color: _bgToolbar,
         boxShadow: [
@@ -461,33 +537,55 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
       ),
       child: Row(
         children: [
+          // زر فتح الدرج على الشاشات الصغيرة
+          if (!r.showSidebar)
+            Builder(
+              builder: (ctx) => IconButton(
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+                icon: Icon(Icons.menu, size: isMob ? 20 : 24),
+                tooltip: 'القائمة',
+                padding: isMob ? EdgeInsets.all(4) : null,
+                constraints: isMob
+                    ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                    : null,
+                style: IconButton.styleFrom(foregroundColor: Colors.white70),
+              ),
+            ),
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
+            icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
             tooltip: 'رجوع',
+            padding: isMob ? EdgeInsets.all(4) : null,
+            constraints: isMob
+                ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                : null,
             style: IconButton.styleFrom(foregroundColor: Colors.white70),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMob ? 2 : 8),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
             decoration: BoxDecoration(
               color: const Color(0xFF3498DB),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(isMob ? 6 : ar.btnRadius),
             ),
-            child: const Icon(Icons.dashboard_rounded,
-                color: Colors.white, size: 18),
+            child: Icon(Icons.dashboard_rounded,
+                color: Colors.white, size: isMob ? 16 : ar.iconM),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: isMob ? 4 : 12),
           Text('الحسابات',
               style: GoogleFonts.cairo(
-                  fontSize: 20,
+                  fontSize: isMob ? 14 : r.appBarTitleSize,
                   fontWeight: FontWeight.bold,
                   color: Colors.white)),
           const Spacer(),
           IconButton(
             onPressed: _loadDashboard,
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
             tooltip: 'تحديث',
+            padding: isMob ? EdgeInsets.all(4) : null,
+            constraints: isMob
+                ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                : null,
             style: IconButton.styleFrom(foregroundColor: Colors.white70),
           ),
         ],
@@ -496,18 +594,20 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   }
 
   Widget _buildErrorView() {
+    final ar = context.accR;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFE74C3C), size: 64),
-          const SizedBox(height: 16),
+          Icon(Icons.error_outline,
+              color: const Color(0xFFE74C3C), size: ar.iconEmpty),
+          SizedBox(height: ar.spaceXL),
           Text(
             _errorMessage!,
-            style: const TextStyle(color: _textGray, fontSize: 16),
+            style: TextStyle(color: _textGray, fontSize: ar.headingMedium),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: ar.spaceXL),
           ElevatedButton.icon(
             onPressed: _loadDashboard,
             icon: const Icon(Icons.refresh, color: Colors.white),
@@ -516,8 +616,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3498DB),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  borderRadius: BorderRadius.circular(ar.btnRadius)),
+              padding: ar.buttonPadding,
             ),
           ),
         ],
@@ -526,16 +626,16 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   }
 
   Widget _buildContent() {
-    final screenSize = MediaQuery.of(context).size;
-    final isCompact = screenSize.width < 600;
-    final padding = isCompact ? 12.0 : 24.0;
-    final spacing = isCompact ? 12.0 : 20.0;
+    final r = context.responsive;
+    final isMob = r.isMobile;
+    final padding = isMob ? 8.0 : r.contentPaddingH;
+    final spacing = isMob ? 8.0 : 10.0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: padding,
         right: padding,
-        top: 0,
+        top: isMob ? 6 : 8,
         bottom: padding,
       ),
       child: Column(
@@ -544,20 +644,89 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
           // 📊 بطاقات الإحصائيات (صف أفقي)
           _buildSummaryCards(),
           SizedBox(height: spacing),
-          // عنوان الأقسام
-          Text(
-            'الأقسام',
-            style: GoogleFonts.cairo(
-              color: _textDark,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          // ═══ فاصل فخم بين البطاقات والأقسام ═══
+          _buildLuxuryDivider(isMob),
           SizedBox(height: spacing * 0.6),
           // الأقسام
           _buildSectionsGrid(),
         ],
       ),
+    );
+  }
+
+  /// فاصل فخم بين البطاقات والأقسام
+  Widget _buildLuxuryDivider(bool isMob) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: isMob ? 1.5 : 2,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0x00CBD5E1),
+                  Color(0xFFCBD5E1),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: isMob ? 12 : 20),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMob ? 16 : 24,
+              vertical: isMob ? 6 : 8,
+            ),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF3498DB), Color(0xFF2C3E50)],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF3498DB).withOpacity(0.30),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.widgets_rounded,
+                  color: Colors.white.withOpacity(0.9),
+                  size: isMob ? 15 : 18,
+                ),
+                SizedBox(width: isMob ? 5 : 8),
+                Text(
+                  'الأقسام',
+                  style: GoogleFonts.cairo(
+                    color: Colors.white,
+                    fontSize: isMob ? 12 : 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: isMob ? 1.5 : 2,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFCBD5E1),
+                  Color(0x00CBD5E1),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -678,22 +847,23 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
-        // 5 أعمدة للشاشات الكبيرة، 4 للمتوسطة، 2 للصغيرة
+        final isMob = maxW < 600;
+        // 5 أعمدة للشاشات الكبيرة، 4 للمتوسطة، 3 للصغيرة
         final cols = maxW > 1200
             ? 5
             : maxW > 800
                 ? 4
-                : maxW > 500
-                    ? 3
-                    : 2;
-        final spacing = 10.0;
+                : 3;
+        final spacing = isMob ? 6.0 : 8.0;
         final cardWidth = (maxW - spacing * (cols - 1)) / cols;
+        final cardHeight = isMob ? 72.0 : 76.0;
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
           children: items
               .map((item) => SizedBox(
                     width: cardWidth,
+                    height: cardHeight,
                     child: _buildCompactStatCard(item),
                   ))
               .toList(),
@@ -702,94 +872,214 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     );
   }
 
-  /// بطاقة إحصائية بأسلوب XONEPROO - بيضاء مع أيقونة دائرية ملونة
+  /// بطاقة إحصائية - تصميم متجاوب للهاتف وسطح المكتب
   Widget _buildCompactStatCard(_SummaryItem item) {
+    final ar = context.accR;
+    final isMob = ar.isMobile;
+    final radius = isMob ? 8.0 : ar.cardRadius;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: _bgCard,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.black, width: 1),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(radius + 2),
+        border: Border.all(color: Colors.black.withOpacity(0.35), width: 1.5),
+        boxShadow: [
           BoxShadow(
-            color: _shadowColor,
-            blurRadius: 10,
-            offset: Offset(0, 2),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // أيقونة دائرية ملونة
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: item.color,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(item.icon, color: Colors.white, size: 22),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.all(isMob ? 7 : 8),
+        decoration: BoxDecoration(
+          color: _bgCard,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: item.color.withOpacity(0.35),
+            width: 1.5,
           ),
-          const SizedBox(width: 14),
-          // القيمة والعنوان
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    item.value,
-                    style: GoogleFonts.cairo(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: _textDark,
-                      height: 1.2,
-                    ),
+          boxShadow: [
+            BoxShadow(
+              color: isMob ? item.color.withOpacity(0.10) : _shadowColor,
+              blurRadius: isMob ? 6 : 10,
+              offset: const Offset(0, 1),
+            ),
+            if (isMob)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 3,
+                offset: const Offset(0, 1),
+              ),
+          ],
+        ),
+        child: isMob
+            ? _buildMobileStatContent(item, ar)
+            : _buildDesktopStatContent(item, ar),
+      ),
+    );
+  }
+
+  /// تصميم البطاقة للهاتف - عمودي مضغوط مع أيقونة صغيرة
+  Widget _buildMobileStatContent(_SummaryItem item, AccountingResponsive ar) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: item.color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(item.icon, color: item.color, size: 10),
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  item.title,
+                  maxLines: 1,
+                  style: GoogleFonts.cairo(
+                    fontSize: ar.caption,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 2),
-                // خط تقدم ملون
-                Container(
-                  height: 3,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    color: item.color.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                FittedBox(
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              item.value,
+              style: GoogleFonts.cairo(
+                fontSize: ar.financialSmall,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                height: 1.1,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Container(
+          height: 2,
+          width: 20,
+          decoration: BoxDecoration(
+            color: item.color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        if (item.subtitle != null) ...[
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              item.subtitle!,
+              maxLines: 1,
+              style: GoogleFonts.cairo(
+                fontSize: 8,
+                color: item.color.withOpacity(0.8),
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// تصميم البطاقة لسطح المكتب - أفقي مع أيقونة دائرية كبيرة
+  Widget _buildDesktopStatContent(_SummaryItem item, AccountingResponsive ar) {
+    return Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: item.color,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(item.icon, color: Colors.white, size: 24),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     item.title,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.cairo(
-                      fontSize: 12,
-                      color: _textGray,
+                      fontSize: 13,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w600,
+                      height: 1.1,
                     ),
                   ),
                 ),
-                if (item.subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    item.subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
-                      fontSize: 10,
-                      color: item.color.withOpacity(0.7),
+              ),
+              Container(
+                height: 2,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: item.color.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Flexible(
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      item.value,
+                      style: GoogleFonts.cairo(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        height: 1.1,
+                      ),
                     ),
                   ),
-                ],
+                ),
+              ),
+              if (item.subtitle != null) ...[
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      item.subtitle!,
+                      maxLines: 1,
+                      style: GoogleFonts.cairo(
+                        fontSize: ar.small,
+                        color: item.color.withOpacity(0.7),
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -872,12 +1162,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
+        final isMob = maxW < 600;
         final cols = maxW > 900
             ? 3
             : maxW > 500
                 ? 2
-                : 1;
-        final spacing = 16.0;
+                : 2;
+        final spacing = isMob ? 8.0 : 8.0;
         final cardWidth = (maxW - spacing * (cols - 1)) / cols;
         return Wrap(
           spacing: spacing,
@@ -890,37 +1181,44 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   }
 
   Widget _buildSectionCard(_SectionItem section, double width) {
+    final ar = context.accR;
+    final isMob = ar.isMobile;
     return InkWell(
       onTap: section.onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(isMob ? 8 : ar.cardRadius),
       child: Container(
         width: width,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 8 : 12,
+          vertical: isMob ? 8 : 8,
+        ),
         decoration: BoxDecoration(
           color: _bgCard,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black, width: 1),
-          boxShadow: const [
+          borderRadius: BorderRadius.circular(isMob ? 8 : ar.cardRadius),
+          border: Border.all(
+              color: Colors.black.withOpacity(isMob ? 0.18 : 0.15), width: 1),
+          boxShadow: [
             BoxShadow(
-              color: _shadowColor,
-              blurRadius: 10,
-              offset: Offset(0, 2),
+              color: isMob ? section.color.withOpacity(0.08) : _shadowColor,
+              blurRadius: isMob ? 4 : 10,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
         child: Row(
           children: [
-            // أيقونة دائرية ملونة
             Container(
-              width: 44,
-              height: 44,
+              width: isMob ? 26 : 32,
+              height: isMob ? 26 : 32,
               decoration: BoxDecoration(
-                color: section.color,
+                color: isMob ? section.color.withOpacity(0.12) : section.color,
                 shape: BoxShape.circle,
               ),
-              child: Icon(section.icon, color: Colors.white, size: 20),
+              child: Icon(section.icon,
+                  color: isMob ? section.color : Colors.white,
+                  size: isMob ? 14 : 16),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: isMob ? 8 : 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -929,21 +1227,25 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
                     section.title,
                     style: GoogleFonts.cairo(
                       color: _textDark,
-                      fontSize: 14,
+                      fontSize: isMob ? ar.small : 13,
                       fontWeight: FontWeight.bold,
+                      height: 1.2,
                     ),
                   ),
-                  Text(
-                    section.subtitle,
-                    style: GoogleFonts.cairo(
-                      color: _textGray,
-                      fontSize: 11,
+                  if (!isMob)
+                    Text(
+                      section.subtitle,
+                      style: GoogleFonts.cairo(
+                        color: _textGray,
+                        fontSize: 10,
+                        height: 1.2,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_back_ios_new, color: _textGray, size: 14),
+            Icon(Icons.arrow_forward_ios,
+                color: _textGray, size: isMob ? 12 : ar.iconS),
           ],
         ),
       ),
@@ -951,6 +1253,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
   }
 
   void _showExpensesRevenueDialog() {
+    final ar = context.accR;
     showDialog(
       context: context,
       builder: (ctx) => Directionality(
@@ -963,8 +1266,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
               color: _textDark,
             ),
           ),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(ar.radiusL)),
           children: [
             SimpleDialogOption(
               onPressed: () {
@@ -974,19 +1277,20 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: ar.btnSmallSize,
+                    height: ar.btnSmallSize,
                     decoration: BoxDecoration(
                       color: const Color(0xFFE74C3C).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ar.btnRadius),
                     ),
-                    child: const Icon(Icons.receipt,
-                        color: Color(0xFFE74C3C), size: 20),
+                    child: Icon(Icons.receipt,
+                        color: const Color(0xFFE74C3C), size: ar.iconM),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: ar.spaceL),
                   Text('المصروفات',
                       style: GoogleFonts.cairo(
-                          fontSize: 14, fontWeight: FontWeight.w600)),
+                          fontSize: ar.headingSmall,
+                          fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -999,19 +1303,20 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage>
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: ar.btnSmallSize,
+                    height: ar.btnSmallSize,
                     decoration: BoxDecoration(
                       color: const Color(0xFF1ABC9C).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ar.btnRadius),
                     ),
-                    child: const Icon(Icons.trending_up,
-                        color: Color(0xFF1ABC9C), size: 20),
+                    child: Icon(Icons.trending_up,
+                        color: const Color(0xFF1ABC9C), size: ar.iconM),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: ar.spaceL),
                   Text('الإيرادات',
                       style: GoogleFonts.cairo(
-                          fontSize: 14, fontWeight: FontWeight.w600)),
+                          fontSize: ar.headingSmall,
+                          fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -1119,8 +1424,8 @@ class _BgGradientPainter extends CustomPainter {
         ],
         stops: [
           0.0,
-          (0.3 + 0.1 * _sin(animValue * 2 * _pi)).clamp(0.0, 1.0),
-          (0.7 + 0.1 * _sin(animValue * 2 * _pi + 1)).clamp(0.0, 1.0),
+          (0.3 + 0.1 * sin(animValue * 2 * pi)).clamp(0.0, 1.0),
+          (0.7 + 0.1 * sin(animValue * 2 * pi + 1)).clamp(0.0, 1.0),
           1.0,
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
@@ -1131,11 +1436,12 @@ class _BgGradientPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     final wavePath = Path();
     wavePath.moveTo(0, size.height);
-    for (double x = 0; x <= size.width; x += 1) {
+    // خطوة 4px بدل 1px: تقليل الحسابات بمعدل 4x مع الحفاظ على جودة الموجة
+    for (double x = 0; x <= size.width; x += 4) {
       final y = size.height -
           40 -
-          _sin((x / size.width * 2 * _pi) + animValue * 2 * _pi) * 12 -
-          _sin((x / size.width * 4 * _pi) + animValue * 2 * _pi * 0.7) * 6;
+          sin((x / size.width * 2 * pi) + animValue * 2 * pi) * 12 -
+          sin((x / size.width * 4 * pi) + animValue * 2 * pi * 0.7) * 6;
       wavePath.lineTo(x, y);
     }
     wavePath.lineTo(size.width, size.height);
@@ -1147,11 +1453,11 @@ class _BgGradientPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     final wave2Path = Path();
     wave2Path.moveTo(0, size.height);
-    for (double x = 0; x <= size.width; x += 1) {
+    for (double x = 0; x <= size.width; x += 4) {
       final y = size.height -
           20 -
-          _sin((x / size.width * 3 * _pi) + animValue * 2 * _pi + 2) * 10 -
-          _cos((x / size.width * 2 * _pi) + animValue * 2 * _pi * 0.5) * 5;
+          sin((x / size.width * 3 * pi) + animValue * 2 * pi + 2) * 10 -
+          cos((x / size.width * 2 * pi) + animValue * 2 * pi * 0.5) * 5;
       wave2Path.lineTo(x, y);
     }
     wave2Path.lineTo(size.width, size.height);
@@ -1161,8 +1467,8 @@ class _BgGradientPainter extends CustomPainter {
     final glowPaint = Paint()
       ..shader = RadialGradient(
         center: Alignment(
-          -0.7 + 0.2 * _sin(animValue * 2 * _pi),
-          -0.8 + 0.15 * _cos(animValue * 2 * _pi),
+          -0.7 + 0.2 * sin(animValue * 2 * pi),
+          -0.8 + 0.15 * cos(animValue * 2 * pi),
         ),
         radius: 0.7,
         colors: const [Color(0x083498DB), Color(0x00FFFFFF)],
@@ -1170,21 +1476,9 @@ class _BgGradientPainter extends CustomPainter {
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), glowPaint);
   }
 
-  static double _sin(double x) {
-    x = x % (2 * _pi);
-    double result = 0, term = x;
-    for (int i = 1; i <= 7; i++) {
-      result += term;
-      term *= -x * x / ((2 * i) * (2 * i + 1));
-    }
-    return result;
-  }
-
-  static double _cos(double x) => _sin(x + _pi / 2);
-  static const double _pi = 3.14159265358979;
-
   @override
-  bool shouldRepaint(covariant _BgGradientPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _BgGradientPainter oldDelegate) =>
+      oldDelegate.animValue != animValue;
 }
 
 // ── رسام الرموز العائمة (فوق البطاقات) ──
@@ -1218,5 +1512,5 @@ class _SymbolsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SymbolsPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _SymbolsPainter oldDelegate) => false;
 }

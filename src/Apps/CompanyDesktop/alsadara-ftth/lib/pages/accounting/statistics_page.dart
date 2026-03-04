@@ -1,6 +1,7 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../theme/accounting_responsive.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/accounting_service.dart';
 import 'chart_of_accounts_page.dart';
@@ -14,17 +15,14 @@ class StatisticsPage extends StatefulWidget {
   State<StatisticsPage> createState() => _StatisticsPageState();
 }
 
-class _StatisticsPageState extends State<StatisticsPage>
-    with TickerProviderStateMixin {
+class _StatisticsPageState extends State<StatisticsPage> {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _dashboardData;
   Map<String, dynamic>? _fundsData;
   List<dynamic>? _accountsList;
 
-  // خلفية متحركة
-  late AnimationController _bgAnimController;
-  late AnimationController _particleController;
+  // خلفية ثابتة (مواضع الجسيمات ثابتة)
   late List<_Particle> _particles;
 
   // ألوان
@@ -47,30 +45,14 @@ class _StatisticsPageState extends State<StatisticsPage>
   @override
   void initState() {
     super.initState();
-
-    // تحريك التدرج اللوني
-    _bgAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 8),
-    )..repeat();
-
-    // تحريك الجسيمات العائمة
-    _particleController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat();
-
-    // إنشاء جسيمات عشوائية
+    // إنشاء جسيمات بمواضع ثابتة (بدون حركة)
     final rng = Random();
     _particles = List.generate(30, (_) => _Particle.random(rng));
-
     _loadAllData();
   }
 
   @override
   void dispose() {
-    _bgAnimController.dispose();
-    _particleController.dispose();
     super.dispose();
   }
 
@@ -143,34 +125,31 @@ class _StatisticsPageState extends State<StatisticsPage>
       child: Scaffold(
         body: Stack(
           children: [
-            // الخلفية المتحركة
-            AnimatedBuilder(
-              animation:
-                  Listenable.merge([_bgAnimController, _particleController]),
-              builder: (context, _) {
-                return CustomPaint(
-                  painter: _AnimatedBgPainter(
-                    progress: _bgAnimController.value,
-                    particles: _particles,
-                    particleProgress: _particleController.value,
-                  ),
-                  size: Size.infinite,
-                );
-              },
+            // الخلفية الثابتة
+            CustomPaint(
+              painter: _AnimatedBgPainter(
+                progress: 0,
+                particles: _particles,
+                particleProgress: 0,
+              ),
+              size: Size.infinite,
             ),
             // المحتوى
-            Column(
-              children: [
-                _buildToolbar(),
-                Expanded(
-                  child: _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white))
-                      : _errorMessage != null
-                          ? _buildErrorView()
-                          : _buildDashboard(),
-                ),
-              ],
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildToolbar(),
+                  Expanded(
+                    child: _isLoading
+                        ? const Center(
+                            child:
+                                CircularProgressIndicator(color: Colors.white))
+                        : _errorMessage != null
+                            ? _buildErrorView()
+                            : _buildDashboard(),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -181,8 +160,11 @@ class _StatisticsPageState extends State<StatisticsPage>
   // ══════════════════════ TOOLBAR ══════════════════════
 
   Widget _buildToolbar() {
+    final isMobile = context.accR.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : context.accR.paddingH,
+          vertical: isMobile ? 4 : context.accR.spaceS),
       decoration: BoxDecoration(
         color: const Color(0xCC0D1B2A),
         border: Border(
@@ -197,28 +179,34 @@ class _StatisticsPageState extends State<StatisticsPage>
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+            icon: Icon(Icons.arrow_forward_rounded,
+                size: isMobile ? 20 : context.accR.iconM),
             tooltip: 'رجوع',
             style: IconButton.styleFrom(foregroundColor: Colors.white70),
           ),
-          const SizedBox(width: 6),
-          const Icon(Icons.dashboard_rounded, color: Colors.white70, size: 18),
-          const SizedBox(width: 8),
-          Text('لوحة الإحصائيات المالية',
-              style: GoogleFonts.cairo(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white)),
-          const Spacer(),
-          _toolbarBtn(Icons.account_tree_rounded, 'شجرة الحسابات', () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => ChartOfAccountsPage(companyId: widget.companyId),
-            ));
-          }),
-          const SizedBox(width: 6),
+          SizedBox(width: context.accR.spaceXS),
+          Icon(Icons.dashboard_rounded,
+              color: Colors.white70, size: isMobile ? 16 : context.accR.iconM),
+          SizedBox(width: context.accR.spaceS),
+          Expanded(
+            child: Text(isMobile ? 'الإحصائيات' : 'لوحة الإحصائيات المالية',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.cairo(
+                    fontSize: isMobile ? 14 : context.accR.headingSmall,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
+          ),
+          if (!isMobile)
+            _toolbarBtn(Icons.account_tree_rounded, 'شجرة الحسابات', () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) =>
+                    ChartOfAccountsPage(companyId: widget.companyId),
+              ));
+            }),
+          SizedBox(width: context.accR.spaceXS),
           IconButton(
             onPressed: _loadAllData,
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
             tooltip: 'تحديث',
             style: IconButton.styleFrom(foregroundColor: Colors.white70),
           ),
@@ -232,7 +220,8 @@ class _StatisticsPageState extends State<StatisticsPage>
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.white24),
           borderRadius: BorderRadius.circular(6),
@@ -240,10 +229,11 @@ class _StatisticsPageState extends State<StatisticsPage>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white70, size: 14),
-            const SizedBox(width: 4),
+            Icon(icon, color: Colors.white70, size: context.accR.iconXS),
+            SizedBox(width: context.accR.spaceXS),
             Text(label,
-                style: GoogleFonts.cairo(fontSize: 11, color: Colors.white70)),
+                style: GoogleFonts.cairo(
+                    fontSize: context.accR.small, color: Colors.white70)),
           ],
         ),
       ),
@@ -255,16 +245,19 @@ class _StatisticsPageState extends State<StatisticsPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: _clrRed, size: 48),
-          const SizedBox(height: 12),
+          Icon(Icons.error_outline, color: _clrRed, size: context.accR.iconXL),
+          SizedBox(height: context.accR.spaceM),
           Text(_errorMessage!,
-              style: GoogleFonts.cairo(color: _textMuted, fontSize: 14)),
-          const SizedBox(height: 12),
+              style: GoogleFonts.cairo(
+                  color: _textMuted, fontSize: context.accR.body)),
+          SizedBox(height: context.accR.spaceM),
           ElevatedButton.icon(
             onPressed: _loadAllData,
-            icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
+            icon: Icon(Icons.refresh,
+                color: Colors.white, size: context.accR.iconS),
             label: Text('إعادة المحاولة',
-                style: GoogleFonts.cairo(color: Colors.white, fontSize: 12)),
+                style: GoogleFonts.cairo(
+                    color: Colors.white, fontSize: context.accR.small)),
             style: ElevatedButton.styleFrom(
               backgroundColor: _clrBlue,
               shape: RoundedRectangleBorder(
@@ -293,119 +286,185 @@ class _StatisticsPageState extends State<StatisticsPage>
     final techNet = (pending['TechnicianNet'] ?? 0) as num;
 
     return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        children: [
-          // ══ الصف الأول: مؤشرات KPI مصغرة ══
-          SizedBox(
-            height: 62,
-            child: Row(
+      padding: EdgeInsets.all(context.accR.spaceM),
+      child: context.accR.isMobile
+          ? SingleChildScrollView(
+              child: Column(
+                children: [
+                  // KPI grid
+                  GridView.count(
+                    crossAxisCount: 2,
+                    childAspectRatio: 2.4,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    children: [
+                      _kpi('القاصة', balances['CashRegisterBalance'], _clrTeal,
+                          Icons.point_of_sale),
+                      _kpi('الصندوق', balances['MainCashBoxBalance'], _clrDark,
+                          Icons.account_balance),
+                      _kpi('الصفحة', balances['PageBalance'], _clrBlue,
+                          Icons.account_balance_wallet),
+                      _kpi('النقدي', balances['CashAccountBalance'], _clrGreen,
+                          Icons.savings),
+                      _kpiHighlight('صافي الدخل', balances['NetIncome']),
+                      _kpi('المشغلين', balances['OperatorReceivables'],
+                          _clrPurple, Icons.people),
+                    ],
+                  ),
+                  SizedBox(height: context.accR.spaceS),
+                  // Charts stacked vertically
+                  SizedBox(
+                    height: 220,
+                    child: _chartPanel('الميزانية', Icons.balance, _clrPurple,
+                        _buildBalanceSheetChart(balances)),
+                  ),
+                  SizedBox(height: context.accR.spaceS),
+                  SizedBox(
+                    height: 220,
+                    child: _chartPanel(
+                        'إيرادات vs مصروفات',
+                        Icons.bar_chart,
+                        _clrBlue,
+                        _buildRevenueExpenseChart(
+                            balances, collections, expenses)),
+                  ),
+                  SizedBox(height: context.accR.spaceS),
+                  SizedBox(
+                    height: 220,
+                    child: _chartPanel(
+                        'إحصائيات الشهر',
+                        Icons.calendar_today,
+                        _clrOrange,
+                        _buildMonthlyChart(
+                            collections, expenses, salaries, data)),
+                  ),
+                  SizedBox(height: context.accR.spaceS),
+                  SizedBox(
+                    height: 200,
+                    child: _chartPanel(
+                        'المعلقات',
+                        Icons.pending_actions,
+                        _clrPurple,
+                        _buildPendingChart(
+                            collections, salaries, agentNet, techNet)),
+                  ),
+                  SizedBox(height: context.accR.spaceS),
+                  SizedBox(
+                    height: 200,
+                    child: _chartPanel(
+                        'الإجماليات',
+                        Icons.summarize,
+                        _clrTeal,
+                        _buildTotalsView(
+                            collections, expenses, salaries, journal)),
+                  ),
+                  SizedBox(height: context.accR.spaceS),
+                  SizedBox(
+                    height: 200,
+                    child: _chartPanel('الصناديق', Icons.inventory_2,
+                        _clrOrange, _buildCashBoxesList(cashBoxes, balances)),
+                  ),
+                ],
+              ),
+            )
+          : Column(
               children: [
-                _kpi('القاصة', balances['CashRegisterBalance'], _clrTeal,
-                    Icons.point_of_sale),
-                const SizedBox(width: 6),
-                _kpi('الصندوق الرئيسي', balances['MainCashBoxBalance'],
-                    _clrDark, Icons.account_balance),
-                const SizedBox(width: 6),
-                _kpi('رصيد الصفحة', balances['PageBalance'], _clrBlue,
-                    Icons.account_balance_wallet),
-                const SizedBox(width: 6),
-                _kpi('الصندوق النقدي', balances['CashAccountBalance'],
-                    _clrGreen, Icons.savings),
-                const SizedBox(width: 6),
-                _kpiHighlight('صافي الدخل', balances['NetIncome']),
-                const SizedBox(width: 6),
-                _kpi('مستحقات المشغلين', balances['OperatorReceivables'],
-                    _clrPurple, Icons.people),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ══ الصف الثاني: 3 مخططات رئيسية ══
-          Expanded(
-            flex: 5,
-            child: Row(
-              children: [
-                // المخطط 1: الميزانية العمومية - Donut
-                Expanded(
-                  child: _chartPanel(
-                    'الميزانية العمومية',
-                    Icons.balance,
-                    _clrPurple,
-                    _buildBalanceSheetChart(balances),
+                // KPI row (desktop)
+                SizedBox(
+                  height: 62,
+                  child: Row(
+                    children: [
+                      _kpi('القاصة', balances['CashRegisterBalance'], _clrTeal,
+                          Icons.point_of_sale),
+                      SizedBox(width: context.accR.spaceXS),
+                      _kpi('الصندوق الرئيسي', balances['MainCashBoxBalance'],
+                          _clrDark, Icons.account_balance),
+                      SizedBox(width: context.accR.spaceXS),
+                      _kpi('رصيد الصفحة', balances['PageBalance'], _clrBlue,
+                          Icons.account_balance_wallet),
+                      SizedBox(width: context.accR.spaceXS),
+                      _kpi('الصندوق النقدي', balances['CashAccountBalance'],
+                          _clrGreen, Icons.savings),
+                      SizedBox(width: context.accR.spaceXS),
+                      _kpiHighlight('صافي الدخل', balances['NetIncome']),
+                      SizedBox(width: context.accR.spaceXS),
+                      _kpi('مستحقات المشغلين', balances['OperatorReceivables'],
+                          _clrPurple, Icons.people),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                // المخطط 2: الإيرادات والمصروفات - Bar
+                SizedBox(height: context.accR.spaceS),
+                // Charts row (desktop)
                 Expanded(
-                  child: _chartPanel(
-                    'الإيرادات vs المصروفات',
-                    Icons.bar_chart,
-                    _clrBlue,
-                    _buildRevenueExpenseChart(balances, collections, expenses),
+                  flex: 5,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _chartPanel('الميزانية العمومية', Icons.balance,
+                            _clrPurple, _buildBalanceSheetChart(balances)),
+                      ),
+                      SizedBox(width: context.accR.spaceS),
+                      Expanded(
+                        child: _chartPanel(
+                            'الإيرادات vs المصروفات',
+                            Icons.bar_chart,
+                            _clrBlue,
+                            _buildRevenueExpenseChart(
+                                balances, collections, expenses)),
+                      ),
+                      SizedBox(width: context.accR.spaceS),
+                      Expanded(
+                        child: _chartPanel(
+                            'إحصائيات الشهر',
+                            Icons.calendar_today,
+                            _clrOrange,
+                            _buildMonthlyChart(
+                                collections, expenses, salaries, data)),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                // المخطط 3: إحصائيات الشهر - Bar
-                Expanded(
-                  child: _chartPanel(
-                    'إحصائيات الشهر',
-                    Icons.calendar_today,
-                    _clrOrange,
-                    _buildMonthlyChart(collections, expenses, salaries, data),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ══ الصف الثالث: المعلقات + الإجماليات + الصناديق ══
-          Expanded(
-            flex: 3,
-            child: Row(
-              children: [
-                // المعلقات والذمم
+                SizedBox(height: context.accR.spaceS),
+                // Bottom row (desktop)
                 Expanded(
                   flex: 3,
-                  child: _chartPanel(
-                    'المعلقات والذمم',
-                    Icons.pending_actions,
-                    _clrPurple,
-                    _buildPendingChart(
-                        collections, salaries, agentNet, techNet),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // الإجماليات الكلية
-                Expanded(
-                  flex: 3,
-                  child: _chartPanel(
-                    'الإجماليات الكلية',
-                    Icons.summarize,
-                    _clrTeal,
-                    _buildTotalsView(collections, expenses, salaries, journal),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // الصناديق النقدية
-                Expanded(
-                  flex: 2,
-                  child: _chartPanel(
-                    'الصناديق النقدية',
-                    Icons.inventory_2,
-                    _clrDark,
-                    _buildCashBoxesList(cashBoxes, balances),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _chartPanel(
+                            'المعلقات والذمم',
+                            Icons.pending_actions,
+                            _clrPurple,
+                            _buildPendingChart(
+                                collections, salaries, agentNet, techNet)),
+                      ),
+                      SizedBox(width: context.accR.spaceS),
+                      Expanded(
+                        flex: 3,
+                        child: _chartPanel(
+                            'الإجماليات الكلية',
+                            Icons.summarize,
+                            _clrTeal,
+                            _buildTotalsView(
+                                collections, expenses, salaries, journal)),
+                      ),
+                      SizedBox(width: context.accR.spaceS),
+                      Expanded(
+                        flex: 2,
+                        child: _chartPanel(
+                            'الصناديق النقدية',
+                            Icons.inventory_2,
+                            _clrOrange,
+                            _buildCashBoxesList(cashBoxes, balances)),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -414,7 +473,8 @@ class _StatisticsPageState extends State<StatisticsPage>
   Widget _kpi(String label, dynamic value, Color color, IconData icon) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
           color: const Color(0xCC1A2332),
           borderRadius: BorderRadius.circular(8),
@@ -428,8 +488,8 @@ class _StatisticsPageState extends State<StatisticsPage>
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 6),
+            Icon(icon, color: color, size: context.accR.iconM),
+            SizedBox(width: context.accR.spaceXS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +501,7 @@ class _StatisticsPageState extends State<StatisticsPage>
                     child: Text(
                       _fmt(value),
                       style: GoogleFonts.cairo(
-                        fontSize: 13,
+                        fontSize: context.accR.financialSmall,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -451,7 +511,8 @@ class _StatisticsPageState extends State<StatisticsPage>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.cairo(
-                          fontSize: 9, color: Colors.white60)),
+                          fontSize: context.accR.caption,
+                          color: Colors.white60)),
                 ],
               ),
             ),
@@ -466,7 +527,8 @@ class _StatisticsPageState extends State<StatisticsPage>
     final color = isPos ? _clrGreen : _clrRed;
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [color, color.withOpacity(0.8)],
@@ -482,8 +544,8 @@ class _StatisticsPageState extends State<StatisticsPage>
         child: Row(
           children: [
             Icon(isPos ? Icons.trending_up : Icons.trending_down,
-                color: Colors.white, size: 18),
-            const SizedBox(width: 6),
+                color: Colors.white, size: context.accR.iconM),
+            SizedBox(width: context.accR.spaceXS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -495,7 +557,7 @@ class _StatisticsPageState extends State<StatisticsPage>
                     child: Text(
                       _fmt(value),
                       style: GoogleFonts.cairo(
-                        fontSize: 13,
+                        fontSize: context.accR.financialSmall,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -505,7 +567,8 @@ class _StatisticsPageState extends State<StatisticsPage>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.cairo(
-                          fontSize: 9, color: Colors.white70)),
+                          fontSize: context.accR.caption,
+                          color: Colors.white70)),
                 ],
               ),
             ),
@@ -532,7 +595,9 @@ class _StatisticsPageState extends State<StatisticsPage>
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.accR.spaceM,
+                vertical: context.accR.spaceXS),
             decoration: BoxDecoration(
               color: color.withOpacity(0.08),
               borderRadius:
@@ -540,11 +605,11 @@ class _StatisticsPageState extends State<StatisticsPage>
             ),
             child: Row(
               children: [
-                Icon(icon, color: color, size: 14),
-                const SizedBox(width: 6),
+                Icon(icon, color: color, size: context.accR.iconXS),
+                SizedBox(width: context.accR.spaceXS),
                 Text(title,
                     style: GoogleFonts.cairo(
-                        fontSize: 11,
+                        fontSize: context.accR.small,
                         fontWeight: FontWeight.bold,
                         color: Colors.white)),
               ],
@@ -553,7 +618,7 @@ class _StatisticsPageState extends State<StatisticsPage>
           // Body
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(context.accR.spaceS),
               child: child,
             ),
           ),
@@ -573,7 +638,8 @@ class _StatisticsPageState extends State<StatisticsPage>
     if (total == 0) {
       return Center(
           child: Text('لا توجد بيانات',
-              style: GoogleFonts.cairo(color: _textMuted, fontSize: 12)));
+              style: GoogleFonts.cairo(
+                  color: _textMuted, fontSize: context.accR.small)));
     }
 
     final items = [
@@ -602,7 +668,7 @@ class _StatisticsPageState extends State<StatisticsPage>
             ),
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: context.accR.spaceXS),
         // Legend
         Expanded(
           flex: 2,
@@ -619,7 +685,7 @@ class _StatisticsPageState extends State<StatisticsPage>
 
   Widget _legendRow(String label, double value, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Container(
@@ -628,13 +694,14 @@ class _StatisticsPageState extends State<StatisticsPage>
             decoration: BoxDecoration(
                 color: color, borderRadius: BorderRadius.circular(2)),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: context.accR.spaceXS),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: GoogleFonts.cairo(fontSize: 9, color: _textMuted),
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.caption, color: _textMuted),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 FittedBox(
@@ -642,7 +709,7 @@ class _StatisticsPageState extends State<StatisticsPage>
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(_fmtShort(value),
                       style: GoogleFonts.cairo(
-                          fontSize: 10,
+                          fontSize: context.accR.caption,
                           fontWeight: FontWeight.bold,
                           color: _textDark)),
                 ),
@@ -690,7 +757,7 @@ class _StatisticsPageState extends State<StatisticsPage>
                     return BarTooltipItem(
                       _fmtShort(rod.toY),
                       GoogleFonts.cairo(
-                          fontSize: 9,
+                          fontSize: context.accR.caption,
                           color: Colors.white,
                           fontWeight: FontWeight.bold),
                     );
@@ -793,7 +860,7 @@ class _StatisticsPageState extends State<StatisticsPage>
                     return BarTooltipItem(
                       _fmtShort(rod.toY),
                       GoogleFonts.cairo(
-                          fontSize: 9,
+                          fontSize: context.accR.caption,
                           color: Colors.white,
                           fontWeight: FontWeight.bold),
                     );
@@ -840,7 +907,7 @@ class _StatisticsPageState extends State<StatisticsPage>
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: context.accR.spaceXS),
         // عدادات تحت المخطط
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -897,7 +964,7 @@ class _StatisticsPageState extends State<StatisticsPage>
   Widget _hBar(_HBarItem item, double maxVal) {
     final pct = maxVal > 0 ? (item.value / maxVal).clamp(0.0, 1.0) : 0.0;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
+      padding: EdgeInsets.symmetric(vertical: 1),
       child: Row(
         children: [
           SizedBox(
@@ -905,9 +972,10 @@ class _StatisticsPageState extends State<StatisticsPage>
             child: Text(item.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(fontSize: 9, color: _textMuted)),
+                style: GoogleFonts.cairo(
+                    fontSize: context.accR.caption, color: _textMuted)),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: context.accR.spaceXS),
           Expanded(
             child: LayoutBuilder(
               builder: (ctx, constraints) {
@@ -934,7 +1002,7 @@ class _StatisticsPageState extends State<StatisticsPage>
               },
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: context.accR.spaceXS),
           SizedBox(
             width: 65,
             child: FittedBox(
@@ -942,7 +1010,7 @@ class _StatisticsPageState extends State<StatisticsPage>
               alignment: AlignmentDirectional.centerEnd,
               child: Text(_fmtShort(item.value),
                   style: GoogleFonts.cairo(
-                      fontSize: 9,
+                      fontSize: context.accR.caption,
                       fontWeight: FontWeight.bold,
                       color: _textDark)),
             ),
@@ -987,15 +1055,17 @@ class _StatisticsPageState extends State<StatisticsPage>
                 color: item.color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: Icon(item.icon, color: item.color, size: 13),
+              child:
+                  Icon(item.icon, color: item.color, size: context.accR.iconXS),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: context.accR.spaceXS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.label,
-                      style: GoogleFonts.cairo(fontSize: 9, color: _textMuted),
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.caption, color: _textMuted),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   FittedBox(
@@ -1006,7 +1076,7 @@ class _StatisticsPageState extends State<StatisticsPage>
                           ? item.value.toStringAsFixed(0)
                           : _fmtShort(item.value),
                       style: GoogleFonts.cairo(
-                          fontSize: 11,
+                          fontSize: context.accR.small,
                           fontWeight: FontWeight.bold,
                           color: _textDark),
                     ),
@@ -1047,7 +1117,8 @@ class _StatisticsPageState extends State<StatisticsPage>
     if (boxes.isEmpty) {
       return Center(
           child: Text('لا توجد صناديق',
-              style: GoogleFonts.cairo(color: _textMuted, fontSize: 10)));
+              style: GoogleFonts.cairo(
+                  color: _textMuted, fontSize: context.accR.caption)));
     }
 
     return ListView.separated(
@@ -1058,22 +1129,24 @@ class _StatisticsPageState extends State<StatisticsPage>
       itemBuilder: (_, i) {
         final b = boxes[i];
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
+          padding: EdgeInsets.symmetric(vertical: 3),
           child: Row(
             children: [
-              Icon(Icons.inventory_2_outlined, color: _clrTeal, size: 14),
-              const SizedBox(width: 4),
+              Icon(Icons.inventory_2_outlined,
+                  color: _clrTeal, size: context.accR.iconXS),
+              SizedBox(width: context.accR.spaceXS),
               Expanded(
                 child: Text(b.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(fontSize: 10, color: _textDark)),
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.caption, color: _textDark)),
               ),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(_fmtShort(b.balance),
                     style: GoogleFonts.cairo(
-                        fontSize: 10,
+                        fontSize: context.accR.caption,
                         fontWeight: FontWeight.bold,
                         color: b.balance >= 0 ? _clrGreen : _clrRed)),
               ),
@@ -1247,7 +1320,7 @@ class _AnimatedBgPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _AnimatedBgPainter old) => true;
+  bool shouldRepaint(covariant _AnimatedBgPainter old) => false;
 }
 
 // ══════════════════════ DATA MODELS ══════════════════════

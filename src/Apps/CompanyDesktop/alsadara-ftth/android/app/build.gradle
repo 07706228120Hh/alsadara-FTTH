@@ -5,28 +5,25 @@ plugins {
 }
 
 android {
-    namespace = "com.alsadara.ftth_project" // ضع اسم الحزمة المحدث
-    compileSdk = 35 // تحديث إلى SDK 35
+    namespace = "com.alsadara.ftth_project"
+    compileSdk = 36
 
     compileOptions {
-        // تحديث إلى Java 17 لحل مشاكل التوافق
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-        // تفعيل core library desugaring
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        // تحديث JVM Target إلى الإصدار 17
         jvmTarget = "17"
     }
 
     defaultConfig {
-        applicationId = "com.alsadara.ftth_project" // اسم التطبيق المحدث
-        minSdkVersion flutter.minSdkVersion // أقل إصدار لنظام Android مدعوم (Android 5.0 Lollipop)
-        targetSdk = 35 // تحديث إلى SDK 35
-        versionCode = 10
-        versionName = "1.2.4"
+        applicationId = "com.alsadara.ftth_project"
+        minSdkVersion flutter.minSdkVersion
+        targetSdk = 36
+        versionCode = 18
+        versionName = "1.4.2"
 
         // تمكين دعم الأذونات في وقت التشغيل (الإعداد الافتراضي يدعم ذلك، لكن يتم تأكيده هنا)
         multiDexEnabled true

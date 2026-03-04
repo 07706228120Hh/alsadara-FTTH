@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:google_fonts/google_fonts.dart';
+import '../../utils/responsive_helper.dart';
 import '../../multi_tenant.dart';
 import '../../config/data_source_config.dart'; // ✅ إعدادات مصدر البيانات
 import '../../services/vps_auth_service.dart'; // ✅ خدمة VPS
@@ -186,7 +187,17 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Scaffold(
+      drawer: r.showSidebar
+          ? null
+          : Drawer(
+              width: 260,
+              backgroundColor: const Color(0xFF0F172A),
+              child: SafeArea(
+                child: _buildEnergySidebar(forDrawer: true),
+              ),
+            ),
       body: Container(
         decoration: const BoxDecoration(
           // 🔋 خلفية Energy Dashboard - أسود مزرق عميق
@@ -196,7 +207,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           child: Row(
             children: [
               // 🎨 القائمة الجانبية بتصميم Energy Dashboard
-              _buildEnergySidebar(),
+              if (r.showSidebar) _buildEnergySidebar(),
               // المحتوى الرئيسي
               Expanded(
                 child: Column(
@@ -222,13 +233,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   // ═══════════════════════════════════════════════════════════════
 
   Widget _buildEnergyTopBar() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 600;
+    final r = context.responsive;
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 16 : 24,
-        vertical: isSmallScreen ? 12 : 16,
+        horizontal: r.contentPaddingH,
+        vertical: r.isMobile ? 10 : 16,
       ),
       decoration: BoxDecoration(
         color: EnergyDashboardTheme.bgSecondary,
@@ -245,12 +255,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       ),
       child: Row(
         children: [
+          // زر القائمة للشاشات الصغيرة
+          if (!r.showSidebar) ...[
+            IconButton(
+              icon: const Icon(Icons.menu, color: Colors.white70),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+            const SizedBox(width: 8),
+          ],
           // شعار الصدارة مع توهج نيون
           Row(
             children: [
               Container(
-                width: isSmallScreen ? 36 : 42,
-                height: isSmallScreen ? 36 : 42,
+                width: r.isMobile ? 36 : 42,
+                height: r.isMobile ? 36 : 42,
                 decoration: BoxDecoration(
                   gradient: EnergyDashboardTheme.neonGreenGradient,
                   borderRadius: BorderRadius.circular(10),
@@ -262,7 +280,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 child: Icon(
                   Icons.bolt_rounded,
                   color: EnergyDashboardTheme.bgPrimary,
-                  size: isSmallScreen ? 20 : 24,
+                  size: r.isMobile ? 20 : 24,
                 ),
               ),
               const SizedBox(width: 14),
@@ -274,7 +292,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     'منصة الصدارة',
                     style: GoogleFonts.cairo(
                       color: EnergyDashboardTheme.textPrimary,
-                      fontSize: isSmallScreen ? 16 : 18,
+                      fontSize: r.titleSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -282,7 +300,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     'لوحة تحكم مدير النظام',
                     style: GoogleFonts.cairo(
                       color: EnergyDashboardTheme.neonGreen,
-                      fontSize: isSmallScreen ? 10 : 12,
+                      fontSize: r.captionSize,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -292,7 +310,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ),
           const Spacer(),
           // أزرار الإجراءات السريعة
-          if (!isSmallScreen) ...[
+          if (!r.isMobile) ...[
             _buildTopBarAction(
               icon: Icons.notifications_outlined,
               color: EnergyDashboardTheme.neonBlue,
@@ -404,10 +422,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   // 🔋 Energy Dashboard - القائمة الجانبية
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildEnergySidebar() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final sidebarWidth =
-        _isSidebarCollapsed ? 50.0 : (screenWidth < 800 ? 150.0 : 165.0);
+  Widget _buildEnergySidebar({bool forDrawer = false}) {
+    final r = context.responsive;
+    final sidebarWidth = forDrawer
+        ? 260.0
+        : (_isSidebarCollapsed ? 50.0 : r.sidebarExpandedWidth);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),

@@ -6,9 +6,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/tenant.dart';
 import '../models/tenant_user.dart';
 import 'custom_auth_service.dart';
+import 'firebase_availability.dart';
 
 class TenantService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// تحميل كسول لتجنب خطأ [core/no-app]
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   /// إنشاء شركة جديدة مع المدير الأول
   Future<TenantCreationResult> createTenantWithAdmin({
@@ -26,8 +28,9 @@ class TenantService {
     String? adminEmail,
     String? adminPhone,
   }) async {
+    if (!FirebaseAvailability.isAvailable)
+      return TenantCreationResult.failure('Firebase غير متاح');
     try {
-      // التحقق من عدم وجود كود شركة مكرر
       final existingTenant = await _firestore
           .collection('tenants')
           .where('code', isEqualTo: tenantCode)
@@ -83,6 +86,7 @@ class TenantService {
 
   /// الحصول على شركة بالمعرف
   Future<Tenant?> getTenantById(String tenantId) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       final doc = await _firestore.collection('tenants').doc(tenantId).get();
       if (doc.exists) {
@@ -96,6 +100,7 @@ class TenantService {
 
   /// الحصول على شركة بالكود
   Future<Tenant?> getTenantByCode(String code) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       final query = await _firestore
           .collection('tenants')
@@ -114,6 +119,7 @@ class TenantService {
 
   /// تحديث بيانات الشركة
   Future<bool> updateTenant(String tenantId, Map<String, dynamic> data) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       await _firestore.collection('tenants').doc(tenantId).update(data);
       return true;
@@ -124,6 +130,7 @@ class TenantService {
 
   /// تعليق شركة
   Future<bool> suspendTenant(String tenantId, String reason) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       await _firestore.collection('tenants').doc(tenantId).update({
         'isActive': false,
@@ -139,6 +146,7 @@ class TenantService {
 
   /// إعادة تفعيل شركة
   Future<bool> reactivateTenant(String tenantId) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       await _firestore.collection('tenants').doc(tenantId).update({
         'isActive': true,
@@ -155,6 +163,7 @@ class TenantService {
   /// تمديد الاشتراك
   Future<bool> extendSubscription(
       String tenantId, DateTime newEndDate, String? newPlan) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final updates = <String, dynamic>{
         'subscriptionEnd': Timestamp.fromDate(newEndDate),
@@ -171,6 +180,7 @@ class TenantService {
 
   /// الحصول على إحصائيات الشركة
   Future<TenantStats?> getTenantStats(String tenantId) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       // عدد المستخدمين
       final usersSnapshot = await _firestore
@@ -195,6 +205,7 @@ class TenantService {
 
   /// الحصول على الشركات التي ستنتهي قريباً
   Stream<List<Tenant>> getExpiringTenants(int daysThreshold) {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     final thresholdDate = DateTime.now().add(Duration(days: daysThreshold));
 
     return _firestore
@@ -209,6 +220,7 @@ class TenantService {
 
   /// الحصول على الشركات المعلقة
   Stream<List<Tenant>> getSuspendedTenants() {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     return _firestore
         .collection('tenants')
         .where('isActive', isEqualTo: false)
@@ -220,6 +232,8 @@ class TenantService {
   /// حذف شركة (مع جميع بياناتها)
   /// يقوم بحذف جميع المجموعات الفرعية ثم وثيقة الشركة
   Future<DeleteTenantResult> deleteTenant(String tenantId) async {
+    if (!FirebaseAvailability.isAvailable)
+      return DeleteTenantResult.failure('Firebase غير متاح');
     try {
       int deletedUsers = 0;
       int deletedSubcollections = 0;
@@ -284,6 +298,8 @@ class TenantService {
 
   /// الحصول على عدد البيانات قبل الحذف (للتأكيد)
   Future<TenantDataCount> getTenantDataCount(String tenantId) async {
+    if (!FirebaseAvailability.isAvailable)
+      return TenantDataCount(usersCount: 0, otherDataCount: 0);
     try {
       int usersCount = 0;
       int otherDataCount = 0;

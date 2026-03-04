@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -426,12 +427,14 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('إدارة الإجازات',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text('إدارة الإجازات',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: r.appBarTitleSize)),
           centerTitle: true,
           backgroundColor: Colors.teal[700],
           foregroundColor: Colors.white,

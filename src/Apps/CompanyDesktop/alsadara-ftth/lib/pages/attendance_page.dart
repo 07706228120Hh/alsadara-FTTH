@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/responsive_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/attendance_api_service.dart';
@@ -302,13 +303,17 @@ class _AttendancePageState extends State<AttendancePage>
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Scaffold(
       backgroundColor: const Color(0xFF0F1923),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: r.isMobile ? 16 : 32,
+              vertical: r.isMobile ? 10 : 16,
+            ),
             child: Column(
               children: [
                 // ── الهيدر ──
@@ -335,13 +340,14 @@ class _AttendancePageState extends State<AttendancePage>
   //  الهيدر
   // ═══════════════════════════════════════
   Widget _buildHeader() {
+    final r = context.responsive;
     return Row(
       children: [
         // زر رجوع
         IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_forward_ios_rounded,
-              color: Colors.white54, size: 20),
+          icon: Icon(Icons.arrow_forward_ios_rounded,
+              color: Colors.white54, size: r.appBarIconSize),
           style: IconButton.styleFrom(
             backgroundColor: Colors.white.withOpacity(0.05),
             shape:
@@ -353,26 +359,26 @@ class _AttendancePageState extends State<AttendancePage>
         ScaleTransition(
           scale: _pulseAnimation,
           child: Container(
-            width: 38,
-            height: 38,
+            width: r.isMobile ? 30 : 38,
+            height: r.isMobile ? 30 : 38,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               gradient: const LinearGradient(
                 colors: [_primaryBlue, _accentCyan],
               ),
             ),
-            child: const Icon(Icons.fingerprint_rounded,
-                color: Colors.white, size: 22),
+            child: Icon(Icons.fingerprint_rounded,
+                color: Colors.white, size: r.isMobile ? 18 : 22),
           ),
         ),
         const SizedBox(width: 12),
         // العنوان
-        const Expanded(
+        Expanded(
           child: Text(
             'نظام البصمة',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: r.titleSize,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -384,9 +390,9 @@ class _AttendancePageState extends State<AttendancePage>
           children: [
             Text(
               widget.username,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 13,
+                fontSize: r.captionSize,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -394,7 +400,7 @@ class _AttendancePageState extends State<AttendancePage>
               widget.center,
               style: TextStyle(
                 color: _accentCyan.withOpacity(0.7),
-                fontSize: 11,
+                fontSize: r.captionSize - 2,
               ),
             ),
           ],
@@ -402,7 +408,10 @@ class _AttendancePageState extends State<AttendancePage>
         const SizedBox(width: 16),
         // الساعة
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: r.isMobile ? 8 : 12,
+            vertical: r.isMobile ? 4 : 6,
+          ),
           decoration: BoxDecoration(
             color: _primaryBlue.withOpacity(0.12),
             borderRadius: BorderRadius.circular(20),
@@ -413,11 +422,11 @@ class _AttendancePageState extends State<AttendancePage>
               final now = DateTime.now();
               return Text(
                 '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: _accentCyan,
-                  fontSize: 14,
+                  fontSize: r.bodySize,
                   fontWeight: FontWeight.w700,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               );
             },
@@ -431,6 +440,7 @@ class _AttendancePageState extends State<AttendancePage>
   //  صف الإحصائيات
   // ═══════════════════════════════════════
   Widget _buildStatsRow() {
+    final r = context.responsive;
     final stats = [
       _StatItem('حضور', '$_attendanceCount', Icons.check_circle_outline_rounded,
           const Color(0xFF4CAF50)),
@@ -445,7 +455,10 @@ class _AttendancePageState extends State<AttendancePage>
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: EdgeInsets.symmetric(
+        vertical: r.isMobile ? 10 : 16,
+        horizontal: r.isMobile ? 4 : 8,
+      ),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: Colors.white.withOpacity(0.04),
@@ -457,13 +470,13 @@ class _AttendancePageState extends State<AttendancePage>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(s.icon, color: s.color, size: 20),
+                      Icon(s.icon, color: s.color, size: r.isMobile ? 16 : 20),
                       const SizedBox(height: 8),
                       Text(
                         s.value,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
+                          fontSize: r.isMobile ? 16 : 22,
                           fontWeight: FontWeight.w800,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
@@ -473,7 +486,7 @@ class _AttendancePageState extends State<AttendancePage>
                         s.label,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.45),
-                          fontSize: 11,
+                          fontSize: r.captionSize - 1,
                         ),
                         textAlign: TextAlign.center,
                         maxLines: 1,

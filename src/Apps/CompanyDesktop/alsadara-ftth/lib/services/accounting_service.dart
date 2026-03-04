@@ -696,6 +696,15 @@ class AccountingService {
   // تكامل FTTH - ربط المشغلين والمزامنة
   // ═══════════════════════════════════════════
 
+  /// جلب بيانات اعتماد FTTH للمستخدم (اسم المستخدم وكلمة المرور)
+  Future<Map<String, dynamic>> getFtthCredentials(String userId) async {
+    final response = await _client.get(
+      '/ftth-accounting/ftth-credentials/$userId',
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   /// جلب قائمة المشغلين مع حالة الربط
   Future<Map<String, dynamic>> getOperatorsLinking({String? companyId}) async {
     String query = '/ftth-accounting/operators-linking';

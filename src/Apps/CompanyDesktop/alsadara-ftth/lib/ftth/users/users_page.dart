@@ -109,8 +109,11 @@ class _UsersPageState extends State<UsersPage> {
   @override
   void initState() {
     super.initState();
-    _fetchZones();
-    _fetchUsers();
+    // ⚡ تأجيل التحميل حتى بعد انتهاء transition animation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchZones();
+      _fetchUsers();
+    });
   }
 
   @override

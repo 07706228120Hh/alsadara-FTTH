@@ -44,6 +44,8 @@ class _AppLifecycleManagerState extends State<AppLifecycleManager>
         // التطبيق سيتم إغلاقه
         debugPrint('📱 التطبيق سيتم إغلاقه - مسح بيانات تسجيل الدخول...');
         AppCloseHandler.clearAllLoginData();
+        // مسح توكنات FTTH دائماً عند الإغلاق (للأمان)
+        AppCloseHandler.clearFtthSessionTokens();
         break;
       case AppLifecycleState.inactive:
         // التطبيق غير نشط مؤقتاً

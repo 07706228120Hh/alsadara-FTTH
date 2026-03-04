@@ -74,6 +74,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   int _selectedSubscriptionIndex = 0;
   Map<String, dynamic>? deviceOntInfo;
   Map<String, dynamic>? _customerDataMain;
+  String _resolvedPhone = ''; // رقم الهاتف المُحلَّل
+  bool _isFetchingPhone = false; // جاري جلب الهاتف
   bool isLoading = true;
   bool isLoadingOntInfo = false;
   String errorMessage = '';
@@ -275,7 +277,47 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     if (data != null) {
       setState(() {
         _customerDataMain = data;
+        _resolvedPhone = _extractPhoneFromData(data, null);
       });
+    }
+  }
+
+  /// استخراج رقم الهاتف من كل الحقول الممكنة
+  String _extractPhoneFromData(
+      Map<String, dynamic>? customerData, Map<String, dynamic>? subData) {
+    String? check(dynamic v) {
+      final s = v?.toString().trim();
+      return (s != null && s.isNotEmpty && s != 'null') ? s : null;
+    }
+
+    return check(customerData?['primaryContact']?['mobile']) ??
+        check(customerData?['phone']) ??
+        check(customerData?['phoneNumber']) ??
+        check(customerData?['mobilePhone']) ??
+        check(subData?['customerPhone']) ??
+        check(subData?['phoneNumber']) ??
+        check(subData?['phone']) ??
+        check(subData?['customer']?['phone']) ??
+        check(subData?['customer']?['mobile']) ??
+        (widget.userPhone != 'غير متوفر' ? check(widget.userPhone) : null) ??
+        '';
+  }
+
+  /// جلب رقم الهاتف يدوياً عند الضغط على الزر
+  Future<void> _fetchPhoneManually() async {
+    if (_isFetchingPhone) return;
+    setState(() => _isFetchingPhone = true);
+    try {
+      final data = await _fetchCustomerDetails();
+      if (!mounted) return;
+      setState(() {
+        if (data != null) _customerDataMain = data;
+        _resolvedPhone = _extractPhoneFromData(
+            data ?? _customerDataMain, subscriptionDetails);
+        _isFetchingPhone = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isFetchingPhone = false);
     }
   }
 
@@ -974,17 +1016,26 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             'Authorization': 'Bearer ${widget.authToken}',
             'Accept': 'application/json',
           });
+      debugPrint('📞 [fetchCustomerDetails] status=${r.statusCode}');
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
+        debugPrint('📞 [fetchCustomerDetails] keys=${data is Map<String,dynamic> ? data.keys.toList() : "NOT_MAP"}');
         if (data is Map<String, dynamic>) {
-          // بعض الردود تكون تحت مفتاح model
           final model = data['model'];
-          if (model is Map<String, dynamic>) return model;
+          debugPrint('📞 [fetchCustomerDetails] model keys=${model is Map<String,dynamic> ? model.keys.toList() : "NO_MODEL"}');
+          if (model is Map<String, dynamic>) {
+            debugPrint('📞 [fetchCustomerDetails] primaryContact=${model['primaryContact']}');
+            return model;
+          }
+          debugPrint('📞 [fetchCustomerDetails] primaryContact=${data['primaryContact']}');
           return data;
         }
+      } else {
+        debugPrint('📞 [fetchCustomerDetails] body=${r.body.substring(0, r.body.length.clamp(0, 200))}');
       }
       return null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('📞 [fetchCustomerDetails] ERROR=$e');
       return null;
     }
   }
@@ -1343,12 +1394,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         final tileW = contentWidth / cols;
 
         final tiles = <Widget>[
-          _headerInfoItem(Icons.phone, 'رقم الهاتف',
-              _fmtPhoneLocal(widget.userPhone), tileW,
-              tooltip: _fmtPhone(widget.userPhone),
-              backgroundColor: tileBg,
-              borderColor: tileBorder,
-              iconBgColor: iconBg),
+          _buildPhoneTile(tileW, tileBg, tileBorder, iconBg),
           _headerInfoItem(Icons.badge, 'معرف المستخدم', widget.userId, tileW,
               backgroundColor: tileBg,
               borderColor: tileBorder,
@@ -1357,6 +1403,105 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
         return Wrap(spacing: spacing, runSpacing: spacing, children: tiles);
       },
+    );
+  }
+
+  Widget _buildPhoneTile(double width, Color? tileBg, Color? tileBorder,
+      Color? iconBg) {
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: tileBg ?? Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: tileBorder ?? Colors.grey.shade200),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // أيقونة الهاتف
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                  color: iconBg ?? Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(6)),
+              child: Icon(Icons.phone, size: 16, color: Colors.green.shade700),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('رقم الهاتف',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  if (_resolvedPhone.isNotEmpty)
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Text(
+                        _fmtPhoneLocal(_resolvedPhone),
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    )
+                  else
+                    Text('غير متوفر',
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.grey.shade500)),
+                ],
+              ),
+            ),
+            // زر إظهار الرقم أو نسخه
+            if (_resolvedPhone.isNotEmpty)
+              Tooltip(
+                message: 'نسخ رقم الهاتف',
+                child: IconButton(
+                  icon:
+                      Icon(Icons.copy_rounded, size: 20, color: Colors.green.shade700),
+                  onPressed: () {
+                    Clipboard.setData(
+                        ClipboardData(text: _fmtPhoneLocal(_resolvedPhone)));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('تم نسخ رقم الهاتف'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ));
+                  },
+                ),
+              )
+            else if (_isFetchingPhone)
+              const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              Tooltip(
+                message: 'جلب رقم الهاتف من النظام',
+                child: TextButton.icon(
+                  onPressed: _fetchPhoneManually,
+                  icon: Icon(Icons.search, size: 16,
+                      color: Colors.blue.shade700),
+                  label: Text('إظهار الرقم',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.blue.shade700)),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    backgroundColor: Colors.blue.shade50,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1477,6 +1622,40 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),
+          // زر نسخ الاسم
+          Tooltip(
+            message: 'نسخ الاسم',
+            child: IconButton(
+              icon: Icon(Icons.copy_rounded, size: 18, color: Colors.blue.shade700),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: widget.userName));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('تم نسخ الاسم'),
+                  backgroundColor: Colors.blue,
+                  duration: Duration(seconds: 2),
+                ));
+              },
+            ),
+          ),
+          // زر نسخ الاسم + الرقم معاً
+          if (_resolvedPhone.isNotEmpty)
+            Tooltip(
+              message: 'نسخ الاسم والرقم معاً',
+              child: IconButton(
+                icon: Icon(Icons.contact_page_rounded, size: 18,
+                    color: Colors.teal.shade700),
+                onPressed: () {
+                  final text =
+                      '${widget.userName}\n${_fmtPhoneLocal(_resolvedPhone)}';
+                  Clipboard.setData(ClipboardData(text: text));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('تم نسخ الاسم والرقم'),
+                    backgroundColor: Colors.teal,
+                    duration: Duration(seconds: 2),
+                  ));
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -1898,6 +2077,70 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // هيدر البطاقة مع زر نسخ الكل
+                                Row(
+                                  children: [
+                                    Icon(Icons.person_outline,
+                                        size: 18,
+                                        color: Colors.blue.shade800),
+                                    const SizedBox(width: 6),
+                                    Text('معلومات المستخدم',
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.blue.shade800)),
+                                    const Spacer(),
+                                    // زر نسخ كل المعلومات
+                                    Tooltip(
+                                      message: 'نسخ كل المعلومات',
+                                      child: InkWell(
+                                        onTap: () {
+                                          final phone = _resolvedPhone.isNotEmpty
+                                              ? _fmtPhoneLocal(_resolvedPhone)
+                                              : 'غير متوفر';
+                                          final text =
+                                              'الاسم: ${widget.userName}\nرقم الهاتف: $phone\nالمعرف: ${widget.userId}';
+                                          Clipboard.setData(
+                                              ClipboardData(text: text));
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(const SnackBar(
+                                            content: Text('تم نسخ كل المعلومات'),
+                                            backgroundColor: Colors.teal,
+                                            duration: Duration(seconds: 2),
+                                          ));
+                                        },
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.teal.shade50,
+                                            border: Border.all(
+                                                color: Colors.teal.shade200),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.contact_page_rounded,
+                                                  size: 14,
+                                                  color: Colors.teal.shade700),
+                                              const SizedBox(width: 4),
+                                              Text('نسخ الكل',
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.teal.shade700,
+                                                      fontWeight:
+                                                          FontWeight.w600)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: gap),
                                 _userNameRow(),
                                 SizedBox(height: gap),
                                 _headerInfoGrid(context,

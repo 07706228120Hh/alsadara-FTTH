@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/firebase_availability.dart';
 
 class FirebaseDataViewer extends StatefulWidget {
   const FirebaseDataViewer({super.key});
@@ -14,7 +15,7 @@ class FirebaseDataViewer extends StatefulWidget {
 }
 
 class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   bool _isLoading = false;
   List<Map<String, dynamic>> _tenants = [];
   Map<String, List<Map<String, dynamic>>> _users = {};
@@ -27,6 +28,7 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
   }
 
   Future<void> _loadData() async {
+    if (!FirebaseAvailability.isAvailable) return;
     setState(() => _isLoading = true);
 
     try {

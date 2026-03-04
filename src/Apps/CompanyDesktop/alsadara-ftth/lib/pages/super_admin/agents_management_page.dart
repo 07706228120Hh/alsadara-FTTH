@@ -141,100 +141,164 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMob = MediaQuery.of(context).size.width < 700;
+
     // وضع عرض وكيل واحد فقط
     if (_isSingleAgentMode) {
       return Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
           backgroundColor: AccountingTheme.bgPrimary,
-          body: Column(
-            children: [
-              // شريط علوي بزر رجوع
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                decoration: BoxDecoration(
-                  color: AccountingTheme.bgCard,
-                  border: Border(
-                      bottom: BorderSide(color: AccountingTheme.borderColor)),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      tooltip: 'رجوع',
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: AccountingTheme.neonPurpleGradient,
-                        borderRadius: BorderRadius.circular(8),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // شريط علوي بزر رجوع
+                Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: isMob ? 12 : 20, vertical: isMob ? 10 : 14),
+                  decoration: BoxDecoration(
+                    color: AccountingTheme.bgCard,
+                    border: Border(
+                        bottom: BorderSide(color: AccountingTheme.borderColor)),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        tooltip: 'رجوع',
                       ),
-                      child: const Icon(Icons.support_agent_rounded,
-                          color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      _selectedAgent?.name ?? 'تفاصيل الوكيل',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary,
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: AccountingTheme.neonPurpleGradient,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.support_agent_rounded,
+                            color: Colors.white, size: 18),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _selectedAgent?.name ?? 'تفاصيل الوكيل',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AccountingTheme.textPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _errorMessage != null
-                        ? _buildError()
-                        : _selectedAgent != null
-                            ? _buildAgentDetail()
-                            : const Center(
-                                child: Text('لم يتم العثور على الوكيل')),
-              ),
-            ],
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _errorMessage != null
+                          ? _buildError()
+                          : _selectedAgent != null
+                              ? _buildAgentDetail()
+                              : const Center(
+                                  child: Text('لم يتم العثور على الوكيل')),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    // الوضع العادي - عرض كل الوكلاء مع القائمة الجانبية
+    // الوضع العادي - موبايل مع شريط تنقل سفلي
+    if (isMob) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: AccountingTheme.bgPrimary,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildToolbar(),
+                if (_sidebarIndex == 0 && _selectedAgent == null)
+                  _buildAccountingBar(),
+                Expanded(
+                  child: _sidebarIndex == 0
+                      ? _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _errorMessage != null
+                              ? _buildError()
+                              : _selectedAgent != null
+                                  ? _buildAgentDetail()
+                                  : _buildAgentsList()
+                      : _sidebarIndex == 1
+                          ? AgentTransactionsPage(companyId: widget.companyId)
+                          : AgentCommissionPage(companyId: widget.companyId),
+                ),
+              ],
+            ),
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: AccountingTheme.bgCard,
+              border: const Border(
+                  top: BorderSide(color: AccountingTheme.borderColor)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    _buildMobileNavItem(0, Icons.support_agent_rounded,
+                        'الوكلاء', AccountingTheme.neonPurple),
+                    _buildMobileNavItem(1, Icons.receipt_long, 'المعاملات',
+                        AccountingTheme.neonOrange),
+                    _buildMobileNavItem(
+                        2, Icons.percent, 'العمولات', AccountingTheme.neonPink),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // الوضع العادي - ديسكتوب مع القائمة الجانبية
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AccountingTheme.bgPrimary,
-        body: Row(
-          children: [
-            // القائمة الجانبية
-            _buildSidebar(),
-            // المحتوى الرئيسي
-            Expanded(
-              child: _sidebarIndex == 0
-                  ? Column(
-                      children: [
-                        _buildToolbar(),
-                        _buildAccountingBar(),
-                        Expanded(
-                          child: _isLoading
+        body: SafeArea(
+          child: Row(
+            children: [
+              _buildSidebar(),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildToolbar(),
+                    if (_sidebarIndex == 0) _buildAccountingBar(),
+                    Expanded(
+                      child: _sidebarIndex == 0
+                          ? _isLoading
                               ? const Center(child: CircularProgressIndicator())
                               : _errorMessage != null
                                   ? _buildError()
                                   : _selectedAgent != null
                                       ? _buildAgentDetail()
-                                      : _buildAgentsList(),
-                        ),
-                      ],
-                    )
-                  : _sidebarIndex == 1
-                      ? AgentTransactionsPage(companyId: widget.companyId)
-                      : AgentCommissionPage(companyId: widget.companyId),
-            ),
-          ],
+                                      : _buildAgentsList()
+                          : _sidebarIndex == 1
+                              ? AgentTransactionsPage(
+                                  companyId: widget.companyId)
+                              : AgentCommissionPage(
+                                  companyId: widget.companyId),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -345,54 +409,283 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     );
   }
 
+  Widget _buildMobileNavItem(
+      int index, IconData icon, String label, Color color) {
+    final isSelected = _sidebarIndex == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _sidebarIndex = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isSelected ? color : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 20,
+                  color: isSelected ? color : AccountingTheme.textMuted),
+              const SizedBox(height: 2),
+              Text(label,
+                  style: GoogleFonts.cairo(
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? color : AccountingTheme.textMuted,
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ==================== شريط الأدوات ====================
 
   Widget _buildToolbar() {
+    final isMob = MediaQuery.of(context).size.width < 700;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 12 : 20, vertical: isMob ? 10 : 14),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
       ),
-      child: Row(
-        children: [
-          // أيقونة + عنوان
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPurpleGradient,
-              borderRadius: BorderRadius.circular(8),
+      child:
+          isMob ? _buildMobileToolbarContent() : _buildDesktopToolbarContent(),
+    );
+  }
+
+  // الحصول على عنوان وأيقونة ولون التبويب الحالي
+  ({String title, IconData icon, Color color}) get _currentTabInfo {
+    switch (_sidebarIndex) {
+      case 1:
+        return (
+          title: 'معاملات الوكلاء',
+          icon: Icons.receipt_long,
+          color: AccountingTheme.neonOrange
+        );
+      case 2:
+        return (
+          title: 'العمولات',
+          icon: Icons.percent,
+          color: AccountingTheme.neonPink
+        );
+      default:
+        return (
+          title: 'إدارة الوكلاء',
+          icon: Icons.support_agent_rounded,
+          color: AccountingTheme.neonPurple
+        );
+    }
+  }
+
+  Widget _buildMobileToolbarContent() {
+    final tabInfo = _currentTabInfo;
+    return Column(
+      children: [
+        Row(
+          children: [
+            if (_sidebarIndex == 0 && _selectedAgent != null)
+              GestureDetector(
+                onTap: () => setState(() => _selectedAgent = null),
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Icon(Icons.arrow_back_rounded,
+                      size: 20, color: AccountingTheme.neonPink),
+                ),
+              )
+            else
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Icon(Icons.arrow_forward_rounded,
+                      size: 20, color: AccountingTheme.textSecondary),
+                ),
+              ),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: _sidebarIndex == 0
+                    ? AccountingTheme.neonPurpleGradient
+                    : null,
+                color:
+                    _sidebarIndex != 0 ? tabInfo.color.withOpacity(0.1) : null,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(tabInfo.icon,
+                  color: _sidebarIndex == 0 ? Colors.white : tabInfo.color,
+                  size: 16),
             ),
-            child: const Icon(Icons.support_agent_rounded,
-                color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
-          if (_selectedAgent != null) ...[
-            GestureDetector(
-              onTap: () => setState(() => _selectedAgent = null),
-              child: Text('الوكلاء',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AccountingTheme.neonPink,
-                    decoration: TextDecoration.underline,
-                  )),
-            ),
-            const Text(' / ',
-                style: TextStyle(
-                    fontSize: 16, color: AccountingTheme.textSecondary)),
-            Text(_selectedAgent!.name,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _sidebarIndex == 0
+                    ? (_selectedAgent?.name ?? tabInfo.title)
+                    : tabInfo.title,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AccountingTheme.textPrimary,
-                )),
-          ] else ...[
-            const Text('إدارة الوكلاء',
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (_sidebarIndex == 0 && _selectedAgent == null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AccountingTheme.neonPink.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text('${_filteredAgents.length}',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AccountingTheme.neonPink)),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: _loadData,
+                icon: const Icon(Icons.refresh, size: 18),
+                tooltip: 'تحديث',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                style: IconButton.styleFrom(
+                    foregroundColor: AccountingTheme.textSecondary),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: () => _showAddAgentDialog(),
+                icon: const Icon(Icons.add_circle,
+                    size: 22, color: AccountingTheme.neonPink),
+                tooltip: 'وكيل جديد',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ],
+        ),
+        if (_sidebarIndex == 0 && _selectedAgent == null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 34,
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    textDirection: TextDirection.rtl,
+                    decoration: InputDecoration(
+                      hintText: 'بحث عن وكيل...',
+                      hintStyle: const TextStyle(
+                          fontSize: 12, color: AccountingTheme.textMuted),
+                      prefixIcon: const Icon(Icons.search,
+                          size: 16, color: AccountingTheme.textMuted),
+                      filled: true,
+                      fillColor: AccountingTheme.bgPrimary,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            BorderSide(color: AccountingTheme.borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            BorderSide(color: AccountingTheme.borderColor),
+                      ),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              PopupMenuButton<AgentStatus?>(
+                tooltip: 'فلتر الحالة',
+                onSelected: (v) => setState(() => _statusFilter = v),
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: null, child: Text('الكل')),
+                  const PopupMenuItem(
+                      value: AgentStatus.active, child: Text('نشط')),
+                  const PopupMenuItem(
+                      value: AgentStatus.suspended, child: Text('معلق')),
+                  const PopupMenuItem(
+                      value: AgentStatus.banned, child: Text('محظور')),
+                  const PopupMenuItem(
+                      value: AgentStatus.inactive, child: Text('غير مفعل')),
+                ],
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AccountingTheme.borderColor),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.filter_list,
+                      size: 16,
+                      color: _statusFilter != null
+                          ? AccountingTheme.neonPink
+                          : AccountingTheme.textMuted),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDesktopToolbarContent() {
+    final tabInfo = _currentTabInfo;
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient:
+                _sidebarIndex == 0 ? AccountingTheme.neonPurpleGradient : null,
+            color: _sidebarIndex != 0 ? tabInfo.color.withOpacity(0.1) : null,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(tabInfo.icon,
+              color: _sidebarIndex == 0 ? Colors.white : tabInfo.color,
+              size: 18),
+        ),
+        const SizedBox(width: 12),
+        if (_sidebarIndex == 0 && _selectedAgent != null) ...[
+          GestureDetector(
+            onTap: () => setState(() => _selectedAgent = null),
+            child: Text('الوكلاء',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary,
+                  fontSize: 16,
+                  color: AccountingTheme.neonPink,
+                  decoration: TextDecoration.underline,
                 )),
+          ),
+          const Text(' / ',
+              style: TextStyle(
+                  fontSize: 16, color: AccountingTheme.textSecondary)),
+          Text(_selectedAgent!.name,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AccountingTheme.textPrimary,
+              )),
+        ] else ...[
+          Text(tabInfo.title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AccountingTheme.textPrimary,
+              )),
+          if (_sidebarIndex == 0) ...[
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -408,81 +701,79 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   )),
             ),
           ],
-          const Spacer(),
-          // بحث
-          if (_selectedAgent == null)
-            SizedBox(
-              width: 220,
-              height: 36,
-              child: TextField(
-                onChanged: (v) => setState(() => _searchQuery = v),
-                textDirection: TextDirection.rtl,
-                decoration: InputDecoration(
-                  hintText: 'بحث عن وكيل...',
-                  hintStyle: const TextStyle(
-                      fontSize: 13, color: AccountingTheme.textMuted),
-                  prefixIcon: const Icon(Icons.search,
-                      size: 18, color: AccountingTheme.textMuted),
-                  filled: true,
-                  fillColor: AccountingTheme.bgPrimary,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: AccountingTheme.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: AccountingTheme.borderColor),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        ],
+        const Spacer(),
+        if (_sidebarIndex == 0 && _selectedAgent == null)
+          SizedBox(
+            width: 220,
+            height: 36,
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                hintText: 'بحث عن وكيل...',
+                hintStyle: const TextStyle(
+                    fontSize: 13, color: AccountingTheme.textMuted),
+                prefixIcon: const Icon(Icons.search,
+                    size: 18, color: AccountingTheme.textMuted),
+                filled: true,
+                fillColor: AccountingTheme.bgPrimary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AccountingTheme.borderColor),
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AccountingTheme.borderColor),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               ),
             ),
-          const SizedBox(width: 8),
-          // فلتر الحالة
-          if (_selectedAgent == null)
-            PopupMenuButton<AgentStatus?>(
-              tooltip: 'فلتر الحالة',
-              onSelected: (v) => setState(() => _statusFilter = v),
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: null, child: Text('الكل')),
-                const PopupMenuItem(
-                    value: AgentStatus.active, child: Text('نشط')),
-                const PopupMenuItem(
-                    value: AgentStatus.suspended, child: Text('معلق')),
-                const PopupMenuItem(
-                    value: AgentStatus.banned, child: Text('محظور')),
-                const PopupMenuItem(
-                    value: AgentStatus.inactive, child: Text('غير مفعل')),
-              ],
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AccountingTheme.borderColor),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.filter_list,
-                        size: 16,
+          ),
+        if (_sidebarIndex == 0) const SizedBox(width: 8),
+        if (_sidebarIndex == 0 && _selectedAgent == null)
+          PopupMenuButton<AgentStatus?>(
+            tooltip: 'فلتر الحالة',
+            onSelected: (v) => setState(() => _statusFilter = v),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: null, child: Text('الكل')),
+              const PopupMenuItem(
+                  value: AgentStatus.active, child: Text('نشط')),
+              const PopupMenuItem(
+                  value: AgentStatus.suspended, child: Text('معلق')),
+              const PopupMenuItem(
+                  value: AgentStatus.banned, child: Text('محظور')),
+              const PopupMenuItem(
+                  value: AgentStatus.inactive, child: Text('غير مفعل')),
+            ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(color: AccountingTheme.borderColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.filter_list,
+                      size: 16,
+                      color: _statusFilter != null
+                          ? AccountingTheme.neonPink
+                          : AccountingTheme.textMuted),
+                  const SizedBox(width: 4),
+                  Text(_statusFilter?.displayName ?? 'الحالة',
+                      style: TextStyle(
+                        fontSize: 12,
                         color: _statusFilter != null
                             ? AccountingTheme.neonPink
-                            : AccountingTheme.textMuted),
-                    const SizedBox(width: 4),
-                    Text(_statusFilter?.displayName ?? 'الحالة',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _statusFilter != null
-                              ? AccountingTheme.neonPink
-                              : AccountingTheme.textSecondary,
-                        )),
-                  ],
-                ),
+                            : AccountingTheme.textSecondary,
+                      )),
+                ],
               ),
             ),
+          ),
+        if (_sidebarIndex == 0) ...[
           const SizedBox(width: 8),
-          // تحديث
           IconButton(
             onPressed: _loadData,
             icon: const Icon(Icons.refresh, size: 18),
@@ -492,7 +783,6 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             ),
           ),
           const SizedBox(width: 4),
-          // إضافة وكيل
           ElevatedButton.icon(
             onPressed: () => _showAddAgentDialog(),
             icon: const Icon(Icons.add, size: 16),
@@ -506,75 +796,159 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 
   // ==================== شريط المحاسبة ====================
 
   Widget _buildAccountingBar() {
+    final isMob = MediaQuery.of(context).size.width < 700;
     final s = _accountingSummary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 10 : 20, vertical: isMob ? 8 : 10),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
       ),
-      child: Row(
-        children: [
-          _buildStatChip(
-              'إجمالي الوكلاء',
-              '${s?.totalAgents ?? _agents.length}',
-              AccountingTheme.neonBlue,
-              Icons.people),
-          const SizedBox(width: 12),
-          _buildStatChip(
-              'نشط',
-              '${s?.activeAgents ?? _agents.where((a) => a.status == AgentStatus.active).length}',
-              AccountingTheme.neonGreen,
-              Icons.check_circle),
-          const SizedBox(width: 12),
-          _buildStatChip('إجمالي الأجور', _formatCurrency(s?.totalCharges ?? 0),
-              AccountingTheme.neonOrange, Icons.trending_up),
-          const SizedBox(width: 12),
-          _buildStatChip(
-              'إجمالي التسديد',
-              _formatCurrency(s?.totalPayments ?? 0),
-              AccountingTheme.neonGreen,
-              Icons.trending_down),
-          const SizedBox(width: 12),
-          _buildStatChip(
-              'صافي الرصيد',
-              _formatCurrency(s?.totalNetBalance ?? 0),
-              AccountingTheme.neonPink,
-              Icons.account_balance_wallet),
-        ],
-      ),
+      child: isMob
+          ? Row(
+              children: [
+                Expanded(
+                  child: _buildStatChip(
+                      'الوكلاء',
+                      '${s?.totalAgents ?? _agents.length}',
+                      AccountingTheme.neonBlue,
+                      Icons.people),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _buildStatChip(
+                      'نشط',
+                      '${s?.activeAgents ?? _agents.where((a) => a.status == AgentStatus.active).length}',
+                      AccountingTheme.neonGreen,
+                      Icons.check_circle),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _buildStatChip(
+                      'الأجور',
+                      _formatCurrency(s?.totalCharges ?? 0),
+                      AccountingTheme.neonOrange,
+                      Icons.trending_up),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _buildStatChip(
+                      'التسديد',
+                      _formatCurrency(s?.totalPayments ?? 0),
+                      AccountingTheme.neonGreen,
+                      Icons.trending_down),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _buildStatChip(
+                      'الصافي',
+                      _formatCurrency(s?.totalNetBalance ?? 0),
+                      AccountingTheme.neonPink,
+                      Icons.account_balance_wallet),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: _buildStatChip(
+                      'إجمالي الوكلاء',
+                      '${s?.totalAgents ?? _agents.length}',
+                      AccountingTheme.neonBlue,
+                      Icons.people),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildStatChip(
+                      'نشط',
+                      '${s?.activeAgents ?? _agents.where((a) => a.status == AgentStatus.active).length}',
+                      AccountingTheme.neonGreen,
+                      Icons.check_circle),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildStatChip(
+                      'إجمالي الأجور',
+                      _formatCurrency(s?.totalCharges ?? 0),
+                      AccountingTheme.neonOrange,
+                      Icons.trending_up),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildStatChip(
+                      'إجمالي التسديد',
+                      _formatCurrency(s?.totalPayments ?? 0),
+                      AccountingTheme.neonGreen,
+                      Icons.trending_down),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildStatChip(
+                      'صافي الرصيد',
+                      _formatCurrency(s?.totalNetBalance ?? 0),
+                      AccountingTheme.neonPink,
+                      Icons.account_balance_wallet),
+                ),
+              ],
+            ),
     );
   }
 
   Widget _buildStatChip(
       String label, String value, Color color, IconData icon) {
+    final isMob = MediaQuery.of(context).size.width < 700;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 4 : 12, vertical: isMob ? 4 : 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.18),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.35)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(fontSize: 11, color: color.withOpacity(0.8))),
-        ],
-      ),
+      child: isMob
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 12, color: color),
+                const SizedBox(height: 2),
+                Text(value,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: color),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1),
+                Text(label,
+                    style:
+                        TextStyle(fontSize: 8, color: color.withOpacity(0.8)),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1),
+              ],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 6),
+                Text(value,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: color)),
+                const SizedBox(width: 4),
+                Text(label,
+                    style:
+                        TextStyle(fontSize: 11, color: color.withOpacity(0.8))),
+              ],
+            ),
     );
   }
 
@@ -608,18 +982,20 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding:
+          EdgeInsets.all(MediaQuery.of(context).size.width < 700 ? 10 : 16),
       itemCount: agents.length,
       itemBuilder: (context, index) => _buildAgentCard(agents[index]),
     );
   }
 
   Widget _buildAgentCard(AgentModel agent) {
+    final isMob = MediaQuery.of(context).size.width < 700;
     final statusColor = _getStatusColor(agent.status);
     final isActive = agent.status == AgentStatus.active;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: isMob ? 6 : 8),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         borderRadius: BorderRadius.circular(10),
@@ -638,223 +1014,393 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           borderRadius: BorderRadius.circular(10),
           onTap: () => setState(() => _selectedAgent = agent),
           child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                // أيقونة الحالة
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: statusColor.withOpacity(0.5)),
-                  ),
-                  child: Center(
-                      child: Icon(Icons.support_agent,
-                          size: 20, color: statusColor)),
-                ),
-                const SizedBox(width: 12),
-                // معلومات الوكيل
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            padding: EdgeInsets.all(isMob ? 10 : 14),
+            child: isMob
+                ? _buildMobileAgentCardContent(agent, statusColor, isActive)
+                : _buildDesktopAgentCardContent(agent, statusColor, isActive),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileAgentCardContent(
+      AgentModel agent, Color statusColor, bool isActive) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // الصف الأول: أيقونة + اسم + حالة + قائمة
+        Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: statusColor.withOpacity(0.5)),
+              ),
+              child: Center(
+                  child:
+                      Icon(Icons.support_agent, size: 18, color: statusColor)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Text(agent.name,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AccountingTheme.textPrimary,
-                              )),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(agent.status.displayName,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: statusColor,
-                                  fontWeight: FontWeight.w500,
-                                )),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(agent.type.displayName,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AccountingTheme.textMuted,
-                              )),
-                        ],
+                      Flexible(
+                        child: Text(agent.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AccountingTheme.textPrimary,
+                            )),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(agent.agentCode,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AccountingTheme.neonPink,
-                                fontWeight: FontWeight.w500,
-                              )),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.phone,
-                              size: 11, color: AccountingTheme.textMuted),
-                          const SizedBox(width: 3),
-                          Text(agent.phoneNumber,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AccountingTheme.textSecondary,
-                              )),
-                          if (agent.city != null) ...[
-                            const SizedBox(width: 8),
-                            const Icon(Icons.location_on,
-                                size: 11, color: AccountingTheme.textMuted),
-                            const SizedBox(width: 3),
-                            Text(
-                                '${agent.city}${agent.area != null ? ' - ${agent.area}' : ''}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AccountingTheme.textSecondary,
-                                )),
-                          ],
-                        ],
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(agent.status.displayName,
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: statusColor,
+                              fontWeight: FontWeight.w500,
+                            )),
                       ),
                     ],
                   ),
+                  Row(
+                    children: [
+                      Text(agent.agentCode,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AccountingTheme.neonPink,
+                            fontWeight: FontWeight.w500,
+                          )),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.phone,
+                          size: 10, color: AccountingTheme.textMuted),
+                      const SizedBox(width: 2),
+                      Text(agent.phoneNumber,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AccountingTheme.textSecondary,
+                          )),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            _buildAgentPopupMenu(agent, isActive),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // الصف الثاني: ملخص المحاسبة
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AccountingTheme.neonOrange.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                // المحاسبة المختصرة
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                child: Column(
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('أجور: ',
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: AccountingTheme.textMuted)),
-                        Text(_formatCurrency(agent.totalCharges),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AccountingTheme.neonOrange,
-                              fontWeight: FontWeight.w600,
-                            )),
-                      ],
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('تسديد: ',
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: AccountingTheme.textMuted)),
-                        Text(_formatCurrency(agent.totalPayments),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AccountingTheme.neonGreen,
-                              fontWeight: FontWeight.w600,
-                            )),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: agent.hasDebt
-                            ? AccountingTheme.danger.withOpacity(0.2)
-                            : AccountingTheme.neonGreen.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'صافي: ${_formatCurrency(agent.netBalance)}',
+                    Text('أجور',
+                        style: TextStyle(
+                            fontSize: 9,
+                            color:
+                                AccountingTheme.neonOrange.withOpacity(0.8))),
+                    Text(_formatCurrency(agent.totalCharges),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AccountingTheme.neonOrange,
+                        )),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AccountingTheme.neonGreen.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  children: [
+                    Text('تسديد',
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: AccountingTheme.neonGreen.withOpacity(0.8))),
+                    Text(_formatCurrency(agent.totalPayments),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AccountingTheme.neonGreen,
+                        )),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: agent.hasDebt
+                      ? AccountingTheme.danger.withOpacity(0.15)
+                      : AccountingTheme.neonGreen.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  children: [
+                    Text('صافي',
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: (agent.hasDebt
+                                    ? AccountingTheme.danger
+                                    : AccountingTheme.neonGreen)
+                                .withOpacity(0.8))),
+                    Text(_formatCurrency(agent.netBalance),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: agent.hasDebt
                               ? AccountingTheme.danger
                               : AccountingTheme.neonGreen,
-                        ),
-                      ),
-                    ),
+                        )),
                   ],
                 ),
-                const SizedBox(width: 8),
-                // أزرار سريعة
-                PopupMenuButton<String>(
-                  tooltip: 'خيارات',
-                  onSelected: (v) => _handleAgentAction(v, agent),
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(
-                        value: 'charge',
-                        child: Row(children: [
-                          Icon(Icons.add_circle_outline,
-                              size: 16, color: AccountingTheme.neonOrange),
-                          SizedBox(width: 8),
-                          Text('إضافة أجور'),
-                        ])),
-                    const PopupMenuItem(
-                        value: 'payment',
-                        child: Row(children: [
-                          Icon(Icons.payments_outlined,
-                              size: 16, color: AccountingTheme.neonGreen),
-                          SizedBox(width: 8),
-                          Text('تسجيل تسديد'),
-                        ])),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(children: [
-                          Icon(Icons.edit_outlined,
-                              size: 16, color: AccountingTheme.neonBlue),
-                          SizedBox(width: 8),
-                          Text('تعديل'),
-                        ])),
-                    if (isActive)
-                      const PopupMenuItem(
-                          value: 'suspend',
-                          child: Row(children: [
-                            Icon(Icons.pause_circle_outline,
-                                size: 16, color: AccountingTheme.warning),
-                            SizedBox(width: 8),
-                            Text('تعليق'),
-                          ]))
-                    else
-                      const PopupMenuItem(
-                          value: 'activate',
-                          child: Row(children: [
-                            Icon(Icons.play_circle_outline,
-                                size: 16, color: AccountingTheme.neonGreen),
-                            SizedBox(width: 8),
-                            Text('تفعيل'),
-                          ])),
-                    const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(children: [
-                          Icon(Icons.delete_outline,
-                              size: 16, color: AccountingTheme.danger),
-                          SizedBox(width: 8),
-                          Text('حذف'),
-                        ])),
-                  ],
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AccountingTheme.borderColor),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(Icons.more_vert,
-                        size: 16, color: AccountingTheme.textMuted),
-                  ),
-                ),
-              ],
+              ),
             ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopAgentCardContent(
+      AgentModel agent, Color statusColor, bool isActive) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: statusColor.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: statusColor.withOpacity(0.5)),
+          ),
+          child: Center(
+              child: Icon(Icons.support_agent, size: 20, color: statusColor)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(agent.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AccountingTheme.textPrimary,
+                      )),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(agent.status.displayName,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: statusColor,
+                          fontWeight: FontWeight.w500,
+                        )),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(agent.type.displayName,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AccountingTheme.textMuted,
+                      )),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Text(agent.agentCode,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AccountingTheme.neonPink,
+                        fontWeight: FontWeight.w500,
+                      )),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.phone,
+                      size: 11, color: AccountingTheme.textMuted),
+                  const SizedBox(width: 3),
+                  Text(agent.phoneNumber,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AccountingTheme.textSecondary,
+                      )),
+                  if (agent.city != null) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.location_on,
+                        size: 11, color: AccountingTheme.textMuted),
+                    const SizedBox(width: 3),
+                    Text(
+                        '${agent.city}${agent.area != null ? ' - ${agent.area}' : ''}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AccountingTheme.textSecondary,
+                        )),
+                  ],
+                ],
+              ),
+            ],
           ),
         ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('أجور: ',
+                    style: TextStyle(
+                        fontSize: 10, color: AccountingTheme.textMuted)),
+                Text(_formatCurrency(agent.totalCharges),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AccountingTheme.neonOrange,
+                      fontWeight: FontWeight.w600,
+                    )),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('تسديد: ',
+                    style: TextStyle(
+                        fontSize: 10, color: AccountingTheme.textMuted)),
+                Text(_formatCurrency(agent.totalPayments),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AccountingTheme.neonGreen,
+                      fontWeight: FontWeight.w600,
+                    )),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: agent.hasDebt
+                    ? AccountingTheme.danger.withOpacity(0.2)
+                    : AccountingTheme.neonGreen.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'صافي: ${_formatCurrency(agent.netBalance)}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: agent.hasDebt
+                      ? AccountingTheme.danger
+                      : AccountingTheme.neonGreen,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
+        _buildAgentPopupMenu(agent, isActive),
+      ],
+    );
+  }
+
+  Widget _buildAgentPopupMenu(AgentModel agent, bool isActive) {
+    return PopupMenuButton<String>(
+      tooltip: 'خيارات',
+      onSelected: (v) => _handleAgentAction(v, agent),
+      itemBuilder: (_) => [
+        const PopupMenuItem(
+            value: 'charge',
+            child: Row(children: [
+              Icon(Icons.add_circle_outline,
+                  size: 16, color: AccountingTheme.neonOrange),
+              SizedBox(width: 8),
+              Text('إضافة أجور'),
+            ])),
+        const PopupMenuItem(
+            value: 'payment',
+            child: Row(children: [
+              Icon(Icons.payments_outlined,
+                  size: 16, color: AccountingTheme.neonGreen),
+              SizedBox(width: 8),
+              Text('تسجيل تسديد'),
+            ])),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+            value: 'edit',
+            child: Row(children: [
+              Icon(Icons.edit_outlined,
+                  size: 16, color: AccountingTheme.neonBlue),
+              SizedBox(width: 8),
+              Text('تعديل'),
+            ])),
+        if (isActive)
+          const PopupMenuItem(
+              value: 'suspend',
+              child: Row(children: [
+                Icon(Icons.pause_circle_outline,
+                    size: 16, color: AccountingTheme.warning),
+                SizedBox(width: 8),
+                Text('تعليق'),
+              ]))
+        else
+          const PopupMenuItem(
+              value: 'activate',
+              child: Row(children: [
+                Icon(Icons.play_circle_outline,
+                    size: 16, color: AccountingTheme.neonGreen),
+                SizedBox(width: 8),
+                Text('تفعيل'),
+              ])),
+        const PopupMenuItem(
+            value: 'delete',
+            child: Row(children: [
+              Icon(Icons.delete_outline,
+                  size: 16, color: AccountingTheme.danger),
+              SizedBox(width: 8),
+              Text('حذف'),
+            ])),
+      ],
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          border: Border.all(color: AccountingTheme.borderColor),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Icon(Icons.more_vert,
+            size: 16, color: AccountingTheme.textMuted),
       ),
     );
   }
@@ -862,19 +1408,17 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   // ==================== تفاصيل الوكيل ====================
 
   Widget _buildAgentDetail() {
+    final isMob = MediaQuery.of(context).size.width < 700;
     final agent = _selectedAgent!;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isMob ? 10 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // بطاقة المعلومات الأساسية
           _buildInfoCard(agent),
           const SizedBox(height: 12),
-          // أزرار المحاسبة
           _buildAccountingActions(agent),
           const SizedBox(height: 12),
-          // المعاملات المالية
           _buildTransactionsSection(agent),
         ],
       ),
@@ -882,9 +1426,10 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   }
 
   Widget _buildInfoCard(AgentModel agent) {
+    final isMob = MediaQuery.of(context).size.width < 700;
     final statusColor = _getStatusColor(agent.status);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isMob ? 12 : 16),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         borderRadius: BorderRadius.circular(10),
@@ -896,8 +1441,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           Row(
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: isMob ? 40 : 50,
+                height: isMob ? 40 : 50,
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
@@ -905,31 +1450,34 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 ),
                 child: Center(
                     child: Icon(Icons.support_agent,
-                        size: 26, color: statusColor)),
+                        size: isMob ? 22 : 26, color: statusColor)),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Text(agent.name,
-                            style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AccountingTheme.textPrimary)),
-                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(agent.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: isMob ? 15 : 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AccountingTheme.textPrimary)),
+                        ),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: statusColor.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(agent.status.displayName,
                               style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: isMob ? 10 : 11,
                                   color: statusColor,
                                   fontWeight: FontWeight.w600)),
                         ),
@@ -937,25 +1485,34 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     ),
                     const SizedBox(height: 4),
                     Text('${agent.agentCode}  •  ${agent.type.displayName}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AccountingTheme.neonPink)),
+                        style: TextStyle(
+                            fontSize: isMob ? 11 : 12,
+                            color: AccountingTheme.neonPink)),
                   ],
                 ),
               ),
-              // أزرار تعديل/حذف
-              TextButton.icon(
-                onPressed: () => _showEditAgentDialog(agent),
-                icon: const Icon(Icons.edit_outlined, size: 14),
-                label: const Text('تعديل', style: TextStyle(fontSize: 12)),
-              ),
+              if (!isMob)
+                TextButton.icon(
+                  onPressed: () => _showEditAgentDialog(agent),
+                  icon: const Icon(Icons.edit_outlined, size: 14),
+                  label: const Text('تعديل', style: TextStyle(fontSize: 12)),
+                ),
+              if (isMob)
+                IconButton(
+                  onPressed: () => _showEditAgentDialog(agent),
+                  icon: const Icon(Icons.edit_outlined,
+                      size: 16, color: AccountingTheme.neonBlue),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'تعديل',
+                ),
             ],
           ),
           const SizedBox(height: 14),
           Divider(color: AccountingTheme.borderColor, height: 1),
           const SizedBox(height: 14),
-          // تفاصيل
           Wrap(
-            spacing: 24,
+            spacing: isMob ? 12 : 24,
             runSpacing: 8,
             children: [
               _buildDetailItem(Icons.phone, 'الهاتف', agent.phoneNumber),
@@ -1044,13 +1601,15 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   }
 
   Widget _buildAccountingActions(AgentModel agent) {
+    final isMob = MediaQuery.of(context).size.width < 700;
     return Row(
       children: [
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () => _showTransactionDialog(agent, isCharge: true),
-            icon: const Icon(Icons.add_circle_outline, size: 16),
-            label: const Text('إضافة أجور'),
+            icon: Icon(Icons.add_circle_outline, size: isMob ? 14 : 16),
+            label:
+                Text('إضافة أجور', style: TextStyle(fontSize: isMob ? 12 : 14)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AccountingTheme.neonOrange,
               foregroundColor: Colors.white,
@@ -1064,8 +1623,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () => _showTransactionDialog(agent, isCharge: false),
-            icon: const Icon(Icons.payments_outlined, size: 16),
-            label: const Text('تسجيل تسديد'),
+            icon: Icon(Icons.payments_outlined, size: isMob ? 14 : 16),
+            label: Text('تسجيل تسديد',
+                style: TextStyle(fontSize: isMob ? 12 : 14)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AccountingTheme.neonGreen,
               foregroundColor: Colors.white,
@@ -1080,8 +1640,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   }
 
   Widget _buildTransactionsSection(AgentModel agent) {
+    final isMob = MediaQuery.of(context).size.width < 700;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isMob ? 10 : 16),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         borderRadius: BorderRadius.circular(10),

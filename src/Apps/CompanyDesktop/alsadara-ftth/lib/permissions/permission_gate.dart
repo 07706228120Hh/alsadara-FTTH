@@ -145,7 +145,7 @@ class PermissionGate extends StatelessWidget {
 
     // Builder pattern
     if (_builder != null) {
-      return _builder!(context, hasPermission);
+      return _builder(context, hasPermission);
     }
 
     // صلاحية متاحة

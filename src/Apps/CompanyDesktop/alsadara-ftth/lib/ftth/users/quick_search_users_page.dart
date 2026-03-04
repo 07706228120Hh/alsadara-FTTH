@@ -52,6 +52,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
   bool _hasSearched = false;
   bool _waitingDebounce = false; // لعرض مؤشر انتظار أثناء التأخير قبل البحث
 
+  // أرقام الهواتف المجلوبة لكل مستخدم: userId → phone
+  final Map<String, String> _fetchedPhones = {};
+  final Map<String, bool> _fetchingPhones = {};
+
   // متغيرات البحث
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
@@ -232,6 +236,50 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
       overflow: TextOverflow.ellipsis,
       maxLines: 1,
     );
+  }
+
+  Future<void> _fetchPhoneForUser(String userId) async {
+    if (_fetchingPhones[userId] == true) return;
+    setState(() => _fetchingPhones[userId] = true);
+    try {
+      final r = await http.get(
+        Uri.parse('https://admin.ftth.iq/api/customers/$userId'),
+        headers: {
+          'Authorization': 'Bearer ${widget.authToken}',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+      if (!mounted) return;
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        final model = data is Map ? data['model'] ?? data : null;
+        String? phone;
+        if (model is Map) {
+          phone = model['primaryContact']?['mobile']?.toString().trim() ??
+              model['phone']?.toString().trim() ??
+              model['phoneNumber']?.toString().trim();
+        }
+        setState(() {
+          _fetchingPhones[userId] = false;
+          if (phone != null && phone.isNotEmpty) {
+            _fetchedPhones[userId] = phone;
+          } else {
+            _fetchedPhones[userId] = '';
+          }
+        });
+        if ((phone == null || phone.isEmpty) && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('رقم الهاتف غير مسجل في النظام'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ));
+        }
+      } else {
+        if (mounted) setState(() => _fetchingPhones[userId] = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _fetchingPhones[userId] = false);
+    }
   }
 
   void _copyToClipboard(String label, String value) {
@@ -1054,7 +1102,6 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                           CrossAxisAlignment.start,
                                       children: [
                                         Row(
-                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
                                               Icons.person_outline,
@@ -1076,10 +1123,78 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                 color: Color(0xFF1A237E),
                                               ),
                                             ),
+                                            const Spacer(),
+                                            // زر نسخ الاسم + الرقم معاً
+                                            Builder(builder: (_) {
+                                              final fetchedPhone =
+                                                  _fetchedPhones[userId];
+                                              final displayPhone = (fetchedPhone !=
+                                                          null &&
+                                                      fetchedPhone.isNotEmpty)
+                                                  ? fetchedPhone
+                                                  : (userPhone != 'غير متوفر'
+                                                      ? userPhone
+                                                      : '');
+                                              if (displayPhone.isEmpty) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              return Tooltip(
+                                                message: 'نسخ الاسم والرقم معاً',
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    final text =
+                                                        '$userName\n$displayPhone';
+                                                    _copyToClipboard(
+                                                        'الاسم والرقم', text);
+                                                  },
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                  child: Container(
+                                                    padding: EdgeInsets.symmetric(
+                                                        horizontal: 8 * uiScale,
+                                                        vertical: 3 * uiScale),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          Colors.teal.shade50,
+                                                      border: Border.all(
+                                                          color: Colors
+                                                              .teal.shade200),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                            Icons
+                                                                .contact_page_rounded,
+                                                            size: 13 * uiScale,
+                                                            color: Colors
+                                                                .teal.shade700),
+                                                        SizedBox(
+                                                            width: 3 * uiScale),
+                                                        Text('نسخ الكل',
+                                                            style: TextStyle(
+                                                                fontSize:
+                                                                    11 * uiScale,
+                                                                color: Colors
+                                                                    .teal
+                                                                    .shade700,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600)),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            }),
                                           ],
                                         ),
                                         SizedBox(height: 6 * uiScale),
-                                        // Box: الاسم
+                                        // Box: الاسم + زر نسخ
                                         Container(
                                           padding: EdgeInsets.symmetric(
                                             horizontal: 8 * uiScale,
@@ -1121,54 +1236,182 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                   ),
                                                 ),
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                        SizedBox(height: 4 * uiScale),
-                                        // Box: الهاتف
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 8 * uiScale,
-                                            vertical:
-                                                (isLargeScreen ? 6.0 : 5.0) *
-                                                    uiScale,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.shade50,
-                                            border: Border.all(
-                                                color: Colors.blue.shade200),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.phone,
-                                                size: (isLargeScreen
-                                                        ? 16.0
-                                                        : 14.0) *
-                                                    uiScale,
-                                                color: Colors.blue.shade700,
-                                              ),
-                                              SizedBox(width: 6 * uiScale),
-                                              Expanded(
-                                                child: _buildHighlightedText(
-                                                  userPhone.toString(),
-                                                  _normalizePhone(
-                                                      phoneController.text),
-                                                  style: TextStyle(
-                                                    fontSize: (isLargeScreen
-                                                            ? 13.0
-                                                            : 11.0) *
-                                                        uiScale,
-                                                    color:
-                                                        const Color(0xFF2C3E50),
+                                              // زر نسخ الاسم
+                                              Tooltip(
+                                                message: 'نسخ الاسم',
+                                                child: InkWell(
+                                                  onTap: () => _copyToClipboard(
+                                                      'الاسم', userName),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                  child: Padding(
+                                                    padding: EdgeInsets.all(
+                                                        4 * uiScale),
+                                                    child: Icon(
+                                                        Icons.copy_rounded,
+                                                        size: 16 * uiScale,
+                                                        color: Colors
+                                                            .green.shade700),
                                                   ),
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
+                                        SizedBox(height: 4 * uiScale),
+                                        // Box: الهاتف + زر إظهار/نسخ
+                                        Builder(builder: (_) {
+                                          final fetchedPhone =
+                                              _fetchedPhones[userId];
+                                          final displayPhone = (fetchedPhone !=
+                                                      null &&
+                                                  fetchedPhone.isNotEmpty)
+                                              ? fetchedPhone
+                                              : (userPhone != 'غير متوفر'
+                                                  ? userPhone
+                                                  : '');
+                                          final isFetching =
+                                              _fetchingPhones[userId] == true;
+                                          return Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8 * uiScale,
+                                              vertical: (isLargeScreen
+                                                          ? 6.0
+                                                          : 5.0) *
+                                                  uiScale,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.shade50,
+                                              border: Border.all(
+                                                  color: Colors.blue.shade200),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.phone,
+                                                    size: (isLargeScreen
+                                                            ? 16.0
+                                                            : 14.0) *
+                                                        uiScale,
+                                                    color:
+                                                        Colors.blue.shade700),
+                                                SizedBox(width: 6 * uiScale),
+                                                Expanded(
+                                                  child: displayPhone.isNotEmpty
+                                                      ? Text(displayPhone,
+                                                          style: TextStyle(
+                                                            fontSize: (isLargeScreen
+                                                                    ? 13.0
+                                                                    : 11.0) *
+                                                                uiScale,
+                                                            color: const Color(
+                                                                0xFF2C3E50),
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ))
+                                                      : Text('غير متوفر',
+                                                          style: TextStyle(
+                                                            fontSize: (isLargeScreen
+                                                                    ? 13.0
+                                                                    : 11.0) *
+                                                                uiScale,
+                                                            color: Colors
+                                                                .grey.shade500,
+                                                          )),
+                                                ),
+                                                // زر إظهار الرقم أو نسخه أو loading
+                                                if (isFetching)
+                                                  SizedBox(
+                                                    width: 16 * uiScale,
+                                                    height: 16 * uiScale,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            strokeWidth: 2),
+                                                  )
+                                                else if (displayPhone.isNotEmpty)
+                                                  Tooltip(
+                                                    message: 'نسخ رقم الهاتف',
+                                                    child: InkWell(
+                                                      onTap: () =>
+                                                          _copyToClipboard(
+                                                              'رقم الهاتف',
+                                                              displayPhone),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              4),
+                                                      child: Padding(
+                                                        padding: EdgeInsets.all(
+                                                            4 * uiScale),
+                                                        child: Icon(
+                                                            Icons.copy_rounded,
+                                                            size: 16 * uiScale,
+                                                            color: Colors.blue
+                                                                .shade700),
+                                                      ),
+                                                    ),
+                                                  )
+                                                else if (userId.isNotEmpty &&
+                                                    _fetchedPhones[userId] ==
+                                                        null)
+                                                  Tooltip(
+                                                    message:
+                                                        'جلب رقم الهاتف من النظام',
+                                                    child: InkWell(
+                                                      onTap: () =>
+                                                          _fetchPhoneForUser(
+                                                              userId),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6),
+                                                      child: Container(
+                                                        padding: EdgeInsets
+                                                            .symmetric(
+                                                                horizontal:
+                                                                    8 * uiScale,
+                                                                vertical:
+                                                                    3 * uiScale),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors
+                                                              .blue.shade100,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(6),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            Icon(Icons.search,
+                                                                size:
+                                                                    13 * uiScale,
+                                                                color: Colors
+                                                                    .blue
+                                                                    .shade800),
+                                                            SizedBox(
+                                                                width:
+                                                                    3 * uiScale),
+                                                            Text('إظهار الرقم',
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        11 *
+                                                                            uiScale,
+                                                                    color: Colors
+                                                                        .blue
+                                                                        .shade800,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600)),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
                                         SizedBox(height: 4 * uiScale),
                                         // Box: المعرف + زر النسخ
                                         Container(

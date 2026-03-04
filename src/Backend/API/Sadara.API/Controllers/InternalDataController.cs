@@ -1631,13 +1631,38 @@ public class InternalDataController : ControllerBase
     /// </summary>
     [HttpGet("subscriptionlogs")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetSubscriptionLogs()
+    public async Task<IActionResult> GetSubscriptionLogs(
+        [FromQuery] string? companyId,
+        [FromQuery] DateTime? fromDate,
+        [FromQuery] DateTime? toDate,
+        [FromQuery] int pageSize = 500)
     {
         if (!ValidateApiKey())
             return Unauthorized(new { success = false, message = "Invalid API Key" });
 
-        var logs = await _unitOfWork.SubscriptionLogs.AsQueryable()
-            .OrderByDescending(l => l.CreatedAt)
+        var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => !l.IsDeleted);
+
+        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
+            query = query.Where(l => l.CompanyId == cId);
+
+        if (fromDate.HasValue)
+        {
+            var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            query = query.Where(l => l.ActivationDate >= from);
+        }
+
+        if (toDate.HasValue)
+        {
+            var to = DateTime.SpecifyKind(toDate.Value.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(l => l.ActivationDate <= to);
+        }
+
+        var effectivePageSize = Math.Min(pageSize < 1 ? 500 : pageSize, 2000);
+
+        var logs = await query
+            .OrderByDescending(l => l.ActivationDate)
+            .Take(effectivePageSize)
             .Select(l => new
             {
                 l.Id,
@@ -1650,6 +1675,7 @@ public class InternalDataController : ControllerBase
                 l.CommitmentPeriod,
                 l.BundleId,
                 l.CurrentStatus,
+                l.DeviceUsername,
                 l.OperationType,
                 l.ActivatedBy,
                 l.ActivationDate,
@@ -1659,13 +1685,15 @@ public class InternalDataController : ControllerBase
                 l.WalletBalanceAfter,
                 l.PartnerName,
                 l.CompanyId,
+                l.CollectionType,
+                l.PaymentMethod,
                 l.IsPrinted,
                 l.IsWhatsAppSent,
+                l.PaymentStatus,
                 l.StartDate,
                 l.EndDate,
                 l.CreatedAt
             })
-            .Take(500)
             .ToListAsync();
 
         return Ok(logs);

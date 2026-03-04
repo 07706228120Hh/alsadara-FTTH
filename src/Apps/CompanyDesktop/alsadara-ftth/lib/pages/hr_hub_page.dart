@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../utils/responsive_helper.dart';
 import 'attendance_page.dart';
 import 'work_schedules_page.dart';
 import 'leave_management_page.dart';
@@ -38,55 +39,56 @@ class HrHubPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7FA),
-        body: CustomScrollView(
-          slivers: [
-            // AppBar مع تصميم متناسق
-            SliverAppBar(
-              expandedHeight: 160,
-              pinned: true,
-              backgroundColor: const Color(0xFF0D47A1),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_rounded,
-                    color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                centerTitle: true,
-                background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+        body: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              // AppBar مع تصميم متناسق
+              SliverAppBar(
+                expandedHeight: r.isMobile ? 130 : 160,
+                pinned: true,
+                backgroundColor: const Color(0xFF0D47A1),
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back_ios_rounded,
+                      color: Colors.white, size: r.appBarIconSize),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: true,
+                  background: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
+                      ),
                     ),
-                  ),
-                  child: SafeArea(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 20),
+                        SizedBox(height: r.isMobile ? 12 : 20),
                         Container(
-                          width: 56,
-                          height: 56,
+                          width: r.isMobile ? 44 : 56,
+                          height: r.isMobile ? 44 : 56,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white.withOpacity(0.15),
                             border: Border.all(
                                 color: Colors.white.withOpacity(0.3), width: 2),
                           ),
-                          child: const Icon(Icons.groups_rounded,
-                              color: Colors.white, size: 30),
+                          child: Icon(Icons.groups_rounded,
+                              color: Colors.white, size: r.isMobile ? 22 : 30),
                         ),
-                        const SizedBox(height: 10),
-                        const Text(
+                        SizedBox(height: r.isMobile ? 6 : 10),
+                        Text(
                           'الموارد البشرية',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 22,
+                            fontSize: r.titleSize,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -95,7 +97,7 @@ class HrHubPage extends StatelessWidget {
                           'إدارة الموظفين والحضور والرواتب',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
-                            fontSize: 13,
+                            fontSize: r.captionSize,
                           ),
                         ),
                       ],
@@ -103,24 +105,24 @@ class HrHubPage extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
 
-            // المحتوى - الأزرار
-            SliverPadding(
-              padding: const EdgeInsets.all(20),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 280,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 1.4,
-                ),
-                delegate: SliverChildListDelegate(
-                  _buildHrCards(context),
+              // المحتوى - الأزرار
+              SliverPadding(
+                padding: EdgeInsets.all(r.contentPaddingH),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: r.isMobile ? 200 : 280,
+                    mainAxisSpacing: r.gridSpacing,
+                    crossAxisSpacing: r.gridSpacing,
+                    childAspectRatio: r.isMobile ? 1.2 : 1.4,
+                  ),
+                  delegate: SliverChildListDelegate(
+                    _buildHrCards(context),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -352,59 +354,66 @@ class _HrCardState extends State<_HrCard> {
                   ),
                 ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // أيقونة
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: widget.gradient,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: widget.gradient[0].withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final r = context.responsive;
+                  return Padding(
+                    padding: EdgeInsets.all(r.isMobile ? 12 : 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // أيقونة
+                        Container(
+                          width: r.isMobile ? 36 : 46,
+                          height: r.isMobile ? 36 : 46,
+                          decoration: BoxDecoration(
+                            borderRadius:
+                                BorderRadius.circular(r.isMobile ? 10 : 14),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: widget.gradient,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.gradient[0].withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(widget.icon, color: Colors.white, size: 24),
+                          child: Icon(widget.icon,
+                              color: Colors.white, size: r.isMobile ? 18 : 24),
+                        ),
+                        const Spacer(),
+                        // العنوان
+                        Text(
+                          widget.title,
+                          style: TextStyle(
+                            color: const Color(0xFF2D3436),
+                            fontSize: r.bodySize,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        // الوصف
+                        Text(
+                          widget.subtitle,
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: r.captionSize,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    // العنوان
-                    Text(
-                      widget.title,
-                      style: const TextStyle(
-                        color: Color(0xFF2D3436),
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    // الوصف
-                    Text(
-                      widget.subtitle,
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),

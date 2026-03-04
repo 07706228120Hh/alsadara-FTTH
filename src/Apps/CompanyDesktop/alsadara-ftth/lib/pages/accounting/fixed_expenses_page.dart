@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة إدارة المصاريف الثابتة الشهرية (إيجارات، مولد، ...)
 class FixedExpensesPage extends StatefulWidget {
@@ -158,8 +159,13 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('المصاريف الثابتة الشهرية',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(
+              context.accR.isMobile
+                  ? 'المصاريف الثابتة'
+                  : 'المصاريف الثابتة الشهرية',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: context.accR.isMobile ? 14 : null)),
           backgroundColor: const Color(0xFF1A237E),
           foregroundColor: Colors.white,
           actions: [
@@ -170,26 +176,35 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _showAddDialog,
-          icon: const Icon(Icons.add),
-          label: const Text('إضافة مصروف ثابت'),
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  // شريط الشهر/السنة + الملخص
-                  _buildHeader(),
-                  // فلتر الفئات
-                  _buildCategoryFilter(),
-                  const Divider(height: 1),
-                  // المحتوى - بطاقات موحدة
-                  Expanded(child: _buildUnifiedList()),
-                ],
+        floatingActionButton: context.accR.isMobile
+            ? FloatingActionButton(
+                onPressed: _showAddDialog,
+                backgroundColor: const Color(0xFF1A237E),
+                foregroundColor: Colors.white,
+                child: const Icon(Icons.add),
+              )
+            : FloatingActionButton.extended(
+                onPressed: _showAddDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('إضافة مصروف ثابت'),
+                backgroundColor: const Color(0xFF1A237E),
+                foregroundColor: Colors.white,
               ),
+        body: SafeArea(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    // شريط الشهر/السنة + الملخص
+                    _buildHeader(),
+                    // فلتر الفئات
+                    _buildCategoryFilter(),
+                    const Divider(height: 1),
+                    // المحتوى - بطاقات موحدة
+                    Expanded(child: _buildUnifiedList()),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -198,65 +213,96 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
     final total = _paymentSummary?['TotalAmount'] ?? 0;
     final paid = _paymentSummary?['PaidAmount'] ?? 0;
     final unpaid = _paymentSummary?['UnpaidAmount'] ?? 0;
+    final isMobile = context.accR.isMobile;
+
+    final dropdownRow = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.calendar_today,
+            size: isMobile ? 16 : context.accR.iconM,
+            color: const Color(0xFF1A237E)),
+        SizedBox(width: context.accR.spaceS),
+        DropdownButton<int>(
+          value: _selectedMonth,
+          style: TextStyle(fontSize: isMobile ? 12 : 14, color: Colors.black87),
+          items: List.generate(12, (i) {
+            final m = i + 1;
+            return DropdownMenuItem(value: m, child: Text(_arabicMonth(m)));
+          }),
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _selectedMonth = v);
+              _loadData();
+            }
+          },
+        ),
+        SizedBox(width: context.accR.spaceS),
+        DropdownButton<int>(
+          value: _selectedYear,
+          style: TextStyle(fontSize: isMobile ? 12 : 14, color: Colors.black87),
+          items: List.generate(5, (i) {
+            final y = DateTime.now().year - i;
+            return DropdownMenuItem(value: y, child: Text('$y'));
+          }),
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _selectedYear = v);
+              _loadData();
+            }
+          },
+        ),
+      ],
+    );
+
+    final statsRow = Row(
+      mainAxisAlignment:
+          isMobile ? MainAxisAlignment.spaceEvenly : MainAxisAlignment.start,
+      children: [
+        _headerStat('إجمالي', _formatNumber(total), Colors.blue),
+        SizedBox(width: isMobile ? 8 : context.accR.spaceXL),
+        _headerStat('مدفوع', _formatNumber(paid), Colors.green),
+        SizedBox(width: isMobile ? 8 : context.accR.spaceXL),
+        _headerStat('غير مدفوع', _formatNumber(unpaid), Colors.red),
+      ],
+    );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : context.accR.paddingH,
+          vertical: isMobile ? 4 : context.accR.spaceM),
       color: Colors.grey.shade100,
-      child: Row(
-        children: [
-          // فلتر الشهر
-          const Icon(Icons.calendar_today, size: 18, color: Color(0xFF1A237E)),
-          const SizedBox(width: 8),
-          DropdownButton<int>(
-            value: _selectedMonth,
-            items: List.generate(12, (i) {
-              final m = i + 1;
-              return DropdownMenuItem(value: m, child: Text(_arabicMonth(m)));
-            }),
-            onChanged: (v) {
-              if (v != null) {
-                setState(() => _selectedMonth = v);
-                _loadData();
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          DropdownButton<int>(
-            value: _selectedYear,
-            items: List.generate(5, (i) {
-              final y = DateTime.now().year - i;
-              return DropdownMenuItem(value: y, child: Text('$y'));
-            }),
-            onChanged: (v) {
-              if (v != null) {
-                setState(() => _selectedYear = v);
-                _loadData();
-              }
-            },
-          ),
-          const SizedBox(width: 24),
-          // ملخص
-          _headerStat('إجمالي', _formatNumber(total), Colors.blue),
-          const SizedBox(width: 16),
-          _headerStat('مدفوع', _formatNumber(paid), Colors.green),
-          const SizedBox(width: 16),
-          _headerStat('غير مدفوع', _formatNumber(unpaid), Colors.red),
-        ],
-      ),
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                dropdownRow,
+                const SizedBox(height: 4),
+                statsRow,
+              ],
+            )
+          : Row(
+              children: [
+                dropdownRow,
+                SizedBox(width: context.accR.spaceXXL),
+                Expanded(child: statsRow),
+              ],
+            ),
     );
   }
 
   Widget _buildCategoryFilter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 4),
+              padding: EdgeInsets.only(left: 4),
               child: FilterChip(
-                label: const Text('الكل', style: TextStyle(fontSize: 12)),
+                label: Text('الكل',
+                    style: TextStyle(fontSize: context.accR.small)),
                 selected: _selectedCategoryFilter == null,
                 onSelected: (_) =>
                     setState(() => _selectedCategoryFilter = null),
@@ -277,12 +323,13 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
               final isSelected = _selectedCategoryFilter == catKey;
               final color = cat['color'] as Color;
               return Padding(
-                padding: const EdgeInsets.only(left: 4),
+                padding: EdgeInsets.only(left: 4),
                 child: FilterChip(
                   avatar: Icon(cat['icon'] as IconData,
-                      size: 16, color: isSelected ? color : Colors.grey),
+                      size: context.accR.iconS,
+                      color: isSelected ? color : Colors.grey),
                   label: Text(cat['label'] as String,
-                      style: const TextStyle(fontSize: 12)),
+                      style: TextStyle(fontSize: context.accR.small)),
                   selected: isSelected,
                   onSelected: (_) => setState(() {
                     _selectedCategoryFilter = isSelected ? null : catKey;
@@ -316,8 +363,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
   }
 
   Widget _headerStat(String label, String value, Color color) {
+    final isMobile = context.accR.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 6 : context.accR.spaceM,
+          vertical: isMobile ? 2 : context.accR.spaceXS),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
@@ -326,11 +376,15 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, color: color)),
-          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(
+                  fontSize: isMobile ? 10 : context.accR.small, color: color)),
+          SizedBox(width: isMobile ? 3 : context.accR.spaceXS),
           Text(value,
               style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+                  fontSize: isMobile ? 11 : context.accR.body,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
         ],
       ),
     );
@@ -357,37 +411,42 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          color: const Color(0xFFE8EAF6),
+          padding: EdgeInsets.symmetric(
+              horizontal: context.accR.paddingH, vertical: context.accR.spaceM),
+          color: Color(0xFFE8EAF6),
           child: Row(
             children: [
-              const Icon(Icons.receipt_long,
-                  size: 18, color: Color(0xFF1A237E)),
-              const SizedBox(width: 8),
+              Icon(Icons.receipt_long,
+                  size: context.accR.iconM, color: Color(0xFF1A237E)),
+              SizedBox(width: context.accR.spaceS),
               Text(
                 _selectedCategoryFilter == null
                     ? 'المصاريف الثابتة - ${_arabicMonth(_selectedMonth)} $_selectedYear'
                     : '${_getCategoryInfo(_selectedCategoryFilter)['label']} - ${_arabicMonth(_selectedMonth)} $_selectedYear',
-                style: const TextStyle(
+                style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: context.accR.body,
                     color: Color(0xFF1A237E)),
               ),
-              const Spacer(),
+              Spacer(),
               Text('${filtered.length} مصروف',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  style: TextStyle(
+                      fontSize: context.accR.small,
+                      color: Colors.grey.shade600)),
             ],
           ),
         ),
         Expanded(
           child: filtered.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text('لا توجد مصاريف ثابتة مسجلة',
-                      style: TextStyle(color: Colors.grey, fontSize: 14)))
+                      style: TextStyle(
+                          color: Colors.grey, fontSize: context.accR.body)))
               : ListView.separated(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(context.accR.spaceM),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, __) =>
+                      SizedBox(height: context.accR.spaceS),
                   itemBuilder: (ctx, i) {
                     final item = filtered[i] as Map<String, dynamic>;
                     final catInfo = _getCategoryInfo(item['Category']);
@@ -399,7 +458,8 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                     return Card(
                       elevation: 2,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius:
+                            BorderRadius.circular(context.accR.cardRadius),
                         side: BorderSide(
                           color: isPaid
                               ? Colors.green.withValues(alpha: 0.4)
@@ -419,9 +479,9 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                               radius: 22,
                               backgroundColor: catColor.withValues(alpha: 0.15),
                               child: Icon(catInfo['icon'] as IconData,
-                                  color: catColor, size: 22),
+                                  color: catColor, size: context.accR.iconM),
                             ),
-                            const SizedBox(width: 14),
+                            SizedBox(width: context.accR.spaceL),
                             // معلومات المصروف
                             Expanded(
                               child: Column(
@@ -431,13 +491,13 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                     item['Name'] ?? '',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      fontSize: context.accR.body,
                                       decoration: isActive
                                           ? null
                                           : TextDecoration.lineThrough,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: context.accR.spaceXS),
                                   Row(
                                     children: [
                                       Container(
@@ -446,22 +506,22 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                         decoration: BoxDecoration(
                                           color:
                                               catColor.withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                              context.accR.cardRadius),
                                         ),
                                         child: Text(
                                           item['CategoryAr'] ?? '',
                                           style: TextStyle(
-                                              fontSize: 11,
+                                              fontSize: context.accR.small,
                                               color: catColor,
                                               fontWeight: FontWeight.w500),
                                         ),
                                       ),
-                                      const SizedBox(width: 10),
+                                      SizedBox(width: context.accR.spaceM),
                                       Text(
                                         '${_formatNumber(item['MonthlyAmount'])} د.ع',
-                                        style: const TextStyle(
-                                          fontSize: 13,
+                                        style: TextStyle(
+                                          fontSize: context.accR.financialSmall,
                                           fontWeight: FontWeight.w600,
                                           color: Color(0xFF1A237E),
                                         ),
@@ -474,32 +534,35 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                             // حالة الدفع + أزرار
                             if (isPaid) ...[
                               Container(
-                                padding: const EdgeInsets.symmetric(
+                                padding: EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
                                   color: Colors.green.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(
+                                      context.accR.radiusL),
                                   border: Border.all(
                                       color:
                                           Colors.green.withValues(alpha: 0.3)),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.check_circle,
-                                        color: Colors.green, size: 16),
+                                        color: Colors.green,
+                                        size: context.accR.iconS),
                                     SizedBox(width: 4),
                                     Text('مدفوع',
                                         style: TextStyle(
                                             color: Colors.green,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 12)),
+                                            fontSize: context.accR.small)),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              SizedBox(width: context.accR.spaceXS),
                               IconButton(
-                                icon: const Icon(Icons.undo, size: 20),
+                                icon:
+                                    Icon(Icons.undo, size: context.accR.iconM),
                                 tooltip: 'إلغاء الدفع',
                                 onPressed: () => _unpayExpense(payment!),
                                 color: Colors.orange,
@@ -510,9 +573,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                 onPressed: isActive
                                     ? () => _payExpenseFromItem(item)
                                     : null,
-                                icon: const Icon(Icons.payment, size: 16),
-                                label: const Text('تسديد',
-                                    style: TextStyle(fontSize: 12)),
+                                icon: Icon(Icons.payment,
+                                    size: context.accR.iconS),
+                                label: Text('تسديد',
+                                    style: TextStyle(
+                                        fontSize: context.accR.small)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF1A237E),
                                   foregroundColor: Colors.white,
@@ -523,19 +588,20 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                 ),
                               ),
                             ],
-                            const SizedBox(width: 4),
+                            SizedBox(width: context.accR.spaceXS),
                             // قائمة الإجراءات
                             PopupMenuButton<String>(
                               icon: const Icon(Icons.more_vert,
                                   color: Colors.grey),
                               splashRadius: 20,
                               itemBuilder: (_) => [
-                                const PopupMenuItem(
+                                PopupMenuItem(
                                     value: 'edit',
                                     child: Row(
                                       children: [
                                         Icon(Icons.edit,
-                                            size: 18, color: Colors.blue),
+                                            size: context.accR.iconM,
+                                            color: Colors.blue),
                                         SizedBox(width: 8),
                                         Text('تعديل'),
                                       ],
@@ -548,19 +614,20 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                           isActive
                                               ? Icons.pause_circle
                                               : Icons.play_circle,
-                                          size: 18,
+                                          size: context.accR.iconM,
                                           color: Colors.orange),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: context.accR.spaceS),
                                       Text(isActive ? 'إيقاف' : 'تفعيل'),
                                     ],
                                   ),
                                 ),
-                                const PopupMenuItem(
+                                PopupMenuItem(
                                     value: 'delete',
                                     child: Row(
                                       children: [
                                         Icon(Icons.delete,
-                                            size: 18, color: Colors.red),
+                                            size: context.accR.iconM,
+                                            color: Colors.red),
                                         SizedBox(width: 8),
                                         Text('حذف',
                                             style:
@@ -604,9 +671,9 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('إضافة مصروف ثابت'),
+          title: Text('إضافة مصروف ثابت'),
           content: SizedBox(
-            width: 400,
+            width: context.accR.dialogSmallW,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -618,7 +685,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 DropdownButtonFormField<int>(
                   value: selectedCat,
                   decoration: const InputDecoration(
@@ -631,8 +698,9 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                       child: Row(
                         children: [
                           Icon(c['icon'] as IconData,
-                              color: c['color'] as Color, size: 18),
-                          const SizedBox(width: 8),
+                              color: c['color'] as Color,
+                              size: context.accR.iconM),
+                          SizedBox(width: context.accR.spaceS),
                           Text(c['label'] as String),
                         ],
                       ),
@@ -642,7 +710,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                     if (v != null) setDialogState(() => selectedCat = v);
                   },
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 TextField(
                   controller: amountCtrl,
                   keyboardType: TextInputType.number,
@@ -651,7 +719,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 TextField(
                   controller: descCtrl,
                   maxLines: 2,
@@ -740,7 +808,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('حذف', style: TextStyle(color: Colors.white)),
+              child: Text('حذف', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -782,9 +850,9 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('تعديل المصروف الثابت'),
+          title: Text('تعديل المصروف الثابت'),
           content: SizedBox(
-            width: 400,
+            width: context.accR.dialogSmallW,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -793,7 +861,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                   decoration: const InputDecoration(
                       labelText: 'اسم المصروف', border: OutlineInputBorder()),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 DropdownButtonFormField<int>(
                   value: selectedCat,
                   decoration: const InputDecoration(
@@ -806,8 +874,9 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                       child: Row(
                         children: [
                           Icon(c['icon'] as IconData,
-                              color: c['color'] as Color, size: 18),
-                          const SizedBox(width: 8),
+                              color: c['color'] as Color,
+                              size: context.accR.iconM),
+                          SizedBox(width: context.accR.spaceS),
                           Text(c['label'] as String),
                         ],
                       ),
@@ -817,14 +886,14 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                     if (v != null) setDialogState(() => selectedCat = v);
                   },
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 TextField(
                   controller: amountCtrl,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                       labelText: 'المبلغ الشهري', border: OutlineInputBorder()),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 TextField(
                   controller: descCtrl,
                   maxLines: 2,
@@ -936,7 +1005,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+            child: Text('حذف', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

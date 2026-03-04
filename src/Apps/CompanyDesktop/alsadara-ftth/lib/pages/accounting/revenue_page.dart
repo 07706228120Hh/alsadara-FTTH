@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة الإيرادات - Revenue Page
 class RevenuePage extends StatefulWidget {
@@ -20,6 +21,11 @@ class _RevenuePageState extends State<RevenuePage> {
   List<dynamic> _revenueAccounts = [];
   List<dynamic> _allAccounts = [];
   List<dynamic> _revenueEntries = [];
+
+  // فلاتر
+  String _selectedRevenueType = 'الكل'; // الكل، اشتراكات، تركيب، صيانة، أخرى
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   @override
   void initState() {
@@ -84,42 +90,117 @@ class _RevenuePageState extends State<RevenuePage> {
     return total;
   }
 
+  /// القيود المفلترة حسب النوع والتاريخ
+  List<dynamic> get _filteredEntries {
+    var entries = _revenueEntries;
+
+    // فلتر النوع
+    if (_selectedRevenueType != 'الكل') {
+      Set<String> typeAccountIds = {};
+      String codePrefix = '';
+      if (_selectedRevenueType == 'اشتراكات') codePrefix = '41';
+      if (_selectedRevenueType == 'تركيب') codePrefix = '42';
+      if (_selectedRevenueType == 'صيانة') codePrefix = '43';
+
+      if (codePrefix.isNotEmpty) {
+        typeAccountIds = _revenueAccounts
+            .where((a) => (a['Code']?.toString() ?? '').startsWith(codePrefix))
+            .map((a) => a['Id']?.toString() ?? '')
+            .where((id) => id.isNotEmpty)
+            .toSet();
+      } else {
+        // أخرى = ليس 41 أو 42 أو 43
+        final knownIds = _revenueAccounts
+            .where((a) {
+              final code = a['Code']?.toString() ?? '';
+              return code.startsWith('41') ||
+                  code.startsWith('42') ||
+                  code.startsWith('43');
+            })
+            .map((a) => a['Id']?.toString() ?? '')
+            .toSet();
+        typeAccountIds = _revenueAccounts
+            .map((a) => a['Id']?.toString() ?? '')
+            .where((id) => id.isNotEmpty && !knownIds.contains(id))
+            .toSet();
+      }
+
+      entries = entries.where((entry) {
+        final lines = entry['Lines'] as List? ?? [];
+        return lines.any(
+            (line) => typeAccountIds.contains(line['AccountId']?.toString()));
+      }).toList();
+    }
+
+    // فلتر التاريخ
+    if (_dateFrom != null || _dateTo != null) {
+      entries = entries.where((entry) {
+        final dateStr = entry['EntryDate'] ?? entry['CreatedAt'];
+        if (dateStr == null) return false;
+        try {
+          final d = DateTime.parse(dateStr.toString());
+          if (_dateFrom != null && d.isBefore(_dateFrom!)) return false;
+          if (_dateTo != null &&
+              d.isAfter(_dateTo!.add(const Duration(days: 1)))) return false;
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+    }
+
+    return entries;
+  }
+
+  /// مجموع القيود المفلترة
+  double get _filteredTotal {
+    double total = 0;
+    for (final entry in _filteredEntries) {
+      total += ((entry['TotalDebit'] ?? 0) as num).toDouble();
+    }
+    return total;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AccountingTheme.bgPrimary,
-        body: Column(
-          children: [
-            _buildPageToolbar(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: AccountingTheme.neonGreen))
-                  : _errorMessage != null
-                      ? Center(
-                          child: Text(_errorMessage!,
-                              style: const TextStyle(
-                                  color: AccountingTheme.danger)))
-                      : Column(
-                          children: [
-                            _buildSummary(),
-                            _buildRevenueAccountsBar(),
-                            Expanded(child: _buildEntriesList()),
-                          ],
-                        ),
-            ),
-          ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildPageToolbar(),
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: AccountingTheme.neonGreen))
+                    : _errorMessage != null
+                        ? Center(
+                            child: Text(_errorMessage!,
+                                style: const TextStyle(
+                                    color: AccountingTheme.danger)))
+                        : Column(
+                            children: [
+                              _buildSummaryAndFilters(),
+                              Expanded(child: _buildEntriesList()),
+                            ],
+                          ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildPageToolbar() {
+    final ar = context.accR;
+    final isMob = MediaQuery.of(context).size.width < 700;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
       decoration: const BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -128,44 +209,52 @@ class _RevenuePageState extends State<RevenuePage> {
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 20),
             tooltip: 'رجوع',
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMob ? 4 : ar.spaceS),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
             decoration: BoxDecoration(
               gradient: AccountingTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(ar.btnRadius),
             ),
-            child: const Icon(Icons.trending_up_rounded,
-                color: Colors.white, size: 18),
+            child: Icon(Icons.trending_up_rounded,
+                color: Colors.white, size: isMob ? 18 : ar.iconM),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: isMob ? 6 : ar.spaceM),
           Text('الإيرادات',
               style: GoogleFonts.cairo(
-                  fontSize: 20,
+                  fontSize: isMob ? 14 : ar.headingMedium,
                   fontWeight: FontWeight.bold,
                   color: AccountingTheme.textPrimary)),
           const Spacer(),
           IconButton(
             onPressed: _loadData,
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
             tooltip: 'تحديث',
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMob ? 4 : ar.spaceS),
           ElevatedButton.icon(
             onPressed: _showAddRevenueDialog,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('إضافة إيراد'),
+            icon: Icon(Icons.add, size: isMob ? 16 : ar.iconM),
+            label: Text(isMob ? 'إضافة إيراد' : 'إضافة إيراد',
+                style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.buttonText)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AccountingTheme.neonGreen,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: isMob
+                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                  : ar.buttonPadding,
+              minimumSize: isMob ? const Size(0, 30) : null,
             ),
           ),
         ],
@@ -173,181 +262,315 @@ class _RevenuePageState extends State<RevenuePage> {
     );
   }
 
-  Widget _buildSummary() {
-    final subCount = _revenueAccounts
-        .where((a) =>
-            a['Code']?.toString() == '4100' ||
-            (a['Code']?.toString() ?? '').startsWith('41'))
-        .fold<double>(
-            0,
-            (s, a) =>
-                s +
-                ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble());
-    final installCount = _revenueAccounts
-        .where((a) =>
-            a['Code']?.toString() == '4200' ||
-            (a['Code']?.toString() ?? '').startsWith('42'))
-        .fold<double>(
-            0,
-            (s, a) =>
-                s +
-                ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble());
-    final maintCount = _revenueAccounts
-        .where((a) =>
-            a['Code']?.toString() == '4300' ||
-            (a['Code']?.toString() ?? '').startsWith('43'))
-        .fold<double>(
-            0,
-            (s, a) =>
-                s +
-                ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble());
-    final otherCount = _totalRevenue - subCount - installCount - maintCount;
+  Widget _buildSummaryAndFilters() {
+    final isMob = MediaQuery.of(context).size.width < 700;
+    final filtered = _filteredEntries;
+    final hasActiveFilter =
+        _selectedRevenueType != 'الكل' || _dateFrom != null || _dateTo != null;
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        children: [
-          _summaryChip('إجمالي الإيرادات', '${_fmt(_totalRevenue)} د.ع',
-              AccountingTheme.success),
-          _summaryChip(
-              'اشتراكات', '${_fmt(subCount)} د.ع', AccountingTheme.info),
-          _summaryChip(
-              'تركيب', '${_fmt(installCount)} د.ع', AccountingTheme.neonGreen),
-          _summaryChip(
-              'صيانة', '${_fmt(maintCount)} د.ع', AccountingTheme.warning),
-          _summaryChip(
-              'أخرى', '${_fmt(otherCount)} د.ع', const Color(0xFF8B5CF6)),
-          _summaryChip('عدد القيود', '${_revenueEntries.length}',
-              AccountingTheme.accent),
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryChip(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 10 : context.accR.spaceM,
+          vertical: isMob ? 8 : context.accR.spaceS),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        color: AccountingTheme.bgCard,
+        border: const Border(
+            bottom: BorderSide(color: AccountingTheme.borderColor)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         children: [
-          Text(label,
-              style:
-                  TextStyle(color: color.withValues(alpha: 0.7), fontSize: 12)),
-          const SizedBox(width: 6),
-          Text(value,
-              style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRevenueAccountsBar() {
-    if (_revenueAccounts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text('لا توجد حسابات إيرادات',
-            style: TextStyle(color: AccountingTheme.textMuted)),
-      );
-    }
-
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _revenueAccounts.length,
-        itemBuilder: (_, i) {
-          final acc = _revenueAccounts[i];
-          final balance =
-              ((acc['Balance'] ?? acc['CurrentBalance'] ?? 0) as num)
-                  .toDouble();
-          return Container(
-            margin: const EdgeInsets.only(left: 8, bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          // بطاقة الإجمالي
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+                horizontal: isMob ? 14 : 20, vertical: isMob ? 10 : 14),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AccountingTheme.success.withValues(alpha: 0.12),
-                  AccountingTheme.success.withValues(alpha: 0.04),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: AccountingTheme.success.withValues(alpha: 0.25)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${acc['Code']} - ${acc['Name']}',
-                  style: const TextStyle(
-                      color: AccountingTheme.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  '${_fmt(balance)} د.ع',
-                  style: TextStyle(
-                    color: balance > 0
-                        ? AccountingTheme.neonGreen
-                        : AccountingTheme.textSecondary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+              gradient: AccountingTheme.neonGreenGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AccountingTheme.neonGreen.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
-          );
-        },
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.trending_up_rounded,
+                      color: Colors.white, size: isMob ? 22 : 28),
+                ),
+                SizedBox(width: isMob ? 10 : 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasActiveFilter ? 'إيرادات مفلترة' : 'إجمالي الإيرادات',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: isMob ? 12 : 14,
+                            fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_fmt(hasActiveFilter ? _filteredTotal : _totalRevenue)} د.ع',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMob ? 20 : 26,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${filtered.length} قيد',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: isMob ? 12 : 14,
+                          fontWeight: FontWeight.w600),
+                    ),
+                    if (hasActiveFilter)
+                      Text(
+                        'من ${_revenueEntries.length}',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: isMob ? 10 : 12),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: isMob ? 8 : 10),
+          // أزرار التصفية
+          Row(
+            children: [
+              // فلتر النوع
+              Expanded(
+                child: _buildFilterDropdown(isMob),
+              ),
+              SizedBox(width: isMob ? 6 : 10),
+              // فلتر التاريخ من
+              _buildDateFilterBtn(
+                isMob: isMob,
+                label: _dateFrom != null
+                    ? _formatDate(_dateFrom!.toIso8601String())
+                    : 'من تاريخ',
+                icon: Icons.calendar_today,
+                isActive: _dateFrom != null,
+                onTap: () => _pickDate(isFrom: true),
+              ),
+              SizedBox(width: isMob ? 4 : 8),
+              // فلتر التاريخ إلى
+              _buildDateFilterBtn(
+                isMob: isMob,
+                label: _dateTo != null
+                    ? _formatDate(_dateTo!.toIso8601String())
+                    : 'إلى تاريخ',
+                icon: Icons.event,
+                isActive: _dateTo != null,
+                onTap: () => _pickDate(isFrom: false),
+              ),
+              // زر مسح الفلاتر
+              if (hasActiveFilter) ...[
+                SizedBox(width: isMob ? 4 : 8),
+                InkWell(
+                  onTap: () => setState(() {
+                    _selectedRevenueType = 'الكل';
+                    _dateFrom = null;
+                    _dateTo = null;
+                  }),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: EdgeInsets.all(isMob ? 6 : 8),
+                    decoration: BoxDecoration(
+                      color: AccountingTheme.danger.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: AccountingTheme.danger.withValues(alpha: 0.3)),
+                    ),
+                    child: Icon(Icons.clear_all,
+                        color: AccountingTheme.danger, size: isMob ? 18 : 20),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
 
+  Widget _buildFilterDropdown(bool isMob) {
+    const types = ['الكل', 'اشتراكات', 'تركيب', 'صيانة', 'أخرى'];
+    return Container(
+      height: isMob ? 36 : 40,
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 12),
+      decoration: BoxDecoration(
+        color: _selectedRevenueType != 'الكل'
+            ? AccountingTheme.accent.withValues(alpha: 0.1)
+            : AccountingTheme.bgCardHover,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _selectedRevenueType != 'الكل'
+              ? AccountingTheme.accent.withValues(alpha: 0.4)
+              : AccountingTheme.borderColor,
+          width: 1.2,
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedRevenueType,
+          isExpanded: true,
+          icon: Icon(Icons.filter_list,
+              size: isMob ? 16 : 18, color: AccountingTheme.textSecondary),
+          style: TextStyle(
+              color: Colors.black87,
+              fontSize: isMob ? 12 : 14,
+              fontWeight: FontWeight.w600),
+          dropdownColor: Colors.white,
+          items: types.map((t) {
+            return DropdownMenuItem(
+              value: t,
+              child: Text(t, style: TextStyle(fontSize: isMob ? 12 : 14)),
+            );
+          }).toList(),
+          onChanged: (v) {
+            if (v != null) setState(() => _selectedRevenueType = v);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateFilterBtn({
+    required bool isMob,
+    required String label,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: isMob ? 36 : 40,
+        padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 12),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AccountingTheme.info.withValues(alpha: 0.1)
+              : AccountingTheme.bgCardHover,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive
+                ? AccountingTheme.info.withValues(alpha: 0.4)
+                : AccountingTheme.borderColor,
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: isMob ? 14 : 16,
+                color: isActive
+                    ? AccountingTheme.info
+                    : AccountingTheme.textSecondary),
+            SizedBox(width: isMob ? 4 : 6),
+            Text(label,
+                style: TextStyle(
+                    color: isActive ? AccountingTheme.info : Colors.black87,
+                    fontSize: isMob ? 11 : 13,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isFrom ? (_dateFrom ?? now) : (_dateTo ?? now),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      locale: const Locale('ar'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AccountingTheme.neonGreen,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        if (isFrom) {
+          _dateFrom = picked;
+        } else {
+          _dateTo = picked;
+        }
+      });
+    }
+  }
+
   Widget _buildEntriesList() {
-    if (_revenueEntries.isEmpty) {
-      return const Center(
+    final filtered = _filteredEntries;
+    if (filtered.isEmpty) {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.trending_up, color: AccountingTheme.textMuted, size: 64),
-            SizedBox(height: 16),
+            Icon(Icons.trending_up,
+                color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
+            SizedBox(height: context.accR.spaceXL),
             Text('لا توجد قيود إيرادات',
                 style: TextStyle(
-                    color: AccountingTheme.textSecondary, fontSize: 16)),
+                    color: AccountingTheme.textSecondary,
+                    fontSize: context.accR.headingSmall)),
             SizedBox(height: 8),
             Text('اضغط + لإضافة إيراد جديد',
-                style:
-                    TextStyle(color: AccountingTheme.textMuted, fontSize: 13)),
+                style: TextStyle(
+                    color: AccountingTheme.textMuted,
+                    fontSize: context.accR.financialSmall)),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      itemCount: _revenueEntries.length,
+      padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM),
+      itemCount: filtered.length,
       itemBuilder: (_, i) {
-        final entry = _revenueEntries[i];
+        final entry = filtered[i];
         final lines = entry['Lines'] as List? ?? [];
         final status = entry['Status']?.toString() ?? 'Draft';
         final statusInfo = _statusInfo(status);
         final totalDebit = (entry['TotalDebit'] ?? 0 as num).toDouble();
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(14),
+          margin: EdgeInsets.only(bottom: 6),
+          padding: EdgeInsets.all(context.accR.spaceL),
           decoration: BoxDecoration(
             color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(context.accR.cardRadius),
             border: Border(
                 right:
                     BorderSide(color: statusInfo['color'] as Color, width: 3)),
@@ -357,59 +580,44 @@ class _RevenuePageState extends State<RevenuePage> {
             children: [
               Row(
                 children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AccountingTheme.success.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      entry['EntryNumber'] ?? '',
-                      style: const TextStyle(
-                          color: AccountingTheme.success,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       entry['Description'] ?? '',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AccountingTheme.textPrimary,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14),
+                          fontSize: context.accR.body),
                     ),
                   ),
                   // الحالة
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: (statusInfo['color'] as Color)
                           .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius:
+                          BorderRadius.circular(context.accR.cardRadius),
                     ),
                     child: Text(
                       statusInfo['label'] as String,
                       style: TextStyle(
-                          color: statusInfo['color'] as Color, fontSize: 11),
+                          color: statusInfo['color'] as Color,
+                          fontSize: context.accR.small),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.accR.spaceS),
                   Text(
                     '${_fmt(totalDebit)} د.ع',
                     style: TextStyle(
                       color: AccountingTheme.neonGreen,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: context.accR.body,
                     ),
                   ),
                 ],
               ),
               if (lines.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: context.accR.spaceS),
                 ...lines.take(4).map((line) {
                   final accName =
                       line['AccountName'] ?? line['AccountCode'] ?? '';
@@ -417,62 +625,68 @@ class _RevenuePageState extends State<RevenuePage> {
                   final credit =
                       ((line['CreditAmount'] ?? 0) as num).toDouble();
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
+                    padding: EdgeInsets.only(bottom: 2),
                     child: Row(
                       children: [
-                        const SizedBox(width: 16),
+                        SizedBox(width: context.accR.spaceXL),
                         Icon(
                           credit > 0 ? Icons.arrow_back : Icons.arrow_forward,
                           color: credit > 0
                               ? AccountingTheme.accent
                               : AccountingTheme.info,
-                          size: 14,
+                          size: context.accR.iconS,
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: context.accR.spaceXS),
                         Expanded(
                           child: Text(
                             accName.toString(),
-                            style: const TextStyle(
-                                color: AccountingTheme.textMuted, fontSize: 12),
+                            style: TextStyle(
+                                color: AccountingTheme.textMuted,
+                                fontSize: context.accR.small),
                           ),
                         ),
                         if (debit > 0)
                           Text('مدين: ${_fmt(debit)}',
-                              style: const TextStyle(
-                                  color: AccountingTheme.info, fontSize: 11)),
+                              style: TextStyle(
+                                  color: AccountingTheme.info,
+                                  fontSize: context.accR.small)),
                         if (credit > 0)
                           Text('دائن: ${_fmt(credit)}',
-                              style: const TextStyle(
-                                  color: AccountingTheme.accent, fontSize: 11)),
+                              style: TextStyle(
+                                  color: AccountingTheme.accent,
+                                  fontSize: context.accR.small)),
                       ],
                     ),
                   );
                 }),
               ],
-              const SizedBox(height: 4),
+              SizedBox(height: context.accR.spaceXS),
               Row(
                 children: [
                   Icon(Icons.access_time,
-                      color: AccountingTheme.textMuted, size: 14),
-                  const SizedBox(width: 4),
+                      color: AccountingTheme.textMuted,
+                      size: context.accR.iconXS),
+                  SizedBox(width: context.accR.spaceXS),
                   Text(
                     _formatDate(entry['EntryDate'] ?? entry['CreatedAt']),
-                    style: const TextStyle(
-                        color: AccountingTheme.textMuted, fontSize: 11),
+                    style: TextStyle(
+                        color: AccountingTheme.textMuted,
+                        fontSize: context.accR.small),
                   ),
                   if (entry['Notes'] != null &&
                       entry['Notes'].toString().isNotEmpty) ...[
-                    const SizedBox(width: 12),
+                    SizedBox(width: context.accR.spaceM),
                     Tooltip(
                       message: entry['Notes'].toString(),
-                      child: const Icon(Icons.notes,
-                          color: AccountingTheme.textMuted, size: 14),
+                      child: Icon(Icons.notes,
+                          color: AccountingTheme.textMuted,
+                          size: context.accR.iconXS),
                     ),
                   ],
                   const Spacer(),
                   _actionBtn(Icons.edit, AccountingTheme.info,
                       () => _showEditRevenueDialog(entry)),
-                  const SizedBox(width: 4),
+                  SizedBox(width: context.accR.spaceXS),
                   _actionBtn(Icons.delete_outline, AccountingTheme.danger,
                       () => _confirmDeleteRevenue(entry)),
                 ],
@@ -489,12 +703,12 @@ class _RevenuePageState extends State<RevenuePage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: EdgeInsets.all(context.accR.spaceXS),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Icon(icon, color: color, size: 16),
+        child: Icon(icon, color: color, size: context.accR.iconS),
       ),
     );
   }
@@ -576,19 +790,21 @@ class _RevenuePageState extends State<RevenuePage> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: AccountingTheme.bgCard,
-            title: const Text('تعديل الإيراد',
+            title: Text('تعديل الإيراد',
                 style: TextStyle(
                     color: AccountingTheme.info, fontWeight: FontWeight.bold)),
             content: SizedBox(
-              width: 420,
+              width: context.accR.isMobile
+                  ? MediaQuery.of(context).size.width * 0.90
+                  : 420,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _field('الوصف *', descCtrl),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _field('المبلغ *', amountCtrl, isNumber: true),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedRevenueAccId,
                       dropdownColor: AccountingTheme.bgCard,
@@ -598,14 +814,14 @@ class _RevenuePageState extends State<RevenuePage> {
                       items: revenueAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
                           value: a['Id']?.toString(),
-                          child: Text('${a['Code']} - ${a['Name']}',
+                          child: Text('${a['Name']}',
                               overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       onChanged: (v) => ss(() => selectedRevenueAccId = v),
                       decoration: _inputDeco('حساب الإيراد (دائن)'),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedAssetAccId,
                       dropdownColor: AccountingTheme.bgCard,
@@ -615,14 +831,14 @@ class _RevenuePageState extends State<RevenuePage> {
                       items: assetAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
                           value: a['Id']?.toString(),
-                          child: Text('${a['Code']} - ${a['Name']}',
+                          child: Text('${a['Name']}',
                               overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       onChanged: (v) => ss(() => selectedAssetAccId = v),
                       decoration: _inputDeco('حساب القبض (مدين)'),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _field('ملاحظات', notesCtrl),
                   ],
                 ),
@@ -631,7 +847,7 @@ class _RevenuePageState extends State<RevenuePage> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('إلغاء',
+                  child: Text('إلغاء',
                       style: TextStyle(color: AccountingTheme.textMuted))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -691,7 +907,7 @@ class _RevenuePageState extends State<RevenuePage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('حذف الإيراد',
+          title: Text('حذف الإيراد',
               style: TextStyle(
                   color: AccountingTheme.danger, fontWeight: FontWeight.bold)),
           content: Text(
@@ -701,7 +917,7 @@ class _RevenuePageState extends State<RevenuePage> {
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('إلغاء',
+                child: Text('إلغاء',
                     style: TextStyle(color: AccountingTheme.textMuted))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -776,22 +992,24 @@ class _RevenuePageState extends State<RevenuePage> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: AccountingTheme.bgCard,
-            title: const Text('إضافة إيراد',
+            title: Text('إضافة إيراد',
                 style: TextStyle(
                     color: AccountingTheme.success,
                     fontWeight: FontWeight.bold)),
             content: SizedBox(
-              width: 420,
+              width: context.accR.isMobile
+                  ? MediaQuery.of(context).size.width * 0.90
+                  : 420,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // الوصف
                     _field('الوصف *', descCtrl),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     // المبلغ
                     _field('المبلغ *', amountCtrl, isNumber: true),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     // حساب الإيراد (دائن)
                     DropdownButtonFormField<String>(
                       value: selectedRevenueAccId,
@@ -802,14 +1020,14 @@ class _RevenuePageState extends State<RevenuePage> {
                       items: revenueAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
                           value: a['Id']?.toString(),
-                          child: Text('${a['Code']} - ${a['Name']}',
+                          child: Text('${a['Name']}',
                               overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       onChanged: (v) => ss(() => selectedRevenueAccId = v),
                       decoration: _inputDeco('حساب الإيراد (دائن)'),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     // حساب الأصل (مدين - أين يذهب المال)
                     DropdownButtonFormField<String>(
                       value: selectedAssetAccId,
@@ -820,20 +1038,20 @@ class _RevenuePageState extends State<RevenuePage> {
                       items: assetAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
                           value: a['Id']?.toString(),
-                          child: Text('${a['Code']} - ${a['Name']}',
+                          child: Text('${a['Name']}',
                               overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       onChanged: (v) => ss(() => selectedAssetAccId = v),
                       decoration: _inputDeco('حساب القبض (مدين)'),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     // ملاحظات
                     _field('ملاحظات', notesCtrl),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.accR.spaceS),
                     // توضيح القيد
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(context.accR.spaceM),
                       decoration: BoxDecoration(
                         color: AccountingTheme.success.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(8),
@@ -844,50 +1062,52 @@ class _RevenuePageState extends State<RevenuePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('القيد الناتج:',
+                          Text('القيد الناتج:',
                               style: TextStyle(
                                   color: AccountingTheme.success,
-                                  fontSize: 12,
+                                  fontSize: context.accR.small,
                                   fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.accR.spaceXS),
                           Row(
                             children: [
-                              const Icon(Icons.arrow_forward,
-                                  color: AccountingTheme.accent, size: 14),
-                              const SizedBox(width: 4),
-                              const Expanded(
+                              Icon(Icons.arrow_forward,
+                                  color: AccountingTheme.accent,
+                                  size: context.accR.iconXS),
+                              SizedBox(width: context.accR.spaceXS),
+                              Expanded(
                                 child: Text('حساب القبض ← مدين',
                                     style: TextStyle(
                                         color: AccountingTheme.accent,
-                                        fontSize: 11)),
+                                        fontSize: context.accR.small)),
                               ),
                               Text(
                                   amountCtrl.text.isNotEmpty
                                       ? amountCtrl.text
                                       : '0',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AccountingTheme.accent,
-                                      fontSize: 11)),
+                                      fontSize: context.accR.small)),
                             ],
                           ),
                           Row(
                             children: [
-                              const Icon(Icons.arrow_back,
-                                  color: AccountingTheme.success, size: 14),
-                              const SizedBox(width: 4),
-                              const Expanded(
+                              Icon(Icons.arrow_back,
+                                  color: AccountingTheme.success,
+                                  size: context.accR.iconXS),
+                              SizedBox(width: context.accR.spaceXS),
+                              Expanded(
                                 child: Text('حساب الإيراد ← دائن',
                                     style: TextStyle(
                                         color: AccountingTheme.success,
-                                        fontSize: 11)),
+                                        fontSize: context.accR.small)),
                               ),
                               Text(
                                   amountCtrl.text.isNotEmpty
                                       ? amountCtrl.text
                                       : '0',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AccountingTheme.success,
-                                      fontSize: 11)),
+                                      fontSize: context.accR.small)),
                             ],
                           ),
                         ],
@@ -900,7 +1120,7 @@ class _RevenuePageState extends State<RevenuePage> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('إلغاء',
+                  child: Text('إلغاء',
                       style: TextStyle(color: AccountingTheme.textMuted))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(

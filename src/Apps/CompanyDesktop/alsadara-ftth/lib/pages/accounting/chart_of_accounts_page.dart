@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة شجرة الحسابات
 class ChartOfAccountsPage extends StatefulWidget {
@@ -83,7 +84,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('تهيئة شجرة الحسابات',
+          title: Text('تهيئة شجرة الحسابات',
               style: TextStyle(color: AccountingTheme.textPrimary)),
           content: const Text(
             'لا توجد حسابات بعد. هل تريد تهيئة الحسابات الافتراضية (30 حساب)؟',
@@ -92,7 +93,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('لاحقاً',
+              child: Text('لاحقاً',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton(
@@ -149,177 +150,305 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AccountingTheme.bgPrimary,
-        body: Column(
-          children: [
-            _buildToolbar(),
-            _buildStatsBar(),
-            Expanded(
-              child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                          color: AccountingTheme.neonGreen))
-                  : _errorMessage != null
-                      ? _buildError()
-                      : _showTree
-                          ? _buildTreeView()
-                          : _buildListView(),
-            ),
-          ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildToolbar(),
+              _buildStatsBar(),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                            color: AccountingTheme.neonGreen))
+                    : _errorMessage != null
+                        ? _buildError()
+                        : _showTree
+                            ? _buildTreeView()
+                            : _buildListView(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildToolbar() {
+    final isMobile = context.accR.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : context.accR.spaceXL,
+          vertical: isMobile ? 6 : context.accR.spaceL),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonBlueGradient,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.account_tree_rounded,
-                color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Text('شجرة الحسابات',
-              style: GoogleFonts.cairo(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AccountingTheme.neonPink.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text('${_accounts.length}',
-                style: GoogleFonts.cairo(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.neonPink,
-                )),
-          ),
-          const Spacer(),
-          // بحث
-          SizedBox(
-            width: 220,
-            height: 36,
-            child: TextField(
-              onChanged: (v) => setState(() => _searchQuery = v),
-              textDirection: TextDirection.rtl,
-              style: GoogleFonts.cairo(
-                  fontSize: 13, color: AccountingTheme.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'بحث في الحسابات...',
-                hintStyle: GoogleFonts.cairo(
-                    fontSize: 13, color: AccountingTheme.textMuted),
-                prefixIcon: const Icon(Icons.search,
-                    size: 18, color: AccountingTheme.textMuted),
-                filled: true,
-                fillColor: AccountingTheme.bgPrimary,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AccountingTheme.borderColor),
+      child: isMobile
+          ? Column(
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_forward_rounded),
+                      tooltip: 'رجوع',
+                      iconSize: 20,
+                      style: IconButton.styleFrom(
+                          foregroundColor: AccountingTheme.textSecondary),
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        gradient: AccountingTheme.neonBlueGradient,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(Icons.account_tree_rounded,
+                          color: Colors.white, size: 16),
+                    ),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text('شجرة الحسابات',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.cairo(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AccountingTheme.textPrimary,
+                          )),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AccountingTheme.neonPink.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('${_accounts.length}',
+                          style: GoogleFonts.cairo(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AccountingTheme.neonPink)),
+                    ),
+                    SizedBox(width: 4),
+                    InkWell(
+                      onTap: () => setState(() => _showTree = !_showTree),
+                      child: Icon(_showTree ? Icons.list : Icons.account_tree,
+                          size: 18, color: AccountingTheme.textMuted),
+                    ),
+                    IconButton(
+                      onPressed: _loadData,
+                      icon: Icon(Icons.refresh, size: 18),
+                      tooltip: 'تحديث',
+                      style: IconButton.styleFrom(
+                          foregroundColor: AccountingTheme.textSecondary),
+                    ),
+                    SizedBox(
+                      height: 30,
+                      child: ElevatedButton(
+                        onPressed: _showAddAccountDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AccountingTheme.neonGreen,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size(30, 30),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6)),
+                        ),
+                        child: Icon(Icons.add, size: 16),
+                      ),
+                    ),
+                  ],
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AccountingTheme.borderColor),
+                SizedBox(height: 6),
+                SizedBox(
+                  height: 32,
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    textDirection: TextDirection.rtl,
+                    style: GoogleFonts.cairo(
+                        fontSize: 12, color: AccountingTheme.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'بحث...',
+                      hintStyle: GoogleFonts.cairo(
+                          fontSize: 12, color: AccountingTheme.textMuted),
+                      prefixIcon: Icon(Icons.search,
+                          size: 16, color: AccountingTheme.textMuted),
+                      filled: true,
+                      fillColor: AccountingTheme.bgPrimary,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide:
+                            BorderSide(color: AccountingTheme.borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide:
+                            BorderSide(color: AccountingTheme.borderColor),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide(color: AccountingTheme.neonBlue),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AccountingTheme.neonBlue),
+              ],
+            )
+          : Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  tooltip: 'رجوع',
+                  style: IconButton.styleFrom(
+                      foregroundColor: AccountingTheme.textSecondary),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // تبديل العرض
-          InkWell(
-            onTap: () => setState(() => _showTree = !_showTree),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                border: Border.all(color: AccountingTheme.borderColor),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(_showTree ? Icons.list : Icons.account_tree,
-                      size: 16, color: AccountingTheme.textMuted),
-                  const SizedBox(width: 4),
-                  Text(_showTree ? 'قائمة' : 'شجري',
+                SizedBox(width: context.accR.spaceS),
+                Container(
+                  padding: EdgeInsets.all(context.accR.spaceS),
+                  decoration: BoxDecoration(
+                    gradient: AccountingTheme.neonBlueGradient,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.account_tree_rounded,
+                      color: Colors.white, size: context.accR.iconM),
+                ),
+                SizedBox(width: context.accR.spaceM),
+                Text('شجرة الحسابات',
+                    style: GoogleFonts.cairo(
+                      fontSize: context.accR.headingMedium,
+                      fontWeight: FontWeight.bold,
+                      color: AccountingTheme.textPrimary,
+                    )),
+                SizedBox(width: context.accR.spaceS),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AccountingTheme.neonPink.withOpacity(0.2),
+                    borderRadius:
+                        BorderRadius.circular(context.accR.cardRadius),
+                  ),
+                  child: Text('${_accounts.length}',
                       style: GoogleFonts.cairo(
-                          fontSize: 12, color: AccountingTheme.textSecondary)),
+                        fontSize: context.accR.small,
+                        fontWeight: FontWeight.bold,
+                        color: AccountingTheme.neonPink,
+                      )),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 220,
+                  height: 36,
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    textDirection: TextDirection.rtl,
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.financialSmall,
+                        color: AccountingTheme.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'بحث في الحسابات...',
+                      hintStyle: GoogleFonts.cairo(
+                          fontSize: context.accR.financialSmall,
+                          color: AccountingTheme.textMuted),
+                      prefixIcon: Icon(Icons.search,
+                          size: context.accR.iconM,
+                          color: AccountingTheme.textMuted),
+                      filled: true,
+                      fillColor: AccountingTheme.bgPrimary,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            BorderSide(color: AccountingTheme.borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            BorderSide(color: AccountingTheme.borderColor),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AccountingTheme.neonBlue),
+                      ),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: context.accR.spaceM),
+                    ),
+                  ),
+                ),
+                SizedBox(width: context.accR.spaceS),
+                InkWell(
+                  onTap: () => setState(() => _showTree = !_showTree),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.accR.spaceM,
+                        vertical: context.accR.spaceXS),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AccountingTheme.borderColor),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(_showTree ? Icons.list : Icons.account_tree,
+                            size: context.accR.iconS,
+                            color: AccountingTheme.textMuted),
+                        SizedBox(width: context.accR.spaceXS),
+                        Text(_showTree ? 'قائمة' : 'شجري',
+                            style: GoogleFonts.cairo(
+                                fontSize: context.accR.small,
+                                color: AccountingTheme.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(width: context.accR.spaceS),
+                if (_showTree) ...[
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _collectAllNodeIds(_treeData, _expandedNodes);
+                      });
+                    },
+                    icon: Icon(Icons.unfold_more, size: context.accR.iconM),
+                    tooltip: 'توسيع الكل',
+                    style: IconButton.styleFrom(
+                        foregroundColor: AccountingTheme.textSecondary),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      setState(() => _expandedNodes.clear());
+                    },
+                    icon: Icon(Icons.unfold_less, size: context.accR.iconM),
+                    tooltip: 'طي الكل',
+                    style: IconButton.styleFrom(
+                        foregroundColor: AccountingTheme.textSecondary),
+                  ),
                 ],
-              ),
+                IconButton(
+                  onPressed: _loadData,
+                  icon: Icon(Icons.refresh, size: context.accR.iconM),
+                  tooltip: 'تحديث',
+                  style: IconButton.styleFrom(
+                      foregroundColor: AccountingTheme.textSecondary),
+                ),
+                SizedBox(width: context.accR.spaceXS),
+                ElevatedButton.icon(
+                  onPressed: _showAddAccountDialog,
+                  icon: Icon(Icons.add, size: context.accR.iconS),
+                  label: Text('حساب جديد',
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.financialSmall)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AccountingTheme.neonGreen,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.accR.spaceL,
+                        vertical: context.accR.spaceS),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-          if (_showTree) ...[
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _collectAllNodeIds(_treeData, _expandedNodes);
-                });
-              },
-              icon: const Icon(Icons.unfold_more, size: 18),
-              tooltip: 'توسيع الكل',
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.textSecondary),
-            ),
-            IconButton(
-              onPressed: () {
-                setState(() => _expandedNodes.clear());
-              },
-              icon: const Icon(Icons.unfold_less, size: 18),
-              tooltip: 'طي الكل',
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.textSecondary),
-            ),
-          ],
-          IconButton(
-            onPressed: _loadData,
-            icon: const Icon(Icons.refresh, size: 18),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          const SizedBox(width: 4),
-          ElevatedButton.icon(
-            onPressed: _showAddAccountDialog,
-            icon: const Icon(Icons.add, size: 16),
-            label: Text('حساب جديد', style: GoogleFonts.cairo(fontSize: 13)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonGreen,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -345,28 +474,32 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       }
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceXL, vertical: context.accR.spaceM),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
       ),
-      child: Row(
-        children: [
-          _buildStatChip(
-              'أصول', '$assets', AccountingTheme.info, Icons.business),
-          const SizedBox(width: 12),
-          _buildStatChip('التزامات', '$liabilities', AccountingTheme.warning,
-              Icons.balance),
-          const SizedBox(width: 12),
-          _buildStatChip(
-              'حقوق ملكية', '$equity', const Color(0xFF8B5CF6), Icons.verified),
-          const SizedBox(width: 12),
-          _buildStatChip('إيرادات', '$revenue', AccountingTheme.success,
-              Icons.trending_up),
-          const SizedBox(width: 12),
-          _buildStatChip('مصروفات', '$expenses', AccountingTheme.danger,
-              Icons.trending_down),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildStatChip(
+                'أصول', '$assets', AccountingTheme.info, Icons.business),
+            SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
+            _buildStatChip('التزامات', '$liabilities', AccountingTheme.warning,
+                Icons.balance),
+            SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
+            _buildStatChip(
+                'ملكية', '$equity', Color(0xFF8B5CF6), Icons.verified),
+            SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
+            _buildStatChip('إيرادات', '$revenue', AccountingTheme.success,
+                Icons.trending_up),
+            SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
+            _buildStatChip('مصروفات', '$expenses', AccountingTheme.danger,
+                Icons.trending_down),
+          ],
+        ),
       ),
     );
   }
@@ -374,7 +507,8 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
   Widget _buildStatChip(
       String label, String value, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
       decoration: BoxDecoration(
         color: color.withOpacity(0.18),
         borderRadius: BorderRadius.circular(8),
@@ -383,15 +517,17 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
+          Icon(icon, size: context.accR.iconS, color: color),
+          SizedBox(width: context.accR.spaceXS),
           Text(value,
               style: GoogleFonts.cairo(
-                  fontSize: 13, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(width: 4),
+                  fontSize: context.accR.financialSmall,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
+          SizedBox(width: context.accR.spaceXS),
           Text(label,
               style: GoogleFonts.cairo(
-                  fontSize: 11, color: color.withOpacity(0.8))),
+                  fontSize: context.accR.small, color: color.withOpacity(0.8))),
         ],
       ),
     );
@@ -403,17 +539,20 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline,
-              color: AccountingTheme.textMuted.withOpacity(0.3), size: 48),
-          const SizedBox(height: 12),
+              color: AccountingTheme.textMuted.withOpacity(0.3),
+              size: context.accR.iconXL),
+          SizedBox(height: context.accR.spaceM),
           Text(_errorMessage!,
               style: GoogleFonts.cairo(
-                  color: AccountingTheme.textSecondary, fontSize: 14)),
-          const SizedBox(height: 12),
+                  color: AccountingTheme.textSecondary,
+                  fontSize: context.accR.body)),
+          SizedBox(height: context.accR.spaceM),
           ElevatedButton.icon(
             onPressed: _loadData,
-            icon: const Icon(Icons.refresh, size: 16),
-            label:
-                Text('إعادة المحاولة', style: GoogleFonts.cairo(fontSize: 13)),
+            icon: Icon(Icons.refresh, size: context.accR.iconS),
+            label: Text('إعادة المحاولة',
+                style:
+                    GoogleFonts.cairo(fontSize: context.accR.financialSmall)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AccountingTheme.neonBlue,
               foregroundColor: Colors.white,
@@ -434,7 +573,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       );
     }
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM),
       children: _treeData.map((node) => _buildTreeNode(node, 0)).toList(),
     );
   }
@@ -499,17 +638,18 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     }
                   });
                 },
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(context.accR.cardRadius),
           child: Container(
             margin: EdgeInsets.only(right: depth * 28.0, bottom: 4, top: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.accR.spaceL, vertical: context.accR.spaceM),
             decoration: BoxDecoration(
               color: isLeaf
                   ? AccountingTheme.bgCard
                   : (isExpanded || forceExpand)
                       ? _getTypeColor(type).withOpacity(0.06)
                       : AccountingTheme.bgCard,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(context.accR.cardRadius),
               border: Border.all(
                   color: isLeaf
                       ? AccountingTheme.borderColor
@@ -530,16 +670,16 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                 if (!isLeaf)
                   AnimatedRotation(
                     turns: (isExpanded || forceExpand) ? 0.25 : 0,
-                    duration: const Duration(milliseconds: 200),
+                    duration: Duration(milliseconds: 200),
                     child: Icon(
                       Icons.chevron_left,
                       color: _getTypeColor(type),
-                      size: 20,
+                      size: context.accR.iconM,
                     ),
                   )
                 else
-                  const SizedBox(width: 20),
-                const SizedBox(width: 6),
+                  SizedBox(width: context.accR.spaceXL),
+                SizedBox(width: context.accR.spaceXS),
                 Container(
                   width: 32,
                   height: 32,
@@ -557,20 +697,20 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                               ? Icons.folder_open_rounded
                               : Icons.folder_rounded,
                       color: _getTypeColor(type),
-                      size: 16,
+                      size: context.accR.iconS,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: context.accR.spaceM),
                 Text(
                   code,
                   style: GoogleFonts.cairo(
                     color: AccountingTheme.neonBlue,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: context.accR.financialSmall,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.accR.spaceM),
                 Expanded(
                   child: Text(
                     name,
@@ -578,7 +718,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       color: isActive
                           ? AccountingTheme.textPrimary
                           : AccountingTheme.textMuted,
-                      fontSize: 14,
+                      fontSize: context.accR.body,
                       fontWeight: isLeaf ? FontWeight.normal : FontWeight.w600,
                     ),
                   ),
@@ -586,18 +726,18 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                 // عدد الأبناء
                 if (!isLeaf)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    margin: const EdgeInsets.only(left: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    margin: EdgeInsets.only(left: 8),
                     decoration: BoxDecoration(
                       color: _getTypeColor(type).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius:
+                          BorderRadius.circular(context.accR.cardRadius),
                     ),
                     child: Text(
                       '${children.length}',
                       style: GoogleFonts.cairo(
                           color: _getTypeColor(type),
-                          fontSize: 11,
+                          fontSize: context.accR.small,
                           fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -611,10 +751,11 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                   child: Text(
                     _accountTypeLabels[type] ?? type,
                     style: GoogleFonts.cairo(
-                        color: _getTypeColor(type), fontSize: 11),
+                        color: _getTypeColor(type),
+                        fontSize: context.accR.small),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.accR.spaceM),
                 Text(
                   _formatNumber(balance),
                   style: GoogleFonts.cairo(
@@ -622,13 +763,14 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                         ? AccountingTheme.danger
                         : AccountingTheme.neonGreen,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: context.accR.financialSmall,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert,
-                      color: AccountingTheme.textMuted, size: 18),
+                  icon: Icon(Icons.more_vert,
+                      color: AccountingTheme.textMuted,
+                      size: context.accR.iconM),
                   color: AccountingTheme.bgCard,
                   onSelected: (action) => _handleAccountAction(action, node),
                   itemBuilder: (_) => [
@@ -679,27 +821,29 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.account_tree_rounded,
-                size: 48, color: AccountingTheme.textMuted.withOpacity(0.3)),
-            const SizedBox(height: 12),
+                size: context.accR.iconXL,
+                color: AccountingTheme.textMuted.withOpacity(0.3)),
+            SizedBox(height: context.accR.spaceM),
             Text('لا توجد نتائج',
                 style: GoogleFonts.cairo(
-                    fontSize: 16, color: AccountingTheme.textMuted)),
+                    fontSize: context.accR.headingSmall,
+                    color: AccountingTheme.textMuted)),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.accR.spaceXL),
       itemCount: filtered.length,
       itemBuilder: (_, i) {
         final a = filtered[i];
         final type = a['AccountType'] ?? '';
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: context.accR.spaceS),
           decoration: BoxDecoration(
             color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(context.accR.cardRadius),
             border: Border.all(color: AccountingTheme.borderColor),
             boxShadow: [
               BoxShadow(
@@ -710,12 +854,12 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(context.accR.cardRadius),
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(context.accR.cardRadius),
               onTap: () {},
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(context.accR.spaceL),
                 child: Row(
                   children: [
                     Container(
@@ -729,24 +873,26 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       ),
                       child: Center(
                         child: Icon(Icons.description_outlined,
-                            size: 18, color: _getTypeColor(type)),
+                            size: context.accR.iconM,
+                            color: _getTypeColor(type)),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: context.accR.spaceM),
                     Text(
                       a['Code'] ?? '',
                       style: GoogleFonts.cairo(
                         color: AccountingTheme.neonBlue,
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: context.accR.financialSmall,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: context.accR.spaceM),
                     Expanded(
                       child: Text(
                         a['Name'] ?? '',
                         style: GoogleFonts.cairo(
-                            color: AccountingTheme.textPrimary, fontSize: 14),
+                            color: AccountingTheme.textPrimary,
+                            fontSize: context.accR.body),
                       ),
                     ),
                     Container(
@@ -759,10 +905,11 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       child: Text(
                         _accountTypeLabels[type] ?? type,
                         style: GoogleFonts.cairo(
-                            color: _getTypeColor(type), fontSize: 11),
+                            color: _getTypeColor(type),
+                            fontSize: context.accR.small),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: context.accR.spaceM),
                     Text(
                       _formatNumber(a['CurrentBalance']),
                       style: GoogleFonts.cairo(
@@ -770,8 +917,9 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                           fontWeight: FontWeight.bold),
                     ),
                     PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert,
-                          color: AccountingTheme.textMuted, size: 18),
+                      icon: Icon(Icons.more_vert,
+                          color: AccountingTheme.textMuted,
+                          size: context.accR.iconM),
                       color: AccountingTheme.bgCard,
                       onSelected: (action) => _handleAccountAction(action, a),
                       itemBuilder: (_) => [
@@ -859,10 +1007,11 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
           title: Text('إضافة حساب فرعي تحت: $parentName',
-              style: const TextStyle(
-                  color: AccountingTheme.textPrimary, fontSize: 16)),
+              style: TextStyle(
+                  color: AccountingTheme.textPrimary,
+                  fontSize: context.accR.headingSmall)),
           content: SizedBox(
-            width: 400,
+            width: context.accR.dialogSmallW,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -870,7 +1019,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                   // عرض الأب
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(context.accR.spaceM),
                     decoration: BoxDecoration(
                       color: _getTypeColor(parentType).withOpacity(0.08),
                       borderRadius: BorderRadius.circular(8),
@@ -880,25 +1029,26 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     child: Row(
                       children: [
                         Icon(Icons.account_tree,
-                            size: 16, color: _getTypeColor(parentType)),
-                        const SizedBox(width: 8),
+                            size: context.accR.iconS,
+                            color: _getTypeColor(parentType)),
+                        SizedBox(width: context.accR.spaceS),
                         Text('$parentCode - $parentName',
                             style: GoogleFonts.cairo(
-                                fontSize: 13,
+                                fontSize: context.accR.financialSmall,
                                 color: _getTypeColor(parentType),
                                 fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: context.accR.spaceL),
                   _buildField('رمز الحساب', codeCtrl, hint: suggestedCode),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.accR.spaceM),
                   _buildField('اسم الحساب', nameCtrl),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.accR.spaceM),
                   _buildField('الاسم بالإنجليزية', nameEnCtrl),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.accR.spaceM),
                   _buildField('الرصيد الافتتاحي', balanceCtrl, isNumber: true),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.accR.spaceM),
                   _buildField('الوصف', descCtrl, maxLines: 2),
                 ],
               ),
@@ -907,7 +1057,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton(
@@ -966,20 +1116,20 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: AccountingTheme.bgCard,
-            title: const Text('إضافة حساب جديد',
+            title: Text('إضافة حساب جديد',
                 style: TextStyle(color: AccountingTheme.textPrimary)),
             content: SizedBox(
-              width: 400,
+              width: context.accR.dialogSmallW,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildField('رمز الحساب', codeCtrl, hint: '1100'),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildField('اسم الحساب', nameCtrl),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildField('الاسم بالإنجليزية', nameEnCtrl),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildDropdown(
                       'نوع الحساب',
                       selectedType,
@@ -990,7 +1140,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                           .toList(),
                       (v) => setDialogState(() => selectedType = v ?? 'Assets'),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildDropdown(
                       'الحساب الأب',
                       parentId,
@@ -1009,10 +1159,10 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       ],
                       (v) => setDialogState(() => parentId = v),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildField('الرصيد الافتتاحي', balanceCtrl,
                         isNumber: true),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildField('الوصف', descCtrl, maxLines: 2),
                   ],
                 ),
@@ -1021,7 +1171,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('إلغاء',
+                child: Text('إلغاء',
                     style: TextStyle(color: AccountingTheme.textMuted)),
               ),
               ElevatedButton(
@@ -1079,24 +1229,24 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           child: AlertDialog(
             backgroundColor: AccountingTheme.bgCard,
             title: Text('تعديل: ${account['Name']}',
-                style: const TextStyle(color: AccountingTheme.textPrimary)),
+                style: TextStyle(color: AccountingTheme.textPrimary)),
             content: SizedBox(
-              width: 400,
+              width: context.accR.dialogSmallW,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildField('اسم الحساب', nameCtrl),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildField('الاسم بالإنجليزية', nameEnCtrl),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildField('الرصيد الافتتاحي', openingBalanceCtrl,
                         isNumber: true),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     _buildField('الوصف', descCtrl, maxLines: 2),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     SwitchListTile(
-                      title: const Text('نشط',
+                      title: Text('نشط',
                           style: TextStyle(color: AccountingTheme.textPrimary)),
                       value: isActive,
                       activeColor: AccountingTheme.accent,
@@ -1109,7 +1259,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('إلغاء',
+                child: Text('إلغاء',
                     style: TextStyle(color: AccountingTheme.textMuted)),
               ),
               ElevatedButton(
@@ -1175,22 +1325,22 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               backgroundColor: AccountingTheme.bgCard,
-              titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              titlePadding: EdgeInsets.fromLTRB(20, 16, 20, 0),
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: EdgeInsets.all(context.accR.spaceXS),
                         decoration: BoxDecoration(
                           gradient: AccountingTheme.neonBlueGradient,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.receipt_long,
-                            color: Colors.white, size: 16),
+                        child: Icon(Icons.receipt_long,
+                            color: Colors.white, size: context.accR.iconS),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: context.accR.spaceM),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1199,24 +1349,24 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                               'كشف حساب: ${account['Name']}',
                               style: GoogleFonts.cairo(
                                   color: AccountingTheme.textPrimary,
-                                  fontSize: 16,
+                                  fontSize: context.accR.headingSmall,
                                   fontWeight: FontWeight.bold),
                             ),
                             Text(
                               '${acctInfo['Code'] ?? account['Code'] ?? ''} - ${_accountTypeLabels[acctInfo['AccountType'] ?? account['AccountType']] ?? ''}',
                               style: GoogleFonts.cairo(
                                   color: AccountingTheme.textMuted,
-                                  fontSize: 12),
+                                  fontSize: context.accR.small),
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.accR.spaceM),
                   // ملخص الأرصدة
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(context.accR.spaceM),
                     decoration: BoxDecoration(
                       color: AccountingTheme.bgCardHover,
                       borderRadius: BorderRadius.circular(8),
@@ -1230,11 +1380,11 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                               Text('إجمالي مدين',
                                   style: GoogleFonts.cairo(
                                       color: AccountingTheme.textMuted,
-                                      fontSize: 11)),
+                                      fontSize: context.accR.small)),
                               Text(_formatNumber(totalDebit),
                                   style: GoogleFonts.cairo(
                                       color: AccountingTheme.success,
-                                      fontSize: 14,
+                                      fontSize: context.accR.body,
                                       fontWeight: FontWeight.bold)),
                             ],
                           ),
@@ -1249,11 +1399,11 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                               Text('إجمالي دائن',
                                   style: GoogleFonts.cairo(
                                       color: AccountingTheme.textMuted,
-                                      fontSize: 11)),
+                                      fontSize: context.accR.small)),
                               Text(_formatNumber(totalCredit),
                                   style: GoogleFonts.cairo(
                                       color: AccountingTheme.danger,
-                                      fontSize: 14,
+                                      fontSize: context.accR.body,
                                       fontWeight: FontWeight.bold)),
                             ],
                           ),
@@ -1268,13 +1418,13 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                               Text('الرصيد',
                                   style: GoogleFonts.cairo(
                                       color: AccountingTheme.textMuted,
-                                      fontSize: 11)),
+                                      fontSize: context.accR.small)),
                               Text(_formatNumber(balance),
                                   style: GoogleFonts.cairo(
                                       color: (balance is num && balance < 0)
                                           ? AccountingTheme.danger
                                           : AccountingTheme.neonBlue,
-                                      fontSize: 14,
+                                      fontSize: context.accR.body,
                                       fontWeight: FontWeight.bold)),
                             ],
                           ),
@@ -1285,8 +1435,12 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                 ],
               ),
               content: SizedBox(
-                width: 650,
-                height: 400,
+                width: context.accR.isMobile
+                    ? MediaQuery.of(context).size.width * 0.92
+                    : 650,
+                height: context.accR.isMobile
+                    ? MediaQuery.of(context).size.height * 0.5
+                    : 400,
                 child: lines.isEmpty
                     ? Center(
                         child: Column(
@@ -1295,18 +1449,18 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                             Icon(Icons.receipt_long,
                                 color:
                                     AccountingTheme.textMuted.withOpacity(0.3),
-                                size: 48),
-                            const SizedBox(height: 12),
+                                size: context.accR.iconXL),
+                            SizedBox(height: context.accR.spaceM),
                             Text('لا توجد حركات مرحّلة على هذا الحساب',
                                 style: GoogleFonts.cairo(
                                     color: AccountingTheme.textMuted,
-                                    fontSize: 14)),
-                            const SizedBox(height: 4),
+                                    fontSize: context.accR.body)),
+                            SizedBox(height: context.accR.spaceXS),
                             Text(
                                 'الرصيد الحالي قد يكون من الرصيد الافتتاحي أو حركات غير مرحّلة',
                                 style: GoogleFonts.cairo(
                                     color: AccountingTheme.textMuted,
-                                    fontSize: 11)),
+                                    fontSize: context.accR.small)),
                           ],
                         ),
                       )
@@ -1328,27 +1482,27 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                     child: Text('رقم القيد',
                                         style: GoogleFonts.cairo(
                                             color: AccountingTheme.textMuted,
-                                            fontSize: 11,
+                                            fontSize: context.accR.small,
                                             fontWeight: FontWeight.bold))),
                                 SizedBox(
                                     width: 80,
                                     child: Text('التاريخ',
                                         style: GoogleFonts.cairo(
                                             color: AccountingTheme.textMuted,
-                                            fontSize: 11,
+                                            fontSize: context.accR.small,
                                             fontWeight: FontWeight.bold))),
                                 Expanded(
                                     child: Text('البيان',
                                         style: GoogleFonts.cairo(
                                             color: AccountingTheme.textMuted,
-                                            fontSize: 11,
+                                            fontSize: context.accR.small,
                                             fontWeight: FontWeight.bold))),
                                 SizedBox(
                                     width: 80,
                                     child: Text('مدين',
                                         style: GoogleFonts.cairo(
                                             color: AccountingTheme.success,
-                                            fontSize: 11,
+                                            fontSize: context.accR.small,
                                             fontWeight: FontWeight.bold),
                                         textAlign: TextAlign.center)),
                                 SizedBox(
@@ -1356,7 +1510,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                     child: Text('دائن',
                                         style: GoogleFonts.cairo(
                                             color: AccountingTheme.danger,
-                                            fontSize: 11,
+                                            fontSize: context.accR.small,
                                             fontWeight: FontWeight.bold),
                                         textAlign: TextAlign.center)),
                               ],
@@ -1394,7 +1548,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                               style: GoogleFonts.cairo(
                                                   color:
                                                       AccountingTheme.neonBlue,
-                                                  fontSize: 12,
+                                                  fontSize: context.accR.small,
                                                   fontWeight:
                                                       FontWeight.bold))),
                                       SizedBox(
@@ -1404,7 +1558,8 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                               style: GoogleFonts.cairo(
                                                   color:
                                                       AccountingTheme.textMuted,
-                                                  fontSize: 11))),
+                                                  fontSize:
+                                                      context.accR.small))),
                                       Expanded(
                                           child: Text(
                                               e['Description'] ??
@@ -1413,7 +1568,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                               style: GoogleFonts.cairo(
                                                   color: AccountingTheme
                                                       .textPrimary,
-                                                  fontSize: 12),
+                                                  fontSize: context.accR.small),
                                               overflow: TextOverflow.ellipsis)),
                                       SizedBox(
                                           width: 80,
@@ -1426,7 +1581,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                       ? AccountingTheme.success
                                                       : AccountingTheme
                                                           .textMuted,
-                                                  fontSize: 12),
+                                                  fontSize: context.accR.small),
                                               textAlign: TextAlign.center)),
                                       SizedBox(
                                           width: 80,
@@ -1439,7 +1594,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                       ? AccountingTheme.danger
                                                       : AccountingTheme
                                                           .textMuted,
-                                                  fontSize: 12),
+                                                  fontSize: context.accR.small),
                                               textAlign: TextAlign.center)),
                                     ],
                                   ),
@@ -1476,14 +1631,14 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('تأكيد الحذف',
+          title: Text('تأكيد الحذف',
               style: TextStyle(color: AccountingTheme.textPrimary)),
           content: Text('هل تريد حذف الحساب "${account['Name']}"؟',
               style: const TextStyle(color: AccountingTheme.textSecondary)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton(

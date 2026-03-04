@@ -109,8 +109,11 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   void initState() {
     super.initState();
     // تحميل الاشتراكات والمناطق مبكراً (المناطق بدون عرضها لتجهيزها لاحقاً)
-    fetchSubscriptions();
-    fetchZones();
+    // ⚡ تأجيل التحميل حتى بعد انتهاء transition animation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchSubscriptions();
+      fetchZones();
+    });
   }
 
   /// جلب تفاصيل الاشتراك الكاملة

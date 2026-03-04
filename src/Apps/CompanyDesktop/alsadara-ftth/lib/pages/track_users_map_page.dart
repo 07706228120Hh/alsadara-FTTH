@@ -1,8 +1,3 @@
-/// اسم الصفحة: خريطة تتبع المستخدمين المطورة
-/// وصف الصفحة: صفحة خريطة تتبع مواقع المستخدمين مع دعم العمل بدون إنترنت ورسم المسارات
-/// المؤلف: تطبيق السدارة
-library;
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -13,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:google_fonts/google_fonts.dart';
 
 class TrackUsersMapPage extends StatefulWidget {
   const TrackUsersMapPage({super.key});
@@ -21,64 +17,63 @@ class TrackUsersMapPage extends StatefulWidget {
   State<TrackUsersMapPage> createState() => _TrackUsersMapPageState();
 }
 
-class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
+class _TrackUsersMapPageState extends State<TrackUsersMapPage>
+    with TickerProviderStateMixin {
   final String apiUrl =
       'https://script.google.com/macros/s/AKfycbwPlZrDSpjRRUQCAB1EfQwFsk8G4yaRLJvq6rL2I7pvrmnQHzTH3HqBTskW18M6TfWY/exec';
 
   final MapController _mapController = MapController();
   final Map<String, List<LatLng>> _userPaths = {};
-  final Set<String> _hiddenPaths = {}; // قائمة المستخدمين المخفي مسارهم
+  final Set<String> _hiddenPaths = {};
   String _searchQuery = "";
 
   List<Marker> _markers = [];
-  List<dynamic> _rawData = []; // البيانات الخام لغرض الفلترة
+  List<dynamic> _rawData = [];
   bool _loading = true;
   Timer? _timer;
   MbTilesTileProvider? _mbtilesProvider;
+  bool _isPanelExpanded = true;
 
   static const LatLng _defaultCenter = LatLng(33.3573338, 44.4414648);
+
+  // الألوان الفخمة (مطابقة للصفحة الرئيسية الجديدة)
+  final Color _primaryColor = const Color(0xFF0F172A); // Slate 900
+  final Color _accentColor = const Color(0xFF38BDF8); // Cyan 400
+  final Color _surfaceColor = const Color(0xFFF8FAFC); // Slate 50
+  final Color _cardColor = Colors.white;
 
   @override
   void initState() {
     super.initState();
     _initOfflineMap();
     _fetchAndUpdateMarkers();
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
       _fetchAndUpdateMarkers();
     });
   }
 
   Future<void> _initOfflineMap() async {
     try {
-      // نسخ ملف MBTiles من assets إلى مجلد التطبيق المحلي
       final appDir = await getApplicationDocumentsDirectory();
       final mbtilesFile = File('${appDir.path}/iraq.mbtiles');
 
       if (!await mbtilesFile.exists()) {
-        // محاولة نسخ الملف من assets
         try {
           final data = await rootBundle.load('assets/maps/iraq.mbtiles');
-          await mbtilesFile.writeAsBytes(
-            data.buffer.asUint8List(),
-            flush: true,
-          );
-          debugPrint('تم نسخ ملف MBTiles إلى: ${mbtilesFile.path}');
+          await mbtilesFile.writeAsBytes(data.buffer.asUint8List(),
+              flush: true);
         } catch (e) {
-          debugPrint('ملف iraq.mbtiles غير موجود في الـ assets: $e');
+          debugPrint('Offline map file not found in assets: $e');
           return;
         }
       }
 
       final provider = MbTilesTileProvider.fromPath(path: mbtilesFile.path);
-
       setState(() {
         _mbtilesProvider = provider;
       });
-      debugPrint("تم تفعيل نظام الخرائط المحلية بنجاح.");
     } catch (e) {
-      debugPrint(
-        "تنبيه: لم يتم العثور على ملف iraq.mbtiles في الـ assets، سيتم التحميل عبر الإنترنت: $e",
-      );
+      debugPrint("Offline map initialization error: $e");
     }
   }
 
@@ -91,9 +86,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
 
   Future<void> _fetchAndUpdateMarkers() async {
     if (!mounted) return;
-    setState(() {
-      _loading = true;
-    });
+    setState(() => _loading = true);
     try {
       final response = await http.get(Uri.parse(apiUrl));
       if (response.statusCode == 200) {
@@ -102,12 +95,9 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
         _applyFilters();
       }
     } catch (e) {
-      debugPrint("خطأ عند جلب المواقع: $e");
+      debugPrint("Error fetching positions: $e");
     }
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-    });
+    if (mounted) setState(() => _loading = false);
   }
 
   void _applyFilters() {
@@ -117,189 +107,94 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
       final userName = item["اسم المستخدم"] ?? 'غير معروف';
       final department = item["القسم"] ?? '';
 
-      // التصفية حسب البحث
       if (_searchQuery.isNotEmpty &&
           !userName.toLowerCase().contains(_searchQuery.toLowerCase()) &&
           !department.toLowerCase().contains(_searchQuery.toLowerCase())) {
         continue;
       }
 
-      final isActive = item["active"] == true ||
-          item["active"] == "1" ||
-          item["active"] == 1 ||
-          item["active"] == "TRUE" ||
-          item["active"] == "true";
+      final isActive = _checkIsActive(item["active"]);
 
-      if (isActive &&
-          item["lat"] != null &&
-          item["lng"] != null &&
-          item["lat"].toString().isNotEmpty &&
-          item["lng"].toString().isNotEmpty) {
-        double? lat = double.tryParse(item["lat"].toString());
-        double? lng = double.tryParse(item["lng"].toString());
+      if (isActive && _isValidCoord(item["lat"], item["lng"])) {
+        double lat = double.parse(item["lat"].toString());
+        double lng = double.parse(item["lng"].toString());
+        final pos = LatLng(lat, lng);
 
-        if (lat != null && lng != null && lat != 0 && lng != 0) {
-          final pos = LatLng(lat, lng);
+        _updateUserPath(userName, pos);
 
-          // تحديث المسار
-          if (!_userPaths.containsKey(userName)) {
-            _userPaths[userName] = [];
-          }
-          if (_userPaths[userName]!.isEmpty ||
-              _userPaths[userName]!.last != pos) {
-            _userPaths[userName]!.add(pos);
-            if (_userPaths[userName]!.length > 50) {
-              _userPaths[userName]!.removeAt(0);
-            }
-          }
-
-          newMarkers.add(
-            Marker(
-              point: pos,
-              width: 80,
-              height: 80,
-              child: GestureDetector(
-                onTap: () => _showUserDetailsDialog(context, item),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.blue[900]!, width: 1),
-                      ),
-                      child: Text(
-                        userName,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Icon(Icons.location_on, color: Colors.blue, size: 40),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
+        newMarkers.add(
+          Marker(
+            point: pos,
+            width: 120,
+            height: 120,
+            child: _buildProfessionalMarker(userName, item),
+          ),
+        );
       }
     }
-    setState(() {
-      _markers = newMarkers;
-    });
+    setState(() => _markers = newMarkers);
   }
 
-  void _showUserDetailsDialog(BuildContext context, Map<String, dynamic> user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(user["اسم المستخدم"] ?? ""),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _infoTile("القسم", user["القسم"]),
-            _infoTile("المركز", user["المركز"]),
-            _infoTile("رقم الهاتف", user["رقم الهاتف"]),
-            _infoTile("آخر تحديث", user["last update"]),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
-    );
+  bool _checkIsActive(dynamic val) {
+    if (val == null) return false;
+    final s = val.toString().toLowerCase();
+    return s == "true" || s == "1" || s == "active";
   }
 
-  Widget _infoTile(String title, dynamic value) {
-    return value == null || value.toString().isEmpty
-        ? const SizedBox()
-        : ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              "$title:",
-              style: const TextStyle(fontWeight: FontWeight.bold),
+  bool _isValidCoord(dynamic lat, dynamic lng) {
+    if (lat == null || lng == null) return false;
+    double? la = double.tryParse(lat.toString());
+    double? ln = double.tryParse(lng.toString());
+    return la != null && ln != null && la != 0 && ln != 0;
+  }
+
+  void _updateUserPath(String userName, LatLng pos) {
+    if (!_userPaths.containsKey(userName)) {
+      _userPaths[userName] = [];
+    }
+    if (_userPaths[userName]!.isEmpty || _userPaths[userName]!.last != pos) {
+      _userPaths[userName]!.add(pos);
+      if (_userPaths[userName]!.length > 100) {
+        _userPaths[userName]!.removeAt(0);
+      }
+    }
+  }
+
+  Widget _buildProfessionalMarker(String name, Map<String, dynamic> data) {
+    return GestureDetector(
+      onTap: () => _showUserDetailsDialog(context, data),
+      child: Column(
+        children: [
+          // فقاعة الاسم الأنيقة
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _primaryColor.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(20),
+              border:
+                  Border.all(color: _accentColor.withOpacity(0.5), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            subtitle: Text(value.toString()),
-          );
-  }
-
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          final users = _userPaths.keys.toList();
-          return DraggableScrollableSheet(
-            initialChildSize: 0.6,
-            maxChildSize: 0.9,
-            expand: false,
-            builder: (context, scrollController) {
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: "بحث عن فني...",
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onChanged: (val) {
-                        setState(() => _searchQuery = val);
-                        _applyFilters();
-                        setSheetState(() {});
-                      },
-                    ),
-                  ),
-                  const Divider(),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: users.length,
-                      itemBuilder: (context, index) {
-                        final user = users[index];
-                        final isHidden = _hiddenPaths.contains(user);
-                        return ListTile(
-                          title: Text(user),
-                          trailing: IconButton(
-                            icon: Icon(
-                              isHidden
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: isHidden ? Colors.grey : Colors.blue,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                if (isHidden) {
-                                  _hiddenPaths.remove(user);
-                                } else {
-                                  _hiddenPaths.add(user);
-                                }
-                              });
-                              setSheetState(() {});
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
+            child: Text(
+              name,
+              style: GoogleFonts.cairo(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // العلامة النبضية
+          _PulsingPin(color: _accentColor),
+        ],
       ),
     );
   }
@@ -307,24 +202,11 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("تتبع الفنيين - خريطة ذكية"),
-        backgroundColor: Colors.blue[900],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterSheet,
-            tooltip: "تصفية الفنيين والمسارات",
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchAndUpdateMarkers,
-            tooltip: "تحديث المواقع",
-          ),
-        ],
-      ),
+      backgroundColor: _surfaceColor,
+      appBar: _buildAppBar(),
       body: Stack(
         children: [
+          // الخريطة
           FlutterMap(
             mapController: _mapController,
             options: const MapOptions(
@@ -335,44 +217,405 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.alsadara.app',
-                tileProvider:
-                    _mbtilesProvider, // سيستخدم MBTiles إذا توفر، وإلا سيعود للـ URL
+                tileProvider: _mbtilesProvider,
               ),
               PolylineLayer(
                 polylines: _userPaths.entries
-                    .where(
-                  (e) => !_hiddenPaths.contains(e.key),
-                ) // إخفاء المسارات المختارة
+                    .where((e) => !_hiddenPaths.contains(e.key))
                     .map((entry) {
                   return Polyline(
                     points: entry.value,
-                    color: Colors.blue.withOpacity(0.6),
-                    strokeWidth: 4,
+                    color: _accentColor.withOpacity(0.4),
+                    strokeWidth: 3,
+                    strokeCap: StrokeCap.round,
                   );
                 }).toList(),
               ),
               MarkerLayer(markers: _markers),
             ],
           ),
+
+          // لوحة الفنيين الجانبية العائمة
+          _buildFloatingTechnicianPanel(),
+
+          // مؤشر التحميل الصغير
           if (_loading)
             Positioned(
-              top: 16,
-              right: 16,
+              bottom: 24,
+              left: 24,
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(12),
+                  color: _primaryColor.withOpacity(0.8),
+                  shape: BoxShape.circle,
                 ),
                 child: const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 3),
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: _primaryColor,
+      title: Text(
+        "تتبع الفنيين - نظام الذكاء المكاني",
+        style:
+            GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white),
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.refresh_rounded, color: _accentColor),
+          onPressed: _fetchAndUpdateMarkers,
+          tooltip: "تحديث البيانات",
+        ),
+        const SizedBox(width: 8),
+      ],
+      iconTheme: const IconThemeData(color: Colors.white),
+    );
+  }
+
+  Widget _buildFloatingTechnicianPanel() {
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 300),
+      right: 16,
+      top: 16,
+      bottom: 16,
+      width: _isPanelExpanded
+          ? (MediaQuery.of(context).size.width * 0.75).clamp(240.0, 320.0)
+          : 60,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _cardColor.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.black12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child:
+            _isPanelExpanded ? _buildExpandedPanel() : _buildCollapsedPanel(),
+      ),
+    );
+  }
+
+  Widget _buildCollapsedPanel() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        IconButton(
+          icon: Icon(Icons.chevron_left_rounded, color: _primaryColor),
+          onPressed: () => setState(() => _isPanelExpanded = true),
+        ),
+        const Spacer(),
+        Icon(Icons.people_alt_rounded, color: _accentColor),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  Widget _buildExpandedPanel() {
+    final users = _userPaths.keys.toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ترويسة اللوحة
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Icon(Icons.people_alt_rounded, color: _accentColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "الفنيين المتصلين",
+                  style: GoogleFonts.cairo(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryColor,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded),
+                onPressed: () => setState(() => _isPanelExpanded = false),
+              ),
+            ],
+          ),
+        ),
+
+        // خانة البحث
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: TextField(
+            onChanged: (val) {
+              setState(() => _searchQuery = val);
+              _applyFilters();
+            },
+            decoration: InputDecoration(
+              hintText: "بحث عن فني...",
+              hintStyle: GoogleFonts.cairo(fontSize: 14),
+              prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400]),
+              filled: true,
+              fillColor: _surfaceColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+        const Divider(height: 1),
+
+        // قائمة الفنيين
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: users.length,
+            itemBuilder: (context, index) {
+              final user = users[index];
+              final isHidden = _hiddenPaths.contains(user);
+
+              return InkWell(
+                onTap: () {
+                  // تحريك الخريطة لموقع الفني
+                  if (_userPaths[user]!.isNotEmpty) {
+                    _mapController.move(_userPaths[user]!.last, 15);
+                  }
+                },
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _accentColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            user.isNotEmpty ? user[0] : "?",
+                            style: TextStyle(
+                              color: _accentColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user,
+                              style: GoogleFonts.cairo(
+                                fontWeight: FontWeight.bold,
+                                color: _primaryColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              "نشط الآن",
+                              style: GoogleFonts.cairo(
+                                fontSize: 11,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          isHidden
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 20,
+                          color: isHidden ? Colors.grey : _accentColor,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (isHidden)
+                              _hiddenPaths.remove(user);
+                            else
+                              _hiddenPaths.add(user);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showUserDetailsDialog(BuildContext context, Map<String, dynamic> user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: _cardColor,
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: _accentColor.withOpacity(0.2),
+              child: Icon(Icons.person_pin_rounded, color: _accentColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                user["اسم المستخدم"] ?? "",
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _professionalInfoTile(Icons.work_rounded, "القسم", user["القسم"]),
+            _professionalInfoTile(
+                Icons.location_city_rounded, "المركز", user["المركز"]),
+            _professionalInfoTile(
+                Icons.phone_rounded, "رقم الهاتف", user["رقم الهاتف"]),
+            _professionalInfoTile(
+                Icons.history_rounded, "آخر تحديث", user["last update"]),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'إغلاق',
+              style: GoogleFonts.cairo(
+                  color: _primaryColor, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _professionalInfoTile(IconData icon, String title, dynamic value) {
+    if (value == null || value.toString().isEmpty) return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey[600]),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.cairo(fontSize: 10, color: Colors.grey[500]),
+              ),
+              Text(
+                value.toString(),
+                style: GoogleFonts.cairo(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _primaryColor),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// علامة الموقع النبضية
+class _PulsingPin extends StatefulWidget {
+  final Color color;
+  const _PulsingPin({required this.color});
+
+  @override
+  State<_PulsingPin> createState() => _PulsingPinState();
+}
+
+class _PulsingPinState extends State<_PulsingPin>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // النبضة الخارجية
+            Container(
+              width: 30 * _controller.value,
+              height: 30 * _controller.value,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color.withOpacity(1 - _controller.value),
+              ),
+            ),
+            // النقطة المركزية
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withOpacity(0.5),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

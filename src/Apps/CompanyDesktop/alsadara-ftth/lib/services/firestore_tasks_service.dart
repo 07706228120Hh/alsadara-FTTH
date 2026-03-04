@@ -8,13 +8,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
 import '../models/filter_criteria.dart';
 import 'firebase_auth_service.dart';
+import 'firebase_availability.dart';
 
 /// خدمة إدارة المهام عبر Firestore
 class FirestoreTasksService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// تحميل كسول لتجنب خطأ [core/no-app]
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   /// جلب جميع المهام من Firestore
   static Future<List<Task>> fetchTasks() async {
+    if (!FirebaseAvailability.isAvailable) return [];
     try {
       // الحصول على organizationId للمستخدم الحالي
       final organizationId =
@@ -59,6 +62,7 @@ class FirestoreTasksService {
 
   /// جلب المهام بناءً على معايير الفلترة
   static Future<List<Task>> fetchFilteredTasks(FilterCriteria criteria) async {
+    if (!FirebaseAvailability.isAvailable) return [];
     try {
       final organizationId =
           await FirebaseAuthService.getStoredOrganizationId();
@@ -121,6 +125,7 @@ class FirestoreTasksService {
 
   /// إضافة مهمة جديدة
   static Future<String?> addTask(Task task) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       final organizationId =
           await FirebaseAuthService.getStoredOrganizationId();
@@ -172,6 +177,7 @@ class FirestoreTasksService {
 
   /// تحديث مهمة موجودة
   static Future<bool> updateTask(String taskId, Task task) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final taskData = {
         'title': task.title,
@@ -213,6 +219,7 @@ class FirestoreTasksService {
 
   /// تحديث حالة المهمة
   static Future<bool> updateTaskStatus(String taskId, String newStatus) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final updateData = {
         'status': newStatus,
@@ -247,6 +254,7 @@ class FirestoreTasksService {
 
   /// حذف مهمة
   static Future<bool> deleteTask(String taskId) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       await _firestore.collection('tasks').doc(taskId).delete();
       print('✅ تم حذف المهمة: $taskId');
@@ -259,6 +267,7 @@ class FirestoreTasksService {
 
   /// الاستماع للمهام في الوقت الفعلي (Real-time)
   static Stream<List<Task>> watchTasks() {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     return _firestore
         .collection('tasks')
         .orderBy('dates.createdAt', descending: true)
@@ -280,6 +289,7 @@ class FirestoreTasksService {
 
   /// الاستماع لمهمة واحدة
   static Stream<Task?> watchTask(String taskId) {
+    if (!FirebaseAvailability.isAvailable) return Stream.value(null);
     return _firestore.collection('tasks').doc(taskId).snapshots().map((doc) {
       if (!doc.exists) return null;
       try {
@@ -350,6 +360,14 @@ class FirestoreTasksService {
 
   /// إحصائيات المهام
   static Future<Map<String, int>> getTasksStats() async {
+    if (!FirebaseAvailability.isAvailable)
+      return {
+        'total': 0,
+        'pending': 0,
+        'inProgress': 0,
+        'completed': 0,
+        'cancelled': 0
+      };
     try {
       final organizationId =
           await FirebaseAuthService.getStoredOrganizationId();

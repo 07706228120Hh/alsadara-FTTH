@@ -119,12 +119,12 @@ class VpsAuthService {
           debugPrint(
               '   - token: ${data.token.length > 20 ? "${data.token.substring(0, 20)}..." : data.token}');
 
-          // حفظ التوكنات
-          await _saveTokens(
+          // حفظ التوكنات (الذاكرة تزامنياً، القرص في الخلفية)
+          _saveTokens(
             accessToken: data.token,
             refreshToken: data.refreshToken,
             expiresAt: data.expiresAt,
-          );
+          ).catchError((e) => debugPrint('⚠️ Token persist error: $e'));
 
           // تحديث ApiClient مع التوكن
           ApiClient.instance.setAuthToken(data.token,
@@ -149,7 +149,8 @@ class VpsAuthService {
           debugPrint(
               '✅ VpsAuthService - تم تعيين currentUserType: $currentUserType');
 
-          await _saveUserData(admin: admin);
+          _saveUserData(admin: admin)
+              .catchError((e) => debugPrint('⚠️ User data persist error: $e'));
 
           return VpsAuthResult.success(
             userType: VpsAuthUserType.superAdmin,
@@ -185,12 +186,16 @@ class VpsAuthService {
 
       return response.fold(
         onSuccess: (data) async {
-          // حفظ التوكنات
-          await _saveTokens(
+          // ⚡ تحسين الأداء: جميع دوال الحفظ تعيّن الحالة في الذاكرة تزامنياً
+          // قبل أول `await` داخلها، ثم تكتب للقرص في الخلفية.
+          // لذلك نستدعيها بدون `await` لتسريع تسجيل الدخول.
+
+          // حفظ التوكنات (الذاكرة تُعيَّن تزامنياً، القرص في الخلفية)
+          _saveTokens(
             accessToken: data.token,
             refreshToken: data.refreshToken,
             expiresAt: data.expiresAt,
-          );
+          ).catchError((e) => debugPrint('⚠️ Token persist error: $e'));
 
           // تحديث ApiClient مع التوكن
           ApiClient.instance.setAuthToken(data.token,
@@ -257,13 +262,15 @@ class VpsAuthService {
             isActive: data.user.isActive,
           );
 
-          // 🔐 حفظ صلاحيات V2 في PermissionManager
-          await PermissionManager.instance.updateFromRawJson(
-            firstSystemV1Json: data.user.rawFirstSystemV1,
-            firstSystemV2Json: data.user.rawFirstSystemV2,
-            secondSystemV1Json: data.user.rawSecondSystemV1,
-            secondSystemV2Json: data.user.rawSecondSystemV2,
-          );
+          // 🔐 حفظ صلاحيات V2 في PermissionManager (الذاكرة تزامنياً، القرص في الخلفية)
+          PermissionManager.instance
+              .updateFromRawJson(
+                firstSystemV1Json: data.user.rawFirstSystemV1,
+                firstSystemV2Json: data.user.rawFirstSystemV2,
+                secondSystemV1Json: data.user.rawSecondSystemV1,
+                secondSystemV2Json: data.user.rawSecondSystemV2,
+              )
+              .catchError((e) => debugPrint('⚠️ Permission persist error: $e'));
 
           // 🔑 مدير الشركة: دمج ميزات الشركة المفعلة في V2
           if (data.user.isAdmin) {
@@ -295,10 +302,13 @@ class VpsAuthService {
             });
 
             if (changed) {
-              await pm.savePermissions(
-                firstSystem: pm.firstSystemPermissions,
-                secondSystem: pm.secondSystemPermissions,
-              );
+              pm
+                  .savePermissions(
+                    firstSystem: pm.firstSystemPermissions,
+                    secondSystem: pm.secondSystemPermissions,
+                  )
+                  .catchError((e) =>
+                      debugPrint('⚠️ Admin permission persist error: $e'));
             }
           }
 
@@ -308,7 +318,9 @@ class VpsAuthService {
           currentUserType = VpsAuthUserType.companyEmployee;
           currentSuperAdmin = null;
 
-          await _saveUserData(user: user, company: company);
+          // حفظ بيانات المستخدم للقرص (في الخلفية)
+          _saveUserData(user: user, company: company)
+              .catchError((e) => debugPrint('⚠️ User data persist error: $e'));
 
           return VpsAuthResult.success(
             userType: VpsAuthUserType.companyEmployee,
@@ -591,11 +603,13 @@ class VpsAuthService {
     // تعيين التوكن للـ ApiClient
     ApiClient.instance.setAuthToken(accessToken);
 
-    // حفظ في التخزين المحلي
+    // حفظ في التخزين المحلي (بالتوازي)
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyAccessToken, accessToken);
-    await prefs.setString(_keyRefreshToken, refreshToken);
-    await prefs.setString(_keyTokenExpiresAt, expiresAt.toIso8601String());
+    await Future.wait([
+      prefs.setString(_keyAccessToken, accessToken),
+      prefs.setString(_keyRefreshToken, refreshToken),
+      prefs.setString(_keyTokenExpiresAt, expiresAt.toIso8601String()),
+    ]);
   }
 
   /// حفظ بيانات المستخدم
@@ -607,13 +621,17 @@ class VpsAuthService {
     final prefs = await SharedPreferences.getInstance();
 
     if (admin != null) {
-      await prefs.setString(_keyUserType, 'superAdmin');
-      await prefs.setString(_keyUserData, jsonEncode(admin.toJson()));
-      await prefs.remove(_keyCompanyData);
+      await Future.wait([
+        prefs.setString(_keyUserType, 'superAdmin'),
+        prefs.setString(_keyUserData, jsonEncode(admin.toJson())),
+        prefs.remove(_keyCompanyData),
+      ]);
     } else if (user != null && company != null) {
-      await prefs.setString(_keyUserType, 'companyEmployee');
-      await prefs.setString(_keyUserData, jsonEncode(user.toJson()));
-      await prefs.setString(_keyCompanyData, jsonEncode(company.toJson()));
+      await Future.wait([
+        prefs.setString(_keyUserType, 'companyEmployee'),
+        prefs.setString(_keyUserData, jsonEncode(user.toJson())),
+        prefs.setString(_keyCompanyData, jsonEncode(company.toJson())),
+      ]);
     }
   }
 

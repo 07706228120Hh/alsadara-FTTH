@@ -9,6 +9,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../../theme/energy_dashboard_theme.dart';
+import '../../services/firebase_availability.dart';
 
 class FirebaseDataManagerPage extends StatefulWidget {
   const FirebaseDataManagerPage({super.key});
@@ -20,7 +21,7 @@ class FirebaseDataManagerPage extends StatefulWidget {
 
 class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
     with SingleTickerProviderStateMixin {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   late TabController _tabController;
 
   String _searchQuery = '';
@@ -241,6 +242,9 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
   }
 
   Widget _buildCollectionView(String collectionName) {
+    if (!FirebaseAvailability.isAvailable) {
+      return const Center(child: Text('Firebase غير متاح'));
+    }
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection(collectionName).snapshots(),
       builder: (context, snapshot) {
@@ -408,6 +412,7 @@ class _FirebaseDataManagerPageState extends State<FirebaseDataManagerPage>
   }
 
   Widget _buildTenantUsersSection(String tenantId) {
+    if (!FirebaseAvailability.isAvailable) return const SizedBox.shrink();
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
           .collection('tenants')

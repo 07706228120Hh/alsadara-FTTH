@@ -521,6 +521,8 @@ class _PermissionsPageState extends State<PermissionsPage> {
         return 'التخزين المحلي';
       case 'local_storage_import':
         return 'استيراد التخزين المحلي';
+      case 'whatsapp_templates':
+        return 'قوالب الرسائل';
       default:
         return key;
     }
@@ -564,6 +566,8 @@ class _PermissionsPageState extends State<PermissionsPage> {
         return Icons.storage_rounded;
       case 'local_storage_import':
         return Icons.cloud_download_rounded;
+      case 'whatsapp_templates':
+        return Icons.description_rounded;
       default:
         return Icons.settings;
     }

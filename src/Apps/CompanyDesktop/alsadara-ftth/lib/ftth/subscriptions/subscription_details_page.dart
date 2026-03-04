@@ -13,6 +13,9 @@ import 'package:intl/intl.dart';
 import '../../services/whatsapp_template_storage.dart';
 import '../../services/subscription_logs_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../services/dual_auth_service.dart';
+import '../../whatsapp/services/whatsapp_system_settings_service.dart';
+import '../../whatsapp/services/whatsapp_server_service.dart';
 import '../../services/thermal_printer_service.dart';
 import '../../services/print_template_storage.dart';
 import '../../services/template_password_storage.dart';
@@ -2439,116 +2442,94 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         return;
       }
 
-      debugPrint('📱 فتح تطبيق الواتساب على الحاسوب مع رسالة التفاصيل...');
-      debugPrint('� رقم العميل: $cleanPhone');
-
-      // إنشاء رسالة التفاصيل فقط
+      // إنشاء رسالة التفاصيل
       final message = _buildSimpleWhatsAppMessage();
-
-      // نسخ الرسالة إلى الكليببورد
-      await Clipboard.setData(ClipboardData(text: message));
 
       debugPrint('📝 طول الرسالة: ${message.length} حرف');
 
-      // الإرسال التلقائي دائماً (إزالة الخيار اليدوي لجعله أسرع وأبسط)
-      debugPrint('🚀 الإرسال التلقائي السريع: فتح واتساب بدون نص في الرابط');
+      // تحديد النظام المختار من الإعدادات
+      final system = await WhatsAppSystemSettingsService.getSystemForOperation(
+        WhatsAppOperationType.renewal,
+      );
 
-      // فتح واتساب بدون رسالة في الرابط لتجنب الإرسال المزدوج
-      final whatsappUrl = 'whatsapp://send?phone=$cleanPhone';
+      debugPrint('📡 نظام الإرسال المختار: ${WhatsAppSystemSettingsService.systemNames[system]}');
 
-      try {
-        // محاولة فتح الواتساب مع معالجة الإصدارات المختلفة
-        bool launched = false;
+      if (system == WhatsAppSystem.server) {
+        // ===== إرسال عبر السيرفر =====
+        // يجب أن يطابق نفس tenantId المستخدم عند إنشاء الجلسة في صفحة الإعدادات
+        final tenantId = VpsAuthService.instance.currentCompanyId ?? 'default';
+        final success = await WhatsAppServerService.sendMessage(
+          phone: cleanPhone,
+          message: message,
+          tenantId: tenantId,
+        );
+        sent = success;
+        if (mounted) {
+          if (success) {
+            ftthShowSuccessNotification(context, '✅ تم إرسال رسالة واتساب عبر السيرفر!');
+          } else {
+            ftthShowErrorNotification(context, '❌ فشل إرسال الرسالة عبر السيرفر');
+          }
+        }
+      } else {
+        // ===== إرسال عبر تطبيق الواتساب (الطريقة الافتراضية) =====
+        await Clipboard.setData(ClipboardData(text: message));
+
+        debugPrint('🚀 فتح واتساب ديسكتوب مع إرسال تلقائي...');
+        final whatsappUrl = 'whatsapp://send?phone=$cleanPhone';
 
         try {
-          // محاولة أولى: الإصدار الحديث
-          debugPrint('🔄 محاولة فتح الواتساب بالطريقة الحديثة...');
-          final uri = Uri.parse(whatsappUrl);
-          launched = await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
-        } catch (e) {
-          debugPrint(
-              '⚠️ فشل فتح الواتساب بالطريقة الحديثة، محاولة الطريقة التقليدية: $e');
+          bool launched = false;
 
-          // محاولة ثانية: واتساب ويب للإصدارات القديمة
           try {
-            final fallbackUrl =
-                'https://web.whatsapp.com/send?phone=$cleanPhone';
-            launched = await launchUrl(
-              Uri.parse(fallbackUrl),
-              mode: LaunchMode.externalApplication,
-            );
-            debugPrint('✅ تم فتح واتساب ويب كبديل للإصدار القديم');
-          } catch (e2) {
-            debugPrint('❌ فشل فتح واتساب ويب أيضاً: $e2');
-            // محاولة أخيرة: الطريقة التقليدية مع الرسالة في الرابط
+            final uri = Uri.parse(whatsappUrl);
+            launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (e) {
             try {
-              final legacyUrl =
-                  'whatsapp://send?phone=$cleanPhone&text=${Uri.encodeComponent(message)}';
-              launched = await launchUrl(
-                Uri.parse(legacyUrl),
-                mode: LaunchMode.externalApplication,
-              );
-              debugPrint('⚠️ استخدام الطريقة التقليدية مع الرسالة في الرابط');
-            } catch (e3) {
-              debugPrint('❌ فشل جميع محاولات فتح الواتساب: $e3');
-              launched = false;
+              final fallbackUrl = 'https://web.whatsapp.com/send?phone=$cleanPhone';
+              launched = await launchUrl(Uri.parse(fallbackUrl), mode: LaunchMode.externalApplication);
+            } catch (e2) {
+              try {
+                final legacyUrl = 'whatsapp://send?phone=$cleanPhone&text=${Uri.encodeComponent(message)}';
+                launched = await launchUrl(Uri.parse(legacyUrl), mode: LaunchMode.externalApplication);
+              } catch (e3) {
+                launched = false;
+              }
             }
           }
-        }
 
-        if (launched) {
-          debugPrint('✅ تم فتح واتساب ديسكتوب - بدء الإرسال التلقائي الفوري');
-          sent = true;
+          if (launched) {
+            sent = true;
+            await Future.delayed(Duration(milliseconds: 600));
+            await Clipboard.setData(ClipboardData(text: message));
 
-          // انتظار قصير جداً فقط لفتح واتساب (تقليل من 800ms إلى 600ms)
-          await Future.delayed(Duration(milliseconds: 600));
+            final autoSendSuccess = await WindowsAutomationService.performSmartAutoSend(delayMs: 30);
 
-          // نسخ الرسالة للحافظة
-          await Clipboard.setData(ClipboardData(text: message));
-
-          // تنفيذ الإرسال التلقائي الفوري بأقصى سرعة ممكنة
-          final autoSendSuccess =
-              await WindowsAutomationService.performSmartAutoSend(
-                  delayMs: 30 // أقصى سرعة - 30ms فقط بين العمليات
-                  );
-
-          if (autoSendSuccess) {
-            debugPrint('⚡ تم الإرسال الفوري بنجاح خلال ثوانٍ قليلة');
-            if (mounted) {
-              ftthShowSuccessNotification(
-                  context, '⚡ تم إرسال رسالة واتساب فورياً!');
-              // إشعار إضافي لإعلام المستخدم بمحاولة إعادة التركيز
-              ftthShowInfoNotification(
-                  context, '🔄 محاولة إعادة المؤشر لمربع النص...');
+            if (autoSendSuccess) {
+              if (mounted) {
+                ftthShowSuccessNotification(context, '⚡ تم إرسال رسالة واتساب فورياً!');
+                ftthShowInfoNotification(context, '🔄 محاولة إعادة المؤشر لمربع النص...');
+              }
+              _shiftTabBackOnce();
+            } else {
+              if (mounted) {
+                ftthShowSuccessNotification(context, '⚠️ تم فتح واتساب - يرجى لصق الرسالة (Ctrl+V) وإرسالها');
+              }
             }
-            // بعد الإرسال الناجح نحاول إرجاع التركيز داخل تطبيقنا أيضاً
-            _shiftTabBackOnce();
           } else {
-            debugPrint('⚠️ فشل الإرسال الفوري - استخدام النسخة الاحتياطية');
-            if (mounted) {
-              ftthShowSuccessNotification(context,
-                  '⚠️ تم فتح واتساب - يرجى لصق الرسالة (Ctrl+V) وإرسالها');
-            }
+            throw Exception('فشل في فتح واتساب ديسكتوب');
           }
-        } else {
-          throw Exception('فشل في فتح واتساب ديسكتوب');
-        }
-      } catch (e) {
-        debugPrint('❌ خطأ في فتح واتساب ديسكتوب: $e');
-
-        if (mounted) {
-          // رسالة مفصلة للمساعدة مع الإصدارات القديمة - للعميل
-          String errorMessage = 'فشل في فتح واتساب للعميل.\n\n';
-          errorMessage += '💡 نصائح للحل:\n';
-          errorMessage += '• تأكد من تثبيت واتساب ديسكتوب\n';
-          errorMessage += '• حدث واتساب لأحدث إصدار\n';
-          errorMessage += '• أعد تشغيل واتساب ديسكتوب\n';
-          errorMessage += '• تم نسخ الرسالة، يمكنك لصقها يدوياً';
-
-          ftthShowErrorNotification(context, errorMessage);
+        } catch (e) {
+          debugPrint('❌ خطأ في فتح واتساب ديسكتوب: $e');
+          if (mounted) {
+            String errorMessage = 'فشل في فتح واتساب للعميل.\n\n';
+            errorMessage += '💡 نصائح للحل:\n';
+            errorMessage += '• تأكد من تثبيت واتساب ديسكتوب\n';
+            errorMessage += '• حدث واتساب لأحدث إصدار\n';
+            errorMessage += '• أعد تشغيل واتساب ديسكتوب\n';
+            errorMessage += '• تم نسخ الرسالة، يمكنك لصقها يدوياً';
+            ftthShowErrorNotification(context, errorMessage);
+          }
         }
       }
 
@@ -4964,7 +4945,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         deviceUsername: subscriptionInfo!.deviceUsername,
         // معلومات العملية
         operationType: operationType,
-        activatedBy: widget.activatedBy,
+        activatedBy: widget.activatedBy.isNotEmpty
+            ? widget.activatedBy
+            : DualAuthService.instance.ftthUsername ??
+                VpsAuthService.instance.currentUser?.username ??
+                VpsAuthService.instance.currentSuperAdmin?.username ??
+                '',
         activationDate: currentDateTime,
         activationTime: formattedTime,
         sessionId: sessionId,

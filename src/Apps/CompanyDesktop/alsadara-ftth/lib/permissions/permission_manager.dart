@@ -103,8 +103,13 @@ class PermissionManager {
   /// تحميل الصلاحيات من PermissionService (SharedPreferences)
   Future<void> loadPermissions() async {
     try {
-      _firstSystemV2 = await PermissionService.getFirstSystemPermissionsV2();
-      _secondSystemV2 = await PermissionService.getSecondSystemPermissionsV2();
+      // تحميل النظامين بالتوازي (بدلاً من التتابع)
+      final results = await Future.wait([
+        PermissionService.getFirstSystemPermissionsV2(),
+        PermissionService.getSecondSystemPermissionsV2(),
+      ]);
+      _firstSystemV2 = results[0];
+      _secondSystemV2 = results[1];
       _loaded = true;
       debugPrint('✅ PermissionManager: تم تحميل الصلاحيات');
       debugPrint('   النظام الأول: ${_firstSystemV2.keys.length} ميزة');
@@ -123,8 +128,11 @@ class PermissionManager {
     _secondSystemV2 = secondSystem;
     _loaded = true;
 
-    await PermissionService.saveFirstSystemPermissionsV2(firstSystem);
-    await PermissionService.saveSecondSystemPermissionsV2(secondSystem);
+    // حفظ النظامين بالتوازي (بدلاً من التتابع)
+    await Future.wait([
+      PermissionService.saveFirstSystemPermissionsV2(firstSystem),
+      PermissionService.saveSecondSystemPermissionsV2(secondSystem),
+    ]);
 
     debugPrint('💾 PermissionManager: تم حفظ الصلاحيات');
   }

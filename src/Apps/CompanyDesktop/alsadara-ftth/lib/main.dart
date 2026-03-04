@@ -41,6 +41,7 @@ import 'services/unified_auth_manager.dart'; // ✅ نظام مصادقة موح
 import 'services/security/error_reporter_service.dart'; // 📊 خدمة تقارير الأخطاء
 import 'config/app_secrets.dart'; // 🔒 إدارة المفاتيح السرية
 import 'services/logger_service.dart'; // 📝 خدمة التسجيل
+import 'services/firebase_availability.dart'; // 🔥 التحقق من توفر Firebase
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -115,6 +116,7 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    FirebaseAvailability.markInitialized(); // ✅ تسجيل نجاح التهيئة
     logSuccess('Firebase initialized', tag: 'Init');
     // تسجيل معالج رسائل الخلفية (يجب قبل استقبال أي رسالة في الخلفية)
     try {
@@ -125,7 +127,8 @@ Future<void> main() async {
       logWarning('تعذر تسجيل معالج الخلفية: $e', tag: 'FCM');
     }
   } catch (e) {
-    logFailure('فشل تهيئة Firebase: $e', tag: 'Init');
+    logFailure('فشل تهيئة Firebase (التطبيق سيعمل بدون Firebase): $e',
+        tag: 'Init');
   }
 
   // تهيئة خدمة الإشعارات (محلية + FCM)
@@ -168,12 +171,14 @@ Future<void> main() async {
     logWarning('فشل تحميل الجلسة الأولية: $e', tag: 'Auth');
   }
 
-  // ✅ استعادة جلسة Firebase إن وجدت
-  try {
-    await FirebaseAuthService.restoreSession();
-    logSuccess('تم استعادة جلسة Firebase', tag: 'Auth');
-  } catch (e) {
-    logDebug('لم يتم العثور على جلسة Firebase سابقة: $e', tag: 'Auth');
+  // ✅ استعادة جلسة Firebase إن وجدت (فقط إذا كان Firebase متاحاً)
+  if (FirebaseAvailability.isAvailable) {
+    try {
+      await FirebaseAuthService.restoreSession();
+      logSuccess('تم استعادة جلسة Firebase', tag: 'Auth');
+    } catch (e) {
+      logDebug('لم يتم العثور على جلسة Firebase سابقة: $e', tag: 'Auth');
+    }
   }
 
   // ✅ لا نستعيد جلسة VPS تلقائياً - سيقوم المستخدم بتسجيل الدخول
@@ -234,6 +239,19 @@ class MyApp extends StatelessWidget {
                   navigatorKey: navigatorKey, // إضافة المفتاح Global
                   debugShowCheckedModeBanner: false,
                   title: 'FTTH Project',
+                  // تحديد مقياس النص لمنع تضخم الخطوط بسبب إعدادات حجم الخط في النظام
+                  builder: (context, child) {
+                    final mq = MediaQuery.of(context);
+                    final systemScale = mq.textScaler.scale(1.0);
+                    // نحدد أقصى مقياس 1.0 حتى لا تتضخم النصوص عن حجم الأزرار
+                    final clampedScale = systemScale.clamp(0.85, 1.0);
+                    return MediaQuery(
+                      data: mq.copyWith(
+                        textScaler: TextScaler.linear(clampedScale),
+                      ),
+                      child: child ?? const SizedBox.shrink(),
+                    );
+                  },
                   theme: AppTheme.lightTheme.copyWith(
                     // دمج نظام القياسات الطباعية الحالي
                     extensions: [
@@ -329,8 +347,8 @@ class _AppInitializerState extends State<AppInitializer> {
     final prefs = await SharedPreferences.getInstance();
     final permissionsGranted = prefs.getBool('permissions_granted') ?? false;
 
-    // تأخير بسيط للسماح للشاشة بالتحميل
-    await Future.delayed(const Duration(milliseconds: 500));
+    // تأخير مصغّر فقط لضمان اكتمال الـ frame الأول
+    await Future.delayed(const Duration(milliseconds: 100));
 
     if (mounted) {
       // تهيئة خدمة النصوص المتجاوبة

@@ -3344,51 +3344,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   Widget _buildOursTable() {
     if (_oursOperators.isEmpty) {
-      return Column(
-        children: [
-          _emptyCard('لا يوجد مشغلون'),
-          SizedBox(height: context.accR.spaceS),
-          Card(
-            elevation: 1,
-            color: Colors.amber.shade50,
-            child: Padding(
-              padding: EdgeInsets.all(context.accR.spaceM),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline,
-                          color: Colors.orange.shade700,
-                          size: context.accR.iconS),
-                      SizedBox(width: context.accR.spaceS),
-                      Expanded(
-                        child: Text(
-                          'قد تكون السجلات القديمة غير مرتبطة بالشركة. '
-                          'جرب تغيير الفترة إلى "الكل" أو اضغط تصحيح السجلات.',
-                          style: GoogleFonts.cairo(
-                              fontSize: context.accR.small,
-                              color: Colors.orange.shade800),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: context.accR.spaceS),
-                  ElevatedButton.icon(
-                    onPressed: _fixOrphanRecords,
-                    icon: const Icon(Icons.auto_fix_high, size: 16),
-                    label:
-                        Text('تصحيح السجلات القديمة', style: GoogleFonts.cairo()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal.shade700,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
+      return _emptyCard('لا يوجد مشغلون');
     }
 
     // إظهار تحذير إذا كانت هناك سجلات بدون userId أو collectionType
@@ -7666,8 +7622,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         url += '&fromDate=${widget.fromDate!.toIso8601String()}';
       }
       if (widget.toDate != null) {
-        url +=
-            '&toDate=${widget.toDate!.add(const Duration(days: 1)).toIso8601String()}';
+        url += '&toDate=${widget.toDate!.toIso8601String()}';
       }
 
       final response = await http.get(
@@ -7680,7 +7635,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       }
 
       final body = jsonDecode(response.body);
-      final List<dynamic> items = body['data'] ?? body['items'] ?? [];
+      final List<dynamic> items = body is List
+          ? body
+          : ((body['data'] ?? body['items'] ?? []) as List<dynamic>);
 
       final result = items.map<Map<String, dynamic>>((item) {
         final dateStr = item['ActivationDate']?.toString() ?? '';
@@ -7698,6 +7655,12 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'رقم الهاتف': item['PhoneNumber'] ?? '',
           'اسم المنطقة': item['ZoneName'] ?? '',
           'نوع التحصيل': item['CollectionType'] ?? '',
+          'الرصيد قبل': item['WalletBalanceBefore']?.toString() ?? '',
+          'الرصيد بعد': item['WalletBalanceAfter']?.toString() ?? '',
+          'حالة الدفع': item['PaymentStatus']?.toString() ?? '',
+          'مطبوع': item['IsPrinted'] == true,
+          'واتساب': item['IsWhatsAppSent'] == true,
+          'اسم الجهاز': item['DeviceUsername']?.toString() ?? '',
         };
       }).toList();
 
@@ -7811,10 +7774,15 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                               DataColumn(label: Text('المشغل')),
                               DataColumn(label: Text('العميل')),
                               DataColumn(label: Text('الباقة')),
-                              DataColumn(label: Text('السعر')),
+                              DataColumn(label: Text('المبلغ')),
                               DataColumn(label: Text('نوع العملية')),
+                              DataColumn(label: Text('نوع التحصيل')),
                               DataColumn(label: Text('طريقة الدفع')),
+                              DataColumn(label: Text('الرصيد قبل')),
+                              DataColumn(label: Text('الرصيد بعد')),
+                              DataColumn(label: Text('المنطقة')),
                               DataColumn(label: Text('الحالة')),
+                              DataColumn(label: Text('✓')),
                             ],
                             rows: _filtered.asMap().entries.map((entry) {
                               final i = entry.key;
@@ -7826,8 +7794,18 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                                 if (d != null) displayDate = _dateFmt.format(d);
                               }
                               final price = double.tryParse(r['سعر الباقة']?.toString() ?? '') ?? 0;
+                              final balBefore = double.tryParse(r['الرصيد قبل']?.toString() ?? '') ?? 0;
+                              final balAfter = double.tryParse(r['الرصيد بعد']?.toString() ?? '') ?? 0;
                               final operator0 = r['المُفعِّل']?.toString() ?? '';
                               final isUnknown = operator0.isEmpty;
+                              final collType = r['نوع التحصيل']?.toString() ?? '';
+                              final isPrinted = r['مطبوع'] == true;
+                              final isWa = r['واتساب'] == true;
+
+                              Color collColor = Colors.grey.shade600;
+                              if (collType == 'cash') collColor = Colors.green.shade700;
+                              else if (collType == 'credit') collColor = Colors.orange.shade700;
+                              else if (collType == 'agent') collColor = Colors.purple.shade700;
 
                               return DataRow(
                                 color: WidgetStateProperty.resolveWith((states) {
@@ -7846,12 +7824,36 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                                   DataCell(Text(r['اسم العميل']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
                                   DataCell(Text(r['اسم الباقة']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
                                   DataCell(Text(
-                                    price > 0 ? _fmt.format(price) : '-',
-                                    style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600),
+                                    price > 0 ? '${_fmt.format(price)} د.ع' : '-',
+                                    style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600,
+                                        color: Colors.green.shade800),
                                   )),
                                   DataCell(Text(r['نوع العملية']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
-                                  DataCell(Text(r['طريقة الدفع']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(
+                                    collType.isNotEmpty ? collType : '-',
+                                    style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600, color: collColor),
+                                  )),
+                                  DataCell(Text(r['طريقة الدفع']?.toString() ?? '-', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(
+                                    balBefore != 0 ? _fmt.format(balBefore) : '-',
+                                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                  )),
+                                  DataCell(Text(
+                                    balAfter != 0 ? _fmt.format(balAfter) : '-',
+                                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600),
+                                  )),
+                                  DataCell(Text(r['اسم المنطقة']?.toString() ?? '-', style: GoogleFonts.cairo(fontSize: 11))),
                                   DataCell(Text(r['الحالة الحالية']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.print, size: 12,
+                                          color: isPrinted ? Colors.green.shade600 : Colors.grey.shade300),
+                                      const SizedBox(width: 2),
+                                      Icon(Icons.message, size: 12,
+                                          color: isWa ? Colors.green.shade600 : Colors.grey.shade300),
+                                    ],
+                                  )),
                                 ],
                               );
                             }).toList(),

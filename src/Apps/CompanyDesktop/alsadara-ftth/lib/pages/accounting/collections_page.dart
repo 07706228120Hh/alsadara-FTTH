@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة تحصيلات الفنيين - عرض موحّد للمستحقات مع إمكانية إضافة تحصيل وتسديد
 class CollectionsPage extends StatefulWidget {
@@ -59,11 +60,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AccountingTheme.bgPrimary,
-        body: Column(
-          children: [
-            _buildToolbar(),
-            Expanded(child: _buildBody()),
-          ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildToolbar(),
+              Expanded(child: _buildBody()),
+            ],
+          ),
         ),
       ),
     );
@@ -73,8 +76,12 @@ class _CollectionsPageState extends State<CollectionsPage> {
   //  شريط الأدوات العلوي
   // ═══════════════════════════════════════════════════
   Widget _buildToolbar() {
+    final ar = context.accR;
+    final isMobile = ar.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? ar.spaceS : ar.spaceXL,
+          vertical: isMobile ? ar.spaceXS : ar.spaceL),
       decoration: const BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -85,42 +92,58 @@ class _CollectionsPageState extends State<CollectionsPage> {
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.arrow_forward_rounded),
             tooltip: 'رجوع',
+            iconSize: isMobile ? 20 : null,
+            constraints: isMobile
+                ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                : null,
+            padding: isMobile ? EdgeInsets.zero : null,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMobile ? 4 : ar.spaceS),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(isMobile ? 4 : ar.spaceS),
             decoration: BoxDecoration(
               gradient: AccountingTheme.neonBlueGradient,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(ar.btnRadius),
             ),
-            child: const Icon(Icons.engineering_rounded,
-                color: Colors.white, size: 18),
+            child: Icon(Icons.engineering_rounded,
+                color: Colors.white, size: isMobile ? 16 : ar.iconM),
           ),
-          const SizedBox(width: 12),
-          Text('تحصيلات الفنيين',
-              style: GoogleFonts.cairo(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary)),
-          const Spacer(),
+          SizedBox(width: isMobile ? 6 : ar.spaceM),
+          Expanded(
+            child: Text('تحصيلات الفنيين',
+                style: GoogleFonts.cairo(
+                    fontSize: isMobile ? 14 : ar.headingMedium,
+                    fontWeight: FontWeight.bold,
+                    color: AccountingTheme.textPrimary),
+                overflow: TextOverflow.ellipsis),
+          ),
           IconButton(
             onPressed: _loadDues,
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: Icon(Icons.refresh, size: isMobile ? 18 : ar.iconM),
             tooltip: 'تحديث',
+            constraints: isMobile
+                ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                : null,
+            padding: isMobile ? EdgeInsets.zero : null,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMobile ? 4 : ar.spaceS),
           ElevatedButton.icon(
             onPressed: _showAddDialog,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('إضافة تحصيل'),
+            icon: Icon(Icons.add, size: isMobile ? 16 : ar.iconM),
+            label: Text(isMobile ? 'إضافة تحصيل' : 'إضافة تحصيل',
+                style:
+                    GoogleFonts.cairo(fontSize: isMobile ? 11 : ar.buttonText)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AccountingTheme.neonBlue,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: isMobile
+                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                  : ar.buttonPadding,
+              minimumSize: isMobile ? const Size(0, 30) : null,
             ),
           ),
         ],
@@ -138,20 +161,22 @@ class _CollectionsPageState extends State<CollectionsPage> {
       );
     }
     if (_error != null) {
+      final ar = context.accR;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline,
-                color: AccountingTheme.danger, size: 48),
-            const SizedBox(height: 12),
+            Icon(Icons.error_outline,
+                color: AccountingTheme.danger, size: ar.iconXL),
+            SizedBox(height: ar.spaceM),
             Text(_error!,
                 style: const TextStyle(color: AccountingTheme.danger)),
-            const SizedBox(height: 12),
+            SizedBox(height: ar.spaceM),
             ElevatedButton.icon(
               onPressed: _loadDues,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('إعادة المحاولة'),
+              icon: Icon(Icons.refresh, size: ar.iconXS),
+              label: Text('إعادة المحاولة',
+                  style: GoogleFonts.cairo(fontSize: ar.buttonText)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AccountingTheme.neonBlue,
                 foregroundColor: Colors.white,
@@ -167,13 +192,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
         _buildSummaryBar(),
         // أزرار التصفية
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: EdgeInsets.symmetric(
+              horizontal: context.accR.paddingH,
+              vertical: context.accR.spaceXS),
           child: Row(
             children: [
               _techFilterBtn('الكل', 'all'),
-              const SizedBox(width: 8),
+              SizedBox(width: context.accR.spaceS),
               _techFilterBtn('مديون', 'debtor'),
-              const SizedBox(width: 8),
+              SizedBox(width: context.accR.spaceS),
               _techFilterBtn('دائن', 'creditor'),
             ],
           ),
@@ -184,17 +211,19 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.check_circle_outline,
-                          color: AccountingTheme.success, size: 64),
-                      const SizedBox(height: 16),
+                      Icon(Icons.check_circle_outline,
+                          color: AccountingTheme.success,
+                          size: context.accR.iconEmpty),
+                      SizedBox(height: context.accR.spaceXL),
                       Text(
                           _techFilter == 'all'
                               ? 'لا توجد مستحقات على الفنيين'
                               : _techFilter == 'debtor'
                                   ? 'لا يوجد فنيين مدينون'
                                   : 'لا يوجد فنيين دائنون',
-                          style: const TextStyle(
-                              color: AccountingTheme.textMuted, fontSize: 16)),
+                          style: TextStyle(
+                              color: AccountingTheme.textMuted,
+                              fontSize: context.accR.body)),
                     ],
                   ),
                 )
@@ -208,6 +237,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
   //  شريط الملخص
   // ═══════════════════════════════════════════════════
   Widget _buildSummaryBar() {
+    final ar = context.accR;
+    final isMobile = ar.isMobile;
     final totalCharges = (_summary['totalCharges'] ?? 0).toDouble();
     final totalPayments = (_summary['totalPayments'] ?? 0).toDouble();
     final totalNet = (_summary['totalNetBalance'] ?? 0).toDouble();
@@ -215,11 +246,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
     final debtorCount = _summary['debtorCount'] ?? 0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.all(12),
+      padding: isMobile
+          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 8)
+          : ar.cardPadding,
+      margin: EdgeInsets.all(isMobile ? ar.spaceXS : ar.spaceM),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -228,50 +261,124 @@ class _CollectionsPageState extends State<CollectionsPage> {
           ),
         ],
       ),
+      child: isMobile
+          ? Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                        child: _statCompact(
+                            'إجمالي التسديدات',
+                            _fmt(totalPayments),
+                            AccountingTheme.success,
+                            Icons.payments)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: _statCompact(
+                            'صافي المستحقات',
+                            '${_fmt(totalNet.abs())} د.ع',
+                            totalNet < 0
+                                ? AccountingTheme.danger
+                                : AccountingTheme.success,
+                            Icons.account_balance_wallet)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                        child: _statCompact('إجمالي الأجور', _fmt(totalCharges),
+                            AccountingTheme.danger, Icons.receipt_long)),
+                    const SizedBox(width: 8),
+                    _chip('فنيين', '$techCount', AccountingTheme.neonBlue),
+                    const SizedBox(width: 6),
+                    _chip('مدينون', '$debtorCount', AccountingTheme.danger),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                _stat('إجمالي الأجور', _fmt(totalCharges),
+                    AccountingTheme.danger, Icons.receipt_long),
+                SizedBox(width: ar.spaceL),
+                _stat('إجمالي التسديدات', _fmt(totalPayments),
+                    AccountingTheme.success, Icons.payments),
+                SizedBox(width: ar.spaceL),
+                _stat(
+                    'صافي المستحقات',
+                    '${_fmt(totalNet.abs())} د.ع',
+                    totalNet < 0
+                        ? AccountingTheme.danger
+                        : AccountingTheme.success,
+                    Icons.account_balance_wallet),
+                const Spacer(),
+                _chip('فنيين', '$techCount', AccountingTheme.neonBlue),
+                SizedBox(width: context.accR.spaceS),
+                _chip('مدينون', '$debtorCount', AccountingTheme.danger),
+              ],
+            ),
+    );
+  }
+
+  Widget _statCompact(String label, String value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         children: [
-          _stat('إجمالي الأجور', _fmt(totalCharges), AccountingTheme.danger,
-              Icons.receipt_long),
-          const SizedBox(width: 16),
-          _stat('إجمالي التسديدات', _fmt(totalPayments),
-              AccountingTheme.success, Icons.payments),
-          const SizedBox(width: 16),
-          _stat(
-              'صافي المستحقات',
-              '${_fmt(totalNet.abs())} د.ع',
-              totalNet < 0 ? AccountingTheme.danger : AccountingTheme.success,
-              Icons.account_balance_wallet),
-          const Spacer(),
-          _chip('فنيين', '$techCount', AccountingTheme.neonBlue),
-          const SizedBox(width: 8),
-          _chip('مدينون', '$debtorCount', AccountingTheme.danger),
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        color: AccountingTheme.textMuted, fontSize: 9),
+                    overflow: TextOverflow.ellipsis),
+                Text(value,
+                    style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11),
+                    overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _stat(String label, String value, Color color, IconData icon) {
+    final ar = context.accR;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(ar.spaceS),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(ar.btnRadius),
           ),
-          child: Icon(icon, color: color, size: 18),
+          child: Icon(icon, color: color, size: ar.iconM),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: ar.spaceS),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: const TextStyle(
-                    color: AccountingTheme.textMuted, fontSize: 11)),
+                style: TextStyle(
+                    color: AccountingTheme.textMuted, fontSize: ar.caption)),
             Text(value,
                 style: TextStyle(
-                    color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: ar.financialSmall)),
           ],
         ),
       ],
@@ -290,6 +397,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
   }
 
   Widget _techFilterBtn(String label, String value) {
+    final ar = context.accR;
     final isActive = _techFilter == value;
     final color = value == 'debtor'
         ? AccountingTheme.danger
@@ -300,7 +408,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
       onTap: () => setState(() => _techFilter = value),
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding:
+            EdgeInsets.symmetric(horizontal: ar.btnPadH, vertical: ar.spaceXS),
         decoration: BoxDecoration(
           color: isActive ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
@@ -312,7 +421,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
           label,
           style: TextStyle(
             color: isActive ? color : AccountingTheme.textMuted,
-            fontSize: 12,
+            fontSize: ar.small,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -321,9 +430,12 @@ class _CollectionsPageState extends State<CollectionsPage> {
   }
 
   Widget _buildTechnicianList() {
+    final ar = context.accR;
+    final isMobile = ar.isMobile;
     final list = _filteredTechnicians;
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMobile ? ar.spaceXS : ar.spaceM),
       itemCount: list.length,
       itemBuilder: (_, i) {
         final tech = list[i];
@@ -339,15 +451,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
         final _ = phone;
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: ar.spaceS),
           decoration: BoxDecoration(
             color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(ar.cardRadius),
             border: Border(
               right: BorderSide(
                 color:
                     isDebtor ? AccountingTheme.danger : AccountingTheme.success,
-                width: 4,
+                width: isMobile ? 3 : 4,
               ),
             ),
             boxShadow: [
@@ -361,163 +473,324 @@ class _CollectionsPageState extends State<CollectionsPage> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(ar.cardRadius),
               onTap: () => _showTechnicianDetails(tech),
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // أيقونة الفني
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: (isDebtor
-                                ? AccountingTheme.danger
-                                : AccountingTheme.success)
-                            .withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        isDebtor
-                            ? Icons.warning_amber_rounded
-                            : Icons.check_circle_outline,
-                        color: isDebtor
-                            ? AccountingTheme.danger
-                            : AccountingTheme.success,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    // اسم الفني ورقمه
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                padding: isMobile
+                    ? const EdgeInsets.symmetric(horizontal: 8, vertical: 8)
+                    : ar.cardPadding,
+                child: isMobile
+                    ? _buildTechCardMobile(
+                        name: name,
+                        phone: phone,
+                        totalCharges: totalCharges,
+                        totalPayments: totalPayments,
+                        netBalance: netBalance,
+                        txCount: txCount,
+                        lastDate: lastDate,
+                        isDebtor: isDebtor,
+                        tech: tech,
+                      )
+                    : Row(
                         children: [
-                          Text(name,
-                              style: GoogleFonts.cairo(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AccountingTheme.textPrimary)),
-                          if (phone.isNotEmpty)
-                            Text(phone,
-                                style: const TextStyle(
-                                    color: AccountingTheme.textMuted,
-                                    fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    // إجمالي الأجور
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          const Text('الأجور',
-                              style: TextStyle(
-                                  color: AccountingTheme.textMuted,
-                                  fontSize: 10)),
-                          Text('${_fmt(totalCharges)} د.ع',
-                              style: const TextStyle(
-                                  color: AccountingTheme.danger,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                    // التسديدات
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          const Text('التسديدات',
-                              style: TextStyle(
-                                  color: AccountingTheme.textMuted,
-                                  fontSize: 10)),
-                          Text('${_fmt(totalPayments)} د.ع',
-                              style: const TextStyle(
-                                  color: AccountingTheme.success,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                    // صافي المستحق
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          const Text('المستحق',
-                              style: TextStyle(
-                                  color: AccountingTheme.textMuted,
-                                  fontSize: 10)),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 3),
+                            width: ar.iconXL,
+                            height: ar.iconXL,
                             decoration: BoxDecoration(
                               color: (isDebtor
                                       ? AccountingTheme.danger
                                       : AccountingTheme.success)
-                                  .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
+                                  .withValues(alpha: 0.1),
+                              borderRadius:
+                                  BorderRadius.circular(ar.cardRadius),
                             ),
-                            child: Text(
-                              '${_fmt(netBalance.abs())} د.ع',
-                              style: TextStyle(
-                                  color: isDebtor
-                                      ? AccountingTheme.danger
-                                      : AccountingTheme.success,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13),
+                            child: Icon(
+                              isDebtor
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.check_circle_outline,
+                              color: isDebtor
+                                  ? AccountingTheme.danger
+                                  : AccountingTheme.success,
+                              size: ar.iconM,
                             ),
                           ),
+                          SizedBox(width: ar.spaceL),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name,
+                                    style: GoogleFonts.cairo(
+                                        fontSize: ar.body,
+                                        fontWeight: FontWeight.bold,
+                                        color: AccountingTheme.textPrimary)),
+                                if (phone.isNotEmpty)
+                                  Text(phone,
+                                      style: TextStyle(
+                                          color: AccountingTheme.textMuted,
+                                          fontSize: ar.small)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: [
+                                Text('الأجور',
+                                    style: TextStyle(
+                                        color: AccountingTheme.textMuted,
+                                        fontSize: ar.caption)),
+                                Text('${_fmt(totalCharges)} د.ع',
+                                    style: TextStyle(
+                                        color: AccountingTheme.danger,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: ar.financialSmall)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: [
+                                Text('التسديدات',
+                                    style: TextStyle(
+                                        color: AccountingTheme.textMuted,
+                                        fontSize: ar.caption)),
+                                Text('${_fmt(totalPayments)} د.ع',
+                                    style: TextStyle(
+                                        color: AccountingTheme.success,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: ar.financialSmall)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: [
+                                Text('المستحق',
+                                    style: TextStyle(
+                                        color: AccountingTheme.textMuted,
+                                        fontSize: ar.caption)),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: ar.spaceS,
+                                      vertical: ar.spaceXS),
+                                  decoration: BoxDecoration(
+                                    color: (isDebtor
+                                            ? AccountingTheme.danger
+                                            : AccountingTheme.success)
+                                        .withValues(alpha: 0.12),
+                                    borderRadius:
+                                        BorderRadius.circular(ar.btnRadius),
+                                  ),
+                                  child: Text(
+                                    '${_fmt(netBalance.abs())} د.ع',
+                                    style: TextStyle(
+                                        color: isDebtor
+                                            ? AccountingTheme.danger
+                                            : AccountingTheme.success,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: ar.financialSmall),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            width: ar.colStatusW,
+                            child: Column(
+                              children: [
+                                Text('$txCount معاملة',
+                                    style: TextStyle(
+                                        color: AccountingTheme.textSecondary,
+                                        fontSize: ar.caption)),
+                                if (lastDate != null)
+                                  Text(_formatDate(lastDate),
+                                      style: TextStyle(
+                                          color: AccountingTheme.textMuted,
+                                          fontSize: ar.caption)),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: ar.spaceS),
+                          if (isDebtor)
+                            ElevatedButton.icon(
+                              onPressed: () => _showRecordPaymentDialog(tech),
+                              icon: Icon(Icons.payments, size: ar.iconXS),
+                              label: Text('تسديد',
+                                  style: TextStyle(fontSize: ar.caption)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AccountingTheme.success
+                                    .withValues(alpha: 0.15),
+                                foregroundColor: AccountingTheme.success,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: ar.spaceM,
+                                    vertical: ar.spaceXS),
+                                elevation: 0,
+                              ),
+                            ),
+                          SizedBox(width: context.accR.spaceXS),
+                          Icon(Icons.chevron_left,
+                              color: AccountingTheme.textMuted, size: ar.iconM),
                         ],
                       ),
-                    ),
-                    // عدد المعاملات وآخر تاريخ
-                    SizedBox(
-                      width: 100,
-                      child: Column(
-                        children: [
-                          Text('$txCount معاملة',
-                              style: const TextStyle(
-                                  color: AccountingTheme.textSecondary,
-                                  fontSize: 11)),
-                          if (lastDate != null)
-                            Text(_formatDate(lastDate),
-                                style: const TextStyle(
-                                    color: AccountingTheme.textMuted,
-                                    fontSize: 10)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // زر تسديد
-                    if (isDebtor)
-                      ElevatedButton.icon(
-                        onPressed: () => _showRecordPaymentDialog(tech),
-                        icon: const Icon(Icons.payments, size: 14),
-                        label:
-                            const Text('تسديد', style: TextStyle(fontSize: 11)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              AccountingTheme.success.withValues(alpha: 0.15),
-                          foregroundColor: AccountingTheme.success,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          elevation: 0,
-                        ),
-                      ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.chevron_left,
-                        color: AccountingTheme.textMuted, size: 20),
-                  ],
-                ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  //  بطاقة فني - تخطيط موبايل
+  // ═══════════════════════════════════════════════════
+  Widget _buildTechCardMobile({
+    required String name,
+    required String phone,
+    required double totalCharges,
+    required double totalPayments,
+    required double netBalance,
+    required int txCount,
+    required dynamic lastDate,
+    required bool isDebtor,
+    required dynamic tech,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // الصف الأول: أيقونة + اسم + رقم + زر تسديد
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: (isDebtor
+                        ? AccountingTheme.danger
+                        : AccountingTheme.success)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                isDebtor
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_outline,
+                color:
+                    isDebtor ? AccountingTheme.danger : AccountingTheme.success,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: GoogleFonts.cairo(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AccountingTheme.textPrimary),
+                      overflow: TextOverflow.ellipsis),
+                  if (phone.isNotEmpty)
+                    Text(phone,
+                        style: const TextStyle(
+                            color: AccountingTheme.textMuted, fontSize: 10)),
+                ],
+              ),
+            ),
+            if (isDebtor)
+              ElevatedButton.icon(
+                onPressed: () => _showRecordPaymentDialog(tech),
+                icon: const Icon(Icons.payments, size: 14),
+                label: const Text('تسديد', style: TextStyle(fontSize: 10)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      AccountingTheme.success.withValues(alpha: 0.15),
+                  foregroundColor: AccountingTheme.success,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  minimumSize: const Size(0, 26),
+                  elevation: 0,
+                ),
+              ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_left,
+                color: AccountingTheme.textMuted, size: 18),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // الصف الثاني: الأجور + التسديدات + المستحق + معاملات
+        Row(
+          children: [
+            Expanded(
+              child: _miniStat('الأجور', '${_fmt(totalCharges)} د.ع',
+                  AccountingTheme.danger),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _miniStat('التسديدات', '${_fmt(totalPayments)} د.ع',
+                  AccountingTheme.success),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (isDebtor
+                          ? AccountingTheme.danger
+                          : AccountingTheme.success)
+                      .withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  children: [
+                    const Text('المستحق',
+                        style: TextStyle(
+                            color: AccountingTheme.textMuted, fontSize: 9)),
+                    Text('${_fmt(netBalance.abs())} د.ع',
+                        style: TextStyle(
+                            color: isDebtor
+                                ? AccountingTheme.danger
+                                : AccountingTheme.success,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11),
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Column(
+              children: [
+                Text('$txCount معاملة',
+                    style: const TextStyle(
+                        color: AccountingTheme.textSecondary, fontSize: 9)),
+                if (lastDate != null)
+                  Text(_formatDate(lastDate),
+                      style: const TextStyle(
+                          color: AccountingTheme.textMuted, fontSize: 9)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(label,
+            style:
+                const TextStyle(color: AccountingTheme.textMuted, fontSize: 9)),
+        Text(value,
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.bold, fontSize: 11),
+            overflow: TextOverflow.ellipsis),
+      ],
     );
   }
 
@@ -534,11 +807,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
         textDirection: TextDirection.rtl,
         child: Dialog(
           backgroundColor: AccountingTheme.bgPrimary,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.accR.radiusL)),
           child: SizedBox(
-            width: 750,
-            height: 550,
+            width: context.accR.dialogLargeW,
+            height: context.accR.dialogMaxH,
             child: _TechnicianDetailsDialog(
               technicianId: techId,
               technicianName: name,
@@ -567,45 +840,46 @@ class _CollectionsPageState extends State<CollectionsPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.accR.cardRadius)),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(context.accR.spaceS),
                 decoration: BoxDecoration(
                   color: AccountingTheme.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.payments,
-                    color: AccountingTheme.success, size: 20),
+                child: Icon(Icons.payments,
+                    color: AccountingTheme.success, size: context.accR.iconM),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: context.accR.spaceM),
               Expanded(
                 child: Text('تسجيل تسديد - $name',
                     style: GoogleFonts.cairo(
-                        fontSize: 16,
+                        fontSize: context.accR.headingSmall,
                         fontWeight: FontWeight.bold,
                         color: AccountingTheme.textPrimary)),
               ),
             ],
           ),
           content: SizedBox(
-            width: 400,
+            width: context.accR.dialogSmallW,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(context.accR.spaceM),
                   decoration: BoxDecoration(
                     color: AccountingTheme.danger.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline,
-                          color: AccountingTheme.danger, size: 18),
-                      const SizedBox(width: 8),
+                      Icon(Icons.info_outline,
+                          color: AccountingTheme.danger,
+                          size: context.accR.iconM),
+                      SizedBox(width: context.accR.spaceS),
                       Text('المبلغ المستحق: ${_fmt(netBalance.abs())} د.ع',
                           style: const TextStyle(
                               color: AccountingTheme.danger,
@@ -613,9 +887,9 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.accR.spaceXL),
                 _field('مبلغ التسديد', amountCtrl, isNumber: true),
-                const SizedBox(height: 10),
+                SizedBox(height: context.accR.spaceM),
                 _field('ملاحظات (اختياري)', notesCtrl),
               ],
             ),
@@ -623,11 +897,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton.icon(
-              icon: const Icon(Icons.check, size: 18),
+              icon: Icon(Icons.check, size: context.accR.iconM),
               label: const Text('تأكيد التسديد'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AccountingTheme.success,
@@ -710,34 +984,35 @@ class _CollectionsPageState extends State<CollectionsPage> {
               title: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(context.accR.spaceS),
                     decoration: BoxDecoration(
                       gradient: AccountingTheme.neonBlueGradient,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.add_card,
-                        color: Colors.white, size: 18),
+                    child: Icon(Icons.add_card,
+                        color: Colors.white, size: context.accR.iconM),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.accR.spaceM),
                   Text('إضافة تحصيل',
                       style: GoogleFonts.cairo(
-                          fontSize: 17,
+                          fontSize: context.accR.headingSmall,
                           fontWeight: FontWeight.bold,
                           color: AccountingTheme.textPrimary)),
                 ],
               ),
               content: SizedBox(
-                width: 450,
+                width: context.accR.dialogMediumW,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // === اختيار الفني ===
-                      const Text('الفني *',
+                      Text('الفني *',
                           style: TextStyle(
-                              color: AccountingTheme.textMuted, fontSize: 13)),
-                      const SizedBox(height: 6),
+                              color: AccountingTheme.textMuted,
+                              fontSize: context.accR.financialSmall)),
+                      SizedBox(height: context.accR.spaceXS),
                       if (selectedEmployee != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -764,7 +1039,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              SizedBox(width: context.accR.spaceM),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -778,9 +1053,9 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                     if (selectedEmployee!['Department'] != null)
                                       Text(
                                         selectedEmployee!['Department'],
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             color: AccountingTheme.textMuted,
-                                            fontSize: 12),
+                                            fontSize: context.accR.small),
                                       ),
                                   ],
                                 ),
@@ -791,8 +1066,9 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                   searchCtrl.clear();
                                   filteredEmployees = allEmployees;
                                 }),
-                                child: const Icon(Icons.close,
-                                    color: AccountingTheme.danger, size: 18),
+                                child: Icon(Icons.close,
+                                    color: AccountingTheme.danger,
+                                    size: context.accR.iconM),
                               ),
                             ],
                           ),
@@ -872,24 +1148,25 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                             (emp['FullName'] ?? '?')
                                                 .toString()
                                                 .substring(0, 1),
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                                 color: AccountingTheme.neonBlue,
-                                                fontSize: 12,
+                                                fontSize: context.accR.small,
                                                 fontWeight: FontWeight.bold),
                                           ),
                                         ),
                                         title: Text(
                                           emp['FullName'] ?? '',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               color:
                                                   AccountingTheme.textPrimary,
-                                              fontSize: 13),
+                                              fontSize:
+                                                  context.accR.financialSmall),
                                         ),
                                         subtitle: Text(
                                           '${emp['Department'] ?? ''} • ${emp['PhoneNumber'] ?? ''}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               color: AccountingTheme.textMuted,
-                                              fontSize: 11),
+                                              fontSize: context.accR.small),
                                         ),
                                         onTap: () {
                                           setDialogState(() {
@@ -902,13 +1179,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
                           ),
                       ],
 
-                      const SizedBox(height: 14),
+                      SizedBox(height: context.accR.spaceL),
                       _field('المبلغ *', amountCtrl, isNumber: true),
-                      const SizedBox(height: 10),
+                      SizedBox(height: context.accR.spaceM),
                       _field('الوصف *', descCtrl),
-                      const SizedBox(height: 10),
+                      SizedBox(height: context.accR.spaceM),
                       _field('المستلم', receivedByCtrl),
-                      const SizedBox(height: 10),
+                      SizedBox(height: context.accR.spaceM),
 
                       // رقم الإيصال (تلقائي)
                       Container(
@@ -920,22 +1197,23 @@ class _CollectionsPageState extends State<CollectionsPage> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.receipt_long,
-                                color: AccountingTheme.textMuted, size: 18),
-                            const SizedBox(width: 8),
-                            const Text('رقم الإيصال: ',
+                            Icon(Icons.receipt_long,
+                                color: AccountingTheme.textMuted,
+                                size: context.accR.iconM),
+                            SizedBox(width: context.accR.spaceS),
+                            Text('رقم الإيصال: ',
                                 style: TextStyle(
                                     color: AccountingTheme.textMuted,
-                                    fontSize: 13)),
+                                    fontSize: context.accR.financialSmall)),
                             Text(autoReceipt,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AccountingTheme.accent,
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 13)),
+                                    fontSize: context.accR.financialSmall)),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: context.accR.spaceM),
                       _field('ملاحظات', notesCtrl),
                     ],
                   ),
@@ -944,10 +1222,10 @@ class _CollectionsPageState extends State<CollectionsPage> {
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('إلغاء',
+                    child: Text('إلغاء',
                         style: TextStyle(color: AccountingTheme.textMuted))),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.check, size: 18),
+                  icon: Icon(Icons.check, size: context.accR.iconM),
                   label: const Text('إضافة'),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: AccountingTheme.neonGreen,
@@ -997,7 +1275,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
   // ═══════════════════════════════════════════════════
   Widget _chip(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
@@ -1007,12 +1286,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style:
-                  TextStyle(color: color.withValues(alpha: 0.7), fontSize: 12)),
-          const SizedBox(width: 6),
+              style: TextStyle(
+                  color: color.withValues(alpha: 0.7),
+                  fontSize: context.accR.small)),
+          SizedBox(width: context.accR.spaceXS),
           Text(value,
               style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: context.accR.body)),
         ],
       ),
     );
@@ -1146,12 +1428,12 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.accR.radiusL)),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(context.accR.spaceS),
                 decoration: BoxDecoration(
                   color: (isCharge
                           ? AccountingTheme.danger
@@ -1164,20 +1446,20 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                     color: isCharge
                         ? AccountingTheme.danger
                         : AccountingTheme.success,
-                    size: 20),
+                    size: context.accR.iconM),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: context.accR.spaceM),
               Expanded(
                 child: Text('تفاصيل المعاملة',
                     style: GoogleFonts.cairo(
-                        fontSize: 16,
+                        fontSize: context.accR.headingSmall,
                         fontWeight: FontWeight.bold,
                         color: AccountingTheme.textPrimary)),
               ),
             ],
           ),
           content: SizedBox(
-            width: 460,
+            width: context.accR.dialogMediumW,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1185,7 +1467,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   // المبلغ الكبير
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(context.accR.spaceXL),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isCharge
@@ -1198,7 +1480,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                 AccountingTheme.success.withValues(alpha: 0.02)
                               ],
                       ),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius:
+                          BorderRadius.circular(context.accR.cardRadius),
                     ),
                     child: Column(
                       children: [
@@ -1209,19 +1492,19 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                   ? AccountingTheme.danger
                                   : AccountingTheme.success,
                               fontWeight: FontWeight.bold,
-                              fontSize: 24),
+                              fontSize: context.accR.financialLarge),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.accR.spaceXS),
                         Text(typeLabel,
                             style: TextStyle(
                                 color: isCharge
                                     ? AccountingTheme.danger
                                     : AccountingTheme.success,
-                                fontSize: 12)),
+                                fontSize: context.accR.small)),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: context.accR.spaceL),
                   // تفاصيل المعاملة
                   _infoRow('الوصف', desc),
                   _infoRow('الفئة', categoryLabel),
@@ -1259,7 +1542,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                 Navigator.pop(ctx);
                 _showEditDialog(tx);
               },
-              icon: const Icon(Icons.edit_outlined, size: 16),
+              icon: Icon(Icons.edit_outlined, size: context.accR.iconS),
               label: const Text('تعديل'),
               style: TextButton.styleFrom(
                   foregroundColor: AccountingTheme.neonBlue),
@@ -1269,7 +1552,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                 Navigator.pop(ctx);
                 _confirmDelete(tx);
               },
-              icon: const Icon(Icons.delete_outline, size: 16),
+              icon: Icon(Icons.delete_outline, size: context.accR.iconS),
               label: const Text('حذف'),
               style:
                   TextButton.styleFrom(foregroundColor: AccountingTheme.danger),
@@ -1290,22 +1573,23 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
 
   Widget _infoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: context.accR.spaceS),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 130,
             child: Text(label,
-                style: const TextStyle(
-                    color: AccountingTheme.textMuted, fontSize: 12)),
+                style: TextStyle(
+                    color: AccountingTheme.textMuted,
+                    fontSize: context.accR.small)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AccountingTheme.textPrimary,
                     fontWeight: FontWeight.w500,
-                    fontSize: 13)),
+                    fontSize: context.accR.financialSmall)),
           ),
         ],
       ),
@@ -1351,34 +1635,35 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(context.accR.spaceS),
                 decoration: BoxDecoration(
                   gradient: AccountingTheme.neonBlueGradient,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                child: Icon(Icons.edit,
+                    color: Colors.white, size: context.accR.iconM),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: context.accR.spaceM),
               Text('تعديل تحصيل',
                   style: GoogleFonts.cairo(
-                      fontSize: 17,
+                      fontSize: context.accR.headingSmall,
                       fontWeight: FontWeight.bold,
                       color: AccountingTheme.textPrimary)),
             ],
           ),
           content: SizedBox(
-            width: 450,
+            width: context.accR.dialogMediumW,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _dialogField('المبلغ *', amountCtrl, isNumber: true),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.accR.spaceM),
                   _dialogField('الوصف *', descCtrl),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.accR.spaceM),
                   _dialogField('المستلم', receivedByCtrl),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.accR.spaceM),
 
                   // رقم الإيصال (للعرض فقط)
                   if (refNumber.isNotEmpty)
@@ -1391,22 +1676,24 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.receipt_long,
-                              color: AccountingTheme.textMuted, size: 18),
-                          const SizedBox(width: 8),
-                          const Text('رقم الإيصال: ',
+                          Icon(Icons.receipt_long,
+                              color: AccountingTheme.textMuted,
+                              size: context.accR.iconM),
+                          SizedBox(width: context.accR.spaceS),
+                          Text('رقم الإيصال: ',
                               style: TextStyle(
                                   color: AccountingTheme.textMuted,
-                                  fontSize: 13)),
+                                  fontSize: context.accR.financialSmall)),
                           Text(refNumber,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: AccountingTheme.accent,
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 13)),
+                                  fontSize: context.accR.financialSmall)),
                         ],
                       ),
                     ),
-                  if (refNumber.isNotEmpty) const SizedBox(height: 10),
+                  if (refNumber.isNotEmpty)
+                    SizedBox(height: context.accR.spaceM),
 
                   _dialogField('ملاحظات', notesCtrl),
                 ],
@@ -1416,10 +1703,10 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('إلغاء',
+                child: Text('إلغاء',
                     style: TextStyle(color: AccountingTheme.textMuted))),
             ElevatedButton.icon(
-              icon: const Icon(Icons.check, size: 18),
+              icon: Icon(Icons.check, size: context.accR.iconM),
               label: const Text('حفظ التعديل'),
               style: ElevatedButton.styleFrom(
                   backgroundColor: AccountingTheme.neonBlue,
@@ -1470,23 +1757,23 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.accR.cardRadius)),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(context.accR.spaceS),
                 decoration: BoxDecoration(
                   color: AccountingTheme.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.delete_forever,
-                    color: AccountingTheme.danger, size: 20),
+                child: Icon(Icons.delete_forever,
+                    color: AccountingTheme.danger, size: context.accR.iconM),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: context.accR.spaceM),
               Text('تأكيد الحذف',
                   style: GoogleFonts.cairo(
-                      fontSize: 16,
+                      fontSize: context.accR.headingSmall,
                       fontWeight: FontWeight.bold,
                       color: AccountingTheme.textPrimary)),
             ],
@@ -1495,12 +1782,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('هل تريد حذف هذه المعاملة؟',
+              Text('هل تريد حذف هذه المعاملة؟',
                   style: TextStyle(
-                      color: AccountingTheme.textPrimary, fontSize: 14)),
-              const SizedBox(height: 10),
+                      color: AccountingTheme.textPrimary,
+                      fontSize: context.accR.body)),
+              SizedBox(height: context.accR.spaceM),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(context.accR.spaceM),
                 decoration: BoxDecoration(
                   color: AccountingTheme.danger.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(8),
@@ -1519,20 +1807,21 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text('سيتم عكس تأثير المعاملة على رصيد الفني',
-                  style:
-                      TextStyle(color: AccountingTheme.warning, fontSize: 12)),
+              SizedBox(height: context.accR.spaceS),
+              Text('سيتم عكس تأثير المعاملة على رصيد الفني',
+                  style: TextStyle(
+                      color: AccountingTheme.warning,
+                      fontSize: context.accR.small)),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton.icon(
-              icon: const Icon(Icons.delete, size: 18),
+              icon: Icon(Icons.delete, size: context.accR.iconM),
               label: const Text('حذف'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AccountingTheme.danger,
@@ -1589,7 +1878,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
         children: [
           // العنوان
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.accR.spaceXL),
             decoration: const BoxDecoration(
               color: AccountingTheme.bgCard,
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -1599,32 +1888,33 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(context.accR.spaceS),
                   decoration: BoxDecoration(
                     color: AccountingTheme.neonBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.receipt_long,
-                      color: AccountingTheme.neonBlue, size: 20),
+                  child: Icon(Icons.receipt_long,
+                      color: AccountingTheme.neonBlue,
+                      size: context.accR.iconM),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: context.accR.spaceM),
                 Expanded(
                   child: Text('معاملات ${widget.technicianName}',
                       style: GoogleFonts.cairo(
-                          fontSize: 16,
+                          fontSize: context.accR.headingSmall,
                           fontWeight: FontWeight.bold,
                           color: AccountingTheme.textPrimary)),
                 ),
                 IconButton(
                   onPressed: _loadTransactions,
-                  icon: const Icon(Icons.refresh, size: 18),
+                  icon: Icon(Icons.refresh, size: context.accR.iconM),
                   tooltip: 'تحديث',
                   style: IconButton.styleFrom(
                       foregroundColor: AccountingTheme.textSecondary),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, size: 20),
+                  icon: Icon(Icons.close, size: context.accR.iconM),
                   style: IconButton.styleFrom(
                       foregroundColor: AccountingTheme.textMuted),
                 ),
@@ -1633,14 +1923,16 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
           ),
           // أزرار التصفية
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.accR.paddingH,
+                vertical: context.accR.spaceS),
             color: AccountingTheme.bgPrimary,
             child: Row(
               children: [
                 _filterBtn('الكل', 'all'),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 _filterBtn('مديون', 'charge'),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 _filterBtn('دائن', 'payment'),
               ],
             ),
@@ -1662,7 +1954,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                 style: TextStyle(
                                     color: AccountingTheme.textMuted)))
                         : ListView.builder(
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(context.accR.spaceM),
                             itemCount: _filteredTransactions.length,
                             itemBuilder: (_, i) {
                               final tx = _filteredTransactions[i];
@@ -1681,14 +1973,18 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                               return Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(
+                                      context.accR.cardRadius),
                                   onTap: () => _showTransactionInfo(tx),
                                   child: Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.all(14),
+                                    margin: EdgeInsets.only(
+                                        bottom: context.accR.spaceS),
+                                    padding:
+                                        EdgeInsets.all(context.accR.spaceL),
                                     decoration: BoxDecoration(
                                       color: AccountingTheme.bgCard,
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(
+                                          context.accR.cardRadius),
                                       border: Border(
                                         right: BorderSide(
                                           color: isCharge
@@ -1715,33 +2011,36 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                           color: isCharge
                                               ? AccountingTheme.danger
                                               : AccountingTheme.success,
-                                          size: 20,
+                                          size: context.accR.iconM,
                                         ),
-                                        const SizedBox(width: 10),
+                                        SizedBox(width: context.accR.spaceM),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(desc,
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                       color: AccountingTheme
                                                           .textPrimary,
                                                       fontWeight:
                                                           FontWeight.w600,
-                                                      fontSize: 13)),
+                                                      fontSize: context.accR
+                                                          .financialSmall)),
                                               if (customerName.isNotEmpty)
                                                 Text('العميل: $customerName',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                         color: AccountingTheme
                                                             .textMuted,
-                                                        fontSize: 11)),
+                                                        fontSize: context
+                                                            .accR.small)),
                                               if (taskType.isNotEmpty)
                                                 Text('النوع: $taskType',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                         color: AccountingTheme
                                                             .textMuted,
-                                                        fontSize: 11)),
+                                                        fontSize: context
+                                                            .accR.small)),
                                             ],
                                           ),
                                         ),
@@ -1752,32 +2051,33 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                                   ? AccountingTheme.danger
                                                   : AccountingTheme.success,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 14),
+                                              fontSize: context.accR.body),
                                         ),
-                                        const SizedBox(width: 12),
+                                        SizedBox(width: context.accR.spaceM),
                                         Text(_formatDate(date),
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                                 color:
                                                     AccountingTheme.textMuted,
-                                                fontSize: 10)),
-                                        const SizedBox(width: 6),
+                                                fontSize:
+                                                    context.accR.caption)),
+                                        SizedBox(width: context.accR.spaceXS),
                                         // أزرار سريعة
                                         InkWell(
                                           onTap: () => _showEditDialog(tx),
-                                          child: const Padding(
+                                          child: Padding(
                                             padding: EdgeInsets.all(4),
                                             child: Icon(Icons.edit_outlined,
-                                                size: 16,
+                                                size: context.accR.iconS,
                                                 color:
                                                     AccountingTheme.neonBlue),
                                           ),
                                         ),
                                         InkWell(
                                           onTap: () => _confirmDelete(tx),
-                                          child: const Padding(
+                                          child: Padding(
                                             padding: EdgeInsets.all(4),
                                             child: Icon(Icons.delete_outline,
-                                                size: 16,
+                                                size: context.accR.iconS,
                                                 color: AccountingTheme.danger),
                                           ),
                                         ),
@@ -1829,7 +2129,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
           label,
           style: TextStyle(
             color: isActive ? color : AccountingTheme.textMuted,
-            fontSize: 12,
+            fontSize: context.accR.small,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
           ),
         ),

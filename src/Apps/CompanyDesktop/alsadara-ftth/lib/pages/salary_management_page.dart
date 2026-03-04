@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -332,13 +333,15 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F5F5),
         appBar: AppBar(
-          title: const Text('إدارة الرواتب',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text('إدارة الرواتب',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: r.appBarTitleSize)),
           backgroundColor: Colors.teal[700],
           foregroundColor: Colors.white,
           elevation: 0,
@@ -378,9 +381,13 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
   }
 
   Widget _buildMonthSelector() {
+    final r = context.responsive;
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: EdgeInsets.all(r.isMobile ? 10 : 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.isMobile ? 10 : 16,
+        vertical: r.isMobile ? 8 : 12,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -452,15 +459,17 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
 
   Widget _buildSummaryCards() {
     if (_summary == null || _salaries.isEmpty) return const SizedBox.shrink();
+    final r = context.responsive;
+    final cardWidth = r.isMobile ? 130.0 : 160.0;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(horizontal: r.isMobile ? 10 : 16),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
           SizedBox(
-            width: 160,
+            width: cardWidth,
             child: _buildStatCard(
               'عدد الموظفين',
               '${_summary!['Count'] ?? 0}',
@@ -469,7 +478,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
           ),
           SizedBox(
-            width: 160,
+            width: cardWidth,
             child: _buildStatCard(
               'إجمالي الأساسي',
               _formatCurrency(_summary!['TotalBaseSalary'] ?? 0),
@@ -478,7 +487,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
           ),
           SizedBox(
-            width: 160,
+            width: cardWidth,
             child: _buildStatCard(
               'إجمالي الخصومات',
               _formatCurrency(_summary!['TotalDeductions'] ?? 0),
@@ -487,7 +496,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
           ),
           SizedBox(
-            width: 160,
+            width: cardWidth,
             child: _buildStatCard(
               'إجمالي المكافآت',
               _formatCurrency(_summary!['TotalBonuses'] ?? 0),
@@ -496,7 +505,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
           ),
           SizedBox(
-            width: 160,
+            width: cardWidth,
             child: _buildStatCard(
               'صافي الرواتب',
               _formatCurrency(_summary!['TotalNet'] ?? 0),
@@ -506,7 +515,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
           ),
           if ((_summary!['TotalManualDeductions'] ?? 0) > 0)
             SizedBox(
-              width: 160,
+              width: cardWidth,
               child: _buildStatCard(
                 'خصومات يدوية',
                 _formatCurrency(_summary!['TotalManualDeductions'] ?? 0),
@@ -516,7 +525,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
           if ((_summary!['TotalManualBonuses'] ?? 0) > 0)
             SizedBox(
-              width: 160,
+              width: cardWidth,
               child: _buildStatCard(
                 'مكافآت يدوية',
                 _formatCurrency(_summary!['TotalManualBonuses'] ?? 0),

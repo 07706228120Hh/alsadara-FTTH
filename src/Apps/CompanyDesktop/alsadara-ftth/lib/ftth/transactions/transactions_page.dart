@@ -233,11 +233,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
     // تعيين مالك المحفظة الافتراضي كشريك
     selectedWalletOwnerTypes = ['partner'];
 
-    _loadTransactions();
-    // تحميل أسماء المستخدمين للاقتراحات في مربع البحث
-    _loadUsernames();
-    // تحميل قائمة المناطق
-    _loadZones();
+    // ⚡ تأجيل تحميل البيانات حتى بعد انتهاء انيميشن الانتقال
+    // يمنع setState() من التعارض مع transition animation ويُحسّن الأداء على الهاتف
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTransactions();
+      // تحميل أسماء المستخدمين للاقتراحات في مربع البحث
+      _loadUsernames();
+      // تحميل قائمة المناطق
+      _loadZones();
+    });
   }
 
   // دالة لجلب قائمة المناطق من الـ API (مثل صفحة الاشتراكات)
@@ -250,7 +254,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     });
 
     try {
-      print('[transactions_page] _loadZones: بدء تحميل المناطق...');
+      debugPrint('[transactions_page] _loadZones: بدء تحميل المناطق...');
 
       // استخدام نفس الطريقة المستخدمة في صفحة الاشتراكات
       final response = await http.get(
@@ -263,14 +267,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
       if (!mounted) return;
 
-      print(
+      debugPrint(
           '[transactions_page] _loadZones: استجابة API = ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> rawZones = data['items'] ?? [];
 
-        print(
+        debugPrint(
             '[transactions_page] _loadZones: تم جلب ${rawZones.length} منطقة');
 
         final List<String> fetchedZones = [];
@@ -302,17 +306,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
           setState(() {
             availableZones = fetchedZones;
           });
-          print(
+          debugPrint(
               '[transactions_page] _loadZones: تم حفظ ${availableZones.length} منطقة');
         }
       } else if (response.statusCode == 401) {
-        print('[transactions_page] _loadZones: خطأ 401 - غير مصرح');
+        debugPrint('[transactions_page] _loadZones: خطأ 401 - غير مصرح');
         _handle401Error();
       } else {
-        print('[transactions_page] _loadZones: خطأ ${response.statusCode}');
+        debugPrint('[transactions_page] _loadZones: خطأ ${response.statusCode}');
       }
     } catch (e) {
-      print('[transactions_page] _loadZones error=$e');
+      debugPrint('[transactions_page] _loadZones error=$e');
     } finally {
       if (mounted) {
         setState(() {
@@ -345,6 +349,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   // نحاول استدعاء عدد من المسارات المعقولة حتى نجد بيانات المستخدمين
   Future<void> _loadUsernames() async {
+    if (!mounted) return;
     setState(() {
       isLoadingUsernames = true;
     });
@@ -367,6 +372,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         }
 
         if (names.isNotEmpty) {
+          if (!mounted) return;
           setState(() {
             availableUsernames = names.toSet().toList();
           });
@@ -388,7 +394,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     } catch (e) {
       // طباعة الخطأ لمساعدة التصحيح
       // ignore: avoid_print
-      print('[transactions_page] _loadUsernames error=$e');
+      debugPrint('[transactions_page] _loadUsernames error=$e');
       if (mounted) {
         _showError('خطأ عند جلب أسماء المستخدمين: $e');
       }
@@ -415,7 +421,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           names.add(it['username'].toString());
         }
       }
-      if (names.isNotEmpty) {
+      if (names.isNotEmpty && mounted) {
         setState(() {
           availableUsernames = names.toSet().toList();
         });
@@ -504,7 +510,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       // نجرب أولاً جلب صفحة كبيرة لتقدير العدد الإجمالي
       String countUrl = _buildCountUrl();
 
-      print('[transactions_page] GET COUNT: $countUrl');
+      debugPrint('[transactions_page] GET COUNT: $countUrl');
 
       final response =
           await AuthService.instance.authenticatedRequest('GET', countUrl);
@@ -516,21 +522,23 @@ class _TransactionsPageState extends State<TransactionsPage> {
         final items = data['items'] ?? [];
 
         if (serverTotal != null) {
+          if (!mounted) return;
           setState(() {
             totalCount = serverTotal;
           });
-          print('[transactions_page] Total count from server: $totalCount');
+          debugPrint('[transactions_page] Total count from server: $totalCount');
         } else if (items.length > 0) {
           // إذا لم يكن هناك عدد إجمالي، نحاول تقدير العدد بناءً على النتائج
           final estimatedTotal = _estimateTotalCount(items.length);
+          if (!mounted) return;
           setState(() {
             totalCount = estimatedTotal;
           });
-          print('[transactions_page] Estimated total count: $totalCount');
+          debugPrint('[transactions_page] Estimated total count: $totalCount');
         }
       }
     } catch (e) {
-      print('[transactions_page] Error fetching total count: $e');
+      debugPrint('[transactions_page] Error fetching total count: $e');
       // في حالة فشل جلب العدد، سنعتمد على البيانات المستلمة
     }
   }
@@ -703,7 +711,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
       // طباعة للرابط المرسَل للمساعدة في التصحيح
       // ignore: avoid_print
-      print('[transactions_page] GET $url');
+      debugPrint('[transactions_page] GET $url');
 
       final response = await AuthService.instance.authenticatedRequest(
         'GET',
@@ -712,7 +720,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
       // طباعة سريعة لحالة الاستجابة وجسمها لمساعدة التتبع
       // ignore: avoid_print
-      print(
+      debugPrint(
           '[transactions_page] status=${response.statusCode} body=${response.body}');
 
       if (response.statusCode == 200) {
@@ -738,6 +746,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         // تطبيق الفلاتر الإضافية بعد التصفية
         allTransactions = _applyAdditionalFilters(allTransactions);
 
+        if (!mounted) return;
         setState(() {
           // الحصول على العدد الإجمالي الحقيقي من استجابة الخادم
           final serverTotalCount = data['totalCount'] ?? data['total'];
@@ -818,10 +827,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
       }
       _showError('حدث خطأ في تحميل التحويلات: $e');
     } finally {
-      setState(() {
-        isLoading = false;
-        isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -1009,15 +1020,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
         Navigator.of(context).pop();
       }
 
-      print('====== _navigateToProfitsPage ======');
-      print(
+      debugPrint('====== _navigateToProfitsPage ======');
+      debugPrint(
           'إجمالي المعاملات السالبة المفلترة: ${negativeTransactions.length}');
       if (negativeTransactions.isNotEmpty) {
-        print('أول معاملة سالبة: ${negativeTransactions.first['type']}');
-        print(
+        debugPrint('أول معاملة سالبة: ${negativeTransactions.first['type']}');
+        debugPrint(
             'قيمة أول معاملة: ${negativeTransactions.first['transactionAmount']?['value']}');
       }
-      print('===================================');
+      debugPrint('===================================');
 
       // الانتقال لصفحة الأرباح مع المعاملات السالبة المفلترة
       if (mounted) {
@@ -1050,13 +1061,13 @@ class _TransactionsPageState extends State<TransactionsPage> {
     bool hasMore = true;
     const int pageSizeTemp = 1000;
 
-    print('====== بدء جلب المعاملات المفلترة ======');
-    print('الفلاتر النشطة:');
-    print('  showPositiveOnly: $showPositiveOnly');
-    print('  showNegativeOnly: $showNegativeOnly');
-    print('  showWithoutCreatorOnly: $showWithoutCreatorOnly');
-    print('  showScheduledOnly: $showScheduledOnly');
-    print('  showTransactionsWithoutUser: $showTransactionsWithoutUser');
+    debugPrint('====== بدء جلب المعاملات المفلترة ======');
+    debugPrint('الفلاتر النشطة:');
+    debugPrint('  showPositiveOnly: $showPositiveOnly');
+    debugPrint('  showNegativeOnly: $showNegativeOnly');
+    debugPrint('  showWithoutCreatorOnly: $showWithoutCreatorOnly');
+    debugPrint('  showScheduledOnly: $showScheduledOnly');
+    debugPrint('  showTransactionsWithoutUser: $showTransactionsWithoutUser');
 
     while (hasMore) {
       try {
@@ -1074,7 +1085,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               List<Map<String, dynamic>>.from(data['items'] ?? []);
           final int totalCount = data['totalCount'] ?? 0;
 
-          print('الصفحة $pageTemp: ${pageTransactions.length} معاملة');
+          debugPrint('الصفحة $pageTemp: ${pageTransactions.length} معاملة');
 
           if (pageTransactions.isEmpty) {
             hasMore = false;
@@ -1113,9 +1124,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
               }
             }
 
-            print('  → معاملات بعد الفلاتر: ${pageTransactions.length}');
-            print('  → معاملات سالبة: $negativeCount');
-            print(
+            debugPrint('  → معاملات بعد الفلاتر: ${pageTransactions.length}');
+            debugPrint('  → معاملات سالبة: $negativeCount');
+            debugPrint(
                 '  → إجمالي المعاملات السالبة حتى الآن: ${allNegativeTransactions.length}');
 
             // التحقق من وجود المزيد
@@ -1131,15 +1142,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
           throw Exception('فشل في جلب البيانات: ${response.statusCode}');
         }
       } catch (e) {
-        print('خطأ في جلب الصفحة $pageTemp: $e');
+        debugPrint('خطأ في جلب الصفحة $pageTemp: $e');
         throw Exception('خطأ في الاتصال: $e');
       }
     }
 
-    print('====== انتهى الجلب ======');
-    print('إجمالي الصفحات: $pageTemp');
-    print('إجمالي المعاملات السالبة: ${allNegativeTransactions.length}');
-    print('========================');
+    debugPrint('====== انتهى الجلب ======');
+    debugPrint('إجمالي الصفحات: $pageTemp');
+    debugPrint('إجمالي المعاملات السالبة: ${allNegativeTransactions.length}');
+    debugPrint('========================');
 
     return allNegativeTransactions;
   }
@@ -3530,13 +3541,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Widget _buildDetailRow(String label, String value) {
+    final labelWidth = MediaQuery.of(context).size.width <= 600 ? 90.0 : 120.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: labelWidth,
             child: Text(
               label,
               style: TextStyle(
@@ -3667,6 +3679,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<void> _fetchAllPagesSums() async {
     // يحسب مجموع كل النتائج المفلترة على الخادم (جميع الصفحات)
     if (totalCount == 0) {
+      if (!mounted) return;
       setState(() {
         positiveSumAll = 0.0;
         negativeSumAll = 0.0;
@@ -3679,6 +3692,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       isLoadingAllTotals = true;
       positiveSumAll = 0.0;
@@ -3769,12 +3783,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
   // دالة جديدة لحساب المبلغ الإجمالي حسب اسم المنشأة
   Future<void> _calculateCreatorAmounts() async {
     if (totalCount == 0) {
+      if (!mounted) return;
       setState(() {
         creatorAmounts = {};
       });
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       isCalculatingCreatorAmounts = true;
       creatorAmounts = {};
@@ -3843,6 +3859,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         }
       }
 
+      if (!mounted) return;
       setState(() {
         creatorAmounts = tempCreatorAmounts;
       });
@@ -3877,6 +3894,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           detailedTransactions: allTransactions, // تمرير المعاملات المفصلة
           authToken: widget.authToken, // تمرير الرمز المميز للمصادقة
           onFilterByCreator: (creatorName, showWithoutUser) {
+            if (!mounted) return;
             setState(() {
               transactionUser = creatorName;
               showTransactionsWithoutUser = showWithoutUser;
@@ -5353,28 +5371,28 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     // طباعة عينة من البيانات للتشخيص (أول 3 معاملات)
     if (transactions.isNotEmpty) {
-      print('=== عينة من البيانات للخدمة $serviceName ===');
+      debugPrint('=== عينة من البيانات للخدمة $serviceName ===');
       for (int i = 0;
           i < (transactions.length < 3 ? transactions.length : 3);
           i++) {
         final transaction = transactions[i];
-        print('المعاملة $i:');
-        print('  - type: ${transaction['type']}');
-        print('  - description: ${transaction['description']}');
+        debugPrint('المعاملة $i:');
+        debugPrint('  - type: ${transaction['type']}');
+        debugPrint('  - description: ${transaction['description']}');
 
         final subscription = transaction['subscription'];
         if (subscription != null) {
-          print(
+          debugPrint(
               '  - subscription displayValue: ${subscription['displayValue']}');
           final subscriptionService = subscription['subscriptionService'];
           if (subscriptionService != null) {
             final service = subscriptionService['service'];
             if (service != null) {
-              print('  - service displayValue: ${service['displayValue']}');
+              debugPrint('  - service displayValue: ${service['displayValue']}');
             }
           }
         }
-        print('  ---');
+        debugPrint('  ---');
       }
     }
 

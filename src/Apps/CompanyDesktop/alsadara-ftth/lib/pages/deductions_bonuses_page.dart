@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -61,11 +62,13 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('الخصومات والمكافآت'),
+          title: Text('الخصومات والمكافآت',
+              style: TextStyle(fontSize: r.appBarTitleSize)),
           backgroundColor: Colors.teal[700],
           foregroundColor: Colors.white,
           elevation: 0,

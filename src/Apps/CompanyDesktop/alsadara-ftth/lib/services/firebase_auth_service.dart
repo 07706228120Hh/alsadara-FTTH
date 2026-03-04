@@ -9,10 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'security/rate_limiter_service.dart'; // 🛡️ حماية من Brute Force
+import 'firebase_availability.dart';
 
 /// خدمة المصادقة عبر Firestore - Multi-Tenant مع عزل كامل للشركات
 class FirebaseAuthService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// تحميل كسول لتجنب خطأ [core/no-app]
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   // معلومات المستخدم الحالي المخزنة محلياً
   static String? _currentUserId;
@@ -33,6 +35,9 @@ class FirebaseAuthService {
   /// تسجيل الدخول باستخدام اسم المستخدم وكلمة المرور
   static Future<Map<String, dynamic>> signInWithUsername(
       String username, String password) async {
+    if (!FirebaseAvailability.isAvailable) {
+      return {'success': false, 'message': 'Firebase غير متاح على هذه المنصة'};
+    }
     try {
       if (username.trim().isEmpty || password.isEmpty) {
         return {
@@ -135,6 +140,9 @@ class FirebaseAuthService {
     required String organizationId,
     String role = 'user',
   }) async {
+    if (!FirebaseAvailability.isAvailable) {
+      return {'success': false, 'message': 'Firebase غير متاح على هذه المنصة'};
+    }
     try {
       // 1. التحقق من عدم وجود اسم المستخدم
       final existingUser = await _firestore
@@ -221,6 +229,7 @@ class FirebaseAuthService {
 
   /// الحصول على بيانات المستخدم من Firestore
   static Future<Map<String, dynamic>> getUserData(String userId) async {
+    if (!FirebaseAvailability.isAvailable) return {'exists': false};
     try {
       final docSnapshot =
           await _firestore.collection('users').doc(userId).get();
@@ -241,6 +250,7 @@ class FirebaseAuthService {
 
   /// استعادة الجلسة من التخزين المحلي
   static Future<bool> restoreSession() async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('current_user_id');
@@ -266,6 +276,7 @@ class FirebaseAuthService {
   /// تحديث Organization ID للمستخدم
   static Future<void> updateOrganizationId(
       String uid, String organizationId) async {
+    if (!FirebaseAvailability.isAvailable) return;
     try {
       await _firestore.collection('users').doc(uid).update({
         'organizationId': organizationId,

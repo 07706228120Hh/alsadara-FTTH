@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة المصروفات
 class ExpensesPage extends StatefulWidget {
@@ -52,31 +53,36 @@ class _ExpensesPageState extends State<ExpensesPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AccountingTheme.bgPrimary,
-        body: Column(
-          children: [
-            _buildPageToolbar(),
-            _buildSummary(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: AccountingTheme.neonGreen))
-                  : _errorMessage != null
-                      ? Center(
-                          child: Text(_errorMessage!,
-                              style: const TextStyle(
-                                  color: AccountingTheme.danger)))
-                      : _buildList(),
-            ),
-          ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildPageToolbar(),
+              _buildSummary(),
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: AccountingTheme.neonGreen))
+                    : _errorMessage != null
+                        ? Center(
+                            child: Text(_errorMessage!,
+                                style: const TextStyle(
+                                    color: AccountingTheme.danger)))
+                        : _buildList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildPageToolbar() {
+    final ar = context.accR;
+    final isMob = MediaQuery.of(context).size.width < 700;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
       decoration: const BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -85,44 +91,52 @@ class _ExpensesPageState extends State<ExpensesPage> {
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 20),
             tooltip: 'رجوع',
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMob ? 4 : ar.spaceS),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
             decoration: BoxDecoration(
               gradient: AccountingTheme.neonOrangeGradient,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(ar.btnRadius),
             ),
-            child: const Icon(Icons.receipt_rounded,
-                color: Colors.white, size: 18),
+            child: Icon(Icons.receipt_rounded,
+                color: Colors.white, size: isMob ? 18 : ar.iconM),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: isMob ? 6 : ar.spaceM),
           Text('المصروفات',
               style: GoogleFonts.cairo(
-                  fontSize: 20,
+                  fontSize: isMob ? 14 : ar.headingMedium,
                   fontWeight: FontWeight.bold,
                   color: AccountingTheme.textPrimary)),
           const Spacer(),
           IconButton(
             onPressed: _loadData,
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
             tooltip: 'تحديث',
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isMob ? 4 : ar.spaceS),
           ElevatedButton.icon(
             onPressed: _showAddDialog,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('إضافة مصروف'),
+            icon: Icon(Icons.add, size: isMob ? 16 : ar.iconM),
+            label: Text(isMob ? 'إضافة مصروف' : 'إضافة مصروف',
+                style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.buttonText)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AccountingTheme.neonOrange,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: isMob
+                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                  : ar.buttonPadding,
+              minimumSize: isMob ? const Size(0, 30) : null,
             ),
           ),
         ],
@@ -146,7 +160,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         : null;
 
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(context.accR.spaceM),
       child: Wrap(
         spacing: 12,
         children: [
@@ -162,7 +176,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   Widget _chip(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
@@ -172,12 +187,15 @@ class _ExpensesPageState extends State<ExpensesPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style:
-                  TextStyle(color: color.withValues(alpha: 0.7), fontSize: 12)),
-          const SizedBox(width: 6),
+              style: TextStyle(
+                  color: color.withValues(alpha: 0.7),
+                  fontSize: context.accR.small)),
+          SizedBox(width: context.accR.spaceXS),
           Text(value,
               style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: context.accR.body)),
         ],
       ),
     );
@@ -185,12 +203,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   Widget _buildList() {
     if (_expenses.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.money_off, color: AccountingTheme.textMuted, size: 64),
-            SizedBox(height: 16),
+            Icon(Icons.money_off,
+                color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
+            SizedBox(height: context.accR.spaceXL),
             Text('لا توجد مصروفات',
                 style: TextStyle(color: AccountingTheme.textMuted)),
           ],
@@ -198,17 +217,23 @@ class _ExpensesPageState extends State<ExpensesPage> {
       );
     }
 
+    final isMob = MediaQuery.of(context).size.width < 700;
+
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMob ? 8 : context.accR.spaceM),
       itemCount: _expenses.length,
       itemBuilder: (_, i) {
         final e = _expenses[i];
+        if (isMob) {
+          return _buildMobileExpenseCard(e);
+        }
         return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(14),
+          margin: EdgeInsets.only(bottom: 6),
+          padding: EdgeInsets.all(context.accR.spaceL),
           decoration: BoxDecoration(
             color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(context.accR.cardRadius),
             border: const Border(
                 right: BorderSide(color: AccountingTheme.danger, width: 3)),
           ),
@@ -222,9 +247,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(_categoryIcon(e['Category']),
-                    color: AccountingTheme.danger, size: 20),
+                    color: AccountingTheme.danger, size: context.accR.iconM),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.accR.spaceM),
               Expanded(
                 flex: 2,
                 child: Column(
@@ -232,16 +257,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   children: [
                     Text(
                       e['Description'] ?? 'بدون وصف',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AccountingTheme.textPrimary,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14),
+                          fontSize: context.accR.body),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       _expenseCategoryLabel(e['Category']),
-                      style: const TextStyle(
-                          color: AccountingTheme.danger, fontSize: 11),
+                      style: TextStyle(
+                          color: AccountingTheme.danger,
+                          fontSize: context.accR.small),
                     ),
                   ],
                 ),
@@ -251,10 +277,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 width: 100,
                 child: Text(
                   '${_fmt(e['Amount'])} د.ع',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AccountingTheme.danger,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14),
+                      fontSize: context.accR.body),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -263,8 +289,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 width: 100,
                 child: Text(
                   _formatDate(e['ExpenseDate'] ?? e['CreatedAt']),
-                  style: const TextStyle(
-                      color: AccountingTheme.textSecondary, fontSize: 11),
+                  style: TextStyle(
+                      color: AccountingTheme.textSecondary,
+                      fontSize: context.accR.small),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -274,23 +301,113 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   width: 100,
                   child: Text(
                     e['AccountName'],
-                    style: const TextStyle(
-                        color: AccountingTheme.info, fontSize: 11),
+                    style: TextStyle(
+                        color: AccountingTheme.info,
+                        fontSize: context.accR.small),
                     textAlign: TextAlign.center,
                   ),
                 ),
               // ملاحظات
               if (e['Notes'] != null)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: EdgeInsets.only(right: 8),
                   child: Tooltip(
                     message: e['Notes'],
                     child: Icon(Icons.notes,
-                        color: AccountingTheme.textMuted, size: 18),
+                        color: AccountingTheme.textMuted,
+                        size: context.accR.iconM),
                   ),
                 ),
               // أزرار تعديل وحذف
+              SizedBox(width: context.accR.spaceS),
+              _actionBtn(Icons.edit, AccountingTheme.info,
+                  () => _showEditExpenseDialog(e)),
+              SizedBox(width: context.accR.spaceXS),
+              _actionBtn(Icons.delete_outline, AccountingTheme.danger,
+                  () => _confirmDeleteExpense(e)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileExpenseCard(Map<String, dynamic> e) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgCard,
+        borderRadius: BorderRadius.circular(10),
+        border: const Border(
+            right: BorderSide(color: AccountingTheme.danger, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // الصف الأول: الوصف + المبلغ
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  e['Description'] ?? 'بدون وصف',
+                  style: GoogleFonts.cairo(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               const SizedBox(width: 8),
+              Text(
+                '${_fmt(e['Amount'])} د.ع',
+                style: GoogleFonts.cairo(
+                    color: AccountingTheme.danger,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // الصف الثاني: الفئة + التاريخ + الحساب
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AccountingTheme.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _expenseCategoryLabel(e['Category']),
+                  style: GoogleFonts.cairo(
+                      color: AccountingTheme.danger,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _formatDate(e['ExpenseDate'] ?? e['CreatedAt']),
+                style: GoogleFonts.cairo(
+                    color: AccountingTheme.textSecondary, fontSize: 10),
+              ),
+              if (e['AccountName'] != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    e['AccountName'] ?? '',
+                    style: GoogleFonts.cairo(
+                        color: AccountingTheme.info, fontSize: 10),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ] else
+                const Spacer(),
+              // أزرار التعديل والحذف
+              const SizedBox(width: 6),
               _actionBtn(Icons.edit, AccountingTheme.info,
                   () => _showEditExpenseDialog(e)),
               const SizedBox(width: 4),
@@ -298,8 +415,19 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   () => _confirmDeleteExpense(e)),
             ],
           ),
-        );
-      },
+          // ملاحظات إن وجدت
+          if (e['Notes'] != null && e['Notes'].toString().isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              e['Notes'].toString(),
+              style: GoogleFonts.cairo(
+                  color: AccountingTheme.textMuted, fontSize: 10),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -343,18 +471,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: AccountingTheme.bgCard,
-            title: const Text('إضافة مصروف',
+            title: Text('إضافة مصروف',
                 style: TextStyle(color: AccountingTheme.textPrimary)),
             content: SizedBox(
-              width: 400,
+              width: context.accR.dialogSmallW,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _field('الوصف', descCtrl),
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.accR.spaceM),
                     _field('المبلغ', amountCtrl, isNumber: true),
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedAccountId,
                       dropdownColor: AccountingTheme.bgCard,
@@ -380,7 +508,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             borderSide: BorderSide.none),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedCategory,
                       dropdownColor: AccountingTheme.bgCard,
@@ -403,7 +531,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             borderSide: BorderSide.none),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.accR.spaceM),
                     _field('ملاحظات', notesCtrl),
                   ],
                 ),
@@ -412,7 +540,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('إلغاء',
+                  child: Text('إلغاء',
                       style: TextStyle(color: AccountingTheme.textMuted))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -523,12 +651,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: EdgeInsets.all(context.accR.spaceXS),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Icon(icon, color: color, size: 16),
+        child: Icon(icon, color: color, size: context.accR.iconS),
       ),
     );
   }
@@ -547,17 +675,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('تعديل مصروف',
+          title: Text('تعديل مصروف',
               style: TextStyle(color: AccountingTheme.textPrimary)),
           content: SizedBox(
-            width: 400,
+            width: context.accR.dialogSmallW,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _field('الوصف', descCtrl),
-                const SizedBox(height: 10),
+                SizedBox(height: context.accR.spaceM),
                 _field('المبلغ', amountCtrl, isNumber: true),
-                const SizedBox(height: 10),
+                SizedBox(height: context.accR.spaceM),
                 _field('ملاحظات', notesCtrl),
               ],
             ),
@@ -565,7 +693,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton(
@@ -605,7 +733,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('تأكيد الحذف',
+          title: Text('تأكيد الحذف',
               style: TextStyle(color: AccountingTheme.danger)),
           content: Text(
             'هل تريد حذف المصروف "${e['Description']}" بمبلغ ${_fmt(e['Amount'])} د.ع؟\nسيتم إلغاء القيد المحاسبي المرتبط أيضاً.',
@@ -614,7 +742,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton(

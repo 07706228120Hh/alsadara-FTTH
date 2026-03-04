@@ -95,25 +95,20 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       await _showActivationSuccessDialog();
     }
 
-    // 3️⃣ حفظ البيانات في VPS
-    if (widget.hasServerSavePermission) {
-      debugPrint('📊 [3/5] حفظ البيانات...');
-      try {
-        // حفظ رصيد المحفظة قبل العملية إذا لم يكن محفوظاً
-        if (partnerWalletBalanceBefore == 0.0) {
-          partnerWalletBalanceBefore = walletBalance;
-        }
-        if (customerWalletBalanceBefore == 0.0) {
-          customerWalletBalanceBefore = customerWalletBalance;
-        }
-        await _saveToServer();
-        safeSetState(() => _isSavedToSheets = true);
-        debugPrint('✅ [3/5] تم الحفظ بنجاح');
-      } catch (e) {
-        debugPrint('⚠️ [3/5] فشل الحفظ: $e - المتابعة...');
+    // 3️⃣ حفظ البيانات في VPS (دائماً بغض النظر عن الصلاحيات)
+    debugPrint('📊 [3/5] حفظ البيانات...');
+    try {
+      if (partnerWalletBalanceBefore == 0.0) {
+        partnerWalletBalanceBefore = walletBalance;
       }
-    } else {
-      debugPrint('⏭️ [3/5] تخطي الحفظ - لا توجد صلاحية');
+      if (customerWalletBalanceBefore == 0.0) {
+        customerWalletBalanceBefore = customerWalletBalance;
+      }
+      await _saveToServer();
+      safeSetState(() => _isSavedToSheets = true);
+      debugPrint('✅ [3/5] تم الحفظ بنجاح');
+    } catch (e) {
+      debugPrint('⚠️ [3/5] فشل الحفظ: $e - المتابعة...');
     }
 
     // 4️⃣ طباعة الوصل

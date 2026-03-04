@@ -683,6 +683,48 @@ class PermissionRegistry {
       category: 'واتساب',
       allowedActions: ['view'],
     ),
+    PermissionEntry(
+      key: 'whatsapp_templates',
+      labelAr: 'قوالب الرسائل',
+      description: 'إدارة قوالب رسائل WhatsApp',
+      icon: Icons.description_rounded,
+      category: 'واتساب',
+      allowedActions: ['view'],
+    ),
+
+    // ─── أنظمة الواتساب (يتطلب تفعيل الشركة) ───
+    PermissionEntry(
+      key: 'whatsapp_system_normal',
+      labelAr: 'نظام: تطبيق واتساب العادي',
+      description: 'تفعيل استخدام تطبيق واتساب المثبت على الجهاز',
+      icon: Icons.phone_android_rounded,
+      category: 'واتساب',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'whatsapp_system_web',
+      labelAr: 'نظام: واتساب ويب',
+      description: 'تفعيل واتساب ويب داخل التطبيق',
+      icon: Icons.language_rounded,
+      category: 'واتساب',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'whatsapp_system_server',
+      labelAr: 'نظام: واتساب السيرفر (VPS)',
+      description: 'تفعيل الإرسال التلقائي عبر سيرفر مخصص',
+      icon: Icons.dns_rounded,
+      category: 'واتساب',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'whatsapp_system_api',
+      labelAr: 'نظام: واتساب API (Meta Business)',
+      description: 'تفعيل Meta Business API للإرسال الجماعي',
+      icon: Icons.api_rounded,
+      category: 'واتساب',
+      allowedActions: ['view', 'send'],
+    ),
 
     // ─── البيانات والتخزين ───
     PermissionEntry(

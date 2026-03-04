@@ -99,6 +99,9 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
           await AppCloseHandler.clearSavedLoginCredentials();
           debugPrint('🗑️ تم مسح بيانات تسجيل الدخول المحفوظة فقط');
 
+          // مسح توكنات FTTH دائماً عند الإغلاق
+          await AppCloseHandler.clearFtthSessionTokens();
+
           // إزالة الحماية للسماح بالإغلاق
           await windowManager.setPreventClose(false);
           debugPrint('🔓 تم إلغاء حماية النافذة');
@@ -111,6 +114,9 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
           return true;
         } else if (closeOption == 'close_only') {
           debugPrint('✅ المستخدم اختار: الإغلاق فقط بدون مسح البيانات');
+
+          // مسح توكنات FTTH دائماً عند الإغلاق (للأمان)
+          await AppCloseHandler.clearFtthSessionTokens();
 
           // إزالة الحماية للسماح بالإغلاق بدون مسح البيانات
           await windowManager.setPreventClose(false);

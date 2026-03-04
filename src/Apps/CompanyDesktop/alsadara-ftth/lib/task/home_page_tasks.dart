@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/responsive_helper.dart';
 import '../models/task.dart';
 import 'task_card.dart';
 import 'add_task_api_dialog.dart';
@@ -1369,8 +1370,12 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   /// شريط الأدوات العلوي مع زر إضافة المهام
   Widget _buildTopActionBar() {
+    final r = context.responsive;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.contentPaddingH,
+        vertical: r.isMobile ? 10 : 15,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A3E),
         boxShadow: [
@@ -1390,7 +1395,8 @@ class HomePageTasksState extends State<HomePageTasks> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              icon: const Icon(Icons.arrow_back, size: 30, color: Colors.white),
+              icon: Icon(Icons.arrow_back,
+                  size: r.appBarIconSize, color: Colors.white),
               padding: const EdgeInsets.all(6),
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               style: IconButton.styleFrom(
@@ -1408,7 +1414,8 @@ class HomePageTasksState extends State<HomePageTasks> {
             if (_shouldShowDrawer())
               IconButton(
                 onPressed: openDrawer,
-                icon: const Icon(Icons.menu, size: 30, color: Colors.white),
+                icon: Icon(Icons.menu,
+                    size: r.appBarIconSize, color: Colors.white),
                 padding: const EdgeInsets.all(6),
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 style: IconButton.styleFrom(

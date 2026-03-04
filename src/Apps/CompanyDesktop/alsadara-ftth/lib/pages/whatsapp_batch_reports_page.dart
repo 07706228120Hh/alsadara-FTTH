@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../services/firebase_availability.dart';
 
 /// صفحة تقارير الإرسال الجماعي
 class WhatsAppBatchReportsPage extends StatefulWidget {
@@ -12,7 +13,7 @@ class WhatsAppBatchReportsPage extends StatefulWidget {
 }
 
 class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   bool _isLoading = true;
   List<Map<String, dynamic>> _reports = [];
   String? _error;
@@ -24,6 +25,13 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
   }
 
   Future<void> _loadReports() async {
+    if (!FirebaseAvailability.isAvailable) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Firebase غير متاح';
+      });
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
@@ -503,8 +511,8 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border:
-                              Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

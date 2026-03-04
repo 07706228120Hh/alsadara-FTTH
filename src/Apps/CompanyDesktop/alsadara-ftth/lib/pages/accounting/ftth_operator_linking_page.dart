@@ -1,6 +1,7 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../theme/accounting_responsive.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../services/auth_service.dart';
@@ -129,27 +130,31 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
         builder: (ctx, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.link, color: Colors.teal),
-              const SizedBox(width: 8),
+              Icon(Icons.link, color: Colors.teal),
+              SizedBox(width: context.accR.spaceS),
               Expanded(
                 child: Text(
                   'ربط المشغل: ${opName.isNotEmpty ? opName : ftthUsername}',
                   style: GoogleFonts.cairo(
-                      fontSize: 16, fontWeight: FontWeight.w700),
+                      fontSize: context.accR.headingSmall,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
             ],
           ),
           content: SizedBox(
-            width: 420,
+            width: context.accR.isMobile
+                ? MediaQuery.of(context).size.width * 0.92
+                : 420,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // معلومات المشغل
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceM,
+                      vertical: context.accR.spaceS),
                   decoration: BoxDecoration(
                     color: Colors.teal.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -157,19 +162,22 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.person, color: Colors.teal.shade700, size: 20),
-                      const SizedBox(width: 8),
+                      Icon(Icons.person,
+                          color: Colors.teal.shade700,
+                          size: context.accR.iconM),
+                      SizedBox(width: context.accR.spaceS),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('اسم المستخدم في FTTH: $ftthUsername',
                                 style: GoogleFonts.cairo(
-                                    fontSize: 13, fontWeight: FontWeight.w600)),
+                                    fontSize: context.accR.financialSmall,
+                                    fontWeight: FontWeight.w600)),
                             if (opName.isNotEmpty)
                               Text('الاسم: $opName',
                                   style: GoogleFonts.cairo(
-                                      fontSize: 12,
+                                      fontSize: context.accR.small,
                                       color: Colors.grey.shade700)),
                           ],
                         ),
@@ -177,10 +185,11 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.accR.spaceXL),
                 Text('اختر الموظف من نظامنا لربطه بهذا المشغل:',
-                    style: GoogleFonts.cairo(fontSize: 13)),
-                const SizedBox(height: 8),
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.financialSmall)),
+                SizedBox(height: context.accR.spaceS),
                 // قائمة الموظفين
                 if (availableUsers.isEmpty)
                   const Padding(
@@ -213,18 +222,18 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                             isSelected
                                 ? Icons.radio_button_checked
                                 : Icons.radio_button_off,
-                            size: 18,
+                            size: context.accR.iconM,
                             color: isSelected ? Colors.teal : Colors.grey,
                           ),
                           title: Text(fullName,
                               style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: context.accR.financialSmall,
                                   fontWeight: isSelected
                                       ? FontWeight.w700
                                       : FontWeight.w500)),
                           subtitle: Text(
                               '$username${phone.isNotEmpty ? ' • $phone' : ''}',
-                              style: const TextStyle(fontSize: 11)),
+                              style: TextStyle(fontSize: context.accR.small)),
                           onTap: () =>
                               setDialogState(() => selectedUserId = userId),
                         );
@@ -348,8 +357,9 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('ربط المشغلين ($_totalCount مشغل)',
-              style:
-                  GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700)),
+              style: GoogleFonts.cairo(
+                  fontSize: context.accR.headingSmall,
+                  fontWeight: FontWeight.w700)),
           backgroundColor: Colors.teal.shade700,
           foregroundColor: Colors.white,
           actions: [
@@ -368,11 +378,12 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.error_outline,
-                            size: 48, color: Colors.red.shade400),
-                        const SizedBox(height: 8),
+                            size: context.accR.iconXL,
+                            color: Colors.red.shade400),
+                        SizedBox(height: context.accR.spaceS),
                         Text(_error!,
                             style: TextStyle(color: Colors.red.shade700)),
-                        const SizedBox(height: 12),
+                        SizedBox(height: context.accR.spaceM),
                         ElevatedButton.icon(
                           onPressed: _loadData,
                           icon: const Icon(Icons.refresh),
@@ -385,18 +396,18 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                     children: [
                       // بطاقات الملخص
                       Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(context.accR.spaceM),
                         child: Row(
                           children: [
                             _summaryCard('إجمالي المشغلين', '$_totalCount',
                                 Icons.people, Colors.teal),
-                            const SizedBox(width: 8),
+                            SizedBox(width: context.accR.spaceS),
                             _summaryCard('مربوطون', '$linkedCount', Icons.link,
                                 Colors.green),
-                            const SizedBox(width: 8),
+                            SizedBox(width: context.accR.spaceS),
                             _summaryCard('غير مربوطين', '$unlinkedCount',
                                 Icons.link_off, Colors.orange),
-                            const SizedBox(width: 8),
+                            SizedBox(width: context.accR.spaceS),
                             _summaryCard(
                                 'إجمالي الأرصدة',
                                 _currencyFormat.format(totalBalance),
@@ -407,7 +418,8 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                       ),
                       // فلتر الأدوار
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: context.accR.spaceM),
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
@@ -419,11 +431,12 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.accR.spaceS),
                       // الجدول
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.accR.spaceM),
                           child: SingleChildScrollView(
                             child: SizedBox(
                               width: double.infinity,
@@ -441,11 +454,11 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
   Widget _roleChip(String label, int count) {
     final isSelected = _filterRole == label;
     return Padding(
-      padding: const EdgeInsets.only(left: 6),
+      padding: EdgeInsets.only(left: 6),
       child: FilterChip(
         label: Text('$label ($count)',
             style: TextStyle(
-                fontSize: 11,
+                fontSize: context.accR.small,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? Colors.white : Colors.teal.shade800)),
         selected: isSelected,
@@ -461,29 +474,31 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
   Widget _summaryCard(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceM, vertical: context.accR.spaceM),
         decoration: BoxDecoration(
           color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(context.accR.cardRadius),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(width: 10),
+            Icon(icon, color: color, size: context.accR.iconM),
+            SizedBox(width: context.accR.spaceM),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label,
-                      style:
-                          TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                      style: TextStyle(
+                          fontSize: context.accR.small,
+                          color: Colors.grey.shade600)),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(value,
                         style: TextStyle(
-                            fontSize: 14,
+                            fontSize: context.accR.body,
                             fontWeight: FontWeight.bold,
                             color: color)),
                   ),
@@ -504,197 +519,221 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: DataTable(
-        columnSpacing: 0,
-        horizontalMargin: 8,
-        headingRowHeight: 42,
-        dataRowMinHeight: 38,
-        dataRowMaxHeight: 54,
-        headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
-        columns: const [
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('#',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('المستخدم',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الاسم',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الهاتف',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الدور',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الرصيد',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الموظف المربوط',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الحالة',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('إجراء',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-        ],
-        rows: list.asMap().entries.map((entry) {
-          final i = entry.key;
-          final m = entry.value;
-          final role = (m['role'] as Map?)?['displayValue']?.toString() ?? '-';
-          final firstName = m['firstName']?.toString() ?? '';
-          final lastName = m['lastName']?.toString() ?? '';
-          final fullName = '$firstName $lastName'.trim();
-          final phone = m['phoneNumber']?.toString() ?? '-';
-          final username = m['username']?.toString() ?? '-';
-          final wallet = m['walletSetup'] as Map<String, dynamic>?;
-          final balance = (wallet?['balance'] as num?)?.toDouble() ?? 0;
-
-          // البحث عن الموظف المربوط
-          final linkedUser = _findLinkedUser(username);
-          final hasLink = linkedUser != null;
-          final linkedName = linkedUser?['FullName']?.toString() ?? '-';
-
-          Color roleColor;
-          switch (role) {
-            case 'Super Admin Member':
-              roleColor = Colors.red.shade700;
-              break;
-            case 'Zone Admin':
-              roleColor = Colors.blue.shade700;
-              break;
-            case 'Field Worker':
-              roleColor = Colors.green.shade700;
-              break;
-            case 'Contractor':
-              roleColor = Colors.purple.shade700;
-              break;
-            default:
-              roleColor = Colors.grey.shade700;
-          }
-
-          return DataRow(
-            color: WidgetStateProperty.resolveWith((states) {
-              if (hasLink) return Colors.green.shade50;
-              return null;
-            }),
-            cells: [
-              DataCell(Center(
-                  child: Text('${i + 1}',
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600)))),
-              DataCell(Center(
-                  child: Text(username,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700)))),
-              DataCell(Center(
-                  child: Text(fullName.isNotEmpty ? fullName : '-',
-                      style: const TextStyle(fontSize: 12)))),
-              DataCell(Center(
-                  child: Text(phone, style: const TextStyle(fontSize: 12)))),
-              DataCell(Center(
-                  child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: roleColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(role,
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: roleColor)),
-              ))),
-              DataCell(Center(
-                  child: Text(
-                _currencyFormat.format(balance),
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: balance > 0
-                        ? Colors.green.shade700
-                        : balance < 0
-                            ? Colors.red.shade700
-                            : Colors.grey.shade400),
-              ))),
-              // الموظف المربوط
-              DataCell(Center(
-                  child: Text(
-                hasLink ? linkedName : '-',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: hasLink ? FontWeight.w700 : FontWeight.w400,
-                  color: hasLink ? Colors.teal.shade700 : Colors.grey,
-                ),
-              ))),
-              // حالة الربط
-              DataCell(Center(
-                  child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color:
-                      hasLink ? Colors.green.shade100 : Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  hasLink ? 'مربوط' : 'غير مربوط',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: hasLink
-                        ? Colors.green.shade800
-                        : Colors.orange.shade800,
-                  ),
-                ),
-              ))),
-              // إجراء
-              DataCell(Center(
-                  child: ElevatedButton.icon(
-                onPressed: () => _linkOperator(m),
-                icon: Icon(hasLink ? Icons.edit : Icons.link, size: 14),
-                label: Text(hasLink ? 'تعديل' : 'ربط',
-                    style: const TextStyle(fontSize: 11)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      hasLink ? Colors.blue.shade600 : Colors.teal.shade600,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  minimumSize: Size.zero,
-                ),
-              ))),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: 600),
+          child: DataTable(
+            columnSpacing: 0,
+            horizontalMargin: 8,
+            headingRowHeight: 42,
+            dataRowMinHeight: 38,
+            dataRowMaxHeight: 54,
+            headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
+            columns: [
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('#',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('المستخدم',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الاسم',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الهاتف',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الدور',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الرصيد',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الموظف المربوط',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الحالة',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('إجراء',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
             ],
-          );
-        }).toList(),
+            rows: list.asMap().entries.map((entry) {
+              final i = entry.key;
+              final m = entry.value;
+              final role =
+                  (m['role'] as Map?)?['displayValue']?.toString() ?? '-';
+              final firstName = m['firstName']?.toString() ?? '';
+              final lastName = m['lastName']?.toString() ?? '';
+              final fullName = '$firstName $lastName'.trim();
+              final phone = m['phoneNumber']?.toString() ?? '-';
+              final username = m['username']?.toString() ?? '-';
+              final wallet = m['walletSetup'] as Map<String, dynamic>?;
+              final balance = (wallet?['balance'] as num?)?.toDouble() ?? 0;
+
+              // البحث عن الموظف المربوط
+              final linkedUser = _findLinkedUser(username);
+              final hasLink = linkedUser != null;
+              final linkedName = linkedUser?['FullName']?.toString() ?? '-';
+
+              Color roleColor;
+              switch (role) {
+                case 'Super Admin Member':
+                  roleColor = Colors.red.shade700;
+                  break;
+                case 'Zone Admin':
+                  roleColor = Colors.blue.shade700;
+                  break;
+                case 'Field Worker':
+                  roleColor = Colors.green.shade700;
+                  break;
+                case 'Contractor':
+                  roleColor = Colors.purple.shade700;
+                  break;
+                default:
+                  roleColor = Colors.grey.shade700;
+              }
+
+              return DataRow(
+                color: WidgetStateProperty.resolveWith((states) {
+                  if (hasLink) return Colors.green.shade50;
+                  return null;
+                }),
+                cells: [
+                  DataCell(Center(
+                      child: Text('${i + 1}',
+                          style: TextStyle(
+                              fontSize: context.accR.small,
+                              fontWeight: FontWeight.w600)))),
+                  DataCell(Center(
+                      child: Text(username,
+                          style: TextStyle(
+                              fontSize: context.accR.small,
+                              fontWeight: FontWeight.w700)))),
+                  DataCell(Center(
+                      child: Text(fullName.isNotEmpty ? fullName : '-',
+                          style: TextStyle(fontSize: context.accR.small)))),
+                  DataCell(Center(
+                      child: Text(phone,
+                          style: TextStyle(fontSize: context.accR.small)))),
+                  DataCell(Center(
+                      child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: roleColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(role,
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.w600,
+                            color: roleColor)),
+                  ))),
+                  DataCell(Center(
+                      child: Text(
+                    _currencyFormat.format(balance),
+                    style: TextStyle(
+                        fontSize: context.accR.small,
+                        fontWeight: FontWeight.w600,
+                        color: balance > 0
+                            ? Colors.green.shade700
+                            : balance < 0
+                                ? Colors.red.shade700
+                                : Colors.grey.shade400),
+                  ))),
+                  // الموظف المربوط
+                  DataCell(Center(
+                      child: Text(
+                    hasLink ? linkedName : '-',
+                    style: TextStyle(
+                      fontSize: context.accR.small,
+                      fontWeight: hasLink ? FontWeight.w700 : FontWeight.w400,
+                      color: hasLink ? Colors.teal.shade700 : Colors.grey,
+                    ),
+                  ))),
+                  // حالة الربط
+                  DataCell(Center(
+                      child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: hasLink
+                          ? Colors.green.shade100
+                          : Colors.orange.shade100,
+                      borderRadius:
+                          BorderRadius.circular(context.accR.cardRadius),
+                    ),
+                    child: Text(
+                      hasLink ? 'مربوط' : 'غير مربوط',
+                      style: TextStyle(
+                        fontSize: context.accR.caption,
+                        fontWeight: FontWeight.w700,
+                        color: hasLink
+                            ? Colors.green.shade800
+                            : Colors.orange.shade800,
+                      ),
+                    ),
+                  ))),
+                  // إجراء
+                  DataCell(Center(
+                      child: ElevatedButton.icon(
+                    onPressed: () => _linkOperator(m),
+                    icon: Icon(hasLink ? Icons.edit : Icons.link,
+                        size: context.accR.iconXS),
+                    label: Text(hasLink ? 'تعديل' : 'ربط',
+                        style: TextStyle(fontSize: context.accR.small)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          hasLink ? Colors.blue.shade600 : Colors.teal.shade600,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: context.accR.spaceM,
+                          vertical: context.accR.spaceXS),
+                      minimumSize: Size.zero,
+                    ),
+                  ))),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }

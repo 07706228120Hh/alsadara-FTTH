@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/agent_api_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة معاملات الوكلاء
 /// تعرض جميع المعاملات المالية للوكلاء (أجور، تسديدات، خصومات، تعديلات)
@@ -73,31 +74,9 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        appBar: AppBar(
-          backgroundColor: AccountingTheme.bgSidebar,
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text(
-            '📋 معاملات الوكلاء',
-            style: GoogleFonts.cairo(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: () {
-                _currentPage = 1;
-                _loadData();
-              },
-              tooltip: 'تحديث',
-            ),
-          ],
-        ),
-        body: _isLoading
+      child: Container(
+        color: AccountingTheme.bgPrimary,
+        child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
                 ? _buildError()
@@ -111,11 +90,12 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline,
-              size: 64, color: AccountingTheme.danger),
-          const SizedBox(height: 16),
-          Text(_errorMessage!, style: GoogleFonts.cairo(fontSize: 16)),
-          const SizedBox(height: 16),
+          Icon(Icons.error_outline,
+              size: context.accR.iconEmpty, color: AccountingTheme.danger),
+          SizedBox(height: context.accR.spaceXL),
+          Text(_errorMessage!,
+              style: GoogleFonts.cairo(fontSize: context.accR.headingSmall)),
+          SizedBox(height: context.accR.spaceXL),
           ElevatedButton.icon(
             onPressed: _loadData,
             icon: const Icon(Icons.refresh),
@@ -127,22 +107,23 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
   }
 
   Widget _buildBody() {
+    final isMob = context.accR.isMobile;
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMob ? 8 : context.accR.spaceXXL),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ملخص
           if (_summary != null) _buildSummaryCards(),
-          const SizedBox(height: 20),
+          SizedBox(height: context.accR.spaceXL),
 
           // فلتر التاريخ (قائمة منسدلة)
           _buildDateDropdown(),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
 
           // فلتر النوع
           _buildFilters(),
-          const SizedBox(height: 16),
+          SizedBox(height: context.accR.spaceXL),
 
           // الجدول
           Expanded(child: _buildTransactionsTable()),
@@ -159,131 +140,215 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     final payments = (_summary?['totalPayments'] ?? 0).toDouble();
     final net = (_summary?['netBalance'] ?? 0).toDouble();
     final agentCount = (_summary?['agentCount'] ?? 0);
+    final isMob = context.accR.isMobile;
 
+    if (isMob) {
+      // موبايل: صف واحد من 5 بطاقات صغيرة
+      return Row(
+        children: [
+          Expanded(
+            child: _buildMiniSummaryCard('الأجور', _formatNumber(charges),
+                Icons.trending_down, AccountingTheme.danger),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _buildMiniSummaryCard('التسديدات', _formatNumber(payments),
+                Icons.trending_up, AccountingTheme.success),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _buildMiniSummaryCard(
+                'الصافي',
+                _formatNumber(net),
+                Icons.account_balance_wallet,
+                net >= 0 ? AccountingTheme.neonBlue : AccountingTheme.danger),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _buildMiniSummaryCard('الوكلاء', agentCount.toString(),
+                Icons.people, AccountingTheme.neonPurple),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _buildMiniSummaryCard('المعاملات', _total.toString(),
+                Icons.receipt_long, const Color(0xFF34495E)),
+          ),
+        ],
+      );
+    }
+
+    // سطح المكتب: صف واحد
     return Row(
       children: [
-        _buildSummaryCard(
-          'إجمالي الأجور',
-          charges,
-          Icons.trending_down,
-          AccountingTheme.danger,
+        Expanded(
+          child: _buildSummaryCard(
+            'إجمالي الأجور',
+            charges,
+            Icons.trending_down,
+            AccountingTheme.danger,
+          ),
         ),
-        const SizedBox(width: 16),
-        _buildSummaryCard(
-          'إجمالي التسديدات',
-          payments,
-          Icons.trending_up,
-          AccountingTheme.success,
+        SizedBox(width: context.accR.spaceM),
+        Expanded(
+          child: _buildSummaryCard(
+            'إجمالي التسديدات',
+            payments,
+            Icons.trending_up,
+            AccountingTheme.success,
+          ),
         ),
-        const SizedBox(width: 16),
-        _buildSummaryCard(
-          'الصافي',
-          net,
-          Icons.account_balance_wallet,
-          net >= 0 ? AccountingTheme.neonBlue : AccountingTheme.danger,
+        SizedBox(width: context.accR.spaceM),
+        Expanded(
+          child: _buildSummaryCard(
+            'الصافي',
+            net,
+            Icons.account_balance_wallet,
+            net >= 0 ? AccountingTheme.neonBlue : AccountingTheme.danger,
+          ),
         ),
-        const SizedBox(width: 16),
-        _buildInfoCard(
-          'عدد الوكلاء',
-          agentCount.toString(),
-          Icons.people,
-          AccountingTheme.neonPurple,
+        SizedBox(width: context.accR.spaceM),
+        Expanded(
+          child: _buildInfoCard(
+            'عدد الوكلاء',
+            agentCount.toString(),
+            Icons.people,
+            AccountingTheme.neonPurple,
+          ),
         ),
-        const SizedBox(width: 16),
-        _buildInfoCard(
-          'عدد المعاملات',
-          _total.toString(),
-          Icons.receipt_long,
-          const Color(0xFF34495E),
+        SizedBox(width: context.accR.spaceM),
+        Expanded(
+          child: _buildInfoCard(
+            'عدد المعاملات',
+            _total.toString(),
+            Icons.receipt_long,
+            const Color(0xFF34495E),
+          ),
         ),
       ],
     );
   }
 
+  Widget _buildMiniSummaryCard(
+      String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(height: 2),
+          Text(value,
+              style: GoogleFonts.cairo(
+                  fontSize: 11, fontWeight: FontWeight.bold, color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+          Text(label,
+              style:
+                  GoogleFonts.cairo(fontSize: 8, color: color.withOpacity(0.8)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummaryCard(
       String label, double amount, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 20, color: color),
-                const SizedBox(width: 8),
-                Text(label,
+    return Container(
+      padding: EdgeInsets.all(context.accR.spaceXL),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgCard,
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: context.accR.iconM, color: color),
+              SizedBox(width: context.accR.spaceS),
+              Flexible(
+                child: Text(label,
                     style: GoogleFonts.cairo(
-                        fontSize: 12, color: AccountingTheme.textMuted)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${_formatNumber(amount)} د.ع',
-              style: GoogleFonts.cairo(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
+                        fontSize: context.accR.small,
+                        color: AccountingTheme.textMuted),
+                    overflow: TextOverflow.ellipsis),
               ),
+            ],
+          ),
+          SizedBox(height: context.accR.spaceS),
+          Text(
+            '${_formatNumber(amount)} د.ع',
+            style: GoogleFonts.cairo(
+              fontSize: context.accR.headingSmall,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildInfoCard(
       String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 20, color: color),
-                const SizedBox(width: 8),
-                Text(label,
+    return Container(
+      padding: EdgeInsets.all(context.accR.spaceXL),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgCard,
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: context.accR.iconM, color: color),
+              SizedBox(width: context.accR.spaceS),
+              Flexible(
+                child: Text(label,
                     style: GoogleFonts.cairo(
-                        fontSize: 12, color: AccountingTheme.textMuted)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: GoogleFonts.cairo(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
+                        fontSize: context.accR.small,
+                        color: AccountingTheme.textMuted),
+                    overflow: TextOverflow.ellipsis),
               ),
+            ],
+          ),
+          SizedBox(height: context.accR.spaceS),
+          Text(
+            value,
+            style: GoogleFonts.cairo(
+              fontSize: context.accR.headingSmall,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -351,12 +416,14 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
         // زر التاريخ الرئيسي (يعمل كزر للقائمة المنسدلة)
         InkWell(
           onTap: () => setState(() => _showDateFilter = !_showDateFilter),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(context.accR.cardRadius),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.accR.paddingH,
+                vertical: context.accR.spaceM),
             decoration: BoxDecoration(
               color: AccountingTheme.bgCard,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(context.accR.cardRadius),
               border: Border.all(
                 color: _showDateFilter
                     ? AccountingTheme.neonBlue
@@ -366,27 +433,26 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             child: Row(
               children: [
                 Icon(Icons.calendar_today,
-                    size: 18,
+                    size: context.accR.iconM,
                     color: hasFilter
                         ? AccountingTheme.neonBlue
                         : AccountingTheme.textMuted),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 Text('التاريخ:',
                     style: GoogleFonts.cairo(
                         fontWeight: FontWeight.w600,
                         color: AccountingTheme.textPrimary)),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 if (hasFilter)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                     decoration: BoxDecoration(
                       color: AccountingTheme.neonBlue,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(context.accR.radiusL),
                     ),
                     child: Text(_dateLabel,
                         style: GoogleFonts.cairo(
-                          fontSize: 12,
+                          fontSize: context.accR.small,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         )),
@@ -394,7 +460,8 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                 else
                   Text('الكل',
                       style: GoogleFonts.cairo(
-                          fontSize: 13, color: AccountingTheme.textMuted)),
+                          fontSize: context.accR.financialSmall,
+                          color: AccountingTheme.textMuted)),
                 const Spacer(),
                 AnimatedRotation(
                   turns: _showDateFilter ? 0.5 : 0,
@@ -409,13 +476,15 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
 
         // محتوى القائمة المنسدلة
         AnimatedCrossFade(
-          firstChild: const SizedBox.shrink(),
+          firstChild: SizedBox.shrink(),
           secondChild: Container(
-            margin: const EdgeInsets.only(top: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            margin: EdgeInsets.only(top: 4),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.accR.paddingH,
+                vertical: context.accR.spaceM),
             decoration: BoxDecoration(
               color: AccountingTheme.bgCard,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(context.accR.cardRadius),
               border: Border.all(
                   color: AccountingTheme.neonBlue.withValues(alpha: 0.3)),
               boxShadow: [
@@ -439,7 +508,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                     todayStart.subtract(const Duration(days: 30)), todayEnd),
                 ActionChip(
                   avatar: Icon(Icons.date_range,
-                      size: 16,
+                      size: context.accR.iconS,
                       color: _dateLabel != 'الكل' &&
                               _dateLabel != 'اليوم' &&
                               _dateLabel != 'أمس' &&
@@ -449,7 +518,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                           : AccountingTheme.textMuted),
                   label: Text('تحديد فترة...',
                       style: GoogleFonts.cairo(
-                        fontSize: 12,
+                        fontSize: context.accR.small,
                         fontWeight: FontWeight.w600,
                         color: _dateLabel != 'الكل' &&
                                 _dateLabel != 'اليوم' &&
@@ -486,7 +555,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     return FilterChip(
       label: Text(label,
           style: GoogleFonts.cairo(
-            fontSize: 12,
+            fontSize: context.accR.small,
             fontWeight: FontWeight.w600,
             color: isSelected ? Colors.white : AccountingTheme.textSecondary,
           )),
@@ -499,28 +568,30 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
   }
 
   Widget _buildFilters() {
+    final isMob = context.accR.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 8 : context.accR.paddingH,
+          vertical: context.accR.spaceS),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         border: Border.all(color: AccountingTheme.borderColor),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Text('تصفية حسب النوع:',
+          Text('النوع:',
               style: GoogleFonts.cairo(
+                  fontSize: isMob ? 11 : 14,
                   fontWeight: FontWeight.w600,
                   color: AccountingTheme.textPrimary)),
-          const SizedBox(width: 12),
           _buildFilterChip('الكل', null),
-          const SizedBox(width: 8),
           _buildFilterChip('أجور', 0),
-          const SizedBox(width: 8),
           _buildFilterChip('تسديد', 1),
-          const SizedBox(width: 8),
           _buildFilterChip('خصم', 2),
-          const SizedBox(width: 8),
           _buildFilterChip('تعديل', 3),
         ],
       ),
@@ -532,7 +603,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     return FilterChip(
       label: Text(label,
           style: GoogleFonts.cairo(
-            fontSize: 12,
+            fontSize: context.accR.small,
             fontWeight: FontWeight.w600,
             color: isSelected ? Colors.white : AccountingTheme.textSecondary,
           )),
@@ -557,21 +628,169 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.receipt_long,
-                size: 64,
+                size: context.accR.iconEmpty,
                 color: AccountingTheme.textMuted.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
+            SizedBox(height: context.accR.spaceXL),
             Text('لا توجد معاملات',
                 style: GoogleFonts.cairo(
-                    fontSize: 16, color: AccountingTheme.textMuted)),
+                    fontSize: context.accR.headingSmall,
+                    color: AccountingTheme.textMuted)),
           ],
         ),
       );
     }
 
+    final isMob = context.accR.isMobile;
+    if (isMob) {
+      return _buildMobileTransactionsList();
+    }
+    return _buildDesktopTransactionsTable();
+  }
+
+  Widget _buildMobileTransactionsList() {
+    return ListView.separated(
+      itemCount: _transactions.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, idx) {
+        final tx = _transactions[idx] as Map<String, dynamic>;
+        final rowNum = (_currentPage - 1) * _pageSize + idx + 1;
+        final typeValue = (tx['typeValue'] is int) ? tx['typeValue'] as int : 0;
+        final color = _typeColor(tx['typeValue']);
+
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AccountingTheme.bgCard,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.25)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // الصف 1: الرقم + اسم الوكيل + النوع
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AccountingTheme.textMuted.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text('$rowNum',
+                        style: GoogleFonts.cairo(
+                            fontSize: 10, color: AccountingTheme.textMuted)),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(tx['agentName'] ?? '',
+                            style: GoogleFonts.cairo(
+                                fontSize: 12, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1),
+                        if ((tx['agentCode'] ?? '').toString().isNotEmpty)
+                          Text(tx['agentCode'] ?? '',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 9,
+                                  color: AccountingTheme.textMuted)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  _buildTypeBadge(tx['type'] ?? '', tx['typeValue']),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // الصف 2: المبلغ + الرصيد بعدها + الفئة
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('المبلغ',
+                            style: GoogleFonts.cairo(
+                                fontSize: 9, color: AccountingTheme.textMuted)),
+                        Text('${_formatNumber(tx['amount'])} د.ع',
+                            style: GoogleFonts.cairo(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: color)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('الرصيد بعدها',
+                            style: GoogleFonts.cairo(
+                                fontSize: 9, color: AccountingTheme.textMuted)),
+                        Text('${_formatNumber(tx['balanceAfter'])} د.ع',
+                            style: GoogleFonts.cairo(fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('الفئة',
+                            style: GoogleFonts.cairo(
+                                fontSize: 9, color: AccountingTheme.textMuted)),
+                        Text(
+                            _categoryLabel(
+                                tx['category'] ?? '', tx['categoryValue']),
+                            style: GoogleFonts.cairo(fontSize: 10),
+                            overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              // الصف 3: الوصف + التاريخ + رقم القيد
+              if ((tx['description'] ?? '').toString().isNotEmpty ||
+                  tx['journalEntryNumber'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    children: [
+                      if ((tx['description'] ?? '').toString().isNotEmpty)
+                        Expanded(
+                          child: Text(tx['description'] ?? '',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 9,
+                                  color: AccountingTheme.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      if (tx['journalEntryNumber'] != null)
+                        Text('قيد: ${tx['journalEntryNumber']}',
+                            style: GoogleFonts.cairo(
+                                fontSize: 9, color: AccountingTheme.textMuted)),
+                      const SizedBox(width: 8),
+                      Text(_formatDate(tx['createdAt']),
+                          style: GoogleFonts.cairo(
+                              fontSize: 9, color: AccountingTheme.textMuted)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopTransactionsTable() {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Container(
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -581,44 +800,53 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         child: SingleChildScrollView(
           child: SizedBox(
             width: double.infinity,
             child: DataTable(
               headingRowColor:
                   WidgetStateProperty.all(AccountingTheme.bgSecondary),
-              columnSpacing: 24,
-              dataRowMinHeight: 48,
-              dataRowMaxHeight: 64,
+              columnSpacing: screenWidth > 1200 ? 20 : 12,
+              dataRowMinHeight: 44,
+              dataRowMaxHeight: 60,
               columns: [
                 DataColumn(
                     label: Text('#',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الوكيل',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('النوع',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الفئة',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('المبلغ',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الرصيد بعدها',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الوصف',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
-                    label: Text('رقم القيد',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                    label: Text('القيد',
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('التاريخ',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
               ],
               rows: _transactions.asMap().entries.map((entry) {
                 final idx = entry.key;
@@ -628,49 +856,56 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                 return DataRow(cells: [
                   DataCell(Text('$rowNum',
                       style: GoogleFonts.cairo(
-                          fontSize: 12, color: AccountingTheme.textMuted))),
+                          fontSize: 11, color: AccountingTheme.textMuted))),
                   DataCell(
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tx['agentName'] ?? '',
-                          style: GoogleFonts.cairo(
-                              fontWeight: FontWeight.w600, fontSize: 13),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          tx['agentCode'] ?? '',
-                          style: GoogleFonts.cairo(
-                              fontSize: 11, color: AccountingTheme.textMuted),
-                        ),
-                      ],
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: screenWidth * 0.12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tx['agentName'] ?? '',
+                            style: GoogleFonts.cairo(
+                                fontWeight: FontWeight.w600, fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            tx['agentCode'] ?? '',
+                            style: GoogleFonts.cairo(
+                                fontSize: 10, color: AccountingTheme.textMuted),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   DataCell(_buildTypeBadge(tx['type'] ?? '', tx['typeValue'])),
-                  DataCell(Text(
-                    _categoryLabel(tx['category'] ?? '', tx['categoryValue']),
-                    style: GoogleFonts.cairo(fontSize: 12),
+                  DataCell(ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: screenWidth * 0.08),
+                    child: Text(
+                      _categoryLabel(tx['category'] ?? '', tx['categoryValue']),
+                      style: GoogleFonts.cairo(fontSize: 11),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   )),
                   DataCell(Text(
                     '${_formatNumber(tx['amount'])} د.ع',
                     style: GoogleFonts.cairo(
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 11,
                       color: _typeColor(tx['typeValue']),
                     ),
                   )),
                   DataCell(Text(
                     '${_formatNumber(tx['balanceAfter'])} د.ع',
-                    style: GoogleFonts.cairo(fontSize: 12),
+                    style: GoogleFonts.cairo(fontSize: 11),
                   )),
                   DataCell(
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 200),
+                      constraints: BoxConstraints(maxWidth: screenWidth * 0.12),
                       child: Text(
                         tx['description'] ?? '',
-                        style: GoogleFonts.cairo(fontSize: 12),
+                        style: GoogleFonts.cairo(fontSize: 11),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 2,
                       ),
@@ -681,10 +916,14 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                     style: GoogleFonts.cairo(
                         fontSize: 11, color: AccountingTheme.textMuted),
                   )),
-                  DataCell(Text(
-                    _formatDate(tx['createdAt']),
-                    style: GoogleFonts.cairo(
-                        fontSize: 11, color: AccountingTheme.textMuted),
+                  DataCell(ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: screenWidth * 0.1),
+                    child: Text(
+                      _formatDate(tx['createdAt']),
+                      style: GoogleFonts.cairo(
+                          fontSize: 10, color: AccountingTheme.textMuted),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   )),
                 ]);
               }).toList(),
@@ -729,7 +968,8 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
@@ -738,11 +978,13 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: context.accR.iconS, color: color),
+          SizedBox(width: context.accR.spaceXS),
           Text(label,
               style: GoogleFonts.cairo(
-                  fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+                  fontSize: context.accR.small,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
         ],
       ),
     );
@@ -792,7 +1034,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
 
   Widget _buildPagination() {
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: EdgeInsets.only(top: context.accR.spaceXL),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -806,9 +1048,11 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             icon: const Icon(Icons.chevron_right),
             tooltip: 'الصفحة السابقة',
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.accR.spaceS),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.accR.paddingH,
+                vertical: context.accR.spaceS),
             decoration: BoxDecoration(
               color: AccountingTheme.bgCard,
               borderRadius: BorderRadius.circular(8),
@@ -817,10 +1061,11 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             child: Text(
               'صفحة $_currentPage من $_totalPages  (${_formatNumber(_total)} معاملة)',
               style: GoogleFonts.cairo(
-                  fontSize: 13, color: AccountingTheme.textSecondary),
+                  fontSize: context.accR.financialSmall,
+                  color: AccountingTheme.textSecondary),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.accR.spaceS),
           IconButton(
             onPressed: _currentPage < _totalPages
                 ? () {

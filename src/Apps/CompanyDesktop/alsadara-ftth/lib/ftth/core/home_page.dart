@@ -33,6 +33,8 @@ import '../widgets/notification_filter.dart';
 import '../whatsapp/whatsapp_bottom_window.dart'; // استيراد نظام الواتساب العائم
 import '../../pages/whatsapp_conversations_page.dart'; // صفحة محادثات WhatsApp
 import '../../pages/whatsapp_bulk_sender_page.dart'; // صفحة إرسال رسائل جماعية (تحتوي على إعدادات API والتقارير)
+import '../../pages/whatsapp_templates_page.dart'; // صفحة إدارة قوالب الواتساب
+import '../../whatsapp/pages/whatsapp_settings_hub_page.dart'; // مركز إعدادات الواتساب الموحد
 
 import '../users/users_page.dart';
 import '../tickets/tktats_page.dart'; // تغيير الاستيراد إلى tktats_page
@@ -126,7 +128,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _cardAnimationController;
   late AnimationController _counterAnimationController;
 
-
   // ⚡ بيكاتشو الآن في Overlay عالمي (pikachu_overlay.dart)
 
   bool isLoadingDashboard = true;
@@ -169,6 +170,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     'whatsapp_business_api': false, // إعدادات WhatsApp Business API
     'whatsapp_bulk_sender': false, // إرسال رسائل جماعية
     'whatsapp_conversations_fab': false, // الزر العائم لمحادثات الواتساب
+    'whatsapp_templates': false, // إدارة قوالب الواتساب
     'local_storage': false, // التخزين المحلي للمشتركين
     'local_storage_import': false, // زر استيراد البيانات في التخزين المحلي
     'superset_reports': false, // تقارير Superset
@@ -788,7 +790,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (dashboardData.isEmpty) {
         showError("حدث خطأ أثناء جلب البيانات: $e");
       } else {
-        debugPrint('⚠️ [Dashboard] تعذر تحديث البيانات (${e.toString().split('\n').first}) - يُعرض الكاش');
+        debugPrint(
+            '⚠️ [Dashboard] تعذر تحديث البيانات (${e.toString().split('\n').first}) - يُعرض الكاش');
       }
       if (mounted) {
         setState(() {
@@ -3015,15 +3018,36 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           navigateToPage(const WhatsAppBulkSenderPage()),
                     ),
 
-                  // 8 إعدادات الواتساب
+                  // 8 قوالب الرسائل
+                  _buildDrawerItem(
+                    icon: IconsaxPlusBold.document_text,
+                    title: 'قوالب الرسائل',
+                    isTablet: isTablet,
+                    isSmallPhone: isSmallPhone,
+                    color: Colors.deepPurple,
+                    onTap: () => navigateToPage(const WhatsAppTemplatesPage()),
+                  ),
+
+                  // 9 إعدادات الواتساب
+                  _buildDrawerItem(
+                    icon: IconsaxPlusBold.setting_2,
+                    title: 'إعدادات الواتساب',
+                    isTablet: isTablet,
+                    isSmallPhone: isSmallPhone,
+                    color: Colors.green,
+                    onTap: _openWhatsAppSettingsDialog,
+                  ),
+
+                  // 10 مركز إعدادات الواتساب (السيرفر، API، ويب)
                   if (_hasPermission('whatsapp_settings'))
                     _buildDrawerItem(
-                      icon: IconsaxPlusBold.setting_2,
-                      title: 'إعدادات الواتساب',
+                      icon: IconsaxPlusBold.mobile,
+                      title: 'مركز الواتساب',
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.green,
-                      onTap: _openWhatsAppSettingsDialog,
+                      onTap: () =>
+                          navigateToPage(const WhatsAppSettingsHubPage()),
                     ),
 
                   // ═══════════════════════════════════════════════════════════════════
@@ -5365,8 +5389,8 @@ class _StatDonutPainter extends CustomPainter {
   _StatDonutPainter({
     required this.progress,
     required this.color,
-    this.strokeWidth = 8.0,
-  });
+    double strokeWidth = 8.0,
+  }) : strokeWidth = strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -5421,8 +5445,8 @@ class _DonutProgressPainter extends CustomPainter {
   _DonutProgressPainter({
     required this.progress,
     required this.color,
-    this.strokeWidth = 10,
-  });
+    double strokeWidth = 10,
+  }) : strokeWidth = strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {

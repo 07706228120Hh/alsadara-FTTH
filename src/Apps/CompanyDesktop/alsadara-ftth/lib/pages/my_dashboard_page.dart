@@ -2,12 +2,12 @@
 /// تحتوي على: البصمة + المعاملات المالية + الراتب + الخصومات والمكافآت
 library;
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
+import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 import '../services/api/api_client.dart';
@@ -223,45 +223,48 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   // ═══════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: _bgPage,
-        body: Column(
-          children: [
-            _buildToolbar(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _fetchAll,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ═══ 1. أزرار سريعة (بصمة + إجازة + سحب أموال) ═══
-                      _buildQuickActions(),
-                      const SizedBox(height: 20),
-                      // ═══ 2. ملخص مالي ═══
-                      _buildFinancialSummary(),
-                      const SizedBox(height: 20),
-                      // ═══ 3. الراتب والخصومات ═══
-                      _buildSalarySection(),
-                      const SizedBox(height: 20),
-                      // ═══ 4. طلبات سحب الأموال ═══
-                      _buildWithdrawalSection(),
-                      const SizedBox(height: 20),
-                      // ═══ 5. سجل الحضور اليومي ═══
-                      _buildDailyAttendanceSection(),
-                      const SizedBox(height: 20),
-                      // ═══ 5. المعاملات ═══
-                      _buildTransactionsSection(),
-                    ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildToolbar(),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _fetchAll,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(r.contentPaddingH),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ═══ 1. أزرار سريعة (بصمة + إجازة + سحب أموال) ═══
+                        _buildQuickActions(),
+                        const SizedBox(height: 20),
+                        // ═══ 2. ملخص مالي ═══
+                        _buildFinancialSummary(),
+                        const SizedBox(height: 20),
+                        // ═══ 3. الراتب والخصومات ═══
+                        _buildSalarySection(),
+                        const SizedBox(height: 20),
+                        // ═══ 4. طلبات سحب الأموال ═══
+                        _buildWithdrawalSection(),
+                        const SizedBox(height: 20),
+                        // ═══ 5. سجل الحضور اليومي ═══
+                        _buildDailyAttendanceSection(),
+                        const SizedBox(height: 20),
+                        // ═══ 5. المعاملات ═══
+                        _buildTransactionsSection(),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -271,8 +274,12 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   //  TOOLBAR
   // ═══════════════════════════════════════════════════════
   Widget _buildToolbar() {
+    final r = context.responsive;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.contentPaddingH,
+        vertical: r.isMobile ? 10 : 14,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1A2332), Color(0xFF2C3E50)],
@@ -295,15 +302,15 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(r.isMobile ? 6 : 8),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [_accentBlue, _accentTeal],
               ),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.dashboard_rounded,
-                color: Colors.white, size: 20),
+            child: Icon(Icons.dashboard_rounded,
+                color: Colors.white, size: r.appBarIconSize),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -312,12 +319,12 @@ class _MyDashboardPageState extends State<MyDashboardPage>
               children: [
                 Text('شاشتي',
                     style: GoogleFonts.cairo(
-                        fontSize: 20,
+                        fontSize: r.titleSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.white)),
                 Text(widget.username,
-                    style:
-                        GoogleFonts.cairo(fontSize: 12, color: Colors.white54)),
+                    style: GoogleFonts.cairo(
+                        fontSize: r.captionSize, color: Colors.white54)),
               ],
             ),
           ),

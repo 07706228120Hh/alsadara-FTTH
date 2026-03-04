@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة كشف حساب مشغل FTTH
 /// تعرض ملخص العمليات المالية لمشغل محدد (نقد/آجل/ماستر/وكيل)
@@ -103,12 +104,12 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         backgroundColor: AccountingTheme.bgPrimary,
         appBar: AppBar(
           backgroundColor: AccountingTheme.bgSidebar,
-          iconTheme: const IconThemeData(color: Colors.white),
+          iconTheme: IconThemeData(color: Colors.white),
           title: Text(
             'كشف حساب: ${widget.operatorName}',
             style: GoogleFonts.cairo(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: context.accR.headingSmall,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -133,11 +134,11 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.error_outline,
-                            size: 48, color: Colors.red.shade300),
-                        const SizedBox(height: 12),
+                            size: context.accR.iconXL, color: Colors.red.shade300),
+                        SizedBox(height: context.accR.spaceM),
                         Text(_errorMessage!,
                             style: TextStyle(color: Colors.red.shade700)),
-                        const SizedBox(height: 12),
+                        SizedBox(height: context.accR.spaceM),
                         ElevatedButton(
                             onPressed: _loadData,
                             child: const Text('إعادة المحاولة')),
@@ -153,15 +154,15 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     if (_data == null) return const Center(child: Text('لا توجد بيانات'));
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.accR.spaceXL),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // فلتر التاريخ
           if (_dateLabel != 'الكل')
             Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: EdgeInsets.only(bottom: context.accR.spaceM),
+              padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(8),
@@ -170,12 +171,12 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.filter_alt, size: 16, color: Colors.blue.shade700),
-                  const SizedBox(width: 6),
+                  Icon(Icons.filter_alt, size: context.accR.iconS, color: Colors.blue.shade700),
+                  SizedBox(width: context.accR.spaceXS),
                   Text(_dateLabel,
                       style:
-                          TextStyle(fontSize: 12, color: Colors.blue.shade700)),
-                  const SizedBox(width: 8),
+                          TextStyle(fontSize: context.accR.small, color: Colors.blue.shade700)),
+                  SizedBox(width: context.accR.spaceS),
                   InkWell(
                     onTap: () {
                       setState(() {
@@ -186,7 +187,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                       _loadData();
                     },
                     child: Icon(Icons.close,
-                        size: 16, color: Colors.blue.shade700),
+                        size: context.accR.iconS, color: Colors.blue.shade700),
                   ),
                 ],
               ),
@@ -194,7 +195,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
           // ملخص البطاقات
           _buildSummaryCards(),
-          const SizedBox(height: 16),
+          SizedBox(height: context.accR.spaceXL),
 
           // جدول العمليات
           _buildTransactionsTable(),
@@ -247,36 +248,36 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       width: 180,
       child: Card(
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.accR.cardRadius)),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(context.accR.spaceL),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 18, color: color),
-                    const SizedBox(width: 6),
+                    Icon(icon, size: context.accR.iconM, color: color),
+                    SizedBox(width: context.accR.spaceXS),
                   ],
                   Expanded(
                     child: Text(title,
                         style: GoogleFonts.cairo(
-                            fontSize: 12,
+                            fontSize: context.accR.small,
                             fontWeight: FontWeight.w600,
                             color: color)),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.accR.spaceS),
               Text(
                 '${_currencyFormat.format(amount)} د.ع',
                 style: GoogleFonts.cairo(
-                    fontSize: 16, fontWeight: FontWeight.bold, color: color),
+                    fontSize: context.accR.headingSmall, fontWeight: FontWeight.bold, color: color),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: context.accR.spaceXS),
               Text(subtitle,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                  style: TextStyle(fontSize: context.accR.small, color: Colors.grey.shade600)),
             ],
           ),
         ),
@@ -293,10 +294,10 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
     return Card(
       elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.accR.cardRadius)),
       color: netOwed > 0 ? Colors.red.shade50 : Colors.green.shade50,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.accR.spaceXL),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -308,13 +309,13 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                       : Icons.check_circle,
                   color:
                       netOwed > 0 ? Colors.red.shade700 : Colors.green.shade700,
-                  size: 22,
+                  size: context.accR.iconL,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 Text(
                   'المبالغ المستحقة',
                   style: GoogleFonts.cairo(
-                      fontSize: 15,
+                      fontSize: context.accR.body,
                       fontWeight: FontWeight.bold,
                       color: netOwed > 0
                           ? Colors.red.shade700
@@ -328,23 +329,23 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             _netRow('نقد مُسلَّم', deliveredCash, Colors.teal),
             _netRow('باقي النقد', remainingCash,
                 remainingCash > 0 ? Colors.red : Colors.green),
-            const SizedBox(height: 8),
+            SizedBox(height: context.accR.spaceS),
             _netRow('آجل مُسجّل', (_data?['creditAmount'] ?? 0).toDouble(),
                 Colors.orange),
             _netRow('آجل مُحصّل', collectedCredit, Colors.teal),
             _netRow('باقي الآجل', remainingCredit,
                 remainingCredit > 0 ? Colors.red : Colors.green),
-            const Divider(),
+            Divider(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('صافي المستحق',
                     style: GoogleFonts.cairo(
-                        fontSize: 14, fontWeight: FontWeight.bold)),
+                        fontSize: context.accR.body, fontWeight: FontWeight.bold)),
                 Text(
                   '${_currencyFormat.format(netOwed)} د.ع',
                   style: GoogleFonts.cairo(
-                    fontSize: 18,
+                    fontSize: context.accR.headingSmall,
                     fontWeight: FontWeight.bold,
                     color: netOwed > 0
                         ? Colors.red.shade700
@@ -361,16 +362,16 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   Widget _netRow(String label, double amount, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              style: TextStyle(fontSize: context.accR.financialSmall, color: Colors.grey.shade700)),
           Text(
             '${_currencyFormat.format(amount)} د.ع',
             style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: color),
+                fontSize: context.accR.financialSmall, fontWeight: FontWeight.w600, color: color),
           ),
         ],
       ),
@@ -381,7 +382,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     if (_transactions.isEmpty) {
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.accR.spaceXXL),
           child: Center(
             child: Text('لا توجد عمليات',
                 style: TextStyle(color: Colors.grey.shade500)),
@@ -392,15 +393,15 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.accR.cardRadius)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(context.accR.spaceL),
             child: Text('العمليات (${_transactions.length})',
                 style: GoogleFonts.cairo(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
+                    fontSize: context.accR.body, fontWeight: FontWeight.w600)),
           ),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -459,8 +460,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         // #
                         DataCell(Center(
                             child: Text('${i + 1}',
-                                style: const TextStyle(
-                                    fontSize: 11,
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
                                     fontWeight: FontWeight.w600)))),
                         // م.العميل
                         DataCell(Center(
@@ -468,7 +469,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(tx['CustomerId'] ?? '-',
-                                style: const TextStyle(fontSize: 10),
+                                style: TextStyle(fontSize: context.accR.caption),
                                 overflow: TextOverflow.ellipsis),
                             if (tx['CustomerId'] != null)
                               InkWell(
@@ -481,9 +482,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                           duration: Duration(seconds: 1)));
                                 },
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 2),
+                                  padding: EdgeInsets.only(right: 2),
                                   child: Icon(Icons.copy,
-                                      size: 12, color: Colors.grey.shade500),
+                                      size: context.accR.iconXS, color: Colors.grey.shade500),
                                 ),
                               ),
                           ],
@@ -491,19 +492,19 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         // العميل
                         DataCell(Center(
                             child: Text(tx['CustomerName'] ?? '-',
-                                style: const TextStyle(fontSize: 11),
+                                style: TextStyle(fontSize: context.accR.small),
                                 overflow: TextOverflow.ellipsis))),
                         // الهاتف
                         DataCell(Center(
                             child: Text(tx['PhoneNumber'] ?? '-',
-                                style: const TextStyle(fontSize: 11)))),
+                                style: TextStyle(fontSize: context.accR.small)))),
                         // م.الاشتراك
                         DataCell(Center(
                             child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(tx['SubscriptionId'] ?? '-',
-                                style: const TextStyle(fontSize: 10),
+                                style: TextStyle(fontSize: context.accR.caption),
                                 overflow: TextOverflow.ellipsis),
                             if (tx['SubscriptionId'] != null)
                               InkWell(
@@ -516,9 +517,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                           duration: Duration(seconds: 1)));
                                 },
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 2),
+                                  padding: EdgeInsets.only(right: 2),
                                   child: Icon(Icons.copy,
-                                      size: 12, color: Colors.grey.shade500),
+                                      size: context.accR.iconXS, color: Colors.grey.shade500),
                                 ),
                               ),
                           ],
@@ -526,14 +527,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         // الباقة
                         DataCell(Center(
                             child: Text(tx['PlanName'] ?? '-',
-                                style: const TextStyle(fontSize: 11)))),
+                                style: TextStyle(fontSize: context.accR.small)))),
                         // المبلغ
                         DataCell(Center(
                             child: Text(
                           _currencyFormat
                               .format((tx['PlanPrice'] ?? 0).toDouble()),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w700,
                               color: Colors.green.shade700),
                         ))),
@@ -543,7 +544,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 tx['CommitmentPeriod'] != null
                                     ? '${tx['CommitmentPeriod']} شهر'
                                     : '-',
-                                style: const TextStyle(fontSize: 11)))),
+                                style: TextStyle(fontSize: context.accR.small)))),
                         // التكرار
                         DataCell(
                           Center(child: Builder(builder: (_) {
@@ -552,7 +553,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 (tx['PaidMonths'] as num?)?.toInt() ?? 0;
                             if (cycle == null || cycle <= 0) {
                               return Icon(Icons.add_circle_outline,
-                                  size: 16, color: Colors.grey.shade400);
+                                  size: context.accR.iconS, color: Colors.grey.shade400);
                             }
                             return Container(
                               padding: const EdgeInsets.symmetric(
@@ -571,7 +572,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                               child: Text(
                                 '$paid/$cycle شهر',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: context.accR.caption,
                                   fontWeight: FontWeight.w700,
                                   color: paid >= cycle
                                       ? Colors.green.shade700
@@ -592,29 +593,29 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         // المنطقة
                         DataCell(Center(
                             child: Text(tx['ZoneName'] ?? tx['ZoneId'] ?? '-',
-                                style: const TextStyle(fontSize: 11),
+                                style: TextStyle(fontSize: context.accR.small),
                                 overflow: TextOverflow.ellipsis))),
                         // الفني
                         DataCell(Center(
                             child: Text(tx['TechnicianName'] ?? '-',
-                                style: const TextStyle(fontSize: 11)))),
+                                style: TextStyle(fontSize: context.accR.small)))),
                         // المُنفذ
                         DataCell(Center(
                             child: Text(tx['ActivatedBy'] ?? '-',
-                                style: const TextStyle(fontSize: 11),
+                                style: TextStyle(fontSize: context.accR.small),
                                 overflow: TextOverflow.ellipsis))),
                         // التاريخ
                         DataCell(Center(
                             child: Text(_formatDate(tx['ActivationDate']),
-                                style: const TextStyle(fontSize: 10)))),
+                                style: TextStyle(fontSize: context.accR.caption)))),
                         // البداية
                         DataCell(Center(
                             child: Text(tx['StartDate'] ?? '-',
-                                style: const TextStyle(fontSize: 10)))),
+                                style: TextStyle(fontSize: context.accR.caption)))),
                         // النهاية
                         DataCell(Center(
                             child: Text(tx['EndDate'] ?? '-',
-                                style: const TextStyle(fontSize: 10)))),
+                                style: TextStyle(fontSize: context.accR.caption)))),
                         // الحالة
                         DataCell(Center(
                             child:
@@ -625,58 +626,58 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 tx['PaymentStatus'] ??
                                     tx['PaymentMethod'] ??
                                     '-',
-                                style: const TextStyle(fontSize: 11)))),
+                                style: TextStyle(fontSize: context.accR.small)))),
                         // محفظة قبل
                         DataCell(Center(
                             child: Text(
                                 walletBefore != null
                                     ? _currencyFormat.format(walletBefore)
                                     : '-',
-                                style: const TextStyle(fontSize: 10)))),
+                                style: TextStyle(fontSize: context.accR.caption)))),
                         // محفظة بعد
                         DataCell(Center(
                             child: Text(
                                 walletAfter != null
                                     ? _currencyFormat.format(walletAfter)
                                     : '-',
-                                style: const TextStyle(fontSize: 10)))),
+                                style: TextStyle(fontSize: context.accR.caption)))),
                         // الجهاز
                         DataCell(Center(
                             child: Text(tx['DeviceUsername'] ?? '-',
-                                style: const TextStyle(fontSize: 10),
+                                style: TextStyle(fontSize: context.accR.caption),
                                 overflow: TextOverflow.ellipsis))),
                         // طباعة
                         DataCell(Center(
                             child: tx['IsPrinted'] == true
                                 ? Icon(Icons.print,
-                                    size: 15, color: Colors.green.shade600)
+                                    size: context.accR.iconS, color: Colors.green.shade600)
                                 : Icon(Icons.print_disabled,
-                                    size: 15, color: Colors.grey.shade400))),
+                                    size: context.accR.iconS, color: Colors.grey.shade400))),
                         // واتساب
                         DataCell(Center(
                             child: tx['IsWhatsAppSent'] == true
                                 ? Icon(Icons.check_circle,
-                                    size: 15, color: Colors.green.shade600)
+                                    size: context.accR.iconS, color: Colors.green.shade600)
                                 : Icon(Icons.cancel_outlined,
-                                    size: 15, color: Colors.grey.shade400))),
+                                    size: context.accR.iconS, color: Colors.grey.shade400))),
                         // مطابقة
                         DataCell(Center(
                             child: tx['IsReconciled'] == true
                                 ? Icon(Icons.check_circle,
-                                    size: 15, color: Colors.green.shade600)
+                                    size: context.accR.iconS, color: Colors.green.shade600)
                                 : Icon(Icons.cancel_outlined,
-                                    size: 15, color: Colors.grey.shade400))),
+                                    size: context.accR.iconS, color: Colors.grey.shade400))),
                         // محاسبة
                         DataCell(Center(
                             child: tx['JournalEntryId'] != null
                                 ? Icon(Icons.check_circle,
-                                    size: 15, color: Colors.green.shade600)
+                                    size: context.accR.iconS, color: Colors.green.shade600)
                                 : Icon(Icons.remove_circle_outline,
-                                    size: 15, color: Colors.grey.shade400))),
+                                    size: context.accR.iconS, color: Colors.grey.shade400))),
                         // ملاحظات
                         DataCell(Center(
                             child: Text(tx['SubscriptionNotes'] ?? '-',
-                                style: const TextStyle(fontSize: 10),
+                                style: TextStyle(fontSize: context.accR.caption),
                                 overflow: TextOverflow.ellipsis))),
                       ]);
                     }).toList(),
@@ -713,17 +714,17 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       txtColor = Colors.teal.shade700;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, color: txtColor)),
+      child: Text(label, style: TextStyle(fontSize: context.accR.caption, color: txtColor)),
     );
   }
 
   Widget _buildStatusBadge(String status) {
-    if (status.isEmpty) return const Text('-', style: TextStyle(fontSize: 11));
+    if (status.isEmpty) return Text('-', style: TextStyle(fontSize: context.accR.small));
     final lower = status.toLowerCase();
     Color color;
     if (lower.contains('active')) {
@@ -736,14 +737,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       color = Colors.grey.shade700;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: context.accR.spaceXS, vertical: 2),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(status,
           style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w600, color: color),
+              fontSize: context.accR.caption, fontWeight: FontWeight.w600, color: color),
           overflow: TextOverflow.ellipsis),
     );
   }
@@ -774,12 +775,12 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.shade50,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, color: color.shade700)),
+      child: Text(label, style: TextStyle(fontSize: context.accR.caption, color: color.shade700)),
     );
   }
 
@@ -815,21 +816,21 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       builder: (ctx) => AlertDialog(
         title: Text('تعيين التكرار',
             style:
-                GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold)),
+                GoogleFonts.cairo(fontSize: context.accR.body, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('$customerName - $planName',
                 style: GoogleFonts.cairo(
-                    fontSize: 12, color: Colors.grey.shade700)),
+                    fontSize: context.accR.small, color: Colors.grey.shade700)),
             if (collectionType == 'cash')
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: EdgeInsets.only(top: 4),
                 child: Text('نقد - الشهر الأول مدفوع تلقائياً',
                     style:
-                        TextStyle(fontSize: 11, color: Colors.teal.shade700)),
+                        TextStyle(fontSize: context.accR.small, color: Colors.teal.shade700)),
               ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.accR.spaceM),
             Wrap(
               spacing: 8,
               children: options.map((opt) {
@@ -837,7 +838,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                 final isSelected = (currentCycle ?? 0) == val;
                 return ChoiceChip(
                   label: Text(opt['label'] as String,
-                      style: GoogleFonts.cairo(fontSize: 12)),
+                      style: GoogleFonts.cairo(fontSize: context.accR.small)),
                   selected: isSelected,
                   selectedColor: Colors.deepPurple.shade100,
                   onSelected: (_) async {
@@ -938,7 +939,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   Widget _dateFilterOption(String label, VoidCallback setDates) {
     return ListTile(
-      title: Text(label, style: GoogleFonts.cairo(fontSize: 14)),
+      title: Text(label, style: GoogleFonts.cairo(fontSize: context.accR.body)),
       trailing: _dateLabel == label
           ? Icon(Icons.check, color: Colors.green.shade600)
           : null,
@@ -961,7 +962,7 @@ class _ColHead extends StatelessWidget {
     return Expanded(
       child: Center(
         child: Text(text,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: context.accR.small),
             overflow: TextOverflow.ellipsis),
       ),
     );

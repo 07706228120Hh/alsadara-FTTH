@@ -864,10 +864,13 @@ public class ServiceRequestsController : ControllerBase
             Total = await query.CountAsync(),
             Pending = await query.CountAsync(r => r.Status == ServiceRequestStatus.Pending),
             Reviewing = await query.CountAsync(r => r.Status == ServiceRequestStatus.Reviewing),
+            Approved = await query.CountAsync(r => r.Status == ServiceRequestStatus.Approved),
+            Assigned = await query.CountAsync(r => r.Status == ServiceRequestStatus.Assigned),
             InProgress = await query.CountAsync(r => r.Status == ServiceRequestStatus.InProgress),
             Completed = await query.CountAsync(r => r.Status == ServiceRequestStatus.Completed),
             Cancelled = await query.CountAsync(r => r.Status == ServiceRequestStatus.Cancelled),
             Rejected = await query.CountAsync(r => r.Status == ServiceRequestStatus.Rejected),
+            OnHold = await query.CountAsync(r => r.Status == ServiceRequestStatus.OnHold),
             TodayCreated = await query.CountAsync(r => r.CreatedAt >= DateTime.UtcNow.Date),
             TodayCompleted = await query.CountAsync(r => r.CompletedAt >= DateTime.UtcNow.Date)
         };

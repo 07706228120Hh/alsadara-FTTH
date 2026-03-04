@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../utils/responsive_helper.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import '../services/departments_data_service.dart';
@@ -138,11 +139,13 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: _dark1,
-        body: Column(
-          children: [
-            _buildPremiumHeader(),
-            Expanded(child: _buildBody()),
-          ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildPremiumHeader(),
+              Expanded(child: _buildBody()),
+            ],
+          ),
         ),
         floatingActionButton: _buildFAB(),
       ),
@@ -151,6 +154,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
 
   /// شريط علوي فخم بتدرج لوني
   Widget _buildPremiumHeader() {
+    final r = context.responsive;
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -165,20 +169,20 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 8, 14),
+          padding: EdgeInsets.fromLTRB(r.contentPaddingH, 10, 8, 12),
           child: Row(
             children: [
               // زر الرجوع
               _glassButton(
                 icon: Icons.arrow_forward_rounded,
                 onTap: () => Navigator.of(context).pop(),
-                size: 38,
+                size: r.isMobile ? 32 : 38,
               ),
               const SizedBox(width: 16),
               // أيقونة فخمة
               Container(
-                width: 44,
-                height: 44,
+                width: r.isMobile ? 36 : 44,
+                height: r.isMobile ? 36 : 44,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [_gold, Color(0xFFF5E6A3)],
@@ -208,7 +212,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                       'إدارة الموظفين',
                       style: GoogleFonts.cairo(
                         color: _textWhite,
-                        fontSize: 18,
+                        fontSize: r.titleSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -216,7 +220,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                       widget.companyName,
                       style: GoogleFonts.cairo(
                         color: _goldLight,
-                        fontSize: 12,
+                        fontSize: r.captionSize,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1215,191 +1219,6 @@ class EmployeeModel {
       }
     }
     return null;
-  }
-}
-
-// ============================================
-// نافذة تفاصيل الموظف
-// ============================================
-
-class _EmployeeDetailsDialog extends StatelessWidget {
-  final EmployeeModel employee;
-  final VoidCallback onEdit;
-  final VoidCallback onManagePermissions;
-  final VoidCallback? onDelete;
-
-  const _EmployeeDetailsDialog({
-    required this.employee,
-    required this.onEdit,
-    required this.onManagePermissions,
-    this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // الأفاتار
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: const Color(0xFF1976D2).withOpacity(0.1),
-              child: Text(
-                employee.fullName.isNotEmpty
-                    ? employee.fullName[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1976D2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // الاسم
-            Text(
-              employee.fullName,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            // الدور
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE3F2FD),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _getRoleNameAr(employee.role),
-                style: const TextStyle(
-                  color: Color(0xFF1976D2),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // المعلومات
-            _buildInfoRow(Icons.phone_rounded, 'الهاتف', employee.phoneNumber),
-            if (employee.email != null && employee.email!.isNotEmpty)
-              _buildInfoRow(Icons.email_rounded, 'البريد', employee.email!),
-            if (employee.department != null && employee.department!.isNotEmpty)
-              _buildInfoRow(
-                  Icons.business_rounded, 'القسم', employee.department!),
-            if (employee.center != null && employee.center!.isNotEmpty)
-              _buildInfoRow(
-                  Icons.location_on_rounded, 'المركز', employee.center!),
-            if (employee.employeeCode != null)
-              _buildInfoRow(
-                  Icons.badge_rounded, 'الكود', employee.employeeCode!),
-            const SizedBox(height: 24),
-            // الأزرار
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onManagePermissions,
-                    icon: const Icon(Icons.security_rounded),
-                    label: const Text('الصلاحيات'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF9C27B0),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_rounded),
-                    label: const Text('تعديل'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF2196F3),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_rounded),
-                    label: const Text('حذف'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor:
-                          onDelete != null ? Colors.red : Colors.grey,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1976D2),
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('إغلاق'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.grey.shade600),
-          const SizedBox(width: 12),
-          Text(
-            '$label:',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-              textAlign: TextAlign.start,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getRoleNameAr(String? role) {
-    switch (role?.toLowerCase()) {
-      case 'companyadmin':
-        return 'مدير الشركة';
-      case 'manager':
-        return 'مدير';
-      case 'technicalleader':
-        return 'ليدر فني';
-      case 'technician':
-        return 'فني';
-      case 'viewer':
-        return 'مشاهد';
-      case 'employee':
-        return 'موظف';
-      default:
-        return role ?? 'غير محدد';
-    }
   }
 }
 

@@ -74,11 +74,14 @@ class _TKTATsPageState extends State<TKTATsPage> {
   @override
   void initState() {
     super.initState();
-    // مسح الشارة عند فتح الصفحة
+    // مسح الشارة عند فتح الصفحة (لا يحتاج تأجيل)
     BadgeService.instance.clear();
-    fetchTKTATs();
-    setupNotifications();
-    startAutoRefresh();
+    // ⚡ تأجيل التحميل حتى بعد انتهاء transition animation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchTKTATs();
+      setupNotifications();
+      startAutoRefresh();
+    });
   }
 
   @override
@@ -129,7 +132,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
       final bool? granted =
           await androidImplementation.requestNotificationsPermission();
       if (granted != true) {
-        print('Notification permission denied');
+        debugPrint('Notification permission denied');
       }
     }
   }
@@ -221,19 +224,19 @@ class _TKTATsPageState extends State<TKTATsPage> {
   // دالة مساعدة لإرسال إشعار شامل (نظام + داخل التطبيق)
   Future<void> showCompleteNotification(String title, String body,
       {String? payload}) async {
-    print('🔔 showCompleteNotification called - Title: $title, Body: $body');
+    debugPrint('🔔 showCompleteNotification called - Title: $title, Body: $body');
 
     try {
       // إشعار النظام
       await showNotification(title, body, payload: payload);
-      print('✅ System notification sent successfully');
+      debugPrint('✅ System notification sent successfully');
 
       // إشعار داخل التطبيق
       showInAppNotification('$title: $body',
           backgroundColor: Colors.green[600]);
-      print('✅ In-app notification sent successfully');
+      debugPrint('✅ In-app notification sent successfully');
     } catch (e) {
-      print('❌ Error sending notifications: $e');
+      debugPrint('❌ Error sending notifications: $e');
     }
   }
 
@@ -262,13 +265,13 @@ class _TKTATsPageState extends State<TKTATsPage> {
 
   Future<void> fetchTKTATs({bool showNotificationOnNewTKTATs = false}) async {
     if (_fetchInProgress) {
-      print(
+      debugPrint(
           '[fetchTKTATs] تم تجاهل طلب جديد لأن هناك طلب قيد التنفيذ - time=${DateTime.now()}');
       return;
     }
     _fetchInProgress = true;
     final fetchStart = DateTime.now();
-    print(
+    debugPrint(
         '[fetchTKTATs] بدء الجلب suspended=$_uiUpdatesSuspended showNotify=$showNotificationOnNewTKTATs page=$currentPage at $fetchStart');
     if (!_uiUpdatesSuspended) {
       setState(() {
@@ -306,18 +309,18 @@ class _TKTATsPageState extends State<TKTATsPage> {
         'Content-Type': 'application/json',
       };
 
-      print('Fetching TKTATs from: $url');
-      print('Using token: ${widget.authToken.substring(0, 20)}...');
+      debugPrint('Fetching TKTATs from: $url');
+      debugPrint('Using token: ${widget.authToken.substring(0, 20)}...');
 
       final response = await http
           .get(url, headers: lastRequestHeaders!)
           .timeout(Duration(seconds: 30));
 
-      print('Response status: ${response.statusCode}');
-      print(
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint(
           'Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
       if (response.statusCode == 200) {
-        print(
+        debugPrint(
             '[fetchTKTATs] ✅ نجاح الجلب بعد ${DateTime.now().difference(fetchStart).inMilliseconds} ms');
         final data = json.decode(response.body);
         final newTKTATs =
@@ -328,9 +331,9 @@ class _TKTATsPageState extends State<TKTATsPage> {
             showNotificationOnNewTKTATs &&
             !isFirstLoad &&
             tktats.isNotEmpty) {
-          print('🔔 بدء فحص المهام الجديدة...');
-          print('عدد المهام السابقة: ${tktats.length}');
-          print('عدد المهام الجديدة: ${newTKTATs.length}');
+          debugPrint('🔔 بدء فحص المهام الجديدة...');
+          debugPrint('عدد المهام السابقة: ${tktats.length}');
+          debugPrint('عدد المهام الجديدة: ${newTKTATs.length}');
 
           // البحث عن مهام جديدة حقيقية
           final List<Map<String, dynamic>> reallyNewTasks = [];
@@ -352,7 +355,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
             }
           }
 
-          print('عدد المهام الجديدة الحقيقية: ${reallyNewTasks.length}');
+          debugPrint('عدد المهام الجديدة الحقيقية: ${reallyNewTasks.length}');
 
           if (reallyNewTasks.isNotEmpty) {
             // إشعار النظام
@@ -461,9 +464,9 @@ class _TKTATsPageState extends State<TKTATsPage> {
           isLoading = false;
         });
       }
-      print('Error details: $e');
+      debugPrint('Error details: $e');
     }
-    print(
+    debugPrint(
         '[fetchTKTATs] انتهاء الجلب success=${!isLoading} suspended=$_uiUpdatesSuspended مدة=${DateTime.now().difference(fetchStart).inMilliseconds} ms');
     _fetchInProgress = false;
   }
@@ -759,7 +762,7 @@ $lastErrorDetails
       }
       return true;
     } catch (e) {
-      print('Error checking connectivity: $e');
+      debugPrint('Error checking connectivity: $e');
       return true; // افتراض وجود اتصال في حالة الخطأ
     }
   }
@@ -1951,7 +1954,9 @@ $lastErrorDetails
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
-            width: 480,
+            constraints: BoxConstraints(
+              maxWidth: (MediaQuery.of(context).size.width - 40).clamp(280.0, 480.0),
+            ),
             padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2309,9 +2314,9 @@ $lastErrorDetails
         payload: 'new_tktats_$count',
       );
 
-      print('✅ تم إرسال إشعار النظام بنجاح');
+      debugPrint('✅ تم إرسال إشعار النظام بنجاح');
     } catch (e) {
-      print('❌ خطأ في إرسال إشعار النظام: $e');
+      debugPrint('❌ خطأ في إرسال إشعار النظام: $e');
     }
   }
 
@@ -2428,7 +2433,7 @@ $lastErrorDetails
     try {
       HapticFeedback.lightImpact();
     } catch (e) {
-      print('Haptic feedback not available: $e');
+      debugPrint('Haptic feedback not available: $e');
     }
   }
 

@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../theme/accounting_responsive.dart';
 import '../../services/attendance_api_service.dart';
 import '../../services/vps_auth_service.dart';
 
@@ -115,9 +116,12 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
           centerTitle: true,
           title: Text('طلبات سحب الأموال',
               style: GoogleFonts.cairo(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+                  fontSize: context.accR.headingSmall,
+                  fontWeight: FontWeight.bold,
+                  color: _textDark)),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: _textDark, size: 20),
+            icon: Icon(Icons.arrow_back_ios,
+                color: _textDark, size: context.accR.iconM),
             onPressed: () => Navigator.pop(context),
           ),
           actions: [
@@ -127,24 +131,34 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
             ),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: _loadAll,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatsRow(),
-                const SizedBox(height: 20),
-                _buildFilterRow(),
-                const SizedBox(height: 16),
-                _buildRequestsList(),
-                if (_totalPages > 1) ...[
-                  const SizedBox(height: 16),
-                  _buildPagination(),
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _loadAll,
+            child: SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(context.accR.isMobile
+                  ? context.accR.spaceM
+                  : context.accR.spaceXL),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStatsRow(),
+                  SizedBox(
+                      height: context.accR.isMobile
+                          ? context.accR.spaceM
+                          : context.accR.spaceXL),
+                  _buildFilterRow(),
+                  SizedBox(
+                      height: context.accR.isMobile
+                          ? context.accR.spaceM
+                          : context.accR.spaceXL),
+                  _buildRequestsList(),
+                  if (_totalPages > 1) ...[
+                    SizedBox(height: context.accR.spaceXL),
+                    _buildPagination(),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -197,11 +211,13 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
 
   Widget _statCard(
       String label, int count, String subtitle, IconData icon, Color color) {
+    final isMobile = context.accR.isMobile;
+    final iconBoxSize = isMobile ? 32.0 : 42.0;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(isMobile ? 8 : context.accR.spaceL),
       decoration: BoxDecoration(
         color: _bgCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         border: Border.all(color: color.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
@@ -213,29 +229,35 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: iconBoxSize,
+            height: iconBoxSize,
             decoration: BoxDecoration(
                 color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 22),
+                borderRadius: BorderRadius.circular(
+                    isMobile ? 6 : context.accR.cardRadius)),
+            child: Icon(icon,
+                color: color, size: isMobile ? 18 : context.accR.iconM),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$count',
                     style: GoogleFonts.cairo(
-                        fontSize: 22,
+                        fontSize: isMobile ? 16 : context.accR.financialLarge,
                         fontWeight: FontWeight.bold,
                         color: color)),
                 Text(label,
-                    style: GoogleFonts.cairo(fontSize: 11, color: _textGray)),
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.cairo(
+                        fontSize: isMobile ? 10 : context.accR.small,
+                        color: _textGray)),
                 if (subtitle.isNotEmpty)
                   Text(subtitle,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.cairo(
-                          fontSize: 10,
+                          fontSize: isMobile ? 9 : context.accR.caption,
                           color: _textGray,
                           fontWeight: FontWeight.w600)),
               ],
@@ -250,26 +272,52 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
   //  شريط الفلترة
   // ═══════════════════════════════════════════════
   Widget _buildFilterRow() {
+    final isMobile = context.accR.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 4 : context.accR.spaceM,
+          vertical: isMobile ? 4 : context.accR.spaceS),
       decoration: BoxDecoration(
         color: _bgCard,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6),
         ],
       ),
-      child: Row(
-        children: [
-          Text('الحالة:',
-              style: GoogleFonts.cairo(fontSize: 13, color: _textDark)),
-          const SizedBox(width: 8),
-          ..._filterChips(),
-          const Spacer(),
-          Text('الإجمالي: $_total',
-              style: GoogleFonts.cairo(fontSize: 12, color: _textGray)),
-        ],
-      ),
+      child: isMobile
+          ? Row(
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: _filterChips(),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text('$_total',
+                      style: GoogleFonts.cairo(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _textGray)),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Text('الحالة:',
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.financialSmall,
+                        color: _textDark)),
+                SizedBox(width: context.accR.spaceS),
+                ..._filterChips(),
+                Spacer(),
+                Text('الإجمالي: $_total',
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.small, color: _textGray)),
+              ],
+            ),
     );
   }
 
@@ -281,22 +329,31 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       {'label': 'مصروفة', 'value': 4},
       {'label': 'مرفوضة', 'value': 2},
     ];
+    final isMobile = context.accR.isMobile;
     return filters.map((f) {
       final isSelected = _statusFilter == f['value'];
-      return Padding(
-        padding: const EdgeInsets.only(left: 6),
-        child: ChoiceChip(
-          label: Text(f['label'] as String,
-              style: GoogleFonts.cairo(
-                  fontSize: 11, color: isSelected ? Colors.white : _textDark)),
-          selected: isSelected,
-          selectedColor: _accentBlue,
-          backgroundColor: _bgPage,
-          onSelected: (_) {
-            setState(() => _statusFilter = f['value'] as int?);
-            _loadRequests();
-          },
-        ),
+      return ChoiceChip(
+        label: Text(f['label'] as String,
+            style: GoogleFonts.cairo(
+                fontSize: isMobile ? 10 : context.accR.small,
+                height: 1.2,
+                color: isSelected ? Colors.white : _textDark)),
+        selected: isSelected,
+        selectedColor: _accentBlue,
+        backgroundColor: _bgPage,
+        visualDensity: isMobile
+            ? const VisualDensity(horizontal: -4, vertical: -4)
+            : VisualDensity.standard,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: isMobile
+            ? const EdgeInsets.symmetric(horizontal: 4, vertical: 0)
+            : null,
+        labelPadding:
+            isMobile ? const EdgeInsets.symmetric(horizontal: 2) : null,
+        onSelected: (_) {
+          setState(() => _statusFilter = f['value'] as int?);
+          _loadRequests();
+        },
       );
     }).toList();
   }
@@ -315,18 +372,19 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
     if (_requests.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(40),
+        padding: EdgeInsets.all(40),
         decoration: BoxDecoration(
           color: _bgCard,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(context.accR.cardRadius),
         ),
         child: Column(
           children: [
             Icon(Icons.inbox_rounded,
-                size: 48, color: _textGray.withOpacity(0.4)),
-            const SizedBox(height: 8),
+                size: context.accR.iconXL, color: _textGray.withOpacity(0.4)),
+            SizedBox(height: context.accR.spaceS),
             Text('لا توجد طلبات',
-                style: GoogleFonts.cairo(color: _textGray, fontSize: 14)),
+                style: GoogleFonts.cairo(
+                    color: _textGray, fontSize: context.accR.body)),
           ],
         ),
       );
@@ -351,13 +409,14 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
     final createdAt = _formatDate(req['CreatedAt']?.toString());
     final reviewedAt = _formatDate(req['ReviewedAt']?.toString());
     final id = req['Id'] as int? ?? 0;
+    final isMobile = context.accR.isMobile;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: isMobile ? 8 : 10),
+      padding: EdgeInsets.all(isMobile ? 10 : context.accR.spaceXL),
       decoration: BoxDecoration(
         color: _bgCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         border: Border(
             right: BorderSide(color: statusInfo['color'] as Color, width: 4)),
         boxShadow: [
@@ -375,51 +434,60 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
             children: [
               // أيقونة الحالة
               Container(
-                width: 38,
-                height: 38,
+                width: isMobile ? 32 : 38,
+                height: isMobile ? 32 : 38,
                 decoration: BoxDecoration(
                   color: (statusInfo['color'] as Color).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(statusInfo['icon'] as IconData,
-                    color: statusInfo['color'] as Color, size: 20),
+                    color: statusInfo['color'] as Color,
+                    size: isMobile ? 18 : context.accR.iconM),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: isMobile ? 8 : context.accR.spaceM),
               // اسم الموظف
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(userName,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.cairo(
-                            fontSize: 14,
+                            fontSize: isMobile ? 13 : context.accR.body,
                             fontWeight: FontWeight.bold,
                             color: _textDark)),
                     Text('طلب #$id • $createdAt',
-                        style:
-                            GoogleFonts.cairo(fontSize: 10, color: _textGray)),
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.cairo(
+                            fontSize: isMobile ? 10 : context.accR.caption,
+                            color: _textGray)),
                   ],
                 ),
               ),
-              // شارة الحالة
+            ],
+          ),
+          SizedBox(height: isMobile ? 6 : context.accR.spaceS),
+          // صف الحالة + المبلغ
+          Row(
+            children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 8 : context.accR.spaceM,
+                    vertical: 2),
                 decoration: BoxDecoration(
                   color: (statusInfo['color'] as Color).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(statusInfo['label'] as String,
                     style: GoogleFonts.cairo(
-                        fontSize: 11,
+                        fontSize: isMobile ? 11 : context.accR.small,
                         fontWeight: FontWeight.w600,
                         color: statusInfo['color'] as Color)),
               ),
-              const SizedBox(width: 12),
-              // المبلغ
+              Spacer(),
               Text('${_formatAmount(amount)} د.ع',
                   style: GoogleFonts.cairo(
-                      fontSize: 16,
+                      fontSize: isMobile ? 15 : context.accR.headingSmall,
                       fontWeight: FontWeight.bold,
                       color: _accentRed)),
             ],
@@ -427,26 +495,37 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
 
           // السبب والملاحظات
           if (reason.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: context.accR.spaceS),
             Row(
               children: [
-                Icon(Icons.notes, size: 14, color: _textGray.withOpacity(0.7)),
-                const SizedBox(width: 6),
-                Text('السبب: $reason',
-                    style: GoogleFonts.cairo(fontSize: 12, color: _textGray)),
+                Icon(Icons.notes,
+                    size: isMobile ? 14 : context.accR.iconS,
+                    color: _textGray.withOpacity(0.7)),
+                SizedBox(width: context.accR.spaceXS),
+                Flexible(
+                  child: Text('السبب: $reason',
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.cairo(
+                          fontSize: isMobile ? 11 : context.accR.small,
+                          color: _textGray)),
+                ),
               ],
             ),
           ],
           if (notes.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            SizedBox(height: context.accR.spaceXS),
             Row(
               children: [
                 Icon(Icons.comment,
-                    size: 14, color: _textGray.withOpacity(0.7)),
-                const SizedBox(width: 6),
+                    size: isMobile ? 14 : context.accR.iconS,
+                    color: _textGray.withOpacity(0.7)),
+                SizedBox(width: context.accR.spaceXS),
                 Flexible(
                   child: Text('ملاحظات: $notes',
-                      style: GoogleFonts.cairo(fontSize: 11, color: _textGray)),
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.cairo(
+                          fontSize: isMobile ? 11 : context.accR.small,
+                          color: _textGray)),
                 ),
               ],
             ),
@@ -454,26 +533,28 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
 
           // ملاحظات المراجعة
           if (reviewedBy.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            SizedBox(height: context.accR.spaceXS),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(isMobile ? 6 : context.accR.spaceS),
               decoration: BoxDecoration(
                 color: _bgPage,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.person, size: 14, color: _accentPurple),
-                  const SizedBox(width: 6),
-                  Text('$reviewedBy • $reviewedAt',
+                  Icon(Icons.person,
+                      size: isMobile ? 14 : context.accR.iconS,
+                      color: _accentPurple),
+                  SizedBox(width: context.accR.spaceXS),
+                  Expanded(
+                    child: Text(
+                      '$reviewedBy • $reviewedAt${reviewNotes.isNotEmpty ? ' — $reviewNotes' : ''}',
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.cairo(
-                          fontSize: 10, color: _accentPurple)),
-                  if (reviewNotes.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Text('— $reviewNotes',
-                        style:
-                            GoogleFonts.cairo(fontSize: 10, color: _textGray)),
-                  ],
+                          fontSize: isMobile ? 10 : context.accR.caption,
+                          color: _accentPurple),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -481,9 +562,9 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
 
           // أزرار الإجراءات (للطلبات المعلقة والموافق عليها)
           if (status == 0 || status == 1) ...[
-            const SizedBox(height: 10),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
+            SizedBox(height: context.accR.spaceM),
+            Divider(height: 1),
+            SizedBox(height: context.accR.spaceS),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -495,7 +576,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                     color: _accentRed,
                     onTap: () => _showRejectDialog(id),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.accR.spaceS),
                 ],
                 // صرف (موافقة + صرف + قيد)
                 _actionButton(
@@ -520,11 +601,13 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
     required VoidCallback onTap,
     bool isPrimary = false,
   }) {
+    final isMobile = context.accR.isMobile;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 10 : 14, vertical: isMobile ? 5 : 7),
         decoration: BoxDecoration(
           color: isPrimary ? color : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -533,11 +616,13 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: isPrimary ? Colors.white : color),
-            const SizedBox(width: 6),
+            Icon(icon,
+                size: isMobile ? 14 : context.accR.iconS,
+                color: isPrimary ? Colors.white : color),
+            SizedBox(width: context.accR.spaceXS),
             Text(label,
                 style: GoogleFonts.cairo(
-                    fontSize: 12,
+                    fontSize: isMobile ? 11 : context.accR.small,
                     fontWeight: FontWeight.w600,
                     color: isPrimary ? Colors.white : color)),
           ],
@@ -558,7 +643,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
           onPressed: _page > 1 ? () => _loadRequests(page: _page - 1) : null,
         ),
         Text('$_page / $_totalPages',
-            style: GoogleFonts.cairo(fontSize: 13, color: _textDark)),
+            style: GoogleFonts.cairo(
+                fontSize: context.accR.financialSmall, color: _textDark)),
         IconButton(
           icon: const Icon(Icons.chevron_left),
           onPressed:
@@ -580,8 +666,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx2, setDialogState) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(context.accR.radiusL)),
             title: Row(
               children: [
                 Container(
@@ -590,13 +676,14 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   decoration: BoxDecoration(
                       color: _accentGreen.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.payments_rounded,
-                      color: _accentGreen, size: 22),
+                  child: Icon(Icons.payments_rounded,
+                      color: _accentGreen, size: context.accR.iconM),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: context.accR.spaceM),
                 Text('تأكيد الصرف',
                     style: GoogleFonts.cairo(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
+                        fontSize: context.accR.headingSmall,
+                        fontWeight: FontWeight.bold)),
               ],
             ),
             content: Column(
@@ -605,7 +692,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(context.accR.spaceM),
                   decoration: BoxDecoration(
                     color: _accentGreen.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(8),
@@ -615,62 +702,66 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                     children: [
                       Text('صرف سلفة لـ $userName',
                           style: GoogleFonts.cairo(
-                              fontSize: 13, color: _textDark)),
-                      const SizedBox(height: 4),
+                              fontSize: context.accR.financialSmall,
+                              color: _textDark)),
+                      SizedBox(height: context.accR.spaceXS),
                       Text('${_formatAmount(amount)} د.ع',
                           style: GoogleFonts.cairo(
-                              fontSize: 22,
+                              fontSize: context.accR.financialLarge,
                               fontWeight: FontWeight.bold,
                               color: _accentGreen)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(context.accR.spaceS),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE3F2FD),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline,
-                          size: 16, color: Color(0xFF1565C0)),
-                      const SizedBox(width: 6),
+                      Icon(Icons.info_outline,
+                          size: context.accR.iconS, color: Color(0xFF1565C0)),
+                      SizedBox(width: context.accR.spaceXS),
                       Expanded(
                         child: Text(
                           'سيتم خصم المبلغ كسلفة من راتب الموظف',
                           style: GoogleFonts.cairo(
-                              fontSize: 11, color: const Color(0xFF1565C0)),
+                              fontSize: context.accR.small,
+                              color: Color(0xFF1565C0)),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.accR.spaceM),
                 TextField(
                   controller: notesCtrl,
                   decoration: InputDecoration(
                     labelText: 'ملاحظات (اختياري)',
-                    labelStyle: GoogleFonts.cairo(fontSize: 12),
+                    labelStyle: GoogleFonts.cairo(fontSize: context.accR.small),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8)),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                   ),
-                  style: GoogleFonts.cairo(fontSize: 13),
+                  style:
+                      GoogleFonts.cairo(fontSize: context.accR.financialSmall),
                   maxLines: 2,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.accR.spaceS),
                 CheckboxListTile(
                   value: overrideLimit,
                   onChanged: (v) =>
                       setDialogState(() => overrideLimit = v ?? false),
                   title: Text('تجاوز حد السحب',
-                      style: GoogleFonts.cairo(fontSize: 12)),
+                      style: GoogleFonts.cairo(fontSize: context.accR.small)),
                   subtitle: Text(
                     'السماح بصرف المبلغ حتى لو تجاوز الراتب المستحق',
-                    style: GoogleFonts.cairo(fontSize: 10, color: _textGray),
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.caption, color: _textGray),
                   ),
                   dense: true,
                   contentPadding: EdgeInsets.zero,
@@ -691,8 +782,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
                 ),
-                icon: const Icon(Icons.payments_rounded,
-                    size: 18, color: Colors.white),
+                icon: Icon(Icons.payments_rounded,
+                    size: context.accR.iconM, color: Colors.white),
                 label: Text('تأكيد الصرف',
                     style: GoogleFonts.cairo(color: Colors.white)),
                 onPressed: () async {
@@ -717,15 +808,16 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.accR.radiusL)),
           title: Row(
             children: [
-              const Icon(Icons.cancel_outlined, color: _accentRed),
-              const SizedBox(width: 8),
+              Icon(Icons.cancel_outlined, color: _accentRed),
+              SizedBox(width: context.accR.spaceS),
               Text('رفض الطلب',
                   style: GoogleFonts.cairo(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+                      fontSize: context.accR.headingSmall,
+                      fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -735,13 +827,14 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 controller: notesCtrl,
                 decoration: InputDecoration(
                   labelText: 'سبب الرفض',
-                  labelStyle: GoogleFonts.cairo(fontSize: 12),
+                  labelStyle: GoogleFonts.cairo(fontSize: context.accR.small),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceM,
+                      vertical: context.accR.spaceM),
                 ),
-                style: GoogleFonts.cairo(fontSize: 13),
+                style: GoogleFonts.cairo(fontSize: context.accR.financialSmall),
                 maxLines: 2,
               ),
             ],
@@ -757,7 +850,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
-              icon: const Icon(Icons.close, size: 18, color: Colors.white),
+              icon: Icon(Icons.close,
+                  size: context.accR.iconM, color: Colors.white),
               label: Text('تأكيد الرفض',
                   style: GoogleFonts.cairo(color: Colors.white)),
               onPressed: () async {

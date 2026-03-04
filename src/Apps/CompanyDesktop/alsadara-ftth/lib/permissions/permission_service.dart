@@ -9,6 +9,8 @@
 /// لا تستخدم هذه الخدمة مباشرة — استخدم [PermissionManager.instance]
 library;
 
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'permission_registry.dart';
 
@@ -24,6 +26,12 @@ class PermissionService {
   static const String _firstSystemConfigKeyV2 = 'first_system_configured_v2';
   static const String _secondSystemPrefixV2 = 'second_system_permission_v2_';
   static const String _secondSystemConfigKeyV2 = 'second_system_configured_v2';
+
+  // مفاتيح JSON الجديدة — أسرع بكثير (كتابة واحدة بدل مئات)
+  static const String _firstSystemJsonKeyV2 =
+      'first_system_permissions_v2_json';
+  static const String _secondSystemJsonKeyV2 =
+      'second_system_permissions_v2_json';
 
   /// قائمة الإجراءات المتاحة
   static const List<String> availableActions = [
@@ -84,8 +92,15 @@ class PermissionService {
   static Future<Map<String, Map<String, bool>>>
       getFirstSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
-    final isConfigured = prefs.getBool(_firstSystemConfigKeyV2) ?? false;
 
+    // محاولة القراءة من JSON أولاً (الصيغة الجديدة السريعة)
+    final jsonStr = prefs.getString(_firstSystemJsonKeyV2);
+    if (jsonStr != null) {
+      return _decodePermissionsJson(jsonStr);
+    }
+
+    // الرجوع للصيغة القديمة (مفاتيح فردية)
+    final isConfigured = prefs.getBool(_firstSystemConfigKeyV2) ?? false;
     Map<String, Map<String, bool>> permissions = {};
     final allKeys = PermissionRegistry.allFirstSystemKeys;
 
@@ -106,18 +121,14 @@ class PermissionService {
   }
 
   /// حفظ صلاحيات V2 للنظام الأول
+  /// محسّن: يحفظ كـ JSON واحد بدلاً من مئات المفاتيح الفردية
   static Future<void> saveFirstSystemPermissionsV2(
       Map<String, Map<String, bool>> permissions) async {
     final prefs = await SharedPreferences.getInstance();
 
     try {
-      for (final entry in permissions.entries) {
-        for (String action in availableActions) {
-          final value = entry.value[action] ?? false;
-          await prefs.setBool(
-              '$_firstSystemPrefixV2${entry.key}_$action', value);
-        }
-      }
+      final jsonStr = jsonEncode(permissions);
+      await prefs.setString(_firstSystemJsonKeyV2, jsonStr);
       await prefs.setBool(_firstSystemConfigKeyV2, true);
     } catch (e) {
       throw Exception('فشل في حفظ صلاحيات V2 للنظام الأول: $e');
@@ -132,8 +143,15 @@ class PermissionService {
   static Future<Map<String, Map<String, bool>>>
       getSecondSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
-    final isConfigured = prefs.getBool(_secondSystemConfigKeyV2) ?? false;
 
+    // محاولة القراءة من JSON أولاً (الصيغة الجديدة السريعة)
+    final jsonStr = prefs.getString(_secondSystemJsonKeyV2);
+    if (jsonStr != null) {
+      return _decodePermissionsJson(jsonStr);
+    }
+
+    // الرجوع للصيغة القديمة (مفاتيح فردية)
+    final isConfigured = prefs.getBool(_secondSystemConfigKeyV2) ?? false;
     Map<String, Map<String, bool>> permissions = {};
     final allKeys = PermissionRegistry.allSecondSystemKeys;
 
@@ -154,21 +172,39 @@ class PermissionService {
   }
 
   /// حفظ صلاحيات V2 للنظام الثاني
+  /// محسّن: يحفظ كـ JSON واحد بدلاً من مئات المفاتيح الفردية
   static Future<void> saveSecondSystemPermissionsV2(
       Map<String, Map<String, bool>> permissions) async {
     final prefs = await SharedPreferences.getInstance();
 
     try {
-      for (final entry in permissions.entries) {
-        for (String action in availableActions) {
-          final value = entry.value[action] ?? false;
-          await prefs.setBool(
-              '$_secondSystemPrefixV2${entry.key}_$action', value);
-        }
-      }
+      final jsonStr = jsonEncode(permissions);
+      await prefs.setString(_secondSystemJsonKeyV2, jsonStr);
       await prefs.setBool(_secondSystemConfigKeyV2, true);
     } catch (e) {
       throw Exception('فشل في حفظ صلاحيات V2 للنظام الثاني: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // أدوات مساعدة
+  // ═══════════════════════════════════════
+
+  /// فك تشفير JSON المخزن إلى خريطة الصلاحيات
+  static Map<String, Map<String, bool>> _decodePermissionsJson(String jsonStr) {
+    try {
+      final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+      return decoded.map((key, value) {
+        if (value is Map) {
+          return MapEntry(
+            key,
+            value.map((k, v) => MapEntry(k.toString(), v == true)),
+          );
+        }
+        return MapEntry(key, <String, bool>{});
+      });
+    } catch (_) {
+      return {};
     }
   }
 
@@ -179,6 +215,9 @@ class PermissionService {
   /// إعادة تعيين صلاحيات V2 للنظام الأول
   static Future<void> resetFirstSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
+    // مسح JSON الجديد
+    await prefs.remove(_firstSystemJsonKeyV2);
+    // مسح المفاتيح القديمة أيضاً
     for (String key in PermissionRegistry.allFirstSystemKeys) {
       for (String action in availableActions) {
         await prefs.remove('$_firstSystemPrefixV2${key}_$action');
@@ -190,6 +229,9 @@ class PermissionService {
   /// إعادة تعيين صلاحيات V2 للنظام الثاني
   static Future<void> resetSecondSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
+    // مسح JSON الجديد
+    await prefs.remove(_secondSystemJsonKeyV2);
+    // مسح المفاتيح القديمة أيضاً
     for (String key in PermissionRegistry.allSecondSystemKeys) {
       for (String action in availableActions) {
         await prefs.remove('$_secondSystemPrefixV2${key}_$action');

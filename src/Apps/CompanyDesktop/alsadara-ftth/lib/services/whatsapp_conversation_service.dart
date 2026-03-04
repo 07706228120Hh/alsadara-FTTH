@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/whatsapp_conversation.dart';
+import 'firebase_availability.dart';
 
 /// خدمة إدارة محادثات WhatsApp
 class WhatsAppConversationService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// تحميل كسول لتجنب خطأ [core/no-app] قبل اكتمال Firebase.initializeApp()
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   /// الحصول على جميع المحادثات (Real-time)
   static Stream<List<WhatsAppConversation>> getConversations() {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     return _firestore
         .collection('whatsapp_conversations')
         .orderBy('lastMessageTime', descending: true)
@@ -20,6 +23,7 @@ class WhatsAppConversationService {
 
   /// جلب اسم المستخدم من رقم الهاتف
   static Future<String?> _getUserNameFromPhone(String phoneNumber) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       print('🔍 محاولة جلب اسم لـ: $phoneNumber');
 
@@ -73,6 +77,7 @@ class WhatsAppConversationService {
   /// تحديث اسم المستخدم في المحادثة
   static Future<void> _updateConversationUserName(
       String phoneNumber, String userName) async {
+    if (!FirebaseAvailability.isAvailable) return;
     try {
       await _firestore
           .collection('whatsapp_conversations')
@@ -88,6 +93,7 @@ class WhatsAppConversationService {
 
   /// الحصول على رسائل محادثة معينة (Real-time) - من subcollection
   static Stream<List<WhatsAppMessage>> getMessages(String phoneNumber) {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     // قراءة الرسائل من subcollection messages تحت المحادثة
     return _firestore
         .collection('whatsapp_conversations')
@@ -108,6 +114,7 @@ class WhatsAppConversationService {
     required String message,
     String type = 'text',
   }) async {
+    if (!FirebaseAvailability.isAvailable) return;
     final timestamp = DateTime.now();
     final timestampUnix = (timestamp.millisecondsSinceEpoch / 1000).floor();
 
@@ -161,6 +168,7 @@ class WhatsAppConversationService {
     String? contactName,
     String type = 'text',
   }) async {
+    if (!FirebaseAvailability.isAvailable) return;
     try {
       print('💬 حفظ رسالة واردة من: $phoneNumber - $contactName');
 
@@ -216,6 +224,7 @@ class WhatsAppConversationService {
 
   /// تحديث حالة قراءة المحادثة
   static Future<void> markAsRead(String phoneNumber) async {
+    if (!FirebaseAvailability.isAvailable) return;
     await _firestore
         .collection('whatsapp_conversations')
         .doc(phoneNumber)
@@ -224,6 +233,7 @@ class WhatsAppConversationService {
 
   /// حذف محادثة
   static Future<void> deleteConversation(String phoneNumber) async {
+    if (!FirebaseAvailability.isAvailable) return;
     try {
       print('🗑️ بدء حذف المحادثة: $phoneNumber');
 
@@ -316,6 +326,7 @@ class WhatsAppConversationService {
   /// البحث في المحادثات
   static Future<List<WhatsAppConversation>> searchConversations(
       String query) async {
+    if (!FirebaseAvailability.isAvailable) return [];
     final snapshot =
         await _firestore.collection('whatsapp_conversations').get();
 
@@ -329,6 +340,7 @@ class WhatsAppConversationService {
 
   /// عدد الرسائل غير المقروءة
   static Stream<int> getUnreadCount() {
+    if (!FirebaseAvailability.isAvailable) return Stream.value(0);
     return _firestore.collection('whatsapp_conversations').snapshots().map(
         (snapshot) => snapshot.docs.fold<int>(
             0, (sum, doc) => sum + ((doc.data()['unreadCount'] as int?) ?? 0)));
@@ -344,6 +356,7 @@ class WhatsAppConversationService {
 
   /// استيراد الأسماء من الرسائل الموجودة إلى المحادثات
   static Future<void> syncNamesFromMessages() async {
+    if (!FirebaseAvailability.isAvailable) return;
     try {
       print('🔄 بدء مزامنة الأسماء من الرسائل...');
 
@@ -394,6 +407,7 @@ class WhatsAppConversationService {
   /// مزامنة المحادثات - التحقق من عدد الرسائل لكل محادثة
   /// ملاحظة: مع البنية الجديدة (subcollections) الرسائل محفوظة تحت المحادثات
   static Future<void> syncConversationsFromMessages() async {
+    if (!FirebaseAvailability.isAvailable) return;
     try {
       print('🔄 بدء مزامنة المحادثات...');
       print('ℹ️ البنية الجديدة: الرسائل محفوظة كـ subcollection تحت كل محادثة');

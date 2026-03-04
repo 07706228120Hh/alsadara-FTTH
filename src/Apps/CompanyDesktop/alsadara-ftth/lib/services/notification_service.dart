@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/task.dart';
+import 'firebase_availability.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
-  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  static FirebaseMessaging get _messaging => FirebaseMessaging.instance;
 
   static String? _fcmToken; // آخر توكن FCM
 
@@ -96,6 +97,10 @@ class NotificationService {
 
   /// تهيئة FCM: صلاحيات + توكن + مستمعين
   static Future<void> _initializeFirebaseMessaging() async {
+    if (!FirebaseAvailability.isAvailable) {
+      debugPrint('⚠️ Firebase غير متاح - تخطي تهيئة FCM');
+      return;
+    }
     // طلب الصلاحيات (iOS + Android 13+)
     final settings = await _messaging.requestPermission(
         alert: true, badge: true, sound: true, provisional: false);

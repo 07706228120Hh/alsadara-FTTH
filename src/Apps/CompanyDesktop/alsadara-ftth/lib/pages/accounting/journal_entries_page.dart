@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 
 /// صفحة القيود المحاسبية
 class JournalEntriesPage extends StatefulWidget {
@@ -60,42 +61,47 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AccountingTheme.bgPrimary,
-        body: Column(
-          children: [
-            _buildToolbar(),
-            _buildFilterBar(),
-            Expanded(
-              child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                          color: AccountingTheme.neonGreen))
-                  : _errorMessage != null
-                      ? Center(
-                          child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.error_outline,
-                                color:
-                                    AccountingTheme.textMuted.withOpacity(0.3),
-                                size: 48),
-                            const SizedBox(height: 12),
-                            Text(_errorMessage!,
-                                style: GoogleFonts.cairo(
-                                    color: AccountingTheme.textSecondary,
-                                    fontSize: 14)),
-                          ],
-                        ))
-                      : _buildList(),
-            ),
-          ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildToolbar(),
+              _buildFilterBar(),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                            color: AccountingTheme.neonGreen))
+                    : _errorMessage != null
+                        ? Center(
+                            child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  color: AccountingTheme.textMuted
+                                      .withOpacity(0.3),
+                                  size: context.accR.iconXL),
+                              SizedBox(height: context.accR.spaceM),
+                              Text(_errorMessage!,
+                                  style: GoogleFonts.cairo(
+                                      color: AccountingTheme.textSecondary,
+                                      fontSize: context.accR.body)),
+                            ],
+                          ))
+                        : _buildList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildToolbar() {
+    final isMobile = context.accR.isMobile;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : context.accR.spaceXL,
+          vertical: isMobile ? 6 : context.accR.spaceL),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -106,61 +112,86 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.arrow_forward_rounded),
             tooltip: 'رجوع',
+            iconSize: isMobile ? 20 : 24,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 8),
+          if (!isMobile) SizedBox(width: context.accR.spaceS),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(isMobile ? 4 : context.accR.spaceS),
             decoration: BoxDecoration(
               gradient: AccountingTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
             ),
-            child: const Icon(Icons.menu_book_rounded,
-                color: Colors.white, size: 18),
+            child: Icon(Icons.menu_book_rounded,
+                color: Colors.white, size: isMobile ? 16 : context.accR.iconM),
           ),
-          const SizedBox(width: 12),
-          Text('القيود المحاسبية',
-              style: GoogleFonts.cairo(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          const SizedBox(width: 8),
+          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
+          Expanded(
+            child: Text('القيود المحاسبية',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.cairo(
+                  fontSize: isMobile ? 14 : context.accR.headingMedium,
+                  fontWeight: FontWeight.bold,
+                  color: AccountingTheme.textPrimary,
+                )),
+          ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 6 : 8, vertical: isMobile ? 1 : 2),
             decoration: BoxDecoration(
               color: AccountingTheme.neonPink.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(context.accR.cardRadius),
             ),
             child: Text('${_entries.length}',
                 style: GoogleFonts.cairo(
-                  fontSize: 12,
+                  fontSize: isMobile ? 10 : context.accR.small,
                   fontWeight: FontWeight.bold,
                   color: AccountingTheme.neonPink,
                 )),
           ),
-          const Spacer(),
+          SizedBox(width: isMobile ? 4 : 0),
+          if (!isMobile) Spacer(),
           IconButton(
             onPressed: _loadData,
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
             tooltip: 'تحديث',
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          const SizedBox(width: 4),
-          ElevatedButton.icon(
-            onPressed: _showCreateDialog,
-            icon: const Icon(Icons.add, size: 16),
-            label: Text('إنشاء قيد', style: GoogleFonts.cairo(fontSize: 13)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonGreen,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
+          SizedBox(width: isMobile ? 0 : context.accR.spaceXS),
+          isMobile
+              ? SizedBox(
+                  height: 30,
+                  child: ElevatedButton(
+                    onPressed: _showCreateDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AccountingTheme.neonGreen,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size(30, 30),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                    ),
+                    child: Icon(Icons.add, size: 16),
+                  ),
+                )
+              : ElevatedButton.icon(
+                  onPressed: _showCreateDialog,
+                  icon: Icon(Icons.add, size: context.accR.iconS),
+                  label: Text('إنشاء قيد',
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.financialSmall)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AccountingTheme.neonGreen,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.accR.spaceL,
+                        vertical: context.accR.spaceS),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
         ],
       ),
     );
@@ -195,7 +226,8 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceXL, vertical: context.accR.spaceM),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -206,7 +238,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
             final isSelected = _statusFilter == f['value'];
             final color = f['color'] as Color;
             return Padding(
-              padding: const EdgeInsets.only(left: 8),
+              padding: EdgeInsets.only(left: 8),
               child: InkWell(
                 onTap: () {
                   setState(() => _statusFilter = f['value'] as String);
@@ -214,8 +246,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceM,
+                      vertical: context.accR.spaceXS),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? color.withOpacity(0.2)
@@ -231,12 +264,13 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isSelected) ...[
-                        Icon(f['icon'] as IconData, size: 14, color: color),
-                        const SizedBox(width: 4),
+                        Icon(f['icon'] as IconData,
+                            size: context.accR.iconS, color: color),
+                        SizedBox(width: context.accR.spaceXS),
                       ],
                       Text(f['label'] as String,
                           style: GoogleFonts.cairo(
-                            fontSize: 12,
+                            fontSize: context.accR.small,
                             fontWeight: isSelected
                                 ? FontWeight.bold
                                 : FontWeight.normal,
@@ -250,10 +284,11 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
               ),
             );
           }),
-          const Spacer(),
+          Spacer(),
           Text('${_entries.length} قيد',
               style: GoogleFonts.cairo(
-                  color: AccountingTheme.textMuted, fontSize: 13)),
+                  color: AccountingTheme.textMuted,
+                  fontSize: context.accR.financialSmall)),
         ],
       ),
     );
@@ -266,18 +301,20 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.menu_book,
-                color: AccountingTheme.textMuted.withOpacity(0.3), size: 48),
-            const SizedBox(height: 12),
+                color: AccountingTheme.textMuted.withOpacity(0.3),
+                size: context.accR.iconXL),
+            SizedBox(height: context.accR.spaceM),
             Text('لا توجد قيود',
                 style: GoogleFonts.cairo(
-                    color: AccountingTheme.textMuted, fontSize: 16)),
+                    color: AccountingTheme.textMuted,
+                    fontSize: context.accR.headingSmall)),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.accR.spaceXL),
       itemCount: _entries.length,
       itemBuilder: (_, i) {
         final entry = _entries[i];
@@ -288,10 +325,10 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
             0, (s, l) => s + ((l['DebitAmount'] ?? 0) as num).toDouble());
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: context.accR.spaceS),
           decoration: BoxDecoration(
             color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(context.accR.cardRadius),
             border: Border.all(color: AccountingTheme.borderColor),
             boxShadow: [
               BoxShadow(
@@ -323,17 +360,18 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                     statusInfo['label'] as String,
                     style: GoogleFonts.cairo(
                         color: statusInfo['color'] as Color,
-                        fontSize: 11,
+                        fontSize: context.accR.small,
                         fontWeight: FontWeight.w600),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: context.accR.spaceM),
                 Expanded(
                   child: Text(
                     entry['Description'] ??
                         'قيد #${entry['EntryNumber'] ?? i + 1}',
                     style: GoogleFonts.cairo(
-                        color: AccountingTheme.textPrimary, fontSize: 14),
+                        color: AccountingTheme.textPrimary,
+                        fontSize: context.accR.body),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -341,29 +379,31 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                   '${_fmt(totalDebit)} د.ع',
                   style: GoogleFonts.cairo(
                       color: AccountingTheme.neonGreen,
-                      fontSize: 13,
+                      fontSize: context.accR.financialSmall,
                       fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             subtitle: Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: 4),
               child: Row(
                 children: [
                   if (entry['EntryNumber'] != null)
                     Text('#${entry['EntryNumber']}  ',
                         style: GoogleFonts.cairo(
-                            color: AccountingTheme.neonBlue, fontSize: 11)),
+                            color: AccountingTheme.neonBlue,
+                            fontSize: context.accR.small)),
                   Text(_formatDate(entry['EntryDate'] ?? entry['CreatedAt']),
                       style: GoogleFonts.cairo(
-                          color: AccountingTheme.textMuted, fontSize: 11)),
+                          color: AccountingTheme.textMuted,
+                          fontSize: context.accR.small)),
                   if (entry['ReferenceType'] != null) ...[
-                    const Text('  |  ',
+                    Text('  |  ',
                         style: TextStyle(color: AccountingTheme.textMuted)),
                     Text(_refTypeLabel(entry['ReferenceType']),
                         style: GoogleFonts.cairo(
                             color: AccountingTheme.textSecondary,
-                            fontSize: 11)),
+                            fontSize: context.accR.small)),
                   ],
                 ],
               ),
@@ -383,26 +423,26 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
                         child: Row(
-                          children: const [
+                          children: [
                             Expanded(
                                 flex: 3,
                                 child: Text('الحساب',
                                     style: TextStyle(
                                         color: AccountingTheme.textMuted,
-                                        fontSize: 11))),
+                                        fontSize: context.accR.small))),
                             SizedBox(
                                 width: 80,
                                 child: Text('مدين',
                                     style: TextStyle(
                                         color: AccountingTheme.neonGreen,
-                                        fontSize: 11),
+                                        fontSize: context.accR.small),
                                     textAlign: TextAlign.center)),
                             SizedBox(
                                 width: 80,
                                 child: Text('دائن',
                                     style: TextStyle(
                                         color: AccountingTheme.danger,
-                                        fontSize: 11),
+                                        fontSize: context.accR.small),
                                     textAlign: TextAlign.center)),
                           ],
                         ),
@@ -424,9 +464,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                 child: Text(
                                   line['AccountName'] ??
                                       'حساب #${line['AccountId']}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AccountingTheme.textSecondary,
-                                      fontSize: 13),
+                                      fontSize: context.accR.financialSmall),
                                 ),
                               ),
                               SizedBox(
@@ -437,7 +477,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                       color: debit > 0
                                           ? AccountingTheme.neonGreen
                                           : AccountingTheme.textMuted,
-                                      fontSize: 13),
+                                      fontSize: context.accR.financialSmall),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -449,7 +489,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                       color: credit > 0
                                           ? AccountingTheme.danger
                                           : AccountingTheme.textMuted,
-                                      fontSize: 13),
+                                      fontSize: context.accR.financialSmall),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -461,7 +501,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
+              SizedBox(height: context.accR.spaceS),
               // الأزرار
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -469,38 +509,40 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                   if (status == 'Draft') ...[
                     TextButton.icon(
                       onPressed: () => _showEditEntryDialog(entry),
-                      icon: const Icon(Icons.edit, size: 14),
-                      label:
-                          const Text('تعديل', style: TextStyle(fontSize: 12)),
+                      icon: Icon(Icons.edit, size: context.accR.iconXS),
+                      label: Text('تعديل',
+                          style: TextStyle(fontSize: context.accR.small)),
                       style: TextButton.styleFrom(
                           foregroundColor: AccountingTheme.info),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.accR.spaceS),
                     TextButton.icon(
                       onPressed: () => _postEntry(entry),
-                      icon: const Icon(Icons.check_circle, size: 14),
-                      label:
-                          const Text('ترحيل', style: TextStyle(fontSize: 12)),
+                      icon: Icon(Icons.check_circle, size: context.accR.iconXS),
+                      label: Text('ترحيل',
+                          style: TextStyle(fontSize: context.accR.small)),
                       style: TextButton.styleFrom(
                           foregroundColor: AccountingTheme.success),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.accR.spaceS),
                   ],
                   if (status == 'Posted')
                     TextButton.icon(
                       onPressed: () => _voidEntry(entry),
-                      icon: const Icon(Icons.cancel, size: 14),
-                      label:
-                          const Text('إلغاء', style: TextStyle(fontSize: 12)),
+                      icon: Icon(Icons.cancel, size: context.accR.iconXS),
+                      label: Text('إلغاء',
+                          style: TextStyle(fontSize: context.accR.small)),
                       style: TextButton.styleFrom(
                           foregroundColor: AccountingTheme.danger),
                     ),
                   if (status != 'Voided') ...[
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.accR.spaceS),
                     TextButton.icon(
                       onPressed: () => _confirmDeleteEntry(entry),
-                      icon: const Icon(Icons.delete_outline, size: 14),
-                      label: const Text('حذف', style: TextStyle(fontSize: 12)),
+                      icon:
+                          Icon(Icons.delete_outline, size: context.accR.iconXS),
+                      label: Text('حذف',
+                          style: TextStyle(fontSize: context.accR.small)),
                       style: TextButton.styleFrom(
                           foregroundColor: AccountingTheme.danger),
                     ),
@@ -553,10 +595,10 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               backgroundColor: AccountingTheme.bgCard,
-              title: const Text('إنشاء قيد محاسبي',
+              title: Text('إنشاء قيد محاسبي',
                   style: TextStyle(color: AccountingTheme.textPrimary)),
               content: SizedBox(
-                width: 600,
+                width: context.accR.dialogLargeW,
                 height: 450,
                 child: SingleChildScrollView(
                   child: Column(
@@ -564,13 +606,13 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _field('الوصف', descCtrl),
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.accR.spaceM),
                       // خطوط القيد
-                      const Text('خطوط القيد:',
+                      Text('خطوط القيد:',
                           style: TextStyle(
                               color: AccountingTheme.textPrimary,
                               fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.accR.spaceS),
                       ...List.generate(lines.length, (i) {
                         final amtDebitCtrl = TextEditingController(
                           text: lines[i]['debit'] > 0
@@ -584,8 +626,8 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                         );
 
                         return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(8),
+                          margin: EdgeInsets.only(bottom: context.accR.spaceS),
+                          padding: EdgeInsets.all(context.accR.spaceS),
                           decoration: BoxDecoration(
                             color: AccountingTheme.bgCardHover,
                             borderRadius: BorderRadius.circular(6),
@@ -597,9 +639,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                 child: DropdownButtonFormField<String>(
                                   value: lines[i]['accountId']?.toString(),
                                   dropdownColor: AccountingTheme.bgCard,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AccountingTheme.textPrimary,
-                                      fontSize: 12),
+                                      fontSize: context.accR.small),
                                   isExpanded: true,
                                   items: accounts
                                       .map<DropdownMenuItem<String>>((a) {
@@ -613,9 +655,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                       ss(() => lines[i]['accountId'] = v),
                                   decoration: InputDecoration(
                                     labelText: 'الحساب',
-                                    labelStyle: const TextStyle(
+                                    labelStyle: TextStyle(
                                         color: AccountingTheme.textMuted,
-                                        fontSize: 11),
+                                        fontSize: context.accR.small),
                                     filled: true,
                                     fillColor: AccountingTheme.bgCardHover,
                                     border: OutlineInputBorder(
@@ -626,22 +668,22 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: context.accR.spaceS),
                               SizedBox(
                                 width: 90,
                                 child: TextField(
                                   controller: amtDebitCtrl,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AccountingTheme.success,
-                                      fontSize: 13),
+                                      fontSize: context.accR.financialSmall),
                                   keyboardType: TextInputType.number,
                                   onChanged: (v) => ss(() => lines[i]['debit'] =
                                       double.tryParse(v) ?? 0.0),
                                   decoration: InputDecoration(
                                     labelText: 'مدين',
-                                    labelStyle: const TextStyle(
+                                    labelStyle: TextStyle(
                                         color: AccountingTheme.accent,
-                                        fontSize: 10),
+                                        fontSize: context.accR.caption),
                                     filled: true,
                                     fillColor: AccountingTheme.bgCardHover,
                                     border: OutlineInputBorder(
@@ -652,22 +694,22 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: context.accR.spaceS),
                               SizedBox(
                                 width: 90,
                                 child: TextField(
                                   controller: amtCreditCtrl,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AccountingTheme.danger,
-                                      fontSize: 13),
+                                      fontSize: context.accR.financialSmall),
                                   keyboardType: TextInputType.number,
                                   onChanged: (v) => ss(() => lines[i]
                                       ['credit'] = double.tryParse(v) ?? 0.0),
                                   decoration: InputDecoration(
                                     labelText: 'دائن',
-                                    labelStyle: const TextStyle(
+                                    labelStyle: TextStyle(
                                         color: AccountingTheme.danger,
-                                        fontSize: 10),
+                                        fontSize: context.accR.caption),
                                     filled: true,
                                     fillColor: AccountingTheme.bgCardHover,
                                     border: OutlineInputBorder(
@@ -680,8 +722,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                               ),
                               if (lines.length > 2)
                                 IconButton(
-                                  icon: const Icon(Icons.remove_circle,
-                                      color: AccountingTheme.danger, size: 18),
+                                  icon: Icon(Icons.remove_circle,
+                                      color: AccountingTheme.danger,
+                                      size: context.accR.iconM),
                                   onPressed: () => ss(() => lines.removeAt(i)),
                                 ),
                             ],
@@ -691,16 +734,16 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                       TextButton.icon(
                         onPressed: () => ss(() => lines.add(
                             {'accountId': null, 'debit': 0.0, 'credit': 0.0})),
-                        icon: const Icon(Icons.add, size: 14),
-                        label: const Text('إضافة سطر',
-                            style: TextStyle(fontSize: 12)),
+                        icon: Icon(Icons.add, size: context.accR.iconXS),
+                        label: Text('إضافة سطر',
+                            style: TextStyle(fontSize: context.accR.small)),
                         style: TextButton.styleFrom(
                             foregroundColor: AccountingTheme.accent),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.accR.spaceS),
                       // الإجماليات
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(context.accR.spaceS),
                         decoration: BoxDecoration(
                           color: isBalanced
                               ? AccountingTheme.success.withValues(alpha: 0.2)
@@ -716,19 +759,19 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             Text('مدين: ${_fmt(totalDebit)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AccountingTheme.accent,
-                                    fontSize: 13)),
+                                    fontSize: context.accR.financialSmall)),
                             Text('دائن: ${_fmt(totalCredit)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AccountingTheme.danger,
-                                    fontSize: 13)),
+                                    fontSize: context.accR.financialSmall)),
                             Icon(
                               isBalanced ? Icons.check_circle : Icons.warning,
                               color: isBalanced
                                   ? AccountingTheme.success
                                   : AccountingTheme.danger,
-                              size: 18,
+                              size: context.accR.iconM,
                             ),
                             Text(
                               isBalanced ? 'متوازن' : 'غير متوازن',
@@ -736,12 +779,12 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                   color: isBalanced
                                       ? AccountingTheme.success
                                       : AccountingTheme.danger,
-                                  fontSize: 12),
+                                  fontSize: context.accR.small),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: context.accR.spaceM),
                       _field('ملاحظات', notesCtrl),
                     ],
                   ),
@@ -750,7 +793,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('إلغاء',
+                    child: Text('إلغاء',
                         style: TextStyle(color: AccountingTheme.textMuted))),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -820,7 +863,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('ترحيل القيد',
+          title: Text('ترحيل القيد',
               style: TextStyle(color: AccountingTheme.textPrimary)),
           content: const Text(
               'هل تريد ترحيل هذا القيد؟ لا يمكن التعديل بعد الترحيل.',
@@ -828,7 +871,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء',
+                child: Text('إلغاء',
                     style: TextStyle(color: AccountingTheme.textMuted))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -860,14 +903,14 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('إلغاء القيد',
+          title: Text('إلغاء القيد',
               style: TextStyle(color: AccountingTheme.textPrimary)),
-          content: const Text('هل تريد إلغاء هذا القيد؟ سيتم عكس جميع الأرصدة.',
+          content: Text('هل تريد إلغاء هذا القيد؟ سيتم عكس جميع الأرصدة.',
               style: TextStyle(color: AccountingTheme.textSecondary)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('رجوع',
+                child: Text('رجوع',
                     style: TextStyle(color: AccountingTheme.textMuted))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -945,10 +988,10 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('تعديل القيد',
+          title: Text('تعديل القيد',
               style: TextStyle(color: AccountingTheme.textPrimary)),
           content: SizedBox(
-            width: 400,
+            width: context.accR.dialogSmallW,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -966,7 +1009,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                         borderSide: BorderSide.none),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: context.accR.spaceM),
                 TextField(
                   controller: notesCtrl,
                   style: const TextStyle(color: AccountingTheme.textPrimary),
@@ -988,7 +1031,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton(
@@ -1027,7 +1070,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AccountingTheme.bgCard,
-          title: const Text('تأكيد الحذف',
+          title: Text('تأكيد الحذف',
               style: TextStyle(color: AccountingTheme.danger)),
           content: Text(
             'هل تريد حذف القيد "${entry['Description'] ?? 'قيد #${entry['EntryNumber']}'}"؟\nسيتم عكس أرصدة الحسابات المتأثرة.',
@@ -1036,7 +1079,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(color: AccountingTheme.textMuted)),
             ),
             ElevatedButton(

@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
 
 /// لوحة مراقبة الأموال الموحدة
@@ -67,28 +68,31 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.error_outline,
-                          size: 48, color: Colors.red.shade400),
-                      const SizedBox(height: 8),
-                      Text(_error!,
-                          style: TextStyle(color: Colors.red.shade700)),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: _loadData,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('إعادة المحاولة'),
-                      ),
-                    ],
-                  ),
-                )
-              : _buildContent(),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline,
+                            size: context.accR.iconXL,
+                            color: Colors.red.shade400),
+                        SizedBox(height: context.accR.spaceS),
+                        Text(_error!,
+                            style: TextStyle(color: Colors.red.shade700)),
+                        SizedBox(height: context.accR.spaceM),
+                        ElevatedButton.icon(
+                          onPressed: _loadData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة المحاولة'),
+                        ),
+                      ],
+                    ),
+                  )
+                : _buildContent(),
+      ),
     );
   }
 
@@ -102,14 +106,18 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
     final revenue = _data['revenue'] as Map? ?? {};
     final recentActivity = _data['recentActivity'] as List? ?? [];
 
+    final isMobile = context.accR.isMobile;
+    final pad = isMobile ? context.accR.spaceM : context.accR.spaceXL;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(pad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ═══════ الملخص الإجمالي ═══════
-          _buildSummaryRow(summary, electronic, revenue),
-          const SizedBox(height: 16),
+          _buildSummaryGrid(summary, electronic, revenue, isMobile),
+          SizedBox(
+              height: isMobile ? context.accR.spaceM : context.accR.spaceXL),
 
           // ═══════ صناديق المشغلين (نقد) ═══════
           _buildCategoryCard(
@@ -120,7 +128,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
             items: cashBoxes['items'] as List? ?? [],
             accountCode: '1110',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
 
           // ═══════ ذمم المشغلين (آجل) ═══════
           _buildCategoryCard(
@@ -131,7 +139,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
             items: operatorDebts['items'] as List? ?? [],
             accountCode: '1160',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
 
           // ═══════ ذمم الوكلاء ═══════
           _buildCategoryCard(
@@ -142,7 +150,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
             items: agentDebts['items'] as List? ?? [],
             accountCode: '1150',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
 
           // ═══════ ذمم الفنيين ═══════
           _buildCategoryCard(
@@ -153,7 +161,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
             items: techDebs['items'] as List? ?? [],
             accountCode: '1140',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
 
           // ═══════ الدفع الإلكتروني (ماستر) ═══════
           _buildCategoryCard(
@@ -164,7 +172,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
             items: electronic['items'] as List? ?? [],
             accountCode: '1170',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
 
           // ═══════ نشاط آخر 30 يوم (مخفي) ═══════
         ],
@@ -172,70 +180,94 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
     );
   }
 
-  /// ═══ صف الملخص العلوي ═══
-  Widget _buildSummaryRow(Map summary, Map electronic, Map revenue) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _summaryCard('إجمالي النقد', _toDouble(summary['totalCash']),
-            Colors.green, Icons.attach_money),
-        _summaryCard(
-            'إجمالي الآجل (مشغلين)',
-            _toDouble(summary['totalOperatorDebt']),
-            Colors.orange,
-            Icons.schedule),
-        _summaryCard('إجمالي الوكلاء', _toDouble(summary['totalAgentDebt']),
-            Colors.blue, Icons.store),
-        _summaryCard('إجمالي الفنيين', _toDouble(summary['totalTechDebt']),
-            Colors.brown, Icons.engineering),
-        _summaryCard('الدفع الإلكتروني', _toDouble(summary['totalElectronic']),
-            Colors.purple, Icons.credit_card),
-        _summaryCard('إيرادات التجديد', _toDouble(revenue['renewal']),
-            Colors.teal, Icons.autorenew),
-        _summaryCard('إيرادات الشراء', _toDouble(revenue['purchase']),
-            Colors.indigo, Icons.shopping_cart),
-        _summaryCard('الإجمالي الكلي', _toDouble(summary['grandTotal']),
-            Colors.red.shade700, Icons.account_balance,
-            isBig: true),
-      ],
+  /// ═══ شبكة الملخص العلوي (responsive grid) ═══
+  Widget _buildSummaryGrid(
+      Map summary, Map electronic, Map revenue, bool isMobile) {
+    final cards = <_SummaryData>[
+      _SummaryData('النقد', _toDouble(summary['totalCash']), Colors.green,
+          Icons.attach_money),
+      _SummaryData('الآجل', _toDouble(summary['totalOperatorDebt']),
+          Colors.orange, Icons.schedule),
+      _SummaryData('الوكلاء', _toDouble(summary['totalAgentDebt']), Colors.blue,
+          Icons.store),
+      _SummaryData('الفنيين', _toDouble(summary['totalTechDebt']), Colors.brown,
+          Icons.engineering),
+      _SummaryData('الإلكتروني', _toDouble(summary['totalElectronic']),
+          Colors.purple, Icons.credit_card),
+      _SummaryData('التجديد', _toDouble(revenue['renewal']), Colors.teal,
+          Icons.autorenew),
+      _SummaryData('الشراء', _toDouble(revenue['purchase']), Colors.indigo,
+          Icons.shopping_cart),
+      _SummaryData('الإجمالي', _toDouble(summary['grandTotal']),
+          Colors.red.shade700, Icons.account_balance),
+    ];
+
+    final crossCount = isMobile ? 4 : 4;
+    final spacing = isMobile ? 6.0 : 10.0;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossCount,
+        crossAxisSpacing: spacing,
+        mainAxisSpacing: spacing,
+        childAspectRatio: isMobile ? 0.82 : 1.6,
+      ),
+      itemCount: cards.length,
+      itemBuilder: (_, i) => _summaryCard(cards[i], isMobile),
     );
   }
 
-  Widget _summaryCard(String title, double value, Color color, IconData icon,
-      {bool isBig = false}) {
+  Widget _summaryCard(_SummaryData d, bool isMobile) {
+    final iconSize = isMobile ? 16.0 : 24.0;
+    final valueSize = isMobile ? 12.0 : 18.0;
+    final labelSize = isMobile ? 9.0 : context.accR.small;
+
     return Card(
-      elevation: isBig ? 3 : 1,
+      elevation: 1,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-            color: color.withOpacity(isBig ? 0.6 : 0.3), width: isBig ? 2 : 1),
+        borderRadius:
+            BorderRadius.circular(isMobile ? 8 : context.accR.cardRadius),
+        side: BorderSide(color: d.color.withOpacity(0.3)),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius:
+            BorderRadius.circular(isMobile ? 8 : context.accR.cardRadius),
         onTap: () {
-          Clipboard.setData(ClipboardData(text: _formatNumber(value)));
+          Clipboard.setData(ClipboardData(text: _formatNumber(d.value)));
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('تم نسخ: ${_formatNumber(value)}'),
+                content: Text('تم نسخ: ${_formatNumber(d.value)}'),
                 duration: const Duration(seconds: 1)),
           );
         },
         child: Padding(
           padding: EdgeInsets.symmetric(
-              horizontal: isBig ? 24 : 16, vertical: isBig ? 14 : 10),
+              horizontal: isMobile ? 4 : 16, vertical: isMobile ? 4 : 10),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: color, size: isBig ? 28 : 20),
-              const SizedBox(height: 4),
-              Text(_formatNumber(value),
-                  style: GoogleFonts.cairo(
-                      fontSize: isBig ? 22 : 18,
-                      fontWeight: FontWeight.w800,
-                      color: color)),
-              Text(title,
-                  style: GoogleFonts.cairo(
-                      fontSize: 11, color: Colors.grey.shade700)),
+              Icon(d.icon, color: d.color, size: iconSize),
+              SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(_formatNumber(d.value),
+                    style: GoogleFonts.cairo(
+                        fontSize: valueSize,
+                        fontWeight: FontWeight.w800,
+                        color: d.color)),
+              ),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(d.title,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.cairo(
+                        fontSize: labelSize, color: Colors.grey.shade700)),
+              ),
             ],
           ),
         ),
@@ -252,32 +284,39 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
     required List items,
     required String accountCode,
   }) {
+    final isMobile = context.accR.isMobile;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         side: BorderSide(color: color.withOpacity(0.4), width: 1.5),
       ),
       child: ExpansionTile(
         initiallyExpanded: false,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        tilePadding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 8 : context.accR.paddingH),
         leading: Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(isMobile ? 6 : context.accR.spaceS),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: color, size: 22),
+          child: Icon(icon,
+              color: color, size: isMobile ? 20 : context.accR.iconM),
         ),
         title: Row(
           children: [
             Expanded(
               child: Text(title,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.cairo(
-                      fontSize: 14, fontWeight: FontWeight.w700)),
+                      fontSize: isMobile ? 13 : context.accR.body,
+                      fontWeight: FontWeight.w700)),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 8 : context.accR.spaceM,
+                  vertical: context.accR.spaceXS),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(20),
@@ -286,110 +325,122 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
               child: Text(
                 _formatNumber(total),
                 style: GoogleFonts.cairo(
-                    fontSize: 15, fontWeight: FontWeight.w800, color: color),
+                    fontSize: isMobile ? 13 : context.accR.body,
+                    fontWeight: FontWeight.w800,
+                    color: color),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 6 : 8, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(context.accR.cardRadius),
               ),
               child: Text('${items.length}',
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontSize: isMobile ? 11 : context.accR.small,
+                      fontWeight: FontWeight.w600)),
             ),
           ],
         ),
         children: [
           if (items.isEmpty)
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(context.accR.spaceXL),
               child: Text('لا توجد حسابات فرعية',
                   style: TextStyle(color: Colors.grey.shade500)),
             )
           else
-            SizedBox(
-              width: double.infinity,
-              child: DataTable(
-                border:
-                    TableBorder.all(color: Colors.grey.shade300, width: 0.5),
-                headingRowColor:
-                    WidgetStateProperty.all(color.withOpacity(0.05)),
-                dataRowMinHeight: 32,
-                dataRowMaxHeight: 42,
-                headingRowHeight: 36,
-                columnSpacing: 12,
-                horizontalMargin: 16,
-                headingTextStyle: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: color.shade700),
-                columns: const [
-                  DataColumn(label: Expanded(child: Center(child: Text('#')))),
-                  DataColumn(
-                      label: Expanded(child: Center(child: Text('الكود')))),
-                  DataColumn(
-                      label: Expanded(child: Center(child: Text('الاسم')))),
-                  DataColumn(
-                      label: Expanded(child: Center(child: Text('الرصيد')))),
-                ],
-                rows: items.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final item = entry.value as Map;
-                  final balance = _toDouble(
-                      item['CurrentBalance'] ?? item['currentBalance']);
-                  final isNegative = balance < 0;
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    minWidth: MediaQuery.of(context).size.width - 48),
+                child: DataTable(
+                  border:
+                      TableBorder.all(color: Colors.grey.shade300, width: 0.5),
+                  headingRowColor:
+                      WidgetStateProperty.all(color.withOpacity(0.05)),
+                  dataRowMinHeight: 32,
+                  dataRowMaxHeight: 42,
+                  headingRowHeight: 36,
+                  columnSpacing: 12,
+                  horizontalMargin: 16,
+                  headingTextStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: context.accR.small,
+                      color: color.shade700),
+                  columns: const [
+                    DataColumn(
+                        label: Expanded(child: Center(child: Text('#')))),
+                    DataColumn(
+                        label: Expanded(child: Center(child: Text('الكود')))),
+                    DataColumn(
+                        label: Expanded(child: Center(child: Text('الاسم')))),
+                    DataColumn(
+                        label: Expanded(child: Center(child: Text('الرصيد')))),
+                  ],
+                  rows: items.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final item = entry.value as Map;
+                    final balance = _toDouble(
+                        item['CurrentBalance'] ?? item['currentBalance']);
+                    final isNegative = balance < 0;
 
-                  return DataRow(
-                    color: WidgetStateProperty.resolveWith((states) {
-                      if (isNegative) return Colors.red.shade50;
-                      if (balance > 0) return color.withOpacity(0.03);
-                      return null;
-                    }),
-                    cells: [
-                      DataCell(Center(
-                          child: Text('${i + 1}',
-                              style: const TextStyle(fontSize: 11)))),
-                      DataCell(Center(
-                          child: Text(
-                        (item['Code'] ?? item['code'] ?? '').toString(),
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade600),
-                      ))),
-                      DataCell(Center(
-                          child: Text(
-                        (item['Name'] ?? item['name'] ?? '-').toString(),
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
-                      ))),
-                      DataCell(Center(
-                          child: InkWell(
-                        onTap: () {
-                          Clipboard.setData(
-                              ClipboardData(text: _formatNumber(balance)));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content:
-                                    Text('تم نسخ: ${_formatNumber(balance)}'),
-                                duration: const Duration(seconds: 1)),
-                          );
-                        },
-                        child: Text(
-                          _formatNumber(balance),
+                    return DataRow(
+                      color: WidgetStateProperty.resolveWith((states) {
+                        if (isNegative) return Colors.red.shade50;
+                        if (balance > 0) return color.withOpacity(0.03);
+                        return null;
+                      }),
+                      cells: [
+                        DataCell(Center(
+                            child: Text('${i + 1}',
+                                style:
+                                    TextStyle(fontSize: context.accR.small)))),
+                        DataCell(Center(
+                            child: Text(
+                          (item['Code'] ?? item['code'] ?? '').toString(),
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: isNegative
-                                ? Colors.red.shade700
-                                : color.shade700,
+                              fontSize: context.accR.small,
+                              color: Colors.grey.shade600),
+                        ))),
+                        DataCell(Center(
+                            child: Text(
+                          (item['Name'] ?? item['name'] ?? '-').toString(),
+                          style: TextStyle(
+                              fontSize: context.accR.small,
+                              fontWeight: FontWeight.w600),
+                        ))),
+                        DataCell(Center(
+                            child: InkWell(
+                          onTap: () {
+                            Clipboard.setData(
+                                ClipboardData(text: _formatNumber(balance)));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text('تم نسخ: ${_formatNumber(balance)}'),
+                                  duration: const Duration(seconds: 1)),
+                            );
+                          },
+                          child: Text(
+                            _formatNumber(balance),
+                            style: TextStyle(
+                              fontSize: context.accR.financialSmall,
+                              fontWeight: FontWeight.w700,
+                              color: isNegative
+                                  ? Colors.red.shade700
+                                  : color.shade700,
+                            ),
                           ),
-                        ),
-                      ))),
-                    ],
-                  );
-                }).toList(),
+                        ))),
+                      ],
+                    );
+                  }).toList(),
+                ),
               ),
             ),
         ],
@@ -419,24 +470,25 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         side: BorderSide(color: Colors.indigo.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.accR.spaceXL),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(Icons.trending_up, color: Colors.indigo.shade700),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 Text('نشاط آخر 30 يوم',
                     style: GoogleFonts.cairo(
-                        fontSize: 14, fontWeight: FontWeight.w700)),
+                        fontSize: context.accR.body,
+                        fontWeight: FontWeight.w700)),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.accR.spaceM),
             Wrap(
               spacing: 10,
               runSpacing: 8,
@@ -449,26 +501,29 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
                 final name = typeNames[type] ?? type;
 
                 return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceL,
+                      vertical: context.accR.spaceS),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius:
+                        BorderRadius.circular(context.accR.cardRadius),
                     border: Border.all(color: color.withOpacity(0.3)),
                   ),
                   child: Column(
                     children: [
                       Text(name,
                           style: GoogleFonts.cairo(
-                              fontSize: 12,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: color.shade700)),
                       Text('$count عملية',
                           style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade600)),
+                              fontSize: context.accR.small,
+                              color: Colors.grey.shade600)),
                       Text(_formatNumber(total),
                           style: GoogleFonts.cairo(
-                              fontSize: 14,
+                              fontSize: context.accR.body,
                               fontWeight: FontWeight.w800,
                               color: color.shade700)),
                     ],
@@ -494,6 +549,15 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
     if (v == 0) return '0';
     return v.round().toString();
   }
+}
+
+/// بيانات بطاقة ملخص
+class _SummaryData {
+  final String title;
+  final double value;
+  final Color color;
+  final IconData icon;
+  const _SummaryData(this.title, this.value, this.color, this.icon);
 }
 
 extension _ColorShade on Color {

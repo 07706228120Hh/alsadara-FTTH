@@ -239,6 +239,30 @@ class AppCloseHandler {
     }
   }
 
+  /// مسح توكنات FTTH فقط عند إغلاق التطبيق (للأمان)
+  /// silentFtthLogin() سيحصل على توكنات جديدة عند التشغيل التالي
+  static Future<void> clearFtthSessionTokens() async {
+    try {
+      debugPrint('🔐 مسح توكنات FTTH عند إغلاق التطبيق...');
+
+      final prefs = await SharedPreferences.getInstance();
+
+      // مسح توكنات FTTH (AuthService)
+      await prefs.remove('access_token');
+      await prefs.remove('refresh_token');
+      await prefs.remove('token_expiry');
+      await prefs.remove('refresh_expiry');
+
+      // مسح حالة DualAuthService
+      await prefs.remove('dual_auth_ftth_linked');
+      await prefs.remove('dual_auth_ftth_username');
+
+      debugPrint('✅ تم مسح توكنات FTTH بنجاح');
+    } catch (e) {
+      debugPrint('❌ خطأ في مسح توكنات FTTH: $e');
+    }
+  }
+
   /// التحقق من أن التطبيق يتم إغلاقه فعلاً وليس مجرد تنقل
   static bool get isAppClosing {
     // في منصة Windows/Desktop، يمكن التحقق من حالة النافذة

@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/tenant.dart';
 import '../models/tenant_user.dart';
 import '../models/super_admin.dart';
+import 'firebase_availability.dart';
 
 /// نوع المستخدم المسجل
 enum AuthUserType {
@@ -57,7 +58,8 @@ class AuthResult {
 }
 
 class CustomAuthService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// تحميل كسول لتجنب خطأ [core/no-app]
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   // المستخدم الحالي
   static SuperAdmin? currentSuperAdmin;
@@ -74,6 +76,8 @@ class CustomAuthService {
 
   /// تسجيل دخول Super Admin
   Future<AuthResult> loginSuperAdmin(String username, String password) async {
+    if (!FirebaseAvailability.isAvailable)
+      return AuthResult.failure('Firebase غير متاح على هذه المنصة');
     try {
       final hashedPassword = hashPassword(password);
 
@@ -120,6 +124,8 @@ class CustomAuthService {
   /// يمكن البحث بالاسم أو الكود
   Future<AuthResult> loginTenantUser(
       String tenantNameOrCode, String username, String password) async {
+    if (!FirebaseAvailability.isAvailable)
+      return AuthResult.failure('Firebase غير متاح على هذه المنصة');
     try {
       print('🔍 البحث عن الشركة: $tenantNameOrCode');
 
@@ -265,6 +271,7 @@ class CustomAuthService {
   /// إنشاء Super Admin جديد (للإعداد الأولي فقط)
   Future<bool> createSuperAdmin(
       String username, String password, String name) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       final hashedPassword = hashPassword(password);
 
@@ -292,6 +299,7 @@ class CustomAuthService {
     String subscriptionPlan = 'monthly',
     int maxUsers = 10,
   }) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       // التحقق من عدم وجود كود مكرر
       final existing = await _firestore
@@ -338,6 +346,7 @@ class CustomAuthService {
     Map<String, bool>? firstSystemPermissions,
     Map<String, bool>? secondSystemPermissions,
   }) async {
+    if (!FirebaseAvailability.isAvailable) return null;
     try {
       // التحقق من عدم وجود اسم مستخدم مكرر في نفس الشركة
       final existing = await _firestore
@@ -390,6 +399,7 @@ class CustomAuthService {
 
   /// تغيير كلمة مرور المستخدم
   Future<bool> changePassword(String oldPassword, String newPassword) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       if (currentUser == null || currentTenant == null) return false;
 
@@ -416,6 +426,7 @@ class CustomAuthService {
   /// تعليق/إلغاء تعليق شركة
   Future<bool> toggleTenantSuspension(
       String tenantId, bool suspend, String? reason) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       await _firestore.collection('tenants').doc(tenantId).update({
         'isActive': !suspend,
@@ -431,6 +442,7 @@ class CustomAuthService {
 
   /// تمديد اشتراك شركة
   Future<bool> extendSubscription(String tenantId, DateTime newEndDate) async {
+    if (!FirebaseAvailability.isAvailable) return false;
     try {
       await _firestore.collection('tenants').doc(tenantId).update({
         'subscriptionEnd': Timestamp.fromDate(newEndDate),
@@ -443,6 +455,7 @@ class CustomAuthService {
 
   /// الحصول على جميع الشركات (للـ Super Admin)
   Stream<List<Tenant>> getAllTenants() {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     return _firestore
         .collection('tenants')
         .orderBy('createdAt', descending: true)
@@ -453,6 +466,7 @@ class CustomAuthService {
 
   /// الحصول على مستخدمي شركة معينة
   Stream<List<TenantUser>> getTenantUsers(String tenantId) {
+    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
     return _firestore
         .collection('tenants')
         .doc(tenantId)
