@@ -645,6 +645,73 @@ public class FtthAccountingController : ControllerBase
                 };
             }).OrderByDescending(x => x.totalAmount).ToList();
 
+            // ── صفوف الفنيين: تجميع المبالغ المحصّلة بواسطة الفنيين ──
+            var techRows = await query
+                .Where(l => l.LinkedTechnicianId.HasValue && l.CollectionType == "technician")
+                .GroupBy(l => l.LinkedTechnicianId)
+                .Select(g => new
+                {
+                    TechId = g.Key,
+                    TotalCount = g.Count(),
+                    TotalAmount = g.Sum(l => l.PlanPrice ?? 0),
+                    PurchaseCount = g.Count(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))),
+                    PurchaseAmount = g.Where(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))).Sum(l => l.PlanPrice ?? 0),
+                    RenewalCount = g.Count(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")),
+                    RenewalAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")).Sum(l => l.PlanPrice ?? 0),
+                    ReconciledCount = g.Count(l => l.IsReconciled)
+                })
+                .ToListAsync();
+
+            var techUserIds = techRows.Where(t => t.TechId.HasValue).Select(t => t.TechId!.Value).ToList();
+            var techUsers = techUserIds.Any()
+                ? await _unitOfWork.Users.AsQueryable()
+                    .Where(u => techUserIds.Contains(u.Id))
+                    .Select(u => new { u.Id, u.FullName, u.Username })
+                    .ToListAsync()
+                : new List<dynamic>().Select(x => new { Id = Guid.Empty, FullName = "", Username = "" }).ToList();
+
+            var technicianRows = techRows.Select(t =>
+            {
+                var techUser = t.TechId.HasValue ? techUsers.FirstOrDefault(u => u.Id == t.TechId.Value) : null;
+                return new
+                {
+                    userId = t.TechId,
+                    operatorName = techUser?.FullName ?? "فني غير معروف",
+                    username = techUser?.Username,
+                    ftthUsername = (string?)null,
+                    isTechnician = true,
+                    totalCount = t.TotalCount,
+                    totalAmount = t.TotalAmount,
+                    cashAmount = 0m,
+                    cashCount = 0,
+                    creditAmount = 0m,
+                    creditCount = 0,
+                    masterAmount = 0m,
+                    masterCount = 0,
+                    agentAmount = 0m,
+                    agentCount = 0,
+                    technicianAmount = t.TotalAmount,
+                    technicianCount = t.TotalCount,
+                    unclassifiedAmount = 0m,
+                    unclassifiedCount = 0,
+                    deliveredCash = 0m,
+                    collectedCredit = 0m,
+                    netOwed = t.TotalAmount,
+                    purchaseCount = t.PurchaseCount,
+                    purchaseAmount = t.PurchaseAmount,
+                    renewalCount = t.RenewalCount,
+                    renewalAmount = t.RenewalAmount,
+                    changeCount = 0,
+                    changeAmount = 0m,
+                    scheduleCount = 0,
+                    scheduleAmount = 0m,
+                    reconciledCount = t.ReconciledCount
+                };
+            }).OrderByDescending(x => x.totalAmount).ToList();
+
+            // دمج الصفوف: المشغلون أولاً ثم الفنيون
+            var allRows = result.Cast<object>().Concat(technicianRows.Cast<object>()).ToList();
+
             // ── توزيعات إضافية ──
 
             // توزيع أنواع العمليات
@@ -696,7 +763,7 @@ public class FtthAccountingController : ControllerBase
             return Ok(new
             {
                 success = true,
-                data = result,
+                data = allRows,
                 summary = new
                 {
                     totalOperators = result.Count,

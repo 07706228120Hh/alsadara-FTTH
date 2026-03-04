@@ -3381,7 +3381,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 horizontal: context.accR.spaceL, vertical: context.accR.spaceM),
             child: Row(
               children: [
-                Text('المشغلون (${_oursOperators.length})',
+                Text('المشغلون (${_oursOperators.where((o) => o['isTechnician'] != true).length}) + الفنيون (${_oursOperators.where((o) => o['isTechnician'] == true).length})',
                     style: GoogleFonts.cairo(
                         fontSize: context.accR.body,
                         fontWeight: FontWeight.w600)),
@@ -3485,8 +3485,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       final purchaseCnt = (op['purchaseCount'] ?? 0);
                       final renewalCnt = (op['renewalCount'] ?? 0);
                       final changeCnt = (op['changeCount'] ?? 0);
+                      final isTech = op['isTechnician'] == true;
 
-                      return DataRow(cells: [
+                      return DataRow(
+                        color: isTech
+                            ? WidgetStateProperty.all(Colors.teal.withOpacity(0.07))
+                            : null,
+                        cells: [
                         DataCell(Center(
                             child: Text('${i + 1}',
                                 style: TextStyle(
@@ -3497,16 +3502,31 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(op['operatorName'] ?? '-',
-                                style: TextStyle(
-                                    fontSize: context.accR.small,
-                                    fontWeight: FontWeight.w700)),
-                            if (op['ftthUsername'] != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isTech) ...[
+                                  Icon(Icons.engineering, size: 13, color: Colors.teal),
+                                  SizedBox(width: 3),
+                                ],
+                                Text(op['operatorName'] ?? '-',
+                                    style: TextStyle(
+                                        fontSize: context.accR.small,
+                                        fontWeight: FontWeight.w700,
+                                        color: isTech ? Colors.teal.shade700 : null)),
+                              ],
+                            ),
+                            if (!isTech && op['ftthUsername'] != null)
                               Text(op['ftthUsername'],
                                   style: TextStyle(
                                       fontSize: context.accR.caption,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.grey.shade600)),
+                            if (isTech)
+                              Text('فني',
+                                  style: TextStyle(
+                                      fontSize: context.accR.caption,
+                                      color: Colors.teal.shade400)),
                           ],
                         ))),
                         DataCell(Center(
