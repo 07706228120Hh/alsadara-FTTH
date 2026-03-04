@@ -485,7 +485,8 @@ public class FtthAccountingController : ControllerBase
             var query = _unitOfWork.SubscriptionLogs.AsQueryable();
 
             if (companyId.HasValue)
-                query = query.Where(l => l.CompanyId == companyId);
+                // تضمين السجلات القديمة التي لم يُحدد لها CompanyId (للتوافق مع البيانات السابقة)
+                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
             if (from.HasValue)
             {
                 var fromUtc = DateTime.SpecifyKind(from.Value.Date, DateTimeKind.Utc);
@@ -1288,14 +1289,47 @@ public class FtthAccountingController : ControllerBase
                 u => u.FtthUsername!.ToLower().Trim(),
                 u => new { u.Id, u.FullName, u.CompanyId });
 
-            int saved = 0, skipped = 0, failed = 0;
+            int saved = 0, skipped = 0, failed = 0, updated = 0;
             var errors = new List<string>();
 
             foreach (var tx in dto.Transactions)
             {
-                // تجاهل المحفوظ مسبقاً
+                // تحديث السجلات الموجودة إذا كانت بياناتها ناقصة
                 if (!string.IsNullOrEmpty(tx.FtthTransactionId) && existingSet.Contains(tx.FtthTransactionId))
                 {
+                    // تحقق إن كانت البيانات الجديدة أفضل
+                    bool hasNewData = !string.IsNullOrEmpty(tx.CollectionType) || !string.IsNullOrEmpty(tx.CreatedBy);
+                    if (hasNewData)
+                    {
+                        var existing = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                            .FirstOrDefaultAsync(l => l.FtthTransactionId == tx.FtthTransactionId && !l.IsDeleted);
+                        if (existing != null)
+                        {
+                            bool needsUpdate = false;
+                            if (string.IsNullOrEmpty(existing.CollectionType) && !string.IsNullOrEmpty(tx.CollectionType))
+                            {
+                                existing.CollectionType = tx.CollectionType;
+                                needsUpdate = true;
+                            }
+                            if (string.IsNullOrEmpty(existing.ActivatedBy) && !string.IsNullOrEmpty(tx.CreatedBy))
+                            {
+                                existing.ActivatedBy = tx.CreatedBy;
+                                var key = tx.CreatedBy.ToLower().Trim();
+                                if (ftthToUser.TryGetValue(key, out var u))
+                                {
+                                    existing.UserId = u.Id;
+                                    existing.CompanyId ??= u.CompanyId;
+                                }
+                                needsUpdate = true;
+                            }
+                            if (needsUpdate)
+                            {
+                                _unitOfWork.SubscriptionLogs.Update(existing);
+                                updated++;
+                                continue;
+                            }
+                        }
+                    }
                     skipped++;
                     continue;
                 }
@@ -1353,8 +1387,9 @@ public class FtthAccountingController : ControllerBase
             return Ok(new
             {
                 success = true,
-                message = $"تمت المزامنة: {saved} محفوظ، {skipped} متجاهل (موجود مسبقاً)، {failed} فشل",
+                message = $"تمت المزامنة: {saved} محفوظ، {updated} محدّث، {skipped} موجود مسبقاً، {failed} فشل",
                 saved,
+                updated,
                 skipped,
                 failed,
                 errors = errors.Take(10).ToList()
@@ -1784,6 +1819,216 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إعادة إنشاء القيود المفقودة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// تصحيح السجلات القديمة التي لا تحتوي على CompanyId
+    /// يقوم بإسناد CompanyId تلقائياً من جدول Users بناءً على UserId
+    /// </summary>
+    /// <summary>
+    /// تصحيح السجلات التي لا تحتوي على UserId أو CollectionType
+    /// يربط ActivatedBy (FTTH username) بـ User.FtthUsername لاستخراج UserId
+    /// يضبط CollectionType = 'cash' افتراضياً للسجلات التي لا تحتوي عليه
+    /// </summary>
+    [HttpPost("fix-missing-userids")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> FixMissingUserIds([FromQuery] Guid? companyId = null)
+    {
+        try
+        {
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted && (l.UserId == null || l.CollectionType == null || l.CollectionType == ""));
+
+            if (companyId.HasValue)
+                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+
+            var logsToFix = await query.ToListAsync();
+
+            if (!logsToFix.Any())
+                return Ok(new { success = true, message = "لا توجد سجلات تحتاج إصلاح", updated = 0 });
+
+            // جلب جميع المستخدمين مع FtthUsername لمطابقة ActivatedBy
+            var allUsers = await _unitOfWork.Users.AsQueryable()
+                .Where(u => u.FtthUsername != null && u.FtthUsername != "")
+                .Select(u => new { u.Id, u.FtthUsername, u.CompanyId })
+                .ToListAsync();
+
+            var ftthUsernameMap = allUsers
+                .GroupBy(u => u.FtthUsername!.ToLower())
+                .ToDictionary(g => g.Key, g => g.First());
+
+            int updatedUserId = 0;
+            int updatedCollectionType = 0;
+
+            foreach (var log in logsToFix)
+            {
+                bool changed = false;
+
+                // ربط UserId من ActivatedBy
+                if (log.UserId == null && !string.IsNullOrEmpty(log.ActivatedBy))
+                {
+                    var key = log.ActivatedBy.ToLower();
+                    if (ftthUsernameMap.TryGetValue(key, out var matchedUser))
+                    {
+                        log.UserId = matchedUser.Id;
+                        // إسناد CompanyId أيضاً إذا كان فارغاً
+                        if (!log.CompanyId.HasValue && matchedUser.CompanyId.HasValue)
+                            log.CompanyId = matchedUser.CompanyId;
+                        updatedUserId++;
+                        changed = true;
+                    }
+                }
+
+                // ضبط CollectionType الافتراضي
+                if (string.IsNullOrEmpty(log.CollectionType))
+                {
+                    log.CollectionType = "cash";
+                    updatedCollectionType++;
+                    changed = true;
+                }
+
+                if (changed)
+                    _unitOfWork.SubscriptionLogs.Update(log);
+            }
+
+            if (updatedUserId > 0 || updatedCollectionType > 0)
+                await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم ربط {updatedUserId} مستخدم، وتصنيف {updatedCollectionType} سجل كنقد",
+                total = logsToFix.Count,
+                updatedUserId,
+                updatedCollectionType
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تصحيح معرفات المستخدمين");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// تعيين جميع السجلات ذات UserId=null لمستخدم محدد (للسجلات القديمة بلا ActivatedBy)
+    /// </summary>
+    [HttpPost("assign-unknown-records")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> AssignUnknownRecords([FromQuery] Guid targetUserId, [FromQuery] Guid? companyId = null)
+    {
+        try
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(targetUserId);
+            if (user == null)
+                return NotFound(new { success = false, message = "المستخدم غير موجود" });
+
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted && l.UserId == null);
+
+            if (companyId.HasValue)
+                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+
+            var logs = await query.ToListAsync();
+            if (!logs.Any())
+                return Ok(new { success = true, message = "لا توجد سجلات بدون مستخدم", updated = 0 });
+
+            foreach (var log in logs)
+            {
+                log.UserId = targetUserId;
+                log.ActivatedBy = user.FtthUsername ?? user.Username ?? log.ActivatedBy;
+                if (!log.CompanyId.HasValue && user.CompanyId.HasValue)
+                    log.CompanyId = user.CompanyId;
+                _unitOfWork.SubscriptionLogs.Update(log);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم تعيين {logs.Count} سجل للمستخدم {user.FullName}",
+                updated = logs.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تعيين السجلات");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+        }
+    }
+
+    [HttpPost("fix-orphan-records")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> FixOrphanRecords([FromQuery] Guid? targetCompanyId = null)
+    {
+        try
+        {
+            // جلب كل السجلات التي ليس لها CompanyId
+            var orphanQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted && l.CompanyId == null);
+
+            var orphanLogs = await orphanQuery.ToListAsync();
+
+            if (!orphanLogs.Any())
+                return Ok(new { success = true, message = "لا توجد سجلات يتيمة", updated = 0 });
+
+            // جلب كل المستخدمين لمطابقتهم
+            var userIds = orphanLogs
+                .Where(l => l.UserId.HasValue)
+                .Select(l => l.UserId!.Value)
+                .Distinct()
+                .ToList();
+
+            var users = await _unitOfWork.Users.AsQueryable()
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.CompanyId })
+                .ToListAsync();
+
+            var userCompanyMap = users.ToDictionary(u => u.Id, u => u.CompanyId);
+
+            int updatedCount = 0;
+            int skippedCount = 0;
+
+            foreach (var log in orphanLogs)
+            {
+                Guid? resolvedCompany = targetCompanyId;
+
+                if (!resolvedCompany.HasValue && log.UserId.HasValue
+                    && userCompanyMap.TryGetValue(log.UserId.Value, out var userCompany))
+                {
+                    resolvedCompany = userCompany;
+                }
+
+                if (resolvedCompany.HasValue)
+                {
+                    log.CompanyId = resolvedCompany;
+                    _unitOfWork.SubscriptionLogs.Update(log);
+                    updatedCount++;
+                }
+                else
+                {
+                    skippedCount++;
+                }
+            }
+
+            if (updatedCount > 0)
+                await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم تحديث {updatedCount} سجل، تخطي {skippedCount} (لم يُعثر على شركتهم)",
+                total = orphanLogs.Count,
+                updated = updatedCount,
+                skipped = skippedCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تصحيح السجلات اليتيمة");
             return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
         }
     }

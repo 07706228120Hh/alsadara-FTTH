@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -7,7 +7,9 @@ import '../../services/vps_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/accounting_service.dart';
 import '../../services/plan_pricing_service.dart';
+import '../../services/subscription_logs_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../theme/accounting_responsive.dart';
 import 'ftth_operator_account_page.dart';
 import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
@@ -257,8 +259,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
-    // الافتراضي: اليوم + أمس
-    _setTodayAndYesterday();
+    // الافتراضي: هذا الشهر (لإظهار أحدث البيانات)
+    _setCurrentMonth();
     _loadOursData();
     _checkFtthAuth();
     _loadAvailableZones();
@@ -272,6 +274,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     _fromDate = DateTime(yesterday.year, yesterday.month, yesterday.day);
     _toDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
     _dateLabel = 'اليوم + أمس';
+  }
+
+  void _setCurrentMonth() {
+    final now = DateTime.now();
+    _fromDate = DateTime(now.year, now.month, 1);
+    _toDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    _dateLabel = 'هذا الشهر';
+  }
+
+  String? _mapPaymentMode(String paymentMode) {
+    final mode = paymentMode.toLowerCase().trim();
+    if (mode.contains('cash')) return 'cash';
+    if (mode.contains('credit')) return 'credit';
+    if (mode.contains('master')) return 'master';
+    if (mode.contains('agent')) return 'agent';
+    if (mode.contains('tech')) return 'technician';
+    return null;
   }
 
   @override
@@ -325,24 +344,27 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         builder: (ctx, setDlgState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(context.accR.radiusL)),
             title: Row(
               children: [
                 Icon(Icons.wifi_tethering, color: Colors.teal.shade700),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 Text('تسجيل دخول FTTH',
                     style: GoogleFonts.cairo(
-                        fontSize: 16, fontWeight: FontWeight.w600)),
+                        fontSize: context.accR.headingSmall,
+                        fontWeight: FontWeight.w600)),
               ],
             ),
             content: SizedBox(
-              width: 360,
+              width: context.accR.isMobile
+                  ? MediaQuery.of(context).size.width * 0.9
+                  : 360,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(context.accR.spaceM),
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -351,32 +373,35 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     child: Row(
                       children: [
                         Icon(Icons.info_outline,
-                            size: 18, color: Colors.blue.shade700),
-                        const SizedBox(width: 8),
+                            size: context.accR.iconM,
+                            color: Colors.blue.shade700),
+                        SizedBox(width: context.accR.spaceS),
                         Expanded(
                           child: Text(
                             'أدخل بيانات حساب FTTH لجلب بيانات المعاملات من خادم admin.ftth.iq',
                             style: TextStyle(
-                                fontSize: 12, color: Colors.blue.shade700),
+                                fontSize: context.accR.small,
+                                color: Colors.blue.shade700),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.accR.spaceXL),
                   Directionality(
                     textDirection: TextDirection.ltr,
                     child: TextField(
                       controller: usernameCtrl,
                       decoration: InputDecoration(
                         labelText: 'Username',
-                        prefixIcon: const Icon(Icons.person),
+                        prefixIcon: Icon(Icons.person),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius:
+                                BorderRadius.circular(context.accR.cardRadius)),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.accR.spaceM),
                   Directionality(
                     textDirection: TextDirection.ltr,
                     child: TextField(
@@ -384,23 +409,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock),
+                        prefixIcon: Icon(Icons.lock),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius:
+                                BorderRadius.circular(context.accR.cardRadius)),
                       ),
                     ),
                   ),
                   if (errorMsg != null) ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(context.accR.spaceS),
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(errorMsg!,
                           style: TextStyle(
-                              color: Colors.red.shade700, fontSize: 12)),
+                              color: Colors.red.shade700,
+                              fontSize: context.accR.small)),
                     ),
                   ],
                 ],
@@ -455,7 +482,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text('تسجيل الدخول',
+                    : Text('تسجيل الدخول',
                         style: TextStyle(color: Colors.white)),
               ),
             ],
@@ -963,10 +990,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         title: Row(
           children: [
             Icon(Icons.sync, color: Colors.teal.shade700),
-            const SizedBox(width: 8),
+            SizedBox(width: context.accR.spaceS),
             Text('مزامنة FTTH → خادمنا',
                 style: GoogleFonts.cairo(
-                    fontSize: 16, fontWeight: FontWeight.w700)),
+                    fontSize: context.accR.headingSmall,
+                    fontWeight: FontWeight.w700)),
           ],
         ),
         content: Column(
@@ -976,13 +1004,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             Text(
               'سيتم إرسال جميع عمليات FTTH المحملة إلى خادمنا.\n'
               'العمليات المحفوظة مسبقاً (بناءً على FtthTransactionId) ستُتجاهل تلقائياً.',
-              style: GoogleFonts.cairo(fontSize: 13),
+              style: GoogleFonts.cairo(fontSize: context.accR.financialSmall),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.accR.spaceS),
             Text(
               'عدد العمليات: ${_ftthOperators.values.fold<int>(0, (s, op) => s + op.transactions.length)}',
-              style:
-                  GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700),
+              style: GoogleFonts.cairo(
+                  fontSize: context.accR.financialSmall,
+                  fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -993,7 +1022,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.sync, size: 18),
+            icon: Icon(Icons.sync, size: context.accR.iconM),
             label: const Text('مزامنة'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
@@ -1018,10 +1047,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           'planName': tx.planName,
           'amount': tx.amount,
           'operationType': tx.type,
-          'createdBy': tx.auditCreator ?? opEntry.key,
+          'createdBy': tx.auditCreator,
           'occuredAt': tx.occuredAt,
           'zoneId': tx.zoneId,
           'deviceUsername': tx.deviceUsername,
+          'collectionType': _mapPaymentMode(tx.paymentMode),
         });
       }
     }
@@ -1055,12 +1085,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         final failed = data is Map
             ? data['failed'] ?? result['failed'] ?? 0
             : result['failed'] ?? 0;
+        final updated = data is Map
+            ? data['updated'] ?? result['updated'] ?? 0
+            : result['updated'] ?? 0;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               success
-                  ? 'تمت المزامنة: $saved محفوظ، $skipped موجود مسبقاً، $failed فشل'
+                  ? 'تمت المزامنة: $saved محفوظ، ${updated > 0 ? '$updated محدّث، ' : ''}$skipped موجود مسبقاً، $failed فشل'
                   : result['message'] ?? 'خطأ في المزامنة',
             ),
             backgroundColor: success ? Colors.green : Colors.red,
@@ -1205,6 +1238,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = context.accR.isMobile;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -1221,8 +1255,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 onTap: () => setState(() => _showDateFilter = !_showDateFilter),
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceS,
+                      vertical: context.accR.spaceXS),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -1232,179 +1267,347 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     children: [
                       Icon(
                         _showDateFilter ? Icons.expand_less : Icons.date_range,
-                        size: 14,
+                        size: context.accR.iconS,
                         color: Colors.white70,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _dateLabel,
-                        style: GoogleFonts.cairo(
-                          fontSize: 11,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (_fromDate != null && _toDate != null) ...[
-                        const SizedBox(width: 4),
+                      if (!isMobile) ...[
+                        SizedBox(width: context.accR.spaceXS),
                         Text(
-                          '${DateFormat('MM/dd').format(_fromDate!)} - ${DateFormat('MM/dd').format(_toDate!)}',
-                          style: const TextStyle(
-                              fontSize: 9, color: Colors.white54),
+                          _dateLabel,
+                          style: GoogleFonts.cairo(
+                            fontSize: context.accR.small,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
+                        if (_fromDate != null && _toDate != null) ...[
+                          SizedBox(width: context.accR.spaceXS),
+                          Text(
+                            '${DateFormat('MM/dd').format(_fromDate!)} - ${DateFormat('MM/dd').format(_toDate!)}',
+                            style: TextStyle(
+                                fontSize: context.accR.caption,
+                                color: Colors.white54),
+                          ),
+                        ],
                       ],
                     ],
                   ),
                 ),
               ),
-              const Spacer(),
-              // التبويبات في الوسط
-              _tabButton(0, Icons.storage, 'خادمنا'),
-              _tabButton(1, Icons.wifi_tethering, 'FTTH'),
-              _tabButton(2, Icons.compare_arrows, 'المقارنة'),
-              const Spacer(),
+              if (!isMobile) ...[
+                const Spacer(),
+                // التبويبات في الوسط
+                _tabButton(0, Icons.storage, 'خادمنا'),
+                _tabButton(1, Icons.wifi_tethering, 'FTTH'),
+                _tabButton(2, Icons.compare_arrows, 'المقارنة'),
+                const Spacer(),
+              ] else
+                const Spacer(),
             ],
           ),
           actions: [
-            if (!_ftthAuthenticated)
+            if (isMobile) ...[
+              // Mobile: only refresh + overflow menu
               IconButton(
-                icon: const Icon(Icons.login, color: Colors.orangeAccent),
-                onPressed: _showFtthLoginDialog,
-                tooltip: 'تسجيل دخول FTTH',
-                iconSize: 20,
+                icon: Icon(Icons.refresh,
+                    color: Colors.white70, size: context.accR.iconM),
+                onPressed: _refreshAll,
+                tooltip: 'تحديث الكل',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 36),
               ),
-            if (_ftthAuthenticated)
-              const Padding(
-                padding: EdgeInsets.only(left: 2),
-                child: Icon(Icons.check_circle,
-                    color: Colors.greenAccent, size: 16),
-              ),
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
-              onPressed: _refreshAll,
-              tooltip: 'تحديث الكل',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36),
-            ),
-            IconButton(
-              icon: const Icon(Icons.move_to_inbox,
-                  color: Colors.greenAccent, size: 20),
-              onPressed: _showReceiveCashDialog,
-              tooltip: 'استلام نقد من مشغل',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36),
-            ),
-            IconButton(
-              icon: const Icon(Icons.price_change_outlined,
-                  color: Colors.amberAccent, size: 20),
-              onPressed: _showPlanPricingDialog,
-              tooltip: 'أسعار الباقات',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36),
-            ),
-            IconButton(
-              icon: Stack(
-                children: [
-                  const Icon(Icons.tune, color: Colors.white70, size: 20),
-                  if (_hasActiveAdvancedFilters())
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.orangeAccent,
-                          shape: BoxShape.circle,
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert,
+                    color: Colors.white70, size: context.accR.iconM),
+                onSelected: (v) {
+                  switch (v) {
+                    case 'ftthLogin':
+                      _showFtthLoginDialog();
+                      break;
+                    case 'receiveCash':
+                      _showReceiveCashDialog();
+                      break;
+                    case 'planPricing':
+                      _showPlanPricingDialog();
+                      break;
+                    case 'advancedFilter':
+                      _showAdvancedFilterDialog();
+                      break;
+                    case 'team':
+                      _showTeamDialog();
+                      break;
+                    case 'linking':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              FtthOperatorLinkingPage(companyId: _companyId),
                         ),
-                      ),
-                    ),
+                      );
+                      break;
+                    case 'sync':
+                      _syncFtthToOurServer();
+                      break;
+                    case 'resolveOrphans':
+                      _resolveOrphansInBackground();
+                      break;
+                  }
+                },
+                itemBuilder: (_) => [
+                  if (!_ftthAuthenticated)
+                    const PopupMenuItem(
+                        value: 'ftthLogin',
+                        child: ListTile(
+                            leading:
+                                Icon(Icons.login, color: Colors.orangeAccent),
+                            title: Text('تسجيل دخول FTTH'),
+                            dense: true,
+                            contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem(
+                      value: 'receiveCash',
+                      child: ListTile(
+                          leading: Icon(Icons.move_to_inbox,
+                              color: Colors.greenAccent),
+                          title: Text('استلام نقد من مشغل'),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem(
+                      value: 'planPricing',
+                      child: ListTile(
+                          leading: Icon(Icons.price_change_outlined,
+                              color: Colors.amberAccent),
+                          title: Text('أسعار الباقات'),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero)),
+                  PopupMenuItem(
+                      value: 'advancedFilter',
+                      child: ListTile(
+                          leading: Icon(Icons.tune,
+                              color: _hasActiveAdvancedFilters()
+                                  ? Colors.orangeAccent
+                                  : Colors.grey),
+                          title: const Text('تصفية متقدمة'),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero)),
+                  if (_ftthAuthenticated) ...[
+                    const PopupMenuItem(
+                        value: 'team',
+                        child: ListTile(
+                            leading:
+                                Icon(Icons.group, color: Colors.cyanAccent),
+                            title: Text('الفريق'),
+                            dense: true,
+                            contentPadding: EdgeInsets.zero)),
+                    const PopupMenuItem(
+                        value: 'linking',
+                        child: ListTile(
+                            leading: Icon(Icons.link, color: Colors.limeAccent),
+                            title: Text('ربط المشغلين'),
+                            dense: true,
+                            contentPadding: EdgeInsets.zero)),
+                    const PopupMenuItem(
+                        value: 'sync',
+                        child: ListTile(
+                            leading: Icon(Icons.sync,
+                                color: Colors.lightGreenAccent),
+                            title: Text('مزامنة FTTH → خادمنا'),
+                            dense: true,
+                            contentPadding: EdgeInsets.zero)),
+                    if (!_isResolvingOrphans && _ftthOperators.isNotEmpty)
+                      const PopupMenuItem(
+                          value: 'resolveOrphans',
+                          child: ListTile(
+                              leading: Icon(Icons.person_search,
+                                  color: Colors.orangeAccent),
+                              title: Text('إعادة نسب المعاملات'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero)),
+                  ],
                 ],
               ),
-              onPressed: _showAdvancedFilterDialog,
-              tooltip: 'تصفية متقدمة',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36),
-            ),
-            if (_ftthAuthenticated)
-              IconButton(
-                icon:
-                    const Icon(Icons.group, color: Colors.cyanAccent, size: 20),
-                onPressed: _showTeamDialog,
-                tooltip: 'الفريق',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36),
-              ),
-            if (_ftthAuthenticated)
-              IconButton(
-                icon:
-                    const Icon(Icons.link, color: Colors.limeAccent, size: 20),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        FtthOperatorLinkingPage(companyId: _companyId),
+              if (_ftthAuthenticated)
+                Padding(
+                  padding: const EdgeInsets.only(left: 2),
+                  child: Icon(Icons.check_circle,
+                      color: Colors.greenAccent, size: 14),
+                ),
+              if (_isResolvingOrphans)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.orangeAccent),
+                    ),
                   ),
                 ),
-                tooltip: 'ربط المشغلين',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36),
-              ),
-            if (_ftthAuthenticated)
-              IconButton(
-                icon: const Icon(Icons.sync,
-                    color: Colors.lightGreenAccent, size: 20),
-                onPressed: _syncFtthToOurServer,
-                tooltip: 'مزامنة FTTH → خادمنا',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36),
-              ),
-            // زر إعادة نسب "بدون منشئ" + "Agent"
-            if (_ftthAuthenticated &&
-                !_isResolvingOrphans &&
-                _ftthOperators.isNotEmpty)
-              Builder(builder: (_) {
-                final orphanCount =
-                    (_ftthOperators['بدون منشئ']?.transactions.length ?? 0) +
-                        (_ftthOperators['Agent']?.transactions.length ?? 0);
-                return IconButton(
-                  icon: orphanCount > 0
-                      ? Badge(
-                          label: Text(
-                            '$orphanCount',
-                            style: const TextStyle(
-                                fontSize: 9, color: Colors.white),
-                          ),
-                          backgroundColor: Colors.orange,
-                          child: const Icon(Icons.person_search,
-                              color: Colors.orangeAccent, size: 20),
-                        )
-                      : const Icon(Icons.person_search,
-                          color: Colors.white54, size: 20),
-                  onPressed: _resolveOrphansInBackground,
-                  tooltip: 'إعادة نسب المعاملات ($orphanCount عملية)',
+              SizedBox(width: context.accR.spaceXS),
+            ] else ...[
+              // Desktop: all buttons visible
+              if (!_ftthAuthenticated)
+                IconButton(
+                  icon: const Icon(Icons.login, color: Colors.orangeAccent),
+                  onPressed: _showFtthLoginDialog,
+                  tooltip: 'تسجيل دخول FTTH',
+                  iconSize: 20,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 36),
-                );
-              }),
-            if (_isResolvingOrphans)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 6),
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation(Colors.orangeAccent),
+                ),
+              if (_ftthAuthenticated)
+                Padding(
+                  padding: const EdgeInsets.only(left: 2),
+                  child: Icon(Icons.check_circle,
+                      color: Colors.greenAccent, size: context.accR.iconS),
+                ),
+              IconButton(
+                icon: Icon(Icons.refresh,
+                    color: Colors.white70, size: context.accR.iconM),
+                onPressed: _refreshAll,
+                tooltip: 'تحديث الكل',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36),
+              ),
+              IconButton(
+                icon: Icon(Icons.move_to_inbox,
+                    color: Colors.greenAccent, size: context.accR.iconM),
+                onPressed: _showReceiveCashDialog,
+                tooltip: 'استلام نقد من مشغل',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36),
+              ),
+              IconButton(
+                icon: Icon(Icons.price_change_outlined,
+                    color: Colors.amberAccent, size: context.accR.iconM),
+                onPressed: _showPlanPricingDialog,
+                tooltip: 'أسعار الباقات',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36),
+              ),
+              IconButton(
+                icon: Stack(
+                  children: [
+                    Icon(Icons.tune,
+                        color: Colors.white70, size: context.accR.iconM),
+                    if (_hasActiveAdvancedFilters())
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.orangeAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                onPressed: _showAdvancedFilterDialog,
+                tooltip: 'تصفية متقدمة',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36),
+              ),
+              if (_ftthAuthenticated)
+                IconButton(
+                  icon: Icon(Icons.group,
+                      color: Colors.cyanAccent, size: context.accR.iconM),
+                  onPressed: _showTeamDialog,
+                  tooltip: 'الفريق',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36),
+                ),
+              if (_ftthAuthenticated)
+                IconButton(
+                  icon: Icon(Icons.link,
+                      color: Colors.limeAccent, size: context.accR.iconM),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          FtthOperatorLinkingPage(companyId: _companyId),
+                    ),
+                  ),
+                  tooltip: 'ربط المشغلين',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36),
+                ),
+              if (_ftthAuthenticated)
+                IconButton(
+                  icon: Icon(Icons.sync,
+                      color: Colors.lightGreenAccent, size: context.accR.iconM),
+                  onPressed: _syncFtthToOurServer,
+                  tooltip: 'مزامنة FTTH → خادمنا',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36),
+                ),
+              // زر إعادة نسب "بدون منشئ" + "Agent"
+              if (_ftthAuthenticated &&
+                  !_isResolvingOrphans &&
+                  _ftthOperators.isNotEmpty)
+                Builder(builder: (_) {
+                  final orphanCount =
+                      (_ftthOperators['بدون منشئ']?.transactions.length ?? 0) +
+                          (_ftthOperators['Agent']?.transactions.length ?? 0);
+                  return IconButton(
+                    icon: orphanCount > 0
+                        ? Badge(
+                            label: Text(
+                              '$orphanCount',
+                              style: TextStyle(
+                                  fontSize: context.accR.caption,
+                                  color: Colors.white),
+                            ),
+                            backgroundColor: Colors.orange,
+                            child: Icon(Icons.person_search,
+                                color: Colors.orangeAccent,
+                                size: context.accR.iconM),
+                          )
+                        : Icon(Icons.person_search,
+                            color: Colors.white54, size: context.accR.iconM),
+                    onPressed: _resolveOrphansInBackground,
+                    tooltip: 'إعادة نسب المعاملات ($orphanCount عملية)',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36),
+                  );
+                }),
+              if (_isResolvingOrphans)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.orangeAccent),
+                    ),
                   ),
                 ),
-              ),
-            const SizedBox(width: 4),
+              SizedBox(width: context.accR.spaceXS),
+            ],
           ],
         ),
         body: Column(
           children: [
+            // ═══ تبويبات الموبايل ═══
+            if (isMobile)
+              Container(
+                color: AccountingTheme.bgSidebar,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(child: _tabButton(0, Icons.storage, 'خادمنا')),
+                    const SizedBox(width: 4),
+                    Expanded(
+                        child: _tabButton(1, Icons.wifi_tethering, 'FTTH')),
+                    const SizedBox(width: 4),
+                    Expanded(
+                        child: _tabButton(2, Icons.compare_arrows, 'المقارنة')),
+                  ],
+                ),
+              ),
             // ═══ شريط فلتر التاريخ السريع (منسدل) ═══
             AnimatedCrossFade(
               firstChild: _buildQuickDateFilter(),
@@ -1432,8 +1635,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   Widget _tabButton(int index, IconData icon, String label) {
     final isSelected = _tabController.index == index;
+    final isMobile = context.accR.isMobile;
     return Padding(
-      padding: const EdgeInsets.only(left: 2),
+      padding: EdgeInsets.only(left: 2),
       child: InkWell(
         onTap: () {
           _tabController.animateTo(index);
@@ -1441,7 +1645,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         },
         borderRadius: BorderRadius.circular(6),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 8 : context.accR.spaceM,
+              vertical: context.accR.spaceXS),
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.white.withOpacity(0.12),
             borderRadius: BorderRadius.circular(8),
@@ -1452,17 +1658,18 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon,
-                  size: 15,
+                  size: isMobile ? 14 : context.accR.iconS,
                   color: isSelected
                       ? Colors.teal.shade800
                       : Colors.white.withOpacity(0.85)),
-              const SizedBox(width: 5),
+              SizedBox(width: isMobile ? 3 : 5),
               Text(
                 label,
                 style: GoogleFonts.cairo(
-                  fontSize: 12.5,
+                  fontSize: isMobile ? 11 : 12.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected
                       ? Colors.teal.shade800
@@ -1480,6 +1687,268 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     _loadOursData();
     if (_ftthAuthenticated) _loadFtthData();
     _comparisonRows.clear();
+  }
+
+  /// تصحيح السجلات القديمة التي لا تحتوي على CompanyId
+  Future<void> _fixOrphanRecords() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تصحيح السجلات القديمة',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          content: Text(
+            'سيتم إسناد الشركة تلقائياً للسجلات التي لا تحتوي على شركة.\n'
+            'هذا الإجراء آمن ولا يمكن التراجع عنه.',
+            style: GoogleFonts.cairo(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text('إلغاء', style: GoogleFonts.cairo()),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              child: Text('تصحيح', style: GoogleFonts.cairo(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    try {
+      final token = VpsAuthService.instance.accessToken;
+      final response = await http.post(
+        Uri.parse(
+            'https://api.ramzalsadara.tech/api/ftth-accounting/fix-orphan-records'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+          'X-Api-Key': 'sadara-internal-2024-secure-key',
+        },
+      );
+      if (!mounted) return;
+      String message;
+      if (response.statusCode == 403 || response.statusCode == 401) {
+        message = 'هذه العملية تحتاج صلاحية مدير الشركة أو سوبر أدمن';
+      } else {
+        try {
+          final body = jsonDecode(response.body);
+          message = body['message'] ?? (response.statusCode == 200 ? 'تم بنجاح' : 'فشل');
+        } catch (_) {
+          message = response.statusCode == 200 ? 'تم بنجاح' : 'فشل (${response.statusCode})';
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message, style: GoogleFonts.cairo()),
+          backgroundColor:
+              response.statusCode == 200 ? Colors.teal : Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      if (response.statusCode == 200) _loadOursData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// تصحيح السجلات التي لا تحتوي على UserId أو CollectionType
+  Future<void> _fixMissingUserIds() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تصحيح بيانات المشغلين',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          content: Text(
+            'سيتم:\n'
+            '• ربط السجلات بالمشغل الصحيح عبر مستخدم FTTH\n'
+            '• تصنيف السجلات غير المصنّفة كـ "نقد" افتراضياً\n\n'
+            'هذا الإجراء آمن ولا يؤثر على المبالغ.',
+            style: GoogleFonts.cairo(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text('إلغاء', style: GoogleFonts.cairo()),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
+              child:
+                  Text('تصحيح', style: GoogleFonts.cairo(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    try {
+      final token = VpsAuthService.instance.accessToken;
+      final companyId = _companyId.isNotEmpty ? '?companyId=$_companyId' : '';
+      final response = await http.post(
+        Uri.parse(
+            'https://api.ramzalsadara.tech/api/ftth-accounting/fix-missing-userids$companyId'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+          'X-Api-Key': 'sadara-internal-2024-secure-key',
+        },
+      );
+      if (!mounted) return;
+      String message;
+      try {
+        final body = jsonDecode(response.body);
+        message = body['message'] ?? (response.statusCode == 200 ? 'تم بنجاح' : 'فشل');
+      } catch (_) {
+        message = response.statusCode == 200 ? 'تم بنجاح' : 'فشل (${response.statusCode})';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message, style: GoogleFonts.cairo()),
+          backgroundColor: response.statusCode == 200 ? Colors.indigo : Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      if (response.statusCode == 200) _loadOursData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// تعيين السجلات المجهولة (UserId=null) يدوياً لمستخدم محدد
+  Future<void> _assignUnknownRecords() async {
+    // جلب قائمة المستخدمين من الباكيند
+    final vpsToken = VpsAuthService.instance.accessToken;
+    List<Map<String, dynamic>> users = [];
+    try {
+      final url = _companyId.isNotEmpty
+          ? 'https://api.ramzalsadara.tech/api/ftth-accounting/operators-linking?companyId=$_companyId'
+          : 'https://api.ramzalsadara.tech/api/ftth-accounting/operators-linking';
+      final res = await http.get(Uri.parse(url), headers: {
+        if (vpsToken != null) 'Authorization': 'Bearer $vpsToken',
+        'X-Api-Key': 'sadara-internal-2024-secure-key',
+      });
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        users = List<Map<String, dynamic>>.from(body['data'] ?? []);
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    if (users.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('لم يتم جلب المستخدمين', style: GoogleFonts.cairo()),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    String? selectedUserId;
+    String? selectedUserName;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: Text('تعيين المشغل للسجلات المجهولة',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('اختر المشغل الذي نفّذ السجلات المجهولة:',
+                    style: GoogleFonts.cairo()),
+                SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'المشغل',
+                    labelStyle: GoogleFonts.cairo(),
+                  ),
+                  items: users.map((u) {
+                    final id = u['id']?.toString() ?? '';
+                    final name = u['fullName']?.toString() ?? u['username']?.toString() ?? id;
+                    return DropdownMenuItem(value: id, child: Text(name, style: GoogleFonts.cairo()));
+                  }).toList(),
+                  onChanged: (val) {
+                    setDlgState(() {
+                      selectedUserId = val;
+                      selectedUserName = users.firstWhere((u) => u['id']?.toString() == val, orElse: () => {})['fullName']?.toString();
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text('إلغاء', style: GoogleFonts.cairo()),
+              ),
+              ElevatedButton(
+                onPressed: selectedUserId == null ? null : () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                child: Text('تعيين', style: GoogleFonts.cairo(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirm != true || selectedUserId == null || !mounted) return;
+
+    try {
+      final companyParam = _companyId.isNotEmpty ? '&companyId=$_companyId' : '';
+      final response = await http.post(
+        Uri.parse('https://api.ramzalsadara.tech/api/ftth-accounting/assign-unknown-records?targetUserId=$selectedUserId$companyParam'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (vpsToken != null) 'Authorization': 'Bearer $vpsToken',
+          'X-Api-Key': 'sadara-internal-2024-secure-key',
+        },
+      );
+      if (!mounted) return;
+      String message;
+      try {
+        final body = jsonDecode(response.body);
+        message = body['message'] ?? (response.statusCode == 200 ? 'تم بنجاح' : 'فشل');
+      } catch (_) {
+        message = response.statusCode == 200 ? 'تم بنجاح' : 'فشل (${response.statusCode})';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(message, style: GoogleFonts.cairo()),
+        backgroundColor: response.statusCode == 200 ? Colors.teal : Colors.red,
+        duration: const Duration(seconds: 5),
+      ));
+      if (response.statusCode == 200) _loadOursData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -1653,16 +2122,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               textDirection: TextDirection.rtl,
               child: AlertDialog(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                    borderRadius: BorderRadius.circular(context.accR.radiusL)),
                 title: Row(
                   children: [
                     Icon(Icons.price_change,
-                        color: Colors.amber.shade700, size: 22),
-                    const SizedBox(width: 8),
+                        color: Colors.amber.shade700, size: context.accR.iconM),
+                    SizedBox(width: context.accR.spaceS),
                     Expanded(
                       child: Text('أسعار الباقات الحقيقية',
                           style: GoogleFonts.cairo(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
+                              fontSize: context.accR.body,
+                              fontWeight: FontWeight.w700)),
                     ),
                     // زر تعيين الأسعار الافتراضية
                     TextButton.icon(
@@ -1675,14 +2145,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           }
                         });
                       },
-                      icon: const Icon(Icons.restore, size: 16),
+                      icon: Icon(Icons.restore, size: context.accR.iconS),
                       label: Text('افتراضي',
-                          style: GoogleFonts.cairo(fontSize: 11)),
+                          style:
+                              GoogleFonts.cairo(fontSize: context.accR.small)),
                     ),
                   ],
                 ),
                 content: SizedBox(
-                  width: 500,
+                  width: context.accR.dialogMediumW,
                   height: 500,
                   child: SingleChildScrollView(
                     child: Column(
@@ -1690,7 +2161,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       children: [
                         // شرح
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(context.accR.spaceM),
                           decoration: BoxDecoration(
                             color: Colors.amber.shade50,
                             borderRadius: BorderRadius.circular(8),
@@ -1699,29 +2170,30 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           child: Row(
                             children: [
                               Icon(Icons.info_outline,
-                                  color: Colors.amber.shade700, size: 18),
-                              const SizedBox(width: 8),
+                                  color: Colors.amber.shade700,
+                                  size: context.accR.iconM),
+                              SizedBox(width: context.accR.spaceS),
                               Expanded(
                                 child: Text(
                                   'أدخل السعر الحقيقي لكل باقة (بدون خصم).\n'
                                   'سيتم مقارنته بالمبلغ الفعلي في المعاملات لإظهار الخصم.',
                                   style: GoogleFonts.cairo(
-                                      fontSize: 11,
+                                      fontSize: context.accR.small,
                                       color: Colors.amber.shade900),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: context.accR.spaceM),
 
                         // باقات Fiber الرئيسية
                         Text('باقات الإنترنت',
                             style: GoogleFonts.cairo(
-                                fontSize: 13,
+                                fontSize: context.accR.financialSmall,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.teal.shade700)),
-                        const SizedBox(height: 6),
+                        SizedBox(height: context.accR.spaceXS),
                         ..._buildPricingFields(
                           controllers,
                           ['FIBER 35', 'FIBER 50', 'FIBER 75', 'FIBER 150'],
@@ -1732,10 +2204,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         // باقات إضافية
                         Text('خدمات إضافية',
                             style: GoogleFonts.cairo(
-                                fontSize: 13,
+                                fontSize: context.accR.financialSmall,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.teal.shade700)),
-                        const SizedBox(height: 6),
+                        SizedBox(height: context.accR.spaceXS),
                         ..._buildPricingFields(
                           controllers,
                           [
@@ -1752,33 +2224,34 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
                         // باقات مخصصة
                         if (customPlans.isNotEmpty) ...[
-                          const Divider(height: 20),
+                          Divider(height: 20),
                           Text('باقات مخصصة',
                               style: GoogleFonts.cairo(
-                                  fontSize: 13,
+                                  fontSize: context.accR.financialSmall,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.purple.shade700)),
-                          const SizedBox(height: 6),
+                          SizedBox(height: context.accR.spaceXS),
                           ...customPlans.entries.map((entry) {
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding: EdgeInsets.only(bottom: 6),
                               child: Row(
                                 children: [
                                   Expanded(
                                     flex: 3,
                                     child: Text(entry.key,
                                         style: GoogleFonts.cairo(
-                                            fontSize: 12,
+                                            fontSize: context.accR.small,
                                             fontWeight: FontWeight.w500)),
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: context.accR.spaceS),
                                   Expanded(
                                     flex: 2,
                                     child: TextField(
                                       controller: entry.value,
                                       keyboardType: TextInputType.number,
                                       textAlign: TextAlign.center,
-                                      style: GoogleFonts.cairo(fontSize: 12),
+                                      style: GoogleFonts.cairo(
+                                          fontSize: context.accR.small),
                                       decoration: InputDecoration(
                                         hintText: 'السعر',
                                         suffixText: 'د.ع',
@@ -1795,7 +2268,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.delete_outline,
-                                        color: Colors.red.shade400, size: 18),
+                                        color: Colors.red.shade400,
+                                        size: context.accR.iconM),
                                     onPressed: () {
                                       setDialogState(() {
                                         customPlans.remove(entry.key);
@@ -1812,20 +2286,21 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         ],
 
                         // إضافة باقة مخصصة
-                        const Divider(height: 20),
+                        Divider(height: 20),
                         Text('إضافة باقة جديدة',
                             style: GoogleFonts.cairo(
-                                fontSize: 13,
+                                fontSize: context.accR.financialSmall,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.blue.shade700)),
-                        const SizedBox(height: 6),
+                        SizedBox(height: context.accR.spaceXS),
                         Row(
                           children: [
                             Expanded(
                               flex: 3,
                               child: TextField(
                                 controller: customNameController,
-                                style: GoogleFonts.cairo(fontSize: 12),
+                                style: GoogleFonts.cairo(
+                                    fontSize: context.accR.small),
                                 decoration: InputDecoration(
                                   hintText: 'اسم الباقة',
                                   isDense: true,
@@ -1837,14 +2312,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: context.accR.spaceS),
                             Expanded(
                               flex: 2,
                               child: TextField(
                                 controller: customPriceController,
                                 keyboardType: TextInputType.number,
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.cairo(fontSize: 12),
+                                style: GoogleFonts.cairo(
+                                    fontSize: context.accR.small),
                                 decoration: InputDecoration(
                                   hintText: 'السعر',
                                   suffixText: 'د.ع',
@@ -1859,7 +2335,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             ),
                             IconButton(
                               icon: Icon(Icons.add_circle,
-                                  color: Colors.green.shade600, size: 22),
+                                  color: Colors.green.shade600,
+                                  size: context.accR.iconM),
                               onPressed: () {
                                 final name = customNameController.text.trim();
                                 final price = double.tryParse(
@@ -1934,7 +2411,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         setState(() {}); // تحديث الواجهة
                       }
                     },
-                    icon: const Icon(Icons.save, size: 18),
+                    icon: Icon(Icons.save, size: context.accR.iconM),
                     label: Text('حفظ الأسعار',
                         style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
                     style: ElevatedButton.styleFrom(
@@ -1968,29 +2445,31 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   ) {
     return planNames.map((name) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 6),
+        padding: EdgeInsets.only(bottom: 6),
         child: Row(
           children: [
             Expanded(
               flex: 3,
               child: Text(name,
                   style: GoogleFonts.cairo(
-                      fontSize: 12, fontWeight: FontWeight.w500)),
+                      fontSize: context.accR.small,
+                      fontWeight: FontWeight.w500)),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.accR.spaceS),
             Expanded(
               flex: 2,
               child: TextField(
                 controller: controllers[name],
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(fontSize: 12),
+                style: GoogleFonts.cairo(fontSize: context.accR.small),
                 decoration: InputDecoration(
                   hintText: 'السعر',
                   suffixText: 'د.ع',
                   isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceS,
+                      vertical: context.accR.spaceS),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -2027,11 +2506,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           builder: (ctx, setDlg) {
             Widget section(String title, IconData icon, Widget content) {
               return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
+                margin: EdgeInsets.only(bottom: context.accR.spaceM),
+                padding: EdgeInsets.all(context.accR.spaceM),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(context.accR.cardRadius),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: Column(
@@ -2039,17 +2518,18 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   children: [
                     Row(
                       children: [
-                        Icon(icon, size: 18, color: const Color(0xFF1A237E)),
-                        const SizedBox(width: 8),
+                        Icon(icon,
+                            size: context.accR.iconM, color: Color(0xFF1A237E)),
+                        SizedBox(width: context.accR.spaceS),
                         Text(title,
                             style: GoogleFonts.cairo(
-                              fontSize: 14,
+                              fontSize: context.accR.body,
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFF1A237E),
                             )),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.accR.spaceS),
                     content,
                   ],
                 ),
@@ -2060,18 +2540,19 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               textDirection: TextDirection.rtl,
               child: AlertDialog(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                    borderRadius: BorderRadius.circular(context.accR.radiusL)),
                 title: Row(
                   children: [
-                    Icon(Icons.tune, color: const Color(0xFF1A237E), size: 22),
-                    const SizedBox(width: 10),
+                    Icon(Icons.tune,
+                        color: Color(0xFF1A237E), size: context.accR.iconM),
+                    SizedBox(width: context.accR.spaceM),
                     Text('تصفية متقدمة',
                         style: GoogleFonts.cairo(
-                          fontSize: 18,
+                          fontSize: context.accR.headingSmall,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF1A237E),
                         )),
-                    const Spacer(),
+                    Spacer(),
                     TextButton.icon(
                       onPressed: () {
                         setDlg(() {
@@ -2088,17 +2569,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         });
                       },
                       icon: Icon(Icons.restart_alt,
-                          size: 16, color: Colors.red.shade400),
+                          size: context.accR.iconS, color: Colors.red.shade400),
                       label: Text('إعادة تعيين',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: context.accR.small,
                             color: Colors.red.shade400,
                           )),
                     ),
                   ],
                 ),
                 content: Container(
-                  width: 500,
+                  width: context.accR.dialogMediumW,
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.75,
                   ),
@@ -2119,10 +2600,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         height: 16,
                                         child: CircularProgressIndicator(
                                             strokeWidth: 2)),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: context.accR.spaceS),
                                     Text('جارٍ تحميل الاقتراحات...',
                                         style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: context.accR.small,
                                             color: Colors.grey.shade600)),
                                   ]),
                                 DropdownButtonFormField<String>(
@@ -2143,27 +2624,32 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                       .map((u) => DropdownMenuItem(
                                           value: u,
                                           child: Text(u,
-                                              style: const TextStyle(
-                                                  fontSize: 13))))
+                                              style: TextStyle(
+                                                  fontSize: context
+                                                      .accR.financialSmall))))
                                       .toList(),
                                   onChanged: (v) => setDlg(() => tmpUser = v),
                                 ),
-                                const SizedBox(height: 6),
+                                SizedBox(height: context.accR.spaceXS),
                                 Row(children: [
                                   TextButton.icon(
                                     onPressed: () =>
                                         setDlg(() => tmpUser = null),
-                                    icon: const Icon(Icons.clear, size: 14),
-                                    label: const Text('مسح',
-                                        style: TextStyle(fontSize: 12)),
+                                    icon: Icon(Icons.clear,
+                                        size: context.accR.iconXS),
+                                    label: Text('مسح',
+                                        style: TextStyle(
+                                            fontSize: context.accR.small)),
                                     style: TextButton.styleFrom(
                                         padding: EdgeInsets.zero,
                                         minimumSize: const Size(0, 30)),
                                   ),
                                 ]),
                                 CheckboxListTile(
-                                  title: const Text('العمليات بدون مستخدم',
-                                      style: TextStyle(fontSize: 13)),
+                                  title: Text('العمليات بدون مستخدم',
+                                      style: TextStyle(
+                                          fontSize:
+                                              context.accR.financialSmall)),
                                   value: tmpWithoutUser,
                                   onChanged: (v) => setDlg(() {
                                     tmpWithoutUser = v ?? false;
@@ -2189,7 +2675,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return FilterChip(
                                   label: Text(t['label']!,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         color: selected
                                             ? Colors.white
                                             : Colors.grey.shade700,
@@ -2220,7 +2706,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return FilterChip(
                                   label: Text(t['label']!,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         color: selected
                                             ? Colors.white
                                             : Colors.grey.shade700,
@@ -2252,16 +2738,16 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         height: 16,
                                         child: CircularProgressIndicator(
                                             strokeWidth: 2)),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: context.accR.spaceS),
                                     Text('جارٍ تحميل المناطق...',
                                         style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: context.accR.small,
                                             color: Colors.grey.shade600)),
                                   ])
                                 else if (_availableZones.isEmpty)
                                   Text('لا توجد مناطق',
                                       style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: context.accR.small,
                                           color: Colors.grey.shade500))
                                 else
                                   Column(
@@ -2273,10 +2759,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                             ? 'كل المناطق (افتراضي)'
                                             : 'محدد: ${tmpZones.length} منطقة',
                                         style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: context.accR.small,
                                             color: Colors.grey.shade600),
                                       ),
-                                      const SizedBox(height: 6),
+                                      SizedBox(height: context.accR.spaceXS),
                                       Wrap(
                                         spacing: 6,
                                         runSpacing: 4,
@@ -2285,7 +2771,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                           return FilterChip(
                                             label: Text(z,
                                                 style: TextStyle(
-                                                  fontSize: 11,
+                                                  fontSize: context.accR.small,
                                                   color: selected
                                                       ? Colors.white
                                                       : Colors.grey.shade700,
@@ -2308,14 +2794,16 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         }).toList(),
                                       ),
                                       if (tmpZones.isNotEmpty) ...[
-                                        const SizedBox(height: 4),
+                                        SizedBox(height: context.accR.spaceXS),
                                         TextButton.icon(
                                           onPressed: () =>
                                               setDlg(() => tmpZones.clear()),
-                                          icon: const Icon(Icons.clear_all,
-                                              size: 14),
-                                          label: const Text('مسح الكل',
-                                              style: TextStyle(fontSize: 11)),
+                                          icon: Icon(Icons.clear_all,
+                                              size: context.accR.iconXS),
+                                          label: Text('مسح الكل',
+                                              style: TextStyle(
+                                                  fontSize:
+                                                      context.accR.small)),
                                           style: TextButton.styleFrom(
                                               padding: EdgeInsets.zero,
                                               minimumSize: const Size(0, 24)),
@@ -2338,7 +2826,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return FilterChip(
                                   label: Text(t['label']!,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         color: selected
                                             ? Colors.white
                                             : Colors.grey.shade700,
@@ -2368,7 +2856,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return FilterChip(
                                   label: Text(t['label']!,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         color: selected
                                             ? Colors.white
                                             : Colors.grey.shade700,
@@ -2398,7 +2886,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return FilterChip(
                                   label: Text(t['label']!,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         color: selected
                                             ? Colors.white
                                             : Colors.grey.shade700,
@@ -2429,7 +2917,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return FilterChip(
                                   label: Text(t['label']!,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: context.accR.small,
                                         color: selected
                                             ? Colors.white
                                             : Colors.grey.shade700,
@@ -2463,7 +2951,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return FilterChip(
                                   label: Text(t['label']!,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: context.accR.small,
                                         color: selected
                                             ? Colors.white
                                             : Colors.grey.shade700,
@@ -2511,7 +2999,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       _comparisonRows.clear();
                       _refreshAll();
                     },
-                    icon: const Icon(Icons.check, size: 18),
+                    icon: Icon(Icons.check, size: context.accR.iconM),
                     label: Text('تطبيق',
                         style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
                     style: ElevatedButton.styleFrom(
@@ -2580,13 +3068,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(
+          context.accR.isMobile ? context.accR.spaceM : context.accR.spaceXL),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ═══ بطاقات الملخص الرئيسية ═══
           _buildOursSummary(),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
           // ═══ جدول المشغلين ═══
           _buildOursTable(),
         ],
@@ -2596,6 +3085,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   Widget _buildOursSummary() {
     if (_oursSummary == null) return const SizedBox();
+    final isMobile = context.accR.isMobile;
     final cards = <Widget>[
       _summaryCard(
           'إجمالي العمليات',
@@ -2629,6 +3119,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             Colors.grey.shade600,
             icon: Icons.help_outline),
     ];
+
+    if (isMobile) {
+      // Mobile: 3 cards per row, compact
+      final screenW = MediaQuery.of(context).size.width;
+      final cardW = (screenW - 32 - 12) / 3; // 32 padding + 2*6 spacing
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: cards.map((c) {
+          return SizedBox(
+            width: cardW,
+            child: c,
+          );
+        }).toList(),
+      );
+    }
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2657,26 +3164,27 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         side: BorderSide(color: Colors.teal.shade200, width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(context.accR.spaceM),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.category, size: 16, color: Colors.teal.shade700),
-                const SizedBox(width: 6),
+                Icon(Icons.category,
+                    size: context.accR.iconS, color: Colors.teal.shade700),
+                SizedBox(width: context.accR.spaceXS),
                 Text('تفصيل أنواع العمليات',
                     style: GoogleFonts.cairo(
-                        fontSize: 13,
+                        fontSize: context.accR.financialSmall,
                         fontWeight: FontWeight.w700,
                         color: Colors.teal.shade700)),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: context.accR.spaceM),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -2700,26 +3208,29 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   Widget _opTypeChip(
       String label, dynamic count, double amount, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceL, vertical: context.accR.spaceS),
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
+          Icon(icon, size: context.accR.iconS, color: color),
+          SizedBox(width: context.accR.spaceXS),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('$label ($count)',
                   style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+                      fontSize: context.accR.small,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
               Text(_currencyFormat.format(amount),
                   style: TextStyle(
-                      fontSize: 11,
+                      fontSize: context.accR.small,
                       fontWeight: FontWeight.w500,
                       color: color.withOpacity(0.8))),
             ],
@@ -2736,90 +3247,251 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final reconciled = (_oursSummary!['reconciledCount'] ?? 0);
     final pct = (_oursSummary!['reconciledPercentage'] ?? 0).toDouble();
     final unreconciled = total - reconciled;
+    final isMobile = context.accR.isMobile;
+
+    final statusColor = pct >= 80
+        ? Colors.green
+        : pct >= 50
+            ? Colors.orange
+            : Colors.red;
 
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-            color: pct >= 80
-                ? Colors.green.shade200
-                : pct >= 50
-                    ? Colors.orange.shade200
-                    : Colors.red.shade200,
-            width: 1),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        side: BorderSide(color: statusColor.shade200, width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Icon(Icons.verified,
-                size: 20,
-                color: pct >= 80
-                    ? Colors.green.shade700
-                    : pct >= 50
-                        ? Colors.orange.shade700
-                        : Colors.red.shade700),
-            const SizedBox(width: 8),
-            Text('المطابقة مع FTTH: ',
-                style: GoogleFonts.cairo(
-                    fontSize: 12, fontWeight: FontWeight.w600)),
-            Text('$reconciled / $total',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal.shade700)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: pct >= 80
-                    ? Colors.green.shade100
-                    : pct >= 50
-                        ? Colors.orange.shade100
-                        : Colors.red.shade100,
-                borderRadius: BorderRadius.circular(6),
+        padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 10 : context.accR.paddingH,
+            vertical: context.accR.spaceM),
+        child: isMobile
+            ? Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Icon(Icons.verified,
+                      size: context.accR.iconM, color: statusColor.shade700),
+                  Text('المطابقة مع FTTH: ',
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.small,
+                          fontWeight: FontWeight.w600)),
+                  Text('$reconciled / $total',
+                      style: TextStyle(
+                          fontSize: context.accR.financialSmall,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal.shade700)),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('${pct.toStringAsFixed(1)}%',
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.bold,
+                            color: statusColor.shade800)),
+                  ),
+                  if (unreconciled > 0)
+                    Text('($unreconciled غير مطابقة)',
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            color: Colors.red.shade400)),
+                ],
+              )
+            : Row(
+                children: [
+                  Icon(Icons.verified,
+                      size: context.accR.iconM, color: statusColor.shade700),
+                  SizedBox(width: context.accR.spaceS),
+                  Text('المطابقة مع FTTH: ',
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.small,
+                          fontWeight: FontWeight.w600)),
+                  Text('$reconciled / $total',
+                      style: TextStyle(
+                          fontSize: context.accR.financialSmall,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal.shade700)),
+                  SizedBox(width: context.accR.spaceS),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('${pct.toStringAsFixed(1)}%',
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.bold,
+                            color: statusColor.shade800)),
+                  ),
+                  if (unreconciled > 0) ...[
+                    SizedBox(width: context.accR.spaceM),
+                    Text('($unreconciled غير مطابقة)',
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            color: Colors.red.shade400)),
+                  ],
+                ],
               ),
-              child: Text('${pct.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: pct >= 80
-                          ? Colors.green.shade800
-                          : pct >= 50
-                              ? Colors.orange.shade800
-                              : Colors.red.shade800)),
-            ),
-            if (unreconciled > 0) ...[
-              const SizedBox(width: 10),
-              Text('($unreconciled غير مطابقة)',
-                  style: TextStyle(fontSize: 11, color: Colors.red.shade400)),
-            ],
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildOursTable() {
     if (_oursOperators.isEmpty) {
-      return _emptyCard('لا يوجد مشغلون');
+      return Column(
+        children: [
+          _emptyCard('لا يوجد مشغلون'),
+          SizedBox(height: context.accR.spaceS),
+          Card(
+            elevation: 1,
+            color: Colors.amber.shade50,
+            child: Padding(
+              padding: EdgeInsets.all(context.accR.spaceM),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          color: Colors.orange.shade700,
+                          size: context.accR.iconS),
+                      SizedBox(width: context.accR.spaceS),
+                      Expanded(
+                        child: Text(
+                          'قد تكون السجلات القديمة غير مرتبطة بالشركة. '
+                          'جرب تغيير الفترة إلى "الكل" أو اضغط تصحيح السجلات.',
+                          style: GoogleFonts.cairo(
+                              fontSize: context.accR.small,
+                              color: Colors.orange.shade800),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: context.accR.spaceS),
+                  ElevatedButton.icon(
+                    onPressed: _fixOrphanRecords,
+                    icon: const Icon(Icons.auto_fix_high, size: 16),
+                    label:
+                        Text('تصحيح السجلات القديمة', style: GoogleFonts.cairo()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal.shade700,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
-    return Card(
+    // إظهار تحذير إذا كانت هناك سجلات بدون userId أو collectionType
+    final hasUnknownOperators = _oursOperators.any((op) =>
+        op['operatorName'] == 'غير معروف' || op['userId'] == null);
+    final hasUnclassified = _oursOperators.any((op) =>
+        (op['unclassifiedAmount'] ?? 0) > 0);
+
+    return Column(
+      children: [
+        if (hasUnknownOperators || hasUnclassified)
+          Card(
+            elevation: 1,
+            color: Colors.indigo.shade50,
+            margin: EdgeInsets.only(bottom: context.accR.spaceS),
+            child: Padding(
+              padding: EdgeInsets.all(context.accR.spaceM),
+              child: Row(
+                children: [
+                  Icon(Icons.person_off_outlined,
+                      color: Colors.indigo.shade700, size: context.accR.iconS),
+                  SizedBox(width: context.accR.spaceS),
+                  Expanded(
+                    child: Text(
+                      'بعض السجلات محفوظة بدون مشغل أو تصنيف دفع. اضغط تصحيح لربطها تلقائياً.',
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.small,
+                          color: Colors.indigo.shade800),
+                    ),
+                  ),
+                  SizedBox(width: context.accR.spaceS),
+                  ElevatedButton.icon(
+                    onPressed: _fixMissingUserIds,
+                    icon: const Icon(Icons.manage_accounts, size: 14),
+                    label: Text('تصحيح المشغلين', style: GoogleFonts.cairo()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo.shade700,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: context.accR.spaceM,
+                          vertical: context.accR.spaceXS),
+                    ),
+                  ),
+                  SizedBox(width: context.accR.spaceXS),
+                  ElevatedButton.icon(
+                    onPressed: _assignUnknownRecords,
+                    icon: const Icon(Icons.person_pin, size: 14),
+                    label: Text('تعيين يدوي', style: GoogleFonts.cairo()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: context.accR.spaceM,
+                          vertical: context.accR.spaceXS),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Card(
       elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Colors.black, width: 1),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        side: const BorderSide(color: Colors.black, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(14),
-            child: Text('المشغلون (${_oursOperators.length})',
-                style: GoogleFonts.cairo(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.accR.spaceL, vertical: context.accR.spaceM),
+            child: Row(
+              children: [
+                Text('المشغلون (${_oursOperators.length})',
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.body,
+                        fontWeight: FontWeight.w600)),
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => _AllOperationsPage(
+                          companyId: _companyId,
+                          fromDate: _fromDate,
+                          toDate: _toDate),
+                    ),
+                  ),
+                  icon: const Icon(Icons.table_rows, size: 14),
+                  label: Text('كل العمليات', style: GoogleFonts.cairo()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.accR.spaceM,
+                        vertical: context.accR.spaceXS),
+                  ),
+                ),
+              ],
+            ),
           ),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -2830,7 +3502,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     minWidth: constraints.maxWidth,
                   ),
                   child: DataTable(
-                    border: TableBorder.all(color: Colors.black54, width: 0.5),
+                    border: TableBorder.all(color: Colors.black, width: 1.5),
+                    dividerThickness: 0,
                     headingRowColor:
                         WidgetStateProperty.all(Colors.grey.shade100),
                     dataRowMinHeight: 28,
@@ -2838,9 +3511,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     headingRowHeight: 32,
                     columnSpacing: 0,
                     horizontalMargin: 8,
-                    headingTextStyle: const TextStyle(
+                    headingTextStyle: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: context.accR.small,
                         color: Colors.black87),
                     columns: const [
                       DataColumn(
@@ -2896,8 +3569,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       return DataRow(cells: [
                         DataCell(Center(
                             child: Text('${i + 1}',
-                                style: const TextStyle(
-                                    fontSize: 11,
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
                                     fontWeight: FontWeight.w600)))),
                         DataCell(Center(
                             child: Column(
@@ -2905,27 +3578,28 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(op['operatorName'] ?? '-',
-                                style: const TextStyle(
-                                    fontSize: 11, fontWeight: FontWeight.w700)),
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
+                                    fontWeight: FontWeight.w700)),
                             if (op['ftthUsername'] != null)
                               Text(op['ftthUsername'],
                                   style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: context.accR.caption,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.grey.shade600)),
                           ],
                         ))),
                         DataCell(Center(
                             child: Text('$totalCnt',
-                                style: const TextStyle(
-                                    fontSize: 11,
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
                                     fontWeight: FontWeight.w600)))),
                         DataCell(Center(
                             child: Text(
                           _currencyFormat
                               .format((op['totalAmount'] ?? 0).toDouble()),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w700,
                               color: AccountingTheme.neonBlue),
                         ))),
@@ -2934,7 +3608,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             child: Text(
                           '$purchaseCnt',
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: purchaseCnt > 0
                                   ? Colors.green.shade700
@@ -2945,7 +3619,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             child: Text(
                           '$renewalCnt',
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: renewalCnt > 0
                                   ? Colors.blue.shade700
@@ -2956,7 +3630,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             child: Text(
                           '$changeCnt',
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: changeCnt > 0
                                   ? Colors.orange.shade700
@@ -2968,7 +3642,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           _currencyFormat
                               .format((op['cashAmount'] ?? 0).toDouble()),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.green.shade700),
                         ))),
@@ -2978,7 +3652,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           _currencyFormat
                               .format((op['creditAmount'] ?? 0).toDouble()),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.orange.shade700),
                         ))),
@@ -2988,7 +3662,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           _currencyFormat
                               .format((op['masterAmount'] ?? 0).toDouble()),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.purple.shade700),
                         ))),
@@ -2998,7 +3672,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           _currencyFormat
                               .format((op['agentAmount'] ?? 0).toDouble()),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.blue.shade700),
                         ))),
@@ -3008,7 +3682,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           _currencyFormat
                               .format((op['technicianAmount'] ?? 0).toDouble()),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.teal.shade700),
                         ))),
@@ -3019,7 +3693,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               ((op['deliveredCash'] ?? 0).toDouble()) +
                                   ((op['collectedCredit'] ?? 0).toDouble())),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.green.shade700),
                         ))),
@@ -3028,7 +3702,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             child: Text(
                           _currencyFormat.format(netOwed),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: context.accR.small,
                               fontWeight: FontWeight.bold,
                               color: netOwed > 0
                                   ? Colors.red.shade700
@@ -3039,7 +3713,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             child: Text(
                           '$reconciledCnt/$totalCnt',
                           style: TextStyle(
-                              fontSize: 10,
+                              fontSize: context.accR.caption,
                               fontWeight: FontWeight.w600,
                               color: reconciledCnt == totalCnt && totalCnt > 0
                                   ? Colors.green.shade700
@@ -3051,28 +3725,31 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           children: [
                             IconButton(
                               padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                              constraints: BoxConstraints(),
                               icon: Icon(Icons.open_in_new,
-                                  size: 16, color: AccountingTheme.neonBlue),
+                                  size: context.accR.iconS,
+                                  color: AccountingTheme.neonBlue),
                               onPressed: () => _openOperatorAccount(op),
                               tooltip: 'كشف الحساب',
                             ),
                             if (op['userId'] != null) ...[
-                              const SizedBox(width: 4),
+                              SizedBox(width: context.accR.spaceXS),
                               IconButton(
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
+                                constraints: BoxConstraints(),
                                 icon: Icon(Icons.payments,
-                                    size: 15, color: Colors.green.shade700),
+                                    size: context.accR.iconS,
+                                    color: Colors.green.shade700),
                                 onPressed: () => _showQuickDeliverDialog(op),
                                 tooltip: 'تسليم نقد',
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: context.accR.spaceXS),
                               IconButton(
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
+                                constraints: BoxConstraints(),
                                 icon: Icon(Icons.request_quote,
-                                    size: 15, color: Colors.orange.shade700),
+                                    size: context.accR.iconS,
+                                    color: Colors.orange.shade700),
                                 onPressed: () => _showQuickCollectDialog(op),
                                 tooltip: 'تحصيل آجل',
                               ),
@@ -3088,18 +3765,104 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ),
         ],
       ),
+        ),
+      ],
     );
   }
 
   /// ═══ التوزيعات (مناطق، باقات، فنيين، يومي) ═══
   Widget _buildOursDistributions() {
     if (_oursDistributions == null) return const SizedBox();
+    final isMobile = context.accR.isMobile;
 
     final zones = (_oursDistributions!['zones'] as List?) ?? [];
     final plans = (_oursDistributions!['plans'] as List?) ?? [];
     final technicians = (_oursDistributions!['technicians'] as List?) ?? [];
     final daily = (_oursDistributions!['daily'] as List?) ?? [];
     final opTypes = (_oursDistributions!['operationTypes'] as List?) ?? [];
+
+    final opTypesTable = opTypes.isNotEmpty
+        ? _buildDistTable('أنواع العمليات', Icons.category, Colors.teal,
+            columns: ['النوع', 'العدد', 'المبلغ'],
+            rows: opTypes.map((e) {
+              final m = e as Map<String, dynamic>;
+              return [
+                m['type']?.toString() ?? '-',
+                '${m['count'] ?? 0}',
+                _currencyFormat.format((m['amount'] ?? 0).toDouble()),
+              ];
+            }).toList())
+        : null;
+
+    final dailyTable = daily.isNotEmpty
+        ? _buildDistTable('التوزيع اليومي', Icons.calendar_today, Colors.indigo,
+            columns: ['التاريخ', 'العدد', 'المبلغ'],
+            rows: daily.map((e) {
+              final m = e as Map<String, dynamic>;
+              return [
+                m['date']?.toString() ?? '-',
+                '${m['count'] ?? 0}',
+                _currencyFormat.format((m['amount'] ?? 0).toDouble()),
+              ];
+            }).toList())
+        : null;
+
+    final zonesTable = zones.isNotEmpty
+        ? _buildDistTable('توزيع المناطق', Icons.location_on, Colors.deepOrange,
+            columns: ['المنطقة', 'العدد', 'المبلغ'],
+            rows: zones.map((e) {
+              final m = e as Map<String, dynamic>;
+              return [
+                m['zone']?.toString() ?? '-',
+                '${m['count'] ?? 0}',
+                _currencyFormat.format((m['amount'] ?? 0).toDouble()),
+              ];
+            }).toList())
+        : null;
+
+    final plansTable = plans.isNotEmpty
+        ? _buildDistTable('توزيع الباقات', Icons.wifi, Colors.blue,
+            columns: ['الباقة', 'العدد', 'المبلغ'],
+            rows: plans.map((e) {
+              final m = e as Map<String, dynamic>;
+              return [
+                m['plan']?.toString() ?? '-',
+                '${m['count'] ?? 0}',
+                _currencyFormat.format((m['amount'] ?? 0).toDouble()),
+              ];
+            }).toList())
+        : null;
+
+    final techTable = technicians.isNotEmpty
+        ? _buildDistTable('توزيع الفنيين', Icons.engineering, Colors.brown,
+            columns: ['الفني', 'العدد', 'المبلغ'],
+            rows: technicians.map((e) {
+              final m = e as Map<String, dynamic>;
+              return [
+                m['technician']?.toString() ?? '-',
+                '${m['count'] ?? 0}',
+                _currencyFormat.format((m['amount'] ?? 0).toDouble()),
+              ];
+            }).toList())
+        : null;
+
+    if (isMobile) {
+      // Mobile: stack all tables vertically
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (opTypesTable != null) opTypesTable,
+          if (opTypesTable != null) SizedBox(height: context.accR.spaceM),
+          if (dailyTable != null) dailyTable,
+          if (dailyTable != null) SizedBox(height: context.accR.spaceM),
+          if (zonesTable != null) zonesTable,
+          if (zonesTable != null) SizedBox(height: context.accR.spaceM),
+          if (plansTable != null) plansTable,
+          if (plansTable != null) SizedBox(height: context.accR.spaceM),
+          if (techTable != null) techTable,
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3108,83 +3871,26 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (opTypes.isNotEmpty)
-              Expanded(
-                  child: _buildDistTable(
-                      'أنواع العمليات', Icons.category, Colors.teal,
-                      columns: ['النوع', 'العدد', 'المبلغ'],
-                      rows: opTypes.map((e) {
-                        final m = e as Map<String, dynamic>;
-                        return [
-                          m['type']?.toString() ?? '-',
-                          '${m['count'] ?? 0}',
-                          _currencyFormat.format((m['amount'] ?? 0).toDouble()),
-                        ];
-                      }).toList())),
-            if (opTypes.isNotEmpty && daily.isNotEmpty)
-              const SizedBox(width: 12),
-            if (daily.isNotEmpty)
-              Expanded(
-                  child: _buildDistTable(
-                      'التوزيع اليومي', Icons.calendar_today, Colors.indigo,
-                      columns: ['التاريخ', 'العدد', 'المبلغ'],
-                      rows: daily.map((e) {
-                        final m = e as Map<String, dynamic>;
-                        return [
-                          m['date']?.toString() ?? '-',
-                          '${m['count'] ?? 0}',
-                          _currencyFormat.format((m['amount'] ?? 0).toDouble()),
-                        ];
-                      }).toList())),
+            if (opTypesTable != null) Expanded(child: opTypesTable),
+            if (opTypesTable != null && dailyTable != null)
+              SizedBox(width: context.accR.spaceM),
+            if (dailyTable != null) Expanded(child: dailyTable),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.accR.spaceM),
         // ═══ صف 2: المناطق + الباقات ═══
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (zones.isNotEmpty)
-              Expanded(
-                  child: _buildDistTable(
-                      'توزيع المناطق', Icons.location_on, Colors.deepOrange,
-                      columns: ['المنطقة', 'العدد', 'المبلغ'],
-                      rows: zones.map((e) {
-                        final m = e as Map<String, dynamic>;
-                        return [
-                          m['zone']?.toString() ?? '-',
-                          '${m['count'] ?? 0}',
-                          _currencyFormat.format((m['amount'] ?? 0).toDouble()),
-                        ];
-                      }).toList())),
-            if (zones.isNotEmpty && plans.isNotEmpty) const SizedBox(width: 12),
-            if (plans.isNotEmpty)
-              Expanded(
-                  child: _buildDistTable(
-                      'توزيع الباقات', Icons.wifi, Colors.blue,
-                      columns: ['الباقة', 'العدد', 'المبلغ'],
-                      rows: plans.map((e) {
-                        final m = e as Map<String, dynamic>;
-                        return [
-                          m['plan']?.toString() ?? '-',
-                          '${m['count'] ?? 0}',
-                          _currencyFormat.format((m['amount'] ?? 0).toDouble()),
-                        ];
-                      }).toList())),
+            if (zonesTable != null) Expanded(child: zonesTable),
+            if (zonesTable != null && plansTable != null)
+              SizedBox(width: context.accR.spaceM),
+            if (plansTable != null) Expanded(child: plansTable),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.accR.spaceM),
         // ═══ صف 3: الفنيين ═══
-        if (technicians.isNotEmpty)
-          _buildDistTable('توزيع الفنيين', Icons.engineering, Colors.brown,
-              columns: ['الفني', 'العدد', 'المبلغ'],
-              rows: technicians.map((e) {
-                final m = e as Map<String, dynamic>;
-                return [
-                  m['technician']?.toString() ?? '-',
-                  '${m['count'] ?? 0}',
-                  _currencyFormat.format((m['amount'] ?? 0).toDouble()),
-                ];
-              }).toList()),
+        if (techTable != null) techTable,
       ],
     );
   }
@@ -3194,22 +3900,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       {required List<String> columns, required List<List<String>> rows}) {
     return Card(
       elevation: 1,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: color.withOpacity(0.3), width: 1),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        side: BorderSide(color: Colors.black, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            padding: EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Row(
               children: [
-                Icon(icon, size: 16, color: color),
-                const SizedBox(width: 6),
+                Icon(icon, size: context.accR.iconS, color: color),
+                SizedBox(width: context.accR.spaceXS),
                 Text('$title (${rows.length})',
                     style: GoogleFonts.cairo(
-                        fontSize: 12,
+                        fontSize: context.accR.small,
                         fontWeight: FontWeight.w700,
                         color: color)),
               ],
@@ -3217,32 +3924,43 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ),
           SizedBox(
             width: double.infinity,
-            child: DataTable(
-              border: TableBorder.all(color: Colors.grey.shade300, width: 0.5),
-              headingRowColor: WidgetStateProperty.all(color.withOpacity(0.06)),
-              dataRowMinHeight: 26,
-              dataRowMaxHeight: 32,
-              headingRowHeight: 30,
-              columnSpacing: 0,
-              horizontalMargin: 10,
-              headingTextStyle: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 11, color: color),
-              columns: columns
-                  .map((c) => DataColumn(
-                      label: Expanded(child: Center(child: Text(c)))))
-                  .toList(),
-              rows: rows.asMap().entries.map((entry) {
-                final row = entry.value;
-                return DataRow(
-                  cells: row
-                      .map((cell) => DataCell(Center(
-                            child: Text(cell,
-                                style: const TextStyle(fontSize: 11),
-                                overflow: TextOverflow.ellipsis),
-                          )))
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: 400),
+                child: DataTable(
+                  border: TableBorder.all(color: Colors.black, width: 1.5),
+                  dividerThickness: 0,
+                  headingRowColor:
+                      WidgetStateProperty.all(color.withOpacity(0.06)),
+                  dataRowMinHeight: 26,
+                  dataRowMaxHeight: 32,
+                  headingRowHeight: 30,
+                  columnSpacing: 0,
+                  horizontalMargin: 10,
+                  headingTextStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: context.accR.small,
+                      color: color),
+                  columns: columns
+                      .map((c) => DataColumn(
+                          label: Expanded(child: Center(child: Text(c)))))
                       .toList(),
-                );
-              }).toList(),
+                  rows: rows.asMap().entries.map((entry) {
+                    final row = entry.value;
+                    return DataRow(
+                      cells: row
+                          .map((cell) => DataCell(Center(
+                                child: Text(cell,
+                                    style:
+                                        TextStyle(fontSize: context.accR.small),
+                                    overflow: TextOverflow.ellipsis),
+                              )))
+                          .toList(),
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
           ),
         ],
@@ -3252,7 +3970,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   void _openOperatorAccount(Map<String, dynamic> op) {
     final userId = op['userId']?.toString();
-    if (userId == null || userId.isEmpty) return;
+    if (userId == null || userId.isEmpty) {
+      _showUnassignedLogsInfo(op);
+      return;
+    }
 
     Navigator.push(
       context,
@@ -3262,6 +3983,37 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           operatorName: op['operatorName'] ?? 'مشغل',
           companyId: _companyId,
         ),
+      ),
+    );
+  }
+
+  void _showUnassignedLogsInfo(Map<String, dynamic> op) {
+    final total = op['totalCount'] ?? 0;
+    final amount = op['totalAmount'] ?? 0;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('سجلات بدون مشغل محدد'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('عدد العمليات: $total'),
+            Text('الإجمالي: $amount د.ع'),
+            const SizedBox(height: 12),
+            const Text(
+              'هذه السجلات ناتجة عن مزامنة FTTH ولم يُعرَّف مشغلها لأن نظام FTTH لم يُرسل اسم المنشئ.\n\n'
+              'لتصحيحها: اذهب إلى تبويب FTTH وأعد الضغط على "مزامنة FTTH → خادمنا".',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('حسناً'),
+          ),
+        ],
       ),
     );
   }
@@ -3306,26 +4058,29 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         builder: (ctx, setDlgState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(context.accR.radiusL)),
             title: Row(
               children: [
                 Icon(Icons.move_to_inbox, color: Colors.green.shade700),
-                const SizedBox(width: 8),
+                SizedBox(width: context.accR.spaceS),
                 Text('استلام نقد من مشغل',
                     style: GoogleFonts.cairo(
-                        fontSize: 16, fontWeight: FontWeight.w700)),
+                        fontSize: context.accR.headingSmall,
+                        fontWeight: FontWeight.w700)),
               ],
             ),
             content: SizedBox(
-              width: 420,
+              width: context.accR.isMobile
+                  ? MediaQuery.of(context).size.width * 0.92
+                  : 420,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // معلومة توضيحية
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(context.accR.spaceM),
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -3334,30 +4089,33 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     child: Row(
                       children: [
                         Icon(Icons.info_outline,
-                            size: 16, color: Colors.blue.shade700),
-                        const SizedBox(width: 8),
+                            size: context.accR.iconS,
+                            color: Colors.blue.shade700),
+                        SizedBox(width: context.accR.spaceS),
                         Expanded(
                           child: Text(
                             'تحويل النقد من صندوق المشغل إلى الصندوق الرئيسي',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.blue.shade700),
+                                fontSize: context.accR.small,
+                                color: Colors.blue.shade700),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: context.accR.spaceL),
                   // اختيار المشغل
                   Text('اختر المشغل:',
                       style: GoogleFonts.cairo(
-                          fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
+                          fontSize: context.accR.financialSmall,
+                          fontWeight: FontWeight.w600)),
+                  SizedBox(height: context.accR.spaceXS),
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    constraints: const BoxConstraints(maxHeight: 200),
+                    constraints: BoxConstraints(maxHeight: 200),
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: operators.length,
@@ -3379,7 +4137,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 : Colors.grey.shade300,
                             child: Text('${i + 1}',
                                 style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: context.accR.small,
                                     color: isSelected
                                         ? Colors.white
                                         : Colors.black54,
@@ -3387,7 +4145,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           ),
                           title: Text(op['operatorName'] ?? '-',
                               style: GoogleFonts.cairo(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.w600)),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 3),
@@ -3395,7 +4154,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: cashAmt > 0
                                   ? Colors.green.shade50
                                   : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                  context.accR.cardRadius),
                               border: Border.all(
                                   color: cashAmt > 0
                                       ? Colors.green.shade300
@@ -3404,7 +4164,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             child: Text(
                               _currencyFormat.format(cashAmt),
                               style: GoogleFonts.cairo(
-                                fontSize: 12,
+                                fontSize: context.accR.small,
                                 fontWeight: FontWeight.w700,
                                 color: cashAmt > 0
                                     ? Colors.green.shade700
@@ -3426,7 +4186,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     ),
                   ),
                   if (selectedOp != null) ...[
-                    const SizedBox(height: 14),
+                    SizedBox(height: context.accR.spaceL),
                     Directionality(
                       textDirection: TextDirection.ltr,
                       child: TextField(
@@ -3441,7 +4201,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.accR.spaceS),
                     TextField(
                       controller: notesController,
                       decoration: InputDecoration(
@@ -3453,16 +4213,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     ),
                   ],
                   if (errorMsg != null) ...[
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.accR.spaceM),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(context.accR.spaceS),
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(errorMsg!,
                           style: TextStyle(
-                              color: Colors.red.shade700, fontSize: 12)),
+                              color: Colors.red.shade700,
+                              fontSize: context.accR.small)),
                     ),
                   ],
                 ],
@@ -3520,7 +4281,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         height: 16,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check, size: 18),
+                    : Icon(Icons.check, size: context.accR.iconM),
                 label: Text(isSubmitting ? 'جاري...' : 'استلام'),
                 style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade700,
@@ -3558,24 +4319,28 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         title: Row(
           children: [
             Icon(Icons.payments, color: Colors.green.shade700),
-            const SizedBox(width: 8),
+            SizedBox(width: context.accR.spaceS),
             Expanded(
               child: Text('تسليم نقد — $name',
                   style: GoogleFonts.cairo(
-                      fontSize: 15, fontWeight: FontWeight.w700)),
+                      fontSize: context.accR.body,
+                      fontWeight: FontWeight.w700)),
             ),
           ],
         ),
         content: SizedBox(
-          width: 350,
+          width: context.accR.isMobile
+              ? MediaQuery.of(context).size.width * 0.9
+              : 350,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('رصيد النقد الحالي: ${_currencyFormat.format(cashAmount)}',
                   style: GoogleFonts.cairo(
-                      fontSize: 13, color: Colors.grey.shade700)),
-              const SizedBox(height: 12),
+                      fontSize: context.accR.financialSmall,
+                      color: Colors.grey.shade700)),
+              SizedBox(height: context.accR.spaceM),
               TextField(
                 controller: amountController,
                 keyboardType:
@@ -3586,7 +4351,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   prefixIcon: Icon(Icons.attach_money),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.accR.spaceS),
               TextField(
                 controller: notesController,
                 decoration: const InputDecoration(
@@ -3605,7 +4370,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.check, size: 18),
+            icon: Icon(Icons.check, size: context.accR.iconM),
             label: const Text('تسليم'),
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green, foregroundColor: Colors.white),
@@ -3722,27 +4487,28 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(context.accR.radiusL)),
               title: Row(
                 children: [
                   Icon(Icons.request_quote, color: Colors.orange.shade700),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.accR.spaceS),
                   Expanded(
                     child: Text('تحصيل آجل — $name',
                         style: GoogleFonts.cairo(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
+                            fontSize: context.accR.body,
+                            fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
               content: SizedBox(
-                width: 500,
+                width: context.accR.dialogMediumW,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // معلومة الرصيد
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(context.accR.spaceM),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade50,
                         borderRadius: BorderRadius.circular(8),
@@ -3751,13 +4517,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       child: Row(
                         children: [
                           Icon(Icons.info_outline,
-                              size: 16, color: Colors.orange.shade700),
-                          const SizedBox(width: 8),
+                              size: context.accR.iconS,
+                              color: Colors.orange.shade700),
+                          SizedBox(width: context.accR.spaceS),
                           Expanded(
                             child: Text(
                               'رصيد الآجل الحالي: ${_currencyFormat.format(creditAmount)}',
                               style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: context.accR.small,
                                   color: Colors.orange.shade700,
                                   fontWeight: FontWeight.w600),
                             ),
@@ -3765,13 +4532,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
 
                     // قائمة العملاء
                     Text('اختر العملاء المراد تحصيلهم:',
                         style: GoogleFonts.cairo(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
+                            fontSize: context.accR.financialSmall,
+                            fontWeight: FontWeight.w600)),
+                    SizedBox(height: context.accR.spaceXS),
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
@@ -3780,14 +4548,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       constraints: const BoxConstraints(maxHeight: 250),
                       child: creditCustomers.isEmpty
                           ? Padding(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(context.accR.spaceXL),
                               child: Center(
                                 child: Text(
                                   isLoadingCustomers
                                       ? 'جاري التحميل...'
                                       : 'لا يوجد عملاء آجل غير مسددين',
                                   style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: context.accR.small,
                                       color: Colors.grey.shade500),
                                 ),
                               ),
@@ -3829,12 +4597,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                     ),
                                     title: Text('تحديد الكل',
                                         style: GoogleFonts.cairo(
-                                            fontSize: 12,
+                                            fontSize: context.accR.small,
                                             fontWeight: FontWeight.w600)),
                                     trailing: Text(
                                         '${creditCustomers.length} عميل',
                                         style: TextStyle(
-                                            fontSize: 11,
+                                            fontSize: context.accR.small,
                                             color: Colors.grey.shade600)),
                                   ),
                                 ),
@@ -3927,12 +4695,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                             Expanded(
                                               child: Text(cName,
                                                   style: GoogleFonts.cairo(
-                                                      fontSize: 12,
+                                                      fontSize:
+                                                          context.accR.small,
                                                       fontWeight:
                                                           FontWeight.w600)),
                                             ),
                                             if (isRecurring) ...[
-                                              const SizedBox(width: 4),
+                                              SizedBox(
+                                                  width: context.accR.spaceXS),
                                               Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -3950,7 +4720,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                                 child: Text(
                                                   '🔄 $paidMonths/$cycleMonths شهر',
                                                   style: TextStyle(
-                                                    fontSize: 9,
+                                                    fontSize:
+                                                        context.accR.caption,
                                                     color: Colors
                                                         .deepPurple.shade700,
                                                     fontWeight: FontWeight.w700,
@@ -3959,7 +4730,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                               ),
                                             ],
                                             if (isCashWithCycle) ...[
-                                              const SizedBox(width: 4),
+                                              SizedBox(
+                                                  width: context.accR.spaceXS),
                                               Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -3985,24 +4757,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                             ],
                                           ],
                                         ),
-                                        subtitle: Row(
+                                        subtitle: Wrap(
+                                          spacing: context.accR.spaceXS,
                                           children: [
                                             Text('$planName  •  $dateStr',
                                                 style: TextStyle(
-                                                    fontSize: 10,
+                                                    fontSize:
+                                                        context.accR.caption,
                                                     color:
                                                         Colors.grey.shade600)),
-                                            if (isRecurring) ...[
-                                              const SizedBox(width: 6),
+                                            if (isRecurring)
                                               Text(
                                                 'متبقي: ${_currencyFormat.format(remainingAmount)}',
                                                 style: TextStyle(
-                                                  fontSize: 9,
+                                                  fontSize:
+                                                      context.accR.caption,
                                                   color: Colors.red.shade600,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
-                                            ],
                                           ],
                                         ),
                                         trailing: Column(
@@ -4019,7 +4792,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                               decoration: BoxDecoration(
                                                 color: Colors.orange.shade50,
                                                 borderRadius:
-                                                    BorderRadius.circular(12),
+                                                    BorderRadius.circular(
+                                                        context
+                                                            .accR.cardRadius),
                                                 border: Border.all(
                                                     color:
                                                         Colors.orange.shade300),
@@ -4028,7 +4803,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                                   _currencyFormat
                                                       .format(monthlyAmount),
                                                   style: GoogleFonts.cairo(
-                                                      fontSize: 11,
+                                                      fontSize:
+                                                          context.accR.small,
                                                       fontWeight:
                                                           FontWeight.w700,
                                                       color: Colors
@@ -4050,9 +4826,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             ),
                     ),
                     if (selectedLogIds.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.accR.spaceS),
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(context.accR.spaceS),
                         decoration: BoxDecoration(
                           color: Colors.green.shade50,
                           borderRadius: BorderRadius.circular(8),
@@ -4060,13 +4836,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         child: Row(
                           children: [
                             Icon(Icons.check_circle,
-                                size: 16, color: Colors.green.shade700),
-                            const SizedBox(width: 6),
+                                size: context.accR.iconS,
+                                color: Colors.green.shade700),
+                            SizedBox(width: context.accR.spaceXS),
                             Expanded(
                               child: Text(
                                 'المحدد: ${selectedLogIds.length} عميل — المجموع: ${_currencyFormat.format(selectedTotal)}',
                                 style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: context.accR.small,
                                     color: Colors.green.shade700,
                                     fontWeight: FontWeight.w600),
                               ),
@@ -4076,7 +4853,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       ),
                       // زر تحديد التكرار للعميل المحدد (إذا محدد عميل واحد فقط)
                       if (selectedLogIds.length == 1) ...[
-                        const SizedBox(height: 6),
+                        SizedBox(height: context.accR.spaceXS),
                         Builder(builder: (_) {
                           final selLog = creditCustomers.firstWhere(
                             (c) =>
@@ -4095,93 +4872,97 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               border:
                                   Border.all(color: Colors.deepPurple.shade200),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.repeat,
-                                    size: 16,
-                                    color: Colors.deepPurple.shade700),
-                                const SizedBox(width: 6),
-                                Text('التكرار:',
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.deepPurple.shade700,
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 8),
-                                ...([0, 1, 2, 3]).map((months) {
-                                  final isActive =
-                                      (months == 0 && currentCycle == null) ||
-                                          currentCycle == months;
-                                  final label = months == 0
-                                      ? 'بدون'
-                                      : months == 1
-                                          ? 'شهر'
-                                          : '$months أشهر';
-                                  return Padding(
-                                    padding: const EdgeInsets.only(left: 4),
-                                    child: InkWell(
-                                      onTap: () async {
-                                        final logId = selectedLogIds.first;
-                                        final res = await AccountingService
-                                            .instance
-                                            .setRenewalCycle(
-                                          logId: logId,
-                                          cycleMonths:
-                                              months == 0 ? null : months,
-                                        );
-                                        if (res['success'] == true) {
-                                          // تحديث البيانات محلياً
-                                          final idx =
-                                              creditCustomers.indexWhere((c) =>
-                                                  (c['Id'] as num).toInt() ==
-                                                  logId);
-                                          if (idx >= 0) {
-                                            setDlgState(() {
-                                              creditCustomers[idx]
-                                                      ['RenewalCycleMonths'] =
-                                                  months == 0 ? null : months;
-                                              // إذا العملية نقد، الشهر الأول مدفوع تلقائياً
-                                              final paidFromServer =
-                                                  res['paidMonths'] as int? ??
-                                                      0;
-                                              creditCustomers[idx]
-                                                      ['PaidMonths'] =
-                                                  paidFromServer;
-                                            });
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.repeat,
+                                      size: context.accR.iconS,
+                                      color: Colors.deepPurple.shade700),
+                                  SizedBox(width: context.accR.spaceXS),
+                                  Text('التكرار:',
+                                      style: TextStyle(
+                                          fontSize: context.accR.small,
+                                          color: Colors.deepPurple.shade700,
+                                          fontWeight: FontWeight.w600)),
+                                  SizedBox(width: context.accR.spaceS),
+                                  ...([0, 1, 2, 3]).map((months) {
+                                    final isActive =
+                                        (months == 0 && currentCycle == null) ||
+                                            currentCycle == months;
+                                    final label = months == 0
+                                        ? 'بدون'
+                                        : months == 1
+                                            ? 'شهر'
+                                            : '$months أشهر';
+                                    return Padding(
+                                      padding: EdgeInsets.only(left: 4),
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final logId = selectedLogIds.first;
+                                          final res = await AccountingService
+                                              .instance
+                                              .setRenewalCycle(
+                                            logId: logId,
+                                            cycleMonths:
+                                                months == 0 ? null : months,
+                                          );
+                                          if (res['success'] == true) {
+                                            // تحديث البيانات محلياً
+                                            final idx = creditCustomers
+                                                .indexWhere((c) =>
+                                                    (c['Id'] as num).toInt() ==
+                                                    logId);
+                                            if (idx >= 0) {
+                                              setDlgState(() {
+                                                creditCustomers[idx]
+                                                        ['RenewalCycleMonths'] =
+                                                    months == 0 ? null : months;
+                                                // إذا العملية نقد، الشهر الأول مدفوع تلقائياً
+                                                final paidFromServer =
+                                                    res['paidMonths'] as int? ??
+                                                        0;
+                                                creditCustomers[idx]
+                                                        ['PaidMonths'] =
+                                                    paidFromServer;
+                                              });
+                                            }
                                           }
-                                        }
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isActive
-                                              ? Colors.deepPurple.shade700
-                                              : Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color:
-                                                  Colors.deepPurple.shade300),
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isActive
+                                                ? Colors.deepPurple.shade700
+                                                : Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                                context.accR.cardRadius),
+                                            border: Border.all(
+                                                color:
+                                                    Colors.deepPurple.shade300),
+                                          ),
+                                          child: Text(label,
+                                              style: TextStyle(
+                                                fontSize: context.accR.caption,
+                                                color: isActive
+                                                    ? Colors.white
+                                                    : Colors
+                                                        .deepPurple.shade700,
+                                                fontWeight: FontWeight.w600,
+                                              )),
                                         ),
-                                        child: Text(label,
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: isActive
-                                                  ? Colors.white
-                                                  : Colors.deepPurple.shade700,
-                                              fontWeight: FontWeight.w600,
-                                            )),
                                       ),
-                                    ),
-                                  );
-                                }),
-                              ],
+                                    );
+                                  }),
+                                ],
+                              ),
                             ),
                           );
                         }),
                       ],
                     ],
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.accR.spaceM),
                     TextField(
                       controller: amountController,
                       keyboardType:
@@ -4192,7 +4973,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         prefixIcon: Icon(Icons.attach_money),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.accR.spaceS),
                     TextField(
                       controller: notesController,
                       decoration: const InputDecoration(
@@ -4211,7 +4992,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 ),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(ctx, true),
-                  icon: const Icon(Icons.check, size: 18),
+                  icon: Icon(Icons.check, size: context.accR.iconM),
                   label: const Text('تحصيل'),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange.shade700,
@@ -4288,11 +5069,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock_outline, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
+            Icon(Icons.lock_outline,
+                size: context.accR.iconEmpty, color: Colors.grey.shade400),
+            SizedBox(height: context.accR.spaceXL),
             Text('يجب تسجيل الدخول لخادم FTTH',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
-            const SizedBox(height: 12),
+                style: TextStyle(
+                    fontSize: context.accR.headingSmall,
+                    color: Colors.grey.shade600)),
+            SizedBox(height: context.accR.spaceM),
             ElevatedButton.icon(
               onPressed: _showFtthLoginDialog,
               icon: const Icon(Icons.login),
@@ -4308,12 +5092,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
 
     if (_isLoadingFtth) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(),
-            SizedBox(height: 12),
+            SizedBox(height: context.accR.spaceM),
             Text('جاري جلب بيانات خادم FTTH...'),
           ],
         ),
@@ -4331,16 +5115,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(
+          context.accR.isMobile ? context.accR.spaceM : context.accR.spaceXL),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildFtthSummary(),
-          const SizedBox(height: 4),
+          SizedBox(height: context.accR.spaceXS),
           // شريط تقدم نسب "بدون منشئ"
           if (_isResolvingOrphans)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: context.accR.spaceS),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -4351,18 +5136,18 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.accR.spaceS),
                       Text(
                         'جاري نسب "بدون منشئ": $_orphanResolved / $_orphanTotal',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: context.accR.small,
                           color: Colors.orange.shade800,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.accR.spaceXS),
                   LinearProgressIndicator(
                     value:
                         _orphanTotal > 0 ? _orphanResolved / _orphanTotal : 0,
@@ -4378,15 +5163,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: EdgeInsets.only(bottom: 6),
               child: FilterChip(
                 label: Text(
                   _showTeamRefill ? 'إخفاء تعبئة الفريق' : 'إظهار تعبئة الفريق',
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(fontSize: context.accR.small),
                 ),
                 avatar: Icon(
                   _showTeamRefill ? Icons.visibility_off : Icons.visibility,
-                  size: 16,
+                  size: context.accR.iconS,
                   color: _showTeamRefill ? Colors.teal : Colors.grey,
                 ),
                 selected: _showTeamRefill,
@@ -4421,43 +5206,45 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       totalDiscount += op.calcTotalDiscount();
     }
 
+    final isMobile = context.accR.isMobile;
+
+    final card1 = _summaryCardMain(
+        'إجمالي المعاملات',
+        _ftthTotalCount.toDouble(),
+        '${_ftthOperators.length} مشغل',
+        AccountingTheme.neonBlue,
+        Icons.receipt_long,
+        isCount: true);
+    final card2 = _summaryCardMain('مجموع السالب', _ftthTotalNegative.abs(),
+        'مبالغ مخصومة', Colors.red.shade600, Icons.arrow_circle_down);
+    final card3 = _summaryCardMain('مجموع الموجب', _ftthTotalPositive,
+        'عمولات ومرتجعات', Colors.green.shade600, Icons.arrow_circle_up);
+    final card4 = _summaryCardMain('مجموع الفرق', totalDiscount,
+        'خصومات التجديد والتغيير', Colors.orange.shade700, Icons.discount);
+
+    if (isMobile) {
+      final halfW = (MediaQuery.of(context).size.width - 32 - 8) / 2;
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [card1, card2, card3, card4]
+            .map((c) => SizedBox(width: halfW, child: c))
+            .toList(),
+      );
+    }
+
     return Column(
       children: [
         // الصف الأول: البطاقات الرئيسية (إجمالي + سالب + موجب + الفرق)
         Row(
           children: [
-            Expanded(
-                child: _summaryCardMain(
-                    'إجمالي المعاملات',
-                    _ftthTotalCount.toDouble(),
-                    '${_ftthOperators.length} مشغل',
-                    AccountingTheme.neonBlue,
-                    Icons.receipt_long,
-                    isCount: true)),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _summaryCardMain(
-                    'مجموع السالب',
-                    _ftthTotalNegative.abs(),
-                    'مبالغ مخصومة',
-                    Colors.red.shade600,
-                    Icons.arrow_circle_down)),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _summaryCardMain(
-                    'مجموع الموجب',
-                    _ftthTotalPositive,
-                    'عمولات ومرتجعات',
-                    Colors.green.shade600,
-                    Icons.arrow_circle_up)),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _summaryCardMain(
-                    'مجموع الفرق',
-                    totalDiscount,
-                    'خصومات التجديد والتغيير',
-                    Colors.orange.shade700,
-                    Icons.discount)),
+            Expanded(child: card1),
+            SizedBox(width: context.accR.spaceS),
+            Expanded(child: card2),
+            SizedBox(width: context.accR.spaceS),
+            Expanded(child: card3),
+            SizedBox(width: context.accR.spaceS),
+            Expanded(child: card4),
           ],
         ),
       ],
@@ -4518,11 +5305,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
     final sorted = list..sort((a, b) => b.totalCount.compareTo(a.totalCount));
 
+    // موبايل: جدول بعمود مثبت + تمرير أفقي
+    if (context.accR.isMobile) {
+      return _buildFtthTableMobile(sorted);
+    }
+
     return Card(
       elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Colors.black, width: 1),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        side: const BorderSide(color: Colors.black, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4536,7 +5329,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     minWidth: constraints.maxWidth,
                   ),
                   child: DataTable(
-                    border: TableBorder.all(color: Colors.black54, width: 0.5),
+                    border: TableBorder.all(color: Colors.black, width: 1.5),
+                    dividerThickness: 0,
                     showCheckboxColumn: false,
                     headingRowColor:
                         WidgetStateProperty.all(Colors.teal.shade50),
@@ -4545,9 +5339,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     headingRowHeight: 32,
                     columnSpacing: 0,
                     horizontalMargin: 8,
-                    headingTextStyle: const TextStyle(
+                    headingTextStyle: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: context.accR.financialSmall,
                         color: Colors.black87),
                     columns: [
                       DataColumn(
@@ -4583,7 +5377,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           label: Expanded(
                               child: Center(
                                   child: Text('التجديد/التغيير',
-                                      style: TextStyle(fontSize: 11))))),
+                                      style: TextStyle(
+                                          fontSize: context.accR.small))))),
                       DataColumn(
                           label: Expanded(child: Center(child: Text('الفرق')))),
                       DataColumn(
@@ -4604,8 +5399,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           onSelectChanged: (_) => _openOperatorTransactions(op),
                           cells: [
                             DataCell(Text('${i + 1}',
-                                style: const TextStyle(
-                                    fontSize: 12,
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
                                     fontWeight: FontWeight.w600))),
                             DataCell(Center(
                                 child: Column(
@@ -4615,14 +5410,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                     op.name == 'بدون منشئ'
                                         ? 'بدون منسئ'
                                         : op.name,
-                                    style: const TextStyle(
-                                        fontSize: 12,
+                                    style: TextStyle(
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w700)),
                                 if (op.attributedOps > 0)
                                   Text(
                                     '+${op.attributedOps} منسوبة',
                                     style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: context.accR.caption,
                                         color: Colors.blue.shade600),
                                   ),
                               ],
@@ -4630,7 +5425,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(
                                 child: Text('${op.purchaseOps}',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w700,
                                         color: op.purchaseOps > 0
                                             ? Colors.teal.shade700
@@ -4638,7 +5433,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(
                                 child: Text('${op.renewOps}',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w700,
                                         color: op.renewOps > 0
                                             ? Colors.teal.shade600
@@ -4646,7 +5441,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(
                                 child: Text('${op.changeOps}',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.changeOps > 0
                                             ? Colors.teal.shade500
@@ -4654,7 +5449,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(
                                 child: Text('${op.scheduleOps}',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.scheduleOps > 0
                                             ? Colors.teal.shade400
@@ -4662,7 +5457,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(
                                 child: Text('${op.commissionOps}',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.commissionOps > 0
                                             ? Colors.purple.shade700
@@ -4670,7 +5465,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(
                                 child: Text('${op.reversalOps}',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.reversalOps > 0
                                             ? Colors.orange.shade700
@@ -4678,7 +5473,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(
                                 child: Text('${op.walletOps}',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.walletOps > 0
                                             ? Colors.blue.shade700
@@ -4687,8 +5482,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             DataCell(Center(child: _buildOtherTypesCell(op))),
                             DataCell(Center(
                                 child: Text('${op.totalCount}',
-                                    style: const TextStyle(
-                                        fontSize: 12,
+                                    style: TextStyle(
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w700)))),
                             // عمود الشراء
                             DataCell(Center(child: () {
@@ -4696,7 +5491,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               return Text(
                                 _currencyFormat.format(purchase),
                                 style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: context.accR.small,
                                     fontWeight: FontWeight.w700,
                                     color: purchase > 0
                                         ? Colors.red.shade700
@@ -4709,7 +5504,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               return Text(
                                 _currencyFormat.format(renewChange),
                                 style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: context.accR.small,
                                     fontWeight: FontWeight.w700,
                                     color: renewChange > 0
                                         ? Colors.red.shade600
@@ -4723,14 +5518,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return Text(
                                   _currencyFormat.format(disc),
                                   style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.orange.shade800),
                                 );
                               }
                               return Text('0',
                                   style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.grey.shade400));
                             }())),
@@ -4746,7 +5541,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 return Text(
                                   _currencyFormat.format(net),
                                   style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.w700,
                                       color: net > 0
                                           ? Colors.deepOrange.shade700
@@ -4758,7 +5553,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 child: Text(
                               _currencyFormat.format(op.positiveAmount),
                               style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: context.accR.small,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.green.shade700),
                             ))),
@@ -4768,9 +5563,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 child: Center(
                                   child: IconButton(
                                     padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
+                                    constraints: BoxConstraints(),
                                     icon: Icon(Icons.info_outline,
-                                        size: 16, color: Colors.teal.shade600),
+                                        size: context.accR.iconS,
+                                        color: Colors.teal.shade600),
                                     tooltip: 'عرض تفاصيل الأنواع',
                                     onPressed: () => _showTypeBreakdown(op),
                                   ),
@@ -4783,6 +5579,346 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// جدول FTTH للموبايل مع عمود مشغل مثبت + تمرير أفقي
+  Widget _buildFtthTableMobile(List<_FtthOperatorData> sorted) {
+    const double headerH = 38.0;
+    const double rowH = 44.0;
+    const double frozenW = 115.0;
+    const double numW = 26.0;
+    const double countCellW = 56.0;
+    const double totalCellW = 60.0;
+    const double amountCellW = 82.0;
+    const double detailCellW = 46.0;
+
+    final hStyle = TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: context.accR.caption,
+      color: Colors.black87,
+    );
+
+    Widget hCell(String text, double w) => Container(
+          width: w,
+          height: headerH,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            border: Border(
+              right: BorderSide(color: Colors.black, width: 1.5),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Text(text,
+              style: hStyle,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+        );
+
+    Widget dCell(Widget child, double w, [Color? bg]) => Container(
+          width: w,
+          height: rowH,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: bg,
+            border: const Border(
+              right: BorderSide(color: Colors.black, width: 1.5),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: child,
+        );
+
+    TextStyle cStyle({FontWeight fw = FontWeight.w600, Color? color}) =>
+        TextStyle(
+          fontSize: context.accR.caption,
+          fontWeight: fw,
+          color: color ?? Colors.black87,
+        );
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        side: const BorderSide(color: Colors.black, width: 2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ──────── عمود مثبت: # + المشغل ────────
+          Container(
+            width: frozenW,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: const Border(
+                  right: BorderSide(color: Colors.black, width: 1.5)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // رأس العمود المثبت
+                Container(
+                  height: headerH,
+                  color: Colors.teal.shade50,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: numW,
+                        alignment: Alignment.center,
+                        child: Text('#', style: hStyle),
+                      ),
+                      Container(width: 1.5, color: Colors.black),
+                      Expanded(
+                          child: Center(child: Text('المشغل', style: hStyle))),
+                    ],
+                  ),
+                ),
+                Container(height: 2.5, color: Colors.black),
+                // صفوف البيانات المثبتة
+                ...sorted.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final op = entry.value;
+                  return InkWell(
+                    onTap: () => _openOperatorTransactions(op),
+                    child: Container(
+                      height: rowH,
+                      decoration: BoxDecoration(
+                        color: i.isEven
+                            ? Colors.teal.shade50
+                            : Colors.teal.shade100,
+                        border: const Border(
+                            bottom:
+                                BorderSide(color: Colors.black, width: 1.5)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: numW,
+                            alignment: Alignment.center,
+                            child: Text('${i + 1}',
+                                style: cStyle(fw: FontWeight.w600)),
+                          ),
+                          Container(width: 1.5, color: Colors.black),
+                          Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    op.name == 'بدون منشئ'
+                                        ? 'بدون منسئ'
+                                        : op.name,
+                                    style: cStyle(fw: FontWeight.w700),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                  if (op.attributedOps > 0)
+                                    Text(
+                                      '+${op.attributedOps} منسوبة',
+                                      style: TextStyle(
+                                          fontSize: context.accR.caption - 1,
+                                          color: Colors.blue.shade600),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+
+          // ──────── أعمدة قابلة للتمرير ────────
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // رأس الأعمدة القابلة للتمرير
+                  Container(
+                    height: headerH,
+                    color: Colors.teal.shade50,
+                    child: Row(
+                      children: [
+                        hCell('شراء', countCellW),
+                        hCell('تجديد', countCellW),
+                        hCell('تغيير', countCellW),
+                        hCell('جدولة', countCellW),
+                        hCell('عمولات', countCellW),
+                        hCell('عكس', countCellW),
+                        hCell('محفظة', countCellW),
+                        hCell('أخرى', countCellW),
+                        hCell('الإجمالي', totalCellW),
+                        hCell('الشراء', amountCellW),
+                        hCell('التجديد/\nالتغيير', amountCellW),
+                        hCell('الفرق', amountCellW),
+                        hCell('الصافي', amountCellW),
+                        hCell('التحويلات', amountCellW),
+                        hCell('التفاصيل', detailCellW),
+                      ],
+                    ),
+                  ),
+                  Container(height: 2.5, color: Colors.black),
+                  // صفوف البيانات القابلة للتمرير
+                  ...sorted.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final op = entry.value;
+                    final purchase = op.calcPurchaseAmount();
+                    final renewChange = op.calcRenewChangeAmount();
+                    final disc = op.calcTotalDiscount();
+                    final net = purchase + renewChange + disc;
+
+                    return InkWell(
+                      onTap: () => _openOperatorTransactions(op),
+                      child: Container(
+                        height: rowH,
+                        decoration: BoxDecoration(
+                          color: i.isEven ? Colors.white : Colors.grey.shade50,
+                          border: const Border(
+                              bottom:
+                                  BorderSide(color: Colors.black, width: 1.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            // أعمدة الأعداد
+                            dCell(
+                                Text('${op.purchaseOps}',
+                                    style: cStyle(
+                                        fw: FontWeight.w700,
+                                        color: op.purchaseOps > 0
+                                            ? Colors.teal.shade700
+                                            : Colors.grey.shade400)),
+                                countCellW),
+                            dCell(
+                                Text('${op.renewOps}',
+                                    style: cStyle(
+                                        fw: FontWeight.w700,
+                                        color: op.renewOps > 0
+                                            ? Colors.teal.shade600
+                                            : Colors.grey.shade400)),
+                                countCellW),
+                            dCell(
+                                Text('${op.changeOps}',
+                                    style: cStyle(
+                                        color: op.changeOps > 0
+                                            ? Colors.teal.shade500
+                                            : Colors.grey.shade400)),
+                                countCellW),
+                            dCell(
+                                Text('${op.scheduleOps}',
+                                    style: cStyle(
+                                        color: op.scheduleOps > 0
+                                            ? Colors.teal.shade400
+                                            : Colors.grey.shade400)),
+                                countCellW),
+                            dCell(
+                                Text('${op.commissionOps}',
+                                    style: cStyle(
+                                        color: op.commissionOps > 0
+                                            ? Colors.purple.shade700
+                                            : Colors.grey.shade400)),
+                                countCellW),
+                            dCell(
+                                Text('${op.reversalOps}',
+                                    style: cStyle(
+                                        color: op.reversalOps > 0
+                                            ? Colors.orange.shade700
+                                            : Colors.grey.shade400)),
+                                countCellW),
+                            dCell(
+                                Text('${op.walletOps}',
+                                    style: cStyle(
+                                        color: op.walletOps > 0
+                                            ? Colors.blue.shade700
+                                            : Colors.grey.shade400)),
+                                countCellW),
+                            dCell(
+                                FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: _buildOtherTypesCell(op)),
+                                countCellW),
+                            dCell(
+                                Text('${op.totalCount}',
+                                    style: cStyle(fw: FontWeight.w700)),
+                                totalCellW),
+                            // أعمدة المبالغ
+                            dCell(
+                                Text(_currencyFormat.format(purchase),
+                                    style: cStyle(
+                                        fw: FontWeight.w700,
+                                        color: purchase > 0
+                                            ? Colors.red.shade700
+                                            : Colors.grey.shade400)),
+                                amountCellW),
+                            dCell(
+                                Text(_currencyFormat.format(renewChange),
+                                    style: cStyle(
+                                        fw: FontWeight.w700,
+                                        color: renewChange > 0
+                                            ? Colors.red.shade600
+                                            : Colors.grey.shade400)),
+                                amountCellW),
+                            dCell(
+                                disc > 0
+                                    ? Text(_currencyFormat.format(disc),
+                                        style: cStyle(
+                                            fw: FontWeight.w700,
+                                            color: Colors.orange.shade800))
+                                    : Text('0',
+                                        style: cStyle(
+                                            fw: FontWeight.w500,
+                                            color: Colors.grey.shade400)),
+                                amountCellW),
+                            dCell(
+                                Text(_currencyFormat.format(net),
+                                    style: cStyle(
+                                        fw: FontWeight.w700,
+                                        color: net > 0
+                                            ? Colors.deepOrange.shade700
+                                            : Colors.grey.shade400)),
+                                amountCellW,
+                                Colors.green.shade50),
+                            dCell(
+                                Text(_currencyFormat.format(op.positiveAmount),
+                                    style:
+                                        cStyle(color: Colors.green.shade700)),
+                                amountCellW),
+                            // زر التفاصيل
+                            Container(
+                              width: detailCellW,
+                              height: rowH,
+                              alignment: Alignment.center,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: Icon(Icons.info_outline,
+                                    size: context.accR.iconS,
+                                    color: Colors.teal.shade600),
+                                tooltip: 'عرض تفاصيل الأنواع',
+                                onPressed: () => _showTypeBreakdown(op),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -4837,21 +5973,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(context.accR.radiusL)),
           title: Row(
             children: [
-              Icon(Icons.list_alt, color: Colors.teal.shade700, size: 20),
-              const SizedBox(width: 8),
+              Icon(Icons.list_alt,
+                  color: Colors.teal.shade700, size: context.accR.iconM),
+              SizedBox(width: context.accR.spaceS),
               Expanded(
                 child: Text('تفاصيل عمليات: ${op.name}',
                     style: GoogleFonts.cairo(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                        fontSize: context.accR.body,
+                        fontWeight: FontWeight.w600)),
               ),
             ],
           ),
           content: SizedBox(
-            width: 420,
+            width: context.accR.isMobile
+                ? MediaQuery.of(context).size.width * 0.92
+                : 420,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -4872,7 +6012,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 const Divider(height: 20),
                 // تفاصيل كل نوع
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 300),
+                  constraints: BoxConstraints(maxHeight: 300),
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: sorted.length,
@@ -4891,7 +6031,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                       : Colors.grey;
 
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        padding: EdgeInsets.symmetric(vertical: 3),
                         child: Row(
                           children: [
                             Container(
@@ -4902,53 +6042,58 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: context.accR.spaceS),
                             Expanded(
                               child: Text(_translateType(type),
-                                  style: const TextStyle(fontSize: 12)),
+                                  style:
+                                      TextStyle(fontSize: context.accR.small)),
                             ),
                             Text('$count',
                                 style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: context.accR.small,
                                     fontWeight: FontWeight.bold,
                                     color: catColor.shade700)),
-                            const SizedBox(width: 6),
+                            SizedBox(width: context.accR.spaceXS),
                             Text(type,
                                 style: TextStyle(
-                                    fontSize: 9, color: Colors.grey.shade500)),
+                                    fontSize: context.accR.caption,
+                                    color: Colors.grey.shade500)),
                           ],
                         ),
                       );
                     },
                   ),
                 ),
-                const Divider(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Divider(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.spaceBetween,
                   children: [
                     Text('الإجمالي: ${op.totalCount}',
                         style: GoogleFonts.cairo(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.bold)),
                     Text(
                         'سالب: ${_currencyFormat.format(op.negativeAmount.abs())} | موجب: ${_currencyFormat.format(op.positiveAmount)}',
-                        style: const TextStyle(fontSize: 10)),
+                        style: TextStyle(fontSize: context.accR.caption)),
                   ],
                 ),
                 // عرض تفاصيل المعاملات الفردية لعمليات "بدون منشئ" أو المنسوبة
                 if (op.name == 'بدون منشئ' || op.attributedOps > 0) ...[
-                  const Divider(height: 16),
+                  Divider(height: 16),
                   Text(
                     op.name == 'بدون منشئ'
                         ? '📋 تفاصيل العمليات (${op.transactions.length})'
                         : '📋 العمليات المنسوبة تلقائياً (${op.attributedOps})',
                     style: GoogleFonts.cairo(
-                        fontSize: 12,
+                        fontSize: context.accR.small,
                         fontWeight: FontWeight.bold,
                         color: Colors.indigo.shade700),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: context.accR.spaceXS),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 200),
+                    constraints: BoxConstraints(maxHeight: 200),
                     child: ListView.builder(
                       shrinkWrap: true,
                       itemCount: op.name == 'بدون منشئ'
@@ -4963,8 +6108,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 .where((t) => t.createdBy.startsWith('⇐'))
                                 .toList()[i];
                         return Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          padding: const EdgeInsets.all(8),
+                          margin: EdgeInsets.only(bottom: 4),
+                          padding: EdgeInsets.all(context.accR.spaceS),
                           decoration: BoxDecoration(
                             color: op.name == 'بدون منشئ'
                                 ? Colors.orange.shade50
@@ -4983,14 +6128,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 children: [
                                   Text(_translateType(tx.type),
                                       style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: context.accR.small,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.teal.shade700)),
-                                  const Spacer(),
+                                  Spacer(),
                                   Text(
                                       '${_currencyFormat.format(tx.amount.abs())} د.ع',
                                       style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: context.accR.small,
                                           fontWeight: FontWeight.bold,
                                           color: tx.amount < 0
                                               ? Colors.red.shade700
@@ -5000,7 +6145,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               if (tx.customerName.isNotEmpty)
                                 Text('👤 العميل: ${tx.customerName}',
                                     style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.blue.shade800)),
                               if (tx.auditCreator.isNotEmpty)
@@ -5017,7 +6162,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   child: Text(
                                       '🔍 المنشئ (audit): ${tx.auditCreator}',
                                       style: TextStyle(
-                                          fontSize: 10,
+                                          fontSize: context.accR.caption,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.green.shade800)),
                                 ),
@@ -5025,22 +6170,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   tx.auditCreator.isEmpty)
                                 Text('🆔 معرف العميل: ${tx.customerId}',
                                     style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: context.accR.caption,
                                         color: Colors.grey.shade600)),
                               if (tx.planName.isNotEmpty)
                                 Text('📦 ${tx.planName}',
                                     style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: context.accR.caption,
                                         color: Colors.grey.shade600)),
                               if (tx.zoneId.isNotEmpty)
                                 Text('📍 زون: ${tx.zoneId}',
                                     style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: context.accR.caption,
                                         color: Colors.grey.shade600)),
                               if (tx.occuredAt.isNotEmpty)
                                 Text('🕐 ${_formatTxDate(tx.occuredAt)}',
                                     style: TextStyle(
-                                        fontSize: 9,
+                                        fontSize: context.accR.caption,
                                         color: Colors.grey.shade500)),
                             ],
                           ),
@@ -5065,7 +6210,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   Widget _typeBadge(String label, int count, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
       decoration: BoxDecoration(
         color: count > 0 ? color.withOpacity(0.1) : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(8),
@@ -5075,7 +6221,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       ),
       child: Text('$label: $count',
           style: TextStyle(
-              fontSize: 11,
+              fontSize: context.accR.small,
               fontWeight: FontWeight.w600,
               color: count > 0 ? color : Colors.grey.shade500)),
     );
@@ -5085,7 +6231,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   Widget _buildOtherTypesCell(_FtthOperatorData op) {
     if (op.otherOps == 0) {
       return Text('0',
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade400));
+          style: TextStyle(
+              fontSize: context.accR.small, color: Colors.grey.shade400));
     }
     // جمع أنواع "أخرى" فقط
     final otherTypes = <String, int>{};
@@ -5103,11 +6250,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       mainAxisSize: MainAxisSize.min,
       children: sorted.map((e) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 1),
+          padding: EdgeInsets.symmetric(vertical: 1),
           child: Text(
             '${_translateType(e.key)}: ${e.value}',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: context.accR.caption,
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w500,
             ),
@@ -5136,11 +6283,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock_outline, size: 48, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
+            Icon(Icons.lock_outline,
+                size: context.accR.iconXL, color: Colors.grey.shade400),
+            SizedBox(height: context.accR.spaceM),
             Text('يجب تسجيل الدخول لخادم FTTH أولاً لإجراء المقارنة',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
-            const SizedBox(height: 12),
+                style: TextStyle(
+                    fontSize: context.accR.body, color: Colors.grey.shade600)),
+            SizedBox(height: context.accR.spaceM),
             ElevatedButton.icon(
               onPressed: _showFtthLoginDialog,
               icon: const Icon(Icons.login),
@@ -5156,12 +6305,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
 
     if (_isLoadingCompare || _isLoadingOurs || _isLoadingFtth) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(),
-            SizedBox(height: 12),
+            SizedBox(height: context.accR.spaceM),
             Text('جاري بناء المقارنة...'),
           ],
         ),
@@ -5176,12 +6325,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(
+          context.accR.isMobile ? context.accR.spaceM : context.accR.spaceXL),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildCompareSummaryCards(),
-          const SizedBox(height: 4),
+          SizedBox(height: context.accR.spaceXS),
           _buildCompareTable(),
         ],
       ),
@@ -5220,23 +6370,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
     return Card(
       elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Colors.black, width: 1),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        side: const BorderSide(color: Colors.black, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(context.accR.spaceL),
             child: Row(
               children: [
                 Text('مقارنة المشغلين (${_comparisonRows.length})',
                     style: GoogleFonts.cairo(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
-                const Spacer(),
+                        fontSize: context.accR.body,
+                        fontWeight: FontWeight.w600)),
+                Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.refresh, size: 20),
+                  icon: Icon(Icons.refresh, size: context.accR.iconM),
                   onPressed: () {
                     _comparisonRows.clear();
                     _buildComparison();
@@ -5255,7 +6407,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     minWidth: constraints.maxWidth,
                   ),
                   child: DataTable(
-                    border: TableBorder.all(color: Colors.black54, width: 0.5),
+                    border: TableBorder.all(color: Colors.black, width: 1.5),
+                    dividerThickness: 0,
                     headingRowColor:
                         WidgetStateProperty.all(Colors.indigo.shade50),
                     dataRowMinHeight: 28,
@@ -5263,9 +6416,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     headingRowHeight: 32,
                     columnSpacing: 0,
                     horizontalMargin: 8,
-                    headingTextStyle: const TextStyle(
+                    headingTextStyle: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: context.accR.financialSmall,
                         color: Colors.black87),
                     columns: [
                       DataColumn(
@@ -5321,50 +6474,51 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         cells: [
                           DataCell(Center(
                               child: Text('${i + 1}',
-                                  style: const TextStyle(
-                                      fontSize: 12,
+                                  style: TextStyle(
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.w600)))),
                           DataCell(Center(
                               child: Text(row.operatorName,
-                                  style: const TextStyle(
-                                      fontSize: 12,
+                                  style: TextStyle(
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.w700)))),
                           DataCell(Center(
                               child: Text('${row.oursCount}',
-                                  style: const TextStyle(
-                                      fontSize: 12,
+                                  style: TextStyle(
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.w600)))),
                           DataCell(Center(
                               child: Text(
                             _currencyFormat.format(row.oursAmount),
-                            style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: context.accR.small,
+                                fontWeight: FontWeight.w600),
                           ))),
                           DataCell(Center(
                               child: Text('${row.ftthCount}',
                                   style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.teal.shade700)))),
                           DataCell(Center(
                               child: Text(
                             _currencyFormat.format(row.ftthAmount),
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: context.accR.small,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.teal.shade700),
                           ))),
                           DataCell(Center(
                               child: Text('${row.matchedCount}',
                                   style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: context.accR.small,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green.shade700)))),
                           DataCell(Center(
                               child: Text(
                             '${row.oursOnlyCount}',
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: context.accR.small,
                                 fontWeight: row.oursOnlyCount > 0
                                     ? FontWeight.bold
                                     : FontWeight.w600,
@@ -5376,7 +6530,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               child: Text(
                             '${row.ftthOnlyCount}',
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: context.accR.small,
                                 fontWeight: row.ftthOnlyCount > 0
                                     ? FontWeight.bold
                                     : FontWeight.w600,
@@ -5413,14 +6567,16 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
       ),
       child: Text('$percent%',
-          style:
-              TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg)),
+          style: TextStyle(
+              fontSize: context.accR.small,
+              fontWeight: FontWeight.bold,
+              color: fg)),
     );
   }
 
@@ -5435,37 +6591,48 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: Colors.black, width: 1),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        side: const BorderSide(color: Colors.black, width: 2),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceM, vertical: context.accR.spaceM),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 16, color: color),
-                const SizedBox(width: 4),
-                Text(title,
-                    style: GoogleFonts.cairo(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: color)),
+                Icon(icon, size: context.accR.iconS, color: color),
+                SizedBox(width: context.accR.spaceXS),
+                Flexible(
+                  child: Text(title,
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.small,
+                          fontWeight: FontWeight.w600,
+                          color: color),
+                      overflow: TextOverflow.ellipsis),
+                ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              isCount
-                  ? '${value.toInt()}'
-                  : '${_currencyFormat.format(value)} د.ع',
-              style: GoogleFonts.cairo(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            SizedBox(height: context.accR.spaceXS),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                isCount
+                    ? '${value.toInt()}'
+                    : '${_currencyFormat.format(value)} د.ع',
+                style: GoogleFonts.cairo(
+                    fontSize: context.accR.headingSmall,
+                    fontWeight: FontWeight.bold,
+                    color: color),
+              ),
             ),
             if (subtitle.isNotEmpty)
               Text(subtitle,
-                  style: TextStyle(fontSize: 9, color: Colors.grey.shade500)),
+                  style: TextStyle(
+                      fontSize: context.accR.caption,
+                      color: Colors.grey.shade500)),
           ],
         ),
       ),
@@ -5480,18 +6647,20 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         decoration: BoxDecoration(
           color: color.withOpacity(0.06),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.black, width: 1),
+          border: Border.all(color: color.withOpacity(0.2), width: 1),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(height: 2),
+            Icon(icon, size: context.accR.iconS, color: color),
+            SizedBox(height: 2),
             Text('$count',
                 style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+                    fontSize: context.accR.body,
+                    fontWeight: FontWeight.bold,
+                    color: color)),
             Text(label,
-                style: TextStyle(fontSize: 9, color: color),
+                style: TextStyle(fontSize: context.accR.caption, color: color),
                 textAlign: TextAlign.center),
           ],
         ),
@@ -5502,33 +6671,44 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   /// بطاقة ملخص عامة (تُستخدم في تاب خادمنا)
   Widget _summaryCard(String title, double value, String subtitle, Color color,
       {IconData? icon, bool isCount = false}) {
+    final isMobile = context.accR.isMobile;
+    final pad = isMobile ? 6.0 : context.accR.spaceL;
+    final iconSz = isMobile ? 16.0 : context.accR.iconM;
+    final titleFs = isMobile ? 10.0 : context.accR.small;
+    final valueFs = isMobile ? 13.0 : context.accR.headingSmall;
+    final subFs = isMobile ? 8.0 : context.accR.caption;
     return Card(
-      elevation: 2,
+      elevation: isMobile ? 1 : 2,
+      margin: isMobile ? const EdgeInsets.all(0) : null,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Colors.black, width: 1),
+        borderRadius:
+            BorderRadius.circular(isMobile ? 8 : context.accR.cardRadius),
+        side: const BorderSide(color: Colors.black, width: 2),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(pad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 18, color: color),
-                  const SizedBox(width: 6),
+                  Icon(icon, size: iconSz, color: color),
+                  SizedBox(width: isMobile ? 3 : context.accR.spaceXS),
                 ],
                 Expanded(
                   child: Text(title,
                       style: GoogleFonts.cairo(
-                          fontSize: 12,
+                          fontSize: titleFs,
                           fontWeight: FontWeight.w600,
-                          color: color)),
+                          color: color),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: isMobile ? 2 : context.accR.spaceS),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: AlignmentDirectional.centerStart,
@@ -5537,13 +6717,18 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     ? '${value.toInt()}'
                     : '${_currencyFormat.format(value)} د.ع',
                 style: GoogleFonts.cairo(
-                    fontSize: 16, fontWeight: FontWeight.bold, color: color),
+                    fontSize: valueFs,
+                    fontWeight: FontWeight.bold,
+                    color: color),
               ),
             ),
             if (subtitle.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              SizedBox(height: isMobile ? 1 : context.accR.spaceXS),
               Text(subtitle,
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                  style:
+                      TextStyle(fontSize: subFs, color: Colors.grey.shade600),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
             ],
           ],
         ),
@@ -5554,7 +6739,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   Widget _emptyCard(String text) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(context.accR.spaceXXL),
         child: Center(
           child: Text(text, style: TextStyle(color: Colors.grey.shade500)),
         ),
@@ -5567,10 +6752,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-          const SizedBox(height: 12),
+          Icon(Icons.error_outline,
+              size: context.accR.iconXL, color: Colors.red.shade300),
+          SizedBox(height: context.accR.spaceM),
           Text(error, style: TextStyle(color: Colors.red.shade700)),
-          const SizedBox(height: 12),
+          SizedBox(height: context.accR.spaceM),
           ElevatedButton(
               onPressed: onRetry, child: const Text('إعادة المحاولة')),
         ],
@@ -5583,8 +6769,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   // ════════════════════════════════════════════════════════════════
 
   Widget _buildQuickDateFilter() {
+    final isMobile = context.accR.isMobile;
+    final isCustomDate = _dateLabel.contains('/') || _dateLabel.contains('-');
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : context.accR.spaceM,
+          vertical: context.accR.spaceS),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -5598,68 +6789,78 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Icon(Icons.filter_alt, size: 16, color: Colors.grey.shade600),
-          const SizedBox(width: 8),
-          _filterChip('اليوم', 'اليوم'),
-          const SizedBox(width: 6),
-          _filterChip('أمس', 'أمس'),
-          const SizedBox(width: 6),
-          _filterChip('اليوم + أمس', 'اليوم + أمس'),
-          const SizedBox(width: 10),
-          // زر اختيار مخصص
-          InkWell(
-            onTap: _showCustomDatePicker,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _dateLabel.contains('/') || _dateLabel.contains('-')
-                    ? AccountingTheme.neonBlue
-                    : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _dateLabel.contains('/') || _dateLabel.contains('-')
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Icon(Icons.filter_alt,
+                size: context.accR.iconS, color: Colors.grey.shade600),
+            SizedBox(width: context.accR.spaceS),
+            _filterChip('اليوم', 'اليوم'),
+            SizedBox(width: context.accR.spaceXS),
+            _filterChip('أمس', 'أمس'),
+            SizedBox(width: context.accR.spaceXS),
+            _filterChip('اليوم + أمس', 'اليوم + أمس'),
+            SizedBox(width: context.accR.spaceXS),
+            _filterChip('آخر 7 أيام', 'آخر 7 أيام'),
+            SizedBox(width: context.accR.spaceXS),
+            _filterChip('هذا الشهر', 'هذا الشهر'),
+            SizedBox(width: context.accR.spaceXS),
+            _filterChip('الكل', 'الكل'),
+            SizedBox(width: context.accR.spaceM),
+            // زر اختيار مخصص
+            InkWell(
+              onTap: _showCustomDatePicker,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 8 : context.accR.spaceM,
+                    vertical: context.accR.spaceXS),
+                decoration: BoxDecoration(
+                  color: isCustomDate
                       ? AccountingTheme.neonBlue
-                      : Colors.grey.shade300,
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isCustomDate
+                        ? AccountingTheme.neonBlue
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_month,
+                        size: context.accR.iconS,
+                        color:
+                            isCustomDate ? Colors.white : Colors.grey.shade600),
+                    SizedBox(width: context.accR.spaceXS),
+                    Text(
+                      isCustomDate ? _dateLabel : 'مخصص',
+                      style: TextStyle(
+                        fontSize: context.accR.small,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isCustomDate ? Colors.white : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.calendar_month,
-                      size: 14,
-                      color:
-                          _dateLabel.contains('/') || _dateLabel.contains('-')
-                              ? Colors.white
-                              : Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Text(
-                    _dateLabel.contains('/') || _dateLabel.contains('-')
-                        ? _dateLabel
-                        : 'مخصص',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color:
-                          _dateLabel.contains('/') || _dateLabel.contains('-')
-                              ? Colors.white
-                              : Colors.grey.shade700,
-                    ),
-                  ),
-                ],
-              ),
             ),
-          ),
-          const Spacer(),
-          // عرض النطاق الحالي
-          if (_fromDate != null && _toDate != null)
-            Text(
-              '${DateFormat('MM/dd').format(_fromDate!)} - ${DateFormat('MM/dd').format(_toDate!)}',
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
-            ),
-        ],
+            if (!isMobile) ...[
+              SizedBox(width: context.accR.spaceM),
+              // عرض النطاق الحالي
+              if (_fromDate != null && _toDate != null)
+                Text(
+                  '${DateFormat('MM/dd').format(_fromDate!)} - ${DateFormat('MM/dd').format(_toDate!)}',
+                  style: TextStyle(
+                      fontSize: context.accR.caption,
+                      color: Colors.grey.shade500),
+                ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -5670,7 +6871,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       onTap: () => _applyDateFilter(filterKey),
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
           color: isSelected ? AccountingTheme.neonBlue : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
@@ -5681,7 +6883,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: context.accR.small,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected ? Colors.white : Colors.grey.shade700,
           ),
@@ -5734,13 +6936,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   }
 
   Future<void> _showCustomDatePicker() async {
+    final now = DateTime.now();
+    final initialRange = (_fromDate != null && _toDate != null)
+        ? DateTimeRange(start: _fromDate!, end: _toDate!)
+        : DateTimeRange(
+            start: now.subtract(const Duration(days: 1)),
+            end: now,
+          );
+
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 1)),
+      initialDateRange: initialRange,
       locale: const Locale('ar'),
     );
-    if (picked != null) {
+
+    if (picked != null && mounted) {
       setState(() {
         _fromDate = picked.start;
         _toDate = DateTime(
@@ -6025,17 +7237,18 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('الفريق ($_totalCount عضو)',
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  fontSize: context.accR.headingSmall,
+                  fontWeight: FontWeight.bold)),
           backgroundColor: Colors.teal.shade700,
           foregroundColor: Colors.white,
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh, size: 20),
+              icon: Icon(Icons.refresh, size: context.accR.iconM),
               onPressed: _loadTeam,
               tooltip: 'تحديث',
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.accR.spaceS),
           ],
         ),
         body: _isLoading
@@ -6046,11 +7259,12 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.error_outline,
-                            size: 48, color: Colors.red.shade300),
-                        const SizedBox(height: 12),
+                            size: context.accR.iconXL,
+                            color: Colors.red.shade300),
+                        SizedBox(height: context.accR.spaceM),
                         Text(_error!,
                             style: TextStyle(color: Colors.red.shade700)),
-                        const SizedBox(height: 12),
+                        SizedBox(height: context.accR.spaceM),
                         ElevatedButton.icon(
                           onPressed: _loadTeam,
                           icon: const Icon(Icons.refresh),
@@ -6063,43 +7277,90 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
                     children: [
                       // بطاقات الملخص
                       Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            _summaryCard('إجمالي الأعضاء', '$_totalCount',
-                                Icons.people, Colors.teal),
-                            const SizedBox(width: 8),
-                            _summaryCard('لديهم محفظة', '$withWallet',
-                                Icons.account_balance_wallet, Colors.blue),
-                            const SizedBox(width: 8),
-                            _summaryCard(
-                                'إجمالي الأرصدة',
-                                _currencyFormat.format(totalBalance),
-                                Icons.monetization_on,
-                                totalBalance >= 0 ? Colors.green : Colors.red),
-                          ],
-                        ),
+                        padding: EdgeInsets.all(context.accR.spaceM),
+                        child: context.accR.isMobile
+                            ? Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      _summaryCard(
+                                          'إجمالي الأعضاء',
+                                          '$_totalCount',
+                                          Icons.people,
+                                          Colors.teal),
+                                      SizedBox(width: context.accR.spaceS),
+                                      _summaryCard(
+                                          'لديهم محفظة',
+                                          '$withWallet',
+                                          Icons.account_balance_wallet,
+                                          Colors.blue),
+                                    ],
+                                  ),
+                                  SizedBox(height: context.accR.spaceS),
+                                  Row(
+                                    children: [
+                                      _summaryCard(
+                                          'إجمالي الأرصدة',
+                                          _currencyFormat.format(totalBalance),
+                                          Icons.monetization_on,
+                                          totalBalance >= 0
+                                              ? Colors.green
+                                              : Colors.red),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  _summaryCard('إجمالي الأعضاء', '$_totalCount',
+                                      Icons.people, Colors.teal),
+                                  SizedBox(width: context.accR.spaceS),
+                                  _summaryCard(
+                                      'لديهم محفظة',
+                                      '$withWallet',
+                                      Icons.account_balance_wallet,
+                                      Colors.blue),
+                                  SizedBox(width: context.accR.spaceS),
+                                  _summaryCard(
+                                      'إجمالي الأرصدة',
+                                      _currencyFormat.format(totalBalance),
+                                      Icons.monetization_on,
+                                      totalBalance >= 0
+                                          ? Colors.green
+                                          : Colors.red),
+                                ],
+                              ),
                       ),
                       // فلتر الأدوار
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            _roleChip('الكل', _teamList.length),
-                            ...roleCounts.entries
-                                .map((e) => _roleChip(e.key, e.value)),
-                          ],
+                        padding: EdgeInsets.symmetric(
+                            horizontal: context.accR.spaceM),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _roleChip('الكل', _teamList.length),
+                              ...roleCounts.entries
+                                  .map((e) => _roleChip(e.key, e.value)),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.accR.spaceS),
                       // الجدول
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.accR.spaceM),
                           child: SingleChildScrollView(
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: _buildTable(filtered),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SizedBox(
+                                width: context.accR.isMobile
+                                    ? null
+                                    : double.infinity,
+                                child: _buildTable(filtered),
+                              ),
                             ),
                           ),
                         ),
@@ -6113,11 +7374,11 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
   Widget _roleChip(String label, int count) {
     final isSelected = _filterRole == label;
     return Padding(
-      padding: const EdgeInsets.only(left: 6),
+      padding: EdgeInsets.only(left: 6),
       child: FilterChip(
         label: Text('$label ($count)',
             style: TextStyle(
-                fontSize: 11,
+                fontSize: context.accR.small,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? Colors.white : Colors.teal.shade800)),
         selected: isSelected,
@@ -6133,25 +7394,27 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
   Widget _summaryCard(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceM, vertical: context.accR.spaceM),
         decoration: BoxDecoration(
           color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(context.accR.cardRadius),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(width: 10),
+            Icon(icon, color: color, size: context.accR.iconM),
+            SizedBox(width: context.accR.spaceM),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                    style: TextStyle(
+                        fontSize: context.accR.small,
+                        color: Colors.grey.shade600)),
                 Text(value,
                     style: TextStyle(
-                        fontSize: 14,
+                        fontSize: context.accR.body,
                         fontWeight: FontWeight.bold,
                         color: color)),
               ],
@@ -6167,160 +7430,405 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: Colors.black, width: 1.5),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: DataTable(
-        columnSpacing: 0,
-        horizontalMargin: 8,
-        headingRowHeight: 42,
-        dataRowMinHeight: 38,
-        dataRowMaxHeight: 54,
-        headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
-        columns: const [
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('#',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('المستخدم',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الاسم',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الهاتف',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الدور',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('رئيسي',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('المناطق',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('محفظة',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-          DataColumn(
-              label: Expanded(
-                  child: Center(
-                      child: Text('الرصيد',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.bold))))),
-        ],
-        rows: list.asMap().entries.map((entry) {
-          final i = entry.key;
-          final m = entry.value;
-          final role = (m['role'] as Map?)?['displayValue']?.toString() ?? '-';
-          final firstName = m['firstName']?.toString() ?? '';
-          final lastName = m['lastName']?.toString() ?? '';
-          final fullName = '$firstName $lastName'.trim();
-          final phone = m['phoneNumber']?.toString() ?? '-';
-          final username = m['username']?.toString() ?? '-';
-          final isMain = m['isMainPartner'] == true;
-          final zones = (m['zoneIds'] as List?)?.length ?? 0;
-          final wallet = m['walletSetup'] as Map<String, dynamic>?;
-          final hasWallet = wallet?['hasWallet'] == true;
-          final balance = (wallet?['balance'] as num?)?.toDouble() ?? 0;
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: 600),
+          child: DataTable(
+            border: TableBorder.all(color: Colors.black, width: 1.5),
+            dividerThickness: 0,
+            columnSpacing: 0,
+            horizontalMargin: 8,
+            headingRowHeight: 42,
+            dataRowMinHeight: 38,
+            dataRowMaxHeight: 54,
+            headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
+            columns: [
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('#',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('المستخدم',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الاسم',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الهاتف',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الدور',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('رئيسي',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('المناطق',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('محفظة',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+              DataColumn(
+                  label: Expanded(
+                      child: Center(
+                          child: Text('الرصيد',
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold))))),
+            ],
+            rows: list.asMap().entries.map((entry) {
+              final i = entry.key;
+              final m = entry.value;
+              final role =
+                  (m['role'] as Map?)?['displayValue']?.toString() ?? '-';
+              final firstName = m['firstName']?.toString() ?? '';
+              final lastName = m['lastName']?.toString() ?? '';
+              final fullName = '$firstName $lastName'.trim();
+              final phone = m['phoneNumber']?.toString() ?? '-';
+              final username = m['username']?.toString() ?? '-';
+              final isMain = m['isMainPartner'] == true;
+              final zones = (m['zoneIds'] as List?)?.length ?? 0;
+              final wallet = m['walletSetup'] as Map<String, dynamic>?;
+              final hasWallet = wallet?['hasWallet'] == true;
+              final balance = (wallet?['balance'] as num?)?.toDouble() ?? 0;
 
-          Color roleColor;
-          switch (role) {
-            case 'Super Admin Member':
-              roleColor = Colors.red.shade700;
-              break;
-            case 'Zone Admin':
-              roleColor = Colors.blue.shade700;
-              break;
-            case 'Field Worker':
-              roleColor = Colors.green.shade700;
-              break;
-            case 'Contractor':
-              roleColor = Colors.purple.shade700;
-              break;
-            default:
-              roleColor = Colors.grey.shade700;
-          }
+              Color roleColor;
+              switch (role) {
+                case 'Super Admin Member':
+                  roleColor = Colors.red.shade700;
+                  break;
+                case 'Zone Admin':
+                  roleColor = Colors.blue.shade700;
+                  break;
+                case 'Field Worker':
+                  roleColor = Colors.green.shade700;
+                  break;
+                case 'Contractor':
+                  roleColor = Colors.purple.shade700;
+                  break;
+                default:
+                  roleColor = Colors.grey.shade700;
+              }
 
-          return DataRow(cells: [
-            DataCell(Center(
-                child: Text('${i + 1}',
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600)))),
-            DataCell(Center(
-                child: Text(username,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w700)))),
-            DataCell(Center(
-                child: Text(fullName.isNotEmpty ? fullName : '-',
-                    style: const TextStyle(fontSize: 12)))),
-            DataCell(Center(
-                child: Text(phone, style: const TextStyle(fontSize: 12)))),
-            DataCell(Center(
-                child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: roleColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(role,
+              return DataRow(cells: [
+                DataCell(Center(
+                    child: Text('${i + 1}',
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.w600)))),
+                DataCell(Center(
+                    child: Text(username,
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.w700)))),
+                DataCell(Center(
+                    child: Text(fullName.isNotEmpty ? fullName : '-',
+                        style: TextStyle(fontSize: context.accR.small)))),
+                DataCell(Center(
+                    child: Text(phone,
+                        style: TextStyle(fontSize: context.accR.small)))),
+                DataCell(Center(
+                    child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: roleColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(role,
+                      style: TextStyle(
+                          fontSize: context.accR.small,
+                          fontWeight: FontWeight.w600,
+                          color: roleColor)),
+                ))),
+                DataCell(Center(
+                    child: Text(isMain ? '✅' : '',
+                        style: TextStyle(fontSize: context.accR.small)))),
+                DataCell(Center(
+                    child: Text('$zones',
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.w600,
+                            color: zones > 0
+                                ? Colors.teal.shade700
+                                : Colors.grey.shade400)))),
+                DataCell(Center(
+                    child: Text(hasWallet ? '✅' : '❌',
+                        style: TextStyle(fontSize: context.accR.small)))),
+                DataCell(Center(
+                    child: Text(
+                  _currencyFormat.format(balance),
                   style: TextStyle(
-                      fontSize: 11,
+                      fontSize: context.accR.small,
                       fontWeight: FontWeight.w600,
-                      color: roleColor)),
-            ))),
-            DataCell(Center(
-                child: Text(isMain ? '✅' : '',
-                    style: const TextStyle(fontSize: 12)))),
-            DataCell(Center(
-                child: Text('$zones',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: zones > 0
-                            ? Colors.teal.shade700
-                            : Colors.grey.shade400)))),
-            DataCell(Center(
-                child: Text(hasWallet ? '✅' : '❌',
-                    style: const TextStyle(fontSize: 12)))),
-            DataCell(Center(
-                child: Text(
-              _currencyFormat.format(balance),
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: balance > 0
-                      ? Colors.green.shade700
-                      : balance < 0
-                          ? Colors.red.shade700
-                          : Colors.grey.shade400),
-            ))),
-          ]);
-        }).toList(),
+                      color: balance > 0
+                          ? Colors.green.shade700
+                          : balance < 0
+                              ? Colors.red.shade700
+                              : Colors.grey.shade400),
+                ))),
+              ]);
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  صفحة كل العمليات — تعرض جميع سجلات SubscriptionLogs
+// ═══════════════════════════════════════════════════════
+class _AllOperationsPage extends StatefulWidget {
+  final String companyId;
+  final DateTime? fromDate;
+  final DateTime? toDate;
+
+  const _AllOperationsPage({
+    required this.companyId,
+    this.fromDate,
+    this.toDate,
+  });
+
+  @override
+  State<_AllOperationsPage> createState() => _AllOperationsPageState();
+}
+
+class _AllOperationsPageState extends State<_AllOperationsPage> {
+  bool _isLoading = true;
+  String? _error;
+  List<Map<String, dynamic>> _records = [];
+  List<Map<String, dynamic>> _filtered = [];
+  final _searchCtrl = TextEditingController();
+  final _fmt = NumberFormat('#,###', 'ar');
+  final _dateFmt = DateFormat('yyyy/MM/dd');
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _searchCtrl.addListener(_applySearch);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final svc = SubscriptionLogsService.instance;
+      final all = await svc.getAllRecords(pageSize: 2000);
+      // فلترة حسب الشركة والتاريخ إذا وُجدا
+      final result = all.where((r) {
+        final dateStr = r['تاريخ التفعيل']?.toString() ?? '';
+        if (dateStr.isNotEmpty && (widget.fromDate != null || widget.toDate != null)) {
+          final date = DateTime.tryParse(dateStr);
+          if (date != null) {
+            if (widget.fromDate != null && date.isBefore(widget.fromDate!)) return false;
+            if (widget.toDate != null && date.isAfter(widget.toDate!.add(const Duration(days: 1)))) return false;
+          }
+        }
+        return true;
+      }).toList();
+
+      setState(() {
+        _records = result;
+        _filtered = result;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _applySearch() {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    setState(() {
+      if (q.isEmpty) {
+        _filtered = _records;
+      } else {
+        _filtered = _records.where((r) {
+          return r.values.any((v) => v.toString().toLowerCase().contains(q));
+        }).toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('كل العمليات (${_filtered.length})',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          backgroundColor: Colors.teal.shade700,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _load,
+              tooltip: 'تحديث',
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: TextField(
+                controller: _searchCtrl,
+                style: GoogleFonts.cairo(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'بحث...',
+                  hintStyle: GoogleFonts.cairo(color: Colors.white70),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.white54),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.white54),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.white),
+                  ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!, style: GoogleFonts.cairo(color: Colors.red)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(onPressed: _load, child: Text('إعادة المحاولة', style: GoogleFonts.cairo())),
+                      ],
+                    ),
+                  )
+                : _filtered.isEmpty
+                    ? Center(child: Text('لا توجد سجلات', style: GoogleFonts.cairo(fontSize: 16)))
+                    : SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            border: TableBorder.all(color: Colors.grey.shade300),
+                            headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
+                            dataRowMinHeight: 32,
+                            dataRowMaxHeight: 44,
+                            headingRowHeight: 36,
+                            columnSpacing: 12,
+                            horizontalMargin: 10,
+                            headingTextStyle: GoogleFonts.cairo(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.teal.shade900),
+                            columns: const [
+                              DataColumn(label: Text('#')),
+                              DataColumn(label: Text('التاريخ')),
+                              DataColumn(label: Text('المشغل')),
+                              DataColumn(label: Text('العميل')),
+                              DataColumn(label: Text('الباقة')),
+                              DataColumn(label: Text('السعر')),
+                              DataColumn(label: Text('نوع العملية')),
+                              DataColumn(label: Text('طريقة الدفع')),
+                              DataColumn(label: Text('الحالة')),
+                            ],
+                            rows: _filtered.asMap().entries.map((entry) {
+                              final i = entry.key;
+                              final r = entry.value;
+                              final dateStr = r['تاريخ التفعيل']?.toString() ?? '';
+                              String displayDate = dateStr;
+                              if (dateStr.isNotEmpty) {
+                                final d = DateTime.tryParse(dateStr);
+                                if (d != null) displayDate = _dateFmt.format(d);
+                              }
+                              final price = double.tryParse(r['سعر الباقة']?.toString() ?? '') ?? 0;
+                              final operator0 = r['المُفعِّل']?.toString() ?? '';
+                              final isUnknown = operator0.isEmpty;
+
+                              return DataRow(
+                                color: WidgetStateProperty.resolveWith((states) {
+                                  if (isUnknown) return Colors.orange.shade50;
+                                  return i.isEven ? Colors.white : Colors.grey.shade50;
+                                }),
+                                cells: [
+                                  DataCell(Text('${i + 1}', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(displayDate, style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(
+                                    isUnknown ? '⚠️ غير معروف' : operator0,
+                                    style: GoogleFonts.cairo(
+                                        fontSize: 11,
+                                        color: isUnknown ? Colors.orange.shade800 : Colors.black87),
+                                  )),
+                                  DataCell(Text(r['اسم العميل']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(r['اسم الباقة']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(
+                                    price > 0 ? _fmt.format(price) : '-',
+                                    style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600),
+                                  )),
+                                  DataCell(Text(r['نوع العملية']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(r['طريقة الدفع']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
+                                  DataCell(Text(r['الحالة الحالية']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11))),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
       ),
     );
   }

@@ -205,6 +205,13 @@ class DualAuthService {
 
         // استرجاع اسم المستخدم المحفوظ
         _ftthUsername = prefs.getString(_ftthUsernameKey);
+        // fallback: إذا كان فارغاً استخدم savedUsername
+        if (_ftthUsername == null || _ftthUsername!.isEmpty) {
+          _ftthUsername = prefs.getString('savedUsername');
+          if (_ftthUsername != null && _ftthUsername!.isNotEmpty) {
+            await prefs.setString(_ftthUsernameKey, _ftthUsername!);
+          }
+        }
 
         return true;
       }

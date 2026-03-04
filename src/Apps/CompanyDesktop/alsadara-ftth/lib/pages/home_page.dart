@@ -1242,8 +1242,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ));
               },
             ),
-          if (_isAdminUser)
-            _drawerBtn(
+          _drawerBtn(
               icon: Icons.settings,
               label: 'إعدادات الشركة',
               color: const Color(0xFFF39C12),
@@ -1455,26 +1454,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-          // إعدادات الشركة (مدير فقط)
-          if (_isAdminUser)
-            _sidebarBtn(
-              icon: Icons.settings,
-              label: 'إعدادات الشركة',
-              color: const Color(0xFFF39C12),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CompanySettingsPage(
-                    companyId: widget.tenantId ??
-                        VpsAuthService.instance.currentCompanyId,
-                    companyCode: widget.tenantCode ??
-                        VpsAuthService.instance.currentCompanyCode,
-                    currentUserRole: widget.permissions,
-                    currentUsername: widget.username,
-                  ),
+          // إعدادات الشركة
+          _sidebarBtn(
+            icon: Icons.settings,
+            label: 'إعدادات الشركة',
+            color: const Color(0xFFF39C12),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CompanySettingsPage(
+                  companyId: widget.tenantId ??
+                      VpsAuthService.instance.currentCompanyId,
+                  companyCode: widget.tenantCode ??
+                      VpsAuthService.instance.currentCompanyCode,
+                  currentUserRole: widget.permissions,
+                  currentUsername: widget.username,
                 ),
               ),
             ),
+          ),
           // تسجيل الخروج
           _sidebarBtn(
             icon: Icons.logout,
@@ -1757,7 +1755,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // فحص إذا كان FTTH مسجل دخول بالفعل
     final hasSession = await dual.checkFtthSession();
 
-    if (hasSession && dual.ftthToken != null && dual.ftthUsername != null) {
+    if (hasSession && dual.ftthToken != null && dual.ftthUsername != null && dual.ftthUsername!.isNotEmpty) {
       // ✅ FTTH مسجل دخول - انتقل مباشرة بدون صفحة تسجيل الدخول
       final ftthUsername = dual.ftthUsername!;
       final ftthIsAdmin = ftthUsername.toLowerCase().contains('admin') ||
