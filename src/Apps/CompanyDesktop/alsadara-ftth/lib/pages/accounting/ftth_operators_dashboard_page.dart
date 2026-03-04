@@ -7,7 +7,6 @@ import '../../services/vps_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/accounting_service.dart';
 import '../../services/plan_pricing_service.dart';
-import '../../services/subscription_logs_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import 'ftth_operator_account_page.dart';
@@ -7657,19 +7656,49 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       _error = null;
     });
     try {
-      final svc = SubscriptionLogsService.instance;
-      final all = await svc.getAllRecords(pageSize: 2000);
-      // فلترة حسب الشركة والتاريخ إذا وُجدا
-      final result = all.where((r) {
-        final dateStr = r['تاريخ التفعيل']?.toString() ?? '';
-        if (dateStr.isNotEmpty && (widget.fromDate != null || widget.toDate != null)) {
-          final date = DateTime.tryParse(dateStr);
-          if (date != null) {
-            if (widget.fromDate != null && date.isBefore(widget.fromDate!)) return false;
-            if (widget.toDate != null && date.isAfter(widget.toDate!.add(const Duration(days: 1)))) return false;
-          }
-        }
-        return true;
+      // نستخدم internal API مباشرةً (ApiService يشير لـ ftth.iq وليس سيرفرنا)
+      String url =
+          'https://api.ramzalsadara.tech/api/internal/subscriptionlogs?pageSize=2000';
+      if (widget.companyId.isNotEmpty) {
+        url += '&companyId=${widget.companyId}';
+      }
+      if (widget.fromDate != null) {
+        url += '&fromDate=${widget.fromDate!.toIso8601String()}';
+      }
+      if (widget.toDate != null) {
+        url +=
+            '&toDate=${widget.toDate!.add(const Duration(days: 1)).toIso8601String()}';
+      }
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'},
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('خطأ ${response.statusCode}: ${response.body}');
+      }
+
+      final body = jsonDecode(response.body);
+      final List<dynamic> items = body['data'] ?? body['items'] ?? [];
+
+      final result = items.map<Map<String, dynamic>>((item) {
+        final dateStr = item['ActivationDate']?.toString() ?? '';
+        final operator0 = item['ActivatedBy']?.toString() ?? '';
+        return {
+          'id': item['Id']?.toString() ?? '',
+          'تاريخ التفعيل': dateStr,
+          'المُفعِّل': operator0,
+          'اسم العميل': item['CustomerName'] ?? '',
+          'اسم الباقة': item['PlanName'] ?? '',
+          'سعر الباقة': item['PlanPrice']?.toString() ?? '',
+          'نوع العملية': item['OperationType'] ?? '',
+          'طريقة الدفع': item['PaymentMethod'] ?? '',
+          'الحالة الحالية': item['CurrentStatus'] ?? '',
+          'رقم الهاتف': item['PhoneNumber'] ?? '',
+          'اسم المنطقة': item['ZoneName'] ?? '',
+          'نوع التحصيل': item['CollectionType'] ?? '',
+        };
       }).toList();
 
       setState(() {
