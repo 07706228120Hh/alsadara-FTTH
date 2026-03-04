@@ -1,5 +1,6 @@
 /// خدمة التحديث التلقائي للتطبيق
 /// تتحقق من وجود تحديثات جديدة على GitHub وتقوم بتحميلها وتثبيتها تلقائياً
+/// يدعم Windows (EXE/MSIX) و Android (APK)
 library;
 
 import 'dart:convert';
@@ -8,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:open_file/open_file.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// معلومات التحديث
 class UpdateInfo {
@@ -26,42 +29,55 @@ class UpdateInfo {
   });
 
   factory UpdateInfo.fromGitHubRelease(Map<String, dynamic> json) {
-    // الأولوية: Setup.exe أولاً → ثم أي .exe → ثم .zip
     String downloadUrl = '';
     int downloadSize = 0;
 
     final assets = json['assets'] as List<dynamic>? ?? [];
 
-    // المرحلة 1: البحث عن ملف Setup.exe (المثبّت)
-    for (var asset in assets) {
-      final name = asset['name']?.toString().toLowerCase() ?? '';
-      if (name.contains('setup') && name.endsWith('.exe')) {
-        downloadUrl = asset['browser_download_url'] ?? '';
-        downloadSize = asset['size'] ?? 0;
-        break;
-      }
-    }
-
-    // المرحلة 2: إذا لم نجد Setup، نبحث عن أي .exe
-    if (downloadUrl.isEmpty) {
+    if (Platform.isAndroid) {
+      // === Android: البحث عن ملف APK ===
       for (var asset in assets) {
         final name = asset['name']?.toString().toLowerCase() ?? '';
-        if (name.endsWith('.exe')) {
+        if (name.endsWith('.apk')) {
           downloadUrl = asset['browser_download_url'] ?? '';
           downloadSize = asset['size'] ?? 0;
           break;
         }
       }
-    }
+    } else {
+      // === Windows: الأولوية: Setup.exe → أي .exe → .zip ===
 
-    // المرحلة 3: zip كخيار أخير
-    if (downloadUrl.isEmpty) {
+      // المرحلة 1: البحث عن ملف Setup.exe (المثبّت)
       for (var asset in assets) {
         final name = asset['name']?.toString().toLowerCase() ?? '';
-        if (name.endsWith('.zip')) {
+        if (name.contains('setup') && name.endsWith('.exe')) {
           downloadUrl = asset['browser_download_url'] ?? '';
           downloadSize = asset['size'] ?? 0;
           break;
+        }
+      }
+
+      // المرحلة 2: إذا لم نجد Setup، نبحث عن أي .exe
+      if (downloadUrl.isEmpty) {
+        for (var asset in assets) {
+          final name = asset['name']?.toString().toLowerCase() ?? '';
+          if (name.endsWith('.exe')) {
+            downloadUrl = asset['browser_download_url'] ?? '';
+            downloadSize = asset['size'] ?? 0;
+            break;
+          }
+        }
+      }
+
+      // المرحلة 3: zip كخيار أخير
+      if (downloadUrl.isEmpty) {
+        for (var asset in assets) {
+          final name = asset['name']?.toString().toLowerCase() ?? '';
+          if (name.endsWith('.zip')) {
+            downloadUrl = asset['browser_download_url'] ?? '';
+            downloadSize = asset['size'] ?? 0;
+            break;
+          }
         }
       }
     }
@@ -89,6 +105,54 @@ class AutoUpdateService {
 
   AutoUpdateService._();
 
+  // مفاتيح SharedPreferences لآلية snooze
+  static const String _snoozeVersionKey = 'update_snooze_version';
+  static const String _snoozeTimeKey = 'update_snooze_time';
+  // 2 ساعة كحد أدنى بين كل محاولة للإصدار نفسه
+  static const Duration _snoozeDuration = Duration(hours: 2);
+
+  /// تسجيل بدء محاولة تثبيت إصدار معين (لمنع الحلقة)
+  Future<void> markUpdateAttempted(String version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_snoozeVersionKey, version);
+      await prefs.setString(_snoozeTimeKey, DateTime.now().toIso8601String());
+      debugPrint('⏳ [AutoUpdate] تم تسجيل محاولة تثبيت: $version');
+    } catch (_) {}
+  }
+
+  /// تخطي التحديث الحالي يدوياً (لمدة أطول)
+  Future<void> snoozeUpdate(String version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_snoozeVersionKey, version);
+      // تخطي يدوي = 24 ساعة
+      await prefs.setString(
+          _snoozeTimeKey,
+          DateTime.now()
+              .subtract(const Duration(hours: 22)) // يُغطي 24 - 2 = 22 ساعة
+              .add(const Duration(hours: 24))
+              .toIso8601String());
+      debugPrint('⏸️ [AutoUpdate] تم تخطي الإصدار $version لمدة 24 ساعة');
+    } catch (_) {}
+  }
+
+  /// هل يجب تخطي عرض التحديث الآن؟
+  Future<bool> _isSnoozed(String version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final snoozeVersion = prefs.getString(_snoozeVersionKey);
+      if (snoozeVersion != version) return false;
+      final snoozeTimeStr = prefs.getString(_snoozeTimeKey);
+      if (snoozeTimeStr == null) return false;
+      final snoozeTime = DateTime.tryParse(snoozeTimeStr);
+      if (snoozeTime == null) return false;
+      return DateTime.now().isBefore(snoozeTime.add(_snoozeDuration));
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// التحقق من وجود تحديث جديد
   Future<UpdateInfo?> checkForUpdate() async {
     try {
@@ -106,6 +170,12 @@ class AutoUpdateService {
         final currentVersion = packageInfo.version;
 
         if (_isNewerVersion(updateInfo.version, currentVersion)) {
+          // تحقق إذا كان هذا الإصدار في فترة التخطي
+          if (await _isSnoozed(updateInfo.version)) {
+            debugPrint(
+                '⏸️ [AutoUpdate] الإصدار ${updateInfo.version} في فترة snooze — تم التخطي');
+            return null;
+          }
           return updateInfo;
         }
       }
@@ -141,9 +211,21 @@ class AutoUpdateService {
     Function(double)? onProgress,
   }) async {
     try {
-      final tempDir = await getTemporaryDirectory();
+      // على Android نستخدم مجلد التخزين الخارجي لأن FileProvider يحتاج الوصول
+      final Directory downloadDir;
+      if (Platform.isAndroid) {
+        // استخدام مجلد cache الخارجي المتاح لـ FileProvider
+        final extDirs = await getExternalCacheDirectories();
+        downloadDir = (extDirs != null && extDirs.isNotEmpty)
+            ? extDirs.first
+            : await getTemporaryDirectory();
+      } else {
+        downloadDir = await getTemporaryDirectory();
+      }
+
       final fileName = updateInfo.downloadUrl.split('/').last;
-      final filePath = '${tempDir.path}\\$fileName';
+      final sep = Platform.pathSeparator;
+      final filePath = '${downloadDir.path}$sep$fileName';
 
       // تحقق إذا كان الملف محمّل مسبقاً بنفس الحجم
       final existingFile = File(filePath);
@@ -175,6 +257,8 @@ class AutoUpdateService {
         }
 
         await sink.close();
+        debugPrint(
+            '✅ تم تحميل التحديث: $filePath (${file.lengthSync()} bytes)');
         return filePath;
       }
     } catch (e) {
@@ -183,11 +267,26 @@ class AutoUpdateService {
     return null;
   }
 
-  /// تثبيت التحديث (المثبت الصامت)
+  /// تثبيت التحديث
+  /// Windows: المثبت الصامت (EXE/MSIX)
+  /// Android: فتح ملف APK بمثبّت النظام
   Future<bool> installUpdate(String filePath) async {
     try {
-      if (filePath.endsWith('.exe')) {
-        // تشغيل المثبّت بالوضع الصامت مع إغلاق التطبيق الحالي تلقائياً
+      if (filePath.endsWith('.apk')) {
+        // === Android: فتح APK بمثبّت النظام ===
+        debugPrint('📱 تثبيت APK: $filePath');
+        final result = await OpenFile.open(filePath);
+        debugPrint('📱 نتيجة فتح APK: ${result.type} - ${result.message}');
+        // ResultType.done = تم فتح الملف بنجاح (يظهر مثبّت Android)
+        return result.type == ResultType.done;
+      } else if (filePath.endsWith('.exe')) {
+        // === Windows: تشغيل المثبّت بالوضع الصامت ===
+        // استخراج الإصدار من اسم الملف (مثل: Alsadara_v1.6.5_Setup.exe → 1.6.5)
+        final versionMatch =
+            RegExp(r'v(\d+\.\d+\.\d+)').firstMatch(filePath.split(r'\').last);
+        if (versionMatch != null) {
+          await markUpdateAttempted(versionMatch.group(1)!);
+        }
         await Process.start(filePath, [
           '/SILENT',
           '/CLOSEAPPLICATIONS',
@@ -195,7 +294,6 @@ class AutoUpdateService {
           '/NOCANCEL',
           '/SP-',
         ]);
-        // إغلاق التطبيق الحالي للسماح بالتحديث
         exit(0);
       } else if (filePath.endsWith('.msix')) {
         await Process.start('powershell', [

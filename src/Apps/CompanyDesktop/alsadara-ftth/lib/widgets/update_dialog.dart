@@ -2,6 +2,7 @@
 /// تبدأ تحميل وتثبيت التحديث تلقائياً عند اكتشاف إصدار جديد
 library;
 
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auto_update_service.dart';
@@ -34,6 +35,13 @@ class UpdateDialog extends StatefulWidget {
         ),
       ),
     );
+  }
+
+  /// تخطي عرض التحديث وإغلاق الحوار
+  static Future<void> _skipUpdate(
+      BuildContext context, String version) async {
+    await AutoUpdateService.instance.snoozeUpdate(version);
+    if (context.mounted) Navigator.of(context).pop();
   }
 }
 
@@ -88,12 +96,21 @@ class _UpdateDialogState extends State<UpdateDialog>
     if (mounted) setState(() => _phase = _UpdatePhase.installing);
     await Future.delayed(const Duration(seconds: 1));
 
+    // سجّل محاولة التثبيت قبل exit(0) لمنع حلقة التحديث
+    await AutoUpdateService.instance
+        .markUpdateAttempted(widget.updateInfo.version);
+
     final success = await AutoUpdateService.instance.installUpdate(filePath);
     if (!success && mounted) {
       setState(() {
         _phase = _UpdatePhase.error;
-        _errorMessage = 'فشل في تثبيت التحديث.';
+        _errorMessage = Platform.isAndroid
+            ? 'فشل في فتح ملف التحديث. تأكد من تفعيل "التثبيت من مصادر غير معروفة".'
+            : 'فشل في تثبيت التحديث.';
       });
+    } else if (Platform.isAndroid && mounted) {
+      // على Android، المثبّت يفتح كنافذة خارجية - نغلق الحوار
+      Navigator.pop(context);
     }
   }
 
@@ -123,7 +140,9 @@ class _UpdateDialogState extends State<UpdateDialog>
       case _UpdatePhase.downloading:
         return Icons.cloud_download_rounded;
       case _UpdatePhase.installing:
-        return Icons.install_desktop_rounded;
+        return Platform.isAndroid
+            ? Icons.install_mobile_rounded
+            : Icons.install_desktop_rounded;
       case _UpdatePhase.error:
         return Icons.error_outline_rounded;
     }
@@ -267,6 +286,14 @@ class _UpdateDialogState extends State<UpdateDialog>
                 'لا تغلق التطبيق أثناء التحميل',
                 style: GoogleFonts.cairo(color: Colors.grey[500], fontSize: 11),
               ),
+              const SizedBox(height: 14),
+              TextButton(
+                onPressed: () => UpdateDialog._skipUpdate(
+                    context, widget.updateInfo.version),
+                child: Text('تخطي الآن (تذكيري لاحقاً)',
+                    style: GoogleFonts.cairo(
+                        color: Colors.grey[600], fontSize: 11)),
+              ),
             ] else if (_phase == _UpdatePhase.preparing ||
                 _phase == _UpdatePhase.installing) ...[
               const SizedBox(
@@ -280,10 +307,22 @@ class _UpdateDialogState extends State<UpdateDialog>
               const SizedBox(height: 12),
               Text(
                 _phase == _UpdatePhase.installing
-                    ? 'سيتم إعادة تشغيل التطبيق تلقائياً...'
+                    ? (Platform.isAndroid
+                        ? 'جاري فتح مثبّت التحديث...'
+                        : 'سيتم إعادة تشغيل التطبيق تلقائياً...')
                     : 'جاري التحضير...',
                 style: GoogleFonts.cairo(color: Colors.grey[400], fontSize: 12),
               ),
+              if (_phase == _UpdatePhase.preparing) ...[
+                const SizedBox(height: 14),
+                TextButton(
+                  onPressed: () => UpdateDialog._skipUpdate(
+                      context, widget.updateInfo.version),
+                  child: Text('تخطي الآن (تذكيري لاحقاً)',
+                      style: GoogleFonts.cairo(
+                          color: Colors.grey[600], fontSize: 11)),
+                ),
+              ],
             ] else if (_phase == _UpdatePhase.error) ...[
               Container(
                 width: double.infinity,
@@ -361,6 +400,9 @@ enum _UpdatePhase { preparing, downloading, installing, error }
 /// مدير التحديثات - يُفحص ويُحدّث تلقائياً عند بدء التطبيق
 class UpdateManager {
   static Future<void> checkAndShowUpdateDialog(BuildContext context) async {
+    // التحديث التلقائي يعمل على Windows فقط
+    // Android: التحديث يكون يدوياً عبر APK — تجنب حظر الواجهة
+    if (!Platform.isWindows) return;
     try {
       final updateInfo = await AutoUpdateService.instance.checkForUpdate();
 
