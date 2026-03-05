@@ -4956,10 +4956,18 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         sessionId: sessionId,
         // معلومات الموقع
         zoneId: subscriptionInfo!.zoneId,
-        zoneName: null,
-        fbgInfo: widget.fbgValue ?? widget.fdtDisplayValue,
-        fatInfo: widget.fatDisplayValue ?? widget.fatValue,
-        fdtInfo: widget.fdtDisplayValue,
+        zoneName: subscriptionInfo!.zoneDisplayValue.isNotEmpty
+            ? subscriptionInfo!.zoneDisplayValue
+            : null,
+        fbgInfo: subscriptionInfo!.fbg.isNotEmpty
+            ? subscriptionInfo!.fbg
+            : widget.fbgValue,
+        fatInfo: widget.fatDisplayValue?.isNotEmpty == true
+            ? widget.fatDisplayValue
+            : widget.fatValue,
+        fdtInfo: widget.fdtDisplayValue?.isNotEmpty == true
+            ? widget.fdtDisplayValue
+            : null,
         // معلومات المحفظة
         walletBalanceBefore: walletBeforeInt.toDouble(),
         walletBalanceAfter: walletAfterInt.toDouble(),
@@ -4988,8 +4996,15 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         collectionType: _getCollectionTypeCode(selectedPaymentMethod),
         linkedAgentId: _selectedLinkedAgent?['Id']?.toString(),
         linkedTechnicianId: _selectedLinkedTechnician?['Id']?.toString(),
-        technicianName: _selectedLinkedTechnician?['Name']?.toString() ??
-            _selectedLinkedAgent?['Name']?.toString(),
+        // الفني: جرب FullName ثم Name (حسب ما يعيده الـ API)
+        // الوكيل: Name هو الحقل الصحيح
+        technicianName: _selectedLinkedTechnician != null
+            ? (() {
+                final fn = _selectedLinkedTechnician!['FullName']?.toString().trim() ?? '';
+                final n  = _selectedLinkedTechnician!['Name']?.toString().trim() ?? '';
+                return fn.isNotEmpty ? fn : (n.isNotEmpty ? n : null);
+              })()
+            : _selectedLinkedAgent?['Name']?.toString().trim(),
       );
 
       if (logId != null) {

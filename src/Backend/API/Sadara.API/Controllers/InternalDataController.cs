@@ -1692,7 +1692,14 @@ public class InternalDataController : ControllerBase
                 l.PaymentStatus,
                 l.StartDate,
                 l.EndDate,
-                l.CreatedAt
+                l.CreatedAt,
+                l.TechnicianName,
+                l.LinkedTechnicianId,
+                l.LinkedAgentId,
+                l.SubscriptionNotes,
+                l.FbgInfo,
+                l.FatInfo,
+                l.FdtInfo,
             })
             .ToListAsync();
 
@@ -1847,18 +1854,24 @@ public class InternalDataController : ControllerBase
             if (request.TryGetProperty("linkedTechnicianId", out var pLt) && pLt.ValueKind == JsonValueKind.String && Guid.TryParse(pLt.GetString(), out var ltGuid))
                 log.LinkedTechnicianId = ltGuid;
 
-            // حفظ اسم الفني من الطلب أو جلبه من قاعدة البيانات
+            // حفظ اسم الفني من الطلب — تجاهل القيم الخاطئة مثل "فني" أو "وكيل"
             if (request.TryGetProperty("technicianName", out var pTn) && pTn.ValueKind == JsonValueKind.String)
-                log.TechnicianName = pTn.GetString();
+            {
+                var tn = pTn.GetString()?.Trim();
+                // القيم الخاطئة التي كانت ترسلها النسخ القديمة من التطبيق
+                var invalidNames = new[] { "فني", "وكيل", "technician", "agent", "نقد", "cash", "آجل", "credit", "ماستر", "master" };
+                if (!string.IsNullOrEmpty(tn) && !invalidNames.Contains(tn))
+                    log.TechnicianName = tn;
+            }
 
-            // جلب اسم الفني من LinkedTechnicianId إذا لم يُرسل
+            // جلب اسم الفني من قاعدة البيانات عبر LinkedTechnicianId
             if (string.IsNullOrEmpty(log.TechnicianName) && log.LinkedTechnicianId.HasValue)
             {
                 var tech = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == log.LinkedTechnicianId.Value);
                 if (tech != null) log.TechnicianName = tech.FullName;
             }
-            // جلب اسم الوكيل إذا كان التحصيل عبر وكيل
-            if (log.CollectionType == "agent" && log.LinkedAgentId.HasValue && string.IsNullOrEmpty(log.TechnicianName))
+            // جلب اسم الوكيل عبر LinkedAgentId
+            if (string.IsNullOrEmpty(log.TechnicianName) && log.CollectionType == "agent" && log.LinkedAgentId.HasValue)
             {
                 var agent = await _unitOfWork.Agents.FirstOrDefaultAsync(a => a.Id == log.LinkedAgentId.Value);
                 if (agent != null) log.TechnicianName = agent.Name;
@@ -2220,6 +2233,68 @@ public class InternalDataController : ControllerBase
         }
 
         return entry?.Id;
+    }
+
+    /// <summary>
+    /// إصلاح أسماء الفنيين/الوكلاء القديمة المحفوظة بشكل خاطئ (مثل "فني" بدلاً من الاسم الحقيقي)
+    /// يُستدعى مرة واحدة لتصحيح البيانات التاريخية
+    /// </summary>
+    [HttpPost("fix-technician-names")]
+    [AllowAnonymous]
+    public async Task<IActionResult> FixTechnicianNames()
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var invalidNames = new[] { "فني", "وكيل", "technician", "agent", "نقد", "cash", "آجل", "credit", "ماستر", "master" };
+
+        // إصلاح سجلات الفنيين
+        var techLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.CollectionType == "technician"
+                     && l.LinkedTechnicianId.HasValue
+                     && (l.TechnicianName == null || l.TechnicianName == "" || invalidNames.Contains(l.TechnicianName)))
+            .ToListAsync();
+
+        int techFixed = 0;
+        foreach (var log in techLogs)
+        {
+            var tech = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == log.LinkedTechnicianId!.Value);
+            if (tech != null)
+            {
+                log.TechnicianName = tech.FullName;
+                _unitOfWork.SubscriptionLogs.Update(log);
+                techFixed++;
+            }
+        }
+
+        // إصلاح سجلات الوكلاء
+        var agentLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.CollectionType == "agent"
+                     && l.LinkedAgentId.HasValue
+                     && (l.TechnicianName == null || l.TechnicianName == "" || invalidNames.Contains(l.TechnicianName)))
+            .ToListAsync();
+
+        int agentFixed = 0;
+        foreach (var log in agentLogs)
+        {
+            var agent = await _unitOfWork.Agents.FirstOrDefaultAsync(a => a.Id == log.LinkedAgentId!.Value);
+            if (agent != null)
+            {
+                log.TechnicianName = agent.Name;
+                _unitOfWork.SubscriptionLogs.Update(log);
+                agentFixed++;
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = $"تم إصلاح {techFixed} سجل فني و {agentFixed} سجل وكيل",
+            techFixed,
+            agentFixed
+        });
     }
 }
 

@@ -212,6 +212,9 @@ public class SubscriptionLogsController : ControllerBase
                         if (!log.LinkedTechnicianId.HasValue) goto noAccounting;
                         var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
                         if (tech == null) goto noAccounting;
+                        // حفظ اسم الفني في سجل العملية للعرض لاحقاً
+                        if (string.IsNullOrEmpty(log.TechnicianName))
+                            log.TechnicianName = tech.FullName;
                         debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1140", tech.Id, tech.FullName, companyId);
                         await _unitOfWork.SaveChangesAsync();
                         tech.TechTotalCharges += amount;
