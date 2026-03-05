@@ -1268,7 +1268,7 @@ public class FtthAccountingController : ControllerBase
         try
         {
             var query = _unitOfWork.Users.AsQueryable()
-                .Where(u => !u.IsDeleted && (u.Role == UserRole.Technician || u.Role == UserRole.TechnicalLeader));
+                .Where(u => !u.IsDeleted);
 
             if (companyId.HasValue)
                 query = query.Where(u => u.CompanyId == companyId);
