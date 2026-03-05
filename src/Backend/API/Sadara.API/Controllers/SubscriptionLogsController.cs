@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
+using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 
 namespace Sadara.API.Controllers;
@@ -15,10 +16,12 @@ namespace Sadara.API.Controllers;
 public class SubscriptionLogsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<SubscriptionLogsController> _logger;
 
-    public SubscriptionLogsController(IUnitOfWork unitOfWork)
+    public SubscriptionLogsController(IUnitOfWork unitOfWork, ILogger<SubscriptionLogsController> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     /// <summary>
@@ -137,11 +140,138 @@ public class SubscriptionLogsController : ControllerBase
 
             // معلومات التوصيل والدفع
             TechnicianName = request.TechnicianName,
-            PaymentStatus = request.PaymentStatus
+            PaymentStatus = request.PaymentStatus,
+
+            // حقول تكامل المحاسبة
+            CollectionType = request.CollectionType,
+            LinkedAgentId = request.LinkedAgentId,
+            LinkedTechnicianId = request.LinkedTechnicianId
         };
 
         await _unitOfWork.SubscriptionLogs.AddAsync(log);
         await _unitOfWork.SaveChangesAsync();
+
+        // إنشاء القيد المحاسبي تلقائياً إذا توفرت المعلومات
+        if (log.CompanyId.HasValue && log.UserId.HasValue
+            && log.PlanPrice.HasValue && log.PlanPrice > 0
+            && !string.IsNullOrEmpty(log.CollectionType))
+        {
+            try
+            {
+                var userId = log.UserId.Value;
+                var companyId = log.CompanyId.Value;
+                var amount = log.PlanPrice.Value;
+                var operatorName = log.ActivatedBy ?? "مشغل";
+                var planName = log.PlanName ?? "اشتراك";
+                var customerName = log.CustomerName ?? "عميل";
+                var isPurchase = log.OperationType?.ToUpper().Contains("PURCHASE") == true
+                    || log.OperationType?.ToUpper().Contains("SUBSCRIBE") == true;
+                var opType = isPurchase ? "شراء" : "تجديد";
+
+                var revenueCode = isPurchase ? "4120" : "4110";
+                var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId)
+                    ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
+                if (revenueAccount == null) goto noAccounting;
+
+                Account? debitAccount = null;
+                string description = "";
+
+                switch (log.CollectionType.ToLower())
+                {
+                    case "cash":
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        description = $"{opType} {planName} - {customerName} - نقد عبر {operatorName}";
+                        break;
+
+                    case "credit":
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1160", userId, $"ذمة {operatorName}", companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        description = $"{opType} {planName} - {customerName} - آجل على {operatorName}";
+                        break;
+
+                    case "master":
+                        debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1170", companyId);
+                        if (debitAccount == null) goto noAccounting;
+                        description = $"{opType} {planName} - {customerName} - ماستر";
+                        break;
+
+                    case "agent":
+                        if (!log.LinkedAgentId.HasValue) goto noAccounting;
+                        var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+                        if (agent == null) goto noAccounting;
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, agent.Name, companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        agent.TotalCharges += amount;
+                        agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                        _unitOfWork.Agents.Update(agent);
+                        description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
+                        break;
+
+                    case "technician":
+                        if (!log.LinkedTechnicianId.HasValue) goto noAccounting;
+                        var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                        if (tech == null) goto noAccounting;
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1140", tech.Id, tech.FullName, companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        tech.TechTotalCharges += amount;
+                        tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
+                        _unitOfWork.Users.Update(tech);
+                        var techTx = new TechnicianTransaction
+                        {
+                            TechnicianId = tech.Id,
+                            Type = TechnicianTransactionType.Charge,
+                            Category = TechnicianTransactionCategory.Subscription,
+                            Amount = amount,
+                            BalanceAfter = tech.TechNetBalance,
+                            Description = $"{opType} {planName} - {customerName}",
+                            ReferenceNumber = log.Id.ToString(),
+                            CreatedById = userId,
+                            CompanyId = companyId,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
+                        description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
+                        break;
+
+                    default:
+                        goto noAccounting;
+                }
+
+                if (debitAccount != null)
+                {
+                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                    {
+                        (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
+                        (revenueAccount.Id, 0, amount, $"إيراد {opType} - {customerName}")
+                    };
+
+                    await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                        _unitOfWork, companyId, userId, description,
+                        JournalReferenceType.FtthSubscription, log.Id.ToString(), lines);
+
+                    await _unitOfWork.SaveChangesAsync();
+
+                    var entry = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Where(j => j.ReferenceType == JournalReferenceType.FtthSubscription
+                            && j.ReferenceId == log.Id.ToString())
+                        .OrderByDescending(j => j.CreatedAt)
+                        .FirstOrDefaultAsync();
+                    if (entry != null)
+                    {
+                        log.JournalEntryId = entry.Id;
+                        _unitOfWork.SubscriptionLogs.Update(log);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+
+                noAccounting:;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "فشل إنشاء القيد المحاسبي للسجل {LogId}", log.Id);
+            }
+        }
 
         return CreatedAtAction(nameof(GetById), new { id = log.Id }, new { success = true, data = log });
     }
@@ -401,6 +531,11 @@ public class CreateSubscriptionLogRequest
     // معلومات التوصيل والدفع
     public string? TechnicianName { get; set; }
     public string? PaymentStatus { get; set; }
+
+    // حقول تكامل المحاسبة
+    public string? CollectionType { get; set; }       // cash | credit | master | agent | technician
+    public Guid? LinkedAgentId { get; set; }
+    public Guid? LinkedTechnicianId { get; set; }
 }
 
 /// <summary>
