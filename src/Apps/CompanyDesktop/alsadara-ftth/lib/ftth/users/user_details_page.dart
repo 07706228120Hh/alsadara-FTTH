@@ -126,13 +126,13 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   }
 
   ButtonStyle _renewButtonStyle(BuildContext context) {
-    final c = _compactMode;
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
     final isMobile = _isMobile(context);
-    final double fontSize = isMobile ? 16 : (c ? 18 : 20);
-    final double vPad = isMobile ? 10 : (c ? 14 : 16);
-    final double hPad = isMobile ? 20 : (c ? 28 : 36);
-    final Size minSize =
-        Size(isMobile ? 160 : (c ? 200 : 240), isMobile ? 44 : (c ? 52 : 58));
+    final double fontSize = (isMobile ? 15 : 16) * sc;
+    final double vPad = (isMobile ? 12 : 16) * sc;
+    final double hPad = (isMobile ? 16 : 20) * sc;
+    final Size minSize = Size(140 * sc, 48 * sc);
     return ElevatedButton.styleFrom(
       backgroundColor: Colors.green,
       foregroundColor: Colors.white,
@@ -141,9 +141,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       textStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w800),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: isMobile
-          ? const VisualDensity(horizontal: -1, vertical: -1)
-          : VisualDensity.standard,
+      visualDensity: const VisualDensity(horizontal: -1, vertical: -1),
     );
   }
 
@@ -253,6 +251,11 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         final data = jsonDecode(r.body);
         setState(() {
           deviceOntInfo = data;
+          isLoadingOntInfo = false;
+        });
+      } else if (r.statusCode == 404) {
+        setState(() {
+          ontErrorMessage = 'معلومات الجهاز غير متوفرة لهذا المشترك';
           isLoadingOntInfo = false;
         });
       } else {
@@ -374,60 +377,55 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     double? valueFontSize,
     int valueMaxLines = 1,
   }) {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
     final color = accent ?? Colors.blueGrey;
-    // Darker look when highlighted (e.g., Active)
-    final Color bgColor =
-        highlightBg ? color.withValues(alpha: 0.16) : Colors.grey.shade50;
-    final Color brColor =
-        highlightBg ? color.withValues(alpha: 0.40) : Colors.grey.shade200;
-    final Color iconBg = highlightBg
-        ? color.withValues(alpha: 0.22)
-        : color.withValues(alpha: 0.12);
     final bool isMobile = _isMobile(context);
-    final double lblSize = labelFontSize ?? (isMobile ? 11 : 12);
-    final double valSize = valueFontSize ?? (isMobile ? 13 : 14);
-    return Container(
-      padding: const EdgeInsets.all(10),
-      constraints: const BoxConstraints(minHeight: 60),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: brColor),
+    final double lblSize = labelFontSize ?? ((isMobile ? 15 : 18) * sc);
+    final double valSize = valueFontSize ?? ((isMobile ? 16 : 18) * sc);
+    return InputDecorator(
+      decoration: InputDecoration(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20 * sc, color: color),
+            SizedBox(width: 4 * sc),
+            Text(label,
+                style: TextStyle(
+                    fontSize: lblSize,
+                    color: color,
+                    fontWeight: FontWeight.w900)),
+          ],
+        ),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        floatingLabelAlignment: FloatingLabelAlignment.center,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.black87, width: 1.5),
+        ),
+        filled: highlightBg,
+        fillColor: highlightBg ? color.withValues(alpha: 0.08) : null,
+        contentPadding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 16 * sc),
+        isDense: false,
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-                color: iconBg, borderRadius: BorderRadius.circular(6)),
-            child: Icon(icon, size: 16, color: color)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: lblSize,
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(value,
-                    maxLines: valueMaxLines,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: valSize, fontWeight: FontWeight.w700)),
-              ]),
-        )
-      ]),
+      child: Text(value,
+          maxLines: valueMaxLines,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              fontSize: valSize,
+              fontWeight: FontWeight.w800,
+              color: highlightBg ? color : null)),
     );
   }
 
   Widget _twoPerRowGrid(List<Widget> tiles) {
     if (tiles.isEmpty) return const SizedBox();
     final double width = MediaQuery.of(context).size.width;
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double spacing = 16 * sc;
     // On very small phones, use a single column for better readability.
     final bool singleColumn = width < 380;
     if (singleColumn) {
@@ -435,7 +433,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         children: [
           for (int i = 0; i < tiles.length; i++) ...[
             tiles[i],
-            if (i + 1 < tiles.length) const SizedBox(height: 8),
+            if (i + 1 < tiles.length) SizedBox(height: spacing),
           ],
         ],
       );
@@ -446,8 +444,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       final right = (i + 1 < tiles.length)
           ? Expanded(child: tiles[i + 1])
           : const Expanded(child: SizedBox());
-      children.add(Row(children: [left, const SizedBox(width: 8), right]));
-      if (i + 2 < tiles.length) children.add(const SizedBox(height: 8));
+      children.add(Row(children: [left, SizedBox(width: spacing), right]));
+      if (i + 2 < tiles.length) children.add(SizedBox(height: spacing));
     }
     return Column(children: children);
   }
@@ -613,26 +611,20 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final fat = fbgFat.$2;
 
     final tiles = <Widget>[];
-    final bool isMobile = _isMobile(context);
-    final double lblSize = isMobile ? 11 : 12;
-    final double valSize = isMobile ? 13 : 14;
-    final int valueLines = isMobile ? 2 : 1;
+    final int valueLines = _isMobile(context) ? 2 : 1;
 
     tiles.add(_metricTile(
       isActive ? Icons.verified : Icons.error_outline,
       'الحالة',
       statusDisplay,
       accent: sc,
-      labelFontSize: lblSize,
-      valueFontSize: valSize,
+      highlightBg: true,
       valueMaxLines: valueLines,
     ));
     tiles.add(_metricTile(
       Icons.category,
       'الحزمة',
       _baseService(services),
-      labelFontSize: lblSize,
-      valueFontSize: valSize,
       valueMaxLines: valueLines,
     ));
     if (fbg != null && fbg.isNotEmpty) {
@@ -640,8 +632,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         Icons.router,
         'FBG',
         fbg,
-        labelFontSize: lblSize,
-        valueFontSize: valSize,
         valueMaxLines: valueLines,
       ));
     }
@@ -650,8 +640,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         Icons.hub,
         'FAT',
         fat,
-        labelFontSize: lblSize,
-        valueFontSize: valSize,
         valueMaxLines: valueLines,
       ));
     }
@@ -660,8 +648,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         Icons.play_circle,
         'تاريخ البدء',
         _fmtDate(startedAt),
-        labelFontSize: lblSize,
-        valueFontSize: valSize,
         valueMaxLines: valueLines,
       ));
     }
@@ -669,8 +655,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       Icons.event,
       'تاريخ الانتهاء',
       _fmtDateTime(endDate),
-      labelFontSize: lblSize,
-      valueFontSize: valSize,
       valueMaxLines: valueLines,
     ));
     if (dur != null) {
@@ -678,8 +662,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         Icons.schedule,
         'مدة الاشتراك',
         '$dur يوم',
-        labelFontSize: lblSize,
-        valueFontSize: valSize,
         valueMaxLines: valueLines,
       ));
     }
@@ -690,8 +672,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       d > 0 ? 'الأيام المتبقية' : (d < 0 ? 'منتهي منذ' : 'ينتهي اليوم'),
       d > 0 ? '$d يوم' : (d < 0 ? '${d.abs()} يوم' : 'اليوم'),
       accent: dc,
-      labelFontSize: lblSize,
-      valueFontSize: valSize,
+      highlightBg: true,
       valueMaxLines: valueLines,
     ));
 
@@ -701,133 +682,228 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   }
 
   Widget _deviceBox(Map<String, dynamic> dev) {
-    return Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            border: Border.all(color: Colors.grey.shade200),
-            borderRadius: BorderRadius.circular(8)),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(
-                    'اليوز نيم : ${_safeGetString(dev['username']) ?? 'غير متوفر'}',
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
-                Text('Serial: ${_safeGetString(dev['serial']) ?? 'غير متوفر'}',
-                    overflow: TextOverflow.ellipsis),
-              ])),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-              onPressed: () {
-                if (subscriptionDetails == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('لا يمكن العثور على البيانات'),
-                      backgroundColor: Colors.red));
-                  return;
-                }
-                final id = _extractSubscriptionId(subscriptionDetails!);
-                if (id == null || id.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('لا يمكن العثور على معرف الاشتراك'),
-                      backgroundColor: Colors.red));
-                  return;
-                }
-                final username = _safeGetString(dev['username']) ?? '';
-                final serial = _safeGetString(dev['serial']) ?? '';
-                final mac = _safeGetString(dev['macAddress']) ?? '';
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => EditDevicePage(
-                            subscriptionId: id,
-                            authToken: widget.authToken,
-                            username: username,
-                            serial: serial,
-                            macAddress: mac))).then((_) {
-                  fetchUserDetailsAndSubscription();
-                });
-              },
-              icon: const Icon(Icons.edit, size: 18),
-              label: const Text('تعديل'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                textStyle:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                minimumSize: const Size(0, 40),
-                tapTargetSize: MaterialTapTargetSize.padded,
-                visualDensity: VisualDensity.standard,
-              ))
-        ]));
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final int valueLines = _isMobile(context) ? 2 : 1;
+
+    final username = _safeGetString(dev['username']) ?? 'غير متوفر';
+    final serial = _safeGetString(dev['serial']) ?? 'غير متوفر';
+    final mac = _safeGetString(dev['macAddress']);
+
+    // حقل السيريال مع زر تعديل
+    final serialTile = Stack(
+      children: [
+        _metricTile(Icons.memory, 'السيريال', serial,
+            accent: Colors.teal, valueMaxLines: valueLines),
+        Positioned(
+          left: 6 * sc,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: Material(
+              color: Colors.teal.shade700,
+              shape: const CircleBorder(),
+              elevation: 2,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _showEditSerialDialog(serial),
+                child: Padding(
+                  padding: EdgeInsets.all(6 * sc),
+                  child: Icon(Icons.edit, size: 22 * sc, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final tiles = <Widget>[
+      _metricTile(Icons.person, 'اليوزر نيم', username,
+          accent: Colors.indigo, valueMaxLines: valueLines),
+      serialTile,
+      if (mac != null && mac.isNotEmpty)
+        _metricTile(Icons.lan, 'MAC Address', mac,
+            accent: Colors.deepPurple, valueMaxLines: valueLines),
+    ];
+
+    return _twoPerRowGrid(tiles);
+  }
+
+  void _showEditSerialDialog(String currentSerial) {
+    if (subscriptionDetails == null) return;
+    final id = _extractSubscriptionId(subscriptionDetails!);
+    if (id == null || id.isEmpty) return;
+    final dev = _safeGetMap(subscriptionDetails!['deviceDetails']);
+    final username = _safeGetString(dev?['username']) ?? '';
+    final mac = _safeGetString(dev?['macAddress']) ?? '';
+    final controller = TextEditingController(text: currentSerial);
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool saving = false;
+        String? error;
+        return StatefulBuilder(builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            title: const Row(
+              children: [
+                Icon(Icons.memory, color: Colors.teal),
+                SizedBox(width: 8),
+                Text('تعديل السيريال', style: TextStyle(fontWeight: FontWeight.w800)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: 'السيريال الجديد',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    prefixIcon: const Icon(Icons.memory),
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: TextStyle(
+                    color: error!.contains('نجاح') ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.w800)),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: saving ? null : () async {
+                  final newSerial = controller.text.trim();
+                  if (newSerial.isEmpty) {
+                    setDialogState(() => error = 'أدخل السيريال');
+                    return;
+                  }
+                  setDialogState(() { saving = true; error = null; });
+                  try {
+                    final url = Uri.parse(
+                        'https://admin.ftth.iq/api/subscriptions/$id/device');
+                    final r = await http.put(url,
+                        headers: {
+                          'Authorization': 'Bearer ${widget.authToken}',
+                          'Content-Type': 'application/json',
+                          'Accept': 'application/json',
+                        },
+                        body: jsonEncode({
+                          'username': username,
+                          'ontSerial': newSerial,
+                          'macAddress': mac,
+                        }));
+                    if (!ctx.mounted) return;
+                    if (r.statusCode == 200) {
+                      setDialogState(() => error = 'تم التحديث بنجاح');
+                      Future.delayed(const Duration(seconds: 1), () {
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        fetchUserDetailsAndSubscription();
+                      });
+                    } else {
+                      setDialogState(() => error = 'فشل: ${r.statusCode}');
+                    }
+                  } catch (e) {
+                    if (ctx.mounted) setDialogState(() => error = 'خطأ: $e');
+                  } finally {
+                    if (ctx.mounted) setDialogState(() => saving = false);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                child: saving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('حفظ', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  /// زر تعديل الجهاز (يُعرض أسفل قسم حالة الجهاز وقوة الإشارة)
+  Widget _editDeviceButton() {
+    if (subscriptionDetails == null) return const SizedBox();
+    final dev = _safeGetMap(subscriptionDetails!['deviceDetails']);
+    if (dev == null) return const SizedBox();
+    final username = _safeGetString(dev['username']) ?? '';
+    final serial = _safeGetString(dev['serial']) ?? '';
+    final mac = _safeGetString(dev['macAddress']) ?? '';
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    return Padding(
+      padding: EdgeInsets.only(top: 8 * sc),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () {
+            final id = _extractSubscriptionId(subscriptionDetails!);
+            if (id == null || id.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('لا يمكن العثور على معرف الاشتراك'),
+                  backgroundColor: Colors.red));
+              return;
+            }
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => EditDevicePage(
+                        subscriptionId: id,
+                        authToken: widget.authToken,
+                        username: username,
+                        serial: serial,
+                        macAddress: mac))).then((_) {
+              fetchUserDetailsAndSubscription();
+            });
+          },
+          icon: const Icon(Icons.edit, size: 18),
+          label: const Text('تعديل الجهاز'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            textStyle:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _sessionBox(Map<String, dynamic> s) {
-    final start = _fmtDate(_safeGetString(s['startedAt']));
-    final duration = _fmtTime(
-        int.tryParse(_safeGetString(s['sessionTimeInSeconds']) ?? '0') ?? 0);
-    return Container(
-      margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(Icons.wifi, color: Colors.green.shade600, size: 15),
-            const SizedBox(width: 6),
-            const Text('الجلسة النشطة:',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.green)),
-          ]),
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Row(children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.green.shade300)),
-                    child: Text(start,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87)),
-                  ),
-                  const SizedBox(width: 24),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.green.shade300)),
-                    child: Text(duration,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87)),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final totalSecs =
+        int.tryParse(_safeGetString(s['sessionTimeInSeconds']) ?? '0') ?? 0;
+
+    String durationHuman = 'أقل من دقيقة';
+    if (totalSecs > 0) {
+      final days = totalSecs ~/ 86400;
+      final hours = (totalSecs % 86400) ~/ 3600;
+      final mins = (totalSecs % 3600) ~/ 60;
+      final parts = <String>[];
+      if (days > 0) parts.add('$days يوم');
+      if (hours > 0) parts.add('$hours ساعة');
+      if (mins > 0) parts.add('$mins دقيقة');
+      if (parts.isNotEmpty) durationHuman = parts.join(' و ');
+    }
+
+    return _statusTile(Icons.wifi, 'نشط منذ', durationHuman, Colors.green.shade700);
   }
 
   Widget _ontInfoSection() {
@@ -889,53 +965,61 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 '${_safeGetString(rxPower) ?? 'غير معروف'} dBm', powerColor,
                 badge: powerStatus)),
       ]),
-      const SizedBox(height: 6),
-      _hint(),
     ]);
   }
 
   Widget _statusTile(IconData? icon, String label, String value, Color c,
-          {String? badge}) =>
-      Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-              color: c.withValues(alpha: .1),
-              border: Border.all(color: c.withValues(alpha: .3)),
-              borderRadius: BorderRadius.circular(8)),
-          child: Row(children: [
-            if (icon != null) ...[
-              Icon(icon, color: c, size: 15),
-              const SizedBox(width: 10)
+          {String? badge}) {
+      final screenH = MediaQuery.of(context).size.height;
+      final double sc = (screenH / 900).clamp(0.75, 1.3);
+      return InputDecorator(
+        decoration: InputDecoration(
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, color: c, size: 20 * sc),
+                SizedBox(width: 4 * sc),
+              ],
+              Text(label,
+                  style: TextStyle(fontSize: 18 * sc, color: c, fontWeight: FontWeight.w900)),
             ],
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(label,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  Row(children: [
-                    Text(value,
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: c)),
-                    if (badge != null && badge.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: c.withValues(alpha: .2),
-                              borderRadius: BorderRadius.circular(12)),
-                          child: Text(badge,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: c)))
-                    ]
-                  ])
-                ]))
-          ]));
+          ),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          floatingLabelAlignment: FloatingLabelAlignment.center,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: c, width: 1.5),
+          ),
+          filled: true,
+          fillColor: c.withValues(alpha: 0.08),
+          contentPadding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 16 * sc),
+          isDense: false,
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(value,
+              style: TextStyle(
+                  fontSize: 18 * sc,
+                  fontWeight: FontWeight.w800,
+                  color: c)),
+          if (badge != null && badge.isNotEmpty) ...[
+            SizedBox(width: 12 * sc),
+            Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: 8 * sc, vertical: 3 * sc),
+                decoration: BoxDecoration(
+                    color: c.withValues(alpha: .2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Text(badge,
+                    style: TextStyle(
+                        fontSize: 11 * sc,
+                        fontWeight: FontWeight.bold,
+                        color: c)))
+          ]
+        ]),
+      );
+  }
   Widget _hint() => Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -982,7 +1066,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 Expanded(
                   child: Text(
                     'جاري تحميل معلومات المشترك...',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                 ),
               ],
@@ -1276,14 +1360,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             flex: 2,
             child: Text(label,
                 style: TextStyle(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: Colors.grey.shade700,
                     fontSize: 14))),
         const SizedBox(width: 8),
         Expanded(
             flex: 3,
             child: Text(value,
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w800),
                 textAlign: TextAlign.right)),
       ]),
     );
@@ -1408,10 +1492,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
   Widget _buildPhoneTile(double width, Color? tileBg, Color? tileBorder,
       Color? iconBg) {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
     return SizedBox(
       width: width,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 6 * sc),
         decoration: BoxDecoration(
           color: tileBg ?? Colors.grey.shade50,
           borderRadius: BorderRadius.circular(8),
@@ -1420,50 +1506,47 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // أيقونة الهاتف
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: EdgeInsets.all(4 * sc),
               decoration: BoxDecoration(
                   color: iconBg ?? Colors.green.shade100,
                   borderRadius: BorderRadius.circular(6)),
-              child: Icon(Icons.phone, size: 16, color: Colors.green.shade700),
+              child: Icon(Icons.phone, size: 14 * sc, color: Colors.green.shade700),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 8 * sc),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('رقم الهاتف',
                       style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11 * sc,
                           color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
+                          fontWeight: FontWeight.w800)),
                   if (_resolvedPhone.isNotEmpty)
                     Directionality(
                       textDirection: TextDirection.ltr,
                       child: Text(
                         _fmtPhoneLocal(_resolvedPhone),
-                        style: const TextStyle(
-                            fontSize: 14,
+                        style: TextStyle(
+                            fontSize: 13 * sc,
                             color: Colors.black87,
-                            fontWeight: FontWeight.w600),
+                            fontWeight: FontWeight.w800),
                       ),
                     )
                   else
                     Text('غير متوفر',
                         style: TextStyle(
-                            fontSize: 13, color: Colors.grey.shade500)),
+                            fontSize: 12 * sc, color: Colors.grey.shade500)),
                 ],
               ),
             ),
-            // زر إظهار الرقم أو نسخه
             if (_resolvedPhone.isNotEmpty)
               Tooltip(
                 message: 'نسخ رقم الهاتف',
                 child: IconButton(
                   icon:
-                      Icon(Icons.copy_rounded, size: 20, color: Colors.green.shade700),
+                      Icon(Icons.copy_rounded, size: 18 * sc, color: Colors.green.shade700),
                   onPressed: () {
                     Clipboard.setData(
                         ClipboardData(text: _fmtPhoneLocal(_resolvedPhone)));
@@ -1512,10 +1595,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       Color? backgroundColor,
       Color? borderColor,
       Color? iconBgColor}) {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
     return SizedBox(
       width: width,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 6 * sc),
         decoration: BoxDecoration(
           color: backgroundColor ?? Colors.grey.shade50,
           borderRadius: BorderRadius.circular(8),
@@ -1525,23 +1610,22 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: EdgeInsets.all(4 * sc),
               decoration: BoxDecoration(
                   color: iconBgColor ?? Colors.blue.shade100,
                   borderRadius: BorderRadius.circular(6)),
-              child: Icon(icon, size: 16, color: Colors.blue.shade700),
+              child: Icon(icon, size: 14 * sc, color: Colors.blue.shade700),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 8 * sc),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label,
                       style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11 * sc,
                           color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
+                          fontWeight: FontWeight.w800)),
                   Builder(
                     builder: (_) {
                       final valWidget = ltr
@@ -1550,17 +1634,17 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                               child: Text(value,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 14,
+                                  style: TextStyle(
+                                      fontSize: 13 * sc,
                                       color: Colors.black87,
-                                      fontWeight: FontWeight.w600)))
+                                      fontWeight: FontWeight.w800)))
                           : Text(value,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 14,
+                              style: TextStyle(
+                                  fontSize: 13 * sc,
                                   color: Colors.black87,
-                                  fontWeight: FontWeight.w600));
+                                  fontWeight: FontWeight.w800));
                       return tooltip != null
                           ? Tooltip(message: tooltip, child: valWidget)
                           : valWidget;
@@ -1573,7 +1657,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               Tooltip(
                 message: 'نسخ المعرف',
                 child: IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 32),
+                  icon: Icon(Icons.copy_rounded, size: 22 * sc),
                   color: Colors.blue.shade700,
                   onPressed: () => _copyUserId(value),
                 ),
@@ -1596,9 +1680,159 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     );
   }
 
+  void _copyAllVisibleInfo() {
+    final lines = <String>[];
+    lines.add('الاسم: ${widget.userName}');
+    if (_resolvedPhone.isNotEmpty) {
+      lines.add('رقم الهاتف: ${_fmtPhoneLocal(_resolvedPhone)}');
+    }
+    lines.add('معرف المستخدم: ${widget.userId}');
+    if (subscriptionDetails != null) {
+      final statusRaw = subscriptionDetails!['status'];
+      final statusTxt = statusRaw is String
+          ? statusRaw
+          : _safeGetString(statusRaw?['displayValue']) ?? '';
+      final normStatus = statusTxt.toString().trim().toLowerCase();
+      final bool isActive = (normStatus == 'active' || normStatus == 'متصل');
+      lines.add('الحالة: ${isActive ? "فعال" : "غير فعال"}');
+      final services = _safeGetList(subscriptionDetails!['services']);
+      lines.add('الحزمة: ${_baseService(services)}');
+      final fbgFat = _getFbgFat();
+      if (fbgFat.$1 != null && fbgFat.$1!.isNotEmpty) lines.add('FBG: ${fbgFat.$1}');
+      if (fbgFat.$2 != null && fbgFat.$2!.isNotEmpty) lines.add('FAT: ${fbgFat.$2}');
+      final startedAt = _safeGetString(subscriptionDetails!['startedAt']) ??
+          _safeGetString(subscriptionDetails!['startDate']);
+      if (startedAt != null) lines.add('تاريخ البدء: ${_fmtDate(startedAt)}');
+      final endDate = _safeGetString(subscriptionDetails!['endDate']) ??
+          _safeGetString(subscriptionDetails!['expires']);
+      if (endDate != null) lines.add('تاريخ الانتهاء: ${_fmtDateTime(endDate)}');
+      final d = _days(endDate);
+      if (d > 0) {
+        lines.add('الأيام المتبقية: $d يوم');
+      } else if (d < 0) {
+        lines.add('منتهي منذ: ${d.abs()} يوم');
+      }
+      final dev = _safeGetMap(subscriptionDetails!['deviceDetails']);
+      if (dev != null) {
+        final username = _safeGetString(dev['username']);
+        if (username != null) lines.add('اليوز نيم: $username');
+        final serial = _safeGetString(dev['serial']);
+        if (serial != null) lines.add('Serial: $serial');
+      }
+    }
+    final coords = _extractCoordinates(_customerDataMain);
+    if (coords != null) lines.add('الموقع: ${coords.$1},${coords.$2}');
+    Clipboard.setData(ClipboardData(text: lines.join('\n')));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('تم نسخ كل المعلومات'),
+      backgroundColor: Colors.teal,
+      duration: Duration(seconds: 2),
+    ));
+  }
+
+  void _reloadAll() {
+    fetchUserDetailsAndSubscription();
+    _fetchAndStoreCustomerDetails();
+  }
+
+  /// صف واحد يحتوي الاسم + الهاتف + المعرف (3 حقول في صف)
+  Widget _userInfoRow() {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double lblSize = 18 * sc;
+    final double valSize = 18 * sc;
+
+    Widget tile(IconData icon, String label, String value, Color accent, {Widget? trailing}) {
+      return Expanded(
+        child: InputDecorator(
+          decoration: InputDecoration(
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20 * sc, color: accent),
+                SizedBox(width: 5 * sc),
+                Text(label, style: TextStyle(fontSize: lblSize, color: accent, fontWeight: FontWeight.w900)),
+              ],
+            ),
+            floatingLabelBehavior: FloatingLabelBehavior.always,
+            floatingLabelAlignment: FloatingLabelAlignment.center,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.black87, width: 1.5),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 16 * sc),
+            isDense: false,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: valSize, fontWeight: FontWeight.w800)),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget copyBtn(String data, String msg, Color color) {
+      return Tooltip(
+        message: msg,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: data));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(msg), backgroundColor: color, duration: const Duration(seconds: 2)));
+          },
+          child: Padding(
+            padding: EdgeInsets.all(4 * sc),
+            child: Icon(Icons.copy_rounded, size: 16 * sc, color: color),
+          ),
+        ),
+      );
+    }
+
+    final phone = _resolvedPhone.isNotEmpty ? _fmtPhoneLocal(_resolvedPhone) : 'غير متوفر';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        tile(Icons.person, 'الاسم', widget.userName, Colors.blue.shade700,
+            trailing: copyBtn(widget.userName, 'تم نسخ الاسم', Colors.blue)),
+        SizedBox(width: 12 * sc),
+        tile(Icons.phone, 'رقم الهاتف', phone, Colors.green.shade700,
+            trailing: _resolvedPhone.isNotEmpty
+                ? copyBtn(_fmtPhoneLocal(_resolvedPhone), 'تم نسخ الرقم', Colors.green)
+                : (_isFetchingPhone
+                    ? SizedBox(width: 16 * sc, height: 16 * sc, child: const CircularProgressIndicator(strokeWidth: 2))
+                    : Tooltip(
+                        message: 'جلب الرقم',
+                        child: InkWell(
+                          onTap: _fetchPhoneManually,
+                          child: Padding(
+                            padding: EdgeInsets.all(4 * sc),
+                            child: Icon(Icons.search, size: 16 * sc, color: Colors.blue.shade700),
+                          ),
+                        ),
+                      ))),
+        SizedBox(width: 12 * sc),
+        tile(Icons.badge, 'المعرف', widget.userId, Colors.indigo,
+            trailing: copyBtn(widget.userId, 'تم نسخ المعرف', Colors.indigo)),
+      ],
+    );
+  }
+
   Widget _userNameRow() {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 6 * sc),
       decoration: BoxDecoration(
         color: Colors.blue.shade50,
         borderRadius: BorderRadius.circular(8),
@@ -1607,26 +1841,26 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(4 * sc),
             decoration: BoxDecoration(
                 color: Colors.blue.shade100,
                 borderRadius: BorderRadius.circular(6)),
-            child: Icon(Icons.person, size: 16, color: Colors.blue.shade700),
+            child: Icon(Icons.person, size: 14 * sc, color: Colors.blue.shade700),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 8 * sc),
           Expanded(
             child: Text(
               widget.userName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 14 * sc, fontWeight: FontWeight.w700),
             ),
           ),
           // زر نسخ الاسم
           Tooltip(
             message: 'نسخ الاسم',
             child: IconButton(
-              icon: Icon(Icons.copy_rounded, size: 18, color: Colors.blue.shade700),
+              icon: Icon(Icons.copy_rounded, size: 16 * sc, color: Colors.blue.shade700),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: widget.userName));
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -1642,7 +1876,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             Tooltip(
               message: 'نسخ الاسم والرقم معاً',
               child: IconButton(
-                icon: Icon(Icons.contact_page_rounded, size: 18,
+                icon: Icon(Icons.contact_page_rounded, size: 16 * sc,
                     color: Colors.teal.shade700),
                 onPressed: () {
                   final text =
@@ -1932,25 +2166,25 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   // ---------------- Build -----------------
   @override
   Widget build(BuildContext context) {
-    final c = _compactMode;
-    final bool isMobile = _isMobile(context);
-    final double s = isMobile ? 1.0 : 1.15;
-    final pad = (c ? 10.0 : 16.0) * s;
-    final gap = c ? 3.0 : 6.0;
-    final cardGap = c ? 6.0 : 8.0;
-    final titleSize = c ? 16.0 : 18.0;
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double s = sc;
+    final pad = 10.0 * sc;
+    final gap = 10.0 * sc;
+    final cardGap = 8.0 * sc;
+    final titleSize = 15.0 * sc;
     final coords = _extractCoordinates(_customerDataMain);
     final deviceDetails = subscriptionDetails == null
         ? null
         : _safeGetMap(subscriptionDetails!['deviceDetails']);
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 72, // زيادة ارتفاع الشريط العلوي
+        toolbarHeight: 52 * sc,
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
         title: Text('تفاصيل المستخدم',
             style: _TextStyles.appBarTitle.copyWith(
-                fontSize: 20,
+                fontSize: 17 * sc,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0.4,
                 shadows: const [
@@ -1965,15 +2199,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             final canPop = Navigator.of(ctx).canPop();
             if (!canPop) return const SizedBox();
             return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              margin: EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
               decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(10)),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new,
-                    size: 30, color: Colors.white),
-                padding: const EdgeInsets.all(14),
-                constraints: const BoxConstraints(minWidth: 64, minHeight: 64),
+                icon: Icon(Icons.arrow_back_ios_new,
+                    size: 22 * sc, color: Colors.white),
+                padding: EdgeInsets.all(8 * sc),
+                constraints: BoxConstraints(minWidth: 44 * sc, minHeight: 44 * sc),
                 onPressed: () => Navigator.of(ctx).pop(),
                 tooltip: 'رجوع',
               ),
@@ -1981,50 +2215,77 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           },
         ),
         actions: [
+          // زر إعادة التحميل
+          Tooltip(
+            message: 'إعادة تحميل',
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 2 * sc, vertical: 6 * sc),
+              decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10)),
+              child: IconButton(
+                icon: Icon(Icons.refresh, size: 20 * sc, color: Colors.white),
+                padding: EdgeInsets.all(6 * sc),
+                constraints: BoxConstraints(minWidth: 36 * sc, minHeight: 36 * sc),
+                onPressed: _reloadAll,
+              ),
+            ),
+          ),
+          // زر نسخ كل المعلومات
+          Tooltip(
+            message: 'نسخ كل المعلومات',
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 2 * sc, vertical: 6 * sc),
+              decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10)),
+              child: IconButton(
+                icon: Icon(Icons.copy_all, size: 20 * sc, color: Colors.amber),
+                padding: EdgeInsets.all(6 * sc),
+                constraints: BoxConstraints(minWidth: 36 * sc, minHeight: 36 * sc),
+                onPressed: _copyAllVisibleInfo,
+              ),
+            ),
+          ),
           if (_canAddTask)
             Tooltip(
               message: 'إضافة مهمة',
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                margin: EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF00B86B), Color(0xFF00894F)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: const [
                     BoxShadow(
                         color: Color(0x8800B86B),
-                        blurRadius: 14,
-                        spreadRadius: 1,
-                        offset: Offset(0, 4)),
-                    BoxShadow(
-                        color: Color(0x33000000),
-                        blurRadius: 4,
-                        offset: Offset(0, 1)),
+                        blurRadius: 8,
+                        offset: Offset(0, 2)),
                   ],
-                  border: Border.all(color: Color(0xAAFFFFFF), width: 1.4),
+                  border: Border.all(color: Color(0xAAFFFFFF), width: 1.2),
                 ),
                 child: Material(
                   type: MaterialType.transparency,
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(14),
                     onTap: _openAddTaskDialog,
-                    child: const Padding(
+                    child: Padding(
                       padding:
-                          EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          EdgeInsets.symmetric(horizontal: 12 * sc, vertical: 6 * sc),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.add_task, size: 34, color: Colors.white),
-                          SizedBox(width: 8),
+                          Icon(Icons.add_task, size: 22 * sc, color: Colors.white),
+                          SizedBox(width: 4 * sc),
                           Text('مهمة',
                               style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 17,
+                                  fontSize: 14 * sc,
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.8)),
+                                  letterSpacing: 0.5)),
                         ],
                       ),
                     ),
@@ -2036,15 +2297,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             message: 'القائمة',
             child: Builder(
               builder: (ctx) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                margin: EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
                 decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(10)),
                 child: IconButton(
-                  icon: const Icon(Icons.menu, size: 30, color: Colors.white),
-                  padding: const EdgeInsets.all(14),
+                  icon: Icon(Icons.menu, size: 22 * sc, color: Colors.white),
+                  padding: EdgeInsets.all(8 * sc),
                   constraints:
-                      const BoxConstraints(minWidth: 64, minHeight: 64),
+                      BoxConstraints(minWidth: 44 * sc, minHeight: 44 * sc),
                   onPressed: () => Scaffold.of(ctx).openEndDrawer(),
                 ),
               ),
@@ -2053,9 +2314,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         ],
       ),
       endDrawer: _sideMenu(),
-      body: MediaQuery(
-        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(s)),
-        child: isLoading
+      body: isLoading
             ? const Center(child: CircularProgressIndicator())
             : errorMessage.isNotEmpty
                 ? Center(
@@ -2068,10 +2327,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                       children: [
                         Card(
                           margin: EdgeInsets.only(bottom: cardGap),
+                          elevation: 4,
+                          shadowColor: Colors.blue.shade200,
                           color: Colors.blue.shade100.withValues(alpha: 0.8),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: Colors.blue.shade200)),
+                              side: const BorderSide(color: Colors.black87, width: 1.5)),
                           child: Padding(
                             padding: EdgeInsets.all(pad),
                             child: Column(
@@ -2081,12 +2342,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                 Row(
                                   children: [
                                     Icon(Icons.person_outline,
-                                        size: 18,
+                                        size: 15 * sc,
                                         color: Colors.blue.shade800),
-                                    const SizedBox(width: 6),
+                                    SizedBox(width: 4 * sc),
                                     Text('معلومات المستخدم',
                                         style: TextStyle(
-                                            fontSize: 13,
+                                            fontSize: 12 * sc,
                                             fontWeight: FontWeight.w700,
                                             color: Colors.blue.shade800)),
                                     const Spacer(),
@@ -2111,8 +2372,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                         },
                                         borderRadius: BorderRadius.circular(6),
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 5),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8 * sc, vertical: 3 * sc),
                                           decoration: BoxDecoration(
                                             color: Colors.teal.shade50,
                                             border: Border.all(
@@ -2124,15 +2385,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Icon(Icons.contact_page_rounded,
-                                                  size: 14,
+                                                  size: 12 * sc,
                                                   color: Colors.teal.shade700),
-                                              const SizedBox(width: 4),
+                                              SizedBox(width: 3 * sc),
                                               Text('نسخ الكل',
                                                   style: TextStyle(
-                                                      fontSize: 12,
+                                                      fontSize: 11 * sc,
                                                       color: Colors.teal.shade700,
                                                       fontWeight:
-                                                          FontWeight.w600)),
+                                                          FontWeight.w800)),
                                             ],
                                           ),
                                         ),
@@ -2141,12 +2402,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                   ],
                                 ),
                                 SizedBox(height: gap),
-                                _userNameRow(),
-                                SizedBox(height: gap),
-                                _headerInfoGrid(context,
-                                    tileBg: Colors.white.withValues(alpha: 0.7),
-                                    tileBorder: Colors.blue.shade200,
-                                    iconBg: Colors.blue.shade100),
+                                _userInfoRow(),
                                 SizedBox(height: gap),
                                 _renewButton(context, fullWidth: true),
                               ],
@@ -2154,41 +2410,23 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                           ),
                         ),
                         if (subscriptionDetails != null) ...[
-                          (() {
-                            final statusRaw = subscriptionDetails!['status'];
-                            final statusTxt = statusRaw is String
-                                ? statusRaw
-                                : _safeGetString(statusRaw?['displayValue']) ??
-                                    'Inactive';
-                            final norm =
-                                statusTxt.toString().trim().toLowerCase();
-                            final bool active =
-                                (norm == 'active' || norm == 'متصل');
-                            final Color bg = active
-                                ? Colors.green.shade50
-                                : Colors.red.shade100;
-                            final Color border = active
-                                ? Colors.green.shade300
-                                : const Color.fromARGB(255, 205, 7, 7);
-                            final Color header = active
-                                ? Colors.green.shade700
-                                : const Color.fromARGB(255, 88, 3, 3);
-                            return Card(
+                          Card(
                               margin: EdgeInsets.only(bottom: cardGap),
-                              color: bg,
+                              elevation: 4,
+                              shadowColor: Colors.grey.shade300,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(color: border)),
+                                  side: const BorderSide(color: Colors.black87, width: 1.5)),
                               child: Padding(
                                 padding: EdgeInsets.all(pad),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    // ── تفاصيل الاشتراك ──
                                     Text('تفاصيل الاشتراك',
                                         style: _TextStyles.sectionHeader
                                             .copyWith(
-                                                fontSize: titleSize,
-                                                color: header)),
+                                                fontSize: titleSize)),
                                     if (_allSubscriptions.length > 1) ...[
                                       SizedBox(height: gap),
                                       SingleChildScrollView(
@@ -2205,7 +2443,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                                   : _safeGetString((sub['status'] as Map?)?['displayValue']) ?? '';
                                               final isActive = subStatus.toLowerCase() == 'active';
                                               final isSelected = _selectedSubscriptionIndex == i;
-                                              // لون الـ pill: أزرق للمختار، أخضر للفعّال، رمادي للمنتهي
                                               final pillColor = isSelected
                                                   ? Colors.blue[700]!
                                                   : isActive
@@ -2279,59 +2516,48 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                     ],
                                     SizedBox(height: gap),
                                     _subscriptionDetails(),
-                                  ],
-                                ),
-                              ),
-                            );
-                          })(),
-                          Card(
-                            margin: EdgeInsets.only(bottom: cardGap),
-                            child: Padding(
-                              padding: EdgeInsets.all(pad),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('معلومات الجهاز',
-                                      style: _TextStyles.sectionHeader
-                                          .copyWith(fontSize: titleSize)),
-                                  SizedBox(height: gap),
-                                  if (deviceDetails != null) ...[
-                                    _deviceBox(deviceDetails),
-                                    SizedBox(height: gap)
-                                  ],
-                                  _ontInfoSection()
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (activeSession != null)
-                            Card(
-                              margin: EdgeInsets.only(bottom: cardGap),
-                              child: Padding(
-                                  padding: EdgeInsets.all(pad),
-                                  child: _sessionBox(activeSession!)),
-                            ),
-                          if (coords != null)
-                            Card(
-                              margin: EdgeInsets.only(bottom: cardGap),
-                              child: Padding(
-                                padding: EdgeInsets.all(pad),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('موقع المشترك',
+
+                                    // ── معلومات الجهاز ──
+                                    Divider(height: gap * 3, thickness: 1.5, color: Colors.black54),
+                                    Text('معلومات الجهاز',
                                         style: _TextStyles.sectionHeader
                                             .copyWith(fontSize: titleSize)),
                                     SizedBox(height: gap),
-                                    _buildCopyableCoordinateRow(
-                                        coords.$1, coords.$2)
+                                    if (deviceDetails != null) ...[
+                                      _deviceBox(deviceDetails),
+                                      SizedBox(height: gap)
+                                    ],
+                                    _ontInfoSection(),
+                                    SizedBox(height: gap),
+
+                                    // ── الجلسة + الموقع ──
+                                    if (activeSession != null || coords != null) ...[
+                                      Divider(height: gap * 3, thickness: 1.5, color: Colors.black54),
+                                      Row(children: [
+                                        if (activeSession != null)
+                                          Expanded(child: _sessionBox(activeSession!)),
+                                        if (activeSession != null && coords != null)
+                                          SizedBox(width: 16 * (screenH / 900).clamp(0.75, 1.3)),
+                                        if (coords != null)
+                                          Expanded(
+                                            child: _metricTile(Icons.location_on, 'الموقع',
+                                                '${coords.$1},${coords.$2}',
+                                                accent: Colors.orange.shade700),
+                                          ),
+                                      ]),
+                                    ],
                                   ],
                                 ),
                               ),
                             ),
                         ] else ...[
-                          const Card(
-                            child: Padding(
+                          Card(
+                            elevation: 4,
+                            shadowColor: Colors.grey.shade200,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                            child: const Padding(
                               padding: EdgeInsets.all(16),
                               child: Text('لا توجد تفاصيل اشتراك متاحة',
                                   style: TextStyle(color: Colors.grey)),
@@ -2341,7 +2567,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                       ],
                     ),
                   ),
-      ),
     );
   }
 
@@ -2429,7 +2654,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                     style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w600)),
+                        fontWeight: FontWeight.w800)),
               )
             ],
           ),

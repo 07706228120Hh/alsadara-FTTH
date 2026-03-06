@@ -19,6 +19,8 @@ class WhatsAppBottomWindow {
   static Timer? _fabGuardTimer; // مراقبة لضمان بقاء زر الواتساب
   static OverlayState? _rootOverlay; // overlay الجذرية لتثبيت العناصر عالمياً
   static bool _initialized = false; // تم التهيئة الجذرية
+  /// عند true، لا تُنشأ أزرار FAB فردية (FloatingToolbar يتولى المهمة)
+  static bool suppressIndividualFabs = false;
   // _isHidden == true يعني أننا في حالة تصغير (Minimized) لكن ما زال الـ WebView موجود في الذاكرة
   static _WhatsAppBottomWindowState? _instance;
   static BuildContext? _savedContext;
@@ -180,6 +182,7 @@ class WhatsAppBottomWindow {
   /// ضمان وجود زر الواتساب بعد الانتقال بين أنظمة / صفحات مختلفة
   /// استدعها من الشاشة الرئيسية لكل نظام (في build أو بعد الانتقال) لضمان إعادة إظهار الزر إذا فُقد الـ Overlay القديم.
   static void ensureFloatingButton(BuildContext context) {
+    if (suppressIndividualFabs) return; // FloatingToolbar يتولى المهمة
     ensureGlobal(context);
     _savedContext = context;
     // إذا كان لدينا زر مفقود (null) أو تم التخلص من الـ overlay السابق (يحصل بعد تغيير Navigator)
@@ -209,6 +212,7 @@ class WhatsAppBottomWindow {
 
   /// إظهار الزر العائم
   static void showFloatingButton(BuildContext context) {
+    if (suppressIndividualFabs) return; // FloatingToolbar يتولى المهمة
     // تهيئة جذرية إذا لم تتم
     ensureGlobal(context);
     // إذا كان موجوداً ومثبتاً (mounted) لا نعيد إنشاءه، فقط نضمن الحارس
@@ -326,6 +330,7 @@ class WhatsAppBottomWindow {
   /// إظهار زر عائم للمحادثات (على الجهة اليسرى)
   static void showConversationsFloatingButton(BuildContext context,
       {bool isAdmin = false}) {
+    if (suppressIndividualFabs) return; // FloatingToolbar يتولى المهمة
     _isAdminUser = isAdmin; // حفظ حالة المدير
     debugPrint('👤 showConversationsFloatingButton - isAdmin: $isAdmin');
     if (_conversationsFabEntry != null) {
@@ -475,6 +480,15 @@ class WhatsAppBottomWindow {
     _conversationsFabEntry = null;
   }
 
+  /// إزالة جميع الأزرار العائمة الفردية (يُستدعى من FloatingToolbar)
+  static void removeAllFabs() {
+    _stopFabGuard();
+    try { _fabEntry?.remove(); } catch (_) {}
+    _fabEntry = null;
+    try { _conversationsFabEntry?.remove(); } catch (_) {}
+    _conversationsFabEntry = null;
+  }
+
   /// فحص إذا كانت النافذة مفتوحة
   static bool isBottomWindowShowing() {
     return _isShowing && _instance != null;
@@ -509,8 +523,10 @@ class WhatsAppBottomWindow {
 
   // ================== حارس الزر (FAB Guard) ==================
   static void _startFabGuard() {
+    if (suppressIndividualFabs) return; // FloatingToolbar يتولى المهمة
     if (_fabGuardTimer?.isActive ?? false) return;
     _fabGuardTimer = Timer.periodic(const Duration(seconds: 2), (t) {
+      if (suppressIndividualFabs) { t.cancel(); return; }
       // إذا اختفى أو أصبح غير مثبت (unmounted) بسبب إعادة بناء / تسجيل خروج / تبديل نظام
       if ((_fabEntry == null || !_fabEntry!.mounted) && _savedContext != null) {
         debugPrint('🔄 FAB guard: recreating missing/unmounted WhatsApp FAB');

@@ -31,6 +31,8 @@ import '../../permissions/permissions.dart';
 import '../auth/auth_error_handler.dart';
 import '../widgets/notification_filter.dart';
 import '../whatsapp/whatsapp_bottom_window.dart'; // استيراد نظام الواتساب العائم
+import '../widgets/floating_toolbar.dart'; // شريط الأدوات العائم الموحد
+import '../../services/ticket_updates_service.dart'; // خدمة تحديثات التذاكر
 import '../../pages/whatsapp_conversations_page.dart'; // صفحة محادثات WhatsApp
 import '../../pages/whatsapp_bulk_sender_page.dart'; // صفحة إرسال رسائل جماعية (تحتوي على إعدادات API والتقارير)
 import '../../pages/whatsapp_templates_page.dart'; // صفحة إدارة قوالب الواتساب
@@ -195,6 +197,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     currentToken = widget.authToken;
+
+    // تحديث التوكن في خدمة تحديثات التذاكر
+    TicketUpdatesService.instance.updateAuthToken(widget.authToken);
 
     // فحص أولي لحال�� المدير باستخدام اسم المستخدم
     isAdmin = _isAdminByUsername();
@@ -399,9 +404,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // تحميل الصلاحيات بعد تحديد حالة المدير
       await _loadUserPermissions();
 
-      // إظهار الزر العائم للواتساب بعد تحميل الصلاحيات
+      // تهيئة شريط الأدوات العائم الموحد
       if (mounted) {
+        FloatingToolbar.init(context);
         _showGlobalWhatsAppButton();
+        // إبقاء AgentTasksBubble القديم معطلاً — FloatingToolbar يتولى المهمة
       }
 
       _cardAnimationController.forward();
@@ -451,14 +458,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _cardAnimationController.dispose();
     _counterAnimationController.dispose();
 
-    // إخفاء زر محادثات API فقط عند الخروج من FTTH — مؤجّل لعدم إبطاء الـ dispose
-    Future.microtask(() {
-      try {
-        WhatsAppBottomWindow.hideConversationsFloatingButton();
-      } catch (e) {
-        debugPrint('⚠️ خطأ في إخفاء زر محادثات الواتساب: $e');
-      }
-    });
+    // تنظيف شريط الأدوات العائم الموحد
+    FloatingToolbar.dispose();
     super.dispose();
   }
 
@@ -2251,6 +2252,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       'Can Create',
       'Can Cancel',
       'Can Transfer',
+      'Can Manual',
     ];
 
     return userPermissions
@@ -2280,6 +2282,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       'Can Query Partner Wallet': 'الاستعلام عن محفظة الشريك',
       'SuperAdminMember': 'عضو مدير عام',
       'ContractorMember': 'عضو مقاول',
+      'Can Manual Activate': 'تفعيل عادي',
     };
 
     return translations[permission] ?? permission;
@@ -2300,24 +2303,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return translations[role] ?? role;
   }
 
-  // إظهار الزر العائم للواتساب بشكل عام
+  // إظهار الأزرار العائمة عبر الشريط الموحد
   void _showGlobalWhatsAppButton() {
     try {
-      // إظهار زر واتساب ويب (الزر الأيمن) - دائماً ظاهر
-      WhatsAppBottomWindow.ensureFloatingButton(context);
+      // تفعيل زر واتساب ويب — دائماً ظاهر
+      FloatingToolbar.enableWhatsApp();
 
-      // التحقق من صلاحية إظهار الزر العائم للمحادثات (الزر الأيسر)
+      // التحقق من صلاحية إظهار زر المحادثات
       if (_hasPermission('whatsapp_conversations_fab')) {
-        WhatsAppBottomWindow.showConversationsFloatingButton(
-          context,
-          isAdmin: isAdmin,
-        );
+        FloatingToolbar.enableConversations(isAdmin: isAdmin);
       } else {
-        // إخفاء الزر العائم إذا لم تكن هناك صلاحية
-        WhatsAppBottomWindow.hideConversationsFloatingButton();
+        FloatingToolbar.disableConversations();
       }
     } catch (e) {
-      debugPrint('⚠️ خطأ في إظهار زر الواتساب العائم: $e');
+      debugPrint('⚠️ خطأ في إظهار الأزرار العائمة: $e');
     }
   }
 
