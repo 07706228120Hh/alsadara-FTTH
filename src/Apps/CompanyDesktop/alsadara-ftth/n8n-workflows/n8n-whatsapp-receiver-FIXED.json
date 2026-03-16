@@ -112,7 +112,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://firestore.googleapis.com/v1/projects/ramz-alsadara2025/databases/(default)/documents/whatsapp_conversations/{{ $json.phoneNumber }}/messages?documentId={{ $json.messageId }}",
+        "url": "=https://firestore.googleapis.com/v1/projects/web-app-sadara/databases/(default)/documents/whatsapp_conversations/{{ $json.phoneNumber }}/messages?documentId={{ $json.messageId }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleApi",
         "sendBody": true,
@@ -141,7 +141,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://firestore.googleapis.com/v1/projects/ramz-alsadara2025/databases/(default)/documents/whatsapp_conversations/{{ $('ParseData').item.json.phoneNumber }}?updateMask.fieldPaths=phoneNumber&updateMask.fieldPaths=contactName&updateMask.fieldPaths=lastMessage&updateMask.fieldPaths=lastMessageTime&updateMask.fieldPaths=lastMessageType&updateMask.fieldPaths=unreadCount&updateMask.fieldPaths=updatedAt",
+        "url": "=https://firestore.googleapis.com/v1/projects/web-app-sadara/databases/(default)/documents/whatsapp_conversations/{{ $('ParseData').item.json.phoneNumber }}?updateMask.fieldPaths=phoneNumber&updateMask.fieldPaths=contactName&updateMask.fieldPaths=lastMessage&updateMask.fieldPaths=lastMessageTime&updateMask.fieldPaths=lastMessageType&updateMask.fieldPaths=unreadCount&updateMask.fieldPaths=updatedAt",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleApi",
         "sendBody": true,

@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import '../models/whatsapp_conversation.dart';
 import '../services/whatsapp_conversation_service.dart';
 import '../services/whatsapp_business_service.dart';
@@ -29,11 +32,23 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
   /// قائمة الوسائط قيد التحميل
   final Set<String> _loadingMedia = {};
 
+  /// مجلد التخزين الدائم للوسائط
+  Directory? _mediaCacheDir;
+
   @override
   void initState() {
     super.initState();
-    // تعليم المحادثة كمقروءة
     WhatsAppConversationService.markAsRead(widget.phoneNumber);
+    _initMediaCacheDir();
+  }
+
+  /// تهيئة مجلد الكاش الدائم
+  Future<void> _initMediaCacheDir() async {
+    final appDir = await getApplicationSupportDirectory();
+    _mediaCacheDir = Directory('${appDir.path}/whatsapp_media');
+    if (!await _mediaCacheDir!.exists()) {
+      await _mediaCacheDir!.create(recursive: true);
+    }
   }
 
   @override
@@ -485,6 +500,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
   /// عرض صورة
   Widget _buildImageMedia(WhatsAppMessage message) {
     final mediaId = message.mediaId!;
+    final mime = message.mimeType ?? 'image/jpeg';
 
     // إذا الصورة محملة في الكاش
     if (_mediaCache.containsKey(mediaId)) {
@@ -503,54 +519,31 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
       );
     }
 
-    // إذا قيد التحميل
-    if (_loadingMedia.contains(mediaId)) {
-      return Container(
-        width: 200,
-        height: 150,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 30,
-                height: 30,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(height: 8),
-              Text('جاري تحميل الصورة...', style: TextStyle(fontSize: 12)),
-            ],
-          ),
-        ),
-      );
+    // محاولة تحميل من القرص تلقائياً
+    if (!_loadingMedia.contains(mediaId)) {
+      _downloadAndCacheMedia(mediaId, mime);
     }
 
-    // لم يتم التحميل بعد — عرض placeholder مع زر تحميل
-    return GestureDetector(
-      onTap: () => _downloadAndCacheMedia(mediaId),
-      child: Container(
-        width: 200,
-        height: 150,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.image, size: 48, color: Colors.grey[500]),
-              const SizedBox(height: 8),
-              Text(
-                'اضغط لتحميل الصورة',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ],
-          ),
+    // عرض مؤشر تحميل
+    return Container(
+      width: 200,
+      height: 150,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(height: 8),
+            Text('جاري تحميل الصورة...', style: TextStyle(fontSize: 12)),
+          ],
         ),
       ),
     );
@@ -559,6 +552,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
   /// عرض رسالة صوتية
   Widget _buildAudioMedia(WhatsAppMessage message) {
     final mediaId = message.mediaId!;
+    final mime = message.mimeType ?? 'audio/ogg';
     final isLoaded = _mediaCache.containsKey(mediaId);
     final isLoading = _loadingMedia.contains(mediaId);
 
@@ -572,12 +566,21 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: isLoading ? null : () => _downloadAndCacheMedia(mediaId),
+            onTap: isLoading
+                ? null
+                : isLoaded
+                    ? () => _openMediaFile(mediaId, mime)
+                    : () async {
+                        await _downloadAndCacheMedia(mediaId, mime);
+                        if (_mediaCache.containsKey(mediaId)) {
+                          _openMediaFile(mediaId, mime);
+                        }
+                      },
             child: Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFF25D366),
+              decoration: const BoxDecoration(
+                color: Color(0xFF25D366),
                 shape: BoxShape.circle,
               ),
               child: isLoading
@@ -609,7 +612,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
               ),
               Text(
                 isLoaded
-                    ? 'تم التحميل'
+                    ? 'اضغط للتشغيل'
                     : isLoading
                         ? 'جاري التحميل...'
                         : 'اضغط للتحميل',
@@ -625,11 +628,21 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
   /// عرض فيديو
   Widget _buildVideoMedia(WhatsAppMessage message) {
     final mediaId = message.mediaId!;
+    final mime = message.mimeType ?? 'video/mp4';
     final isLoaded = _mediaCache.containsKey(mediaId);
     final isLoading = _loadingMedia.contains(mediaId);
 
     return GestureDetector(
-      onTap: isLoading ? null : () => _downloadAndCacheMedia(mediaId),
+      onTap: isLoading
+          ? null
+          : isLoaded
+              ? () => _openMediaFile(mediaId, mime)
+              : () async {
+                  await _downloadAndCacheMedia(mediaId, mime);
+                  if (_mediaCache.containsKey(mediaId)) {
+                    _openMediaFile(mediaId, mime);
+                  }
+                },
       child: Container(
         width: 220,
         height: 160,
@@ -678,11 +691,22 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
   /// عرض مستند
   Widget _buildDocumentMedia(WhatsAppMessage message) {
     final mediaId = message.mediaId!;
+    final mime = message.mimeType ?? 'application/octet-stream';
+    final isLoaded = _mediaCache.containsKey(mediaId);
     final isLoading = _loadingMedia.contains(mediaId);
     final fileName = message.mediaFileName ?? message.text;
 
     return GestureDetector(
-      onTap: isLoading ? null : () => _downloadAndCacheMedia(mediaId),
+      onTap: isLoading
+          ? null
+          : isLoaded
+              ? () => _openMediaFile(mediaId, mime)
+              : () async {
+                  await _downloadAndCacheMedia(mediaId, mime);
+                  if (_mediaCache.containsKey(mediaId)) {
+                    _openMediaFile(mediaId, mime);
+                  }
+                },
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -753,17 +777,50 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
     );
   }
 
-  /// تحميل الوسائط وتخزينها في الكاش
-  Future<void> _downloadAndCacheMedia(String mediaId) async {
+  /// الحصول على مسار ملف الكاش لوسائط معينة
+  String? _getCacheFilePath(String mediaId, [String? mimeType]) {
+    if (_mediaCacheDir == null) return null;
+    final ext = _getExtFromMime(mimeType ?? '');
+    return '${_mediaCacheDir!.path}/$mediaId.$ext';
+  }
+
+  /// تحميل وسائط من القرص إذا موجودة
+  Future<bool> _loadFromDiskCache(String mediaId, [String? mimeType]) async {
+    if (_mediaCache.containsKey(mediaId)) return true;
+    final path = _getCacheFilePath(mediaId, mimeType);
+    if (path == null) return false;
+    final file = File(path);
+    if (await file.exists()) {
+      final bytes = await file.readAsBytes();
+      if (mounted) {
+        setState(() => _mediaCache[mediaId] = bytes);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /// تحميل الوسائط من الإنترنت وتخزينها في الكاش والقرص
+  Future<void> _downloadAndCacheMedia(String mediaId, [String? mimeType]) async {
     if (_loadingMedia.contains(mediaId) || _mediaCache.containsKey(mediaId)) {
       return;
     }
+
+    // محاولة التحميل من القرص أولاً
+    if (await _loadFromDiskCache(mediaId, mimeType)) return;
 
     setState(() => _loadingMedia.add(mediaId));
 
     try {
       final bytes = await WhatsAppBusinessService.downloadMedia(mediaId);
       if (bytes != null && mounted) {
+        // حفظ على القرص
+        final path = _getCacheFilePath(mediaId, mimeType);
+        if (path != null) {
+          try {
+            await File(path).writeAsBytes(bytes);
+          } catch (_) {}
+        }
         setState(() {
           _mediaCache[mediaId] = bytes;
           _loadingMedia.remove(mediaId);
@@ -783,6 +840,45 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('خطأ في تحميل الوسائط'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// استخراج امتداد الملف من نوع MIME
+  static String _getExtFromMime(String mimeType) {
+    if (mimeType.contains('ogg')) return 'ogg';
+    if (mimeType.contains('mp4')) return 'mp4';
+    if (mimeType.contains('mpeg') || mimeType.contains('mp3')) return 'mp3';
+    if (mimeType.contains('wav')) return 'wav';
+    if (mimeType.contains('webp')) return 'webp';
+    if (mimeType.contains('jpeg') || mimeType.contains('jpg')) return 'jpg';
+    if (mimeType.contains('png')) return 'png';
+    if (mimeType.contains('pdf')) return 'pdf';
+    if (mimeType.contains('webm')) return 'webm';
+    return 'bin';
+  }
+
+  /// فتح ملف الوسائط المحفوظ بمشغل النظام
+  Future<void> _openMediaFile(String mediaId, String mimeType) async {
+    try {
+      final path = _getCacheFilePath(mediaId, mimeType);
+      if (path == null) return;
+      final file = File(path);
+      if (!await file.exists()) {
+        // لو الملف غير موجود على القرص، احفظه من الكاش
+        final bytes = _mediaCache[mediaId];
+        if (bytes == null) return;
+        await file.writeAsBytes(bytes);
+      }
+      await OpenFile.open(path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('فشل في فتح الملف'),
             backgroundColor: Colors.red,
           ),
         );
