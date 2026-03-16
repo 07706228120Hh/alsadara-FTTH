@@ -104,7 +104,7 @@ class _AttendancePageState extends State<AttendancePage>
             data['totalWorkedMinutes'] ?? data['TotalWorkedMinutes'] ?? 0;
       });
     } catch (e) {
-      debugPrint('Error fetching attendance count: $e');
+      debugPrint('Error fetching attendance count');
     }
   }
 
@@ -166,7 +166,7 @@ class _AttendancePageState extends State<AttendancePage>
         userLat = userPosition.latitude;
         userLng = userPosition.longitude;
       } catch (e) {
-        debugPrint('خطأ في الحصول على الموقع: $e');
+        debugPrint('خطأ في الحصول على الموقع');
         // السماح بالمتابعة بدون موقع - السيرفر سيقرر
       }
 
@@ -266,10 +266,10 @@ class _AttendancePageState extends State<AttendancePage>
 
       _fetchAttendanceCount();
     } catch (error) {
-      debugPrint('Error submitting attendance: $error');
+      debugPrint('Error submitting attendance');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $error')),
+        SnackBar(content: Text('خطأ')),
       );
     }
   }
@@ -289,7 +289,7 @@ class _AttendancePageState extends State<AttendancePage>
       if (lat != null && lng != null) return [lat, lng];
       return null;
     } catch (e) {
-      debugPrint('Error fetching center location: $e');
+      debugPrint('Error fetching center location');
       return null;
     }
   }

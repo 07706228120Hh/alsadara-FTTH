@@ -40,7 +40,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات تسجيل الدخول المحفوظة بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول المحفوظة: $e');
+      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول المحفوظة');
     } finally {
       _isHandlingClose = false;
     }
@@ -59,7 +59,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات تسجيل الدخول المحفوظة لنظام FTTH');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول المحفوظة لنظام FTTH: $e');
+      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول المحفوظة لنظام FTTH');
     }
   }
 
@@ -77,7 +77,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات تسجيل الدخول المحفوظة للنظام الثاني');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول المحفوظة للنظام الثاني: $e');
+      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول المحفوظة للنظام الثاني');
     }
   }
 
@@ -111,7 +111,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح جميع بيانات تسجيل الدخول بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول: $e');
+      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول');
       // حاول مسح البيانات الحرجة على الأقل
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -147,7 +147,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات النظام الأول');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات النظام الأول: $e');
+      debugPrint('❌ خطأ في مسح بيانات النظام الأول');
     }
   }
 
@@ -171,7 +171,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات النظام الثاني');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات النظام الثاني: $e');
+      debugPrint('❌ خطأ في مسح بيانات النظام الثاني');
     }
   }
 
@@ -193,7 +193,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح البيانات الإضافية');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح البيانات الإضافية: $e');
+      debugPrint('❌ خطأ في مسح البيانات الإضافية');
     }
   }
 
@@ -214,7 +214,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح البيانات المؤقتة');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح البيانات المؤقتة: $e');
+      debugPrint('❌ خطأ في مسح البيانات المؤقتة');
     }
   }
 
@@ -235,7 +235,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح البيانات الحرجة');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح البيانات الحرجة: $e');
+      debugPrint('❌ خطأ في مسح البيانات الحرجة');
     }
   }
 
@@ -259,7 +259,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح توكنات FTTH بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح توكنات FTTH: $e');
+      debugPrint('❌ خطأ في مسح توكنات FTTH');
     }
   }
 
@@ -306,7 +306,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم المسح الانتقائي بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في المسح الانتقائي: $e');
+      debugPrint('❌ خطأ في المسح الانتقائي');
     }
   }
 
@@ -345,7 +345,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات تسجيل الدخول فقط');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول: $e');
+      debugPrint('❌ خطأ في مسح بيانات تسجيل الدخول');
     }
   }
 
@@ -361,7 +361,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات FlutterSecureStorage');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات FlutterSecureStorage: $e');
+      debugPrint('❌ خطأ في مسح بيانات FlutterSecureStorage');
     }
   }
 
@@ -377,7 +377,7 @@ class AppCloseHandler {
 
       debugPrint('✅ تم مسح بيانات صفحة التذاكر');
     } catch (e) {
-      debugPrint('❌ خطأ في مسح بيانات صفحة التذاكر: $e');
+      debugPrint('❌ خطأ في مسح بيانات صفحة التذاكر');
     }
   }
 }

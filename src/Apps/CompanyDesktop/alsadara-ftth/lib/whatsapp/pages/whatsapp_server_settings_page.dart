@@ -6,8 +6,11 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' as intl;
 import '../services/whatsapp_server_service.dart';
+import '../services/whatsapp_message_log_service.dart';
 
 class WhatsAppServerSettingsPage extends StatefulWidget {
   final String tenantId;
@@ -52,6 +55,13 @@ class _WhatsAppServerSettingsPageState
   int _bulkDelayValue = 5;
   String _bulkDelayUnit = 'seconds';
 
+  // سجل الرسائل
+  List<WhatsAppMessageLogEntry> _logEntries = [];
+  Map<String, int> _logStats = {};
+  DateTime? _logFromDate;
+  DateTime? _logToDate;
+  bool _isLoadingLogs = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,8 +87,24 @@ class _WhatsAppServerSettingsPageState
     _bulkDelayUnit = bulkSettings['delayUnit'] ?? 'seconds';
 
     await _checkServerAndStatus();
+    await _loadMessageLogs();
 
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _loadMessageLogs() async {
+    setState(() => _isLoadingLogs = true);
+    try {
+      _logEntries = await WhatsAppMessageLogService.getLogs(
+        fromDate: _logFromDate,
+        toDate: _logToDate,
+      );
+      _logStats = await WhatsAppMessageLogService.getStats(
+        fromDate: _logFromDate,
+        toDate: _logToDate,
+      );
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingLogs = false);
   }
 
   Future<void> _checkServerAndStatus() async {
@@ -191,10 +217,40 @@ class _WhatsAppServerSettingsPageState
     setState(() {
       _isLoadingQR = true;
       _qrImage = null;
-      _statusMessage = 'جاري إنشاء الجلسة...';
+      _statusMessage = 'جاري التحقق من حالة الاتصال...';
     });
 
-    // أولاً حذف أي جلسة عالقة (قد تكون في حالة "connecting")
+    // ── تحقق أولاً: هل الجلسة متصلة فعلاً؟ ──
+    final currentStatus =
+        await WhatsAppServerService.getStatus(widget.tenantId);
+    if (currentStatus['connected'] == true && mounted) {
+      setState(() {
+        _isConnected = true;
+        _connectedPhone = currentStatus['phone'];
+        _connectedName = currentStatus['name'];
+        _qrImage = null;
+        _lastQRFetch = null;
+        _isLoadingQR = false;
+        _statusMessage = null;
+      });
+      _startKeepAlive();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ الواتساب متصل بالفعل — ${currentStatus['name'] ?? ''} (${currentStatus['phone'] ?? ''})',
+            style: const TextStyle(fontFamily: 'Cairo'),
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _statusMessage = 'جاري إنشاء الجلسة...');
+
+    // حذف أي جلسة عالقة (قد تكون في حالة "connecting")
     await WhatsAppServerService.disconnect(widget.tenantId);
     await Future.delayed(const Duration(seconds: 2));
 
@@ -210,6 +266,24 @@ class _WhatsAppServerSettingsPageState
       await Future.delayed(const Duration(seconds: 2));
 
       if (!mounted) return;
+
+      // تحقق إذا اتصل تلقائياً أثناء الانتظار
+      final pollStatus =
+          await WhatsAppServerService.getStatus(widget.tenantId);
+      if (pollStatus['connected'] == true && mounted) {
+        setState(() {
+          _isConnected = true;
+          _connectedPhone = pollStatus['phone'];
+          _connectedName = pollStatus['name'];
+          _qrImage = null;
+          _lastQRFetch = null;
+          _isLoadingQR = false;
+          _statusMessage = null;
+        });
+        _startKeepAlive();
+        return;
+      }
+
       setState(() => _statusMessage = 'جاري توليد كود QR... (${i + 1}/30)');
 
       // جرب /qr-image أولاً ثم /status
@@ -358,6 +432,153 @@ class _WhatsAppServerSettingsPageState
     }
   }
 
+  /// إعادة تشغيل الجلسة (بدون QR)
+  Future<void> _restartSession() async {
+    setState(() => _statusMessage = 'جاري إعادة تشغيل الجلسة...');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🔄 جاري إعادة تشغيل الجلسة...', style: GoogleFonts.cairo()),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    final result = await WhatsAppServerService.restartSession(widget.tenantId);
+
+    if (!mounted) return;
+
+    if (result['restarted'] == true) {
+      // انتظر حتى يعاد الاتصال
+      setState(() {
+        _isConnected = false;
+        _statusMessage = 'جاري إعادة الاتصال...';
+      });
+
+      // محاولة الانتظار حتى يعود الاتصال (أقصى 30 ثانية)
+      for (int i = 0; i < 15; i++) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        final status = await WhatsAppServerService.getStatus(widget.tenantId);
+        if (status['connected'] == true) {
+          setState(() {
+            _isConnected = true;
+            _connectedPhone = status['phone'];
+            _connectedName = status['name'];
+            _statusMessage = null;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ تم إعادة تشغيل الجلسة بنجاح!', style: GoogleFonts.cairo()),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _startKeepAlive();
+          return;
+        }
+      }
+
+      // لم يعد الاتصال — ربما يحتاج QR جديد
+      if (mounted) {
+        setState(() => _statusMessage = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ لم يتم إعادة الاتصال — قد تحتاج لمسح QR جديد', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } else {
+      setState(() => _statusMessage = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⏳ تم تخطي الإعادة — انتظر قليلاً ثم حاول مجدداً', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.grey,
+        ),
+      );
+    }
+  }
+
+  /// فحص صحة الجلسة
+  Future<void> _checkHealth() async {
+    final health = await WhatsAppServerService.getHealth(widget.tenantId);
+    if (!mounted) return;
+
+    final healthy = health['healthy'] == true;
+    final status = health['status'] ?? 'unknown';
+    final failures = health['consecutiveFailures'] ?? 0;
+    final restarts = health['totalRestarts'] ?? 0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              healthy ? Icons.check_circle : Icons.warning,
+              color: healthy ? Colors.green : Colors.orange,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              healthy ? 'الجلسة سليمة' : 'الجلسة غير سليمة',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _healthRow('الحالة', status, healthy ? Colors.green : Colors.orange),
+            _healthRow('أخطاء متتالية', '$failures', failures > 0 ? Colors.red : Colors.green),
+            _healthRow('إعادات تشغيل', '$restarts', restarts > 0 ? Colors.orange : Colors.grey),
+            if (health['phone'] != null) _healthRow('الرقم', health['phone'], Colors.blue),
+            if (health['error'] != null) ...[
+              const SizedBox(height: 8),
+              Text('الخطأ:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.red)),
+              Text(health['error'], style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+            ],
+          ],
+        ),
+        actions: [
+          if (!healthy)
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _restartSession();
+              },
+              icon: const Icon(Icons.refresh),
+              label: Text('إعادة تشغيل', style: GoogleFonts.cairo()),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إغلاق', style: GoogleFonts.cairo()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _healthRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text('$label: ', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(value, style: GoogleFonts.cairo(color: color, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _disconnect() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -392,46 +613,122 @@ class _WhatsAppServerSettingsPageState
 
   Future<void> _sendTestMessage() async {
     final phoneController = TextEditingController();
+    final messageController = TextEditingController(
+      text: 'رسالة تجريبية من نظام إدارة الاشتراكات!\n\nتم إرسال هذه الرسالة تلقائياً للتأكد من عمل النظام.',
+    );
 
-    final phone = await showDialog<String>(
+    final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('إرسال رسالة تجريبية'),
-        content: TextField(
-          controller: phoneController,
-          keyboardType: TextInputType.phone,
-          decoration: const InputDecoration(
-            labelText: 'رقم الهاتف',
-            hintText: '07xxxxxxxxx',
-            prefixIcon: Icon(Icons.phone),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.send, color: Color(0xFF25D366)),
+              ),
+              const SizedBox(width: 12),
+              Text('إرسال رسالة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
           ),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  textAlign: TextAlign.left,
+                  textDirection: TextDirection.ltr,
+                  decoration: InputDecoration(
+                    labelText: 'رقم الهاتف',
+                    hintText: '07xxxxxxxxx',
+                    prefixIcon: const Icon(Icons.phone),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.content_paste_go, size: 20),
+                      tooltip: 'لصق',
+                      onPressed: () async {
+                        final data = await Clipboard.getData(Clipboard.kTextPlain);
+                        if (data?.text != null) {
+                          final clean = data!.text!.replaceAll(RegExp(r'[^\d+]'), '');
+                          phoneController.text = clean;
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: messageController,
+                  maxLines: 5,
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    labelText: 'نص الرسالة',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('إلغاء', style: GoogleFonts.cairo()),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                if (phoneController.text.trim().isNotEmpty && messageController.text.trim().isNotEmpty) {
+                  Navigator.pop(ctx, {
+                    'phone': phoneController.text.trim(),
+                    'message': messageController.text.trim(),
+                  });
+                }
+              },
+              icon: const Icon(Icons.send, size: 18),
+              label: Text('إرسال', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, phoneController.text),
-            child: const Text('إرسال'),
-          ),
-        ],
       ),
     );
 
-    if (phone == null || phone.isEmpty) return;
+    if (result == null) return;
+    final rawPhone = result['phone']!;
+    final message = result['message']!;
+
+    // تنسيق الرقم: تحويل محلي → دولي
+    final phone = _formatPhoneToInternational(rawPhone);
 
     if (!mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('جاري الإرسال...'),
+            const SizedBox(
+              width: 24, height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            const SizedBox(width: 20),
+            Text('جاري الإرسال...', style: GoogleFonts.cairo()),
           ],
         ),
       ),
@@ -440,8 +737,17 @@ class _WhatsAppServerSettingsPageState
     final error = await WhatsAppServerService.sendMessageWithError(
       tenantId: widget.tenantId,
       phone: phone,
-      message:
-          '🎉 رسالة تجريبية من نظام إدارة الاشتراكات!\n\nتم إرسال هذه الرسالة تلقائياً للتأكد من عمل النظام.',
+      message: message,
+    );
+
+    // تسجيل في السجل المحلي
+    await WhatsAppMessageLogService.log(
+      phone: phone,
+      customerName: 'رسالة يدوية',
+      system: 'server',
+      operationType: 'manual',
+      success: error == null,
+      error: error,
     );
 
     if (mounted) Navigator.pop(context);
@@ -452,12 +758,15 @@ class _WhatsAppServerSettingsPageState
           content: Text(
             error == null
                 ? '✅ تم إرسال الرسالة بنجاح!'
-                : '❌ فشل الإرسال: $error',
+                : '❌ فشل الإرسال',
+            style: GoogleFonts.cairo(),
           ),
           backgroundColor: error == null ? Colors.green : Colors.red,
           duration: const Duration(seconds: 8),
         ),
       );
+      // تحديث السجلات
+      _loadMessageLogs();
     }
   }
 
@@ -511,6 +820,8 @@ class _WhatsAppServerSettingsPageState
                     _buildServerSettingsCard(),
                     const SizedBox(height: 16),
                     _buildBulkSettingsCard(),
+                    const SizedBox(height: 16),
+                    _buildMessageLogCard(),
                     const SizedBox(height: 16),
                     _buildInfoCard(),
                   ],
@@ -665,26 +976,46 @@ class _WhatsAppServerSettingsPageState
               ),
             ],
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 ElevatedButton.icon(
                   onPressed: _sendTestMessage,
-                  icon: const Icon(Icons.send),
-                  label: Text('إرسال تجريبي', style: GoogleFonts.cairo()),
+                  icon: const Icon(Icons.send, size: 18),
+                  label: Text('إرسال تجريبي', style: GoogleFonts.cairo(fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF25D366),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
                 ),
-                const SizedBox(width: 10),
+                ElevatedButton.icon(
+                  onPressed: _restartSession,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: Text('إعادة تشغيل', style: GoogleFonts.cairo(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _checkHealth,
+                  icon: const Icon(Icons.health_and_safety, size: 18),
+                  label: Text('فحص الصحة', style: GoogleFonts.cairo(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  ),
+                ),
                 OutlinedButton.icon(
                   onPressed: _disconnect,
-                  icon: const Icon(Icons.link_off, color: Colors.red),
+                  icon: const Icon(Icons.link_off, color: Colors.red, size: 18),
                   label: Text('قطع الاتصال',
-                      style: GoogleFonts.cairo(color: Colors.red)),
+                      style: GoogleFonts.cairo(color: Colors.red, fontSize: 13)),
                 ),
               ],
             ),
@@ -1129,6 +1460,440 @@ class _WhatsAppServerSettingsPageState
         ),
       ),
     );
+  }
+
+  Widget _buildMessageLogCard() {
+    final dateFormat = intl.DateFormat('yyyy/MM/dd');
+    final timeFormat = intl.DateFormat('HH:mm');
+    final total = _logStats['total'] ?? 0;
+    final success = _logStats['success'] ?? 0;
+    final failed = _logStats['failed'] ?? 0;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // العنوان
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.history, color: Colors.teal),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'سجل الرسائل المُرسلة',
+                        style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'متابعة الرسائل المُرسلة عبر الواتساب',
+                        style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                // زر تحديث
+                IconButton(
+                  onPressed: _isLoadingLogs ? null : _loadMessageLogs,
+                  icon: _isLoadingLogs
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.refresh, size: 20),
+                  tooltip: 'تحديث',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // تصفية التاريخ
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.date_range, size: 20, color: Colors.teal),
+                  const SizedBox(width: 8),
+                  Text('من:', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _logFromDate ?? DateTime.now().subtract(const Duration(days: 7)),
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          _logFromDate = picked;
+                          _loadMessageLogs();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Text(
+                          _logFromDate != null ? dateFormat.format(_logFromDate!) : 'الكل',
+                          style: GoogleFonts.cairo(fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('إلى:', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _logToDate ?? DateTime.now(),
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          _logToDate = picked;
+                          _loadMessageLogs();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Text(
+                          _logToDate != null ? dateFormat.format(_logToDate!) : 'اليوم',
+                          style: GoogleFonts.cairo(fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // زر مسح الفلاتر
+                  if (_logFromDate != null || _logToDate != null)
+                    IconButton(
+                      onPressed: () {
+                        _logFromDate = null;
+                        _logToDate = null;
+                        _loadMessageLogs();
+                      },
+                      icon: const Icon(Icons.clear, size: 18, color: Colors.red),
+                      tooltip: 'مسح الفلتر',
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // فلاتر سريعة
+            Wrap(
+              spacing: 6,
+              children: [
+                _buildDateChip('اليوم', () {
+                  _logFromDate = DateTime.now();
+                  _logToDate = DateTime.now();
+                  _loadMessageLogs();
+                }),
+                _buildDateChip('آخر 7 أيام', () {
+                  _logFromDate = DateTime.now().subtract(const Duration(days: 7));
+                  _logToDate = DateTime.now();
+                  _loadMessageLogs();
+                }),
+                _buildDateChip('هذا الشهر', () {
+                  final now = DateTime.now();
+                  _logFromDate = DateTime(now.year, now.month, 1);
+                  _logToDate = now;
+                  _loadMessageLogs();
+                }),
+                _buildDateChip('الكل', () {
+                  _logFromDate = null;
+                  _logToDate = null;
+                  _loadMessageLogs();
+                }),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // إحصائيات
+            Row(
+              children: [
+                _buildStatBox('الكل', total, Colors.blue),
+                const SizedBox(width: 8),
+                _buildStatBox('ناجحة', success, Colors.green),
+                const SizedBox(width: 8),
+                _buildStatBox('فاشلة', failed, Colors.red),
+                const SizedBox(width: 8),
+                _buildStatBox('سيرفر', _logStats['server'] ?? 0, Colors.purple),
+                const SizedBox(width: 8),
+                _buildStatBox('تطبيق', _logStats['app'] ?? 0, Colors.orange),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // قائمة الرسائل
+            if (_logEntries.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(24),
+                alignment: Alignment.center,
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox_outlined, size: 48, color: Colors.grey[300]),
+                    const SizedBox(height: 8),
+                    Text(
+                      'لا توجد رسائل في هذه الفترة',
+                      style: GoogleFonts.cairo(color: Colors.grey[500], fontSize: 14),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 400),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _logEntries.length > 50 ? 50 : _logEntries.length,
+                  separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
+                  itemBuilder: (context, index) {
+                    final entry = _logEntries[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          // أيقونة الحالة
+                          Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: entry.success
+                                  ? Colors.green.withValues(alpha: 0.1)
+                                  : Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              entry.success ? Icons.check : Icons.close,
+                              size: 16,
+                              color: entry.success ? Colors.green : Colors.red,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // التفاصيل
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      entry.customerName.isNotEmpty ? entry.customerName : entry.phone,
+                                      style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${dateFormat.format(entry.timestamp)}  ${timeFormat.format(entry.timestamp)}',
+                                      style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'monospace'),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    if (entry.customerName.isNotEmpty)
+                                      Text(
+                                        entry.phone,
+                                        style: TextStyle(fontSize: 11, color: Colors.grey[600], fontFamily: 'monospace'),
+                                      ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: _systemColor(entry.system).withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        _systemLabel(entry.system),
+                                        style: TextStyle(fontSize: 10, color: _systemColor(entry.system), fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        _operationLabel(entry.operationType),
+                                        style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+                                      ),
+                                    ),
+                                    if (entry.activatedBy != null && entry.activatedBy!.isNotEmpty) ...[
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        entry.activatedBy!,
+                                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                if (entry.error != null)
+                                  Text(
+                                    entry.error!,
+                                    style: const TextStyle(fontSize: 10, color: Colors.red),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            if (_logEntries.length > 50)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'يتم عرض أحدث 50 رسالة من أصل ${_logEntries.length}',
+                  style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[500]),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+            // زر مسح السجل
+            if (_logEntries.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text('مسح السجل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          content: Text('هل تريد مسح جميع سجلات الرسائل؟', style: GoogleFonts.cairo()),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                              child: Text('مسح', style: GoogleFonts.cairo()),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await WhatsAppMessageLogService.clearAll();
+                        _loadMessageLogs();
+                      }
+                    },
+                    icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                    label: Text('مسح السجل', style: GoogleFonts.cairo(fontSize: 12, color: Colors.red)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateChip(String label, VoidCallback onTap) {
+    return ActionChip(
+      label: Text(label, style: GoogleFonts.cairo(fontSize: 11)),
+      onPressed: onTap,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      backgroundColor: Colors.teal.withValues(alpha: 0.08),
+      side: BorderSide(color: Colors.teal.withValues(alpha: 0.2)),
+    );
+  }
+
+  Widget _buildStatBox(String label, int count, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '$count',
+              style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.cairo(fontSize: 10, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _systemColor(String system) {
+    switch (system) {
+      case 'server': return Colors.purple;
+      case 'app': return Colors.orange;
+      case 'web': return Colors.blue;
+      case 'api': return Colors.teal;
+      default: return Colors.grey;
+    }
+  }
+
+  String _systemLabel(String system) {
+    switch (system) {
+      case 'server': return 'سيرفر';
+      case 'app': return 'تطبيق';
+      case 'web': return 'ويب';
+      case 'api': return 'API';
+      default: return system;
+    }
+  }
+
+  String _operationLabel(String op) {
+    switch (op) {
+      case 'renewal': return 'تجديد';
+      case 'bulk': return 'جماعي';
+      case 'test': return 'تجريبي';
+      case 'manual': return 'يدوي';
+      default: return op;
+    }
+  }
+
+  /// تحويل رقم محلي عراقي إلى صيغة دولية
+  String _formatPhoneToInternational(String phone) {
+    final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.startsWith('964')) return clean;
+    if (clean.startsWith('0')) return '964${clean.substring(1)}';
+    return '964$clean';
   }
 
   Widget _buildInfoCard() {

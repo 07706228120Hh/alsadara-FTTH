@@ -180,7 +180,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تحميل البيانات: $e'),
+            content: Text('خطأ في تحميل البيانات'),
             backgroundColor: Colors.red,
           ),
         );
@@ -597,7 +597,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تحديث المهمة: $e'),
+            content: Text('خطأ في تحديث المهمة'),
             backgroundColor: Colors.red,
           ),
         );

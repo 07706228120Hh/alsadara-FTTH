@@ -100,16 +100,16 @@ class _AgentsPageState extends State<AgentsPage> {
         _filterAgents(agents[0]['group']);
       }
     } catch (e) {
-      debugPrint('خطأ في جلب بيانات الوكلاء: $e');
+      debugPrint('خطأ في جلب بيانات الوكلاء');
       setState(() {
-        errorMessage = 'خطأ أثناء جلب بيانات الوكلاء: ${e.toString()}';
+        errorMessage = 'خطأ أثناء جلب بيانات الوكلاء';
         isLoading = false;
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ أثناء جلب بيانات الوكلاء: $e'),
+            content: Text('خطأ أثناء جلب بيانات الوكلاء'),
             backgroundColor: Colors.red,
           ),
         );
@@ -175,7 +175,7 @@ class _AgentsPageState extends State<AgentsPage> {
         return false;
       }).toList();
     } catch (e) {
-      debugPrint('⚠️ خطأ في استخراج قائمة الوكلاء: $e');
+      debugPrint('⚠️ خطأ في استخراج قائمة الوكلاء');
       return [];
     }
   }

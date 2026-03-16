@@ -57,7 +57,7 @@ class LocalCacheService {
       print('✅ تم حفظ ${subscribers.length} مشترك محلياً');
       return true;
     } catch (e) {
-      print('❌ خطأ في حفظ المشتركين: $e');
+      print('❌ خطأ في حفظ المشتركين');
       return false;
     }
   }
@@ -83,7 +83,7 @@ class LocalCacheService {
       print('📂 تم جلب ${subscribers.length} مشترك من التخزين المحلي');
       return subscribers;
     } catch (e) {
-      print('❌ خطأ في جلب المشتركين: $e');
+      print('❌ خطأ في جلب المشتركين');
       return null;
     }
   }
@@ -141,7 +141,7 @@ class LocalCacheService {
       print('✅ تم حفظ ${regions.length} منطقة محلياً');
       return true;
     } catch (e) {
-      print('❌ خطأ في حفظ المناطق: $e');
+      print('❌ خطأ في حفظ المناطق');
       return false;
     }
   }
@@ -161,7 +161,7 @@ class LocalCacheService {
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
     } catch (e) {
-      print('❌ خطأ في جلب المناطق: $e');
+      print('❌ خطأ في جلب المناطق');
       return null;
     }
   }
@@ -184,7 +184,7 @@ class LocalCacheService {
       print('✅ تم حفظ ${plans.length} باقة محلياً');
       return true;
     } catch (e) {
-      print('❌ خطأ في حفظ الباقات: $e');
+      print('❌ خطأ في حفظ الباقات');
       return false;
     }
   }
@@ -204,7 +204,7 @@ class LocalCacheService {
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
     } catch (e) {
-      print('❌ خطأ في جلب الباقات: $e');
+      print('❌ خطأ في جلب الباقات');
       return null;
     }
   }
@@ -318,7 +318,7 @@ class LocalCacheService {
       print('🗑️ تم مسح جميع البيانات المخزنة');
       return true;
     } catch (e) {
-      print('❌ خطأ في مسح الكاش: $e');
+      print('❌ خطأ في مسح الكاش');
       return false;
     }
   }

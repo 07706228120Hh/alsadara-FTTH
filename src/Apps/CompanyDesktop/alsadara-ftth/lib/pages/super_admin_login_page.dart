@@ -79,7 +79,7 @@ class _SuperAdminLoginPageState extends State<SuperAdminLoginPage> {
         );
       }
     } catch (e) {
-      setState(() => _errorMessage = 'حدث خطأ: $e');
+      setState(() => _errorMessage = 'حدث خطأ');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

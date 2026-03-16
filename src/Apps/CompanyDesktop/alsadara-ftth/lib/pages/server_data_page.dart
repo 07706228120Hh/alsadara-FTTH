@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' hide TextDirection;
+import 'package:path_provider/path_provider.dart';
+import 'ftth/fetch_server_data_page.dart';
 import '../services/agents_auth_service.dart';
+import '../services/auth_service.dart';
 
 /// ═══════════════════════════════════════════════════════════════════
 /// 🗄️ FTTH Server Data Service
@@ -60,9 +65,8 @@ class FtthServerDataService {
     if (!hasToken) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_apiBaseUrl/partners/$_partnerId/dashboard/summary'),
-        headers: _getAuthHeaders(),
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET', '$_apiBaseUrl/partners/$_partnerId/dashboard/summary',
       );
 
       if (response.statusCode == 200) {
@@ -71,7 +75,7 @@ class FtthServerDataService {
       debugPrint(
           'Dashboard summary error: ${response.statusCode} - ${response.body}');
     } catch (e) {
-      debugPrint('Dashboard summary error: $e');
+      debugPrint('Dashboard summary error');
     }
     return null;
   }
@@ -83,9 +87,8 @@ class FtthServerDataService {
     if (!hasToken) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_apiBaseUrl/locations/zones'),
-        headers: _getAuthHeaders(),
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET', '$_apiBaseUrl/locations/zones',
       );
 
       debugPrint('Zones response: ${response.statusCode}');
@@ -94,7 +97,7 @@ class FtthServerDataService {
       }
       debugPrint('Zones error: ${response.statusCode} - ${response.body}');
     } catch (e) {
-      debugPrint('Zones error: $e');
+      debugPrint('Zones error');
     }
     return null;
   }
@@ -107,10 +110,9 @@ class FtthServerDataService {
     if (!hasToken) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse(
-            '$_apiBaseUrl/customers?pageNumber=$page&pageSize=$pageSize&sortCriteria.property=self.displayValue&sortCriteria.direction=asc'),
-        headers: _getAuthHeaders(),
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        '$_apiBaseUrl/customers?pageNumber=$page&pageSize=$pageSize&sortCriteria.property=self.displayValue&sortCriteria.direction=asc',
       );
 
       debugPrint('Customers response: ${response.statusCode}');
@@ -119,7 +121,7 @@ class FtthServerDataService {
       }
       debugPrint('Customers error: ${response.statusCode} - ${response.body}');
     } catch (e) {
-      debugPrint('Customers error: $e');
+      debugPrint('Customers error');
     }
     return null;
   }
@@ -131,9 +133,8 @@ class FtthServerDataService {
     if (!hasToken) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_apiBaseUrl/partners/$_partnerId/wallets/balance'),
-        headers: _getAuthHeaders(),
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET', '$_apiBaseUrl/partners/$_partnerId/wallets/balance',
       );
 
       debugPrint('Wallet response: ${response.statusCode}');
@@ -142,7 +143,7 @@ class FtthServerDataService {
       }
       debugPrint('Wallet error: ${response.statusCode} - ${response.body}');
     } catch (e) {
-      debugPrint('Wallet error: $e');
+      debugPrint('Wallet error');
     }
     return null;
   }
@@ -155,10 +156,9 @@ class FtthServerDataService {
     if (!hasToken) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse(
-            '$_apiBaseUrl/audit-logs?pageNumber=$page&pageSize=$pageSize&sortCriteria.property=createdAt&sortCriteria.direction=desc'),
-        headers: _getAuthHeaders(),
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        '$_apiBaseUrl/audit-logs?pageNumber=$page&pageSize=$pageSize&sortCriteria.property=createdAt&sortCriteria.direction=desc',
       );
 
       debugPrint('Audit logs response: ${response.statusCode}');
@@ -167,7 +167,7 @@ class FtthServerDataService {
       }
       debugPrint('Audit logs error: ${response.statusCode} - ${response.body}');
     } catch (e) {
-      debugPrint('Audit logs error: $e');
+      debugPrint('Audit logs error');
     }
     return null;
   }
@@ -180,10 +180,9 @@ class FtthServerDataService {
     if (!hasToken) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse(
-            '$_apiBaseUrl/subscriptions?pageNumber=$page&pageSize=$pageSize'),
-        headers: _getAuthHeaders(),
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        '$_apiBaseUrl/subscriptions?pageNumber=$page&pageSize=$pageSize',
       );
 
       debugPrint('Subscriptions response: ${response.statusCode}');
@@ -193,7 +192,7 @@ class FtthServerDataService {
       debugPrint(
           'Subscriptions error: ${response.statusCode} - ${response.body}');
     } catch (e) {
-      debugPrint('Subscriptions error: $e');
+      debugPrint('Subscriptions error');
     }
     return null;
   }
@@ -201,12 +200,7 @@ class FtthServerDataService {
   // ══════════════════════════════════════════════════════════════════
   // 🔧 Helper Methods
   // ══════════════════════════════════════════════════════════════════
-  Map<String, String> _getAuthHeaders() {
-    return {
-      'Authorization': 'Bearer $_authToken',
-      'Accept': 'application/json',
-    };
-  }
+  // _getAuthHeaders removed — now using AuthService.instance.authenticatedRequest()
 
   // ══════════════════════════════════════════════════════════════════
   // 📁 قراءة البيانات من الملفات المحلية
@@ -219,7 +213,7 @@ class FtthServerDataService {
         return jsonDecode(content);
       }
     } catch (e) {
-      print('Error loading local file: $e');
+      print('Error loading local file');
     }
     return null;
   }
@@ -250,925 +244,6 @@ class FtthServerDataService {
 }
 
 /// ═══════════════════════════════════════════════════════════════════
-/// 📱 صفحة بيانات السيرفر المحسّنة
-/// ═══════════════════════════════════════════════════════════════════
-
-class ServerDataPage extends StatefulWidget {
-  final String authToken;
-
-  const ServerDataPage({super.key, required this.authToken});
-
-  @override
-  State<ServerDataPage> createState() => _ServerDataPageState();
-}
-
-class _ServerDataPageState extends State<ServerDataPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final FtthServerDataService _service = FtthServerDataService();
-
-  bool _isLoading = false;
-  String _statusMessage = '';
-  String _currentDataTitle = '';
-  List<dynamic> _currentData = [];
-  String _errorMessage = '';
-
-  // إحصائيات
-  Map<String, dynamic> _stats = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    // تمرير authToken للخدمة
-    _service.setAuthToken(widget.authToken);
-    _loadInitialStats();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadInitialStats() async {
-    setState(() => _isLoading = true);
-
-    try {
-      // محاولة قراءة من الملفات المحلية أولاً
-      final dashboardSummary =
-          await FtthServerDataService.loadDashboardSummary();
-      final zones = await FtthServerDataService.loadZonesWithCounts();
-      final customers = await FtthServerDataService.loadCustomers();
-
-      setState(() {
-        _stats = {
-          'zones_count': zones?.length ?? 0,
-          'customers_count': customers?.length ?? 0,
-          'dashboard': dashboardSummary,
-        };
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'خطأ في تحميل الإحصائيات: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _loadLocalData(String fileName, String title) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-      _currentDataTitle = title;
-    });
-
-    try {
-      final filePath = '${FtthServerDataService.fullDataPath}\\$fileName';
-      final data = await FtthServerDataService.loadLocalFile(filePath);
-
-      setState(() {
-        _currentData = data is List ? data : (data != null ? [data] : []);
-        _isLoading = false;
-        _statusMessage = 'تم تحميل ${_currentData.length} عنصر';
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'خطأ: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _fetchFromServer(String endpoint, String title) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-      _statusMessage = 'جاري الاتصال بالسيرفر...';
-      _currentDataTitle = title;
-    });
-
-    try {
-      // التحقق من وجود Token
-      if (!_service.hasToken) {
-        setState(() {
-          _errorMessage = 'Token غير متوفر - تأكد من تسجيل الدخول';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      dynamic data;
-      setState(() => _statusMessage = 'جاري جلب البيانات من api.ftth.iq ...');
-
-      switch (endpoint) {
-        case 'zones':
-          data = await _service.fetchZones();
-          break;
-        case 'customers':
-          data = await _service.fetchCustomers();
-          break;
-        case 'wallet':
-          data = await _service.fetchWalletBalance();
-          break;
-        case 'audit_logs':
-          data = await _service.fetchAuditLogs();
-          break;
-        case 'subscriptions':
-          data = await _service.fetchSubscriptions();
-          break;
-      }
-
-      // معالجة البيانات بناءً على نوعها
-      List<dynamic> processedData = [];
-      if (data is Map && data.containsKey('items')) {
-        processedData = data['items'] as List<dynamic>;
-      } else if (data is List) {
-        processedData = data;
-      } else if (data != null) {
-        processedData = [data];
-      }
-
-      setState(() {
-        _currentData = processedData;
-        _isLoading = false;
-        _statusMessage = data != null
-            ? 'تم الجلب بنجاح (${processedData.length} عنصر)'
-            : 'لا توجد بيانات أو حدث خطأ';
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'خطأ في الاتصال: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('🗄️ بيانات السيرفر'),
-          backgroundColor: Colors.indigo[700],
-          foregroundColor: Colors.white,
-          elevation: 0,
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            tabs: const [
-              Tab(icon: Icon(Icons.folder), text: 'بيانات محلية'),
-              Tab(icon: Icon(Icons.cloud_download), text: 'جلب من السيرفر'),
-              Tab(icon: Icon(Icons.dashboard), text: 'Dashboard'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildLocalDataTab(),
-            _buildServerFetchTab(),
-            _buildDashboardTab(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  // 📁 تاب البيانات المحلية
-  // ══════════════════════════════════════════════════════════════════
-  Widget _buildLocalDataTab() {
-    return Column(
-      children: [
-        // شريط الأزرار
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.indigo[50]!, Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                '📁 البيانات المحفوظة محلياً',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'مسار الملفات: ${FtthServerDataService.fullDataPath}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildLocalButton(
-                    icon: Icons.location_on,
-                    label: 'المناطق + الإحصائيات',
-                    color: Colors.blue,
-                    fileName: 'zones_with_user_counts.json',
-                  ),
-                  _buildLocalButton(
-                    icon: Icons.map,
-                    label: 'المناطق',
-                    color: Colors.green,
-                    fileName: 'zones.json',
-                  ),
-                  _buildLocalButton(
-                    icon: Icons.people,
-                    label: 'العملاء',
-                    color: Colors.orange,
-                    fileName: 'customers_full.json',
-                  ),
-                  _buildLocalButton(
-                    icon: Icons.subscriptions,
-                    label: 'الاشتراكات',
-                    color: Colors.purple,
-                    fileName: 'subscriptions_full.json',
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        // عرض البيانات
-        Expanded(child: _buildDataView()),
-      ],
-    );
-  }
-
-  Widget _buildLocalButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required String fileName,
-  }) {
-    return ElevatedButton.icon(
-      onPressed: _isLoading ? null : () => _loadLocalData(fileName, label),
-      icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  // 🌐 تاب جلب من السيرفر
-  // ══════════════════════════════════════════════════════════════════
-  Widget _buildServerFetchTab() {
-    return Column(
-      children: [
-        // معلومات API
-        Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.green[300]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green[700], size: 32),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '✅ الاتصال بـ api.ftth.iq',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[900],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'يتم استخدام نفس Token الذي تم تسجيل الدخول به.\n'
-                      'هذه الـ API تعمل مباشرة بدون مشاكل Cloudflare.',
-                      style: TextStyle(fontSize: 12, color: Colors.green[800]),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // أزرار الجلب من السيرفر
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: [
-              _buildServerButton(
-                icon: Icons.location_on,
-                label: 'المناطق',
-                color: Colors.teal,
-                endpoint: 'zones',
-              ),
-              _buildServerButton(
-                icon: Icons.people,
-                label: 'العملاء',
-                color: Colors.blue,
-                endpoint: 'customers',
-              ),
-              _buildServerButton(
-                icon: Icons.account_balance_wallet,
-                label: 'رصيد المحفظة',
-                color: Colors.green,
-                endpoint: 'wallet',
-              ),
-              _buildServerButton(
-                icon: Icons.history,
-                label: 'سجل التدقيق',
-                color: Colors.orange,
-                endpoint: 'audit_logs',
-              ),
-              _buildServerButton(
-                icon: Icons.subscriptions,
-                label: 'الاشتراكات',
-                color: Colors.purple,
-                endpoint: 'subscriptions',
-              ),
-            ],
-          ),
-        ),
-
-        // حالة الاتصال
-        if (_statusMessage.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_isLoading)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                const SizedBox(width: 8),
-                Text(_statusMessage, style: TextStyle(color: Colors.grey[600])),
-              ],
-            ),
-          ),
-
-        // عرض البيانات
-        Expanded(child: _buildDataView()),
-      ],
-    );
-  }
-
-  Widget _buildServerButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required String endpoint,
-  }) {
-    return OutlinedButton.icon(
-      onPressed: _isLoading ? null : () => _fetchFromServer(endpoint, label),
-      icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: color),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  // 📊 تاب Dashboard
-  // ══════════════════════════════════════════════════════════════════
-  Widget _buildDashboardTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // 🔷 زر فتح مشروع Dashboard
-          _buildDashboardProjectButton(),
-          const SizedBox(height: 16),
-
-          // بطاقة معلومات المشروع
-          _buildProjectInfoCard(),
-          const SizedBox(height: 16),
-
-          // الإحصائيات السريعة
-          _buildQuickStats(),
-          const SizedBox(height: 16),
-
-          // APIs المتاحة
-          _buildApiReferenceCard(),
-          const SizedBox(height: 16),
-
-          // ملفات البيانات
-          _buildDataFilesCard(),
-        ],
-      ),
-    );
-  }
-
-  /// 🔷 زر فتح مشروع Dashboard في شاشة منفصلة
-  Widget _buildDashboardProjectButton() {
-    return InkWell(
-      onTap: () => _openDashboardProjectPage(),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [Colors.indigo[800]!, Colors.indigo[600]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.indigo.withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.dashboard_customize,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '📊 مشروع Dashboard',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'عرض بيانات 07_Dashboard_Project من السيرفر',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// فتح صفحة مشروع Dashboard
-  void _openDashboardProjectPage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DashboardProjectPage(
-          authToken: widget.authToken,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProjectInfoCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [Colors.indigo[700]!, Colors.indigo[500]!],
-          ),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.dashboard, color: Colors.white, size: 32),
-                SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'FTTH Dashboard Project',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'مشروع استخراج بيانات لوحة المعلومات',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const Divider(color: Colors.white30, height: 24),
-            _buildInfoRow('Partner ID', '2261175', Icons.badge),
-            _buildInfoRow('Dashboard UUID', '2a63cc44-01f4...', Icons.key),
-            _buildInfoRow(
-                'تاريخ الاستخراج', '31 يناير 2026', Icons.calendar_today),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white70, size: 16),
-          const SizedBox(width: 8),
-          Text('$label: ', style: const TextStyle(color: Colors.white70)),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickStats() {
-    final stats = [
-      {
-        'icon': Icons.location_on,
-        'value': '613',
-        'label': 'منطقة',
-        'color': Colors.blue
-      },
-      {
-        'icon': Icons.people,
-        'value': '13,347',
-        'label': 'عميل',
-        'color': Colors.green
-      },
-      {
-        'icon': Icons.check_circle,
-        'value': '7,624',
-        'label': 'نشط',
-        'color': Colors.teal
-      },
-      {
-        'icon': Icons.account_balance_wallet,
-        'value': '3.78M',
-        'label': 'IQD',
-        'color': Colors.orange
-      },
-    ];
-
-    return Row(
-      children: stats.map((stat) {
-        return Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Icon(stat['icon'] as IconData,
-                      color: stat['color'] as Color, size: 28),
-                  const SizedBox(height: 8),
-                  Text(
-                    stat['value'] as String,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: stat['color'] as Color,
-                    ),
-                  ),
-                  Text(
-                    stat['label'] as String,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildApiReferenceCard() {
-    final apis = [
-      {'endpoint': '/auth/Contractor/token', 'desc': 'تسجيل الدخول'},
-      {'endpoint': '/current-user', 'desc': 'معلومات المستخدم'},
-      {'endpoint': '/partners/{id}/wallets/balance', 'desc': 'رصيد المحفظة'},
-      {'endpoint': '/partners/dashboard/summary', 'desc': 'ملخص Dashboard'},
-      {'endpoint': '/tasks/summary', 'desc': 'ملخص المهام'},
-      {'endpoint': '/partners/{id}/zones', 'desc': 'المناطق'},
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.api, color: Colors.purple[700]),
-                const SizedBox(width: 8),
-                const Text(
-                  'APIs المكتشفة',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const Divider(),
-            ...apis.map((api) => ListTile(
-                  dense: true,
-                  leading: Icon(Icons.link, color: Colors.grey[400], size: 16),
-                  title: Text(
-                    api['endpoint']!,
-                    style:
-                        const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                  ),
-                  subtitle: Text(api['desc']!),
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDataFilesCard() {
-    final files = [
-      {'name': 'chart_data.json', 'size': '316 KB', 'icon': Icons.bar_chart},
-      {'name': 'zones_list.json', 'size': '21 KB', 'icon': Icons.map},
-      {'name': 'all_responses.json', 'size': '500 KB', 'icon': Icons.storage},
-      {'name': 'customers_full.json', 'size': '21 KB', 'icon': Icons.people},
-    ];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.folder_open, color: Colors.amber[700]),
-                const SizedBox(width: 8),
-                const Text(
-                  'ملفات البيانات المحلية',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const Divider(),
-            ...files.map((file) => ListTile(
-                  dense: true,
-                  leading:
-                      Icon(file['icon'] as IconData, color: Colors.indigo[400]),
-                  title: Text(file['name'] as String),
-                  trailing: Text(
-                    file['size'] as String,
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  onTap: () => _loadLocalData(
-                    file['name'] as String,
-                    file['name'] as String,
-                  ),
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════
-  // 📋 عرض البيانات
-  // ══════════════════════════════════════════════════════════════════
-  Widget _buildDataView() {
-    if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('جاري تحميل البيانات...'),
-          ],
-        ),
-      );
-    }
-
-    if (_errorMessage.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage,
-              style: TextStyle(color: Colors.red[700], fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _loadInitialStats,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_currentData.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.touch_app, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'اختر أحد الأزرار لعرض البيانات',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        // عنوان البيانات
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          color: Colors.indigo[50],
-          child: Row(
-            children: [
-              Icon(Icons.data_array, color: Colors.indigo[700]),
-              const SizedBox(width: 8),
-              Text(
-                '$_currentDataTitle (${_currentData.length} عنصر)',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.indigo[700],
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.copy, size: 20),
-                tooltip: 'نسخ',
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(
-                    text: const JsonEncoder.withIndent('  ')
-                        .convert(_currentData),
-                  ));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم نسخ البيانات')),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-
-        // قائمة البيانات
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: _currentData.length,
-            itemBuilder: (context, index) {
-              final item = _currentData[index];
-              return _buildDataCard(item, index);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDataCard(dynamic item, int index) {
-    if (item is Map<String, dynamic>) {
-      final title = item['displayValue']?.toString() ??
-          item['zone_name']?.toString() ??
-          item['zone_id']?.toString() ??
-          item['id']?.toString() ??
-          'عنصر ${index + 1}';
-
-      return Card(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        child: ExpansionTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.indigo[100],
-            radius: 18,
-            child: Text(
-              '${index + 1}',
-              style: TextStyle(
-                color: Colors.indigo[700],
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-          title:
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: _buildSubtitle(item),
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: Colors.grey[50],
-              child: SelectableText(
-                const JsonEncoder.withIndent('  ').convert(item),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    return ListTile(
-      leading: CircleAvatar(child: Text('${index + 1}')),
-      title: Text(item.toString()),
-    );
-  }
-
-  Widget? _buildSubtitle(Map<String, dynamic> item) {
-    final parts = <String>[];
-
-    if (item.containsKey('customers')) {
-      parts.add('العملاء: ${item['customers']}');
-    }
-    if (item.containsKey('subscriptions')) {
-      parts.add('الاشتراكات: ${item['subscriptions']}');
-    }
-    if (item.containsKey('customerType')) {
-      final type = item['customerType'];
-      if (type is Map) {
-        parts.add('النوع: ${type['displayValue'] ?? 'غير محدد'}');
-      }
-    }
-
-    if (parts.isEmpty) return null;
-    return Text(
-      parts.join(' | '),
-      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-    );
-  }
-}
-
-/// ═══════════════════════════════════════════════════════════════════
 /// 📊 صفحة مشروع Dashboard - عرض بيانات 07_Dashboard_Project
 /// ═══════════════════════════════════════════════════════════════════
 class DashboardProjectPage extends StatefulWidget {
@@ -1182,7 +257,6 @@ class DashboardProjectPage extends StatefulWidget {
 
 class _DashboardProjectPageState extends State<DashboardProjectPage> {
   bool _isLoading = false;
-  bool _isFetchingFromServer = false;
   bool _isFetchingAllData = false; // جلب كل البيانات من API مباشرة
   bool _showRawData = false; // للتبديل بين العرض المنظم والخام
   String _errorMessage = '';
@@ -1190,9 +264,23 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
   String _currentFileName = '';
   dynamic _currentData;
   List<FileSystemEntity> _dashboardFiles = [];
-  Process? _pythonProcess;
   String? _guestToken; // للمصادقة مع Dashboard API
   Map<String, dynamic> _allChartsData = {}; // بيانات كل الشارتات
+
+  // ══════════════════════════════════════════════════════════════════
+  // 📊 بيانات Dashboard الحية
+  // ══════════════════════════════════════════════════════════════════
+  static final _numFmt = NumberFormat('#,##0', 'ar');
+  Map<String, dynamic>? _dashboardSummary;
+  Map<String, dynamic>? _walletBalance;
+  Map<String, dynamic>? _tasksSummary;
+  List<Map<String, dynamic>>? _requestsSummary;
+  List<Map<String, dynamic>>? _supersetReports;
+  bool _isLoadingDashboard = true;
+
+  // بيانات Superset Charts
+  bool _isLoadingSuperset = false;
+  Map<int, Map<String, dynamic>?> _slicesData = {};
 
   // ══════════════════════════════════════════════════════════════════
   // 📋 نظام السجلات (Logging)
@@ -1306,16 +394,233 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
   void initState() {
     super.initState();
     _loadDashboardFiles();
-    // جلب Guest Token تلقائياً عند فتح الصفحة
     _initGuestToken();
+    _fetchLiveDashboard();
   }
 
   /// تهيئة Guest Token عند فتح الصفحة
   Future<void> _initGuestToken() async {
-    debugPrint('🔄 تهيئة Guest Token...');
-    debugPrint(
-        '📋 Auth Token: ${widget.authToken.isNotEmpty ? "${widget.authToken.substring(0, 30)}..." : "فارغ"}');
     await _fetchGuestToken();
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 📊 جلب بيانات Dashboard الحية من APIs
+  // ══════════════════════════════════════════════════════════════════
+
+  Future<void> _fetchLiveDashboard() async {
+    setState(() => _isLoadingDashboard = true);
+    _log('🔄 جلب بيانات Dashboard الحية...');
+
+    await Future.wait([
+      _fetchDashboardSummary(),
+      _fetchWalletBalance(),
+      _fetchTasksSummary(),
+      _fetchRequestsSummary(),
+      _fetchSupersetReports(),
+      _fetchSupersetCharts(),
+    ]);
+
+    if (mounted) {
+      setState(() => _isLoadingDashboard = false);
+      _log('✅ تم جلب بيانات Dashboard');
+    }
+  }
+
+  Future<void> _fetchDashboardSummary() async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/partners/dashboard/summary?hierarchyLevel=0',
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) setState(() => _dashboardSummary = data['model'] ?? data);
+      }
+    } catch (e) {
+      debugPrint('❌ Dashboard summary error: $e');
+    }
+  }
+
+  Future<void> _fetchWalletBalance() async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/partners/2261175/wallets/balance',
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) setState(() => _walletBalance = data['model'] ?? data);
+      }
+    } catch (e) {
+      debugPrint('❌ Wallet balance error: $e');
+    }
+  }
+
+  Future<void> _fetchTasksSummary() async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/tasks/summary?hierarchyLevel=0',
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) setState(() => _tasksSummary = data['model'] ?? data);
+      }
+    } catch (e) {
+      debugPrint('❌ Tasks summary error: $e');
+    }
+  }
+
+  Future<void> _fetchRequestsSummary() async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/requests/summary?hierarchyLevel=0',
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final items = data['items'] as List? ?? [];
+        if (mounted) {
+          setState(() => _requestsSummary =
+              items.map((e) => e as Map<String, dynamic>).toList());
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Requests summary error: $e');
+    }
+  }
+
+  Future<void> _fetchSupersetReports() async {
+    try {
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://dashboard.ftth.iq/superset/dashboard/report/list',
+        headers: {
+          'user-type': 'Partner',
+          'Accept': 'application/json, text/plain, */*',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final items = data['items'] as List? ?? [];
+        if (mounted) {
+          setState(() => _supersetReports =
+              items.map((e) => e as Map<String, dynamic>).toList());
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Superset reports error: $e');
+    }
+  }
+
+  /// تحميل بيانات Superset Charts من الملفات المحفوظة محلياً
+  Future<void> _fetchSupersetCharts() async {
+    try {
+      if (mounted) setState(() => _isLoadingSuperset = true);
+
+      final loaded = await _loadSupersetDataLocally();
+      if (!loaded) {
+        _log('📂 لا توجد بيانات محفوظة — اضغط 🌐 لجلب البيانات من صفحة السيرفر');
+      }
+    } catch (e) {
+      _log('❌ Superset Charts error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingSuperset = false);
+    }
+  }
+
+  /// حفظ بيانات Superset محلياً (بنفس صيغة fetch_server_data_page)
+  Future<void> _saveSupersetDataLocally(Map<int, Map<String, dynamic>?> data) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      final file = File('${dir.path}/ftth_data_$timestamp.json');
+
+      final charts = <Map<String, dynamic>>[];
+      for (var entry in data.entries) {
+        if (entry.value != null) {
+          charts.add({
+            'type': 'slice_${entry.key}',
+            'url': 'dashboard_api_slice_${entry.key}',
+            'data': {
+              'result': [
+                {'data': entry.value!['data'] ?? []}
+              ]
+            },
+            'colnames': entry.value!['colnames'],
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
+      }
+
+      await file.writeAsString(json.encode({
+        'timestamp': timestamp,
+        'charts_count': charts.length,
+        'charts': charts,
+      }));
+      _log('💾 تم حفظ البيانات: ${file.path}');
+    } catch (e) {
+      _log('⚠️ فشل الحفظ المحلي: $e');
+    }
+  }
+
+  /// تحميل بيانات Superset المحفوظة محلياً من أحدث ملف ftth_data_*.json
+  Future<bool> _loadSupersetDataLocally() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final files = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.contains('ftth_data_') && f.path.endsWith('.json'))
+          .toList();
+
+      if (files.isEmpty) return false;
+
+      // أحدث ملف
+      files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+      final latestFile = files.first;
+      final content = await latestFile.readAsString();
+      final parsed = json.decode(content) as Map<String, dynamic>;
+      final charts = parsed['charts'] as List? ?? [];
+      final timestamp = parsed['timestamp'] as String? ?? '';
+
+      if (charts.isEmpty) return false;
+
+      final results = <int, Map<String, dynamic>?>{};
+      for (final chart in charts) {
+        // استخراج slice_id من url: "dashboard_api_slice_52"
+        final url = chart['url'] as String? ?? '';
+        final match = RegExp(r'slice_(\d+)').firstMatch(url);
+        if (match == null) continue;
+        final sliceId = int.parse(match.group(1)!);
+
+        // تحويل البيانات لصيغة _slicesData
+        final dataResult = chart['data']?['result'] as List?;
+        List dataRows = [];
+        if (dataResult != null && dataResult.isNotEmpty) {
+          final firstResult = dataResult[0] as Map<String, dynamic>?;
+          dataRows = firstResult?['data'] as List? ?? [];
+        }
+        final colnames = chart['colnames'] as List?;
+
+        results[sliceId] = {
+          'data': dataRows,
+          'colnames': colnames ?? [],
+          'rowcount': dataRows.length,
+        };
+      }
+
+      if (results.isEmpty) return false;
+
+      if (mounted) {
+        setState(() => _slicesData = results);
+        _log('📂 تم تحميل ${results.length} slice من البيانات المحفوظة ($timestamp)');
+      }
+      return true;
+    } catch (e) {
+      _log('⚠️ فشل تحميل البيانات المحلية: $e');
+      return false;
+    }
   }
 
   /// تحميل قائمة ملفات Dashboard Project
@@ -1325,10 +630,13 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     try {
       final dir = Directory(FtthServerDataService.dashboardPath);
       if (await dir.exists()) {
-        // البحث بشكل متكرر في جميع المجلدات الفرعية
+        // عرض الكل + ملف all_zones_detailed.json فقط من ملفات المناطق
         final files = await dir
             .list(recursive: true)
-            .where((f) => f.path.endsWith('.json'))
+            .where((f) =>
+                f.path.endsWith('.json') &&
+                (!f.path.toLowerCase().contains('zone') ||
+                    f.path.contains('all_zones_detailed')))
             .toList();
         setState(() {
           _dashboardFiles = files;
@@ -1342,235 +650,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'خطأ: $e';
+        _errorMessage = 'خطأ';
         _isLoading = false;
-      });
-    }
-  }
-
-  /// تشغيل سكربت Python لجلب البيانات من السيرفر
-  Future<void> _fetchFromServer(
-      {bool allZones = false,
-      bool useImproved = false,
-      bool useDebug = false,
-      bool useAdminApi = false}) async {
-    final scriptsPath = '${FtthServerDataService.dashboardPath}\\scripts';
-    String scriptName;
-    if (useAdminApi) {
-      scriptName = 'fetch_admin_api.py';
-    } else if (useDebug) {
-      scriptName = 'fetch_debug.py';
-    } else if (useImproved) {
-      scriptName = 'fetch_improved.py';
-    } else if (allZones) {
-      scriptName = 'fetch_all_zones_no_filter.py';
-    } else {
-      scriptName = 'fetch_all_dashboard_v2.py';
-    }
-    final scriptFile = File('$scriptsPath\\$scriptName');
-
-    if (!await scriptFile.exists()) {
-      _showErrorDialog(
-          'سكربت Python غير موجود!\n\nالمسار المتوقع:\n$scriptsPath\\$scriptName');
-      return;
-    }
-
-    // تأكيد قبل البدء
-    String title;
-    String description;
-    IconData icon;
-    Color iconColor;
-
-    if (useAdminApi) {
-      title = '🌐 جلب من Admin API';
-      description =
-          'سيتم جلب البيانات مباشرة من admin.ftth.iq API.\n\n✅ هذا الخيار يعمل بشكل مؤكد!';
-      icon = Icons.api;
-      iconColor = Colors.green;
-    } else if (useDebug) {
-      title = '🔍 تشخيص (Debug)';
-      description =
-          'سيتم تشغيل سكربت التشخيص الذي يلتقط كل الـ requests ويأخذ screenshots.\n\nالملفات ستُحفظ في مجلد debug.';
-      icon = Icons.bug_report;
-      iconColor = Colors.orange;
-    } else if (useImproved) {
-      title = '✨ جلب محسّن (التقاط تلقائي)';
-      description =
-          'سيتم استخدام السكربت المحسّن الذي يلتقط البيانات تلقائياً من Dashboard.';
-      icon = Icons.auto_awesome;
-      iconColor = Colors.amber;
-    } else if (allZones) {
-      title = 'جلب كل المناطق';
-      description =
-          'سيتم جلب بيانات جميع المناطق والشارتات من Superset Dashboard.\n\n✅ يتجاوز Cloudflare تلقائياً عبر Playwright.';
-      icon = Icons.cloud_download;
-      iconColor = Colors.indigo;
-    } else {
-      title = 'جلب بيانات (السكربت القديم)';
-      description =
-          'سيتم تشغيل سكربت Python القديم لجلب البيانات من admin panel فقط.';
-      icon = Icons.cloud_download;
-      iconColor = Colors.grey;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(icon, color: iconColor),
-            const SizedBox(width: 8),
-            Expanded(child: Text(title)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(description),
-            const SizedBox(height: 12),
-            const Text('ملاحظات:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const Text('• سيفتح متصفح للتعامل مع Cloudflare'),
-            Text(allZones
-                ? '• قد يستغرق وقتاً أطول (613 منطقة)'
-                : '• قد يستغرق بضع دقائق'),
-            const Text('• تأكد من تثبيت playwright'),
-            if (allZones || useImproved)
-              const Text('• لا تغلق نافذة المتصفح!',
-                  style: TextStyle(
-                      color: Colors.red, fontWeight: FontWeight.bold)),
-            if (useImproved)
-              const Text('• السكربت المحسّن يلتقط البيانات تلقائياً',
-                  style: TextStyle(color: Colors.green)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('بدء الجلب'),
-            style: ElevatedButton.styleFrom(backgroundColor: iconColor),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    String scriptType;
-    if (useAdminApi) {
-      scriptType = "🌐 جلب من Admin API";
-    } else if (useDebug) {
-      scriptType = "🔍 تشخيص (Debug)";
-    } else if (useImproved) {
-      scriptType = "✨ السكربت المحسّن (التقاط تلقائي)";
-    } else if (allZones) {
-      scriptType = "جلب جميع المناطق (613)";
-    } else {
-      scriptType = "جلب بيانات عادي";
-    }
-
-    _log('═══════════════════════════════════════════');
-    _log('🚀 بدء تشغيل سكربت Python');
-    _log('═══════════════════════════════════════════');
-    _log('📋 السكربت: $scriptName');
-    _log('📋 المسار: $scriptsPath');
-    _log('📋 النوع: $scriptType');
-
-    setState(() {
-      _isFetchingFromServer = true;
-      _fetchStatus = 'جاري تشغيل السكربت...';
-    });
-
-    try {
-      _log('🔄 تشغيل Python...');
-      // تشغيل سكربت Python مع PYTHONIOENCODING=utf-8 لتجنب مشاكل الترميز
-      _pythonProcess = await Process.start(
-        'python',
-        ['-u', scriptFile.path], // -u للخرج unbuffered
-        workingDirectory: scriptsPath,
-        runInShell: true,
-        environment: {
-          'PYTHONIOENCODING': 'utf-8',
-          'PYTHONLEGACYWINDOWSSTDIO': '0',
-        },
-      );
-
-      _log('✅ تم تشغيل Python - PID: ${_pythonProcess!.pid}');
-
-      // قراءة الخرج
-      _pythonProcess!.stdout.transform(utf8.decoder).listen((data) {
-        final trimmed = data.trim();
-        if (trimmed.isNotEmpty) {
-          _log('📤 Python: $trimmed');
-        }
-        setState(() => _fetchStatus = trimmed);
-      });
-
-      _pythonProcess!.stderr.transform(utf8.decoder).listen((data) {
-        final trimmed = data.trim();
-        if (trimmed.isNotEmpty) {
-          _log('❌ Python Error: $trimmed');
-        }
-      });
-
-      // انتظار انتهاء العملية
-      final exitCode = await _pythonProcess!.exitCode;
-
-      _log('📋 انتهى Python - Exit Code: $exitCode');
-
-      setState(() {
-        _isFetchingFromServer = false;
-        if (exitCode == 0) {
-          _fetchStatus = '✅ تم جلب البيانات بنجاح!';
-          _log('✅ تم جلب البيانات بنجاح!');
-        } else {
-          _fetchStatus = '❌ فشل مع كود: $exitCode';
-          _log('❌ فشل السكربت مع كود: $exitCode');
-        }
-      });
-
-      _log('═══════════════════════════════════════════');
-
-      // إعادة تحميل الملفات
-      if (exitCode == 0) {
-        await _loadDashboardFiles();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ تم تحديث البيانات بنجاح!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
-    } catch (e, stackTrace) {
-      _log('═══════════════════════════════════════════');
-      _log('❌❌ خطأ استثنائي في تشغيل السكربت');
-      _log('❌ الخطأ: $e');
-      _log('📋 Stack Trace: $stackTrace');
-      _log('═══════════════════════════════════════════');
-      setState(() {
-        _isFetchingFromServer = false;
-        _fetchStatus = 'خطأ: $e';
-      });
-      _showErrorDialog(
-          'فشل تشغيل السكربت:\n$e\n\nتأكد من:\n• تثبيت Python\n• تثبيت playwright (pip install playwright)\n• تشغيل: playwright install chromium');
-    }
-  }
-
-  /// إيقاف عملية الجلب
-  void _stopFetching() {
-    if (_pythonProcess != null) {
-      _pythonProcess!.kill();
-      setState(() {
-        _isFetchingFromServer = false;
-        _fetchStatus = '⏹️ تم إيقاف العملية';
       });
     }
   }
@@ -1614,7 +695,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'خطأ في قراءة الملف: $e';
+        _errorMessage = 'خطأ في قراءة الملف';
         _isLoading = false;
       });
     }
@@ -1660,7 +741,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         _log('❌ فشل نهائي في جلب Guest Token');
       }
     } catch (e) {
-      _log('❌ خطأ في جلب Guest Token: $e');
+      _log('❌ خطأ في جلب Guest Token');
     }
   }
 
@@ -1728,7 +809,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         _showLocalDataDialog(fetchedData, sourceFile, chartCount);
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل البيانات المحلية: $e');
+      debugPrint('❌ خطأ في تحميل البيانات المحلية');
       setState(() {
         _isFetchingAllData = false;
         _fetchStatus = '';
@@ -1736,7 +817,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ خطأ: $e'),
+            content: Text('❌ خطأ'),
             backgroundColor: Colors.red,
           ),
         );
@@ -2026,7 +1107,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -2201,15 +1282,15 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         _showAllDataDialog(fetchedData, successCount, failCount);
       }
     } catch (e) {
-      _log('❌ خطأ عام في جلب البيانات: $e');
+      _log('❌ خطأ عام في جلب البيانات');
       setState(() {
         _isFetchingAllData = false;
-        _fetchStatus = '❌ خطأ: $e';
+        _fetchStatus = '❌ خطأ';
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في جلب البيانات: $e'),
+            content: Text('خطأ في جلب البيانات'),
             backgroundColor: Colors.red,
           ),
         );
@@ -2366,257 +1447,1550 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     );
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // 📊 واجهة Dashboard الحية
+  // ══════════════════════════════════════════════════════════════════
+
+  Widget _buildLiveDashboard() {
+    if (_isLoadingDashboard) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('جاري تحميل البيانات...'),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchLiveDashboard,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Superset Charts (native Flutter)
+          _buildSupersetChartsSection(),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildWalletCards() {
+    final balance = _walletBalance?['balance'] ?? 0;
+    final commission = _walletBalance?['commission'] ?? 0;
+    return Row(
+      children: [
+        Expanded(
+          child: _statCard(
+            'الرصيد',
+            '${_numFmt.format(balance)} د.ع',
+            Icons.account_balance_wallet,
+            const Color(0xFF1565C0),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _statCard(
+            'العمولة',
+            '${_numFmt.format(commission)} د.ع',
+            Icons.monetization_on,
+            const Color(0xFF2E7D32),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomerCards() {
+    final c = _dashboardSummary?['customers'];
+    final active = c?['totalActive'] ?? 0;
+    final inactive = c?['totalInactive'] ?? 0;
+    final total = c?['totalCount'] ?? 0;
+    final expiring = c?['totalExpiring'] ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('  العملاء',
+            style: GoogleFonts.cairo(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700])),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+                child: _miniCard('الإجمالي', total, Icons.people,
+                    const Color(0xFF37474F))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _miniCard('نشط', active, Icons.check_circle,
+                    const Color(0xFF2E7D32))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _miniCard('منتهي', inactive, Icons.cancel,
+                    const Color(0xFFC62828))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _miniCard('ينتهي قريباً', expiring,
+                    Icons.warning_amber, const Color(0xFFEF6C00))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubscriptionCards() {
+    final s = _dashboardSummary?['subscriptions'];
+    final active = s?['totalActive'] ?? 0;
+    final expiring = s?['totalExpiring'] ?? 0;
+    final expired = s?['totalExpired'] ?? 0;
+    final trial = s?['totalTrial'] ?? 0;
+    final online = s?['totalOnline'] ?? 0;
+    final offline = s?['totalOffline'] ?? 0;
+    final total = s?['totalCount'] ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('  الاشتراكات',
+            style: GoogleFonts.cairo(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700])),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+                child: _miniCard('الإجمالي', total, Icons.router,
+                    const Color(0xFF37474F))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _miniCard('نشط', active, Icons.wifi,
+                    const Color(0xFF2E7D32))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _miniCard('ينتهي قريباً', expiring,
+                    Icons.access_time, const Color(0xFFEF6C00))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _miniCard('منتهي', expired, Icons.wifi_off,
+                    const Color(0xFFC62828))),
+            if (trial > 0) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                  child: _miniCard('تجريبي', trial, Icons.science,
+                      const Color(0xFF6A1B9A))),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+                child: _miniCard('متصل (Online)', online,
+                    Icons.signal_wifi_4_bar, const Color(0xFF00695C))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _miniCard('غير متصل (Offline)', offline,
+                    Icons.signal_wifi_off, const Color(0xFF78909C))),
+            const Spacer(),
+            const Spacer(),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChartsRow() {
+    final c = _dashboardSummary?['customers'];
+    final s = _dashboardSummary?['subscriptions'];
+    if (c == null && s == null) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 280,
+      child: Row(
+        children: [
+          if (c != null)
+            Expanded(child: _buildPieChartCard('توزيع العملاء', [
+              _PieItem('نشط', (c['totalActive'] ?? 0).toDouble(),
+                  const Color(0xFF4CAF50)),
+              _PieItem('منتهي', (c['totalInactive'] ?? 0).toDouble(),
+                  const Color(0xFFE53935)),
+            ])),
+          const SizedBox(width: 12),
+          if (s != null)
+            Expanded(child: _buildPieChartCard('حالة الاشتراكات', [
+              _PieItem('نشط', (s['totalActive'] ?? 0).toDouble(),
+                  const Color(0xFF4CAF50)),
+              _PieItem('ينتهي قريباً', (s['totalExpiring'] ?? 0).toDouble(),
+                  const Color(0xFFFF9800)),
+              _PieItem('منتهي', (s['totalExpired'] ?? 0).toDouble(),
+                  const Color(0xFFE53935)),
+            ])),
+          const SizedBox(width: 12),
+          if (s != null)
+            Expanded(child: _buildBarChartCard('حالة الاتصال', [
+              _BarItem('متصل', (s['totalOnline'] ?? 0).toDouble(),
+                  const Color(0xFF00897B)),
+              _BarItem('غير متصل', (s['totalOffline'] ?? 0).toDouble(),
+                  const Color(0xFF78909C)),
+            ])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPieChartCard(String title, List<_PieItem> items) {
+    final total = items.fold<double>(0, (sum, e) => sum + e.value);
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: GoogleFonts.cairo(
+                    fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: PieChart(PieChartData(
+                      sections: items
+                          .where((e) => e.value > 0)
+                          .map((e) => PieChartSectionData(
+                                color: e.color,
+                                value: e.value,
+                                title:
+                                    '${(e.value / total * 100).toStringAsFixed(0)}%',
+                                radius: 50,
+                                titleStyle: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
+                              ))
+                          .toList(),
+                      centerSpaceRadius: 30,
+                      sectionsSpace: 2,
+                    )),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: items
+                          .map((e) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 3),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                            color: e.color,
+                                            shape: BoxShape.circle)),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                        child: Text(e.label,
+                                            style: GoogleFonts.cairo(
+                                                fontSize: 11))),
+                                    Text(_numFmt.format(e.value.toInt()),
+                                        style: GoogleFonts.cairo(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBarChartCard(String title, List<_BarItem> items) {
+    final maxVal =
+        items.fold<double>(0, (m, e) => e.value > m ? e.value : m) * 1.2;
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: GoogleFonts.cairo(
+                    fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: BarChart(BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxVal,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, gI, rod, rI) => BarTooltipItem(
+                      _numFmt.format(rod.toY.toInt()),
+                      GoogleFonts.cairo(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
+                    ),
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (val, _) {
+                        final i = val.toInt();
+                        if (i < 0 || i >= items.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(items[i].label,
+                            style: GoogleFonts.cairo(fontSize: 11));
+                      },
+                    ),
+                  ),
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: items
+                    .asMap()
+                    .entries
+                    .map((e) => BarChartGroupData(
+                          x: e.key,
+                          barRods: [
+                            BarChartRodData(
+                              toY: e.value.value,
+                              color: e.value.color,
+                              width: 40,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(6),
+                                topRight: Radius.circular(6),
+                              ),
+                            ),
+                          ],
+                          showingTooltipIndicators: [0],
+                        ))
+                    .toList(),
+              )),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTasksAndRequestsRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // بطاقة المهام
+        if (_tasksSummary != null)
+          Expanded(
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.task_alt,
+                            color: Color(0xFF1565C0), size: 20),
+                        const SizedBox(width: 8),
+                        Text('المهام',
+                            style: GoogleFonts.cairo(
+                                fontSize: 15, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _taskRow('مفتوحة', _tasksSummary!['totalOpen'],
+                        const Color(0xFFEF6C00)),
+                    _taskRow('مكتملة', _tasksSummary!['totalCompleted'],
+                        const Color(0xFF2E7D32)),
+                    _taskRow('مستحقة اليوم', _tasksSummary!['totalDueToday'],
+                        const Color(0xFFC62828)),
+                    _taskRow('مستحقة هذا الأسبوع',
+                        _tasksSummary!['totalDueThisWeek'],
+                        const Color(0xFF6A1B9A)),
+                    const Divider(),
+                    _taskRow('الإجمالي', _tasksSummary!['totalCount'],
+                        const Color(0xFF37474F),
+                        bold: true),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(width: 12),
+        // بطاقة الطلبات
+        if (_requestsSummary != null)
+          Expanded(
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.assignment,
+                            color: Color(0xFF00695C), size: 20),
+                        const SizedBox(width: 8),
+                        Text('الطلبات',
+                            style: GoogleFonts.cairo(
+                                fontSize: 15, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ..._requestsSummary!.map((r) {
+                      final name = _translateRequestType(
+                          r['displayValue'] ?? r['type']?['displayValue'] ?? '');
+                      final count = r['totalOpen'] ?? 0;
+                      return _taskRow(name, count, const Color(0xFF00695C));
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSupersetChartsSection() {
+    if (_isLoadingSuperset) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 12),
+              Text('جاري تحميل تحليلات Superset...',
+                  style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final hasAnyData = _slicesData.values.any((v) => v != null);
+    if (_slicesData.isEmpty || !hasAnyData) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.cloud_off, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('لم يتم تحميل بيانات Superset',
+                        style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text('إعادة المحاولة',
+                        style: GoogleFonts.cairo(fontSize: 12)),
+                    onPressed: _fetchSupersetCharts,
+                  ),
+                  const SizedBox(width: 4),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.language, size: 18),
+                    label: Text('جلب من السيرفر',
+                        style: GoogleFonts.cairo(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FetchServerDataPage(authToken: widget.authToken),
+                        ),
+                      );
+                      // بعد الرجوع، إعادة تحميل البيانات المحلية
+                      _fetchSupersetCharts();
+                    },
+                  ),
+                ],
+              ),
+              // عرض كل السجلات للتشخيص
+              if (_logs.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _logs
+                        .toList()
+                        .reversed
+                        .take(15)
+                        .toList()
+                        .reversed
+                        .map((l) => Text(l,
+                            style: const TextStyle(fontSize: 10, fontFamily: 'monospace')))
+                        .toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // العنوان
+        Row(
+          children: [
+            const Icon(Icons.analytics, color: Color(0xFF6A1B9A), size: 22),
+            const SizedBox(width: 8),
+            Text('تحليلات Superset',
+                style: GoogleFonts.cairo(
+                    fontSize: 16, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 18),
+              tooltip: 'تحديث بيانات Superset',
+              onPressed: _fetchSupersetCharts,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // بطاقات KPI (slices 34-38)
+        _buildSupersetStatCards(),
+
+        const SizedBox(height: 16),
+
+        // مخططات المناطق
+        LayoutBuilder(builder: (context, constraints) {
+          if (constraints.maxWidth > 900) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: _buildZonesBarChart()),
+                const SizedBox(width: 16),
+                Expanded(flex: 2, child: _buildZonesTable()),
+              ],
+            );
+          }
+          return Column(
+            children: [
+              _buildZonesBarChart(),
+              const SizedBox(height: 16),
+              _buildZonesTable(),
+            ],
+          );
+        }),
+
+        const SizedBox(height: 16),
+
+        // مخطط خطي يومي (slice 48)
+        _buildTimeSeriesChart(),
+
+        const SizedBox(height: 16),
+
+        // مخطط خطي طويل المدى (slice 51)
+        _buildLongTermChart(),
+      ],
+    );
+  }
+
+  /// بطاقات KPI من slices 34-38 (COUNT_DISTINCT(userId))
+  Widget _buildSupersetStatCards() {
+    final statSlices = {
+      34: 'إجمالي المستخدمين',
+      35: 'النشطين',
+      36: 'غير النشطين',
+      37: 'المنتهيين',
+      38: 'الجدد',
+    };
+    final colors = [
+      const Color(0xFF1565C0), // أزرق — إجمالي
+      const Color(0xFF2E7D32), // أخضر — نشط
+      const Color(0xFFE65100), // برتقالي — غير نشط
+      const Color(0xFFC62828), // أحمر — منتهي
+      const Color(0xFF00838F), // تيل — جديد
+    ];
+    final icons = [
+      Icons.people,
+      Icons.check_circle,
+      Icons.pause_circle,
+      Icons.cancel,
+      Icons.person_add,
+    ];
+
+    final entries = statSlices.entries.toList();
+    final hasData = entries.any((e) => _slicesData[e.key] != null);
+    if (!hasData) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: List.generate(entries.length, (i) {
+        final sliceId = entries[i].key;
+        final label = entries[i].value;
+        final data = _slicesData[sliceId];
+        int? value;
+        if (data != null) {
+          final rows = data['data'] as List?;
+          if (rows != null && rows.isNotEmpty) {
+            final firstRow = rows[0] as Map<String, dynamic>;
+            value = firstRow['COUNT_DISTINCT(userId)'] as int? ??
+                int.tryParse(firstRow.values.first?.toString() ?? '');
+          }
+        }
+        return SizedBox(
+          width: 155,
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  colors: [colors[i], colors[i].withOpacity(0.75)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icons[i], color: Colors.white70, size: 18),
+                  const SizedBox(height: 4),
+                  Text(
+                    value != null ? _numFmt.format(value) : '—',
+                    style: GoogleFonts.cairo(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(label,
+                      style: GoogleFonts.cairo(
+                          fontSize: 11, color: Colors.white70)),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  /// مخطط أعمدة مكدس لإحصائيات المناطق (slice 46)
+  Widget _buildZonesBarChart() {
+    final data67 = _slicesData[46];
+    if (data67 == null) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text('لا توجد بيانات إحصائيات المناطق',
+              style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+        ),
+      );
+    }
+
+    final rows = (data67['data'] as List?) ?? [];
+    // أخذ أول 12 منطقة لتجنب الازدحام
+    final displayRows = rows.take(12).toList();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.bar_chart, color: Color(0xFF6A1B9A), size: 20),
+                const SizedBox(width: 8),
+                Text('إحصائيات المناطق',
+                    style: GoogleFonts.cairo(
+                        fontSize: 14, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Text('${rows.length} منطقة',
+                    style: GoogleFonts.cairo(
+                        fontSize: 11, color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Legend
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _legendDot(const Color(0xFF4CAF50), 'نشط'),
+                const SizedBox(width: 16),
+                _legendDot(const Color(0xFFFF9800), 'غير نشط'),
+                const SizedBox(width: 16),
+                _legendDot(const Color(0xFFF44336), 'منتهي'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 280,
+              child: BarChart(BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: _getMaxZoneValue(displayRows) * 1.15,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipMargin: 4,
+                    getTooltipItem: (group, gI, rod, rI) {
+                      final zone = gI < displayRows.length
+                          ? (displayRows[gI] as Map)['Zone']?.toString() ?? ''
+                          : '';
+                      final labels = ['نشط', 'غير نشط', 'منتهي'];
+                      return BarTooltipItem(
+                        '$zone\n${labels[rI]}: ${_numFmt.format(rod.toY.toInt())}',
+                        GoogleFonts.cairo(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11),
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 32,
+                      getTitlesWidget: (val, _) {
+                        final i = val.toInt();
+                        if (i < 0 || i >= displayRows.length) {
+                          return const SizedBox.shrink();
+                        }
+                        final zone =
+                            (displayRows[i] as Map)['Zone']?.toString() ?? '';
+                        // اختصار اسم المنطقة
+                        final short =
+                            zone.length > 8 ? '${zone.substring(0, 8)}..' : zone;
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(short,
+                              style: GoogleFonts.cairo(fontSize: 9),
+                              textAlign: TextAlign.center),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (val, _) => Text(
+                          _numFmt.format(val.toInt()),
+                          style: GoogleFonts.cairo(fontSize: 9)),
+                    ),
+                  ),
+                  topTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: _getMaxZoneValue(displayRows) / 4),
+                borderData: FlBorderData(show: false),
+                barGroups: displayRows.asMap().entries.map((e) {
+                  final row = e.value as Map;
+                  final active = (row['Active'] ?? 0).toDouble();
+                  final inactive = (row['Inactive'] ?? 0).toDouble();
+                  final expired = (row['Expired'] ?? 0).toDouble();
+                  return BarChartGroupData(
+                    x: e.key,
+                    barRods: [
+                      BarChartRodData(
+                        toY: active + inactive + expired,
+                        width: 18,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
+                        rodStackItems: [
+                          BarChartRodStackItem(
+                              0, active, const Color(0xFF4CAF50)),
+                          BarChartRodStackItem(
+                              active, active + inactive, const Color(0xFFFF9800)),
+                          BarChartRodStackItem(active + inactive,
+                              active + inactive + expired, const Color(0xFFF44336)),
+                        ],
+                        color: Colors.transparent,
+                      ),
+                    ],
+                  );
+                }).toList(),
+              )),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _getMaxZoneValue(List displayRows) {
+    double maxVal = 0;
+    for (var row in displayRows) {
+      final r = row as Map;
+      final total = ((r['Active'] ?? 0) as num).toDouble() +
+          ((r['Inactive'] ?? 0) as num).toDouble() +
+          ((r['Expired'] ?? 0) as num).toDouble();
+      if (total > maxVal) maxVal = total;
+    }
+    return maxVal > 0 ? maxVal : 100;
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: GoogleFonts.cairo(fontSize: 11)),
+      ],
+    );
+  }
+
+  /// جدول تفاصيل المناطق (slice 52)
+  Widget _buildZonesTable() {
+    final data52 = _slicesData[52];
+    if (data52 == null) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text('لا توجد بيانات تفاصيل المناطق',
+              style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+        ),
+      );
+    }
+
+    final rows = (data52['data'] as List?) ?? [];
+    // حساب إحصائيات النوع
+    int mainCount = 0;
+    int subCount = 0;
+    for (var row in rows) {
+      final r = row as Map;
+      final type = r['ZoneType']?.toString() ?? '';
+      if (type == 'Main') {
+        mainCount++;
+      } else {
+        subCount++;
+      }
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // شريط العنوان
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00695C),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Text('جدول المناطق: ${rows.length} منطقة',
+                    style: GoogleFonts.cairo(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
+              ],
+            ),
+          ),
+          // إحصائيات رئيسية/فرعية
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.grey[100],
+            child: Row(
+              children: [
+                const Icon(Icons.home, color: Color(0xFF00695C), size: 16),
+                const SizedBox(width: 4),
+                Text('رئيسية: $mainCount',
+                    style: GoogleFonts.cairo(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF00695C))),
+                const SizedBox(width: 20),
+                const Icon(Icons.apartment, color: Color(0xFFE65100), size: 16),
+                const SizedBox(width: 4),
+                Text('فرعية: $subCount',
+                    style: GoogleFonts.cairo(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFE65100))),
+              ],
+            ),
+          ),
+          // الجدول
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: SizedBox(
+              height: 400,
+              child: SingleChildScrollView(
+                child: DataTable(
+                  columnSpacing: 20,
+                  dataRowMinHeight: 44,
+                  dataRowMaxHeight: 52,
+                  headingRowHeight: 40,
+                  headingTextStyle: GoogleFonts.cairo(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF00695C)),
+                  headingRowColor:
+                      WidgetStatePropertyAll(Colors.teal[50]),
+                  columns: const [
+                    DataColumn(label: Text('المنطقة')),
+                    DataColumn(label: Text('النوع')),
+                    DataColumn(label: Text('المقاول')),
+                    DataColumn(label: Text('المقاول الرئيسي')),
+                  ],
+                  rows: rows.asMap().entries.map((e) {
+                    final row = e.value as Map;
+                    final isMain =
+                        row['ZoneType']?.toString() == 'Main';
+                    final isEven = e.key % 2 == 0;
+                    return DataRow(
+                      color: WidgetStatePropertyAll(
+                          isEven ? const Color(0xFFE0F2F1) : Colors.white),
+                      cells: [
+                        DataCell(Text(
+                          row['Zone']?.toString() ?? '',
+                          style: GoogleFonts.cairo(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF00695C)),
+                        )),
+                        DataCell(Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isMain
+                                ? const Color(0xFFE8F5E9)
+                                : const Color(0xFFFFF3E0),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isMain ? Icons.home : Icons.apartment,
+                                size: 14,
+                                color: isMain
+                                    ? const Color(0xFF2E7D32)
+                                    : const Color(0xFFE65100),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isMain ? 'رئيسية' : 'فرعية',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isMain
+                                      ? const Color(0xFF2E7D32)
+                                      : const Color(0xFFE65100),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                        DataCell(Text(
+                          row['ZoneContractor']?.toString() ?? '',
+                          style: GoogleFonts.cairo(fontSize: 12),
+                        )),
+                        DataCell(Text(
+                          row['MainZoneContractor']?.toString() ?? '',
+                          style: GoogleFonts.cairo(fontSize: 12),
+                        )),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// مخطط خطي يومي — اتجاه المستخدمين (slice 48)
+  Widget _buildTimeSeriesChart() {
+    final data48 = _slicesData[48];
+    if (data48 == null) {
+      return const SizedBox.shrink();
+    }
+
+    final rows = (data48['data'] as List?) ?? [];
+    final colnames = (data48['colnames'] as List?)?.cast<String>() ?? [];
+    if (rows.isEmpty || colnames.length < 2) return const SizedBox.shrink();
+
+    // أعمدة المناطق (كل شيء ما عدا eventDate)
+    final zoneColumns = colnames.where((c) => c != 'eventDate').toList();
+
+    // اختيار أكبر 5 مناطق حسب المجموع
+    final zoneTotals = <String, double>{};
+    for (var col in zoneColumns) {
+      zoneTotals[col] = rows.fold<double>(
+          0.0, (sum, r) => sum + ((r[col] ?? 0) as num).toDouble());
+    }
+    final sortedZones = zoneTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top5 = sortedZones.take(5).map((e) => e.key).toList();
+
+    final chartColors = [
+      const Color(0xFF2196F3), // أزرق
+      const Color(0xFF4CAF50), // أخضر
+      const Color(0xFFFF9800), // برتقالي
+      const Color(0xFF9C27B0), // بنفسجي
+      const Color(0xFFF44336), // أحمر
+    ];
+
+    // بناء خطوط المخطط
+    final lineBarsData = <LineChartBarData>[];
+    for (var z = 0; z < top5.length; z++) {
+      final col = top5[z];
+      final spots = <FlSpot>[];
+      for (var i = 0; i < rows.length; i++) {
+        final val = ((rows[i][col] ?? 0) as num).toDouble();
+        spots.add(FlSpot(i.toDouble(), val));
+      }
+      lineBarsData.add(LineChartBarData(
+        spots: spots,
+        isCurved: true,
+        curveSmoothness: 0.3,
+        color: chartColors[z],
+        barWidth: 2,
+        dotData: const FlDotData(show: false),
+        belowBarData: BarAreaData(
+          show: true,
+          color: chartColors[z].withOpacity(0.08),
+        ),
+      ));
+    }
+
+    // حساب أقصى قيمة Y
+    double maxY = 0;
+    for (var col in top5) {
+      for (var row in rows) {
+        final v = ((row[col] ?? 0) as num).toDouble();
+        if (v > maxY) maxY = v;
+      }
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('اتجاه المستخدمين اليومي (آخر شهر)',
+                style: GoogleFonts.cairo(
+                    fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('أكبر ${top5.length} مناطق',
+                style: GoogleFonts.cairo(
+                    fontSize: 11, color: Colors.grey[600])),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 300,
+              child: LineChart(LineChartData(
+                lineBarsData: lineBarsData,
+                minY: 0,
+                maxY: maxY * 1.1,
+                titlesData: FlTitlesData(
+                  topTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      interval: (rows.length / 6).ceilToDouble().clamp(1, 100),
+                      getTitlesWidget: (value, meta) {
+                        final idx = value.toInt();
+                        if (idx < 0 || idx >= rows.length) {
+                          return const SizedBox.shrink();
+                        }
+                        final ts = rows[idx]['eventDate'] as int?;
+                        if (ts == null) return const SizedBox.shrink();
+                        final date =
+                            DateTime.fromMillisecondsSinceEpoch(ts);
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text('${date.month}/${date.day}',
+                              style: const TextStyle(fontSize: 9)),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(_numFmt.format(value.toInt()),
+                            style: const TextStyle(fontSize: 9));
+                      },
+                    ),
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY > 0 ? maxY / 4 : 1,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.grey[300]!,
+                    strokeWidth: 0.5,
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    getTooltipItems: (spots) => spots.map((spot) {
+                      final col = top5[spot.barIndex];
+                      return LineTooltipItem(
+                        '$col\n${_numFmt.format(spot.y.toInt())}',
+                        TextStyle(
+                          color: chartColors[spot.barIndex],
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              )),
+            ),
+            const SizedBox(height: 8),
+            // Legend
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              children: List.generate(top5.length, (i) {
+                return _legendDot(chartColors[i], top5[i]);
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// مخطط خطي طويل المدى — اتجاه Active/Inactive (slice 51)
+  Widget _buildLongTermChart() {
+    final data51 = _slicesData[51];
+    if (data51 == null) {
+      return const SizedBox.shrink();
+    }
+
+    final rows = (data51['data'] as List?) ?? [];
+    final colnames = (data51['colnames'] as List?)?.cast<String>() ?? [];
+    if (rows.isEmpty || colnames.length < 2) return const SizedBox.shrink();
+
+    // تجميع إجمالي Active و Inactive من كل المناطق لكل تاريخ
+    final activeColumns =
+        colnames.where((c) => c.contains('Active')).toList();
+    final inactiveColumns =
+        colnames.where((c) => c.contains('Inactive')).toList();
+
+    if (activeColumns.isEmpty) return const SizedBox.shrink();
+
+    final activeSpots = <FlSpot>[];
+    final inactiveSpots = <FlSpot>[];
+    double maxY = 0;
+
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      double activeSum = 0;
+      double inactiveSum = 0;
+
+      for (var col in activeColumns) {
+        activeSum += ((row[col] ?? 0) as num).toDouble();
+      }
+      for (var col in inactiveColumns) {
+        inactiveSum += ((row[col] ?? 0) as num).toDouble();
+      }
+
+      activeSpots.add(FlSpot(i.toDouble(), activeSum));
+      inactiveSpots.add(FlSpot(i.toDouble(), inactiveSum));
+
+      if (activeSum > maxY) maxY = activeSum;
+      if (inactiveSum > maxY) maxY = inactiveSum;
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('اتجاه المستخدمين (طويل المدى)',
+                style: GoogleFonts.cairo(
+                    fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('مجموع كل المناطق — Active vs Inactive',
+                style: GoogleFonts.cairo(
+                    fontSize: 11, color: Colors.grey[600])),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 300,
+              child: LineChart(LineChartData(
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: activeSpots,
+                    isCurved: true,
+                    curveSmoothness: 0.2,
+                    color: const Color(0xFF4CAF50),
+                    barWidth: 2.5,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: const Color(0xFF4CAF50).withOpacity(0.12),
+                    ),
+                  ),
+                  LineChartBarData(
+                    spots: inactiveSpots,
+                    isCurved: true,
+                    curveSmoothness: 0.2,
+                    color: const Color(0xFFF44336),
+                    barWidth: 2.5,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: const Color(0xFFF44336).withOpacity(0.08),
+                    ),
+                  ),
+                ],
+                minY: 0,
+                maxY: maxY * 1.1,
+                titlesData: FlTitlesData(
+                  topTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      interval: (rows.length / 6).ceilToDouble().clamp(1, 1000),
+                      getTitlesWidget: (value, meta) {
+                        final idx = value.toInt();
+                        if (idx < 0 || idx >= rows.length) {
+                          return const SizedBox.shrink();
+                        }
+                        final ts = rows[idx]['eventDate'] as int?;
+                        if (ts == null) return const SizedBox.shrink();
+                        final date =
+                            DateTime.fromMillisecondsSinceEpoch(ts);
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text('${date.year}/${date.month}',
+                              style: const TextStyle(fontSize: 9)),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 45,
+                      getTitlesWidget: (value, meta) {
+                        return Text(_numFmt.format(value.toInt()),
+                            style: const TextStyle(fontSize: 9));
+                      },
+                    ),
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY > 0 ? maxY / 4 : 1,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.grey[300]!,
+                    strokeWidth: 0.5,
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    getTooltipItems: (spots) => spots.map((spot) {
+                      final labels = ['نشط', 'غير نشط'];
+                      final colors = [
+                        const Color(0xFF4CAF50),
+                        const Color(0xFFF44336),
+                      ];
+                      return LineTooltipItem(
+                        '${labels[spot.barIndex]}: ${_numFmt.format(spot.y.toInt())}',
+                        TextStyle(
+                          color: colors[spot.barIndex],
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              )),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _legendDot(const Color(0xFF4CAF50), 'نشط'),
+                const SizedBox(width: 20),
+                _legendDot(const Color(0xFFF44336), 'غير نشط'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Helper widgets ──
+
+  Widget _statCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: [color, color.withOpacity(0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: GoogleFonts.cairo(
+                          color: Colors.white70, fontSize: 12)),
+                  Text(value,
+                      style: GoogleFonts.cairo(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miniCard(String title, dynamic value, IconData icon, Color color) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: GoogleFonts.cairo(
+                          fontSize: 10, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    _numFmt.format(value is num ? value : 0),
+                    style: GoogleFonts.cairo(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: color),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _taskRow(String label, dynamic value, Color color,
+      {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(label,
+                  style: GoogleFonts.cairo(
+                      fontSize: 13,
+                      fontWeight: bold ? FontWeight.bold : FontWeight.normal))),
+          Text(
+            _numFmt.format(value is num ? value : 0),
+            style: GoogleFonts.cairo(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _translateRequestType(String type) {
+    const map = {
+      'Customer Onboarding Request': 'طلب تسجيل عميل',
+      'New Address Request': 'طلب عنوان جديد',
+      'Subscription Transfer Request': 'طلب نقل اشتراك',
+      'Subscription Transfer Request New Customer': 'نقل اشتراك لعميل جديد',
+      'Change Account Information Request': 'تغيير معلومات الحساب',
+    };
+    return map[type] ?? type;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('📊 مشروع Dashboard'),
+          title: const Text('تحليلات Dashboard'),
           backgroundColor: Colors.indigo[800],
           foregroundColor: Colors.white,
           elevation: 0,
           actions: [
-            // زر جلب البيانات من السيرفر
-            if (_isFetchingFromServer || _isFetchingAllData)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_isFetchingFromServer)
-                      IconButton(
-                        icon: const Icon(Icons.stop, color: Colors.red),
-                        tooltip: 'إيقاف',
-                        onPressed: _stopFetching,
-                      ),
-                  ],
-                ),
-              )
-            else ...[
-              // حالة Guest Token
-              if (_guestToken != null)
-                Tooltip(
-                  message: 'متصل بالداشبورد ✓',
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.check_circle,
-                        color: Colors.greenAccent, size: 18),
+            // 📋 زر عرض السجلات
+            IconButton(
+              icon: Badge(
+                isLabelVisible: _logs.isNotEmpty,
+                label: Text('${_logs.length}',
+                    style: const TextStyle(fontSize: 10)),
+                child: const Icon(Icons.article_outlined),
+              ),
+              tooltip: 'عرض السجلات',
+              onPressed: _showLogs,
+            ),
+            IconButton(
+              icon: const Icon(Icons.language),
+              tooltip: 'جلب من الموقع',
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FetchServerDataPage(authToken: widget.authToken),
                   ),
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.login, color: Colors.amber),
-                  tooltip: 'تسجيل الدخول للداشبورد',
-                  onPressed: _showLoginDialog,
-                ),
-              // 📂 زر تحميل البيانات من الملفات المحلية
-              IconButton(
-                icon: const Icon(Icons.folder_open, color: Colors.amber),
-                tooltip: '📂 تحميل من ملفات Python المحلية',
-                onPressed: _loadFromLocalFiles,
-              ),
-              // زر جلب من Admin API (يعمل بشكل مؤكد!)
-              IconButton(
-                icon: const Icon(Icons.api, color: Colors.green),
-                tooltip: '🌐 جلب من Admin API (موصى به)',
-                onPressed: () => _fetchFromServer(useAdminApi: true),
-              ),
-              // زر جلب جميع المناطق
-              IconButton(
-                icon: const Icon(Icons.public),
-                tooltip: 'جلب جميع المناطق (613)',
-                onPressed: () => _fetchFromServer(allZones: true),
-              ),
-              // زر السكربت المحسّن (يلتقط البيانات تلقائياً)
-              IconButton(
-                icon: const Icon(Icons.auto_awesome, color: Colors.amber),
-                tooltip: '✨ جلب محسّن (التقاط تلقائي)',
-                onPressed: () => _fetchFromServer(useImproved: true),
-              ),
-              // زر التشخيص (Debug)
-              IconButton(
-                icon: const Icon(Icons.bug_report, color: Colors.orange),
-                tooltip: '🔍 تشخيص (Screenshots + Logs)',
-                onPressed: () => _fetchFromServer(useDebug: true),
-              ),
-              // زر جلب كل المناطق (السكربت الذي يعمل)
-              IconButton(
-                icon: const Icon(Icons.cloud_download),
-                tooltip: 'جلب بيانات جديدة (كل المناطق)',
-                onPressed: () => _fetchFromServer(allZones: true),
-              ),
-              // 📋 زر عرض السجلات
-              IconButton(
-                icon: Badge(
-                  isLabelVisible: _logs.isNotEmpty,
-                  label: Text('${_logs.length}',
-                      style: const TextStyle(fontSize: 10)),
-                  child: const Icon(Icons.article_outlined),
-                ),
-                tooltip: '📋 عرض السجلات (${_logs.length})',
-                onPressed: _showLogs,
-              ),
-            ],
+                );
+                // بعد العودة — تحميل البيانات المحفوظة
+                await _loadSupersetDataLocally();
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث القائمة',
-              onPressed: _loadDashboardFiles,
+              tooltip: 'تحديث البيانات',
+              onPressed: _fetchLiveDashboard,
             ),
           ],
         ),
-        body: Row(
-          children: [
-            // الشريط الجانبي - قائمة الملفات
-            Container(
-              width: 280,
-              decoration: BoxDecoration(
-                color: Colors.indigo[50],
-                border: Border(
-                  left: BorderSide(color: Colors.indigo[200]!),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // تحذير: البيانات مفلترة
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    color: Colors.orange[100],
-                    child: const Row(
-                      children: [
-                        Icon(Icons.warning_amber,
-                            color: Colors.orange, size: 16),
-                        SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            'البيانات الحالية مفلترة على منطقة واحدة',
-                            style:
-                                TextStyle(fontSize: 10, color: Colors.orange),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // رأس القائمة
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo[100],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.folder_special, color: Colors.indigo),
-                            SizedBox(width: 8),
-                            Text(
-                              '07_Dashboard_Project',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${_dashboardFiles.length} ملف JSON',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // شريط حالة جلب البيانات
-                  if (_isFetchingFromServer || _fetchStatus.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _isFetchingFromServer
-                            ? Colors.blue[50]
-                            : (_fetchStatus.contains('✅')
-                                ? Colors.green[50]
-                                : Colors.red[50]),
-                        border: Border(
-                          bottom: BorderSide(
-                            color: _isFetchingFromServer
-                                ? Colors.blue[200]!
-                                : (_fetchStatus.contains('✅')
-                                    ? Colors.green[200]!
-                                    : Colors.red[200]!),
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          if (_isFetchingFromServer)
-                            const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          else
-                            Icon(
-                              _fetchStatus.contains('✅')
-                                  ? Icons.check_circle
-                                  : Icons.info,
-                              size: 16,
-                              color: _fetchStatus.contains('✅')
-                                  ? Colors.green
-                                  : Colors.blue,
-                            ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _fetchStatus,
-                              style: const TextStyle(fontSize: 11),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (!_isFetchingFromServer && _fetchStatus.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.close, size: 16),
-                              onPressed: () =>
-                                  setState(() => _fetchStatus = ''),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                        ],
-                      ),
-                    ),
-                  // قائمة الملفات
-                  Expanded(
-                    child: _buildFilesList(),
-                  ),
-                ],
-              ),
-            ),
-
-            // المحتوى الرئيسي
-            Expanded(
-              child: _buildMainContent(),
-            ),
-          ],
-        ),
+        body: _buildLiveDashboard(),
       ),
     );
   }
@@ -2695,20 +3069,14 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     final categories = <String, List<FileSystemEntity>>{
       '📈 بيانات الرسوم': [],
       '🗺️ المناطق': [],
-      '👥 المستخدمين': [],
-      '📋 أخرى': [],
     };
 
     for (final file in _dashboardFiles) {
       final name = file.path.toLowerCase();
-      if (name.contains('chart') || name.contains('graph')) {
-        categories['📈 بيانات الرسوم']!.add(file);
-      } else if (name.contains('zone')) {
+      if (name.contains('zone')) {
         categories['🗺️ المناطق']!.add(file);
-      } else if (name.contains('user') || name.contains('customer')) {
-        categories['👥 المستخدمين']!.add(file);
       } else {
-        categories['📋 أخرى']!.add(file);
+        categories['📈 بيانات الرسوم']!.add(file);
       }
     }
 
@@ -2763,19 +3131,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     }
 
     if (_currentData == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.touch_app, size: 64, color: Colors.indigo[200]),
-            const SizedBox(height: 16),
-            Text(
-              'اختر ملفاً من القائمة لعرض محتواه',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      );
+      return _buildLiveDashboard();
     }
 
     return Column(
@@ -3692,3 +4048,18 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     );
   }
 }
+
+class _PieItem {
+  final String label;
+  final double value;
+  final Color color;
+  _PieItem(this.label, this.value, this.color);
+}
+
+class _BarItem {
+  final String label;
+  final double value;
+  final Color color;
+  _BarItem(this.label, this.value, this.color);
+}
+

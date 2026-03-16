@@ -67,7 +67,7 @@ class _WhatsAppBusinessConfigPageState
 
       _isConfigured = await WhatsAppBusinessService.isConfigured();
     } catch (e) {
-      debugPrint('خطأ في تحميل الإعدادات: $e');
+      debugPrint('خطأ في تحميل الإعدادات');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -90,7 +90,7 @@ class _WhatsAppBusinessConfigPageState
       debugPrint('   Phone Number ID: ${_phoneNumberIdController.text}');
       debugPrint('   WABA ID: ${_businessAccountIdController.text}');
     } catch (e) {
-      debugPrint('⚠️ لم يتم العثور على config.json: $e');
+      debugPrint('⚠️ لم يتم العثور على config.json');
     }
   }
 
@@ -119,7 +119,7 @@ class _WhatsAppBusinessConfigPageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ خطأ في حفظ الإعدادات: $e'),
+            content: Text('❌ خطأ في حفظ الإعدادات'),
             backgroundColor: Colors.red,
           ),
         );

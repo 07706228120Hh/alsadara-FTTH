@@ -42,7 +42,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = 'حدث خطأ';
         _isLoading = false;
       });
     }
@@ -369,7 +369,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
           );
         }
       }
@@ -568,7 +568,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red),
                       );
                     }

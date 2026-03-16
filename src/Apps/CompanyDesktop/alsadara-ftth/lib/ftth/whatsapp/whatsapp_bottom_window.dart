@@ -110,7 +110,7 @@ class WhatsAppBottomWindow {
         _overlayEntry = null;
       }
     } catch (e) {
-      debugPrint('⚠️ Error removing main overlay: $e');
+      debugPrint('⚠️ Error removing main overlay');
       _overlayEntry = null;
     }
 
@@ -120,7 +120,7 @@ class WhatsAppBottomWindow {
         _fabEntry = null;
       }
     } catch (e) {
-      debugPrint('⚠️ Error removing FAB overlay: $e');
+      debugPrint('⚠️ Error removing FAB overlay');
       _fabEntry = null;
     }
 
@@ -154,7 +154,7 @@ class WhatsAppBottomWindow {
           debugPrint('⚠️ Saved context is not mounted, cannot show FAB');
         }
       } catch (e) {
-        debugPrint('⚠️ Error showing FAB after minimize: $e');
+        debugPrint('⚠️ Error showing FAB after minimize');
       }
     }
   }
@@ -194,7 +194,7 @@ class WhatsAppBottomWindow {
       try {
         _fabEntry!.markNeedsBuild();
       } catch (e) {
-        debugPrint('⚠️ FAB overlay seems detached, recreating: $e');
+        debugPrint('⚠️ FAB overlay seems detached, recreating');
         try {
           _fabEntry!.remove();
         } catch (_) {}
@@ -235,7 +235,7 @@ class WhatsAppBottomWindow {
         return;
       }
     } catch (e) {
-      debugPrint('⚠️ Context error: $e');
+      debugPrint('⚠️ Context error');
       return;
     }
 
@@ -290,7 +290,7 @@ class WhatsAppBottomWindow {
                       debugPrint('✅ تم فتح/إظهار نافذة الواتساب');
                     }
                   } catch (e) {
-                    debugPrint('❌ خطأ في التعامل مع زر الواتساب العائم: $e');
+                    debugPrint('❌ خطأ في التعامل مع زر الواتساب العائم');
                   }
                 },
                 backgroundColor: const Color(0xFF25D366),
@@ -320,7 +320,7 @@ class WhatsAppBottomWindow {
       final overlay = _rootOverlay ?? Overlay.of(context, rootOverlay: true);
       overlay.insert(_fabEntry!);
     } catch (e) {
-      debugPrint('⚠️ Failed to insert FAB overlay: $e');
+      debugPrint('⚠️ Failed to insert FAB overlay');
       _fabEntry = null;
     }
 
@@ -345,7 +345,7 @@ class WhatsAppBottomWindow {
         return;
       }
     } catch (e) {
-      debugPrint('⚠️ Context error: $e');
+      debugPrint('⚠️ Context error');
       return;
     }
 
@@ -410,7 +410,7 @@ class WhatsAppBottomWindow {
                               ),
                             );
                           } catch (e) {
-                            debugPrint('❌ خطأ في فتح صفحة المحادثات: $e');
+                            debugPrint('❌ خطأ في فتح صفحة المحادثات');
                           }
                         },
                         backgroundColor: const Color(0xFF128C7E),
@@ -469,7 +469,7 @@ class WhatsAppBottomWindow {
       final overlay = _rootOverlay ?? Overlay.of(context, rootOverlay: true);
       overlay.insert(_conversationsFabEntry!);
     } catch (e) {
-      debugPrint('⚠️ Failed to insert Conversations FAB overlay: $e');
+      debugPrint('⚠️ Failed to insert Conversations FAB overlay');
       _conversationsFabEntry = null;
     }
   }
@@ -511,7 +511,7 @@ class WhatsAppBottomWindow {
         _instance!.sendNewMessage(phone, message, autoSend: autoSend);
         return true;
       } catch (e) {
-        debugPrint('⚠️ فشل إرسال رسالة إلى النافذة المفتوحة: $e');
+        debugPrint('⚠️ فشل إرسال رسالة إلى النافذة المفتوحة');
         try {
           _instance!.sendNewMessage(phone, message, autoSend: autoSend);
           return true;
@@ -535,7 +535,7 @@ class WhatsAppBottomWindow {
             showFloatingButton(_savedContext!);
           }
         } catch (e) {
-          debugPrint('⚠️ FAB guard recreate error: $e');
+          debugPrint('⚠️ FAB guard recreate error');
         }
       }
     });
@@ -561,7 +561,7 @@ class WhatsAppBottomWindow {
           showConversationsFloatingButton(context, isAdmin: _isAdminUser);
         }
       } catch (e) {
-        debugPrint('⚠️ Failed to init global overlay: $e');
+        debugPrint('⚠️ Failed to init global overlay');
       }
     }
   }
@@ -616,7 +616,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
     try {
       _statusMonitor?.cancel();
     } catch (e) {
-      debugPrint('⚠️ Error canceling status monitor: $e');
+      debugPrint('⚠️ Error canceling status monitor');
     }
 
     // تنظيف آمن للـ instance reference
@@ -636,7 +636,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         setState(() => _isLoggedIn = true);
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فحص حالة تسجيل الدخول: $e');
+      debugPrint('❌ خطأ في فحص حالة تسجيل الدخول');
     }
   }
 
@@ -648,9 +648,9 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         await _initializeFlutterWebView();
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة WebView: $e');
+      debugPrint('❌ خطأ في تهيئة WebView');
       setState(() {
-        _error = 'خطأ في تحميل واتساب: ${e.toString()}';
+        _error = 'خطأ في تحميل واتساب';
         _isLoading = false;
       });
     }
@@ -690,7 +690,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
           'https://web.whatsapp.com/send?phone=$_currentPhone&text=$encodedMessage';
       await _winController!.loadUrl(webUrl);
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة Windows WebView: $e');
+      debugPrint('❌ خطأ في تهيئة Windows WebView');
       setState(() {
         if (e.toString().toLowerCase().contains('webview2') ||
             e.toString().toLowerCase().contains('edge') ||
@@ -698,7 +698,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
           _error =
               'يتطلب Microsoft Edge WebView2 Runtime لعمل الواتساب.\n\nيرجى تحميله وتثبيته من موقع مايكروسوفت الرسمي ثم إعادة تشغيل التطبيق.';
         } else {
-          _error = 'خطأ في تحميل واتساب ويب: ${e.toString()}';
+          _error = 'خطأ في تحميل واتساب ويب';
         }
         _isLoading = false;
       });
@@ -762,7 +762,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
       await prefs.setBool('wa_web_logged_in', true);
       debugPrint('💾 تم حفظ حالة تسجيل الدخول');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ حالة الدخول: $e');
+      debugPrint('❌ خطأ في حفظ حالة الدخول');
     }
   }
 
@@ -798,7 +798,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فحص حالة الإرسال: $e');
+      debugPrint('❌ خطأ في فحص حالة الإرسال');
     }
   }
 
@@ -937,7 +937,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         _controller!.runJavaScript(js);
       }
     } catch (e) {
-      debugPrint('⚠️ فشل في الإرسال التلقائي بعد التحميل: $e');
+      debugPrint('⚠️ فشل في الإرسال التلقائي بعد التحميل');
     }
   }
 
@@ -1039,7 +1039,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         _controller!.runJavaScript(js);
       }
     } catch (e) {
-      debugPrint('⚠️ فشل حقن الرسالة في نفس المحادثة: $e');
+      debugPrint('⚠️ فشل حقن الرسالة في نفس المحادثة');
     }
   }
 
@@ -1064,7 +1064,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         return true;
       }
     } catch (e) {
-      debugPrint('⚠️ فشل quickSwitchChat: $e');
+      debugPrint('⚠️ فشل quickSwitchChat');
     }
     return false;
   }
@@ -1269,7 +1269,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فتح رابط التحميل: $e');
+      debugPrint('❌ خطأ في فتح رابط التحميل');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

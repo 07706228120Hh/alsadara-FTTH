@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'tktat_details_page.dart';
+import '../../services/auth_service.dart';
 import '../../utils/status_translator.dart';
+import '../auth/auth_error_handler.dart';
 
 class TKTATsPage extends StatefulWidget {
   final String authToken;
@@ -90,12 +91,17 @@ class _TKTATsPageState extends State<TKTATsPage> {
 
     try {
       final url = Uri.parse(
-          'https://api.ftth.iq/api/support/tickets?pageSize=50&pageNumber=$currentPage&sortCriteria.property=createdAt&sortCriteria.direction=desc&status=0&hierarchyLevel=0');
-      final response = await http.get(url, headers: {
-        'Authorization': 'Bearer ${widget.authToken}',
-        'Accept': 'application/json',
-      });
+          'https://admin.ftth.iq/api/support/tickets?pageSize=50&pageNumber=$currentPage&sortCriteria.property=createdAt&sortCriteria.direction=desc&hierarchyLevel=0');
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url.toString(),
+        headers: {'Accept': 'application/json'},
+      );
 
+      if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
+      }
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final newTKTATs = data['items'] ?? [];

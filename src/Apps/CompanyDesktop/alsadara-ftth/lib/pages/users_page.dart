@@ -64,7 +64,7 @@ class _UsersPageState extends State<UsersPage> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'حدث خطأ أثناء جلب المستخدمين: $e';
+        errorMessage = 'حدث خطأ أثناء جلب المستخدمين';
         isLoading = false;
       });
     }
@@ -97,7 +97,7 @@ class _UsersPageState extends State<UsersPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ أثناء تحديث المستخدم: $e')),
+          SnackBar(content: Text('خطأ أثناء تحديث المستخدم')),
         );
       }
     }
@@ -122,7 +122,7 @@ class _UsersPageState extends State<UsersPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ أثناء حذف المستخدم: $e')),
+          SnackBar(content: Text('خطأ أثناء حذف المستخدم')),
         );
       }
     }

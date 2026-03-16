@@ -379,11 +379,11 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Error loading regions: $e');
+      debugPrint('❌ Error loading regions');
       setState(() {
         isLoading = false;
         hasError = true;
-        errorMessage = 'خطأ في تحميل البيانات: $e';
+        errorMessage = 'خطأ في تحميل البيانات';
       });
     }
   }
@@ -431,11 +431,11 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
 
       setState(() => isLoading = false);
     } catch (e) {
-      debugPrint('❌ Error loading users: $e');
+      debugPrint('❌ Error loading users');
       setState(() {
         isLoading = false;
         hasError = true;
-        errorMessage = 'خطأ في تحميل بيانات المستخدمين: $e';
+        errorMessage = 'خطأ في تحميل بيانات المستخدمين';
       });
     }
   }
@@ -566,13 +566,13 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
 
       setState(() => isLoading = false);
     } catch (e) {
-      debugPrint('❌ Connection test failed: $e');
+      debugPrint('❌ Connection test failed');
       setState(() {
         isLoading = false;
         hasError = true;
-        errorMessage = 'فشل الاتصال: $e';
+        errorMessage = 'فشل الاتصال';
       });
-      _showError('فشل الاتصال: $e');
+      _showError('فشل الاتصال');
     }
   }
 

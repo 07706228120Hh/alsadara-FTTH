@@ -2306,6 +2306,69 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("InternetPlans");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.IptvSubscriber", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("ActivationDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CompanyId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IptvCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("IptvPassword")
+                        .HasColumnType("text");
+
+                    b.Property<string>("IptvUsername")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SubscriptionId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("IptvSubscribers");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.JournalEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4871,6 +4934,12 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<TimeOnly?>("CustomWorkEndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("CustomWorkStartTime")
+                        .HasColumnType("time without time zone");
+
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("timestamp with time zone");
 
@@ -5000,6 +5069,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("VerificationCodeExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("WorkScheduleId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
@@ -5008,6 +5080,8 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.HasIndex("PhoneNumber")
                         .IsUnique();
+
+                    b.HasIndex("WorkScheduleId");
 
                     b.ToTable("Users");
                 });
@@ -6464,7 +6538,13 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Sadara.Domain.Entities.WorkSchedule", "WorkSchedule")
+                        .WithMany()
+                        .HasForeignKey("WorkScheduleId");
+
                     b.Navigation("Company");
+
+                    b.Navigation("WorkSchedule");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.UserPermission", b =>

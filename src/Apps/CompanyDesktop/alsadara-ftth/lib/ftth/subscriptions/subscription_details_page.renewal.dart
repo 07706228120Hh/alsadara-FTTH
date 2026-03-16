@@ -17,6 +17,75 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       return;
     }
 
+    // منع الضغط المزدوج — إذا كانت عملية تفعيل جارية بالفعل
+    if (_isActivating) {
+      debugPrint('⚠️ عملية تفعيل جارية بالفعل - تجاهل الضغط');
+      return;
+    }
+
+    // فاصل زمني إجباري (دقيقتان) بين كل تفعيلتين
+    if (_lastActivationTime != null) {
+      final elapsed = DateTime.now().difference(_lastActivationTime!);
+      const cooldown = Duration(minutes: 2);
+      if (elapsed < cooldown) {
+        final remaining = cooldown - elapsed;
+        final remainSec = remaining.inSeconds;
+        final mins = remainSec ~/ 60;
+        final secs = remainSec % 60;
+        final timeText = mins > 0
+            ? '$mins:${secs.toString().padLeft(2, '0')} دقيقة'
+            : '$secs ثانية';
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.timer, color: Colors.orange.shade700, size: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('يرجى الانتظار', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.hourglass_top, size: 48, color: Colors.orange.shade400),
+                  const SizedBox(height: 12),
+                  Text(
+                    'يجب الانتظار دقيقتين بين كل عملية تفعيل وأخرى',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, color: Colors.grey.shade800),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'المتبقي: $timeText',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange.shade700),
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('حسناً'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     // التحقق من التفعيل المكرر في نفس اليوم
     final subscriptionId = widget.subscriptionId;
     final now = DateTime.now();
@@ -63,78 +132,163 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       return;
     }
 
+    // تحذير عند اختيار فترة التزام أكثر من شهر واحد
+    if (selectedCommitmentPeriod != null && selectedCommitmentPeriod! > 1) {
+      final confirmCommitment = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700, size: 28),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('تنبيه: فترة التزام طويلة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.schedule, size: 48, color: Colors.amber.shade600),
+              const SizedBox(height: 12),
+              Text(
+                'فترة الالتزام المحددة هي $selectedCommitmentPeriod شهر',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'هل أنت متأكد من أنك تريد التفعيل بفترة التزام أكثر من شهر واحد؟',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text('نعم، تفعيل $selectedCommitmentPeriod شهر'),
+            ),
+          ],
+        ),
+      ) ?? false;
+      if (!confirmCommitment) return;
+    }
+
     // تأكيد العملية قبل التنفيذ
     final confirmed = await _showRenewalConfirmationDialog();
     if (!confirmed) return;
 
     // ========== بدء التنفيذ المتسلسل ==========
+    safeSetState(() => _isActivating = true);
 
-    // 1️⃣ تفعيل الاشتراك
-    debugPrint('🚀 [1/5] بدء تفعيل الاشتراك...');
-    final activationSuccess = await _executeChangeSubscription();
-    if (!activationSuccess) {
-      debugPrint('❌ فشل تفعيل الاشتراك - إيقاف العملية');
-      return;
-    }
-    debugPrint('✅ [1/5] تم تفعيل الاشتراك بنجاح');
+    // حفظ القيم المختارة قبل تحديث الصفحة (لأن fetchSubscriptionDetails تُعيد تعيينها)
+    final activatedPlan = selectedPlan;
+    final activatedPeriod = selectedCommitmentPeriod;
+    final activatedPriceDetails = priceDetails != null
+        ? Map<String, dynamic>.from(priceDetails!)
+        : null;
+    final activatedPaymentMethod = selectedPaymentMethod;
+    final activatedAgent = _selectedLinkedAgent;
+    final activatedTechnician = _selectedLinkedTechnician;
 
-    // تسجيل التفعيل الناجح في القائمة
-    _activatedSubscriptionsToday[subscriptionId] = DateTime.now();
-
-    // 2️⃣ تحديث الصفحة للحصول على البيانات المحدثة
-    debugPrint('🔄 [2/5] تحديث بيانات الصفحة...');
     try {
-      await fetchSubscriptionDetails();
-      debugPrint('✅ [2/5] تم تحديث الصفحة بنجاح');
-    } catch (e) {
-      debugPrint('⚠️ [2/5] فشل تحديث الصفحة: $e - المتابعة...');
-    }
-
-    // 🎉 عرض نافذة النجاح مع معلومات الاشتراك المحدثة
-    if (mounted) {
-      await _showActivationSuccessDialog();
-    }
-
-    // 3️⃣ حفظ البيانات في VPS (دائماً بغض النظر عن الصلاحيات)
-    debugPrint('📊 [3/5] حفظ البيانات...');
-    try {
-      if (partnerWalletBalanceBefore == 0.0) {
-        partnerWalletBalanceBefore = walletBalance;
+      // 1️⃣ تفعيل الاشتراك
+      debugPrint('🚀 [1/5] بدء تفعيل الاشتراك...');
+      final activationSuccess = await _executeChangeSubscription();
+      if (!activationSuccess) {
+        debugPrint('❌ فشل تفعيل الاشتراك - إيقاف العملية');
+        return;
       }
-      if (customerWalletBalanceBefore == 0.0) {
-        customerWalletBalanceBefore = customerWalletBalance;
-      }
-      await _saveToServer();
-      safeSetState(() => _isSavedToSheets = true);
-      debugPrint('✅ [3/5] تم الحفظ بنجاح');
-    } catch (e) {
-      debugPrint('⚠️ [3/5] فشل الحفظ: $e - المتابعة...');
-    }
+      debugPrint('✅ [1/5] تم تفعيل الاشتراك بنجاح');
 
-    // 4️⃣ طباعة الوصل
-    debugPrint('🖨️ [4/5] طباعة الوصل...');
-    try {
-      await _executePrintReceipt();
-      debugPrint('✅ [4/5] تم طباعة الوصل بنجاح');
-    } catch (e) {
-      debugPrint('⚠️ [4/5] فشل الطباعة: $e - المتابعة...');
-    }
+      // تسجيل التفعيل الناجح في القائمة + الفاصل الزمني
+      _activatedSubscriptionsToday[subscriptionId] = DateTime.now();
+      _lastActivationTime = DateTime.now();
 
-    // 5️⃣ إرسال واتساب (إن توفرت الصلاحية)
-    if (widget.hasWhatsAppPermission) {
-      debugPrint('📱 [5/5] إرسال رسالة واتساب...');
+      // 2️⃣ تحديث الصفحة للحصول على البيانات المحدثة
+      debugPrint('🔄 [2/5] تحديث بيانات الصفحة...');
       try {
-        await sendWhatsAppMessage();
-        debugPrint('✅ [5/5] تم إرسال الواتساب بنجاح');
+        await fetchSubscriptionDetails();
+        debugPrint('✅ [2/5] تم تحديث الصفحة بنجاح');
       } catch (e) {
-        debugPrint('⚠️ [5/5] فشل إرسال الواتساب: $e');
+        debugPrint('⚠️ [2/5] فشل تحديث الصفحة: $e - المتابعة...');
       }
-    } else {
-      debugPrint('⏭️ [5/5] تخطي واتساب - لا توجد صلاحية');
-    }
 
-    // ========== اكتمال العملية ==========
-    debugPrint('🎉 اكتملت جميع العمليات بنجاح!');
+      // استعادة القيم المختارة للطباعة والحفظ (لأن API قد يرجع القيم القديمة)
+      selectedPlan = activatedPlan;
+      selectedCommitmentPeriod = activatedPeriod;
+      priceDetails = activatedPriceDetails;
+      selectedPaymentMethod = activatedPaymentMethod;
+      _selectedLinkedAgent = activatedAgent;
+      _selectedLinkedTechnician = activatedTechnician;
+
+      // 🎉 عرض نافذة النجاح مع معلومات الاشتراك المحدثة
+      if (mounted) {
+        await _showActivationSuccessDialog();
+      }
+
+      // 3️⃣ حفظ البيانات في VPS (دائماً بغض النظر عن الصلاحيات)
+      debugPrint('📊 [3/5] حفظ البيانات...');
+      try {
+        if (partnerWalletBalanceBefore == 0.0) {
+          partnerWalletBalanceBefore = walletBalance;
+        }
+        if (customerWalletBalanceBefore == 0.0) {
+          customerWalletBalanceBefore = customerWalletBalance;
+        }
+        await _saveToServer();
+        safeSetState(() => _isSavedToSheets = true);
+        debugPrint('✅ [3/5] تم الحفظ بنجاح');
+      } catch (e) {
+        debugPrint('⚠️ [3/5] فشل الحفظ: $e - المتابعة...');
+      }
+
+      // 4️⃣ طباعة الوصل
+      debugPrint('🖨️ [4/5] طباعة الوصل...');
+      try {
+        await _executePrintReceipt();
+        debugPrint('✅ [4/5] تم طباعة الوصل بنجاح');
+      } catch (e) {
+        debugPrint('⚠️ [4/5] فشل الطباعة: $e - المتابعة...');
+      }
+
+      // 5️⃣ إرسال واتساب (إن توفرت الصلاحية)
+      if (widget.hasWhatsAppPermission) {
+        debugPrint('📱 [5/5] إرسال رسالة واتساب...');
+        try {
+          await sendWhatsAppMessage();
+          debugPrint('✅ [5/5] تم إرسال الواتساب بنجاح');
+        } catch (e) {
+          debugPrint('⚠️ [5/5] فشل إرسال الواتساب');
+        }
+      } else {
+        debugPrint('⏭️ [5/5] تخطي واتساب - لا توجد صلاحية');
+      }
+
+      // ========== اكتمال العملية ==========
+      debugPrint('🎉 اكتملت جميع العمليات بنجاح!');
+    } finally {
+      safeSetState(() => _isActivating = false);
+    }
   }
 
   /// عرض تحذير التفعيل المكرر في نفس اليوم
@@ -482,36 +636,58 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       final walletSource =
           _selectedWalletSource == 'customer' ? 'Customer' : 'Partner';
 
-      final body = <String, dynamic>{
-        'simulatedPrice':
-            simulatedPrice is double ? simulatedPrice.toInt() : simulatedPrice,
-        'bundleId': subscriptionInfo!.bundleId,
-        'services': services,
-        'commitmentPeriodValue': selectedCommitmentPeriod,
-        'salesType': _getSalesTypeValue(),
-        'paymentDetails': {
-          'walletSource': walletSource,
-          'paymentMethod': 'Wallet',
-        },
-        'changeType': 1,
-      };
+      // تحديد الـ endpoint وجسم الطلب حسب نوع الاشتراك
+      final String apiUrl;
+      final Map<String, dynamic> body;
 
-      debugPrint('📤 إرسال طلب التفعيل: ${jsonEncode(body)}');
+      if (isNewSubscription) {
+        // شراء اشتراك جديد (تحويل من تجريبي) — POST /api/subscriptions/purchase
+        apiUrl = 'https://admin.ftth.iq/api/subscriptions/purchase';
+        body = {
+          'zoneId': subscriptionInfo!.zoneId,
+          'bundleId': subscriptionInfo!.bundleId,
+          'services': services,
+          'commitmentPeriod': selectedCommitmentPeriod,
+          'trialSubscriptionId': widget.subscriptionId,
+          'simulatedPrice':
+              simulatedPrice is double ? simulatedPrice.toInt() : simulatedPrice,
+          'salesType': _getSalesTypeValue(),
+          'paymentDetails': {
+            'paymentMethod': 'Wallet',
+            'walletSource': walletSource,
+          },
+        };
+      } else {
+        // تجديد أو تغيير اشتراك موجود — POST /api/subscriptions/{id}/change
+        apiUrl = 'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/change';
+        body = {
+          'simulatedPrice':
+              simulatedPrice is double ? simulatedPrice.toInt() : simulatedPrice,
+          'bundleId': subscriptionInfo!.bundleId,
+          'services': services,
+          'commitmentPeriodValue': selectedCommitmentPeriod,
+          'salesType': _getSalesTypeValue(),
+          'paymentDetails': {
+            'walletSource': walletSource,
+            'paymentMethod': 'Wallet',
+          },
+          'changeType': 1,
+        };
+      }
 
-      final resp = await http
-          .post(
-            Uri.parse(
-                'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/change'),
-            headers: {
-              'Authorization': 'Bearer ${widget.authToken}',
-              'Content-Type': 'application/json',
-              'Accept': 'application/json, text/plain, */*',
-              'x-client-app': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
-              'x-user-role': '0',
-            },
-            body: jsonEncode(body),
-          )
-          .timeout(const Duration(seconds: 20));
+      debugPrint('📤 إرسال طلب التفعيل: $apiUrl');
+      debugPrint('📤 Body: ${jsonEncode(body)}');
+
+      final resp = await AuthService.instance.authenticatedRequest(
+          'POST',
+          apiUrl,
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'x-client-app': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+            'x-user-role': '0',
+          },
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 20));
 
       debugPrint('📥 الاستجابة: ${resp.statusCode} - ${resp.body}');
 
@@ -547,8 +723,8 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         Navigator.of(context, rootNavigator: false).pop();
       }
 
-      debugPrint('❌ خطأ في التفعيل: $e');
-      safeSetState(() => errorMessage = 'خطأ في الاتصال: $e');
+      debugPrint('❌ خطأ في التفعيل');
+      safeSetState(() => errorMessage = 'خطأ في الاتصال');
       if (mounted) {
         _showResultDialog(
           isSuccess: false,
@@ -634,78 +810,146 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     }
 
     try {
-      final phone = _getCustomerPhoneNumber();
-      final customerPhone = phone ?? 'غير متوفر';
-      final operationText =
-          isNewSubscription ? "تم شراء اشتراك جديد" : "تم تجديد الاشتراك";
+      final vars = _buildReceiptVariableValues(copyNumber: _printCount + 1);
+      final conds = _buildReceiptConditions();
 
-      final template = await PrintTemplateStorage.loadTemplate();
-      final adjustedTemplate = PrintTemplate(
-        companyName: template.companyName,
-        companySubtitle: template.companySubtitle,
-        footerMessage: template.footerMessage,
-        contactInfo: template.contactInfo,
-        showCustomerInfo: true,
-        showServiceDetails: template.showServiceDetails,
-        showPaymentDetails: template.showPaymentDetails,
-        showAdditionalInfo: template.showAdditionalInfo,
-        showContactInfo: template.showContactInfo,
-        fontSize: template.fontSize.clamp(8.0, 20.0),
-        boldHeaders: template.boldHeaders,
-      );
-
-      final now = DateTime.now();
-      final activationDate = '${now.day}/${now.month}/${now.year}';
-      final activationTime =
-          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-      final printCurr = (priceDetails?['totalPrice'] is Map &&
-              priceDetails?['totalPrice']['currency'] != null)
-          ? priceDetails!['totalPrice']['currency'].toString()
-          : (priceDetails?['currency']?.toString() ?? 'IQD');
-
-      final bool success =
-          await ThermalPrinterService.printCustomSubscriptionReceipt(
-        operationType: operationText,
-        selectedPlan: selectedPlan ?? '',
-        selectedCommitmentPeriod: (selectedCommitmentPeriod ?? 0).toString(),
-        totalPrice: _getFinalTotal().toStringAsFixed(0),
-        currency: printCurr,
-        selectedPaymentMethod: selectedPaymentMethod,
-        endDate: _calculateEndDate(),
-        customerName: subscriptionInfo!.customerName,
-        customerPhone: customerPhone,
-        customerAddress: customerAddress ?? '',
-        isNewSubscription: isNewSubscription,
-        customTemplate: adjustedTemplate,
-        activationDate: activationDate,
-        activationTime: activationTime,
-        fdtInfo: (widget.fdtDisplayValue != null &&
-                widget.fdtDisplayValue!.trim().isNotEmpty)
-            ? widget.fdtDisplayValue!
-            : (widget.fbgValue != null && widget.fbgValue!.trim().isNotEmpty
-                ? widget.fbgValue!.trim()
-                : null),
-        fatInfo: (widget.fatDisplayValue != null &&
-                widget.fatDisplayValue!.trim().isNotEmpty)
-            ? widget.fatDisplayValue!
-            : (widget.fatValue != null && widget.fatValue!.trim().isNotEmpty
-                ? widget.fatValue!.trim()
-                : null),
-        activatedBy: widget.activatedBy,
-        subscriptionNotes:
-            (isNotesEnabled && subscriptionNotes.trim().isNotEmpty)
-                ? subscriptionNotes.trim()
-                : null,
+      final bool success = await ThermalPrinterService.printFromReceiptTemplate(
+        variableValues: vars,
+        conditions: conds,
       );
 
       if (success && mounted) {
-        safeSetState(() => isPrinted = true);
+        safeSetState(() {
+          _printCount++;
+          isPrinted = true;
+        });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في الطباعة: $e');
+      debugPrint('❌ خطأ في الطباعة');
       rethrow;
     }
+  }
+
+  /// بناء خريطة قيم المتغيرات لنظام القالب الجديد V2
+  Map<String, String> _buildReceiptVariableValues({int? copyNumber}) {
+    final phone = _getCustomerPhoneNumber();
+    final customerPhone = phone ?? 'غير متوفر';
+    final operationText =
+        isNewSubscription ? "تم شراء اشتراك جديد" : "تم تجديد الاشتراك";
+    final now = DateTime.now();
+    final activationDate = '${now.day}/${now.month}/${now.year}';
+    final activationTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final printCurr = (priceDetails?['totalPrice'] is Map &&
+            priceDetails?['totalPrice']['currency'] != null)
+        ? priceDetails!['totalPrice']['currency'].toString()
+        : (priceDetails?['currency']?.toString() ?? 'IQD');
+
+    final oldTemplate = PrintTemplateStorage.defaultTemplate;
+
+    // FDT/FAT مع fallback
+    final fdtVal = (widget.fdtDisplayValue?.trim().isNotEmpty == true)
+        ? widget.fdtDisplayValue!
+        : (widget.fbgValue?.trim().isNotEmpty == true ? widget.fbgValue!.trim() : null);
+    final fatVal = (widget.fatDisplayValue?.trim().isNotEmpty == true)
+        ? widget.fatDisplayValue!
+        : (widget.fatValue?.trim().isNotEmpty == true ? widget.fatValue!.trim() : null);
+
+    // بيانات المشغّل من سيرفرنا
+    final vpsUser = VpsAuthService.instance.currentUser;
+
+    return ReceiptTemplateStorageV2.buildVariableValues(
+      operationType: operationText,
+      customerName: subscriptionInfo!.customerName,
+      customerPhone: customerPhone,
+      customerAddress: customerAddress ?? '',
+      paymentMethod: selectedPaymentMethod, // فقط نوع الدفع (نقد/أجل/ماستر/وكيل/فني)
+      totalPrice: _getFinalTotal().toStringAsFixed(0),
+      currency: printCurr,
+      endDate: _calculateEndDate(),
+      activatedBy: widget.activatedBy,
+      receiptNumber: (_printCount + 1).toString(),
+      selectedPlan: selectedPlan ?? '',
+      commitmentPeriod: (selectedCommitmentPeriod ?? 0).toString(),
+      activationDate: activationDate,
+      activationTime: activationTime,
+      fdtInfo: fdtVal,
+      fatInfo: fatVal,
+      subscriptionNotes: (isNotesEnabled && subscriptionNotes.trim().isNotEmpty)
+          ? subscriptionNotes.trim()
+          : null,
+      copyNumber: copyNumber,
+      // الترويسة من القالب القديم
+      companyName: oldTemplate.companyName,
+      companySubtitle: oldTemplate.companySubtitle,
+      contactInfo: oldTemplate.contactInfo,
+      footerMessage: oldTemplate.footerMessage,
+      // الفني / الوكيل (مفصولة)
+      technicianName: _selectedLinkedTechnician?['Name']?.toString(),
+      technicianUsername: _selectedLinkedTechnician?['Username']?.toString(),
+      technicianPhone: _selectedLinkedTechnician?['PhoneNumber']?.toString(),
+      agentName: _selectedLinkedAgent?['Name']?.toString(),
+      agentCode: _selectedLinkedAgent?['AgentCode']?.toString(),
+      agentPhone: _selectedLinkedAgent?['PhoneNumber']?.toString(),
+      // الأسعار المفصّلة
+      basePrice: _asDouble(priceDetails?['basePrice']).toStringAsFixed(0),
+      discount: _asDouble(priceDetails?['discount']).toStringAsFixed(0),
+      discountPercentage: (priceDetails?['discountPercentage']?.toString()) ?? '0',
+      manualDiscount: manualDiscount.toStringAsFixed(0),
+      salesType: subscriptionInfo?.salesType,
+      walletBalance: walletBalance.toStringAsFixed(0),
+      // بيانات الاشتراك الإضافية
+      currentPlan: subscriptionInfo?.currentPlan,
+      expiryDate: widget.expires,
+      subscriptionStartDate: subscriptionInfo?.subscriptionStartDate,
+      remainingDays: widget.remainingDays?.toString(),
+      subscriptionStatus: subscriptionInfo?.status,
+      customerId: subscriptionInfo?.customerId,
+      partnerName: subscriptionInfo?.partnerName,
+      // الشبكة والجهاز
+      fbgInfo: widget.fbgValue ?? subscriptionInfo?.fbg,
+      zoneDisplayValue: subscriptionInfo?.zoneDisplayValue,
+      deviceUsername: subscriptionInfo?.deviceUsername,
+      deviceSerial: subscriptionInfo?.deviceSerial,
+      macAddress: subscriptionInfo?.macAddress,
+      deviceModel: subscriptionInfo?.deviceModel,
+      // المشغّل (سيرفرنا)
+      operatorFullName: vpsUser?.fullName,
+      operatorPhone: vpsUser?.phone,
+      operatorDepartment: widget.firstSystemDepartment,
+      operatorCenter: widget.firstSystemCenter,
+      operatorRole: widget.userRoleHeader,
+    );
+  }
+
+  /// بناء خريطة الشروط
+  Map<String, bool> _buildReceiptConditions() {
+    final oldTemplate = PrintTemplateStorage.defaultTemplate;
+    return ReceiptTemplateStorageV2.buildConditions(
+      showCustomerInfo: true,
+      showServiceDetails: oldTemplate.showServiceDetails,
+      showPaymentDetails: oldTemplate.showPaymentDetails,
+      showAdditionalInfo: oldTemplate.showAdditionalInfo,
+      showContactInfo: oldTemplate.showContactInfo,
+      subscriptionNotes: (isNotesEnabled && subscriptionNotes.trim().isNotEmpty)
+          ? subscriptionNotes.trim()
+          : null,
+    );
+  }
+
+  /// بناء نص طريقة الدفع للوصل (يشمل اسم الوكيل/الفني إن وُجد)
+  String _getPaymentMethodForReceipt() {
+    debugPrint('🧾 _getPaymentMethodForReceipt: method=$selectedPaymentMethod, agent=$_selectedLinkedAgent, tech=$_selectedLinkedTechnician');
+    if (selectedPaymentMethod == 'وكيل' && _selectedLinkedAgent != null) {
+      final name = _selectedLinkedAgent!['Name']?.toString() ?? '';
+      final code = _selectedLinkedAgent!['AgentCode']?.toString() ?? '';
+      return 'وكيل - $name${code.isNotEmpty ? " ($code)" : ""}';
+    }
+    if (selectedPaymentMethod == 'فني' && _selectedLinkedTechnician != null) {
+      final name = _selectedLinkedTechnician!['Name']?.toString() ?? '';
+      return 'فني - $name';
+    }
+    return selectedPaymentMethod;
   }
 
   /// عرض مربع حوار تأكيد قبل التجديد/الشراء

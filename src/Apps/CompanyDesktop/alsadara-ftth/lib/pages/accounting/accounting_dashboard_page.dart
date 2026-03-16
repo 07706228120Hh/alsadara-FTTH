@@ -6,6 +6,9 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../utils/responsive_helper.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
+import '../../services/accounting_cache_service.dart';
+import '../../services/accounting_event_bus.dart';
+import '../../services/accounting_reminder_service.dart';
 import '../../permissions/permissions.dart';
 import 'chart_of_accounts_page.dart';
 import 'salaries_page.dart';
@@ -21,6 +24,17 @@ import 'ftth_operators_dashboard_page.dart';
 import 'funds_overview_page.dart';
 import 'fixed_expenses_page.dart';
 import 'withdrawal_requests_page.dart';
+import 'trial_balance_page.dart';
+import 'income_statement_page.dart';
+import 'balance_sheet_page.dart';
+import 'cash_flow_page.dart';
+import 'aging_report_page.dart';
+import 'monthly_comparison_page.dart';
+import 'period_closing_page.dart';
+import 'audit_trail_page.dart';
+import 'financial_ratios_page.dart';
+import 'year_comparison_page.dart';
+import 'budget_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -39,6 +53,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   Map<String, dynamic>? _dashboardData;
   bool _sidebarExpanded = false;
   Timer? _autoCollapseTimer;
+  Timer? _autoRefreshTimer;
+  StreamSubscription<String>? _eventSubscription;
 
   // ── خلفية ثابتة (رموز عائمة بمواضع ثابتة) ──
   final List<_FloatingShape> _shapes = [];
@@ -97,6 +113,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   @override
   void dispose() {
     _autoCollapseTimer?.cancel();
+    _autoRefreshTimer?.cancel();
+    _eventSubscription?.cancel();
+    AccountingReminderService.instance.stopChecks();
+    // استعادة معالج الأخطاء الأصلي
+    if (_originalErrorHandler != null) {
+      FlutterError.onError = _originalErrorHandler;
+    }
     super.dispose();
   }
 
@@ -105,14 +128,56 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     super.initState();
     _initShapes();
     _loadDashboard();
+    // تحديث تلقائي كل دقيقتين
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 2), (_) {
+      if (mounted && !_isLoading) _loadDashboard(silent: true);
+    });
+    // الاستماع لأحداث المحاسبة (قيد جديد، مصروف، إلخ)
+    _eventSubscription = AccountingEventBus.instance.stream.listen((event) {
+      if (mounted) {
+        AccountingCacheService.invalidateAll();
+        _loadDashboard(silent: true);
+      }
+    });
+    // بدء فحوصات التذكيرات المحاسبية
+    final companyId = widget.companyId ?? '';
+    if (companyId.isNotEmpty) {
+      AccountingReminderService.instance.startChecks(companyId);
+    }
+    // التقاط أخطاء Flutter لعرضها على الشاشة
+    _originalErrorHandler = FlutterError.onError;
+    FlutterError.onError = (details) {
+      debugPrint('❌ Flutter Error: ${details.exceptionAsString()}');
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _sidebarError = details.exceptionAsString();
+            });
+          }
+        });
+      }
+      _originalErrorHandler?.call(details);
+    };
   }
 
-  Future<void> _loadDashboard() async {
+  Future<void> _loadDashboard({bool silent = false}) async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    if (!silent) {
+      // محاولة عرض الكاش فوراً
+      final cached = await AccountingCacheService.loadDashboard();
+      if (cached != null && mounted) {
+        setState(() {
+          _dashboardData = cached;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
+    }
     try {
       // جلب الداشبورد + قائمة الحسابات بالتوازي
       final results = await Future.wait([
@@ -143,11 +208,17 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           data['AccountBalances'] = balances;
         }
 
+        // حفظ في الكاش
+        AccountingCacheService.saveDashboard(data);
+        if (accountsResult['success'] == true && accountsResult['data'] is List) {
+          AccountingCacheService.saveAccounts(accountsResult['data'] as List);
+        }
+
         setState(() {
           _dashboardData = data;
           _isLoading = false;
         });
-      } else {
+      } else if (!silent) {
         setState(() {
           _errorMessage = result['message'] ?? 'خطأ في جلب البيانات';
           _isLoading = false;
@@ -155,10 +226,12 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = 'خطأ في الاتصال: $e';
-        _isLoading = false;
-      });
+      if (!silent) {
+        setState(() {
+          _errorMessage = 'خطأ في الاتصال';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -236,7 +309,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
 
   /// محتوى القائمة الجانبية - يستخدم في كل من Sidebar والدرج
   Widget _buildSidebarContent({bool alwaysExpanded = false}) {
-    final expanded = alwaysExpanded || _sidebarExpanded;
     return Column(
       children: [
         SizedBox(height: context.accR.spaceS),
@@ -259,6 +331,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           }),
         Divider(height: 1, color: _dividerColor),
         SizedBox(height: context.accR.spaceS),
+        Expanded(child: SingleChildScrollView(child: Column(children: [
         _sidebarBtn(
             icon: Icons.account_tree_rounded,
             label: 'شجرة الحسابات',
@@ -281,6 +354,48 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             color: const Color(0xFFE91E63),
             permKey: 'accounting.salaries',
             onTap: () => _navigateTo(SalariesPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.balance_rounded,
+            label: 'ميزان المراجعة',
+            color: const Color(0xFF1ABC9C),
+            onTap: () =>
+                _navigateTo(TrialBalancePage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.trending_up_rounded,
+            label: 'قائمة الدخل',
+            color: const Color(0xFF27AE60),
+            onTap: () =>
+                _navigateTo(IncomeStatementPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.account_balance_rounded,
+            label: 'الميزانية العمومية',
+            color: const Color(0xFF8E44AD),
+            onTap: () =>
+                _navigateTo(BalanceSheetPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.waterfall_chart_rounded,
+            label: 'التدفقات النقدية',
+            color: const Color(0xFF00BCD4),
+            onTap: () =>
+                _navigateTo(CashFlowPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.timer_outlined,
+            label: 'أعمار الديون',
+            color: const Color(0xFFFF9800),
+            onTap: () =>
+                _navigateTo(AgingReportPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.compare_arrows_rounded,
+            label: 'المقارنة الشهرية',
+            color: const Color(0xFF607D8B),
+            onTap: () =>
+                _navigateTo(MonthlyComparisonPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
         _sidebarBtn(
             icon: Icons.analytics,
@@ -306,20 +421,59 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             onTap: () => _navigateTo(
                 WithdrawalRequestsPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
-        const Spacer(),
+        _sidebarBtn(
+            icon: Icons.calculate_outlined,
+            label: 'الميزانية التقديرية',
+            color: const Color(0xFF5C6BC0),
+            onTap: () =>
+                _navigateTo(BudgetPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.pie_chart_outline,
+            label: 'النسب المالية',
+            color: const Color(0xFF00897B),
+            onTap: () =>
+                _navigateTo(FinancialRatiosPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.compare_arrows,
+            label: 'المقارنة السنوية',
+            color: const Color(0xFF5C6BC0),
+            onTap: () =>
+                _navigateTo(YearComparisonPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.lock_clock,
+            label: 'إقفال الفترات',
+            color: const Color(0xFF795548),
+            permKey: 'accounting.period_closing',
+            onTap: () =>
+                _navigateTo(PeriodClosingPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.history,
+            label: 'سجل التدقيق',
+            color: const Color(0xFF455A64),
+            permKey: 'accounting.audit_trail',
+            onTap: () =>
+                _navigateTo(AuditTrailPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        ]))),
       ],
     );
   }
 
+  /// سجل أخطاء القائمة الجانبية - يُعرض على الشاشة
+  String? _sidebarError;
+  void Function(FlutterErrorDetails)? _originalErrorHandler;
+
   Widget _buildSidebar() {
-    final r = context.responsive;
+    // ── نسخة مبسطة بدون OverflowBox لتجنب مشاكل Layout ──
     final expanded = _sidebarExpanded;
-    final width = expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
+    final width = expanded ? 200.0 : 56.0;
+
+    return Container(
       width: width,
-      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: _bgCard,
         border: const Border(
@@ -333,110 +487,204 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           ),
         ],
       ),
-      child: ClipRect(
-        child: OverflowBox(
-          alignment: AlignmentDirectional.topStart,
-          maxWidth: expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth,
-          child: Column(
-            children: [
-              SizedBox(height: context.accR.spaceS),
-              // زر طي/فتح القائمة
-              InkWell(
-                onTap: () {
-                  _autoCollapseTimer?.cancel();
-                  setState(() => _sidebarExpanded = !_sidebarExpanded);
-                  if (_sidebarExpanded) {
-                    _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
-                      if (mounted && _sidebarExpanded) {
-                        setState(() => _sidebarExpanded = false);
-                      }
-                    });
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          // ── زر طي/فتح القائمة ──
+          InkWell(
+            onTap: () {
+              _autoCollapseTimer?.cancel();
+              setState(() => _sidebarExpanded = !_sidebarExpanded);
+              if (_sidebarExpanded) {
+                _autoCollapseTimer = Timer(const Duration(seconds: 5), () {
+                  if (mounted && _sidebarExpanded) {
+                    setState(() => _sidebarExpanded = false);
                   }
-                },
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: context.accR.spaceL,
-                      vertical: context.accR.spaceM),
-                  child: Row(
-                    mainAxisAlignment: expanded
-                        ? MainAxisAlignment.start
-                        : MainAxisAlignment.center,
-                    children: [
-                      AnimatedRotation(
-                        turns: expanded ? 0.0 : 0.5,
-                        duration: Duration(milliseconds: 200),
-                        child: Icon(Icons.menu_open,
-                            color: _bgToolbar, size: context.accR.iconM),
-                      ),
-                      if (expanded) ...[
-                        SizedBox(width: context.accR.spaceS),
-                        Text(
-                          'القائمة',
-                          style: GoogleFonts.cairo(
-                            fontSize: context.accR.headingSmall,
-                            fontWeight: FontWeight.bold,
-                            color: _bgToolbar,
-                          ),
+                });
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisAlignment:
+                    expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.menu_open,
+                      color: _bgToolbar, size: 22),
+                  if (expanded) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'القائمة',
+                        style: GoogleFonts.cairo(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _bgToolbar,
                         ),
-                      ],
-                    ],
-                  ),
-                ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              Divider(height: 1, color: _dividerColor),
-              SizedBox(height: context.accR.spaceS),
-              _sidebarBtn(
-                icon: Icons.account_tree_rounded,
-                label: 'شجرة الحسابات',
-                color: const Color(0xFF3498DB),
-                permKey: 'accounting.chart',
-                onTap: () => _navigateTo(
-                    ChartOfAccountsPage(companyId: widget.companyId)),
-              ),
-              _sidebarBtn(
-                icon: Icons.menu_book,
-                label: 'القيود المحاسبية',
-                color: const Color(0xFF2ECC71),
-                permKey: 'accounting.journals',
-                onTap: () => _navigateTo(
-                    JournalEntriesPage(companyId: widget.companyId)),
-              ),
-              _sidebarBtn(
-                icon: Icons.payments,
-                label: 'الرواتب',
-                color: const Color(0xFFE91E63),
-                permKey: 'accounting.salaries',
-                onTap: () =>
-                    _navigateTo(SalariesPage(companyId: widget.companyId)),
-              ),
-              _sidebarBtn(
-                icon: Icons.analytics,
-                label: 'الإحصائيات',
-                color: const Color(0xFF34495E),
-                permKey: 'accounting.statistics',
-                onTap: () =>
-                    _navigateTo(StatisticsPage(companyId: widget.companyId)),
-              ),
-              _sidebarBtn(
-                icon: Icons.receipt_long,
-                label: 'المصاريف الثابتة',
-                color: const Color(0xFFE67E22),
-                permKey: 'accounting.fixed_expenses',
-                onTap: () =>
-                    _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
-              ),
-              _sidebarBtn(
-                icon: Icons.money_off,
-                label: 'طلبات السحب',
-                color: const Color(0xFFE74C3C),
-                permKey: 'accounting.withdrawals',
-                onTap: () => _navigateTo(
-                    WithdrawalRequestsPage(companyId: widget.companyId)),
-              ),
-              const Spacer(),
-            ],
+            ),
           ),
-        ),
+          const Divider(height: 1, color: _dividerColor),
+          const SizedBox(height: 4),
+          // ── عرض خطأ إن وجد ──
+          if (_sidebarError != null && expanded)
+            Container(
+              margin: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Text(
+                _sidebarError!,
+                style: const TextStyle(fontSize: 10, color: Colors.red),
+                maxLines: 5,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          // ── أزرار القائمة ──
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _sidebarBtn(
+                    icon: Icons.account_tree_rounded,
+                    label: 'شجرة الحسابات',
+                    color: const Color(0xFF3498DB),
+                    permKey: 'accounting.chart',
+                    onTap: () => _navigateTo(
+                        ChartOfAccountsPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.menu_book,
+                    label: 'القيود المحاسبية',
+                    color: const Color(0xFF2ECC71),
+                    permKey: 'accounting.journals',
+                    onTap: () => _navigateTo(
+                        JournalEntriesPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.payments,
+                    label: 'الرواتب',
+                    color: const Color(0xFFE91E63),
+                    permKey: 'accounting.salaries',
+                    onTap: () =>
+                        _navigateTo(SalariesPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.balance_rounded,
+                    label: 'ميزان المراجعة',
+                    color: const Color(0xFF1ABC9C),
+                    onTap: () =>
+                        _navigateTo(TrialBalancePage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.trending_up_rounded,
+                    label: 'قائمة الدخل',
+                    color: const Color(0xFF27AE60),
+                    onTap: () => _navigateTo(
+                        IncomeStatementPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.account_balance_rounded,
+                    label: 'الميزانية العمومية',
+                    color: const Color(0xFF8E44AD),
+                    onTap: () =>
+                        _navigateTo(BalanceSheetPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.waterfall_chart_rounded,
+                    label: 'التدفقات النقدية',
+                    color: const Color(0xFF00BCD4),
+                    onTap: () =>
+                        _navigateTo(CashFlowPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.timer_outlined,
+                    label: 'أعمار الديون',
+                    color: const Color(0xFFFF9800),
+                    onTap: () =>
+                        _navigateTo(AgingReportPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.compare_arrows_rounded,
+                    label: 'المقارنة الشهرية',
+                    color: const Color(0xFF607D8B),
+                    onTap: () =>
+                        _navigateTo(MonthlyComparisonPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.analytics,
+                    label: 'الإحصائيات',
+                    color: const Color(0xFF34495E),
+                    permKey: 'accounting.statistics',
+                    onTap: () =>
+                        _navigateTo(StatisticsPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.receipt_long,
+                    label: 'المصاريف الثابتة',
+                    color: const Color(0xFFE67E22),
+                    permKey: 'accounting.fixed_expenses',
+                    onTap: () =>
+                        _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.money_off,
+                    label: 'طلبات السحب',
+                    color: const Color(0xFFE74C3C),
+                    permKey: 'accounting.withdrawals',
+                    onTap: () => _navigateTo(
+                        WithdrawalRequestsPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.calculate_outlined,
+                    label: 'الميزانية التقديرية',
+                    color: const Color(0xFF5C6BC0),
+                    onTap: () => _navigateTo(
+                        BudgetPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.pie_chart_outline,
+                    label: 'النسب المالية',
+                    color: const Color(0xFF00897B),
+                    onTap: () => _navigateTo(
+                        FinancialRatiosPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.compare_arrows,
+                    label: 'المقارنة السنوية',
+                    color: const Color(0xFF5C6BC0),
+                    onTap: () => _navigateTo(
+                        YearComparisonPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.lock_clock,
+                    label: 'إقفال الفترات',
+                    color: const Color(0xFF795548),
+                    permKey: 'accounting.period_closing',
+                    onTap: () => _navigateTo(
+                        PeriodClosingPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.history,
+                    label: 'سجل التدقيق',
+                    color: const Color(0xFF455A64),
+                    permKey: 'accounting.audit_trail',
+                    onTap: () => _navigateTo(
+                        AuditTrailPage(companyId: widget.companyId)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -449,54 +697,53 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     String? permKey,
     bool forceExpanded = false,
   }) {
-    // V3: إخفاء العنصر إذا لا يملك صلاحية العرض
     if (permKey != null && !PermissionManager.instance.canView(permKey)) {
-      return SizedBox.shrink();
+      return const SizedBox.shrink();
     }
     final expanded = forceExpanded || _sidebarExpanded;
-    final ar = context.accR;
     return Tooltip(
       message: expanded ? '' : label,
       preferBelow: false,
       child: Padding(
         padding: EdgeInsets.symmetric(
-            horizontal: expanded ? ar.spaceS : 4, vertical: 2),
+            horizontal: expanded ? 8.0 : 4, vertical: 2),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(ar.btnRadius),
+            borderRadius: BorderRadius.circular(8),
             hoverColor: color.withOpacity(0.08),
             splashColor: color.withOpacity(0.15),
             child: Container(
               padding: EdgeInsets.symmetric(
-                  horizontal: expanded ? ar.spaceM : 0,
-                  vertical: expanded ? ar.spaceM : 6),
+                  horizontal: expanded ? 10.0 : 0,
+                  vertical: expanded ? 10.0 : 6),
               child: expanded
                   ? Row(
                       children: [
                         Container(
-                          width: ar.iconL,
-                          height: ar.iconL,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
                             color: color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(ar.btnRadius),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(icon, color: color, size: ar.iconS),
+                          child: Icon(icon, color: color, size: 16),
                         ),
-                        SizedBox(width: ar.spaceM),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             label,
                             style: GoogleFonts.cairo(
-                              fontSize: ar.body,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: _textDark,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Icon(Icons.chevron_left,
-                            color: _textGray, size: ar.iconS),
+                            color: _textGray, size: 16),
                       ],
                     )
                   : Center(
@@ -1336,7 +1583,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   String _formatCurrency(dynamic value) {
     if (value == null) return '0';
     final num n = value is num ? value : double.tryParse(value.toString()) ?? 0;
-    return '${_currencyFmt.format(n.round())} د.ع';
+    return '${_currencyFmt.format(n)} د.ع';
   }
 
   /// تنسيق مع إشارة (مديون/دائن)

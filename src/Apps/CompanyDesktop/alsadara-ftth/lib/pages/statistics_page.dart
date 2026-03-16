@@ -50,7 +50,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'حدث خطأ أثناء جلب البيانات: $e';
+        errorMessage = 'حدث خطأ أثناء جلب البيانات';
         isLoading = false;
       });
     }
@@ -79,7 +79,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'حدث خطأ: $e';
+        errorMessage = 'حدث خطأ';
       });
     }
   }
@@ -117,7 +117,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'حدث خطأ: $e';
+        errorMessage = 'حدث خطأ';
       });
     }
   }
@@ -260,6 +260,20 @@ class _StatisticsPageState extends State<StatisticsPage> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+            ),
+            tooltip: 'تحديث',
+            onPressed: fetchData,
+          ),
+        ],
         centerTitle: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(

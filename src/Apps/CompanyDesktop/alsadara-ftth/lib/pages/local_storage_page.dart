@@ -13,6 +13,7 @@ import '../services/sync_service.dart';
 import '../services/sync_settings_service.dart';
 import '../services/auth_service.dart';
 import '../services/background_sync_service.dart';
+import '../services/vps_sync_service.dart';
 import '../permissions/permissions.dart';
 import 'local_subscriber_details_page.dart';
 
@@ -33,9 +34,11 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   final SyncService _syncService = SyncService();
   final SyncSettingsService _settingsService = SyncSettingsService.instance;
   final BackgroundSyncService _backgroundSync = BackgroundSyncService.instance;
+  final VpsSyncService _vpsSyncService = VpsSyncService.instance;
 
   bool _isLoading = false;
   bool _isSyncing = false;
+  bool _isVpsSyncing = false;
 
   // إحصائيات
   int _subscribersCount = 0;
@@ -107,17 +110,52 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   @override
   void initState() {
     super.initState();
+    _vpsSyncService.addListener(_onVpsSyncChanged);
     _initializeAndLoad();
     _loadPermissions();
   }
 
   @override
   void dispose() {
+    _vpsSyncService.removeListener(_onVpsSyncChanged);
     _searchController.dispose();
     _nameFilterController.dispose();
     _phoneFilterController.dispose();
     _usernameFilterController.dispose();
     super.dispose();
+  }
+
+  /// يُستدعى عند تغيّر حالة VpsSyncService
+  void _onVpsSyncChanged() {
+    if (!mounted) return;
+    final wasSyncing = _isVpsSyncing;
+    final nowSyncing = _vpsSyncService.isSyncing;
+
+    setState(() => _isVpsSyncing = nowSyncing);
+
+    // عند انتهاء المزامنة بنجاح — إعادة تحميل البيانات
+    if (wasSyncing && !nowSyncing && _vpsSyncService.lastResult?.success == true) {
+      _refreshAfterVpsSync();
+    }
+  }
+
+  /// إعادة تحميل البيانات بعد مزامنة VPS ناجحة
+  Future<void> _refreshAfterVpsSync() async {
+    await _db.refresh();
+    if (!mounted) return;
+    await _loadStatistics();
+    await _loadSubscribers();
+    await _loadFilters();
+  }
+
+  /// تنسيق وقت المزامنة
+  String _formatSyncTime(DateTime time) {
+    final now = DateTime.now();
+    final diff = now.difference(time);
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
+    if (diff.inHours < 24) return 'منذ ${diff.inHours} ساعة';
+    return '${time.day}/${time.month} ${time.hour}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _loadPermissions() async {
@@ -131,23 +169,29 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   }
 
   Future<void> _initializeAndLoad() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       await _db.initialize();
+      if (!mounted) return;
       await _loadStatistics();
       await _loadSubscribers();
       await _loadFilters();
     } catch (e) {
-      debugPrint('❌ خطأ في التهيئة: $e');
+      debugPrint('❌ خطأ في التهيئة');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+
+    // مزامنة تلقائية من VPS عند فتح الصفحة (إذا مرّ وقت كافٍ)
+    _vpsSyncService.syncIfNeeded();
   }
 
   Future<void> _loadStatistics() async {
     final stats = await _db.getStatistics();
     final lastSync = await _db.getLastSyncTime();
     final detailsStats = await _db.getDetailsStats();
+    if (!mounted) return;
 
     setState(() {
       _subscribersCount = stats['subscribers'] ?? 0;
@@ -166,6 +210,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       sortBy: _sortBy,
       ascending: _sortAscending,
     );
+    if (!mounted) return;
 
     setState(() {
       _subscribers = subscribers;
@@ -356,6 +401,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     final fats = await _db.getDistinctFATs();
     final statuses = await _db.getDistinctStatuses();
     final profiles = await _db.getDistinctProfiles();
+    if (!mounted) return;
     setState(() {
       _zones = zones;
       _availableFATs = fats;
@@ -399,6 +445,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       fetchPhones: _fetchPhones,
       fetchAddresses: _fetchAddresses,
       onProgress: (progress) {
+        if (!mounted) return;
         setState(() {
           _syncStage = progress.stage;
           _syncCurrent = progress.current;
@@ -436,6 +483,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       },
     );
 
+    if (!mounted) return;
     setState(() => _isSyncing = false);
 
     if (result.success) {
@@ -448,6 +496,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       );
       // إعادة تحميل البيانات من الملفات
       await _db.refresh();
+      if (!mounted) return;
       await _loadStatistics();
       await _loadSubscribers();
       await _loadFilters();
@@ -559,6 +608,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       token: token,
       onlyWithoutPhone: true, // دائماً جلب فقط للذين بدون أرقام
       onProgress: (progress) {
+        if (!mounted) return;
         setState(() {
           _syncStage = progress.stage;
           _syncCurrent = progress.current;
@@ -568,6 +618,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       },
     );
 
+    if (!mounted) return;
     setState(() => _isSyncing = false);
 
     if (result.success) {
@@ -578,6 +629,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       );
       // إعادة تحميل البيانات
       await _db.refresh();
+      if (!mounted) return;
       await _loadSubscribers();
     } else {
       _showErrorDialog(
@@ -619,6 +671,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       token: token,
       onlyWithoutDetails: onlyWithoutDetails,
       onProgress: (progress) {
+        if (!mounted) return;
         setState(() {
           _syncStage = progress.stage;
           _syncCurrent = progress.current;
@@ -628,6 +681,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       },
     );
 
+    if (!mounted) return;
     setState(() => _isSyncing = false);
 
     if (result.success) {
@@ -638,6 +692,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       );
       // إعادة تحميل البيانات
       await _db.refresh();
+      if (!mounted) return;
       await _loadSubscribers();
     } else {
       _showErrorDialog(
@@ -753,6 +808,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     if (confirm != true) return;
 
     // تنفيذ المسح
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       switch (option) {
@@ -770,9 +826,11 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           break;
       }
       _showMessage('تم المسح بنجاح ✅');
+      if (!mounted) return;
       await _loadStatistics();
       await _loadSubscribers();
       if (option == 'subscriptions' || option == 'all') {
+        if (!mounted) return;
         setState(() {
           _zones = [];
           _selectedZone = null;
@@ -780,9 +838,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
         });
       }
     } catch (e) {
-      _showMessage('خطأ في المسح: $e', isError: true);
+      _showMessage('خطأ في المسح', isError: true);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -815,21 +873,24 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     );
 
     if (confirm == true) {
+      if (!mounted) return;
       setState(() => _isLoading = true);
       try {
         await _db.clearAllData();
         _showMessage('تم مسح جميع البيانات ✅');
+        if (!mounted) return;
         await _loadStatistics();
         await _loadSubscribers();
+        if (!mounted) return;
         setState(() {
           _zones = [];
           _selectedZone = null;
           _selectedStatus = null;
         });
       } catch (e) {
-        _showMessage('خطأ في المسح: $e', isError: true);
+        _showMessage('خطأ في المسح', isError: true);
       } finally {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -841,6 +902,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       return;
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
@@ -953,7 +1015,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
         final file = File(filePath);
         await file.writeAsBytes(fileBytes);
 
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
 
         // عرض dialog للنجاح مع خيار الفتح
         if (mounted) {
@@ -1007,7 +1069,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
         }
       }
     } catch (e) {
-      _showMessage('خطأ في التصدير: $e', isError: true);
+      _showMessage('خطأ في التصدير', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -1264,7 +1326,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       ),
     );
 
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
 
     setState(() => _isLoading = true);
     try {
@@ -1273,12 +1335,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       _showMessage('تم حذف ${_selectedIds.length} اشتراك بنجاح ✅');
       _selectedIds.clear();
       _isSelectionMode = false;
+      if (!mounted) return;
       await _loadStatistics();
       await _loadSubscribers();
     } catch (e) {
-      _showMessage('خطأ في الحذف: $e', isError: true);
+      _showMessage('خطأ في الحذف', isError: true);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -1909,6 +1972,36 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                 ),
               ),
             ),
+          // مؤشر مزامنة VPS
+          if (_isVpsSyncing)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'جاري المزامنة...',
+                    style: const TextStyle(fontSize: 11, color: Colors.amber),
+                  ),
+                ],
+              ),
+            )
+          else if (_vpsSyncService.lastSuccessfulSync != null)
+            Tooltip(
+              message: 'آخر مزامنة: ${_formatSyncTime(_vpsSyncService.lastSuccessfulSync!)}',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(Icons.cloud_done, size: 20, color: Colors.greenAccent.shade200),
+              ),
+            ),
           // زر التصفية
           if (!_isSyncing && _subscribersCount > 0)
             IconButton(
@@ -2208,53 +2301,113 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   ],
                 ),
               ),
-            // أزرار التحكم
+            // زر المزامنة من VPS (الطريقة الأساسية — يجلب كل البيانات)
             Row(
               children: [
                 Expanded(
+                  flex: 2,
                   child: ElevatedButton.icon(
-                    onPressed: _isSyncing ? null : _startFullSync,
-                    icon: const Icon(Icons.cloud_download, size: 18),
-                    label: const Text('الاشتراكات'),
+                    onPressed: (_isSyncing || _isVpsSyncing)
+                        ? null
+                        : () => _vpsSyncService.syncFromVps(),
+                    icon: Icon(
+                      _isVpsSyncing ? Icons.sync : Icons.cloud_sync,
+                      size: 18,
+                    ),
+                    label: Text(_isVpsSyncing
+                        ? _vpsSyncService.statusMessage
+                        : 'مزامنة من السيرفر'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A237E),
+                      backgroundColor: Colors.teal,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      disabledBackgroundColor: Colors.teal.shade200,
+                      disabledForegroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isSyncing || _subscribersCount == 0
-                        ? null
-                        : _startFetchSubscriptionAddresses,
-                    icon: const Icon(Icons.router, size: 18),
-                    label: const Text('تفاصيل الاشتراكات'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
+                ElevatedButton.icon(
+                  onPressed: (_isSyncing || _isVpsSyncing)
+                      ? null
+                      : () => _vpsSyncService.forceFullSync(),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('كامل'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey,
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isSyncing || _subscribersCount == 0
-                        ? null
-                        : _startFetchPhones,
-                    icon: const Icon(Icons.phone, size: 18),
-                    label: const Text('رقم الهاتف'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+              ],
+            ),
+            if (_isVpsSyncing)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(
+                  value: _vpsSyncService.progress > 0 ? _vpsSyncService.progress : null,
+                  backgroundColor: Colors.teal.shade100,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.teal.shade600),
+                ),
+              ),
+            const SizedBox(height: 8),
+            // أزرار الاستيراد المباشر (احتياطي)
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: Text(
+                'استيراد مباشر من FTTH (متقدم)',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isSyncing ? null : _startFullSync,
+                        icon: const Icon(Icons.cloud_download, size: 16),
+                        label: const Text('الاشتراكات', style: TextStyle(fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A237E),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isSyncing || _subscribersCount == 0
+                            ? null
+                            : _startFetchSubscriptionAddresses,
+                        icon: const Icon(Icons.router, size: 16),
+                        label: const Text('التفاصيل', style: TextStyle(fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isSyncing || _subscribersCount == 0
+                            ? null
+                            : _startFetchPhones,
+                        icon: const Icon(Icons.phone, size: 16),
+                        label: const Text('الهاتف', style: TextStyle(fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

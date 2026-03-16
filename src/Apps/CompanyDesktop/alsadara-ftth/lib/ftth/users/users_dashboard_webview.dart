@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:url_launcher/url_launcher.dart';
+import '../../services/auth_service.dart';
 
 class UsersDashboardWebView extends StatefulWidget {
   final String authToken;
@@ -28,10 +29,11 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
   // Dashboard URL
   static const String _dashboardBaseUrl = 'https://dashboard.ftth.iq';
 
-  String get _dashboardUrl {
+  Future<String> _getDashboardUrl() async {
     // استخدام رابط الداشبورد من admin portal
-    if (widget.authToken.isNotEmpty) {
-      return 'https://admin.ftth.iq/dashboard?Authorization=${widget.authToken}';
+    final token = await AuthService.instance.getAccessToken();
+    if (token != null && token.isNotEmpty) {
+      return 'https://admin.ftth.iq/dashboard?Authorization=$token';
     }
     return 'https://admin.ftth.iq/dashboard';
   }
@@ -47,7 +49,8 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
   Future<void> _initWebView() async {
     try {
       debugPrint('🌐 بدء تهيئة WebView...');
-      debugPrint('🔗 الرابط المستهدف: $_dashboardUrl');
+      final dashboardUrl = await _getDashboardUrl();
+      debugPrint('🔗 الرابط المستهدف: $dashboardUrl');
 
       final controller = wvwin.WebviewController();
       await controller.initialize();
@@ -85,8 +88,8 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
       });
 
       // تحميل الداشبورد
-      debugPrint('🚀 جاري تحميل: $_dashboardUrl');
-      await controller.loadUrl(_dashboardUrl);
+      debugPrint('🚀 جاري تحميل: $dashboardUrl');
+      await controller.loadUrl(dashboardUrl);
 
       if (mounted) {
         setState(() {
@@ -96,12 +99,12 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
         debugPrint('✅ تم تهيئة WebView بنجاح');
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة WebView: $e');
+      debugPrint('❌ خطأ في تهيئة WebView');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        _showError('فشل في تحميل الصفحة: $e');
+        _showError('فشل في تحميل الصفحة');
       }
     }
   }
@@ -113,7 +116,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
       final url = await _controller!.executeScript('window.location.href');
       debugPrint('📍 URL الحالي: $url');
     } catch (e) {
-      debugPrint('⚠️ خطأ في جلب URL: $e');
+      debugPrint('⚠️ خطأ في جلب URL');
     }
   }
 
@@ -155,7 +158,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
       ''');
       debugPrint('⚠️ هل يوجد خطأ في الصفحة: $hasError');
     } catch (e) {
-      debugPrint('⚠️ خطأ في جلب تفاصيل الصفحة: $e');
+      debugPrint('⚠️ خطأ في جلب تفاصيل الصفحة');
     }
   }
 
@@ -178,13 +181,13 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
   }
 
   Future<void> _openInBrowser() async {
-    final url = Uri.parse(_dashboardUrl);
+    final url = Uri.parse(_dashboardBaseUrl);
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      _showError('فشل في فتح المتصفح: $e');
+      _showError('فشل في فتح المتصفح');
     }
   }
 

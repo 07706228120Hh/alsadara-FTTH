@@ -98,7 +98,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
         _loadSummary(),
       ]);
     } catch (e) {
-      debugPrint('Error loading leave data: $e');
+      debugPrint('Error loading leave data');
     }
     setState(() => _loading = false);
   }
@@ -112,7 +112,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
         _totalRequests = data['total'] ?? data['Total'] ?? _requests.length;
       });
     } catch (e) {
-      debugPrint('Error loading requests: $e');
+      debugPrint('Error loading requests');
     }
   }
 
@@ -123,7 +123,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
       final data = await _api.getLeaveBalances(userId);
       setState(() => _balances = data);
     } catch (e) {
-      debugPrint('Error loading balances: $e');
+      debugPrint('Error loading balances');
     }
   }
 
@@ -132,7 +132,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
       final data = await _api.getLeaveSummary(companyId: widget.companyId);
       setState(() => _summary = data);
     } catch (e) {
-      debugPrint('Error loading summary: $e');
+      debugPrint('Error loading summary');
     }
   }
 
@@ -339,7 +339,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -419,7 +419,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e')),
+          SnackBar(content: Text('خطأ')),
         );
       }
     }

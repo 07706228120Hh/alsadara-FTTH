@@ -61,8 +61,8 @@ class WindowsAutomationService {
 
       return checkResult;
     } catch (e) {
-      print('❌ خطأ في فحص الرقم: $e');
-      return {'exists': false, 'error': 'خطأ في فحص الرقم: $e'};
+      print('❌ خطأ في فحص الرقم');
+      return {'exists': false, 'error': 'خطأ في فحص الرقم'};
     } finally {
       _isCheckingNumber = false;
     }
@@ -122,7 +122,7 @@ class WindowsAutomationService {
         'phoneNumber': 'تم التحقق بنجاح'
       };
     } catch (e) {
-      print('⚠️ لا يمكن التأكد من وجود الرقم: $e');
+      print('⚠️ لا يمكن التأكد من وجود الرقم');
       return {
         'exists': false,
         'error': 'لا يمكن التأكد من وجود الرقم على الواتساب',
@@ -230,7 +230,7 @@ class WindowsAutomationService {
 
       print('✅ تم تأشير مربع النص بسرعة - جاهز للصق');
     } catch (e) {
-      print('❌ خطأ في تأشير مربع النص: $e');
+      print('❌ خطأ في تأشير مربع النص');
     }
   }
 
@@ -250,7 +250,7 @@ class WindowsAutomationService {
 
       print('✅ تم الوصول لـ TAB$tabNumber');
     } catch (e) {
-      print('❌ خطأ في الانتقال المباشر: $e');
+      print('❌ خطأ في الانتقال المباشر');
     }
   }
 
@@ -309,7 +309,7 @@ class WindowsAutomationService {
 
       print('✅ تم الإرسال التلقائي فائق السرعة: نقر → Ctrl+V → TAB → Enter ✋');
     } catch (e) {
-      print('❌ خطأ في الإرسال التلقائي السريع: $e');
+      print('❌ خطأ في الإرسال التلقائي السريع');
     } finally {
       _isSending = false;
     }
@@ -345,7 +345,7 @@ class WindowsAutomationService {
 
       print('✅ تم الإرسال التلقائي البسيط: TAB×11 → TAB×1 → Enter ✋ توقف');
     } catch (e) {
-      print('❌ خطأ في الإرسال التلقائي البسيط: $e');
+      print('❌ خطأ في الإرسال التلقائي البسيط');
     }
   }
 
@@ -402,7 +402,7 @@ class WindowsAutomationService {
       print('⚠️ لم يتم العثور على نافذة الواتساب');
       return false;
     } catch (e) {
-      print('❌ خطأ في البحث عن نافذة الواتساب: $e');
+      print('❌ خطأ في البحث عن نافذة الواتساب');
       return false;
     }
   }
@@ -446,7 +446,7 @@ class WindowsAutomationService {
 
       return true;
     } catch (e) {
-      print('❌ خطأ في الإرسال التلقائي الذكي: $e');
+      print('❌ خطأ في الإرسال التلقائي الذكي');
       return false;
     }
   }
@@ -501,7 +501,7 @@ class WindowsAutomationService {
       _lastSendTime = DateTime.now();
       print('✅ تم الإرسال فائق التطور بنجاح!');
     } catch (e) {
-      print('❌ خطأ في الإرسال فائق التطور: $e');
+      print('❌ خطأ في الإرسال فائق التطور');
     } finally {
       _isSending = false;
     }
@@ -532,7 +532,7 @@ class WindowsAutomationService {
       _lastSendTime = DateTime.now();
       print('⚡ تم الإرسال البرق!');
     } catch (e) {
-      print('❌ خطأ في الإرسال البرق: $e');
+      print('❌ خطأ في الإرسال البرق');
     } finally {
       _isSending = false;
     }

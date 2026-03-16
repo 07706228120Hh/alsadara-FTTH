@@ -93,31 +93,12 @@ class PermissionService {
       getFirstSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // محاولة القراءة من JSON أولاً (الصيغة الجديدة السريعة)
     final jsonStr = prefs.getString(_firstSystemJsonKeyV2);
     if (jsonStr != null) {
       return _decodePermissionsJson(jsonStr);
     }
 
-    // الرجوع للصيغة القديمة (مفاتيح فردية)
-    final isConfigured = prefs.getBool(_firstSystemConfigKeyV2) ?? false;
-    Map<String, Map<String, bool>> permissions = {};
-    final allKeys = PermissionRegistry.allFirstSystemKeys;
-
-    for (String key in allKeys) {
-      Map<String, bool> actions = {};
-      for (String action in availableActions) {
-        if (isConfigured) {
-          actions[action] =
-              prefs.getBool('$_firstSystemPrefixV2${key}_$action') ?? false;
-        } else {
-          actions[action] = false;
-        }
-      }
-      permissions[key] = actions;
-    }
-
-    return permissions;
+    return {};
   }
 
   /// حفظ صلاحيات V2 للنظام الأول
@@ -131,7 +112,7 @@ class PermissionService {
       await prefs.setString(_firstSystemJsonKeyV2, jsonStr);
       await prefs.setBool(_firstSystemConfigKeyV2, true);
     } catch (e) {
-      throw Exception('فشل في حفظ صلاحيات V2 للنظام الأول: $e');
+      throw Exception('فشل في حفظ صلاحيات V2 للنظام الأول');
     }
   }
 
@@ -144,31 +125,12 @@ class PermissionService {
       getSecondSystemPermissionsV2() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // محاولة القراءة من JSON أولاً (الصيغة الجديدة السريعة)
     final jsonStr = prefs.getString(_secondSystemJsonKeyV2);
     if (jsonStr != null) {
       return _decodePermissionsJson(jsonStr);
     }
 
-    // الرجوع للصيغة القديمة (مفاتيح فردية)
-    final isConfigured = prefs.getBool(_secondSystemConfigKeyV2) ?? false;
-    Map<String, Map<String, bool>> permissions = {};
-    final allKeys = PermissionRegistry.allSecondSystemKeys;
-
-    for (String key in allKeys) {
-      Map<String, bool> actions = {};
-      for (String action in availableActions) {
-        if (isConfigured) {
-          actions[action] =
-              prefs.getBool('$_secondSystemPrefixV2${key}_$action') ?? false;
-        } else {
-          actions[action] = false;
-        }
-      }
-      permissions[key] = actions;
-    }
-
-    return permissions;
+    return {};
   }
 
   /// حفظ صلاحيات V2 للنظام الثاني
@@ -182,7 +144,7 @@ class PermissionService {
       await prefs.setString(_secondSystemJsonKeyV2, jsonStr);
       await prefs.setBool(_secondSystemConfigKeyV2, true);
     } catch (e) {
-      throw Exception('فشل في حفظ صلاحيات V2 للنظام الثاني: $e');
+      throw Exception('فشل في حفظ صلاحيات V2 للنظام الثاني');
     }
   }
 

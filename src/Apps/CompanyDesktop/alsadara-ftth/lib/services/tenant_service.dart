@@ -72,15 +72,15 @@ class TenantService {
         'phone': adminPhone,
         'role': UserRole.admin.value,
         'isActive': true,
-        'firstSystemPermissions': adminFirstSystemPermissions,
-        'secondSystemPermissions': adminSecondSystemPermissions,
+        'firstSystemPermissions': buildAdminFirstSystemPermissionsV2(),
+        'secondSystemPermissions': buildAdminSecondSystemPermissionsV2(),
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': 'system',
       });
 
       return TenantCreationResult.success(tenantRef.id);
     } catch (e) {
-      return TenantCreationResult.failure('حدث خطأ: $e');
+      return TenantCreationResult.failure('حدث خطأ');
     }
   }
 
@@ -292,7 +292,7 @@ class TenantService {
         deletedSubcollections: deletedSubcollections,
       );
     } catch (e) {
-      return DeleteTenantResult.failure('فشل في حذف الشركة: $e');
+      return DeleteTenantResult.failure('فشل في حذف الشركة');
     }
   }
 

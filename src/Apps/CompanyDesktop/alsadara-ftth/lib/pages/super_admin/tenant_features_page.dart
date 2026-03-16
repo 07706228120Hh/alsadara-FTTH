@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/tenant.dart';
-import '../../models/tenant_user.dart';
+import '../../permissions/permission_registry.dart';
 import '../../theme/energy_dashboard_theme.dart';
 
 class TenantFeaturesPage extends StatefulWidget {
@@ -34,16 +34,16 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
   }
 
   void _initFeatures() {
-    // تهيئة صلاحيات النظام الأول
+    // تهيئة ميزات النظام الأول من PermissionRegistry (مفاتيح رئيسية فقط)
     _firstSystemFeatures = {};
-    for (var key in defaultFirstSystemPermissions.keys) {
+    for (var key in PermissionRegistry.firstSystemKeys) {
       _firstSystemFeatures[key] =
           widget.tenant.enabledFirstSystemFeatures[key] ?? true;
     }
 
-    // تهيئة صلاحيات النظام الثاني
+    // تهيئة ميزات النظام الثاني من PermissionRegistry (مفاتيح رئيسية فقط)
     _secondSystemFeatures = {};
-    for (var key in defaultSecondSystemPermissions.keys) {
+    for (var key in PermissionRegistry.secondSystemKeys) {
       _secondSystemFeatures[key] =
           widget.tenant.enabledSecondSystemFeatures[key] ?? true;
     }
@@ -84,7 +84,7 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'حدث خطأ: $e',
+              'حدث خطأ',
               style: GoogleFonts.cairo(),
             ),
             backgroundColor: Colors.red,

@@ -85,6 +85,9 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<ISPSubscriber, long>? _ispSubscribers;
     private IRepository<ZoneStatistic, int>? _zoneStatistics;
 
+    // IPTV Subscribers (مشتركي التلفزيون عبر الإنترنت)
+    private IRepository<IptvSubscriber, long>? _iptvSubscribers;
+
     // Accounting System (نظام المحاسبة)
     private IRepository<Account, Guid>? _accounts;
     private IRepository<JournalEntry, Guid>? _journalEntries;
@@ -260,6 +263,10 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<ZoneStatistic, int> ZoneStatistics =>
         _zoneStatistics ??= new Repository<ZoneStatistic, int>(_context);
+
+    // IPTV Subscribers (مشتركي التلفزيون عبر الإنترنت)
+    public IRepository<IptvSubscriber, long> IptvSubscribers =>
+        _iptvSubscribers ??= new Repository<IptvSubscriber, long>(_context);
 
     // Accounting System (نظام المحاسبة)
     public IRepository<Account, Guid> Accounts =>

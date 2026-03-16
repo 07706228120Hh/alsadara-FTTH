@@ -120,7 +120,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             data['totalWorkedMinutes'] ?? data['TotalWorkedMinutes'] ?? 0;
       });
     } catch (e) {
-      debugPrint('Error fetching attendance count: $e');
+      debugPrint('Error fetching attendance count');
     }
   }
 
@@ -152,7 +152,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         setState(() => _isLoadingTx = false);
       }
     } catch (e) {
-      debugPrint('Error loading transactions: $e');
+      debugPrint('Error loading transactions');
       if (mounted) setState(() => _isLoadingTx = false);
     }
   }
@@ -179,7 +179,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         _isLoadingReport = false;
       });
     } catch (e) {
-      debugPrint('Error loading employee report: $e');
+      debugPrint('Error loading employee report');
       if (mounted) setState(() => _isLoadingReport = false);
     }
   }
@@ -196,7 +196,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         _isLoadingWithdrawals = false;
       });
     } catch (e) {
-      debugPrint('Error loading withdrawal requests: $e');
+      debugPrint('Error loading withdrawal requests');
       if (mounted) setState(() => _isLoadingWithdrawals = false);
     }
   }
@@ -692,7 +692,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('خطأ: $e', style: GoogleFonts.cairo(color: Colors.white)),
+                Text('خطأ', style: GoogleFonts.cairo(color: Colors.white)),
             backgroundColor: _accentRed,
           ),
         );
@@ -881,7 +881,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('خطأ: $e', style: GoogleFonts.cairo(color: Colors.white)),
+                Text('خطأ', style: GoogleFonts.cairo(color: Colors.white)),
             backgroundColor: _accentRed,
           ),
         );
@@ -1677,7 +1677,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('خطأ: $e', style: GoogleFonts.cairo(color: Colors.white)),
+                Text('خطأ', style: GoogleFonts.cairo(color: Colors.white)),
             backgroundColor: _accentRed,
           ),
         );
@@ -2708,7 +2708,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error fetching adjustments: $e');
+      debugPrint('Error fetching adjustments');
       if (mounted) {
         setState(() {
           _error = 'تعذّر جلب البيانات';

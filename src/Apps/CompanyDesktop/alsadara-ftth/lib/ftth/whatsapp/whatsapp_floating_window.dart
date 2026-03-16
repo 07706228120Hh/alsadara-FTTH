@@ -45,7 +45,7 @@ class WhatsAppFloatingWindow extends StatefulWidget {
         ),
       );
     } catch (e) {
-      debugPrint('❌ خطأ في إنشاء النافذة العائمة: $e');
+      debugPrint('❌ خطأ في إنشاء النافذة العائمة');
       rethrow;
     }
   }
@@ -114,7 +114,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
         await windowManager.setAlwaysOnTop(true);
       });
     } catch (e) {
-      debugPrint('❌ خطأ في إعداد النافذة: $e');
+      debugPrint('❌ خطأ في إعداد النافذة');
     }
   }
 
@@ -127,7 +127,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
         setState(() => _isLoggedIn = true);
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فحص حالة تسجيل الدخول: $e');
+      debugPrint('❌ خطأ في فحص حالة تسجيل الدخول');
     }
   }
 
@@ -139,9 +139,9 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
         await _initializeFlutterWebView();
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة WebView: $e');
+      debugPrint('❌ خطأ في تهيئة WebView');
       setState(() {
-        _error = 'خطأ في تحميل واتساب: ${e.toString()}';
+        _error = 'خطأ في تحميل واتساب';
         _isLoading = false;
       });
     }
@@ -224,7 +224,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
       await prefs.setBool('wa_web_logged_in', true);
       debugPrint('💾 تم حفظ حالة تسجيل الدخول');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ حالة الدخول: $e');
+      debugPrint('❌ خطأ في حفظ حالة الدخول');
     }
   }
 
@@ -262,7 +262,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فحص حالة الإرسال: $e');
+      debugPrint('❌ خطأ في فحص حالة الإرسال');
     }
   }
 

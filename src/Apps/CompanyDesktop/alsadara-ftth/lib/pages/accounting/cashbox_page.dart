@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
@@ -48,7 +49,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
         _errorMessage = result['message'] ?? 'خطأ';
       }
     } catch (e) {
-      _errorMessage = 'خطأ في الاتصال: $e';
+      _errorMessage = 'خطأ في الاتصال';
     }
     setState(() {
       _isLoading = false;
@@ -255,9 +256,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
                 Text(
                   _formatNumber(balance),
                   style: TextStyle(
-                    color: (balance is num && balance > 0)
-                        ? AccountingTheme.success
-                        : AccountingTheme.textMuted,
+                    color: (balance is num && balance < 0)
+                        ? Colors.red
+                        : (balance is num && balance > 0)
+                            ? AccountingTheme.success
+                            : AccountingTheme.textMuted,
                     fontWeight: FontWeight.bold,
                     fontSize: context.accR.body,
                   ),
@@ -798,10 +801,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
         .showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
   }
 
+  static final _numFmt = NumberFormat('#,##0', 'ar');
   String _formatNumber(dynamic value) {
     if (value == null || value == 0) return '0';
     final n = value is num ? value : double.tryParse(value.toString()) ?? 0;
-    return n.round().toString();
+    return _numFmt.format(n);
   }
 
   String _formatDate(dynamic date) {

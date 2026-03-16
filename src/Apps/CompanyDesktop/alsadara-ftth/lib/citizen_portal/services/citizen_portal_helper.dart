@@ -14,7 +14,7 @@ class CitizenPortalHelper {
       final linkedId = await CompanyApiService.getLocalLinkedCompanyId();
       return linkedId == companyId;
     } catch (e) {
-      print('خطأ في التحقق من الشركة المرتبطة: $e');
+      print('خطأ في التحقق من الشركة المرتبطة');
       return false;
     }
   }
@@ -41,7 +41,7 @@ class CitizenPortalHelper {
         createdAt: DateTime.now(),
       );
     } catch (e) {
-      print('خطأ في جلب الشركة المرتبطة: $e');
+      print('خطأ في جلب الشركة المرتبطة');
       return null;
     }
   }

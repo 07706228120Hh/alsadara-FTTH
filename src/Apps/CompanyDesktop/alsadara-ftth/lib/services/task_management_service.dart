@@ -40,7 +40,7 @@ class TaskManagementService {
 
       return false;
     } catch (e) {
-      print('❌ خطأ في إضافة المهمة: $e');
+      print('❌ خطأ في إضافة المهمة');
       return false;
     }
   }
@@ -109,7 +109,7 @@ class TaskManagementService {
 
       return false;
     } catch (e) {
-      print('❌ خطأ في تحديث المهمة: $e');
+      print('❌ خطأ في تحديث المهمة');
       return false;
     }
   }
@@ -148,7 +148,7 @@ class TaskManagementService {
         );
       }
     } catch (e) {
-      print('❌ خطأ في فحص المهام المتأخرة: $e');
+      print('❌ خطأ في فحص المهام المتأخرة');
     }
   }
 
@@ -176,7 +176,7 @@ class TaskManagementService {
 
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('خطأ في حفظ المهمة: $e');
+      print('خطأ في حفظ المهمة');
       return false;
     }
   }
@@ -192,7 +192,7 @@ class TaskManagementService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('خطأ في تحديث المهمة: $e');
+      print('خطأ في تحديث المهمة');
       return false;
     }
   }
@@ -212,7 +212,7 @@ class TaskManagementService {
 
       return null;
     } catch (e) {
-      print('خطأ في جلب المهمة: $e');
+      print('خطأ في جلب المهمة');
       return null;
     }
   }
@@ -232,7 +232,7 @@ class TaskManagementService {
 
       return [];
     } catch (e) {
-      print('خطأ في جلب المهام المتأخرة: $e');
+      print('خطأ في جلب المهام المتأخرة');
       return [];
     }
   }

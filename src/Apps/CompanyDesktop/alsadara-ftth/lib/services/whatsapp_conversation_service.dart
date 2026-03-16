@@ -69,7 +69,7 @@ class WhatsAppConversationService {
       print('⚠️ لم يتم العثور على اسم للرقم: $phoneNumber');
       return null;
     } catch (e) {
-      print('❌ خطأ في جلب اسم المستخدم: $e');
+      print('❌ خطأ في جلب اسم المستخدم');
       return null;
     }
   }
@@ -87,7 +87,7 @@ class WhatsAppConversationService {
         'contactName': userName,
       });
     } catch (e) {
-      print('❌ خطأ في تحديث اسم المستخدم: $e');
+      print('❌ خطأ في تحديث اسم المستخدم');
     }
   }
 
@@ -218,7 +218,7 @@ class WhatsAppConversationService {
 
       print('✅ تم حفظ الرسالة الواردة والمحادثة بنجاح');
     } catch (e) {
-      print('❌ خطأ في حفظ الرسالة الواردة: $e');
+      print('❌ خطأ في حفظ الرسالة الواردة');
     }
   }
 
@@ -294,7 +294,7 @@ class WhatsAppConversationService {
 
       print('✅ تم حذف المحادثة والرسائل بنجاح: $phoneNumber');
     } catch (e) {
-      print('❌ خطأ في حذف المحادثة: $e');
+      print('❌ خطأ في حذف المحادثة');
       rethrow;
     }
   }
@@ -400,7 +400,7 @@ class WhatsAppConversationService {
 
       print('✅ تمت مزامنة الأسماء بنجاح');
     } catch (e) {
-      print('❌ خطأ في مزامنة الأسماء: $e');
+      print('❌ خطأ في مزامنة الأسماء');
     }
   }
 
@@ -435,7 +435,7 @@ class WhatsAppConversationService {
 
       print('✅ تمت مزامنة المحادثات بنجاح');
     } catch (e) {
-      print('❌ خطأ في مزامنة المحادثات: $e');
+      print('❌ خطأ في مزامنة المحادثات');
     }
   }
 }

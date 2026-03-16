@@ -115,18 +115,18 @@ class SyncService {
         print('⏱️ انتهت المهلة للمحاولة $attempt من $maxRetries');
         if (attempt >= maxRetries) rethrow;
         await Future.delayed(Duration(seconds: attempt * 2)); // انتظار متزايد
-      } on SocketException catch (e) {
-        print('🔌 خطأ اتصال في المحاولة $attempt: $e');
+      } on SocketException {
+        print('🔌 خطأ اتصال في المحاولة $attempt');
         if (attempt >= maxRetries) rethrow;
         await Future.delayed(Duration(seconds: attempt * 2));
-      } on http.ClientException catch (e) {
+      } on http.ClientException {
         // هذا الخطأ يحدث عندما السيرفر يغلق الاتصال مبكراً
-        print('📡 خطأ عميل في المحاولة $attempt: $e');
+        print('📡 خطأ عميل في المحاولة $attempt');
         if (attempt >= maxRetries) rethrow;
         // انتظار أطول للسماح للسيرفر بالتعافي
         await Future.delayed(Duration(seconds: attempt * 3));
       } catch (e) {
-        print('❌ خطأ غير متوقع في المحاولة $attempt: $e');
+        print('❌ خطأ غير متوقع في المحاولة $attempt');
         if (attempt >= maxRetries) rethrow;
         await Future.delayed(Duration(seconds: attempt * 2));
       }
@@ -436,7 +436,7 @@ class SyncService {
         print('⚠️ خطأ HTTP في صفحة $pageNum: ${response.statusCode}');
       }
     } catch (e) {
-      print('⚠️ خطأ في صفحة $pageNum: $e');
+      print('⚠️ خطأ في صفحة $pageNum');
     }
     return [];
   }
@@ -645,7 +645,7 @@ class SyncService {
         return (data['items'] as List?) ?? [];
       }
     } catch (e) {
-      print('⚠️ خطأ في جلب صفحة المشتركين $pageNum: $e');
+      print('⚠️ خطأ في جلب صفحة المشتركين $pageNum');
     }
     return [];
   }
@@ -720,7 +720,7 @@ class SyncService {
         }
       } catch (e) {
         // تخطي الأخطاء والاستمرار
-        print('خطأ في جلب العناوين للمستخدم ${i + 1}: $e');
+        print('خطأ في جلب العناوين للمستخدم ${i + 1}');
       }
 
       // تأخير بسيط
@@ -886,7 +886,7 @@ class SyncService {
               print('✅ تم تجديد التوكن بنجاح');
             }
           } catch (e) {
-            print('⚠️ فشل تجديد التوكن: $e');
+            print('⚠️ فشل تجديد التوكن');
           }
         }
 
@@ -1107,7 +1107,7 @@ class SyncService {
               print('✅ تم تجديد التوكن بنجاح');
             }
           } catch (e) {
-            print('⚠️ فشل تجديد التوكن: $e');
+            print('⚠️ فشل تجديد التوكن');
           }
         }
 
@@ -1318,7 +1318,7 @@ class SyncService {
             '❌ خطأ HTTP: ${response.statusCode} - ${response.body.substring(0, (response.body.length).clamp(0, 200))}');
       }
     } catch (e) {
-      print('⚠️ خطأ في جلب addresses batch: $e');
+      print('⚠️ خطأ في جلب addresses batch');
     }
     return null;
   }
@@ -1482,7 +1482,7 @@ class SyncService {
         return null;
       }
     } catch (e) {
-      print('⚠️ خطأ في جلب addresses batch with retry: $e');
+      print('⚠️ خطأ في جلب addresses batch with retry');
       return null;
     }
   }
@@ -1744,7 +1744,7 @@ class SyncService {
 
       return result;
     } catch (e) {
-      print('⚠️ خطأ في جلب بيانات العميل $customerId: $e');
+      print('⚠️ خطأ في جلب بيانات العميل $customerId');
       return null;
     }
   }

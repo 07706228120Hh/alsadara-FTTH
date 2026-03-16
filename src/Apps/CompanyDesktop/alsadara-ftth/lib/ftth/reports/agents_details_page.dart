@@ -11,8 +11,9 @@ import 'package:flutter/services.dart';
 import '../widgets/notification_filter.dart';
 import 'package:http/http.dart' as http;
 import '../../services/agents_auth_service.dart';
+import '../../services/auth_service.dart';
 import '../../pages/webview_page.dart';
-import '../../test_webview_standalone.dart';
+import '../auth/auth_error_handler.dart';
 
 class AgentsDetailsPage extends StatefulWidget {
   final String authToken;
@@ -89,7 +90,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
       final decoded = utf8.decode(base64Url.decode(payload));
       return json.decode(decoded) as Map<String, dynamic>;
     } catch (e) {
-      debugPrint('❌ خطأ في فك تشفير JWT: $e');
+      debugPrint('❌ خطأ في فك تشفير JWT');
       return null;
     }
   }
@@ -370,21 +371,27 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         debugPrint('📊 zones: $userZones');
       } else {
         debugPrint('فشل في الحصول على guest token');
-        setState(() {
-          error =
-              'فشل في الحصول على Guest Token.\n\nالأسباب المحتملة:\n• التوكن الحالي غير صالح للداشبورد\n• الخادم لا يستجيب\n• مشكلة في الاتصال بالإنترنت\n\nيرجى تسجيل الدخول مرة أخرى أو التواصل مع الدعم الفني.';
-        });
+        if (mounted) {
+          setState(() {
+            error =
+                'فشل في الحصول على Guest Token.\n\nالأسباب المحتملة:\n• التوكن الحالي غير صالح للداشبورد\n• الخادم لا يستجيب\n• مشكلة في الاتصال بالإنترنت\n\nيرجى تسجيل الدخول مرة أخرى أو التواصل مع الدعم الفني.';
+          });
+        }
       }
     } catch (e) {
-      debugPrint('خطأ عام في التهيئة: $e');
-      setState(() {
-        error = 'خطأ في تحميل البيانات: ${e.toString()}';
-      });
+      debugPrint('خطأ عام في التهيئة');
+      if (mounted) {
+        setState(() {
+          error = 'خطأ في تحميل البيانات';
+        });
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-        waitingForApiUrls = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          waitingForApiUrls = false;
+        });
+      }
     }
   }
 
@@ -441,7 +448,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
 
       return null;
     } catch (e) {
-      debugPrint('فشل في المحاولة البديلة: $e');
+      debugPrint('فشل في المحاولة البديلة');
       return null;
     }
   }
@@ -576,7 +583,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -698,7 +705,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
           }
         } catch (e) {
           failCount++;
-          debugPrint('❌ خطأ في جلب ${chart['name']}: $e');
+          debugPrint('❌ خطأ في جلب ${chart['name']}');
         }
       }
 
@@ -714,7 +721,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
 
       debugPrint('✅ انتهى جلب كل البيانات: $successCount نجاح، $failCount فشل');
     } catch (e) {
-      debugPrint('❌ خطأ عام في جلب كل البيانات: $e');
+      debugPrint('❌ خطأ عام في جلب كل البيانات');
       setState(() {
         isFetchingAllData = false;
       });
@@ -722,7 +729,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         ftthShowSnackBar(
           context,
           SnackBar(
-            content: Text('خطأ في جلب البيانات: $e'),
+            content: Text('خطأ في جلب البيانات'),
             backgroundColor: Colors.red,
           ),
         );
@@ -967,7 +974,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
       ftthShowSnackBar(
         context,
         SnackBar(
-          content: Text('خطأ في التصدير: $e'),
+          content: Text('خطأ في التصدير'),
           backgroundColor: Colors.red,
         ),
       );
@@ -1008,7 +1015,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         });
       }
     } catch (e) {
-      debugPrint('خطأ في جلب بيانات المناطق حسب المقاولين: $e');
+      debugPrint('خطأ في جلب بيانات المناطق حسب المقاولين');
       setState(() {
         dashboard7ChartData = [];
         dashboard7ChartColumns = [];
@@ -1059,48 +1066,38 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         debugPrint('محاولة جلب guest token رقم ${currentTry + 1}');
 
         final url =
-            Uri.parse('https://dashboard.ftth.iq/api/v1/security/guest_token/');
+            'https://dashboard.ftth.iq/api/v1/security/guest_token/';
         final headers = {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'user-type': 'Partner',
         };
 
-        if (widget.authToken.isNotEmpty) {
-          headers['authorization'] = 'Bearer ${widget.authToken}';
-        }
+        final response = await AuthService.instance.authenticatedRequest(
+          'POST',
+          url,
+          headers: headers,
+          body: '{}',
+        );
 
-        final client = http.Client();
-        try {
-          final response = await client
-              .post(
-                url,
-                headers: headers,
-                body: '{}',
-              )
-              .timeout(Duration(seconds: 10));
+        debugPrint('fetchGuestToken status: ${response.statusCode}');
+        debugPrint('fetchGuestToken body length: ${response.body.length}');
 
-          debugPrint('fetchGuestToken status: ${response.statusCode}');
-          debugPrint('fetchGuestToken body length: ${response.body.length}');
-
-          if (response.statusCode == 200) {
-            final jsonBody = json.decode(response.body);
-            final token = jsonBody['token'] as String?;
-            if (token != null && token.isNotEmpty) {
-              debugPrint('تم الحصول على guest token بنجاح');
-              guestToken = token;
-              return token;
-            } else {
-              debugPrint('الاستجابة لا تحتوي على token صالح');
-            }
+        if (response.statusCode == 200) {
+          final jsonBody = json.decode(response.body);
+          final token = jsonBody['token'] as String?;
+          if (token != null && token.isNotEmpty) {
+            debugPrint('تم الحصول على guest token بنجاح');
+            guestToken = token;
+            return token;
           } else {
-            debugPrint('فشل الطلب: ${response.statusCode} - ${response.body}');
+            debugPrint('الاستجابة لا تحتوي على token صالح');
           }
-        } finally {
-          client.close();
+        } else {
+          debugPrint('فشل الطلب: ${response.statusCode} - ${response.body}');
         }
       } catch (e) {
-        debugPrint('خطأ في محاولة ${currentTry + 1} لجلب guest token: $e');
+        debugPrint('خطأ في محاولة ${currentTry + 1} لجلب guest token');
       }
 
       currentTry++;
@@ -1150,7 +1147,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         });
       }
     } catch (e) {
-      debugPrint('خطأ في جلب معلومات الرولز: $e');
+      debugPrint('خطأ في جلب معلومات الرولز');
       setState(() {
         userRoles = null;
       });
@@ -1182,7 +1179,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         debugPrint('فشل في جلب معلومات لوحة المعلومات: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('خطأ في جلب معلومات لوحة المعلومات: $e');
+      debugPrint('خطأ في جلب معلومات لوحة المعلومات');
     }
   }
 
@@ -1216,7 +1213,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         });
       }
     } catch (e) {
-      debugPrint('خطأ في جلب الداشبورد 7: $e');
+      debugPrint('خطأ في جلب الداشبورد 7');
       setState(() {
         dashboard7Info = null;
       });
@@ -1247,7 +1244,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         debugPrint('فشل في جلب مجموعات البيانات: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('خطأ في جلب مجموعات البيانات: $e');
+      debugPrint('خطأ في جلب مجموعات البيانات');
     }
   }
 
@@ -1296,7 +1293,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
       }
     } catch (e) {
       setState(() {
-        error = 'خطأ في جلب الشارتات: $e';
+        error = 'خطأ في جلب الشارتات';
         availableSlices = [];
       });
     }
@@ -1330,7 +1327,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         zones = [];
       }
     } catch (e) {
-      debugPrint('خطأ في جلب المناطق: $e');
+      debugPrint('خطأ في جلب المناطق');
       zones = [];
     }
   }
@@ -1396,6 +1393,9 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
             error = null;
           });
         }
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         setState(() {
           isLoading = false;
@@ -1406,7 +1406,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
     } catch (e) {
       setState(() {
         isLoading = false;
-        error = 'خطأ في جلب بيانات الوكلاء: $e';
+        error = 'خطأ في جلب بيانات الوكلاء';
         agents = [];
       });
     }
@@ -1457,7 +1457,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         });
       }
     } catch (e) {
-      debugPrint('خطأ في جلب بيانات شارت داشبورد 7: $e');
+      debugPrint('خطأ في جلب بيانات شارت داشبورد 7');
       setState(() {
         dashboard7ChartData = [];
         dashboard7ChartColumns = [];
@@ -1500,7 +1500,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         });
       }
     } catch (e) {
-      debugPrint('خطأ في جلب بيانات لوج الداشبورد: $e');
+      debugPrint('خطأ في جلب بيانات لوج الداشبورد');
       setState(() {
         dashboardLogData = null;
         // لا نضع error هنا لأنه ليس خطأ مميت
@@ -1638,19 +1638,6 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                   ),
                 );
               }
-            },
-          ),
-          // زر اختبار WebView
-          IconButton(
-            icon: const Icon(Icons.bug_report, size: 20),
-            tooltip: 'اختبار WebView',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TestWebViewPage(),
-                ),
-              );
             },
           ),
           // زر فتح الداشبورد بدون توكن (للاختبار)
@@ -2518,10 +2505,10 @@ class _AddAgentPageState extends State<AddAgentPage> {
                         // مؤقتاً نستخدم رابط محدود للاختبار
                         final url = Uri.parse(
                             'https://dashboard.ftth.iq/api/v1/chart/data?form_data=%7B%22slice_id%22%3A52%7D&dashboard_id=7');
-                        final response = await http.post(
-                          url,
+                        final response = await AuthService.instance.authenticatedRequest(
+                          'POST',
+                          url.toString(),
                           headers: {
-                            'Authorization': 'Bearer ${widget.authToken}',
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
                           },

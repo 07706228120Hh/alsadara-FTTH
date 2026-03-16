@@ -64,7 +64,7 @@ class LocalDatabaseService {
         final List<dynamic> data = json.decode(content);
         return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       } catch (e) {
-        print('خطأ في قراءة $fileName: $e');
+        print('خطأ في قراءة $fileName');
         return [];
       }
     }
@@ -193,6 +193,21 @@ class LocalDatabaseService {
         // معلومات إضافية
         'self_display_value': subscriber['selfDisplayValue'] ?? '',
         'phone': subscriber['phone'] ?? '',
+
+        // بيانات الشبكة (FDT/FAT/الجهاز)
+        'user_id': subscriber['userId'] ?? '',
+        'fdt_name': subscriber['fdtName'] ?? '',
+        'fat_name': subscriber['fatName'] ?? '',
+        'device_serial': subscriber['deviceSerial'] ?? '',
+        'gps_lat': subscriber['gpsLat'] ?? '',
+        'gps_lng': subscriber['gpsLng'] ?? '',
+
+        // حالات إضافية
+        'is_trial': subscriber['isTrial'] ?? false,
+        'is_pending': subscriber['isPending'] ?? false,
+        'details_fetched': subscriber['detailsFetched'] ?? false,
+        'details_fetched_at': subscriber['detailsFetchedAt'] ?? '',
+
         'synced_at': DateTime.now().toIso8601String(),
       };
 

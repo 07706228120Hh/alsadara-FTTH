@@ -331,9 +331,18 @@ public class FtthAccountingController : ControllerBase
             if (companyId.HasValue)
                 query = query.Where(l => l.CompanyId == companyId);
             if (from.HasValue)
-                query = query.Where(l => l.ActivationDate >= from.Value);
+            {
+                var fromUtc = DateTime.SpecifyKind(from.Value.Date, DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate >= fromUtc);
+            }
             if (to.HasValue)
-                query = query.Where(l => l.ActivationDate <= to.Value.Date.AddDays(1));
+            {
+                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1), DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate <= toUtc);
+            }
+
+            // فلترة خدمات الإنترنت فقط (استبعاد IPTV, Parental Control, VOIP, VOD, etc.)
+            query = query.Where(l => l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
 
             var logs = await query.OrderByDescending(l => l.ActivationDate).ToListAsync();
 
@@ -497,6 +506,9 @@ public class FtthAccountingController : ControllerBase
                 var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1), DateTimeKind.Utc);
                 query = query.Where(l => l.ActivationDate <= toUtc);
             }
+
+            // فلترة خدمات الإنترنت فقط (استبعاد IPTV, Parental Control, VOIP, VOD, etc.)
+            query = query.Where(l => l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
 
             // تجميع حسب UserId مع تفصيل أنواع العمليات
             var grouped = await query
@@ -1000,6 +1012,54 @@ public class FtthAccountingController : ControllerBase
         {
             _logger.LogError(ex, "خطأ في تحديد دورة التجديد");
             return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+        }
+    }
+
+    // ==================== 4.6.1 تعديل بيانات سجل اشتراك ====================
+
+    /// <summary>
+    /// تعديل بيانات سجل اشتراك FTTH (نوع التحصيل، الفني، الملاحظات)
+    /// </summary>
+    [HttpPut("update-subscription-log/{id}")]
+    public async Task<IActionResult> UpdateSubscriptionLog(long id, [FromBody] UpdateFtthLogRequest request)
+    {
+        try
+        {
+            var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+            if (log == null)
+                return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            bool changed = false;
+
+            if (request.CollectionType != null)
+            {
+                log.CollectionType = request.CollectionType;
+                changed = true;
+            }
+            if (request.TechnicianName != null)
+            {
+                log.TechnicianName = request.TechnicianName;
+                changed = true;
+            }
+            if (request.SubscriptionNotes != null)
+            {
+                log.SubscriptionNotes = request.SubscriptionNotes;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                log.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.SubscriptionLogs.Update(log);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            return Ok(new { success = true, message = "تم تحديث السجل بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تحديث سجل الاشتراك {Id}", id);
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -2221,4 +2281,10 @@ public record QuickCollectDto(
     string? Notes,
     List<long>? SubscriptionLogIds = null,
     string? CustomerName = null
+);
+
+public record UpdateFtthLogRequest(
+    string? CollectionType,
+    string? TechnicianName,
+    string? SubscriptionNotes
 );

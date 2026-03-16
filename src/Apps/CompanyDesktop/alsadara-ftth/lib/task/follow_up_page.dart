@@ -97,7 +97,7 @@ class _FollowUpPageState extends State<FollowUpPage> {
     } on TimeoutException {
       debugPrint('⏰ [FollowUp] انتهت مهلة الاتصال');
     } catch (e) {
-      debugPrint('❌ [FollowUp] خطأ: $e');
+      debugPrint('❌ [FollowUp] خطأ');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -117,7 +117,7 @@ class _FollowUpPageState extends State<FollowUpPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في حفظ التدقيق: $e'),
+            content: Text('خطأ في حفظ التدقيق'),
             backgroundColor: Colors.red,
           ),
         );

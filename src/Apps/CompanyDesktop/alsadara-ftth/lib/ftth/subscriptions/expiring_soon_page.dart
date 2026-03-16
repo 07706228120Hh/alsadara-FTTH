@@ -21,7 +21,6 @@ class ExpiringSoonPage extends StatefulWidget {
   final String activatedBy;
   final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
-  final String? firstSystemPermissions; // صلاحيات النظام الأول
   final bool? isAdminFlag; // علم إداري صريح
   final List<String>?
       importantFtthApiPermissions; // قائمة الصلاحيات المهمة من FTTH
@@ -30,7 +29,6 @@ class ExpiringSoonPage extends StatefulWidget {
       required this.activatedBy,
       this.hasServerSavePermission = false,
       this.hasWhatsAppPermission = false,
-      this.firstSystemPermissions,
       this.isAdminFlag,
       this.importantFtthApiPermissions});
 
@@ -225,7 +223,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
 
       if (mounted) {
         // عرض الخطأ كإشعار بسيط بدلاً من شاشة خطأ كاملة
-        final shortMsg = e.toString().contains('TimeoutException')
+        final shortMsg = 'حدث خطأ'.contains('TimeoutException')
             ? 'انتهت مهلة الاتصال — حاول مرة أخرى'
             : 'تعذر جلب البيانات';
         ftthShowSnackBar(
@@ -309,7 +307,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             _phoneCache[customerId] = phone;
           }
         } catch (e) {
-          debugPrint('خطأ في جلب رقم الهاتف للعميل $customerId: $e');
+          debugPrint('خطأ في جلب رقم الهاتف للعميل $customerId');
           // في حالة الخطأ، نحفظ "غير متوفر" في الـ cache لتجنب المحاولة مرة أخرى
           _phoneCache[customerId] = 'غير متوفر';
         }
@@ -612,14 +610,14 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        exportMessage = 'فشل في التصدير: $e';
+        exportMessage = 'فشل في التصدير';
         isExporting = false;
       });
 
       ftthShowSnackBar(
         context,
         SnackBar(
-          content: Text('فشل في تصدير Excel: $e'),
+          content: Text('فشل في تصدير Excel'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -700,7 +698,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         }
       }
     } catch (e) {
-      throw Exception('خطأ في جلب البيانات: $e');
+      throw Exception('خطأ في جلب البيانات');
     }
 
     return allData;
@@ -838,7 +836,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         });
       }
     } catch (e) {
-      debugPrint('💥 خطأ في جلب المناطق: $e');
+      debugPrint('💥 خطأ في جلب المناطق');
 
       // التحقق من خطأ عدم وجود توكن صالح
       if (e.toString().contains('لا يوجد توكن صالح')) {
@@ -1436,7 +1434,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                         }
                                       } catch (e) {
                                         debugPrint(
-                                            'خطأ في معالجة اسم المنطقة: $e');
+                                            'خطأ في معالجة اسم المنطقة');
                                       }
 
                                       return DropdownMenuItem<String>(
@@ -1923,11 +1921,11 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
     final bool isOnline = item['hasActiveSession'] == true;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 6,
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 3,
       shadowColor: showTrialSubscriptions
-          ? const Color(0xFF6366F1).withValues(alpha: 0.2)
-          : const Color(0xFFEC4899).withValues(alpha: 0.2),
+          ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+          : const Color(0xFFEC4899).withValues(alpha: 0.15),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -1949,7 +1947,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1957,12 +1955,12 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: showTrialSubscriptions
                           ? const Color(0xFF6366F1).withValues(alpha: 0.1)
                           : const Color(0xFFEC4899).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       showTrialSubscriptions
@@ -1971,59 +1969,60 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       color: showTrialSubscriptions
                           ? const Color(0xFF6366F1)
                           : const Color(0xFFEC4899),
-                      size: 26,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        InkWell(
-                          onTap: () => _openUserDetails(item),
-                          borderRadius: BorderRadius.circular(6),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 2, vertical: 2),
-                            child: Text(
-                              item['customer']?['displayValue'] ??
-                                  'عميل غير محدد',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2C3E50),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
+                    child: InkWell(
+                      onTap: () => _openUserDetails(item),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Text(
+                        item['customer']?['displayValue'] ??
+                            'عميل غير محدد',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2C3E50),
                         ),
-                      ],
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
+                  // زر نسخ
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(
+                        text: '${item['customer']?['displayValue'] ?? ''}\n$phone\n${item['username'] ?? ''}',
+                      ));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('تم النسخ'),
+                        backgroundColor: Colors.teal,
+                        duration: Duration(seconds: 1),
+                      ));
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.copy_rounded, size: 16, color: Colors.grey[500]),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 10,
+                      vertical: 4,
                     ),
                     decoration: BoxDecoration(
                       color: showTrialSubscriptions
                           ? const Color(0xFF6366F1)
                           : const Color(0xFFEC4899),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: showTrialSubscriptions
-                              ? const Color(0xFF6366F1).withValues(alpha: 0.3)
-                              : const Color(0xFFEC4899).withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       showTrialSubscriptions ? 'تجريبي' : daysRemaining,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -2031,11 +2030,11 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
 
               // تفاصيل الاشتراك بالترتيب المطلوب
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   // تلوين خلفية تفاصيل البطاقة حسب حالة الجلسة
                   color: isOnline ? Colors.green[50] : Colors.grey[100],
@@ -2054,35 +2053,57 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    _buildDetailRow(
-                      'اليوزر نيم ',
-                      item['username'] ?? 'غير محدد',
-                      onTap: () => _openUserDetails(item),
-                      isLink: true,
-                    ),
-                    _buildDetailRow('رقم الهاتف', phone),
-                    _buildDetailRow('ID', idStr),
-                    // عرض التاريخ فقط في هذا السطر
-                    _buildDetailRow('تاريخ الانتهاء', expiryDate),
-                    // سطر منفصل للوقت المتبقي بالدقائق والساعات مع تلوين
-                    _buildDetailRow(
-                      'الوقت المتبقي',
-                      remainingExact.isNotEmpty
-                          ? remainingExact
-                          : (daysRemaining.isNotEmpty
-                              ? daysRemaining
-                              : 'غير محدد'),
-                      valueColor:
-                          isExpired ? Colors.red[700] : Colors.green[700],
-                    ),
-                    _buildDetailRow('المنطقة', zoneName),
-                    if (firstService.isNotEmpty)
-                      _buildDetailRow('أول خدمة', firstService),
-                    _buildDetailRow('حالة الجلسة',
-                        item['hasActiveSession'] == true ? 'متصل' : 'غير متصل'),
-                  ],
+                child: Builder(
+                  builder: (context) {
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final allRows = <Widget>[
+                      _buildDetailRow(
+                        'اليوزر نيم ',
+                        item['username'] ?? 'غير محدد',
+                        onTap: () => _openUserDetails(item),
+                        isLink: true,
+                      ),
+                      _buildDetailRow('رقم الهاتف', phone),
+                      _buildDetailRow('ID', idStr),
+                      _buildDetailRow('تاريخ الانتهاء', expiryDate),
+                      _buildDetailRow(
+                        'الوقت المتبقي',
+                        remainingExact.isNotEmpty
+                            ? remainingExact
+                            : (daysRemaining.isNotEmpty
+                                ? daysRemaining
+                                : 'غير محدد'),
+                        valueColor:
+                            isExpired ? Colors.red[700] : Colors.green[700],
+                      ),
+                      _buildDetailRow('المنطقة', zoneName),
+                      if (firstService.isNotEmpty)
+                        _buildDetailRow('أول خدمة', firstService),
+                      _buildDetailRow('حالة الجلسة',
+                          item['hasActiveSession'] == true ? 'متصل' : 'غير متصل'),
+                    ];
+
+                    // 4 أعمدة على سطح المكتب، 2 على التابلت، 1 على الهاتف
+                    final int cols = screenWidth >= 900 ? 4 : (screenWidth >= 500 ? 2 : 1);
+                    if (cols == 1) {
+                      return Column(children: allRows);
+                    }
+                    final rows = <Widget>[];
+                    for (int i = 0; i < allRows.length; i += cols) {
+                      final rowItems = <Widget>[];
+                      for (int j = 0; j < cols; j++) {
+                        if (j > 0) rowItems.add(const SizedBox(width: 8));
+                        rowItems.add(Expanded(
+                          child: (i + j < allRows.length) ? allRows[i + j] : const SizedBox(),
+                        ));
+                      }
+                      rows.add(Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: rowItems,
+                      ));
+                    }
+                    return Column(children: rows);
+                  },
                 ),
               ),
             ],
@@ -2150,7 +2171,6 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             activatedBy: activatedBy,
             hasServerSavePermission: widget.hasServerSavePermission,
             hasWhatsAppPermission: widget.hasWhatsAppPermission,
-            firstSystemPermissions: widget.firstSystemPermissions,
             isAdminFlag: widget.isAdminFlag,
             userRoleHeader: '0',
             clientAppHeader: '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
@@ -2162,7 +2182,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تعذر فتح تفاصيل المستخدم: $e'),
+          content: Text('تعذر فتح تفاصيل المستخدم'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 2),
         ),
@@ -2175,161 +2195,127 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
     final isPhoneNumber = label == 'رقم الهاتف' && value != 'غير متوفر';
     final isExpiryDate = label == 'تاريخ الانتهاء';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Row(
-              children: [
-                if (isPhoneNumber)
-                  Icon(
-                    Icons.phone_rounded,
-                    size: 18,
-                    color: Colors.green[600],
-                  ),
-                if (isExpiryDate)
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 18,
-                    color: showTrialSubscriptions
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFEC4899),
-                  ),
-                if (isPhoneNumber || isExpiryDate) const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ),
-              ],
+    // أيقونة التصنيف
+    IconData? labelIcon;
+    Color? labelIconColor;
+    if (isPhoneNumber) {
+      labelIcon = Icons.phone_rounded;
+      labelIconColor = Colors.green[600];
+    } else if (isExpiryDate) {
+      labelIcon = Icons.schedule_rounded;
+      labelIconColor = showTrialSubscriptions
+          ? const Color(0xFF6366F1)
+          : const Color(0xFFEC4899);
+    }
+
+    // لون القيمة
+    final effectiveValueColor = valueColor ??
+        (isExpiryDate
+            ? (showTrialSubscriptions
+                ? const Color(0xFF6366F1)
+                : const Color(0xFFEC4899))
+            : const Color(0xFF2C3E50));
+
+    // بناء القيمة
+    Widget valueWidget;
+    if (isPhoneNumber) {
+      valueWidget = GestureDetector(
+        onTap: () {
+          Clipboard.setData(ClipboardData(text: value));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم نسخ رقم الهاتف: $value'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.green[200]!),
           ),
-          const Text(': ', style: TextStyle(fontWeight: FontWeight.bold)),
-          Expanded(
-            flex: 3,
-            child: isPhoneNumber
-                ? GestureDetector(
-                    onTap: () {
-                      // نسخ رقم الهاتف إلى الحافظة
-                      Clipboard.setData(ClipboardData(text: value));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('تم نسخ رقم الهاتف: $value'),
-                          duration: const Duration(seconds: 2),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green[200]!),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              value,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.green[800],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.copy_rounded,
-                            size: 16,
-                            color: Colors.green[600],
-                          ),
-                        ],
-                      ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(value,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.green[800]),
+                    overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.copy_rounded, size: 14, color: Colors.green[600]),
+            ],
+          ),
+        ),
+      );
+    } else if (onTap != null) {
+      final accent = showTrialSubscriptions ? const Color(0xFF6366F1) : const Color(0xFFEC4899);
+      valueWidget = InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: accent.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(value,
+                    style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                      color: isLink ? (showTrialSubscriptions ? const Color(0xFF4338CA) : const Color(0xFF9D174D)) : effectiveValueColor,
+                      decoration: isLink ? TextDecoration.underline : TextDecoration.none,
                     ),
-                  )
-                : (onTap != null
-                    ? InkWell(
-                        onTap: onTap,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: (showTrialSubscriptions
-                                    ? const Color(0xFF6366F1)
-                                    : const Color(0xFFEC4899))
-                                .withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: (showTrialSubscriptions
-                                      ? const Color(0xFF6366F1)
-                                      : const Color(0xFFEC4899))
-                                  .withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  value,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: isLink
-                                        ? (showTrialSubscriptions
-                                            ? const Color(0xFF4338CA)
-                                            : const Color(0xFF9D174D))
-                                        : (valueColor ??
-                                            const Color(0xFF2C3E50)),
-                                    decoration: isLink
-                                        ? TextDecoration.underline
-                                        : TextDecoration.none,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(
-                                Icons.open_in_new_rounded,
-                                size: 16,
-                                color: showTrialSubscriptions
-                                    ? const Color(0xFF6366F1)
-                                    : const Color(0xFFEC4899),
-                              )
-                            ],
-                          ),
-                        ),
-                      )
-                    : Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: valueColor ??
-                              (isExpiryDate
-                                  ? (showTrialSubscriptions
-                                      ? const Color(0xFF6366F1)
-                                      : const Color(0xFFEC4899))
-                                  : const Color(0xFF2C3E50)),
-                        ),
-                      )),
+                    overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.open_in_new_rounded, size: 14, color: accent),
+            ],
           ),
+        ),
+      );
+    } else {
+      valueWidget = Text(value,
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: effectiveValueColor),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 2);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (labelIcon != null) ...[
+                Icon(labelIcon, size: 14, color: labelIconColor),
+                const SizedBox(width: 4),
+              ],
+              Text(label,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+            ],
+          ),
+          const SizedBox(height: 4),
+          valueWidget,
         ],
       ),
     );

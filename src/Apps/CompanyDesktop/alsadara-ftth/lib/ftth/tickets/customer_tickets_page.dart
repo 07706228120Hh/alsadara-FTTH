@@ -6,8 +6,9 @@ library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../tickets/tktat_details_page.dart';
+import '../../services/auth_service.dart';
+import '../auth/auth_error_handler.dart';
 
 /// صفحة تعرض تذاكر (مهام) الدعم الخاصة بمشترك محدد بنفس تنسيق صفحة المهام العامة (مبسطة)
 class CustomerTicketsPage extends StatefulWidget {
@@ -45,10 +46,11 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
     final url = Uri.parse(
         'https://admin.ftth.iq/api/support/tickets?pageSize=40&pageNumber=$_page&sortCriteria.property=UpdatedAt&sortCriteria.direction=desc&customerId=${widget.customerId}');
     try {
-      final r = await http.get(url, headers: {
-        'Authorization': 'Bearer ${widget.authToken}',
-        'Accept': 'application/json'
-      });
+      final r = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url.toString(),
+        headers: {'Accept': 'application/json'},
+      );
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         final items = (data['items'] as List?) ?? [];
@@ -59,10 +61,8 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
           _loading = false;
         });
       } else if (r.statusCode == 401) {
-        setState(() {
-          _error = 'انتهت صلاحية الجلسة (401)';
-          _loading = false;
-        });
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         setState(() {
           _error = 'فشل الجلب: ${r.statusCode}';
@@ -71,7 +71,7 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
       }
     } catch (e) {
       setState(() {
-        _error = 'خطأ: $e';
+        _error = 'خطأ';
         _loading = false;
       });
     }

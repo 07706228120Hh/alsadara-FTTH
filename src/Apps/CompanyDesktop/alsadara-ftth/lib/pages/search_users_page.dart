@@ -306,12 +306,12 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Error loading regions: $e');
+      debugPrint('❌ Error loading regions');
       if (!mounted) return;
       setState(() {
         isLoading = false;
         hasError = true;
-        errorMessage = 'خطأ في تحميل البيانات: $e';
+        errorMessage = 'خطأ في تحميل البيانات';
       });
     }
   }
@@ -360,12 +360,12 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
       if (!mounted) return;
       setState(() => isLoading = false);
     } catch (e) {
-      debugPrint('❌ Error loading users: $e');
+      debugPrint('❌ Error loading users');
       if (!mounted) return;
       setState(() {
         isLoading = false;
         hasError = true;
-        errorMessage = 'خطأ في تحميل بيانات المستخدمين: $e';
+        errorMessage = 'خطأ في تحميل بيانات المستخدمين';
       });
     }
   }
@@ -477,12 +477,12 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ خطأ في البحث المباشر: $e');
+      debugPrint('❌ خطأ في البحث المباشر');
       if (!mounted) return;
       setState(() {
         isLoading = false;
         hasError = true;
-        errorMessage = 'خطأ في البحث: $e';
+        errorMessage = 'خطأ في البحث';
       });
     }
   }
@@ -523,7 +523,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         await _searchWithSmartMatching(nameParts);
       }
     } catch (e) {
-      debugPrint('❌ خطأ في البحث المباشر: $e');
+      debugPrint('❌ خطأ في البحث المباشر');
     }
   }
 
@@ -561,7 +561,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         if (matches.length >= 5) break;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في البحث الذكي: $e');
+      debugPrint('❌ خطأ في البحث الذكي');
     }
   }
 
@@ -619,7 +619,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في البحث عن الأقارب: $e');
+      debugPrint('❌ خطأ في البحث عن الأقارب');
     }
   }
 
@@ -670,7 +670,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         if (matches.length >= 20) break;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في البحث في جميع المناطق: $e');
+      debugPrint('❌ خطأ في البحث في جميع المناطق');
     }
   }
 
@@ -732,7 +732,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحديد العلاقة: $e');
+      debugPrint('❌ خطأ في تحديد العلاقة');
     }
 
     return relations;
@@ -886,10 +886,10 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         );
       }
     } catch (e) {
-      debugPrint('❌ Connection test failed: $e');
+      debugPrint('❌ Connection test failed');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('فشل الاتصال: $e'),
+          content: Text('فشل الاتصال'),
           backgroundColor: Colors.red,
         ),
       );

@@ -169,7 +169,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 8),
-                Expanded(child: Text('حدث خطأ: $e')),
+                Expanded(child: Text('حدث خطأ')),
               ],
             ),
             backgroundColor: Colors.red.shade600,

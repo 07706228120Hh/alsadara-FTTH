@@ -64,9 +64,9 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
             '  └─ Users in ${tenant['name']}: ${_users[tenant['id']]?.length ?? 0}');
       }
     } catch (e) {
-      print('❌ خطأ في جلب البيانات: $e');
+      print('❌ خطأ في جلب البيانات');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e')),
+        SnackBar(content: Text('خطأ')),
       );
     } finally {
       setState(() => _isLoading = false);

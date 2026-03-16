@@ -87,6 +87,7 @@ public class SadaraDbContext : DbContext
 
     // ==================== ISP Data (بيانات مشتركي الإنترنت) ====================
     public DbSet<ISPSubscriber> ISPSubscribers => Set<ISPSubscriber>();
+    public DbSet<IptvSubscriber> IptvSubscribers => Set<IptvSubscriber>();
     public DbSet<ZoneStatistic> ZoneStatistics => Set<ZoneStatistic>();
 
     // ==================== Accounting System (نظام المحاسبة) ====================
@@ -145,6 +146,7 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<WithdrawalRequest>()
             .Property(e => e.Status).HasConversion<int>().HasDefaultValue(WithdrawalRequestStatus.Pending);
         modelBuilder.Entity<ISPSubscriber>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<IptvSubscriber>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<ZoneStatistic>().HasQueryFilter(x => !x.IsDeleted);
 
         // Accounting entities query filters

@@ -69,6 +69,55 @@ class ApiConfig {
       '/internal/companies/$companyId/employees/$empId/permissions-v2';
 
   // ============================================
+  // Endpoints - Subscriber Cache (كاش المشتركين)
+  // ============================================
+
+  static String subscriberCacheByTenant(String tenantId) =>
+      '/subscriber-cache/$tenantId';
+  static String subscriberCacheSync(String tenantId) =>
+      '/subscriber-cache/$tenantId/sync';
+
+  // ============================================
+  // Endpoints - Subscriber Cache Download (تنزيل البيانات من VPS)
+  // ============================================
+
+  static String subscriberCacheDownload(String tenantId) =>
+      '/subscriber-cache/$tenantId/download';
+  static String subscriberCacheUpdatedSince(String tenantId, DateTime since) =>
+      '/subscriber-cache/$tenantId/updated-since?since=${since.toUtc().toIso8601String()}';
+
+  // ============================================
+  // Endpoints - Company FTTH Settings (إعدادات مزامنة FTTH)
+  // ============================================
+
+  static String companyFtthSettings(String companyId) =>
+      '/company-ftth-settings/$companyId';
+  static const String companyFtthSettingsSave = '/company-ftth-settings';
+  static String companyFtthSettingsTest(String companyId) =>
+      '/company-ftth-settings/$companyId/test';
+  static String companyFtthSyncStatus(String companyId) =>
+      '/company-ftth-settings/$companyId/sync-status';
+  static String companyFtthTriggerSync(String companyId) =>
+      '/company-ftth-settings/$companyId/trigger-sync';
+  static String companyFtthCancelSync(String companyId) =>
+      '/company-ftth-settings/$companyId/cancel-sync';
+  static String companyFtthDeleteSyncLog(String companyId, dynamic logId) =>
+      '/company-ftth-settings/$companyId/sync-logs/$logId';
+  static String companyFtthDeleteAllSyncLogs(String companyId) =>
+      '/company-ftth-settings/$companyId/sync-logs';
+  static String companyFtthMissingStats(String companyId) =>
+      '/company-ftth-settings/$companyId/missing-stats';
+  static String companyFtthRefetchMissing(String companyId) =>
+      '/company-ftth-settings/$companyId/refetch-missing';
+
+  // ============================================
+  // Endpoints - IPTV Subscribers (مشتركي IPTV)
+  // ============================================
+
+  static const String iptvSubscribers = '/iptv-subscribers';
+  static String iptvSubscriberById(int id) => '/iptv-subscribers/$id';
+
+  // ============================================
   // API Keys
   // ============================================
 

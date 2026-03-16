@@ -197,7 +197,7 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e'),
+            content: Text('خطأ'),
             backgroundColor: Colors.red,
           ),
         );

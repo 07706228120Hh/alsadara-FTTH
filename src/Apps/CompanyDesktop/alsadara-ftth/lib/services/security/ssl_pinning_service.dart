@@ -132,7 +132,7 @@ class SSLPinningService {
       final digest = sha256.convert(derBytes);
       return base64.encode(digest.bytes);
     } catch (e) {
-      print('❌ SSL: خطأ في استخراج المفتاح: $e');
+      print('❌ SSL: خطأ في استخراج المفتاح');
       return null;
     }
   }
@@ -159,7 +159,7 @@ class SSLPinningService {
       return SSLCheckResult(
         success: false,
         host: Uri.tryParse(url)?.host ?? url,
-        message: 'فشل الاتصال: $e',
+        message: 'فشل الاتصال',
         statusCode: null,
       );
     }
@@ -177,7 +177,7 @@ class SSLPinningService {
         results.add(SSLCheckResult(
           success: false,
           host: domain,
-          message: 'خطأ: $e',
+          message: 'خطأ',
           statusCode: null,
         ));
       }

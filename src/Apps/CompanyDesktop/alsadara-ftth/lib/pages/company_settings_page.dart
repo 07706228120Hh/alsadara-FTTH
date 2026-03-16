@@ -11,6 +11,8 @@ import '../services/sadara_api_service.dart';
 import '../services/vps_auth_service.dart';
 import '../services/departments_data_service.dart';
 import '../services/centers_data_service.dart';
+import '../services/company_settings_service.dart';
+import '../services/custom_auth_service.dart';
 import 'printer_settings_page.dart';
 import 'settings_page.dart';
 import 'settings_text_scale_page.dart';
@@ -52,18 +54,31 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   // Tab controller
   late TabController _tabController;
 
+  // Report/Manager settings (VPS)
+  final _managerNameCtrl = TextEditingController();
+  final _managerWhatsAppCtrl = TextEditingController();
+  bool _receiveReports = true;
+  bool _bulkSendReport = true;
+  bool _dailyReport = false;
+  bool _weeklyReport = false;
+  bool _isReportSettingsLoading = false;
+  bool _isReportSettingsSaving = false;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadCompanyData();
     _loadDepartments();
     _loadCenters();
+    _loadReportSettings();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _managerNameCtrl.dispose();
+    _managerWhatsAppCtrl.dispose();
     super.dispose();
   }
 
@@ -97,6 +112,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
 
       // Fetch full company details from API
       final response = await ApiService.instance.get('/companies/$companyId');
+      if (!mounted) return;
 
       if (response['success'] == true && response['data'] != null) {
         setState(() {
@@ -121,6 +137,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
         }
       }
     } catch (e) {
+      if (!mounted) return;
       // Fall back to local data on error
       final company = VpsAuthService.instance.currentCompany;
       if (company != null) {
@@ -130,7 +147,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
         });
       } else {
         setState(() {
-          _errorMessage = 'خطأ في الاتصال: $e';
+          _errorMessage = 'خطأ في الاتصال';
           _isLoading = false;
         });
       }
@@ -250,12 +267,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
+            isScrollable: true,
             tabs: const [
               Tab(icon: Icon(Icons.settings, size: 20), text: 'الإعدادات'),
               Tab(
                   icon: Icon(Icons.account_tree_rounded, size: 20),
                   text: 'الأقسام والمهام'),
               Tab(icon: Icon(Icons.location_on, size: 20), text: 'المراكز'),
+              Tab(icon: Icon(Icons.message, size: 20), text: 'واتساب والتقارير'),
             ],
           ),
         ),
@@ -290,6 +309,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
                 child: _buildCentersSection(),
+              ),
+              // Tab 4: واتساب والتقارير
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: _buildReportSettingsSection(),
               ),
             ],
           ),
@@ -761,6 +785,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     try {
       final response = await SadaraApiService.instance
           .get('/companies/$companyId/departments');
+      if (!mounted) return;
       if (response['success'] == true && response['data'] != null) {
         setState(() {
           _departments = List<Map<String, dynamic>>.from(
@@ -769,9 +794,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
         });
       }
     } catch (e) {
-      debugPrint('Error loading departments: $e');
+      debugPrint('Error loading departments');
     } finally {
-      setState(() => _isDepartmentsLoading = false);
+      if (mounted) setState(() => _isDepartmentsLoading = false);
     }
   }
 
@@ -806,7 +831,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 
@@ -853,7 +878,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 
@@ -888,7 +913,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 
@@ -935,7 +960,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 
@@ -984,7 +1009,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
         _showSnack(response['message']?.toString() ?? 'فشل', isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 
@@ -1070,6 +1095,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     try {
       final response =
           await SadaraApiService.instance.get('/companies/$companyId/centers');
+      if (!mounted) return;
       if (response['success'] == true && response['data'] != null) {
         setState(() {
           _centers = List<Map<String, dynamic>>.from(
@@ -1078,10 +1104,274 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
         });
       }
     } catch (e) {
-      debugPrint('Error loading centers: $e');
+      debugPrint('Error loading centers');
     } finally {
-      setState(() => _isCentersLoading = false);
+      if (mounted) setState(() => _isCentersLoading = false);
     }
+  }
+
+  // ── إعدادات واتساب والتقارير (VPS Settings API) ──
+
+  /// الحصول على tenantId (من widget أو VPS أو CustomAuth)
+  String? get _resolvedTenantId =>
+      widget.companyId ??
+      VpsAuthService.instance.currentCompanyId ??
+      CustomAuthService().currentTenantId;
+
+  Future<void> _loadReportSettings() async {
+    if (!mounted) return;
+    setState(() => _isReportSettingsLoading = true);
+    try {
+      final tid = _resolvedTenantId;
+      debugPrint('📥 تحميل إعدادات التقارير - tenantId: $tid');
+      final settings = await CompanySettingsService.getSettings(tenantId: tid);
+      if (mounted) {
+        setState(() {
+          _managerNameCtrl.text = settings.managerName ?? '';
+          _managerWhatsAppCtrl.text = settings.managerWhatsApp ?? '';
+          _receiveReports = settings.receiveReports;
+          _bulkSendReport = settings.bulkSendReport;
+          _dailyReport = settings.dailyReport;
+          _weeklyReport = settings.weeklyReport;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ خطأ تحميل إعدادات التقارير');
+    } finally {
+      if (mounted) setState(() => _isReportSettingsLoading = false);
+    }
+  }
+
+  Future<void> _saveReportSettings() async {
+    final tid = _resolvedTenantId;
+    if (tid == null) {
+      _showSnack('لا يوجد معرّف شركة - تأكد من تسجيل الدخول');
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isReportSettingsSaving = true);
+    try {
+      final updated = CompanySettings(
+        managerName: _managerNameCtrl.text.trim().isEmpty
+            ? null
+            : _managerNameCtrl.text.trim(),
+        managerWhatsApp: _managerWhatsAppCtrl.text.trim().isEmpty
+            ? null
+            : _managerWhatsAppCtrl.text.trim(),
+        receiveReports: _receiveReports,
+        bulkSendReport: _bulkSendReport,
+        dailyReport: _dailyReport,
+        weeklyReport: _weeklyReport,
+      );
+
+      debugPrint('💾 حفظ إعدادات التقارير - tenantId: $tid');
+      final ok = await CompanySettingsService.saveSettings(updated, tenantId: tid);
+
+      if (mounted) {
+        if (ok) {
+          _showSnack('تم حفظ إعدادات التقارير بنجاح');
+        } else {
+          _showSnack('فشل في حفظ الإعدادات');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnack('فشل في حفظ الإعدادات');
+      }
+    } finally {
+      if (mounted) setState(() => _isReportSettingsSaving = false);
+    }
+  }
+
+  String _getSettingDescription(String key) {
+    switch (key) {
+      case 'manager_name':
+        return 'اسم المدير';
+      case 'manager_whatsapp':
+        return 'رقم واتساب المدير';
+      case 'receive_reports':
+        return 'تفعيل استلام التقارير';
+      case 'bulk_send_report':
+        return 'تقرير بعد الإرسال الجماعي';
+      case 'daily_report':
+        return 'تقرير يومي';
+      case 'weekly_report':
+        return 'تقرير أسبوعي';
+      default:
+        return key;
+    }
+  }
+
+  Widget _buildReportSettingsSection() {
+    if (_isReportSettingsLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(color: _accent),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // بطاقة معلومات المدير
+        Container(
+          decoration: BoxDecoration(
+            color: _bgCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _dividerColor),
+            boxShadow: const [BoxShadow(color: _shadowColor, blurRadius: 10, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.05),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.person, color: Colors.green, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('معلومات المدير',
+                        style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _managerNameCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'اسم المدير',
+                        labelStyle: GoogleFonts.cairo(),
+                        prefixIcon: const Icon(Icons.badge_outlined),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _managerWhatsAppCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'رقم واتساب المدير',
+                        labelStyle: GoogleFonts.cairo(),
+                        hintText: '07xxxxxxxxx',
+                        prefixIcon: const Icon(Icons.phone, color: Colors.green),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // بطاقة إعدادات التقارير
+        Container(
+          decoration: BoxDecoration(
+            color: _bgCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _dividerColor),
+            boxShadow: const [BoxShadow(color: _shadowColor, blurRadius: 10, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.05),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.assessment, color: Colors.orange, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('إعدادات التقارير',
+                        style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+                  ],
+                ),
+              ),
+              SwitchListTile(
+                title: Text('استلام التقارير', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                subtitle: Text('تفعيل أو تعطيل إرسال التقارير للمدير', style: GoogleFonts.cairo(fontSize: 12)),
+                value: _receiveReports,
+                onChanged: (v) => setState(() => _receiveReports = v),
+                activeColor: Colors.green,
+              ),
+              if (_receiveReports) ...[
+                const Divider(height: 1, color: _dividerColor),
+                SwitchListTile(
+                  title: Text('تقرير الإرسال الجماعي', style: GoogleFonts.cairo()),
+                  subtitle: Text('إرسال تقرير بعد كل عملية إرسال جماعي', style: GoogleFonts.cairo(fontSize: 12)),
+                  value: _bulkSendReport,
+                  onChanged: (v) => setState(() => _bulkSendReport = v),
+                  activeColor: _accent,
+                ),
+                SwitchListTile(
+                  title: Text('تقرير يومي', style: GoogleFonts.cairo()),
+                  subtitle: Text('ملخص يومي للعمليات', style: GoogleFonts.cairo(fontSize: 12)),
+                  value: _dailyReport,
+                  onChanged: (v) => setState(() => _dailyReport = v),
+                  activeColor: _accent,
+                ),
+                SwitchListTile(
+                  title: Text('تقرير أسبوعي', style: GoogleFonts.cairo()),
+                  subtitle: Text('ملخص أسبوعي للعمليات', style: GoogleFonts.cairo(fontSize: 12)),
+                  value: _weeklyReport,
+                  onChanged: (v) => setState(() => _weeklyReport = v),
+                  activeColor: _accent,
+                ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        // زر الحفظ
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: _isReportSettingsSaving ? null : _saveReportSettings,
+            icon: _isReportSettingsSaving
+                ? const SizedBox(
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.save),
+            label: Text(
+              _isReportSettingsSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _addCenter() async {
@@ -1109,7 +1399,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 
@@ -1139,7 +1429,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 
@@ -1186,7 +1476,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             isError: true);
       }
     } catch (e) {
-      _showSnack('خطأ: $e', isError: true);
+      _showSnack('خطأ', isError: true);
     }
   }
 

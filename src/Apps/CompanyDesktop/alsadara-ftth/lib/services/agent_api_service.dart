@@ -98,7 +98,7 @@ class AgentApiService {
       }
       return [];
     } catch (e) {
-      throw Exception('خطأ في جلب الوكلاء: $e');
+      throw Exception('خطأ في جلب الوكلاء');
     }
   }
 
@@ -111,7 +111,7 @@ class AgentApiService {
       }
       return null;
     } catch (e) {
-      throw Exception('خطأ في جلب بيانات الوكيل: $e');
+      throw Exception('خطأ في جلب بيانات الوكيل');
     }
   }
 
@@ -159,7 +159,7 @@ class AgentApiService {
           e.toString().contains('انتهت صلاحية')) {
         rethrow;
       }
-      throw Exception('خطأ في إنشاء الوكيل: $e');
+      throw Exception('خطأ في إنشاء الوكيل');
     }
   }
 
@@ -210,7 +210,7 @@ class AgentApiService {
           e.toString().contains('انتهت صلاحية')) {
         rethrow;
       }
-      throw Exception('خطأ في تعديل الوكيل: $e');
+      throw Exception('خطأ في تعديل الوكيل');
     }
   }
 
@@ -220,7 +220,7 @@ class AgentApiService {
       final response = await _request('DELETE', '/agents/$id');
       return response['success'] == true;
     } catch (e) {
-      throw Exception('خطأ في حذف الوكيل: $e');
+      throw Exception('خطأ في حذف الوكيل');
     }
   }
 
@@ -257,7 +257,7 @@ class AgentApiService {
       }
       return {'transactions': [], 'total': 0};
     } catch (e) {
-      throw Exception('خطأ في جلب المعاملات: $e');
+      throw Exception('خطأ في جلب المعاملات');
     }
   }
 
@@ -287,7 +287,7 @@ class AgentApiService {
           await _request('POST', '/agents/$agentId/charge', body: body);
       return response;
     } catch (e) {
-      throw Exception('خطأ في إضافة الأجور: $e');
+      throw Exception('خطأ في إضافة الأجور');
     }
   }
 
@@ -313,7 +313,7 @@ class AgentApiService {
           await _request('POST', '/agents/$agentId/payment', body: body);
       return response;
     } catch (e) {
-      throw Exception('خطأ في تسجيل التسديد: $e');
+      throw Exception('خطأ في تسجيل التسديد');
     }
   }
 
@@ -330,7 +330,7 @@ class AgentApiService {
       }
       return null;
     } catch (e) {
-      throw Exception('خطأ في جلب ملخص المحاسبة: $e');
+      throw Exception('خطأ في جلب ملخص المحاسبة');
     }
   }
 
@@ -348,7 +348,7 @@ class AgentApiService {
       }
       return [];
     } catch (e) {
-      throw Exception('خطأ في جلب الشركات: $e');
+      throw Exception('خطأ في جلب الشركات');
     }
   }
 
@@ -375,7 +375,7 @@ class AgentApiService {
           body: body);
       return response;
     } catch (e) {
-      throw Exception('خطأ في تعديل المعاملة: $e');
+      throw Exception('خطأ في تعديل المعاملة');
     }
   }
 
@@ -386,7 +386,7 @@ class AgentApiService {
           await _request('DELETE', '/agents/transactions/$transactionId');
       return response['success'] == true;
     } catch (e) {
-      throw Exception('خطأ في حذف المعاملة: $e');
+      throw Exception('خطأ في حذف المعاملة');
     }
   }
 
@@ -410,7 +410,7 @@ class AgentApiService {
       final query = params.join('&');
       return await _request('GET', '/agents/transactions/all?$query');
     } catch (e) {
-      throw Exception('خطأ في جلب معاملات الوكلاء: $e');
+      throw Exception('خطأ في جلب معاملات الوكلاء');
     }
   }
 
@@ -427,7 +427,7 @@ class AgentApiService {
       }
       return [];
     } catch (e) {
-      throw Exception('خطأ في جلب نسب العمولات: $e');
+      throw Exception('خطأ في جلب نسب العمولات');
     }
   }
 
@@ -442,7 +442,7 @@ class AgentApiService {
       }
       return [];
     } catch (e) {
-      throw Exception('خطأ في جلب نسب العمولات: $e');
+      throw Exception('خطأ في جلب نسب العمولات');
     }
   }
 
@@ -465,7 +465,7 @@ class AgentApiService {
             if (notes != null) 'notes': notes,
           });
     } catch (e) {
-      throw Exception('خطأ في تحديد نسبة العمولة: $e');
+      throw Exception('خطأ في تحديد نسبة العمولة');
     }
   }
 
@@ -483,7 +483,7 @@ class AgentApiService {
             'rates': rates,
           });
     } catch (e) {
-      throw Exception('خطأ في تعيين نسب العمولات: $e');
+      throw Exception('خطأ في تعيين نسب العمولات');
     }
   }
 
@@ -494,7 +494,7 @@ class AgentApiService {
           'DELETE', '/accounting/agent-commissions/rates/$rateId');
       return response['success'] == true;
     } catch (e) {
-      throw Exception('خطأ في حذف نسبة العمولة: $e');
+      throw Exception('خطأ في حذف نسبة العمولة');
     }
   }
 
@@ -509,7 +509,7 @@ class AgentApiService {
       }
       return [];
     } catch (e) {
-      throw Exception('خطأ في جلب الباقات: $e');
+      throw Exception('خطأ في جلب الباقات');
     }
   }
 
@@ -522,7 +522,7 @@ class AgentApiService {
             'profitAmount': profitAmount,
           });
     } catch (e) {
-      throw Exception('خطأ في تحديث ربح الباقة: $e');
+      throw Exception('خطأ في تحديث ربح الباقة');
     }
   }
 }

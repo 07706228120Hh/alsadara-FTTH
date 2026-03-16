@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:excel/excel.dart' as excel;
 import '../../permissions/permissions.dart';
 import '../../services/auth_service.dart';
+import '../auth/auth_error_handler.dart';
 
 class CaounterDetailsPage extends StatefulWidget {
   final String authToken;
@@ -49,6 +50,12 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
   double _teamMemberWalletBalance = 0.0;
   String? _partnerId;
   bool _walletDataLoaded = false;
+
+  // headers إضافية لكل طلبات API (Authorization و Accept يتم إضافتهما تلقائياً من AuthService)
+  static const Map<String, String> _extraHeaders = {
+        'x-user-role': '0',
+        'x-client-app': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+      };
 
   // دالة للتحقق من وجود فلاتر نشطة
   bool get hasActiveFilters {
@@ -130,9 +137,12 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
           // جلب رصيد المحفظة بعد الحصول على partnerId
           await _fetchWalletBalance();
         }
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       }
     } catch (e) {
-      print('خطأ في جلب بيانات الشريك: $e');
+      print('خطأ في جلب بيانات الشريك');
     }
   }
 
@@ -167,11 +177,14 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
             _walletDataLoaded = true;
           });
         }
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         print('فشل في جلب رصيد المحفظة: ${response.statusCode}');
       }
     } catch (e) {
-      print('خطأ في جلب رصيد المحفظة: $e');
+      print('خطأ في جلب رصيد المحفظة');
     }
   }
 
@@ -186,22 +199,22 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return null;
       }
     } catch (e) {
-      print('خطأ في جلب رصيد محفظة العميل: $e');
+      print('خطأ في جلب رصيد محفظة العميل');
     }
     return null;
   }
 
   Future<void> _fetchZones() async {
     try {
-      final url = Uri.parse('https://api.ftth.iq/api/locations/zones');
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://api.ftth.iq/api/locations/zones',
+        headers: _extraHeaders,
       );
 
       if (response.statusCode == 200) {
@@ -213,6 +226,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               .toList();
           _zones.sort();
         });
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else if (response.statusCode == 403) {
         setState(() {
           message =
@@ -265,12 +281,10 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
       final url =
           Uri.https('api.ftth.iq', '/api/audit-logs/summary', queryParams);
 
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url.toString(),
+        headers: _extraHeaders,
       );
 
       if (response.statusCode == 200) {
@@ -278,6 +292,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
         setState(() {
           _totalAmount = data['model']['totalAmount'] ?? 0.0;
         });
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         throw Exception('فشل في جلب بيانات الملخص: ${response.statusCode}');
       }
@@ -376,12 +393,10 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
     print('   الرابط الكامل: ${url.toString()}');
 
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url.toString(),
+        headers: _extraHeaders,
       ).timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
@@ -414,11 +429,13 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
       print('❌ خطأ في الواجهة البرمجية: ${response.statusCode}');
       print('📝 محتوى الاستجابة: ${response.body}');
 
+      if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return {};
+      }
+
       String friendly;
       switch (response.statusCode) {
-        case 401:
-          friendly = 'غير مصرح: انتهت صلاحية الجلسة أو التوكن غير صالح.';
-          break;
         case 403:
           friendly = 'لا تملك صلاحية للوصول إلى السجلات (403).';
           break;
@@ -453,7 +470,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
     } catch (e) {
       setState(() {
         isLoading = false;
-        message = 'خطأ غير متوقع أثناء جلب السجلات: $e';
+        message = 'خطأ غير متوقع أثناء جلب السجلات';
       });
       return {};
     }
@@ -643,12 +660,10 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
 
       final url = Uri.https('api.ftth.iq', '/api/audit-logs', queryParams);
 
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url.toString(),
+        headers: _extraHeaders,
       );
 
       if (response.statusCode == 200) {
@@ -657,6 +672,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
         allLogs.addAll(items);
         if (items.length < _pageSize) break;
         page++;
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return allLogs;
       } else {
         break;
       }
@@ -832,7 +850,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
     try {
       storedPassword = await PermissionService.getSecondSystemDefaultPassword();
     } catch (e) {
-      print('خطأ في جلب كلمة المرور: $e');
+      print('خطأ في جلب كلمة المرور');
     }
 
     // إذا لم توجد كلمة مرور محفوظة، استخدم القيمة الافتراضية

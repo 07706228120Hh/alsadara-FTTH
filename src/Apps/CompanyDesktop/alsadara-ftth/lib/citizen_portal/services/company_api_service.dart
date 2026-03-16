@@ -31,7 +31,7 @@ class CompanyApiService {
         throw Exception('فشل في تحميل الشركات: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('خطأ في الاتصال: $e');
+      throw Exception('خطأ في الاتصال');
     }
   }
 
@@ -55,7 +55,7 @@ class CompanyApiService {
         throw Exception('فشل في تحميل الشركة المرتبطة: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('خطأ في الاتصال: $e');
+      throw Exception('خطأ في الاتصال');
     }
   }
 
@@ -107,7 +107,7 @@ class CompanyApiService {
         throw Exception(error['message'] ?? 'فشل في إنشاء الشركة');
       }
     } catch (e) {
-      throw Exception('خطأ في الاتصال: $e');
+      throw Exception('خطأ في الاتصال');
     }
   }
 
@@ -120,7 +120,7 @@ class CompanyApiService {
       await prefs.setString('linked_citizen_company_id', companyId);
       debugPrint('✅ تم ربط الشركة $companyId بنظام المواطن محلياً');
     } catch (e) {
-      throw Exception('خطأ في حفظ الربط: $e');
+      throw Exception('خطأ في حفظ الربط');
     }
   }
 
@@ -133,7 +133,7 @@ class CompanyApiService {
       await prefs.remove('linked_citizen_company_id');
       debugPrint('✅ تم إلغاء ربط الشركة $companyId من نظام المواطن');
     } catch (e) {
-      throw Exception('خطأ في إلغاء الربط: $e');
+      throw Exception('خطأ في إلغاء الربط');
     }
   }
 
@@ -173,7 +173,7 @@ class CompanyApiService {
         throw Exception(error['message'] ?? 'فشل في تغيير حالة الشركة');
       }
     } catch (e) {
-      throw Exception('خطأ في الاتصال: $e');
+      throw Exception('خطأ في الاتصال');
     }
   }
 
@@ -198,7 +198,7 @@ class CompanyApiService {
         throw Exception(error['message'] ?? 'فشل في حذف الشركة');
       }
     } catch (e) {
-      throw Exception('خطأ في الاتصال: $e');
+      throw Exception('خطأ في الاتصال');
     }
   }
 }

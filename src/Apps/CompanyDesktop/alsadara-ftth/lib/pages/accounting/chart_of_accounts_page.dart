@@ -71,7 +71,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'خطأ في الاتصال: $e';
+        _errorMessage = 'خطأ في الاتصال';
         _isLoading = false;
       });
     }
@@ -131,7 +131,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         });
       }
     } catch (e) {
-      _showSnackBar('خطأ: $e', AccountingTheme.danger);
+      _showSnackBar('خطأ', AccountingTheme.danger);
       setState(() {
         _isLoading = false;
       });
@@ -1620,7 +1620,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
-      _showSnackBar('خطأ: $e', AccountingTheme.danger);
+      _showSnackBar('خطأ', AccountingTheme.danger);
     }
   }
 

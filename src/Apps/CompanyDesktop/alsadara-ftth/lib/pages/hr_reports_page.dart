@@ -91,7 +91,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         setState(() => _dashboardData = res['data']);
       }
     } catch (e) {
-      _showError('خطأ في تحميل الداشبورد: $e');
+      _showError('خطأ في تحميل الداشبورد');
     } finally {
       setState(() => _loadingDashboard = false);
     }
@@ -113,7 +113,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         });
       }
     } catch (e) {
-      _showError('خطأ في تحميل تقرير الحضور: $e');
+      _showError('خطأ في تحميل تقرير الحضور');
     } finally {
       setState(() => _loadingAttendance = false);
     }
@@ -135,7 +135,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         });
       }
     } catch (e) {
-      _showError('خطأ في تحميل تقرير الرواتب: $e');
+      _showError('خطأ في تحميل تقرير الرواتب');
     } finally {
       setState(() => _loadingSalary = false);
     }
@@ -157,7 +157,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         });
       }
     } catch (e) {
-      _showError('خطأ في تحميل تقرير الإجازات: $e');
+      _showError('خطأ في تحميل تقرير الإجازات');
     } finally {
       setState(() => _loadingLeaves = false);
     }
@@ -231,7 +231,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         );
       }
     } catch (e) {
-      _showError('خطأ في تصدير الملف: $e');
+      _showError('خطأ في تصدير الملف');
     } finally {
       setState(() => _exporting = false);
     }
@@ -1759,7 +1759,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('خطأ: $e'),
+                                content: Text('خطأ'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -1837,7 +1837,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('خطأ في الحذف: $e'),
+                        content: Text('خطأ في الحذف'),
                         backgroundColor: Colors.red,
                       ),
                     );

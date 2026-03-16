@@ -7,8 +7,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../../services/agents_auth_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/cloudflare_bypass_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -55,6 +55,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
       await CloudflareBypassService.instance.loadSavedCookies();
       if (!CloudflareBypassService.instance.hasValidCookies) {
         // فتح WebView لتجاوز Cloudflare تلقائياً
+        if (!mounted) return;
         setState(() {
           isBypassingCloudflare = true;
         });
@@ -64,6 +65,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
           'https://dashboard.ftth.iq/',
         );
 
+        if (!mounted) return;
         setState(() {
           isBypassingCloudflare = false;
         });
@@ -78,6 +80,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       error = null;
@@ -105,6 +108,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
       }
 
       if (fetchedGuestToken != null) {
+        if (!mounted) return;
         setState(() {
           guestToken = fetchedGuestToken;
         });
@@ -113,6 +117,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
         final chartData = await _fetchDataWithRetry(fetchedGuestToken);
 
         if (chartData != null) {
+          if (!mounted) return;
           setState(() {
             rawResponse = chartData;
             usersData =
@@ -156,6 +161,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
           });
         } else {
           // التحقق من نوع الخطأ
+          if (!mounted) return;
           setState(() {
             if (isCloudflareError) {
               error =
@@ -166,11 +172,13 @@ class _UsersDataPageState extends State<UsersDataPage> {
           });
         }
       } else {
+        if (!mounted) return;
         setState(() {
           error = 'فشل في الحصول على Guest Token';
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         if (e.toString().contains('403') ||
             e.toString().contains('Cloudflare')) {
@@ -178,13 +186,15 @@ class _UsersDataPageState extends State<UsersDataPage> {
           error =
               'الخادم محمي بـ Cloudflare\nيرجى فتح Dashboard في المتصفح أولاً';
         } else {
-          error = 'خطأ: $e';
+          error = 'خطأ';
         }
       });
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -310,18 +320,12 @@ class _UsersDataPageState extends State<UsersDataPage> {
         'referer': 'https://admin.ftth.iq/',
       };
 
-      // إضافة auth token إذا كان متوفراً
-      if (widget.authToken.isNotEmpty) {
-        headers['authorization'] = 'Bearer ${widget.authToken}';
-      }
-
-      final response = await http
-          .post(
-            url,
-            headers: headers,
-            body: requestBody,
-          )
-          .timeout(const Duration(seconds: 15));
+      final response = await AuthService.instance.authenticatedRequest(
+        'POST',
+        url.toString(),
+        headers: headers,
+        body: requestBody,
+      ).timeout(const Duration(seconds: 15));
 
       debugPrint('محاولة بديلة - الاستجابة: ${response.statusCode}');
       debugPrint('محاولة بديلة - Response: ${response.body}');
@@ -336,15 +340,16 @@ class _UsersDataPageState extends State<UsersDataPage> {
 
       return null;
     } catch (e) {
-      debugPrint('فشل في المحاولة البديلة: $e');
+      debugPrint('فشل في المحاولة البديلة');
       return null;
     }
   }
 
   /// فتح Dashboard في المتصفح الخارجي
   Future<void> _openDashboardInBrowser() async {
+    final token = await AuthService.instance.getAccessToken();
     final dashboardUrl = Uri.parse(
-        'https://dashboard.ftth.iq/superset/dashboard/7/?native_filters_key=&Authorization=${widget.authToken}');
+        'https://dashboard.ftth.iq/superset/dashboard/7/?native_filters_key=&Authorization=${token ?? ''}');
 
     try {
       if (await canLaunchUrl(dashboardUrl)) {
@@ -362,7 +367,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فتح المتصفح: $e');
+      debugPrint('❌ خطأ في فتح المتصفح');
     }
   }
 
@@ -399,11 +404,11 @@ class _UsersDataPageState extends State<UsersDataPage> {
         await _loadData();
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تجاوز Cloudflare: $e');
+      debugPrint('❌ خطأ في تجاوز Cloudflare');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل في تجاوز Cloudflare: $e'),
+            content: Text('فشل في تجاوز Cloudflare'),
             backgroundColor: Colors.red,
           ),
         );

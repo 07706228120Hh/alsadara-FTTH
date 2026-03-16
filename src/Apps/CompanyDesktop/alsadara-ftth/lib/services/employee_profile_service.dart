@@ -34,7 +34,7 @@ class EmployeeProfileService {
       }
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات الموظف: $e');
+      debugPrint('❌ خطأ في جلب بيانات الموظف');
       return null;
     }
   }
@@ -51,7 +51,7 @@ class EmployeeProfileService {
       );
       return response.isSuccess;
     } catch (e) {
-      debugPrint('❌ خطأ في تحديث بيانات الموظف: $e');
+      debugPrint('❌ خطأ في تحديث بيانات الموظف');
       return false;
     }
   }
@@ -82,7 +82,7 @@ class EmployeeProfileService {
       }
       return [];
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الحضور: $e');
+      debugPrint('❌ خطأ في جلب الحضور');
       return [];
     }
   }
@@ -113,7 +113,7 @@ class EmployeeProfileService {
       }
       return [];
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الرواتب: $e');
+      debugPrint('❌ خطأ في جلب الرواتب');
       return [];
     }
   }
@@ -144,7 +144,7 @@ class EmployeeProfileService {
       }
       return [];
     } catch (e) {
-      debugPrint('❌ خطأ في جلب المهام: $e');
+      debugPrint('❌ خطأ في جلب المهام');
       return [];
     }
   }
@@ -177,7 +177,7 @@ class EmployeeProfileService {
       }
       return [];
     } catch (e) {
-      debugPrint('❌ خطأ في جلب معاملات الفني: $e');
+      debugPrint('❌ خطأ في جلب معاملات الفني');
       return [];
     }
   }
@@ -208,7 +208,7 @@ class EmployeeProfileService {
       }
       return [];
     } catch (e) {
-      debugPrint('❌ خطأ في جلب التقييمات: $e');
+      debugPrint('❌ خطأ في جلب التقييمات');
       return [];
     }
   }
@@ -232,7 +232,7 @@ class EmployeeProfileService {
       }
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات FTTH: $e');
+      debugPrint('❌ خطأ في جلب بيانات FTTH');
       return null;
     }
   }
@@ -257,7 +257,7 @@ class EmployeeProfileService {
       }
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الصلاحيات: $e');
+      debugPrint('❌ خطأ في جلب الصلاحيات');
       return null;
     }
   }
@@ -274,7 +274,7 @@ class EmployeeProfileService {
       );
       return response.isSuccess;
     } catch (e) {
-      debugPrint('❌ خطأ في تحديث الصلاحيات: $e');
+      debugPrint('❌ خطأ في تحديث الصلاحيات');
       return false;
     }
   }

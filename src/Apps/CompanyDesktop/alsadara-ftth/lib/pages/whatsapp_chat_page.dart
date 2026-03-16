@@ -83,7 +83,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e'),
+            content: Text('خطأ'),
             backgroundColor: Colors.red,
           ),
         );

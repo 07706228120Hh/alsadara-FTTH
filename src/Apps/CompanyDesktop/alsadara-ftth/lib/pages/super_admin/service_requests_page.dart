@@ -60,7 +60,7 @@ class _ServiceRequestsManagementPageState
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'حدث خطأ';
         _isLoading = false;
       });
     }
@@ -856,7 +856,7 @@ class _ServiceRequestsManagementPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('فشل الحذف: $e'),
+              content: Text('فشل الحذف'),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -874,7 +874,7 @@ class _ServiceRequestsManagementPageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('فشل جلب بيانات الأقسام: $e'),
+              content: Text('فشل جلب بيانات الأقسام'),
               backgroundColor: Colors.red),
         );
       }
@@ -1101,7 +1101,7 @@ class _ServiceRequestsManagementPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('فشل التعيين: $e'), backgroundColor: Colors.red),
+                content: Text('فشل التعيين'), backgroundColor: Colors.red),
           );
         }
       }
@@ -1137,7 +1137,7 @@ class _ServiceRequestsManagementPageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e'),
+            content: Text('خطأ'),
             backgroundColor: Colors.red,
           ),
         );

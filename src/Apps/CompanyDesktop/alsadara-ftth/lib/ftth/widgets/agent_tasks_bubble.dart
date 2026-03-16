@@ -30,7 +30,7 @@ class AgentTasksBubble {
       _rootOverlay = Overlay.of(context, rootOverlay: true);
       _initialized = _rootOverlay != null;
     } catch (e) {
-      debugPrint('[AgentTasksBubble] init failed: $e');
+      debugPrint('[AgentTasksBubble] init failed');
       return;
     }
 

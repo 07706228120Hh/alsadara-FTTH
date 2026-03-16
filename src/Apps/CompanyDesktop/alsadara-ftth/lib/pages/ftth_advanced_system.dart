@@ -260,7 +260,7 @@ class AdvancedAuthService {
         return _currentTokens;
       }
     } catch (e) {
-      debugPrint('خطأ في قراءة التوكنات: $e');
+      debugPrint('خطأ في قراءة التوكنات');
     }
     return null;
   }
@@ -276,7 +276,7 @@ class AdvancedAuthService {
         return _currentUser;
       }
     } catch (e) {
-      debugPrint('خطأ في قراءة معلومات المستخدم: $e');
+      debugPrint('خطأ في قراءة معلومات المستخدم');
     }
     return null;
   }
@@ -286,7 +286,7 @@ class AdvancedAuthService {
       final tokensJson = jsonEncode(tokens.toJson());
       await _secureStorage.write(key: _tokenKey, value: tokensJson);
     } catch (e) {
-      debugPrint('خطأ في حفظ التوكنات: $e');
+      debugPrint('خطأ في حفظ التوكنات');
     }
   }
 
@@ -295,7 +295,7 @@ class AdvancedAuthService {
       final userJson = jsonEncode(userInfo.toJson());
       await _secureStorage.write(key: _userKey, value: userJson);
     } catch (e) {
-      debugPrint('خطأ في حفظ معلومات المستخدم: $e');
+      debugPrint('خطأ في حفظ معلومات المستخدم');
     }
   }
 
@@ -306,7 +306,7 @@ class AdvancedAuthService {
       _currentTokens = null;
       _currentUser = null;
     } catch (e) {
-      debugPrint('خطأ في تسجيل الخروج: $e');
+      debugPrint('خطأ في تسجيل الخروج');
     }
   }
 
@@ -647,7 +647,7 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'حدث خطأ أثناء تسجيل الدخول: ${e.toString()}';
+        _errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
       });
     } finally {
       if (mounted) {
@@ -953,7 +953,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في فتح الداشبورد: ${e.toString()}'),
+            content: Text('خطأ في فتح الداشبورد'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1417,7 +1417,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content:
-                                Text('خطأ في تجديد التوكن: ${e.toString()}'),
+                                Text('خطأ في تجديد التوكن'),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -1657,7 +1657,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'خطأ في تهيئة WebView: ${e.toString()}';
+        _errorMessage = 'خطأ في تهيئة WebView';
         _isLoading = false;
       });
     }
@@ -1713,7 +1713,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
         ..loadRequest(Uri.parse(widget.url));
     } catch (e) {
       setState(() {
-        _errorMessage = 'خطأ في تهيئة WebView: ${e.toString()}';
+        _errorMessage = 'خطأ في تهيئة WebView';
         _isLoading = false;
       });
     }

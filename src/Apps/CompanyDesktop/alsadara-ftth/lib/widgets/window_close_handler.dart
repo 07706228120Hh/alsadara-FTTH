@@ -40,7 +40,7 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
       await windowManager.setPreventClose(true);
       debugPrint('🔒 تم تفعيل حماية النافذة من الإغلاق المباشر');
     } catch (e) {
-      debugPrint('⚠️ فشل في إعداد حماية النافذة: $e');
+      debugPrint('⚠️ فشل في إعداد حماية النافذة');
     }
   }
 
@@ -97,7 +97,7 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
         await windowManager.destroy();
       }
     } catch (e) {
-      debugPrint('❌ خطأ في معالجة إغلاق النافذة: $e');
+      debugPrint('❌ خطأ في معالجة إغلاق النافذة');
       // في حالة حدوث خطأ، أغلق بدون مسح البيانات
       await windowManager.destroy();
     }
@@ -143,7 +143,7 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
         return true; // السماح بالإغلاق
       }
     } catch (e) {
-      debugPrint('❌ خطأ في معالجة onWindowCloseRequested: $e');
+      debugPrint('❌ خطأ في معالجة onWindowCloseRequested');
       // في حالة حدوث خطأ، اسمح بالإغلاق بدون مسح البيانات
       return true; // السماح بالإغلاق
     }

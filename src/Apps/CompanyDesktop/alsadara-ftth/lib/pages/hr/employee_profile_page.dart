@@ -189,7 +189,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       }
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = 'حدث خطأ';
         _isLoading = false;
       });
     }
@@ -575,7 +575,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content: Text('خطأ: $e'),
+                                  content: Text('خطأ'),
                                   backgroundColor: Colors.red),
                             );
                           }
@@ -688,7 +688,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
           );
         }
       }

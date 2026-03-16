@@ -145,7 +145,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       setState(() {
         _errorMessage = '❌ فشل الاتصال بالخادم';
         _errorDetails =
-            'تأكد من:\n• أن الخادم VPS يعمل على $baseUrl\n• أن لديك اتصال بالإنترنت\n\nالخطأ: $e';
+            'تأكد من:\n• أن الخادم VPS يعمل على $baseUrl\n• أن لديك اتصال بالإنترنت\n\nالخطأ';
         _isLoading = false;
       });
     }
@@ -178,7 +178,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
       );
     }
   }
@@ -216,7 +216,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
       );
     }
   }
@@ -255,7 +255,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
       );
     }
   }

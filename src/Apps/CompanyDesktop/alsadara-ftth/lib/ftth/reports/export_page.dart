@@ -14,6 +14,8 @@ import 'package:excel/excel.dart' as ex;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import '../../permissions/permissions.dart';
+import '../../services/auth_service.dart';
+import '../auth/auth_error_handler.dart';
 
 // تم تحديث الواجهة لتصبح أكثر عصرية وحداثة بدون إضافة حزم خارجية
 // ركزنا على: ألوان متدرجة، بطاقات تفاعلية، حركات انتقالية، وتحسين عرض التقدم والرسائل
@@ -351,7 +353,7 @@ class _ExportPageState extends State<ExportPage>
     try {
       await Future.delayed(const Duration(milliseconds: 100));
     } catch (e) {
-      debugPrint('Memory optimization failed: $e');
+      debugPrint('Memory optimization failed');
     }
   }
 
@@ -421,14 +423,18 @@ class _ExportPageState extends State<ExportPage>
                 ? apiUrl
                 : '$apiUrl?pageNumber=$currentPage&pageSize=$pageSize');
 
-        final response = await http.get(
-          url,
+        final response = await AuthService.instance.authenticatedRequest(
+          'GET',
+          url.toString(),
           headers: {
-            'Authorization': 'Bearer ${widget.authToken}',
             'Accept': 'application/json',
           },
-        ).timeout(timeout);
+        );
 
+        if (response.statusCode == 401) {
+          if (mounted) AuthErrorHandler.handle401Error(context);
+          return;
+        }
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           final items = data['items'] as List? ?? [];
@@ -595,14 +601,18 @@ class _ExportPageState extends State<ExportPage>
         final customersUrl = Uri.parse(
             'https://api.ftth.iq/api/customers?pageNumber=$currentPage&pageSize=$pageSize&sortCriteria.property=self.displayValue&sortCriteria.direction=asc');
 
-        final customersResponse = await http.get(
-          customersUrl,
+        final customersResponse = await AuthService.instance.authenticatedRequest(
+          'GET',
+          customersUrl.toString(),
           headers: {
-            'Authorization': 'Bearer ${widget.authToken}',
             'Accept': 'application/json',
           },
-        ).timeout(timeout);
+        );
 
+        if (customersResponse.statusCode == 401) {
+          if (mounted) AuthErrorHandler.handle401Error(context);
+          return;
+        }
         if (customersResponse.statusCode == 200) {
           final customersData = jsonDecode(customersResponse.body);
           final customersItems = customersData['items'] as List? ?? [];
@@ -645,13 +655,13 @@ class _ExportPageState extends State<ExportPage>
             final detailsUrl = Uri.parse(
                 'https://api.ftth.iq/api/addresses?accountIds=${batchIds.join('&accountIds=')}');
 
-            final detailsResponse = await http.get(
-              detailsUrl,
+            final detailsResponse = await AuthService.instance.authenticatedRequest(
+              'GET',
+              detailsUrl.toString(),
               headers: {
-                'Authorization': 'Bearer ${widget.authToken}',
                 'Accept': 'application/json',
               },
-            ).timeout(timeout);
+            );
 
             if (detailsResponse.statusCode == 200) {
               final detailsData = jsonDecode(detailsResponse.body);

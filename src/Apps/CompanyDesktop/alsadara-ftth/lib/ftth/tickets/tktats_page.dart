@@ -11,10 +11,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/auth_service.dart';
 import '../../services/badge_service.dart';
 import 'tktat_details_page.dart';
 import '../auth/auth_error_handler.dart';
+import 'create_ticket_page.dart';
 import '../../utils/status_translator.dart';
+import '../../services/ticket_updates_service.dart';
 
 // امتداد لمساعدة تدرج الألوان (تفتيح/تغميق)
 extension ColorShadeX on Color {
@@ -35,7 +39,8 @@ extension ColorShadeX on Color {
 
 class TKTATsPage extends StatefulWidget {
   final String authToken;
-  const TKTATsPage({super.key, required this.authToken});
+  final String initialTab; // 'all', 'open'
+  const TKTATsPage({super.key, required this.authToken, this.initialTab = 'open'});
 
   @override
   State<TKTATsPage> createState() => _TKTATsPageState();
@@ -50,7 +55,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
   String message = "";
   int totalTKTATs = 0;
   int currentPage = 1;
-  String selectedTicketType = 'all'; // 'all', 'company', 'agent'
+  late String selectedTicketType; // 'all', 'open'
   String filterCategory = 'zone';
   String filterText = "";
   Timer? refreshTimer;
@@ -71,11 +76,18 @@ class _TKTATsPageState extends State<TKTATsPage> {
   bool _uiUpdatesSuspended = false; // لتعليق التحديثات أثناء فتح التفاصيل
   bool _fetchInProgress = false; // منع تداخل طلبات الشبكة
 
+  // إخفاء التذاكر محلياً
+  Set<String> _hiddenTicketIds = {};
+  bool _showHidden = false;
+  bool _hideInProgress = true; // إخفاء "قيد المعالجة" افتراضياً
+
   @override
   void initState() {
     super.initState();
+    selectedTicketType = widget.initialTab;
     // مسح الشارة عند فتح الصفحة (لا يحتاج تأجيل)
     BadgeService.instance.clear();
+    _loadHiddenTickets();
     // ⚡ تأجيل التحميل حتى بعد انتهاء transition animation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fetchTKTATs();
@@ -236,7 +248,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
           backgroundColor: Colors.green[600]);
       debugPrint('✅ In-app notification sent successfully');
     } catch (e) {
-      debugPrint('❌ Error sending notifications: $e');
+      debugPrint('❌ Error sending notifications');
     }
   }
 
@@ -298,23 +310,42 @@ class _TKTATsPageState extends State<TKTATsPage> {
         });
         return;
       }
+      // status=0 يجلب التذاكر المفتوحة فقط من السيرفر (أسرع بكثير)
+      final statusFilter = selectedTicketType == 'open' ? '&status=0' : '';
+      final pageSize = selectedTicketType == 'open' ? 50 : 50;
       final url = Uri.parse(
-          'https://api.ftth.iq/api/support/tickets?pageSize=50&pageNumber=$currentPage&sortCriteria.property=createdAt&sortCriteria.direction=desc&status=0&hierarchyLevel=0');
+          'https://admin.ftth.iq/api/support/tickets?pageSize=$pageSize&pageNumber=$currentPage&sortCriteria.property=createdAt&sortCriteria.direction=desc$statusFilter&hierarchyLevel=0');
 
       // حفظ تفاصيل الطلب للمساعدة في التشخيص
       lastRequestUrl = url.toString();
+      final currentToken = await AuthService.instance.getAccessToken() ?? '';
       lastRequestHeaders = {
-        'Authorization': 'Bearer ${widget.authToken}',
-        'Accept': 'application/json',
+        'Authorization': 'Bearer $currentToken',
+        'Accept': 'application/json, text/plain, */*',
         'Content-Type': 'application/json',
+        'X-Client-App': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+        'X-User-Role': '0',
+        'Origin': 'https://admin.ftth.iq',
+        'Referer': 'https://admin.ftth.iq/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
       };
 
       debugPrint('Fetching TKTATs from: $url');
-      debugPrint('Using token: ${widget.authToken.substring(0, 20)}...');
+      debugPrint('Using token: ${currentToken.length > 20 ? currentToken.substring(0, 20) : currentToken}...');
 
-      final response = await http
-          .get(url, headers: lastRequestHeaders!)
-          .timeout(Duration(seconds: 30));
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url.toString(),
+        headers: {
+          'Accept': 'application/json, text/plain, */*',
+          'Content-Type': 'application/json',
+          'X-Client-App': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+          'X-User-Role': '0',
+          'Origin': 'https://admin.ftth.iq',
+          'Referer': 'https://admin.ftth.iq/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+        },
+      );
 
       debugPrint('Response status: ${response.statusCode}');
       debugPrint(
@@ -375,6 +406,25 @@ class _TKTATsPageState extends State<TKTATsPage> {
         // تحديث البيانات دائماً داخلياً
         tktats = newTKTATs;
         totalTKTATs = data['totalCount'] ?? 0;
+
+        // تنظيف المخفيات: إزالة IDs التذاكر المحلولة التي لم تعد في الـ API
+        _cleanupHiddenTickets(newTKTATs);
+
+        // مزامنة عدد التذاكر المفتوحة (غير المخفية) مع الفقاعة العائمة
+        final openCount = newTKTATs.where((t) {
+          final s = (t['status']?.toString() ?? '').trim().toLowerCase();
+          final tId = t['self']?['id']?.toString() ?? t['id']?.toString() ?? '';
+          final isInProgress = s.contains('in progress');
+          final isOpen = s.contains('new') ||
+              isInProgress ||
+              s.contains('waiting') ||
+              s.contains('on hold') ||
+              s.contains('contractor') ||
+              s.contains('reopened');
+          if (_hideInProgress && isInProgress) return false;
+          return isOpen && !_hiddenTicketIds.contains(tId);
+        }).length;
+        TicketUpdatesService.instance.updateAgentCount(openCount);
         if (!_uiUpdatesSuspended && mounted) {
           setState(() {
             filterTKTATs();
@@ -464,11 +514,56 @@ class _TKTATsPageState extends State<TKTATsPage> {
           isLoading = false;
         });
       }
-      debugPrint('Error details: $e');
+      debugPrint('Error details');
     }
     debugPrint(
         '[fetchTKTATs] انتهاء الجلب success=${!isLoading} suspended=$_uiUpdatesSuspended مدة=${DateTime.now().difference(fetchStart).inMilliseconds} ms');
     _fetchInProgress = false;
+  }
+
+  // === إخفاء التذاكر محلياً ===
+  Future<void> _loadHiddenTickets() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('hidden_ticket_ids') ?? [];
+    setState(() => _hiddenTicketIds = list.toSet());
+  }
+
+  Future<void> _saveHiddenTickets() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('hidden_ticket_ids', _hiddenTicketIds.toList());
+  }
+
+  /// تنظيف المخفيات: إزالة IDs التذاكر التي لم تعد موجودة في بيانات الـ API
+  void _cleanupHiddenTickets(List<dynamic> currentTktats) {
+    if (_hiddenTicketIds.isEmpty) return;
+
+    // جمع كل IDs التذاكر الحالية من الـ API
+    final activeIds = <String>{};
+    for (final t in currentTktats) {
+      final id = t['self']?['id']?.toString() ?? t['id']?.toString() ?? '';
+      if (id.isNotEmpty) activeIds.add(id);
+    }
+
+    // إزالة أي ID مخفي لم يعد موجوداً
+    final removed = _hiddenTicketIds.difference(activeIds);
+    if (removed.isNotEmpty) {
+      debugPrint('🧹 تنظيف ${removed.length} تذكرة مخفية محلولة: $removed');
+      _hiddenTicketIds.removeAll(removed);
+      _saveHiddenTickets();
+    }
+  }
+
+  void _toggleHideTicket(String ticketId) {
+    setState(() {
+      if (_hiddenTicketIds.contains(ticketId)) {
+        _hiddenTicketIds.remove(ticketId);
+      } else {
+        _hiddenTicketIds.add(ticketId);
+      }
+    });
+    _saveHiddenTickets();
+    filterTKTATs();
+    setState(() {});
   }
 
   void filterTKTATs() {
@@ -484,15 +579,20 @@ class _TKTATsPageState extends State<TKTATsPage> {
         matchesFilterText = valueToFilter.contains(filterText.toLowerCase());
       }
 
-      // فحص نوع التذكرة
+      // عرض التذاكر المفتوحة فقط (أو الكل إذا اختار المستخدم)
+      final isOpen = (status == 'new' || status == 'in progress' || status == 'pending');
       bool matchesTicketType = true;
-      if (selectedTicketType == 'all') {
-        matchesTicketType = true;
-      } else if (selectedTicketType == 'company') {
-        matchesTicketType = (status == 'in progress');
-      } else if (selectedTicketType == 'agent') {
-        matchesTicketType = (status != 'in progress');
+      if (selectedTicketType == 'open') {
+        matchesTicketType = isOpen;
       }
+
+      // إخفاء "قيد المعالجة" إذا مفعّل
+      if (_hideInProgress && status == 'in progress') return false;
+
+      // فلترة المخفية
+      final ticketId = tktat['self']?['id']?.toString() ?? tktat['id']?.toString() ?? '';
+      if (!_showHidden && _hiddenTicketIds.contains(ticketId)) return false;
+      if (_showHidden && !_hiddenTicketIds.contains(ticketId)) return false;
 
       // يجب أن تتطابق مع كلا الشرطين
       return matchesFilterText && matchesTicketType;
@@ -506,9 +606,10 @@ class _TKTATsPageState extends State<TKTATsPage> {
   void resetFilters() {
     setState(() {
       filterText = "";
-      selectedTicketType = 'all';
-      filteredTKTATs = tktats;
+      selectedTicketType = 'open';
+      currentPage = 1;
     });
+    fetchTKTATs();
   }
 
   void nextPage() {
@@ -762,7 +863,7 @@ $lastErrorDetails
       }
       return true;
     } catch (e) {
-      debugPrint('Error checking connectivity: $e');
+      debugPrint('Error checking connectivity');
       return true; // افتراض وجود اتصال في حالة الخطأ
     }
   }
@@ -805,6 +906,66 @@ $lastErrorDetails
                 child: Icon(Icons.task_alt, color: Colors.white, size: 22),
               ),
         actions: [
+          // زر إظهار/إخفاء "قيد المعالجة"
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: _hideInProgress ? Colors.white.withValues(alpha: 0.15) : Colors.blue.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              icon: Icon(_hideInProgress ? Icons.hourglass_disabled : Icons.hourglass_top, size: 20),
+              tooltip: _hideInProgress ? 'إظهار قيد المعالجة' : 'إخفاء قيد المعالجة',
+              onPressed: () {
+                setState(() => _hideInProgress = !_hideInProgress);
+                filterTKTATs();
+              },
+              color: Colors.white,
+              iconSize: 20,
+            ),
+          ),
+          // زر إظهار/إخفاء المخفية
+          if (_hiddenTicketIds.isNotEmpty)
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: _showHidden ? Colors.orange.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: Badge(
+                  isLabelVisible: !_showHidden,
+                  label: Text('${_hiddenTicketIds.length}', style: TextStyle(fontSize: 10)),
+                  child: Icon(_showHidden ? Icons.visibility : Icons.visibility_off, size: 20),
+                ),
+                tooltip: _showHidden ? 'إظهار التذاكر النشطة' : 'إظهار المخفية (${_hiddenTicketIds.length})',
+                onPressed: () {
+                  setState(() => _showHidden = !_showHidden);
+                  filterTKTATs();
+                  setState(() {});
+                },
+                color: Colors.white,
+                iconSize: 20,
+              ),
+            ),
+          // زر إنشاء تذكرة جديدة
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.add_circle_outline, size: 20),
+              tooltip: 'تذكرة جديدة',
+              onPressed: () async {
+                final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => CreateTicketPage(authToken: widget.authToken)));
+                if (result == true && mounted) { setState(() => isLoading = true); fetchTKTATs(); }
+              },
+              color: Colors.white,
+              iconSize: 20,
+            ),
+          ),
           // أيقونة الإشعارات الجديدة - إضافة جديدة
           Container(
             margin: EdgeInsets.symmetric(horizontal: 4),
@@ -1008,17 +1169,12 @@ $lastErrorDetails
                 children: [
                   Expanded(
                     child: _buildCompactFilterButton(
+                        'المفتوحة', 'open', Icons.pending_actions),
+                  ),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: _buildCompactFilterButton(
                         'الكل', 'all', Icons.all_inclusive),
-                  ),
-                  SizedBox(width: 4),
-                  Expanded(
-                    child: _buildCompactFilterButton(
-                        'الشركة', 'company', Icons.business),
-                  ),
-                  SizedBox(width: 4),
-                  Expanded(
-                    child: _buildCompactFilterButton(
-                        'الوكيل', 'agent', Icons.person),
                   ),
                 ],
               ),
@@ -1033,10 +1189,13 @@ $lastErrorDetails
     final isSelected = selectedTicketType == type;
     return GestureDetector(
       onTap: () {
-        setState(() {
-          selectedTicketType = type;
-          filterTKTATs();
-        });
+        if (selectedTicketType != type) {
+          setState(() {
+            selectedTicketType = type;
+            currentPage = 1;
+          });
+          fetchTKTATs(); // إعادة جلب من السيرفر لأن الـ URL يتغير
+        }
       },
       child: AnimatedContainer(
         duration: Duration(milliseconds: 200),
@@ -1333,53 +1492,39 @@ $lastErrorDetails
     );
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         gradient: cardGradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blueGrey.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Colors.blueGrey[700]!, // إطار داكن
-          width: 3.0,
+          color: Colors.blueGrey[400]!,
+          width: 1.5,
         ),
       ),
       child: InkWell(
         onTap: () => navigateToTaskDetails(context, tktat),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header with status and priority
               Row(
                 children: [
-                  Container(
-                    padding: EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: getStatusColor(status).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      getStatusIcon(status),
-                      color: getStatusColor(status),
-                      size: 16,
-                    ),
+                  Icon(
+                    getStatusIcon(status),
+                    color: getStatusColor(status),
+                    size: 17,
                   ),
-                  SizedBox(width: 12),
+                  SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       translateStatus(status),
                       style: TextStyle(
-                        color: Colors.red, // لون أحمر حسب طلب المستخدم
-                        fontSize: 16.5, // تكبير الخط
-                        fontWeight: FontWeight.w800, // تغليظ الخط
+                        color: Colors.red,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
                         height: 1.1,
                       ),
                       maxLines: 1,
@@ -1389,49 +1534,34 @@ $lastErrorDetails
                   // المعرف بجانب الحالة مع إمكانية النسخ
                   if (displayId.isNotEmpty) ...[
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      margin: EdgeInsets.only(left: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      margin: EdgeInsets.only(left: 6),
                       decoration: BoxDecoration(
-                        color: Colors.indigo.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: Colors.indigo.withValues(alpha: 0.35),
-                            width: 0.8),
+                        color: Colors.indigo.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.badge,
-                              size: 14, color: Colors.indigo[600]),
-                          SizedBox(width: 4),
-                          SelectableText(
-                            displayId,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.indigo[700],
+                      child: InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: displayId));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('تم نسخ المعرف: $displayId'),
+                              backgroundColor: Colors.indigo[600],
+                              duration: Duration(seconds: 1),
                             ),
-                          ),
-                          SizedBox(width: 4),
-                          InkWell(
-                            onTap: () {
-                              Clipboard.setData(ClipboardData(text: displayId));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('تم نسخ المعرف: $displayId'),
-                                  backgroundColor: Colors.indigo[600],
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(6),
-                            child: Padding(
-                              padding: EdgeInsets.all(3),
-                              child: Icon(Icons.copy,
-                                  size: 13, color: Colors.indigo[600]),
+                          );
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.copy, size: 13, color: Colors.indigo[500]),
+                            SizedBox(width: 3),
+                            Text(
+                              displayId,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.indigo[600]),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -1446,172 +1576,122 @@ $lastErrorDetails
                         translatePriority(priority),
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  SizedBox(width: 6),
-                  // زر فتح التذكرة (عرض التفاصيل الخام)
-                  Tooltip(
-                    message: 'فتح التذكرة وعرض التفاصيل الكاملة',
-                    child: InkWell(
-                      onTap: () {
-                        // فتح صفحة التفاصيل العادية بدل صفحة الحقول الخام
-                        try {
-                          navigateToTaskDetails(context, tktat);
-                        } catch (e) {
-                          showInAppNotification('تعذر فتح التفاصيل: $e',
-                              backgroundColor: Colors.red[600]);
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: AnimatedContainer(
-                        duration: Duration(milliseconds: 200),
-                        curve: Curves.easeOut,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blue.withValues(alpha: 0.35),
-                              blurRadius: 8,
-                              offset: Offset(0, 3),
-                            )
-                          ],
-                          border:
-                              Border.all(color: Color(0xFF1976D2), width: 1.1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.open_in_new,
-                                size: 16, color: Colors.white),
-                            SizedBox(width: 4),
-                            Text(
-                              'فتح',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
-                        ),
+                  SizedBox(width: 4),
+                  // زر إخفاء/إظهار التذكرة
+                  InkWell(
+                    onTap: () {
+                      final tId = selfId.isNotEmpty ? selfId : idVal;
+                      if (tId.isNotEmpty) _toggleHideTicket(tId);
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _hiddenTicketIds.contains(selfId.isNotEmpty ? selfId : idVal)
+                            ? Colors.orange.withValues(alpha: 0.15)
+                            : Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _hiddenTicketIds.contains(selfId.isNotEmpty ? selfId : idVal)
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        size: 16,
+                        color: _hiddenTicketIds.contains(selfId.isNotEmpty ? selfId : idVal)
+                            ? Colors.orange[700]
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  InkWell(
+                    onTap: () {
+                      try {
+                        navigateToTaskDetails(context, tktat);
+                      } catch (e) {
+                        showInAppNotification('تعذر فتح التفاصيل',
+                            backgroundColor: Colors.red[600]);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF1565C0),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.open_in_new, size: 15, color: Colors.white),
+                          SizedBox(width: 3),
+                          Text('فتح', style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700)),
+                        ],
                       ),
                     ),
                   ),
                 ],
               ),
 
-              SizedBox(height: 16),
+              SizedBox(height: 6),
 
-              // العنوان - يستخدم نفس مصدر البيانات كما في صفحة التفاصيل
-              // العنوان (مُصغر)
+              // العنوان
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Color(0xFF64B5F6), width: 1.3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.lightBlue.withValues(alpha: 0.18),
-                      blurRadius: 8,
-                      offset: Offset(0, 3),
-                    )
-                  ],
+                  color: Color(0xFFE3F2FD),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Color(0xFF90CAF9), width: 0.8),
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.title, size: 16, color: Colors.blue[700]),
-                    SizedBox(width: 8),
+                    SizedBox(width: 6),
                     Expanded(
                       child: SelectableText(
                         title,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800, // تغليظ أكبر
-                          color: Colors.blueGrey[900],
-                          height: 1.20,
-                          letterSpacing: 0.2,
-                        ),
-                        maxLines: 2,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.blueGrey[900], height: 1.15),
+                        maxLines: 1,
                       ),
                     ),
                     InkWell(
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: title));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('تم نسخ العنوان'),
-                            backgroundColor: Colors.blue[600],
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ العنوان'), duration: Duration(seconds: 1)));
                       },
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: EdgeInsets.all(4),
-                        child:
-                            Icon(Icons.copy, size: 14, color: Colors.blue[600]),
-                      ),
-                    )
+                      child: Icon(Icons.copy, size: 15, color: Colors.blue[400]),
+                    ),
                   ],
                 ),
               ),
 
-              // الملخص مباشرة تحت العنوان
+              // الملخص
               if (description.isNotEmpty) ...[
-                SizedBox(height: 6),
+                SizedBox(height: 3),
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFE8FFF5), Color(0xFFC3F2E0)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Color(0xFF2EAE88), width: 1.2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.teal.withValues(alpha: 0.18),
-                        blurRadius: 7,
-                        offset: Offset(0, 3),
-                      )
-                    ],
+                    color: Color(0xFFE8FFF5),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Color(0xFF80CBC4), width: 0.8),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(Icons.notes, size: 16, color: Colors.teal[700]),
-                      SizedBox(width: 8),
+                      SizedBox(width: 6),
                       Expanded(
                         child: SelectableText(
                           description,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700, // تغليظ الملخص
-                            color: Colors.teal[900],
-                            height: 1.28,
-                            letterSpacing: 0.15,
-                          ),
-                          maxLines: 3,
+                          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: Colors.teal[900], height: 1.2),
+                          maxLines: 2,
                         ),
                       ),
                     ],
@@ -1619,223 +1699,79 @@ $lastErrorDetails
                 ),
               ],
 
-              SizedBox(height: 10),
+              SizedBox(height: 4),
 
-              // صف العميل والمنطقة (تنسيق موحد)
+              // صف العميل والمنطقة
               Row(
                 children: [
                   if (customerName.isNotEmpty)
                     Expanded(
                       child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(color: Color(0xFFFFB74D), width: 1.2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.deepOrange.withValues(alpha: 0.17),
-                              blurRadius: 7,
-                              offset: Offset(0, 3),
-                            )
-                          ],
+                          color: Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Color(0xFFFFCC80), width: 0.8),
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            Icon(Icons.person, size: 16, color: Colors.orange[700]),
+                            SizedBox(width: 4),
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.person,
-                                          size: 16, color: Colors.orange[700]),
-                                      SizedBox(width: 6),
-                                      Text('العميل',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.orange[800])),
-                                    ],
-                                  ),
-                                  SizedBox(height: 4),
-                                  SelectableText(
-                                    customerName,
-                                    style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.brown[800]),
-                                    maxLines: 2,
-                                  ),
-                                ],
+                              child: Text(
+                                customerName,
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.brown[800]),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            SizedBox(width: 8),
-                            Tooltip(
-                              message: 'نسخ اسم العميل',
-                              child: InkWell(
-                                onTap: () {
-                                  Clipboard.setData(
-                                      ClipboardData(text: customerName));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('نُسخ اسم العميل'),
-                                      backgroundColor: Colors.orange[600],
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(12),
-                                child: AnimatedContainer(
-                                  duration: Duration(milliseconds: 180),
-                                  curve: Curves.easeOut,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Color(0xFFFF9800),
-                                        Color(0xFFF57C00)
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.deepOrange
-                                            .withValues(alpha: 0.35),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 3),
-                                      )
-                                    ],
-                                  ),
-                                  padding: EdgeInsets.all(7),
-                                  child: Icon(Icons.copy,
-                                      size: 18, color: Colors.white),
-                                ),
-                              ),
+                            InkWell(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: customerName));
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('نُسخ اسم العميل'), duration: Duration(seconds: 1)));
+                              },
+                              child: Icon(Icons.copy, size: 15, color: Colors.orange[400]),
                             ),
                           ],
                         ),
                       ),
                     ),
                   if (customerName.isNotEmpty && zone.isNotEmpty)
-                    SizedBox(width: 10),
+                    SizedBox(width: 6),
                   if (zone.isNotEmpty)
-                    Expanded(
-                      child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFFEDE7F6), Color(0xFFD1C4E9)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(color: Color(0xFF9575CD), width: 1.2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.deepPurple.withValues(alpha: 0.16),
-                              blurRadius: 7,
-                              offset: Offset(0, 3),
-                            )
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.location_on,
-                                    size: 14, color: Colors.indigo[600]),
-                                SizedBox(width: 4),
-                                Text('المنطقة',
-                                    style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.indigo[700])),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            SelectableText(
-                              zone,
-                              style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.indigo[800]),
-                              maxLines: 2,
-                            )
-                          ],
-                        ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFEDE7F6),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Color(0xFFB39DDB), width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.location_on, size: 15, color: Colors.indigo[600]),
+                          SizedBox(width: 3),
+                          Text(zone, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.indigo[800])),
+                        ],
                       ),
                     ),
                 ],
               ),
 
-              SizedBox(height: 12),
+              SizedBox(height: 4),
 
-              // صف مخصص وواضح للتواريخ والمعرّف
-              if (createdAtRaw.isNotEmpty ||
-                  updatedAtRaw.isNotEmpty ||
-                  status.isNotEmpty) ...[
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.blueGrey[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border:
-                        Border.all(color: Colors.blueGrey[100]!, width: 0.8),
-                  ),
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 18,
-                    runSpacing: 8,
-                    children: [
-                      if (createdAtRaw.isNotEmpty)
-                        _buildTimeInfoChip(
-                          icon: Icons.schedule,
-                          label: 'إنشاء',
-                          value: fmt(createdAtRaw),
-                          color: Colors.blueGrey,
-                        ),
-                      if (updatedAtRaw.isNotEmpty)
-                        _buildTimeInfoChip(
-                          icon: Icons.update,
-                          label: 'تحديث',
-                          value: fmt(updatedAtRaw),
-                          color: Colors.deepOrange,
-                        ),
-                      _buildTimeInfoChip(
-                        icon: status.toLowerCase() == 'in progress'
-                            ? Icons.business
-                            : Icons.person,
-                        label: 'النوع',
-                        value: status.toLowerCase() == 'in progress'
-                            ? 'شركة'
-                            : 'وكيل',
-                        color: status.toLowerCase() == 'in progress'
-                            ? Colors.orange
-                            : Colors.blue,
-                      ),
-                    ],
-                  ),
+              // التواريخ والنوع
+              if (createdAtRaw.isNotEmpty || updatedAtRaw.isNotEmpty || status.isNotEmpty)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    if (createdAtRaw.isNotEmpty)
+                      _buildTimeInfoChip(icon: Icons.schedule, label: 'إنشاء', value: fmt(createdAtRaw), color: Colors.blueGrey),
+                    if (updatedAtRaw.isNotEmpty)
+                      _buildTimeInfoChip(icon: Icons.update, label: 'تحديث', value: fmt(updatedAtRaw), color: Colors.deepOrange),
+                  ],
                 ),
-              ],
-
-              SizedBox(height: 12),
-
-              // (تمت إزالة التكرار الثاني لبطاقة العميل والمنطقة)
-
-              SizedBox(height: 12),
 
               // (أزيل صف نوع المهمة بعد دمجه مع صف الوقت)
 
@@ -1889,34 +1825,16 @@ $lastErrorDetails
       required String label,
       required String value,
       required Color color}) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withValues(alpha: 0.35), width: 0.7),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color.darken(0.05)),
-          SizedBox(width: 5),
-          Text(
-            '$label: ',
-            style: TextStyle(
-                fontSize: 11.2,
-                fontWeight: FontWeight.bold,
-                color: color.darken(0.1)),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-                fontSize: 11.2,
-                fontWeight: FontWeight.w600,
-                color: color.darken(0.2)),
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        SizedBox(width: 3),
+        Text(
+          '$label: $value',
+          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: color.darken(0.1)),
+        ),
+      ],
     );
   }
 
@@ -2316,7 +2234,7 @@ $lastErrorDetails
 
       debugPrint('✅ تم إرسال إشعار النظام بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في إرسال إشعار النظام: $e');
+      debugPrint('❌ خطأ في إرسال إشعار النظام');
     }
   }
 
@@ -2433,7 +2351,7 @@ $lastErrorDetails
     try {
       HapticFeedback.lightImpact();
     } catch (e) {
-      debugPrint('Haptic feedback not available: $e');
+      debugPrint('Haptic feedback not available');
     }
   }
 
@@ -2849,22 +2767,16 @@ $lastErrorDetails
   Widget _buildTaskTypeSelectorBar() {
     final types = [
       {
+        'label': 'المفتوحة',
+        'type': 'open',
+        'icon': Icons.pending_actions,
+        'color': const Color.fromARGB(255, 57, 113, 191)
+      },
+      {
         'label': 'الكل',
         'type': 'all',
         'icon': Icons.all_inclusive,
         'color': Colors.teal
-      },
-      {
-        'label': 'الشركة',
-        'type': 'company',
-        'icon': Icons.business,
-        'color': Colors.purple
-      },
-      {
-        'label': 'الوكيل',
-        'type': 'agent',
-        'icon': Icons.person,
-        'color': const Color.fromARGB(255, 57, 113, 191)
       },
     ];
     // لا حاجة للمؤشر الآن بعد حذفه
@@ -2967,8 +2879,9 @@ $lastErrorDetails
               if (selectedTicketType == type) return;
               setState(() {
                 selectedTicketType = type;
-                filterTKTATs();
+                currentPage = 1;
               });
+              fetchTKTATs(); // إعادة جلب من السيرفر لأن الـ URL يتغير
               HapticFeedback.selectionClick();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

@@ -5,12 +5,13 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import '../users/user_details_page.dart';
+import '../auth/auth_error_handler.dart';
+import '../../services/auth_service.dart';
 
 class QuickSearchUsersPage extends StatefulWidget {
   final String authToken;
@@ -18,7 +19,6 @@ class QuickSearchUsersPage extends StatefulWidget {
   final String? initialSearchQuery;
   final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
-  final String? firstSystemPermissions; // صلاحيات النظام الأول
   final bool? isAdminFlag; // علم إداري صريح
   // قائمة الصلاحيات المهمة من نظام FTTH (مفلترة مسبقاً في الصفحة الرئيسية)
   final List<String>? importantFtthApiPermissions;
@@ -30,7 +30,6 @@ class QuickSearchUsersPage extends StatefulWidget {
     this.initialSearchQuery,
     this.hasServerSavePermission = false,
     this.hasWhatsAppPermission = false,
-    this.firstSystemPermissions,
     this.isAdminFlag,
     this.importantFtthApiPermissions,
   });
@@ -242,12 +241,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
     if (_fetchingPhones[userId] == true) return;
     setState(() => _fetchingPhones[userId] = true);
     try {
-      final r = await http.get(
-        Uri.parse('https://admin.ftth.iq/api/customers/$userId'),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final r = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/customers/$userId',
+        headers: {'Accept': 'application/json'},
       ).timeout(const Duration(seconds: 10));
       if (!mounted) return;
       if (r.statusCode == 200) {
@@ -274,6 +271,9 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
             duration: Duration(seconds: 2),
           ));
         }
+      } else if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         if (mounted) setState(() => _fetchingPhones[userId] = false);
       }
@@ -331,12 +331,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
 
   Future<void> _fetchZones() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://api.ftth.iq/api/locations/zones'),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://api.ftth.iq/api/locations/zones',
+        headers: {'Accept': 'application/json'},
       );
 
       if (response.statusCode == 200) {
@@ -373,6 +371,9 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
             ..clear()
             ..addAll(items);
         });
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       }
     } catch (e) {
       setState(() {
@@ -432,12 +433,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
         url += '&zoneId=$selectedZoneId';
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url,
+        headers: {'Accept': 'application/json'},
       );
 
       if (!mounted) return;
@@ -463,6 +462,9 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
           }
           errorMessage = "";
         });
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         if (seq < _lastAppliedSeq) return;
         setState(() {
@@ -543,258 +545,230 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
       ),
       body: Stack(
         children: [
-          // خلفية سماوية ثابتة
-          IgnorePointer(
-            ignoring: true,
-            child: Container(color: const Color.fromARGB(255, 17, 116, 162)),
-          ),
-          // طبقة الثلوج
-          if (_flakes.isNotEmpty)
-            IgnorePointer(
-              ignoring: true,
-              child: CustomPaint(
-                painter: _SnowPainter(flakes: _flakes, anim: _bgAnim),
-                size: Size.infinite,
+          // خلفية ثابتة — نفس ثيم الواجهة الرئيسية
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFF5F6FA),
+                  Color(0xFFEEF1F8),
+                  Color(0xFFF0F4FF),
+                  Color(0xFFF5F6FA),
+                ],
               ),
             ),
+          ),
           // المحتوى
           Column(
             children: [
-              // شريط البحث والفلاتر الجديد
+              // شريط البحث — صف واحد: [المنطقة | اسم المشترك | رقم الهاتف | مسح]
               Container(
-                margin: EdgeInsets.all(isLargeScreen ? 16 : 10),
-                padding: EdgeInsets.all(isLargeScreen ? 14 : 8),
+                margin: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.withValues(alpha: 0.07),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue:
-                                selectedZoneId.isEmpty ? null : selectedZoneId,
+                    // المنطقة
+                    SizedBox(
+                      width: isLargeScreen ? 180 : 140,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4, right: 2),
+                            child: Text('المنطقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                          ),
+                          DropdownButtonFormField<String>(
+                            value: selectedZoneId.isEmpty ? "" : selectedZoneId,
                             decoration: InputDecoration(
-                              labelText: 'المنطقة',
                               filled: true,
-                              fillColor: Colors.teal.shade50,
+                              fillColor: Colors.white,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.teal.shade200,
-                                  width: 1.5,
-                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Colors.black, width: 1.5),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.teal.shade400,
-                                  width: 2,
-                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
                             ),
-                            hint: const Text("كل المناطق"),
                             items: [
-                              const DropdownMenuItem(
-                                  value: "", child: Text("كل المناطق")),
+                              const DropdownMenuItem(value: "", child: Text("كل المناطق", style: TextStyle(fontSize: 13))),
                               ...zones.map((zone) {
-                                final zoneId =
-                                    zone['self']?['id']?.toString() ?? '';
-                                final zoneName = zone['self']
-                                        ?['displayValue'] ??
-                                    'غير معروف';
-                                return DropdownMenuItem(
-                                  value: zoneId,
-                                  child: Text(zoneName),
-                                );
+                                final zoneId = zone['self']?['id']?.toString() ?? '';
+                                final zoneName = zone['self']?['displayValue'] ?? 'غير معروف';
+                                return DropdownMenuItem(value: zoneId, child: Text(zoneName, style: const TextStyle(fontSize: 13)));
                               }),
                             ],
                             onChanged: (value) {
-                              setState(() {
-                                selectedZoneId = value ?? "";
-                              });
-                              // نفذ البحث بعد التوقف عن الكتابة إذا كان هناك استعلام
-                              if (nameController.text.isNotEmpty ||
-                                  phoneController.text.isNotEmpty) {
+                              setState(() => selectedZoneId = value ?? "");
+                              if (nameController.text.isNotEmpty || phoneController.text.isNotEmpty) {
                                 _onQueryChanged();
                               }
                             },
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    // حقلا البحث: الاسم ثم الهاتف أسفلهما في كل الأحجام
-                    Column(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: _resetSearch,
-                            icon: const Icon(Icons.clear_all,
-                                color: Color(0xFF4CAF50)),
-                            label: const Text('مسح',
-                                style: TextStyle(color: Color(0xFF4CAF50))),
+                    const SizedBox(width: 8),
+                    // حقل اسم المشترك
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4, right: 2),
+                            child: Text('اسم المشترك', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
                           ),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.green, width: 2),
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.white,
-                          ),
-                          child: TextField(
+                          TextField(
                             controller: nameController,
-                            // جعل الاتجاه افتراضياً من اليمين لليسار لدعم العربية
                             textDirection: TextDirection.rtl,
                             textAlign: TextAlign.right,
                             textInputAction: TextInputAction.search,
                             focusNode: _nameFocus,
-                            // البحث يتم بعد التوقف عن الكتابة
-                            onChanged: (_) {
-                              setState(() {}); // لتحديث زر/أيقونة المسح
-                              _onQueryChanged();
-                            },
-                            onSubmitted: (_) {
-                              setState(() {
-                                currentPage = 1;
-                                _hasSearched = true;
-                              });
-                              _performSearch();
-                            },
-                            decoration: InputDecoration(
-                              hintText: 'أسم المشترك',
-                              border: InputBorder.none,
-                              prefixIcon: Icon(Icons.search_rounded,
-                                  color: Colors.green[700], size: 26),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
-                              suffixIconConstraints: const BoxConstraints(
-                                  minWidth: 0, minHeight: 0),
-                              suffixIcon: isLoading
-                                  ? _InlineSpinner()
-                                  : _waitingDebounce
-                                      ? const _InlineDots()
-                                      : Padding(
-                                          padding:
-                                              const EdgeInsetsDirectional.only(
-                                                  end: 4),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                tooltip: 'لصق',
-                                                icon: const Icon(
-                                                    Icons.content_paste_go,
-                                                    size: 20,
-                                                    color: Color(0xFF1A237E)),
-                                                onPressed: () =>
-                                                    _pasteIntoField(
-                                                        nameController,
-                                                        isPhone: false),
-                                              ),
-                                              if (nameController
-                                                  .text.isNotEmpty)
-                                                IconButton(
-                                                  tooltip: 'مسح',
-                                                  icon: const Icon(Icons.clear,
-                                                      size: 20,
-                                                      color: Colors.red),
-                                                  onPressed: _resetSearch,
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                            ),
-                            style: TextStyle(fontSize: isLargeScreen ? 16 : 14),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.green, width: 2),
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.white,
-                          ),
-                          child: TextField(
-                            controller: phoneController,
-                            keyboardType: TextInputType.phone,
-                            textDirection: TextDirection.rtl,
-                            textAlign: TextAlign.right,
-                            // البحث يتم بعد التوقف عن الكتابة
                             onChanged: (_) {
                               setState(() {});
                               _onQueryChanged();
                             },
                             onSubmitted: (_) {
-                              setState(() {
-                                currentPage = 1;
-                                _hasSearched = true;
-                              });
+                              setState(() { currentPage = 1; _hasSearched = true; });
                               _performSearch();
                             },
                             decoration: InputDecoration(
-                              hintText: 'رقم الهاتف',
-                              border: InputBorder.none,
-                              prefixIcon: Icon(Icons.phone,
-                                  color: Colors.green[700], size: 20),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
-                              suffixIconConstraints: const BoxConstraints(
-                                  minWidth: 0, minHeight: 0),
-                              suffixIcon: isLoading
+                              filled: true,
+                              fillColor: Colors.white,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              prefixIcon: const Icon(Icons.person_search, color: Color(0xFF1A237E), size: 20),
+                              suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                              suffixIcon: (isLoading && nameController.text.isNotEmpty)
                                   ? _InlineSpinner(size: 16)
                                   : _waitingDebounce
                                       ? const _InlineDots()
-                                      : Padding(
-                                          padding:
-                                              const EdgeInsetsDirectional.only(
-                                                  end: 4),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                tooltip: 'لصق',
-                                                icon: const Icon(
-                                                    Icons.content_paste_go,
-                                                    size: 18,
-                                                    color: Color(0xFF1A237E)),
-                                                onPressed: () =>
-                                                    _pasteIntoField(
-                                                        phoneController,
-                                                        isPhone: true),
-                                              ),
-                                              if (phoneController
-                                                  .text.isNotEmpty)
-                                                IconButton(
-                                                  tooltip: 'مسح',
-                                                  icon: const Icon(Icons.clear,
-                                                      size: 18,
-                                                      color: Colors.red),
-                                                  onPressed: _resetSearch,
-                                                ),
-                                            ],
-                                          ),
-                                        ),
+                                      : (nameController.text.isNotEmpty
+                                          ? IconButton(
+                                              tooltip: 'مسح',
+                                              icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                                              onPressed: _resetSearch,
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                            )
+                                          : IconButton(
+                                              tooltip: 'لصق',
+                                              icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)),
+                                              onPressed: () => _pasteIntoField(nameController, isPhone: false),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                            )),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2),
+                              ),
                             ),
-                            style: TextStyle(fontSize: isLargeScreen ? 16 : 14),
+                            style: const TextStyle(fontSize: 13),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    // حقل رقم الهاتف
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4, right: 2),
+                            child: Text('رقم الهاتف', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                          ),
+                          TextField(
+                            controller: phoneController,
+                            keyboardType: TextInputType.phone,
+                            textDirection: TextDirection.rtl,
+                            textAlign: TextAlign.right,
+                            onChanged: (_) {
+                              setState(() {});
+                              _onQueryChanged();
+                            },
+                            onSubmitted: (_) {
+                              setState(() { currentPage = 1; _hasSearched = true; });
+                              _performSearch();
+                            },
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.white,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              prefixIcon: const Icon(Icons.phone, color: Color(0xFF1A237E), size: 18),
+                              suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                              suffixIcon: (isLoading && phoneController.text.isNotEmpty)
+                                  ? _InlineSpinner(size: 16)
+                                  : (phoneController.text.isNotEmpty
+                                      ? IconButton(
+                                          tooltip: 'مسح',
+                                          icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                                          onPressed: _resetSearch,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        )
+                                      : IconButton(
+                                          tooltip: 'لصق',
+                                          icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)),
+                                          onPressed: () => _pasteIntoField(phoneController, isPhone: true),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        )),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2),
+                              ),
+                            ),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // زر مسح
+                    if (nameController.text.isNotEmpty || phoneController.text.isNotEmpty || selectedZoneId.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: IconButton(
+                          tooltip: 'مسح الكل',
+                          icon: const Icon(Icons.clear_all, color: Colors.red, size: 22),
+                          onPressed: _resetSearch,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -915,112 +889,36 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                 Expanded(
                   child: Column(
                     children: [
-                      // عداد النتائج (تصميم أوضح)
+                      // عداد النتائج
                       Container(
-                        margin: EdgeInsets.symmetric(
-                            horizontal: isLargeScreen ? 16 : 12),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isLargeScreen ? 14 : 10,
-                          vertical: isLargeScreen ? 6 : 5,
-                        ),
-                        constraints: const BoxConstraints(minHeight: 40),
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: const Color(0xFF1A237E),
                           borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.manage_search,
-                                color: Colors.white,
-                                size: isLargeScreen ? 18 : 16,
-                              ),
-                            ),
+                            const Icon(Icons.manage_search, color: Colors.white, size: 18),
                             const SizedBox(width: 8),
-                            Expanded(
-                              child: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    color: Colors.white,
-                                    fontSize: isLargeScreen ? 12.5 : 11.5,
-                                    height: 1.2,
-                                  ),
-                                  children: [
-                                    const TextSpan(
-                                      text: 'النتائج: ',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                    WidgetSpan(
-                                      alignment: PlaceholderAlignment.middle,
-                                      child: AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 300),
-                                        curve: Curves.easeOut,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        margin:
-                                            const EdgeInsetsDirectional.only(
-                                                start: 3),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                        ),
-                                        child: Text(
-                                          '$totalUsers',
-                                          style: TextStyle(
-                                            color: const Color(0xFF1B5E20),
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: isLargeScreen ? 13 : 11.5,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const TextSpan(
-                                      text: ' مستخدم',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w500),
-                                    ),
-                                  ],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            Text(
+                              '$totalUsers مستخدم',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
                             ),
+                            const Spacer(),
                             if (totalUsers > 0)
-                              IconButton(
-                                onPressed: _resetSearch,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                splashRadius: 18,
-                                icon: const Icon(Icons.refresh,
-                                    color: Colors.white, size: 18),
-                                tooltip: 'مسح',
+                              InkWell(
+                                onTap: _resetSearch,
+                                borderRadius: BorderRadius.circular(6),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.refresh, color: Colors.white, size: 18),
+                                ),
                               ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
 
                       // قائمة النتائج
                       Expanded(
@@ -1075,459 +973,174 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                             final userId =
                                 user['self']?['id']?.toString() ?? '';
 
-                            return Card(
-                              margin: EdgeInsets.only(bottom: 6 * uiScale),
-                              elevation: 1.5,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(
-                                  color: const Color(0xFF4CAF50)
-                                      .withValues(alpha: 0.18),
-                                  width: 1,
+                            // بطاقة النتيجة — تصميم أفقي مدمج
+                            return Builder(builder: (_) {
+                              final fetchedPhone = _fetchedPhones[userId];
+                              final displayPhone = (fetchedPhone != null && fetchedPhone.isNotEmpty)
+                                  ? fetchedPhone
+                                  : (userPhone != 'غير متوفر' ? userPhone : '');
+                              final isFetching = _fetchingPhones[userId] == true;
+
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                elevation: 3,
+                                shadowColor: Colors.black.withValues(alpha: 0.15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: const BorderSide(
+                                    color: Colors.black,
+                                    width: 1.2,
+                                  ),
                                 ),
-                              ),
-                              child: Stack(
-                                children: [
-                                  // محتوى البطاقة
-                                  ListTile(
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal:
-                                          (isLargeScreen ? 14.0 : 10.0) *
-                                              uiScale,
-                                      vertical: (isLargeScreen ? 12.0 : 10.0) *
-                                          uiScale,
-                                    ),
-                                    title: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => UserDetailsPage(
+                                          authToken: widget.authToken,
+                                          userId: userId,
+                                          userName: userName,
+                                          userPhone: userPhone,
+                                          activatedBy: widget.activatedBy,
+                                          hasServerSavePermission: widget.hasServerSavePermission,
+                                          hasWhatsAppPermission: widget.hasWhatsAppPermission,
+                                          isAdminFlag: widget.isAdminFlag,
+                                          userRoleHeader: '0',
+                                          clientAppHeader: '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+                                          importantFtthApiPermissions: widget.importantFtthApiPermissions,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                                    child: Row(
                                       children: [
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.person_outline,
-                                              size: (isLargeScreen
-                                                      ? 20.0
-                                                      : 18.0) *
-                                                  uiScale,
-                                              color: Color(0xFF1A237E),
-                                            ),
-                                            SizedBox(width: 6 * uiScale),
-                                            Text(
-                                              'معلومات المستخدم',
-                                              style: TextStyle(
-                                                fontSize: (isLargeScreen
-                                                        ? 14.0
-                                                        : 12.0) *
-                                                    uiScale,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFF1A237E),
-                                              ),
-                                            ),
-                                            const Spacer(),
-                                            // زر نسخ الاسم + الرقم معاً
-                                            Builder(builder: (_) {
-                                              final fetchedPhone =
-                                                  _fetchedPhones[userId];
-                                              final displayPhone = (fetchedPhone !=
-                                                          null &&
-                                                      fetchedPhone.isNotEmpty)
-                                                  ? fetchedPhone
-                                                  : (userPhone != 'غير متوفر'
-                                                      ? userPhone
-                                                      : '');
-                                              if (displayPhone.isEmpty) {
-                                                return const SizedBox.shrink();
-                                              }
-                                              return Tooltip(
-                                                message: 'نسخ الاسم والرقم معاً',
-                                                child: InkWell(
-                                                  onTap: () {
-                                                    final text =
-                                                        '$userName\n$displayPhone';
-                                                    _copyToClipboard(
-                                                        'الاسم والرقم', text);
-                                                  },
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                  child: Container(
-                                                    padding: EdgeInsets.symmetric(
-                                                        horizontal: 8 * uiScale,
-                                                        vertical: 3 * uiScale),
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          Colors.teal.shade50,
-                                                      border: Border.all(
-                                                          color: Colors
-                                                              .teal.shade200),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              6),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        Icon(
-                                                            Icons
-                                                                .contact_page_rounded,
-                                                            size: 13 * uiScale,
-                                                            color: Colors
-                                                                .teal.shade700),
-                                                        SizedBox(
-                                                            width: 3 * uiScale),
-                                                        Text('نسخ الكل',
-                                                            style: TextStyle(
-                                                                fontSize:
-                                                                    11 * uiScale,
-                                                                color: Colors
-                                                                    .teal
-                                                                    .shade700,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600)),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              );
-                                            }),
-                                          ],
-                                        ),
-                                        SizedBox(height: 6 * uiScale),
-                                        // Box: الاسم + زر نسخ
+                                        // أيقونة المستخدم
                                         Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 8 * uiScale,
-                                            vertical:
-                                                (isLargeScreen ? 6.0 : 5.0) *
-                                                    uiScale,
-                                          ),
+                                          width: 54,
+                                          height: 54,
                                           decoration: BoxDecoration(
-                                            color: Colors.green.shade50,
-                                            border: Border.all(
-                                                color: Colors.green.shade200),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.person,
-                                                size: (isLargeScreen
-                                                        ? 18.0
-                                                        : 16.0) *
-                                                    uiScale,
-                                                color: Colors.green.shade700,
-                                              ),
-                                              SizedBox(width: 6 * uiScale),
-                                              Expanded(
-                                                child: _buildHighlightedText(
-                                                  userName.toString(),
-                                                  _normalizeName(
-                                                      nameController.text),
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: (isLargeScreen
-                                                            ? 14.0
-                                                            : 13.0) *
-                                                        uiScale,
-                                                    color:
-                                                        const Color(0xFF2C3E50),
-                                                  ),
-                                                ),
-                                              ),
-                                              // زر نسخ الاسم
-                                              Tooltip(
-                                                message: 'نسخ الاسم',
-                                                child: InkWell(
-                                                  onTap: () => _copyToClipboard(
-                                                      'الاسم', userName),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                  child: Padding(
-                                                    padding: EdgeInsets.all(
-                                                        4 * uiScale),
-                                                    child: Icon(
-                                                        Icons.copy_rounded,
-                                                        size: 16 * uiScale,
-                                                        color: Colors
-                                                            .green.shade700),
-                                                  ),
-                                                ),
+                                            gradient: const LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                                            ),
+                                            borderRadius: BorderRadius.circular(14),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF1A237E).withValues(alpha: 0.3),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 3),
                                               ),
                                             ],
                                           ),
+                                          child: const Icon(Icons.person, color: Colors.white, size: 28),
                                         ),
-                                        SizedBox(height: 4 * uiScale),
-                                        // Box: الهاتف + زر إظهار/نسخ
-                                        Builder(builder: (_) {
-                                          final fetchedPhone =
-                                              _fetchedPhones[userId];
-                                          final displayPhone = (fetchedPhone !=
-                                                      null &&
-                                                  fetchedPhone.isNotEmpty)
-                                              ? fetchedPhone
-                                              : (userPhone != 'غير متوفر'
-                                                  ? userPhone
-                                                  : '');
-                                          final isFetching =
-                                              _fetchingPhones[userId] == true;
-                                          return Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 8 * uiScale,
-                                              vertical: (isLargeScreen
-                                                          ? 6.0
-                                                          : 5.0) *
-                                                  uiScale,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue.shade50,
-                                              border: Border.all(
-                                                  color: Colors.blue.shade200),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.phone,
-                                                    size: (isLargeScreen
-                                                            ? 16.0
-                                                            : 14.0) *
-                                                        uiScale,
-                                                    color:
-                                                        Colors.blue.shade700),
-                                                SizedBox(width: 6 * uiScale),
-                                                Expanded(
-                                                  child: displayPhone.isNotEmpty
-                                                      ? Text(displayPhone,
-                                                          style: TextStyle(
-                                                            fontSize: (isLargeScreen
-                                                                    ? 13.0
-                                                                    : 11.0) *
-                                                                uiScale,
-                                                            color: const Color(
-                                                                0xFF2C3E50),
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                          ))
-                                                      : Text('غير متوفر',
-                                                          style: TextStyle(
-                                                            fontSize: (isLargeScreen
-                                                                    ? 13.0
-                                                                    : 11.0) *
-                                                                uiScale,
-                                                            color: Colors
-                                                                .grey.shade500,
-                                                          )),
-                                                ),
-                                                // زر إظهار الرقم أو نسخه أو loading
-                                                if (isFetching)
-                                                  SizedBox(
-                                                    width: 16 * uiScale,
-                                                    height: 16 * uiScale,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                            strokeWidth: 2),
-                                                  )
-                                                else if (displayPhone.isNotEmpty)
-                                                  Tooltip(
-                                                    message: 'نسخ رقم الهاتف',
-                                                    child: InkWell(
-                                                      onTap: () =>
-                                                          _copyToClipboard(
-                                                              'رقم الهاتف',
-                                                              displayPhone),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4),
-                                                      child: Padding(
-                                                        padding: EdgeInsets.all(
-                                                            4 * uiScale),
-                                                        child: Icon(
-                                                            Icons.copy_rounded,
-                                                            size: 16 * uiScale,
-                                                            color: Colors.blue
-                                                                .shade700),
+                                        const SizedBox(width: 16),
+                                        // المعلومات الرئيسية
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // الاسم
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _buildHighlightedText(
+                                                      userName.toString(),
+                                                      _normalizeName(nameController.text),
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 16,
+                                                        color: Color(0xFF1A237E),
                                                       ),
                                                     ),
-                                                  )
-                                                else if (userId.isNotEmpty &&
-                                                    _fetchedPhones[userId] ==
-                                                        null)
-                                                  Tooltip(
-                                                    message:
-                                                        'جلب رقم الهاتف من النظام',
-                                                    child: InkWell(
-                                                      onTap: () =>
-                                                          _fetchPhoneForUser(
-                                                              userId),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              6),
+                                                  ),
+                                                  InkWell(
+                                                    onTap: () => _copyToClipboard('الاسم', userName),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.all(4),
+                                                      child: Icon(Icons.copy_rounded, size: 16, color: Colors.grey.shade500),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 10),
+                                              // الهاتف + ID في صف واحد
+                                              Row(
+                                                children: [
+                                                  // الهاتف
+                                                  Icon(Icons.phone, size: 15, color: Colors.grey.shade500),
+                                                  const SizedBox(width: 5),
+                                                  if (isFetching)
+                                                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
+                                                  else if (displayPhone.isNotEmpty)
+                                                    InkWell(
+                                                      onTap: () => _copyToClipboard('رقم الهاتف', displayPhone),
+                                                      child: Text(displayPhone, style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+                                                    )
+                                                  else if (userId.isNotEmpty && _fetchedPhones[userId] == null)
+                                                    InkWell(
+                                                      onTap: () => _fetchPhoneForUser(userId),
                                                       child: Container(
-                                                        padding: EdgeInsets
-                                                            .symmetric(
-                                                                horizontal:
-                                                                    8 * uiScale,
-                                                                vertical:
-                                                                    3 * uiScale),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: Colors
-                                                              .blue.shade100,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(6),
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.blue.shade50,
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          border: Border.all(color: Colors.blue.shade200),
                                                         ),
-                                                        child: Row(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            Icon(Icons.search,
-                                                                size:
-                                                                    13 * uiScale,
-                                                                color: Colors
-                                                                    .blue
-                                                                    .shade800),
-                                                            SizedBox(
-                                                                width:
-                                                                    3 * uiScale),
-                                                            Text('إظهار الرقم',
-                                                                style: TextStyle(
-                                                                    fontSize:
-                                                                        11 *
-                                                                            uiScale,
-                                                                    color: Colors
-                                                                        .blue
-                                                                        .shade800,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600)),
-                                                          ],
-                                                        ),
+                                                        child: Text('إظهار الرقم', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+                                                      ),
+                                                    )
+                                                  else
+                                                    Text('غير متوفر', style: TextStyle(fontSize: 14, color: Colors.grey.shade400)),
+                                                  const SizedBox(width: 20),
+                                                  // ID
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey.shade100,
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: InkWell(
+                                                      onTap: userId.isEmpty ? null : () => _copyToClipboard('ID', userId),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Text('ID: ', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                                                          Text(
+                                                            userId.isEmpty ? '-' : userId,
+                                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ),
-                                              ],
-                                            ),
-                                          );
-                                        }),
-                                        SizedBox(height: 4 * uiScale),
-                                        // Box: المعرف + زر النسخ
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 8 * uiScale,
-                                            vertical:
-                                                (isLargeScreen ? 6.0 : 5.0) *
-                                                    uiScale,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.indigo.shade50,
-                                            border: Border.all(
-                                                color: Colors.indigo.shade200),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.badge,
-                                                size: (isLargeScreen
-                                                        ? 16.0
-                                                        : 14.0) *
-                                                    uiScale,
-                                                color: Colors.indigo.shade700,
-                                              ),
-                                              SizedBox(width: 6 * uiScale),
-                                              Text(
-                                                'ID:',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.indigo.shade700,
-                                                  fontSize: (isLargeScreen
-                                                          ? 13.0
-                                                          : 11.0) *
-                                                      uiScale,
-                                                ),
-                                              ),
-                                              SizedBox(width: 6 * uiScale),
-                                              Expanded(
-                                                child: Text(
-                                                  userId.isEmpty
-                                                      ? 'غير متوفر'
-                                                      : userId,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                    color:
-                                                        const Color(0xFF2C3E50),
-                                                    fontSize: (isLargeScreen
-                                                            ? 13.0
-                                                            : 11.0) *
-                                                        uiScale,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              IconButton(
-                                                tooltip: 'نسخ ID',
-                                                icon: Icon(Icons.copy,
-                                                    size: 24 * uiScale),
-                                                padding:
-                                                    EdgeInsets.all(4 * uiScale),
-                                                constraints: BoxConstraints(
-                                                  minWidth: 40 * uiScale,
-                                                  minHeight: 40 * uiScale,
-                                                ),
-                                                splashRadius: 22 * uiScale,
-                                                onPressed: userId.isEmpty
-                                                    ? null
-                                                    : () => _copyToClipboard(
-                                                        'ID', userId),
+                                                ],
                                               ),
                                             ],
                                           ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // سهم
+                                        Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF1A237E).withValues(alpha: 0.08),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF1A237E)),
                                         ),
                                       ],
                                     ),
-                                    trailing: Icon(
-                                      Icons.arrow_forward_ios,
-                                      color: const Color(0xFF4CAF50),
-                                      size: (isLargeScreen ? 18.0 : 14.0) *
-                                          uiScale,
-                                    ),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => UserDetailsPage(
-                                            authToken: widget.authToken,
-                                            userId: userId,
-                                            userName: userName,
-                                            userPhone: userPhone,
-                                            activatedBy: widget.activatedBy,
-                                            hasServerSavePermission:
-                                                widget.hasServerSavePermission,
-                                            hasWhatsAppPermission:
-                                                widget.hasWhatsAppPermission,
-                                            firstSystemPermissions:
-                                                widget.firstSystemPermissions,
-                                            isAdminFlag: widget.isAdminFlag,
-                                            userRoleHeader: '0',
-                                            clientAppHeader:
-                                                '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
-                                            importantFtthApiPermissions: widget
-                                                .importantFtthApiPermissions,
-                                          ),
-                                        ),
-                                      );
-                                    },
                                   ),
-
-                                  // تمت إزالة الشارة العلوية - الأيقونة أصبحت بجانب الاسم
-                                ],
-                              ),
-                            );
+                                ),
+                              );
+                            });
                           },
                         ),
                       ),

@@ -73,7 +73,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      _errorMessage = 'خطأ: $e';
+      _errorMessage = 'خطأ';
     }
     if (mounted) setState(() => _isLoading = false);
   }

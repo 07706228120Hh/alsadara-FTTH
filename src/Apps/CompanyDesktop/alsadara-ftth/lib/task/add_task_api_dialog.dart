@@ -167,8 +167,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       // موظفين
       _parseStaffData(staffResult);
     } catch (e) {
-      print('❌ خطأ في تحميل البيانات: $e');
-      _errorMessage = 'فشل في تحميل البيانات: $e';
+      print('❌ خطأ في تحميل البيانات');
+      _errorMessage = 'فشل في تحميل البيانات';
     } finally {
       if (mounted) {
         setState(() => _isLoadingData = false);
@@ -228,7 +228,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           await TaskApiService.instance.getTaskStaff(department: department);
       _parseStaffData(result);
     } catch (e) {
-      print('❌ خطأ في جلب الموظفين: $e');
+      print('❌ خطأ في جلب الموظفين');
     }
   }
 
@@ -368,8 +368,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         _showError(result['message'] ?? 'فشل في إنشاء المهمة');
       }
     } catch (e) {
-      print('❌ خطأ في إنشاء المهمة: $e');
-      _showError('خطأ أثناء إنشاء المهمة: ${e.toString()}');
+      print('❌ خطأ في إنشاء المهمة');
+      _showError('خطأ أثناء إنشاء المهمة');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -401,7 +401,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
 
       await _sendViaWhatsApp(cleanPhone, message);
     } catch (e) {
-      print('❌ خطأ في إرسال WhatsApp: $e');
+      print('❌ خطأ في إرسال WhatsApp');
     }
   }
 
@@ -521,7 +521,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         }
       }
     } catch (e) {
-      print('❌ خطأ في فتح واتساب: $e');
+      print('❌ خطأ في فتح واتساب');
     }
   }
 

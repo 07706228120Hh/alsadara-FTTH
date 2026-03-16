@@ -94,9 +94,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الموظفين: $e');
+      debugPrint('❌ خطأ في جلب الموظفين');
       setState(() {
-        _error = 'خطأ في الاتصال: $e';
+        _error = 'خطأ في الاتصال';
         _isLoading = false;
       });
     }
@@ -905,7 +905,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('خطأ: $e'),
+              content: Text('خطأ'),
               backgroundColor: Colors.red,
             ),
           );
@@ -1065,7 +1065,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('خطأ: $e'),
+                              content: Text('خطأ'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -1405,7 +1405,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e'),
+            content: Text('خطأ'),
             backgroundColor: Colors.red,
           ),
         );

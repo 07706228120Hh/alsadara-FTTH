@@ -508,11 +508,11 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                           );
                         }
                       } catch (e) {
-                        debugPrint('❌ خطأ في حذف المحادثة: $e');
+                        debugPrint('❌ خطأ في حذف المحادثة');
                         if (mounted) {
                           scaffoldMessenger.showSnackBar(
                             SnackBar(
-                              content: Text('حدث خطأ أثناء حذف المحادثة: $e'),
+                              content: Text('حدث خطأ أثناء حذف المحادثة'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -606,11 +606,11 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                       );
                     }
                   } catch (e) {
-                    debugPrint('❌ خطأ في حذف المحادثة: $e');
+                    debugPrint('❌ خطأ في حذف المحادثة');
                     if (mounted) {
                       scaffoldMessenger.showSnackBar(
                         SnackBar(
-                          content: Text('حدث خطأ أثناء حذف المحادثة: $e'),
+                          content: Text('حدث خطأ أثناء حذف المحادثة'),
                           backgroundColor: Colors.red,
                         ),
                       );

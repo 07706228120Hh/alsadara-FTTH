@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/agent_api_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
@@ -65,7 +66,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
         _errorMessage = result['message'] ?? 'خطأ';
       }
     } catch (e) {
-      _errorMessage = 'خطأ: $e';
+      _errorMessage = 'خطأ';
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -1092,11 +1093,12 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     }
   }
 
+  static final _numFmt = NumberFormat('#,##0', 'ar');
   String _formatNumber(dynamic value) {
     if (value == null) return '0';
     final n = (value is num)
         ? value.toDouble()
         : (double.tryParse(value.toString()) ?? 0);
-    return n.round().toString();
+    return _numFmt.format(n);
   }
 }

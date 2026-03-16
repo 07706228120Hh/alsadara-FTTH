@@ -1,5 +1,7 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
@@ -134,7 +136,28 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   color: Colors.black)),
           const Spacer(),
           if (isMob) ...[
-            // أيقونات فقط على الهاتف
+            // أيقونات القوالب على الهاتف
+            IconButton(
+              onPressed: _loadTemplate,
+              icon: Icon(Icons.file_open, size: 20),
+              tooltip: 'تحميل قالب',
+              padding: EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              style: IconButton.styleFrom(
+                  foregroundColor: AccountingTheme.neonBlue),
+            ),
+            SizedBox(width: 4),
+            IconButton(
+              onPressed: _saveAsTemplate,
+              icon: Icon(Icons.save_alt, size: 20),
+              tooltip: 'حفظ كقالب',
+              padding: EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              style: IconButton.styleFrom(
+                  foregroundColor: AccountingTheme.neonOrange),
+            ),
+            SizedBox(width: 4),
+            // أيقونات الحفظ على الهاتف
             IconButton(
               onPressed:
                   _isBalanced && !_isSaving ? () => _save(post: false) : null,
@@ -159,6 +182,21 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
           ] else ...[
+            IconButton(
+              onPressed: _loadTemplate,
+              icon: Icon(Icons.file_open, size: ar.iconM),
+              tooltip: 'تحميل قالب',
+              style: IconButton.styleFrom(
+                  foregroundColor: AccountingTheme.neonBlue),
+            ),
+            IconButton(
+              onPressed: _saveAsTemplate,
+              icon: Icon(Icons.save_alt, size: ar.iconM),
+              tooltip: 'حفظ كقالب',
+              style: IconButton.styleFrom(
+                  foregroundColor: AccountingTheme.neonOrange),
+            ),
+            SizedBox(width: ar.spaceS),
             TextButton.icon(
               onPressed:
                   _isBalanced && !_isSaving ? () => _save(post: false) : null,
@@ -1798,6 +1836,206 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // حفظ / تحميل القوالب
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> _saveAsTemplate() async {
+    final nameController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AccountingTheme.bgCard,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AccountingTheme.radiusLarge)),
+          title: Text('حفظ كقالب',
+              style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.bold,
+                  color: AccountingTheme.textPrimary)),
+          content: TextField(
+            controller: nameController,
+            style: GoogleFonts.cairo(color: AccountingTheme.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'اسم القالب',
+              labelStyle: GoogleFonts.cairo(color: AccountingTheme.textSecondary),
+              border: OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(AccountingTheme.radiusMedium)),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(AccountingTheme.radiusMedium),
+                  borderSide:
+                      const BorderSide(color: AccountingTheme.borderColor)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(AccountingTheme.radiusMedium),
+                  borderSide:
+                      const BorderSide(color: AccountingTheme.neonBlue, width: 2)),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إلغاء',
+                    style: GoogleFonts.cairo(
+                        color: AccountingTheme.textMuted))),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+              style: AccountingTheme.primaryButton,
+              child: Text('حفظ', style: GoogleFonts.cairo()),
+            ),
+          ],
+        ),
+      ),
+    );
+    nameController.dispose();
+    if (result == null || result.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final templates =
+        json.decode(prefs.getString('journal_templates') ?? '[]') as List;
+
+    // بناء القالب من حالة النموذج الحالية
+    templates.add({
+      'name': result,
+      'description': _descCtrl.text,
+      'notes': _notesCtrl.text,
+      'lines': _lines
+          .where((l) => l.accountId != null)
+          .map((l) => {
+                'accountId': l.accountId,
+                'accountName': l.accountName,
+                'debit': l.debit,
+                'credit': l.credit,
+                'description': l.descCtrl.text,
+              })
+          .toList(),
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+    await prefs.setString('journal_templates', json.encode(templates));
+    if (mounted) {
+      _snack('تم حفظ القالب: $result', AccountingTheme.success);
+    }
+  }
+
+  Future<void> _loadTemplate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final templates =
+        json.decode(prefs.getString('journal_templates') ?? '[]') as List;
+    if (templates.isEmpty) {
+      if (mounted) {
+        _snack('لا توجد قوالب محفوظة', AccountingTheme.warning);
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AccountingTheme.bgCard,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AccountingTheme.radiusLarge)),
+          title: Text('تحميل قالب',
+              style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.bold,
+                  color: AccountingTheme.textPrimary)),
+          content: SizedBox(
+            width: 400,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: templates.length,
+              itemBuilder: (_, i) {
+                final t = templates[i] as Map<String, dynamic>;
+                final lineCount =
+                    (t['lines'] as List?)?.length ?? 0;
+                return ListTile(
+                  title: Text(t['name'] ?? '',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w600,
+                          color: AccountingTheme.textPrimary)),
+                  subtitle: Text(
+                    '${t['description'] ?? ''} ($lineCount سطر)',
+                    style: GoogleFonts.cairo(
+                        fontSize: 12, color: AccountingTheme.textMuted),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                    tooltip: 'حذف القالب',
+                    onPressed: () async {
+                      templates.removeAt(i);
+                      await prefs.setString(
+                          'journal_templates', json.encode(templates));
+                      Navigator.pop(ctx);
+                      _loadTemplate(); // إعادة فتح القائمة
+                    },
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _applyTemplate(t);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إلغاء',
+                    style: GoogleFonts.cairo(
+                        color: AccountingTheme.textMuted))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _applyTemplate(Map<String, dynamic> template) {
+    // تعيين الوصف والملاحظات
+    _descCtrl.text = template['description'] ?? '';
+    _notesCtrl.text = template['notes'] ?? '';
+
+    // مسح الأسطر الحالية
+    for (final l in _lines) {
+      l.dispose();
+    }
+    _lines.clear();
+
+    // إضافة أسطر القالب
+    final templateLines = template['lines'] as List? ?? [];
+    for (final tl in templateLines) {
+      final line = _JournalLine();
+      line.accountId = tl['accountId']?.toString();
+      line.accountName = tl['accountName']?.toString();
+      line.debit = (tl['debit'] is num)
+          ? (tl['debit'] as num).toDouble()
+          : double.tryParse(tl['debit']?.toString() ?? '') ?? 0;
+      line.credit = (tl['credit'] is num)
+          ? (tl['credit'] as num).toDouble()
+          : double.tryParse(tl['credit']?.toString() ?? '') ?? 0;
+      line.descCtrl.text = tl['description']?.toString() ?? '';
+      if (line.debit > 0) line.debitCtrl.text = line.debit.toStringAsFixed(0);
+      if (line.credit > 0) line.creditCtrl.text = line.credit.toStringAsFixed(0);
+      _lines.add(line);
+    }
+
+    // إضافة أسطر فارغة إذا كان العدد أقل من 3
+    while (_lines.length < 3) {
+      _lines.add(_JournalLine());
+    }
+
+    setState(() {});
+    _snack('تم تحميل القالب: ${template['name']}', AccountingTheme.info);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // حفظ القيد
+  // ═══════════════════════════════════════════════════════════════
+
   Future<void> _save({required bool post}) async {
     // التحقق من الوصف
     if (_descCtrl.text.trim().isEmpty) {
@@ -1862,7 +2100,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         _snack(result['message'] ?? 'خطأ في حفظ القيد', AccountingTheme.danger);
       }
     } catch (e) {
-      _snack('خطأ: $e', AccountingTheme.danger);
+      _snack('خطأ', AccountingTheme.danger);
     }
 
     if (mounted) setState(() => _isSaving = false);

@@ -55,7 +55,7 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = e.toString();
+        _error = 'حدث خطأ';
       });
     }
   }
@@ -635,7 +635,7 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('❌ خطأ في الحذف: $e'),
+              content: Text('❌ خطأ في الحذف'),
               backgroundColor: Colors.red,
             ),
           );

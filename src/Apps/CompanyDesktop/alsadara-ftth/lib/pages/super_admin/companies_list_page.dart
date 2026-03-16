@@ -55,7 +55,7 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل الشركة المرتبطة: $e');
+      debugPrint('❌ خطأ في تحميل الشركة المرتبطة');
       if (mounted) {
         setState(() => _isLoadingLinked = false);
       }
@@ -350,8 +350,6 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
         'accounting',
         'diagnostics',
       ]);
-      final fullPermissions = PermissionManager.instance.buildPageAccess();
-
       // الانتقال للصفحة الرئيسية كمدير
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -361,7 +359,6 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
             department: tenant.name,
             center: tenant.code,
             salary: '0',
-            pageAccess: fullPermissions,
             tenantId: tenant.id,
             tenantCode: tenant.code,
             isSuperAdminMode: true, // وضع مدير النظام
@@ -816,12 +813,12 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
           );
         }
       } catch (e) {
-        debugPrint('❌ خطأ في ربط الشركة: $e');
+        debugPrint('❌ خطأ في ربط الشركة');
         if (context.mounted) {
           setState(() => _isLoadingLinked = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('❌ خطأ: $e'),
+              content: Text('❌ خطأ'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -912,12 +909,12 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
           );
         }
       } catch (e) {
-        debugPrint('❌ خطأ في إلغاء ربط الشركة: $e');
+        debugPrint('❌ خطأ في إلغاء ربط الشركة');
         if (context.mounted) {
           setState(() => _isLoadingLinked = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('❌ خطأ: $e'),
+              content: Text('❌ خطأ'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -1145,7 +1142,7 @@ class _CompaniesListPageState extends State<CompaniesListPage> {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('❌ خطأ: $e'),
+              content: Text('❌ خطأ'),
               backgroundColor: Colors.red,
             ),
           );

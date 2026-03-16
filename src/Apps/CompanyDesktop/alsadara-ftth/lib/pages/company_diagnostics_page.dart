@@ -11,18 +11,17 @@ import '../services/sadara_api_service.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import '../permissions/permissions.dart';
+import 'diagnostics/permissions_diagnostics_page.dart';
 
 /// صفحة تشخيص نظام الشركة
 class CompanyDiagnosticsPage extends StatefulWidget {
   final String? tenantId;
   final String? tenantCode;
-  final Map<String, bool>? pageAccess;
 
   const CompanyDiagnosticsPage({
     super.key,
     this.tenantId,
     this.tenantCode,
-    this.pageAccess,
   });
 
   @override
@@ -274,50 +273,19 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // صلاحيات المستخدم - النظام الأول
-          _buildSectionCard(
-            title: '🔐 صلاحيات المستخدم - النظام الأول',
-            icon: Icons.security,
-            color: Colors.indigo,
-            children: [
-              if (user?.firstSystemPermissions.isEmpty ?? true)
-                const ListTile(
-                  leading: Icon(Icons.warning, color: Colors.orange),
-                  title: Text('لا توجد صلاحيات'),
-                  subtitle: Text('المستخدم ليس لديه صلاحيات في النظام الأول'),
-                )
-              else
-                ...user!.firstSystemPermissions.entries.map(
-                  (e) => _buildInfoTile(
-                    e.key,
-                    e.value ? '✅ مفعل' : '❌ معطل',
-                    e.value ? Icons.check_circle : Icons.cancel,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // صلاحيات المستخدم - النظام الثاني
-          _buildSectionCard(
-            title: '🔐 صلاحيات المستخدم - النظام الثاني',
-            icon: Icons.security,
-            color: Colors.deepPurple,
-            children: [
-              if (user?.secondSystemPermissions.isEmpty ?? true)
-                const ListTile(
-                  leading: Icon(Icons.warning, color: Colors.orange),
-                  title: Text('لا توجد صلاحيات'),
-                  subtitle: Text('المستخدم ليس لديه صلاحيات في النظام الثاني'),
-                )
-              else
-                ...user!.secondSystemPermissions.entries.map(
-                  (e) => _buildInfoTile(
-                    e.key,
-                    e.value ? '✅ مفعل' : '❌ معطل',
-                    e.value ? Icons.check_circle : Icons.cancel,
-                  ),
-                ),
-            ],
+          // زر التشخيص الشامل
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ListTile(
+              leading: const Icon(Icons.security_rounded, color: Colors.indigo, size: 32),
+              title: Text('تشخيص شامل للصلاحيات',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.indigo)),
+              subtitle: const Text('فحص جميع الصفحات والأزرار وكشف المشاكل'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.indigo),
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const PermissionsDiagnosticsPage())),
+            ),
           ),
           const SizedBox(height: 16),
           // صلاحيات V2 من PermissionManager
@@ -326,11 +294,18 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             icon: Icons.pages,
             color: Colors.brown,
             children: [
-              ...PermissionManager.instance.buildPageAccess().entries.map(
+              ...PermissionManager.instance.firstSystemPermissions.entries.map(
                     (e) => _buildInfoTile(
                       e.key,
-                      e.value ? '✅ مفعل' : '❌ معطل',
-                      e.value ? Icons.check_circle : Icons.cancel,
+                      (e.value['view'] == true) ? '✅ مفعل' : '❌ معطل',
+                      (e.value['view'] == true) ? Icons.check_circle : Icons.cancel,
+                    ),
+                  ),
+              ...PermissionManager.instance.secondSystemPermissions.entries.map(
+                    (e) => _buildInfoTile(
+                      e.key,
+                      (e.value['view'] == true) ? '✅ مفعل' : '❌ معطل',
+                      (e.value['view'] == true) ? Icons.check_circle : Icons.cancel,
                     ),
                   ),
             ],
@@ -358,8 +333,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                 Icons.business,
               ),
               _buildInfoTile(
-                'عدد صلاحيات المستخدم (النظام 1)',
-                '${user?.firstSystemPermissions.values.where((v) => v).length ?? 0}',
+                'عدد صلاحيات المستخدم V2 (النظام 1)',
+                '${PermissionManager.instance.firstSystemPermissions.values.where((v) => v['view'] == true).length}',
                 Icons.person,
               ),
               _buildInfoTile(
@@ -368,8 +343,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                 Icons.business,
               ),
               _buildInfoTile(
-                'عدد صلاحيات المستخدم (النظام 2)',
-                '${user?.secondSystemPermissions.values.where((v) => v).length ?? 0}',
+                'عدد صلاحيات المستخدم V2 (النظام 2)',
+                '${PermissionManager.instance.secondSystemPermissions.values.where((v) => v['view'] == true).length}',
                 Icons.person,
               ),
             ],
@@ -716,7 +691,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _apiTestResult = 'خطأ: $e';
+        _apiTestResult = 'خطأ';
         _apiTestSuccess = false;
       });
     }
@@ -756,8 +731,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       buffer.writeln('مدير: ${user.isAdmin}');
       buffer.writeln('نشط: ${user.isActive}');
       buffer.writeln('الصلاحيات: ${user.permissions.join(", ")}');
-      buffer.writeln('صلاحيات النظام 1: ${user.firstSystemPermissions}');
-      buffer.writeln('صلاحيات النظام 2: ${user.secondSystemPermissions}');
+      buffer.writeln('الصلاحيات: ${user.permissions.join(", ")}');
     } else {
       buffer.writeln('لا يوجد مستخدم');
     }
@@ -777,7 +751,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
     }
 
     buffer.writeln('\n=== صلاحيات V2 (من PermissionManager) ===');
-    buffer.writeln(PermissionManager.instance.buildPageAccess().toString());
+    buffer.writeln('النظام الأول: ${PermissionManager.instance.firstSystemPermissions}');
+    buffer.writeln('النظام الثاني: ${PermissionManager.instance.secondSystemPermissions}');
 
     buffer.writeln('\n=== معلومات API ===');
     buffer.writeln('عنوان API: ${ApiConfig.baseUrl}');
@@ -1203,7 +1178,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       setState(() {
         _portalResults[3] = _PortalDiagResult(
           title: '4️⃣ فرز طلبات المواطن',
-          status: '❌ خطأ في فرز الطلبات: $e',
+          status: '❌ خطأ في فرز الطلبات',
           success: false,
           duration: sw4.elapsed,
         );
@@ -1246,7 +1221,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       setState(() {
         _portalResults[4] = _PortalDiagResult(
           title: '5️⃣ فرز طلبات الوكيل',
-          status: '❌ خطأ في فرز الطلبات: $e',
+          status: '❌ خطأ في فرز الطلبات',
           success: false,
           duration: sw5.elapsed,
         );
@@ -1276,7 +1251,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       setState(() {
         _portalResults[5] = _PortalDiagResult(
           title: '6️⃣ جلب الإحصائيات',
-          status: '❌ فشل: $e',
+          status: '❌ فشل',
           success: false,
           duration: sw6.elapsed,
           details: e.toString(),
@@ -1352,7 +1327,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ خطأ: $e'),
+          content: Text('❌ خطأ'),
           backgroundColor: Colors.red,
         ),
       );

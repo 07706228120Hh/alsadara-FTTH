@@ -2,8 +2,12 @@
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../services/period_closing_service.dart';
+import '../../services/audit_trail_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../widgets/accounting_skeleton.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة المصروفات
 class ExpensesPage extends StatefulWidget {
@@ -19,6 +23,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
   bool _isLoading = true;
   String? _errorMessage;
   List<dynamic> _expenses = [];
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _total = 0;
+  static const int _pageSize = 50;
 
   @override
   void initState() {
@@ -26,7 +34,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({int page = 1}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -35,12 +43,23 @@ class _ExpensesPageState extends State<ExpensesPage> {
       final result = await AccountingService.instance
           .getExpenses(companyId: widget.companyId);
       if (result['success'] == true) {
-        _expenses = (result['data'] is List) ? result['data'] : [];
+        if (result['data'] is Map) {
+          final dataMap = result['data'] as Map<String, dynamic>;
+          _expenses = ((dataMap['items'] ?? dataMap['entries'] ?? []) as List);
+          _currentPage = (dataMap['page'] ?? page) as int;
+          _totalPages = (dataMap['totalPages'] ?? 1) as int;
+          _total = (dataMap['total'] ?? _expenses.length) as int;
+        } else {
+          _expenses = (result['data'] is List) ? result['data'] : [];
+          _currentPage = 1;
+          _totalPages = 1;
+          _total = _expenses.length;
+        }
       } else {
         _errorMessage = result['message'] ?? 'خطأ';
       }
     } catch (e) {
-      _errorMessage = 'خطأ: $e';
+      _errorMessage = 'خطأ';
     }
     setState(() {
       _isLoading = false;
@@ -60,9 +79,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
               _buildSummary(),
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                    ? const AccountingSkeleton(rows: 8, columns: 4)
                     : _errorMessage != null
                         ? Center(
                             child: Text(_errorMessage!,
@@ -70,6 +87,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                     color: AccountingTheme.danger)))
                         : _buildList(),
               ),
+              _buildPaginationBar(),
             ],
           ),
         ),
@@ -125,20 +143,21 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 foregroundColor: AccountingTheme.textSecondary),
           ),
           SizedBox(width: isMob ? 4 : ar.spaceS),
-          ElevatedButton.icon(
-            onPressed: _showAddDialog,
-            icon: Icon(Icons.add, size: isMob ? 16 : ar.iconM),
-            label: Text(isMob ? 'إضافة مصروف' : 'إضافة مصروف',
-                style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.buttonText)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonOrange,
-              foregroundColor: Colors.white,
-              padding: isMob
-                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                  : ar.buttonPadding,
-              minimumSize: isMob ? const Size(0, 30) : null,
+          if (PermissionManager.instance.canAdd('accounting.expenses'))
+            ElevatedButton.icon(
+              onPressed: _showAddDialog,
+              icon: Icon(Icons.add, size: isMob ? 16 : ar.iconM),
+              label: Text(isMob ? 'إضافة مصروف' : 'إضافة مصروف',
+                  style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.buttonText)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AccountingTheme.neonOrange,
+                foregroundColor: Colors.white,
+                padding: isMob
+                    ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                    : ar.buttonPadding,
+                minimumSize: isMob ? const Size(0, 30) : null,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -320,11 +339,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 ),
               // أزرار تعديل وحذف
               SizedBox(width: context.accR.spaceS),
-              _actionBtn(Icons.edit, AccountingTheme.info,
-                  () => _showEditExpenseDialog(e)),
+              if (PermissionManager.instance.canEdit('accounting.expenses'))
+                _actionBtn(Icons.edit, AccountingTheme.info,
+                    () => _showEditExpenseDialog(e)),
               SizedBox(width: context.accR.spaceXS),
-              _actionBtn(Icons.delete_outline, AccountingTheme.danger,
-                  () => _confirmDeleteExpense(e)),
+              if (PermissionManager.instance.canDelete('accounting.expenses'))
+                _actionBtn(Icons.delete_outline, AccountingTheme.danger,
+                    () => _confirmDeleteExpense(e)),
             ],
           ),
         );
@@ -408,11 +429,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 const Spacer(),
               // أزرار التعديل والحذف
               const SizedBox(width: 6),
-              _actionBtn(Icons.edit, AccountingTheme.info,
-                  () => _showEditExpenseDialog(e)),
+              if (PermissionManager.instance.canEdit('accounting.expenses'))
+                _actionBtn(Icons.edit, AccountingTheme.info,
+                    () => _showEditExpenseDialog(e)),
               const SizedBox(width: 4),
-              _actionBtn(Icons.delete_outline, AccountingTheme.danger,
-                  () => _confirmDeleteExpense(e)),
+              if (PermissionManager.instance.canDelete('accounting.expenses'))
+                _actionBtn(Icons.delete_outline, AccountingTheme.danger,
+                    () => _confirmDeleteExpense(e)),
             ],
           ),
           // ملاحظات إن وجدت
@@ -426,6 +449,34 @@ class _ExpensesPageState extends State<ExpensesPage> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationBar() {
+    if (_totalPages <= 1) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        color: AccountingTheme.bgCard,
+        border: Border(top: BorderSide(color: AccountingTheme.borderColor)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            onPressed: _currentPage > 1 ? () => _loadData(page: _currentPage - 1) : null,
+            icon: const Icon(Icons.chevron_right, color: AccountingTheme.textSecondary),
+          ),
+          Text(
+            'صفحة $_currentPage من $_totalPages ($_total سجل)',
+            style: GoogleFonts.cairo(color: AccountingTheme.textSecondary, fontSize: 13),
+          ),
+          IconButton(
+            onPressed: _currentPage < _totalPages ? () => _loadData(page: _currentPage + 1) : null,
+            icon: const Icon(Icons.chevron_left, color: AccountingTheme.textSecondary),
+          ),
         ],
       ),
     );
@@ -555,6 +606,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     return;
                   }
                   Navigator.pop(ctx);
+                  // فحص الفترة المحاسبية
+                  final periodOk = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: DateTime.now(), companyId: widget.companyId ?? '',
+                  );
+                  if (!periodOk) return;
                   final result = await AccountingService.instance.createExpense(
                     accountId: selectedAccountId!,
                     description: descCtrl.text,
@@ -566,6 +622,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   );
                   if (result['success'] == true) {
                     _snack('تم إضافة المصروف', AccountingTheme.success);
+                    AuditTrailService.instance.log(
+                      action: AuditAction.create,
+                      entityType: AuditEntityType.expense,
+                      entityId: result['data']?['Id']?.toString() ?? '',
+                      entityDescription: 'مصروف: ${descCtrl.text}',
+                    );
                     _loadData();
                   } else {
                     _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -702,6 +764,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final expDate = DateTime.tryParse(e['ExpenseDate']?.toString() ?? e['CreatedAt']?.toString() ?? '');
+                if (expDate != null) {
+                  final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: expDate, companyId: widget.companyId ?? '',
+                  );
+                  if (!allowed) return;
+                }
                 final result = await AccountingService.instance.updateExpense(
                   e['Id'].toString(),
                   {
@@ -713,6 +783,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 );
                 if (result['success'] == true) {
                   _snack('تم تحديث المصروف', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.edit,
+                    entityType: AuditEntityType.expense,
+                    entityId: e['Id']?.toString() ?? '',
+                    entityDescription: 'مصروف: ${descCtrl.text}',
+                  );
                   _loadData();
                 } else {
                   _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -751,10 +827,24 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final expDate = DateTime.tryParse(e['ExpenseDate']?.toString() ?? e['CreatedAt']?.toString() ?? '');
+                if (expDate != null) {
+                  final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: expDate, companyId: widget.companyId ?? '',
+                  );
+                  if (!allowed) return;
+                }
                 final result = await AccountingService.instance
                     .deleteExpense(e['Id'].toString());
                 if (result['success'] == true) {
                   _snack('تم حذف المصروف', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.delete,
+                    entityType: AuditEntityType.expense,
+                    entityId: e['Id']?.toString() ?? '',
+                    entityDescription: 'مصروف: ${e['Description'] ?? ''}',
+                  );
                   _loadData();
                 } else {
                   _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);

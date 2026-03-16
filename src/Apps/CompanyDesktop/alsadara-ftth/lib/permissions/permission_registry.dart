@@ -438,6 +438,33 @@ class PermissionRegistry {
       parent: 'accounting',
       allowedActions: ['view', 'edit'],
     ),
+    PermissionEntry(
+      key: 'accounting.period_closing',
+      labelAr: 'إقفال الفترات',
+      description: 'إدارة إقفال وفتح الفترات المحاسبية',
+      icon: Icons.lock_clock_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'accounting.audit_trail',
+      labelAr: 'سجل التدقيق',
+      description: 'عرض سجل العمليات والتغييرات المحاسبية',
+      icon: Icons.history_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view', 'export'],
+    ),
+    PermissionEntry(
+      key: 'accounting.balance_verification',
+      labelAr: 'تحقق التوازن',
+      description: 'التحقق من توازن الحسابات',
+      icon: Icons.verified_rounded,
+      category: 'المالية',
+      parent: 'accounting',
+      allowedActions: ['view'],
+    ),
 
     // ─── المتابعة ───
     PermissionEntry(
@@ -464,6 +491,33 @@ class PermissionRegistry {
       description: 'لوحة المهام الشخصية',
       icon: Icons.person_pin_rounded,
       category: 'التشغيل',
+    ),
+
+    // ─── مشتركي IPTV ───
+    PermissionEntry(
+      key: 'iptv',
+      labelAr: 'مشتركي IPTV',
+      description: 'إدارة اشتراكات التلفزيون عبر الإنترنت',
+      icon: Icons.live_tv_rounded,
+      category: 'الخدمات',
+    ),
+    PermissionEntry(
+      key: 'iptv.manage',
+      labelAr: 'إدارة المشتركين',
+      description: 'إضافة وتعديل وحذف مشتركي IPTV',
+      icon: Icons.edit_rounded,
+      category: 'الخدمات',
+      parent: 'iptv',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'iptv.whatsapp',
+      labelAr: 'إرسال بيانات IPTV',
+      description: 'إرسال بيانات الاشتراك عبر واتساب',
+      icon: Icons.send_rounded,
+      category: 'الخدمات',
+      parent: 'iptv',
+      allowedActions: ['view', 'send'],
     ),
 
     // ─── تشخيص النظام ───
@@ -584,14 +638,6 @@ class PermissionRegistry {
       icon: Icons.history_rounded,
       category: 'التقارير',
       allowedActions: ['view', 'export'],
-    ),
-    PermissionEntry(
-      key: 'superset_reports',
-      labelAr: 'تقارير Superset',
-      description: 'لوحات التقارير والرسوم البيانية',
-      icon: Icons.dashboard_rounded,
-      category: 'التقارير',
-      allowedActions: ['view'],
     ),
     PermissionEntry(
       key: 'server_data',

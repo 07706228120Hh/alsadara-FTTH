@@ -131,7 +131,7 @@ class LoggerService {
 
     // إضافة الخطأ إن وجد
     if (error != null) {
-      buffer.write('\n   Error: $error');
+      buffer.write('\n   Error');
     }
 
     // طباعة الرسالة

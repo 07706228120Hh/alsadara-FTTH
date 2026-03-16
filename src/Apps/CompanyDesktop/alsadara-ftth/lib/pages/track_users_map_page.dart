@@ -63,7 +63,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
           await mbtilesFile.writeAsBytes(data.buffer.asUint8List(),
               flush: true);
         } catch (e) {
-          debugPrint('Offline map file not found in assets: $e');
+          debugPrint('Offline map file not found in assets');
           return;
         }
       }

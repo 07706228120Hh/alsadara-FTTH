@@ -40,7 +40,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
       await windowManager.setPreventClose(true);
       debugPrint('🔒 تم تفعيل حماية النافذة من الإغلاق المباشر');
     } catch (e) {
-      debugPrint('⚠️ فشل في إعداد حماية النافذة: $e');
+      debugPrint('⚠️ فشل في إعداد حماية النافذة');
     }
   }
 
@@ -133,7 +133,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
         return true;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في معالجة طلب الإغلاق: $e');
+      debugPrint('❌ خطأ في معالجة طلب الإغلاق');
       await windowManager.setPreventClose(false);
       return true;
     } finally {

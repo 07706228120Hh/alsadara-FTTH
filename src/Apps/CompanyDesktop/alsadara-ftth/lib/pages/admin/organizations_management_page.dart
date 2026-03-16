@@ -75,7 +75,7 @@ class _OrganizationsManagementPageState
 
       await _loadOrganizations();
     } catch (e) {
-      debugPrint('❌ خطأ في التحقق من الصلاحيات: $e');
+      debugPrint('❌ خطأ في التحقق من الصلاحيات');
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const PremiumLoginPage()),
@@ -102,10 +102,10 @@ class _OrganizationsManagementPageState
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل الشركات: $e');
+      debugPrint('❌ خطأ في تحميل الشركات');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -119,7 +119,7 @@ class _OrganizationsManagementPageState
         setState(() => _orgUsers = users);
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل المستخدمين: $e');
+      debugPrint('❌ خطأ في تحميل المستخدمين');
     }
   }
 
@@ -135,7 +135,7 @@ class _OrganizationsManagementPageState
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل الشركة المرتبطة: $e');
+      debugPrint('❌ خطأ في تحميل الشركة المرتبطة');
       if (mounted) {
         setState(() => _isCheckingLinked = false);
       }
@@ -188,12 +188,12 @@ class _OrganizationsManagementPageState
         );
       }
     } catch (e) {
-      debugPrint('❌ خطأ في ربط الشركة: $e');
+      debugPrint('❌ خطأ في ربط الشركة');
       if (mounted) {
         setState(() => _isCheckingLinked = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ خطأ: $e'),
+            content: Text('❌ خطأ'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -248,12 +248,12 @@ class _OrganizationsManagementPageState
         );
       }
     } catch (e) {
-      debugPrint('❌ خطأ في إلغاء ربط الشركة: $e');
+      debugPrint('❌ خطأ في إلغاء ربط الشركة');
       if (mounted) {
         setState(() => _isCheckingLinked = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ خطأ: $e'),
+            content: Text('❌ خطأ'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -343,7 +343,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -433,7 +433,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -459,7 +459,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -599,7 +599,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -794,7 +794,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
         );
       }
     }

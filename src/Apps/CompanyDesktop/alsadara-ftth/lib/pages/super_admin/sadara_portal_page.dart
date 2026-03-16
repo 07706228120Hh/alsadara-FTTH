@@ -122,7 +122,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
       }
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'حدث خطأ';
         _isLoading = false;
       });
     }
@@ -149,7 +149,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         if (mounted) setState(() => _isLoadingDetail = false);
       }
     } catch (e) {
-      debugPrint('⚠️ Failed to load detail: $e');
+      debugPrint('⚠️ Failed to load detail');
       if (mounted) setState(() => _isLoadingDetail = false);
     }
   }
@@ -1623,7 +1623,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         );
       }
     } catch (e) {
-      print('❌ خطأ في WhatsApp: $e');
+      print('❌ خطأ في WhatsApp');
     }
   }
 
@@ -2503,7 +2503,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('فشل الحذف: $e'),
+              content: Text('فشل الحذف'),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -2522,7 +2522,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل جلب بيانات الأقسام: $e'),
+            content: Text('فشل جلب بيانات الأقسام'),
             backgroundColor: Colors.red,
           ),
         );
@@ -2838,7 +2838,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('فشل التعيين: $e'),
+              content: Text('فشل التعيين'),
               backgroundColor: Colors.red,
             ),
           );
@@ -2874,7 +2874,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e'),
+            content: Text('خطأ'),
             backgroundColor: Colors.red,
           ),
         );

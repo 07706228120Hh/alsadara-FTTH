@@ -32,7 +32,7 @@ class SecureConfigService {
         await _storage.write(key: 'rememberMe', value: 'false');
       }
     } catch (e) {
-      throw Exception('خطأ في حفظ بيانات المستخدم: $e');
+      throw Exception('خطأ في حفظ بيانات المستخدم');
     }
   }
 
@@ -45,7 +45,7 @@ class SecureConfigService {
         'rememberMe': await _storage.read(key: 'rememberMe'),
       };
     } catch (e) {
-      throw Exception('خطأ في استرداد بيانات المستخدم: $e');
+      throw Exception('خطأ في استرداد بيانات المستخدم');
     }
   }
 
@@ -54,7 +54,7 @@ class SecureConfigService {
     try {
       await _storage.deleteAll();
     } catch (e) {
-      throw Exception('خطأ في مسح البيانات: $e');
+      throw Exception('خطأ في مسح البيانات');
     }
   }
 }

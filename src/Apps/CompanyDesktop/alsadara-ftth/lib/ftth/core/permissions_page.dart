@@ -403,7 +403,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في حفظ كلمة المرور: $e'),
+            content: Text('خطأ في حفظ كلمة المرور'),
             backgroundColor: Colors.red,
           ),
         );
@@ -452,7 +452,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في حفظ الصلاحيات: $e'),
+            content: Text('خطأ في حفظ الصلاحيات'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -479,7 +479,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
       }
       await PermissionService.saveSecondSystemPermissionsV2(v2Perms);
     } catch (e) {
-      throw Exception('فشل في حفظ الصلاحيات: $e');
+      throw Exception('فشل في حفظ الصلاحيات');
     }
   }
 

@@ -63,7 +63,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = 'حدث خطأ';
           _isLoading = false;
         });
       }
@@ -94,7 +94,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
         });
       }
     } catch (e) {
-      debugPrint('Error fetching logs: $e');
+      debugPrint('Error fetching logs');
       rethrow;
     }
   }
@@ -111,7 +111,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
         });
       }
     } catch (e) {
-      debugPrint('Error fetching stats: $e');
+      debugPrint('Error fetching stats');
     }
   }
 

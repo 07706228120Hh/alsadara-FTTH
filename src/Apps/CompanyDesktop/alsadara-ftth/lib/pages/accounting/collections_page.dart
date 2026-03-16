@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
+import '../../services/vps_auth_service.dart';
+import '../../services/period_closing_service.dart';
+import '../../services/audit_trail_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
@@ -49,7 +52,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
         _error = result['message'] ?? 'خطأ في جلب المستحقات';
       }
     } catch (e) {
-      _error = 'خطأ: $e';
+      _error = 'خطأ';
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -914,6 +917,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   return;
                 }
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final payOk = await PeriodClosingService.checkAndWarnIfClosed(
+                  context, date: DateTime.now(), companyId: widget.companyId ?? '',
+                );
+                if (!payOk) return;
                 final result =
                     await AccountingService.instance.recordTechnicianPayment(
                   technicianId: techId,
@@ -922,6 +930,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 );
                 if (result['success'] == true) {
                   _snack('تم تسجيل التسديد بنجاح', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.create,
+                    entityType: AuditEntityType.collection,
+                    entityId: techId,
+                    entityDescription: 'تسديد: ${tech['name'] ?? ''}',
+                    details: 'مبلغ: $amount',
+                  );
                   _loadDues();
                 } else {
                   _snack(result['message'] ?? 'خطأ في تسجيل التسديد',
@@ -1241,6 +1256,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       return;
                     }
                     Navigator.pop(ctx);
+                    // فحص الفترة المحاسبية
+                    final createOk = await PeriodClosingService.checkAndWarnIfClosed(
+                      context, date: DateTime.now(), companyId: widget.companyId ?? '',
+                    );
+                    if (!createOk) return;
                     final result =
                         await AccountingService.instance.createCollection(
                       technicianId: selectedEmployee!['Id']?.toString() ?? '',
@@ -1255,6 +1275,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     );
                     if (result['success'] == true) {
                       _snack('تم إضافة التحصيل بنجاح', AccountingTheme.success);
+                      AuditTrailService.instance.log(
+                        action: AuditAction.create,
+                        entityType: AuditEntityType.collection,
+                        entityId: result['data']?['Id']?.toString() ?? '',
+                        entityDescription: 'تحصيل: ${descCtrl.text}',
+                        details: 'فني: ${selectedEmployee!['FullName'] ?? ''}',
+                      );
                       _loadDues();
                     } else {
                       _snack(
@@ -1390,7 +1417,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
         _error = result['message'] ?? 'خطأ';
       }
     } catch (e) {
-      _error = 'خطأ: $e';
+      _error = 'خطأ';
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -1722,6 +1749,14 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   return;
                 }
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final editDate = DateTime.tryParse(tx['createdAt']?.toString() ?? '');
+                if (editDate != null) {
+                  final editOk = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: editDate, companyId: VpsAuthService.instance.currentCompanyId ?? '',
+                  );
+                  if (!editOk) return;
+                }
                 final result = await AccountingService.instance
                     .updateTechnicianTransaction(
                   transactionId: txId,
@@ -1733,6 +1768,12 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                 );
                 if (result['success'] == true) {
                   _snack('تم تعديل المعاملة', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.edit,
+                    entityType: AuditEntityType.collection,
+                    entityId: txId,
+                    entityDescription: 'تعديل تحصيل: ${descCtrl.text}',
+                  );
                   _loadTransactions();
                   widget.onChanged?.call();
                 } else {
@@ -1829,10 +1870,24 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               ),
               onPressed: () async {
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final delDate = DateTime.tryParse(tx['createdAt']?.toString() ?? '');
+                if (delDate != null) {
+                  final delOk = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: delDate, companyId: VpsAuthService.instance.currentCompanyId ?? '',
+                  );
+                  if (!delOk) return;
+                }
                 final result = await AccountingService.instance
                     .deleteTechnicianTransaction(txId);
                 if (result['success'] == true) {
                   _snack('تم حذف المعاملة', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.delete,
+                    entityType: AuditEntityType.collection,
+                    entityId: txId,
+                    entityDescription: 'حذف تحصيل: $desc',
+                  );
                   _loadTransactions();
                   widget.onChanged?.call();
                 } else {

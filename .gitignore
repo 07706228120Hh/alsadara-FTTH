@@ -94,6 +94,17 @@ temp/
 $RECYCLE.BIN/
 Desktop.ini
 
+# Large binary files (APK, ZIP, etc.)
+*.apk
+*.zip
+sadara-api-deploy.zip
+sadara-api.zip
+whatsapp_server_v*.js
+
+# Installer distributions (large binaries)
+**/Distribution_*/
+**/publish_output/
+**/publish-clean/
 
 # Secrets folder - DO NOT COMMIT
 .secrets/

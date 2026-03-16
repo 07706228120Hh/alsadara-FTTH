@@ -124,7 +124,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
       setState(() {
         _isSending = false;
       });
-      _showError('خطأ: $e');
+      _showError('خطأ');
     }
   }
 

@@ -83,7 +83,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         });
       }
     } catch (e) {
-      debugPrint('Error reloading company: $e');
+      debugPrint('Error reloading company');
     }
   }
 
@@ -1381,8 +1381,6 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         'accounting',
         'diagnostics',
       ]);
-      final fullPermissions = PermissionManager.instance.buildPageAccess();
-
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => HomePage(
@@ -1391,7 +1389,6 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             department: _company.name,
             center: _company.code,
             salary: '0',
-            pageAccess: fullPermissions,
             tenantId: _company.id,
             tenantCode: _company.code,
             isSuperAdminMode: true,
@@ -1787,7 +1784,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e')),
+            SnackBar(content: Text('خطأ')),
           );
         }
       }
@@ -1843,7 +1840,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e')),
+            SnackBar(content: Text('خطأ')),
           );
         }
       }
@@ -2052,7 +2049,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e')),
+          SnackBar(content: Text('خطأ')),
         );
       }
     } finally {
@@ -2326,7 +2323,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
       }
     } catch (e) {
       setState(() {
-        _error = 'خطأ في الاتصال:\n$e';
+        _error = 'فشل الاتصال بالخادم';
         _isLoading = false;
       });
     }
@@ -2670,7 +2667,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
         }
       }
     } catch (e) {
-      debugPrint('Error parsing company features: $e');
+      debugPrint('Error parsing company features');
     }
 
     // قائمة الصلاحيات المتاحة مع الأسماء العربية
@@ -2708,7 +2705,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
           }
         }
       } catch (e) {
-        debugPrint('Error parsing user permissions: $e');
+        debugPrint('Error parsing user permissions');
       }
     }
 
@@ -2919,7 +2916,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('خطأ: $e'),
+                              content: Text('خطأ'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -3176,7 +3173,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('خطأ: $e'),
+                              content: Text('خطأ'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -3385,7 +3382,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('خطأ: $e'),
+                              content: Text('خطأ'),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -3701,7 +3698,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('خطأ: $e'),
+                              content: Text('خطأ'),
                               backgroundColor: Colors.red,
                             ),
                           );

@@ -76,7 +76,7 @@ class _RevenuePageState extends State<RevenuePage> {
         }).toList();
       }
     } catch (e) {
-      _errorMessage = 'خطأ في الاتصال: $e';
+      _errorMessage = 'خطأ في الاتصال';
     }
     setState(() => _isLoading = false);
   }

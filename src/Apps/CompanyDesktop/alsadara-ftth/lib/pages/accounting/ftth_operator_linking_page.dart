@@ -66,7 +66,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
         _error = 'خطأ في جلب المشغلين: ${response.statusCode}';
       }
     } catch (e) {
-      _error = 'خطأ: $e';
+      _error = 'خطأ';
     }
   }
 
@@ -311,7 +311,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
       setState(() => _isLoading = false);

@@ -46,7 +46,7 @@ class ConfigManager {
       _initialized = true;
       debugPrint('✅ تم تهيئة مدير التكوين بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة مدير التكوين: $e');
+      debugPrint('❌ خطأ في تهيئة مدير التكوين');
       rethrow;
     }
   }
@@ -66,7 +66,7 @@ class ConfigManager {
         await _createDefaultConfig(configFile);
       }
     } catch (e) {
-      debugPrint('⚠️ خطأ في تحميل تكوين العميل: $e');
+      debugPrint('⚠️ خطأ في تحميل تكوين العميل');
       _clientConfig = {};
     }
   }
@@ -180,7 +180,7 @@ class ConfigManager {
       final configFile = File('${appDir.path}/client_config.json');
       await configFile.writeAsString(jsonEncode(_clientConfig));
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ التكوين: $e');
+      debugPrint('❌ خطأ في حفظ التكوين');
     }
   }
 
@@ -194,7 +194,7 @@ class ConfigManager {
       debugPrint('🔍 فحص التحديثات من: $updateServer');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في فحص التحديثات: $e');
+      debugPrint('❌ خطأ في فحص التحديثات');
       return null;
     }
   }
@@ -224,7 +224,7 @@ class ConfigManager {
       debugPrint('✅ تم إعداد العميل بنجاح: $companyName');
       return true;
     } catch (e) {
-      debugPrint('❌ خطأ في إعداد العميل: $e');
+      debugPrint('❌ خطأ في إعداد العميل');
       return false;
     }
   }
@@ -291,7 +291,7 @@ class ConfigManager {
       debugPrint('✅ تم استيراد الإعدادات بنجاح');
       return true;
     } catch (e) {
-      debugPrint('❌ خطأ في استيراد الإعدادات: $e');
+      debugPrint('❌ خطأ في استيراد الإعدادات');
       return false;
     }
   }

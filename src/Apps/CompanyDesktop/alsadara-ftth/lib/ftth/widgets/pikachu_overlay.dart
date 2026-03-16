@@ -40,7 +40,7 @@ class PikachuOverlay {
       final prefs = await SharedPreferences.getInstance();
       _showPikachu = prefs.getBool('show_pikachu') ?? true;
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل إعداد بيكاتشو: $e');
+      debugPrint('❌ خطأ في تحميل إعداد بيكاتشو');
     }
   }
 
@@ -51,7 +51,7 @@ class PikachuOverlay {
       await prefs.setBool('show_pikachu', value);
       _showPikachu = value;
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ إعداد بيكاتشو: $e');
+      debugPrint('❌ خطأ في حفظ إعداد بيكاتشو');
     }
   }
 
@@ -142,7 +142,7 @@ class PikachuOverlay {
       overlay.insert(_pikachuEntry!);
       _isShowing = true;
     } catch (e) {
-      debugPrint('❌ خطأ في إظهار بيكاتشو: $e');
+      debugPrint('❌ خطأ في إظهار بيكاتشو');
     }
   }
 
@@ -196,7 +196,7 @@ class PikachuOverlay {
 
       overlay.insert(_toggleButtonEntry!);
     } catch (e) {
-      debugPrint('❌ خطأ في إظهار زر بيكاتشو: $e');
+      debugPrint('❌ خطأ في إظهار زر بيكاتشو');
     }
   }
 

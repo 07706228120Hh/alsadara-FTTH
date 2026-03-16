@@ -40,9 +40,9 @@ class _PlatformWebViewState extends State<PlatformWebView> {
         _initializeMobileWebView();
       }
     } catch (e) {
-      debugPrint('Error initializing WebView: $e');
+      debugPrint('Error initializing WebView');
       setState(() {
-        _error = 'فشل في تهيئة WebView: $e';
+        _error = 'فشل في تهيئة WebView';
         _isLoading = false;
       });
     }
@@ -63,9 +63,9 @@ class _PlatformWebViewState extends State<PlatformWebView> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Windows WebView initialization failed: $e');
+      debugPrint('Windows WebView initialization failed');
       setState(() {
-        _error = 'فشل في تشغيل WebView على Windows: $e';
+        _error = 'فشل في تشغيل WebView على Windows';
         _isLoading = false;
       });
     }
@@ -108,9 +108,9 @@ class _PlatformWebViewState extends State<PlatformWebView> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Mobile WebView initialization failed: $e');
+      debugPrint('Mobile WebView initialization failed');
       setState(() {
-        _error = 'فشل في تشغيل WebView: $e';
+        _error = 'فشل في تشغيل WebView';
         _isLoading = false;
       });
     }
@@ -125,11 +125,11 @@ class _PlatformWebViewState extends State<PlatformWebView> {
         throw 'Could not launch ${widget.url}';
       }
     } catch (e) {
-      debugPrint('Failed to open external browser: $e');
+      debugPrint('Failed to open external browser');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل في فتح المتصفح الخارجي: $e'),
+            content: Text('فشل في فتح المتصفح الخارجي'),
             backgroundColor: Colors.red,
           ),
         );

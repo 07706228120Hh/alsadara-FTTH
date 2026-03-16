@@ -81,7 +81,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = 'حدث خطأ';
           _isLoading = false;
         });
       }

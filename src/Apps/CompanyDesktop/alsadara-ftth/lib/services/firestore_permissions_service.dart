@@ -51,7 +51,7 @@ class FirestorePermissionsService {
       final permsData = permDoc.data()!;
       return _mergePermissions(permsData);
     } catch (e) {
-      print('خطأ في جلب الصلاحيات من Firestore: $e');
+      print('خطأ في جلب الصلاحيات من Firestore');
       return _getDefaultPermissions();
     }
   }
@@ -65,7 +65,7 @@ class FirestorePermissionsService {
       // هذه الدالة للتوافق فقط - استخدم الدالة الجديدة
       return _getDefaultPermissions();
     } catch (e) {
-      print('خطأ في جلب الصلاحيات من Firestore: $e');
+      print('خطأ في جلب الصلاحيات من Firestore');
       return _getDefaultPermissions();
     }
   }
@@ -130,7 +130,7 @@ class FirestorePermissionsService {
       await prefs.setString(
           'cached_permissions_time', DateTime.now().toIso8601String());
     } catch (e) {
-      print('خطأ في حفظ الصلاحيات محلياً: $e');
+      print('خطأ في حفظ الصلاحيات محلياً');
     }
   }
 
@@ -233,7 +233,7 @@ class FirestorePermissionsService {
       print('✅ تم تحديث صلاحيات المستخدم $userId');
       return true;
     } catch (e) {
-      print('❌ خطأ في تحديث الصلاحيات: $e');
+      print('❌ خطأ في تحديث الصلاحيات');
       return false;
     }
   }

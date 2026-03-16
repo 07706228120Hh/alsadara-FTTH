@@ -64,10 +64,10 @@ class OrganizationsService {
         'organizationId': docRef.id,
       };
     } catch (e) {
-      print('❌ خطأ في إنشاء الشركة: $e');
+      print('❌ خطأ في إنشاء الشركة');
       return {
         'success': false,
-        'message': 'خطأ في إنشاء الشركة: $e',
+        'message': 'خطأ في إنشاء الشركة',
       };
     }
   }
@@ -95,7 +95,7 @@ class OrganizationsService {
 
       return organizations;
     } catch (e) {
-      print('❌ خطأ في جلب الشركات: $e');
+      print('❌ خطأ في جلب الشركات');
       return [];
     }
   }
@@ -116,7 +116,7 @@ class OrganizationsService {
       data['id'] = doc.id;
       return data;
     } catch (e) {
-      print('❌ خطأ في جلب بيانات الشركة: $e');
+      print('❌ خطأ في جلب بيانات الشركة');
       return null;
     }
   }
@@ -140,7 +140,7 @@ class OrganizationsService {
       print('✅ تم تحديث الشركة: $organizationId');
       return true;
     } catch (e) {
-      print('❌ خطأ في تحديث الشركة: $e');
+      print('❌ خطأ في تحديث الشركة');
       return false;
     }
   }
@@ -169,7 +169,7 @@ class OrganizationsService {
       print('✅ تم تعطيل الشركة: $organizationId');
       return true;
     } catch (e) {
-      print('❌ خطأ في حذف الشركة: $e');
+      print('❌ خطأ في حذف الشركة');
       return false;
     }
   }
@@ -201,7 +201,7 @@ class OrganizationsService {
 
       return users;
     } catch (e) {
-      print('❌ خطأ في جلب مستخدمي الشركة: $e');
+      print('❌ خطأ في جلب مستخدمي الشركة');
       return [];
     }
   }
@@ -248,7 +248,7 @@ class OrganizationsService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'خطأ: $e',
+        'message': 'خطأ',
       };
     }
   }
@@ -289,7 +289,7 @@ class OrganizationsService {
 
       return true;
     } catch (e) {
-      print('❌ خطأ في نقل المستخدم: $e');
+      print('❌ خطأ في نقل المستخدم');
       return false;
     }
   }

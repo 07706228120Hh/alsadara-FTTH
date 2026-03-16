@@ -126,9 +126,9 @@ class UnifiedAuthManager {
         return LoginResult.failure('فشل الاتصال: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تسجيل الدخول: $e');
+      debugPrint('❌ خطأ في تسجيل الدخول');
       _setState(AuthState.unauthenticated);
-      return LoginResult.failure('خطأ في الاتصال: $e');
+      return LoginResult.failure('خطأ في الاتصال');
     }
   }
 
@@ -196,7 +196,7 @@ class UnifiedAuthManager {
           debugPrint('🔄 إعادة محاولة التجديد ($attempt/$maxRetries)');
         }
       } catch (e) {
-        debugPrint('❌ خطأ في محاولة التجديد $attempt: $e');
+        debugPrint('❌ خطأ في محاولة التجديد $attempt');
         if (attempt < maxRetries) {
           await Future.delayed(Duration(seconds: attempt * 2));
         }
@@ -354,9 +354,9 @@ class UnifiedAuthManager {
       } catch (e) {
         if (e is AuthException) rethrow;
         if (attempt > maxRetries) {
-          throw AuthException('خطأ في الطلب: $e');
+          throw AuthException('خطأ في الطلب');
         }
-        debugPrint('⚠️ خطأ في المحاولة $attempt: $e');
+        debugPrint('⚠️ خطأ في المحاولة $attempt');
         await Future.delayed(Duration(seconds: attempt));
       }
     }
@@ -437,7 +437,7 @@ class UnifiedAuthManager {
             _userSessionKey, jsonEncode(_userSession!.toJson()));
       }
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ الجلسة: $e');
+      debugPrint('❌ خطأ في حفظ الجلسة');
     }
   }
 
@@ -455,7 +455,7 @@ class UnifiedAuthManager {
         _userSession = UserSession.fromJson(jsonDecode(sessionJson));
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل الجلسة: $e');
+      debugPrint('❌ خطأ في تحميل الجلسة');
       await _clearSession();
     }
   }
@@ -470,7 +470,7 @@ class UnifiedAuthManager {
       _tokenInfo = null;
       _userSession = null;
     } catch (e) {
-      debugPrint('❌ خطأ في مسح الجلسة: $e');
+      debugPrint('❌ خطأ في مسح الجلسة');
     }
   }
 
@@ -479,7 +479,7 @@ class UnifiedAuthManager {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_lastRefreshKey, DateTime.now().toIso8601String());
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ وقت التجديد: $e');
+      debugPrint('❌ خطأ في حفظ وقت التجديد');
     }
   }
 

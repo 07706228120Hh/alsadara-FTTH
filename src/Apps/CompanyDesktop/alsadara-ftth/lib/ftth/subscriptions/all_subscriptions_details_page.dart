@@ -7,7 +7,8 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
+import '../auth/auth_error_handler.dart';
+import '../../services/auth_service.dart';
 
 class AllSubscriptionsDetailsPage extends StatefulWidget {
   final String authToken;
@@ -41,10 +42,14 @@ class _AllSubscriptionsDetailsPageState
       while (!_cancel) {
         final baseUrl =
             'https://admin.ftth.iq/api/subscriptions?sortCriteria.property=expires&sortCriteria.direction=asc&hierarchyLevel=0&pageSize=$_pageSize&pageNumber=$page';
-        final resp = await http.get(Uri.parse(baseUrl), headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json'
-        });
+        final resp = await AuthService.instance.authenticatedRequest(
+          'GET',
+          baseUrl,
+        );
+        if (resp.statusCode == 401) {
+          if (mounted) AuthErrorHandler.handle401Error(context);
+          return;
+        }
         if (resp.statusCode != 200) {
           setState(() {
             _statusMsg = 'فشل جلب الصفحة $page: ${resp.statusCode}';
@@ -74,7 +79,7 @@ class _AllSubscriptionsDetailsPageState
     } catch (e) {
       if (mounted) {
         setState(() {
-          _statusMsg = 'خطأ: $e';
+          _statusMsg = 'خطأ';
         });
       }
     } finally {
@@ -99,12 +104,12 @@ class _AllSubscriptionsDetailsPageState
     for (int i = 0; i < ids.length && !_cancel; i += batchSize) {
       final batch = ids.skip(i).take(batchSize).toList();
       try {
-        final url = Uri.parse(
-            'https://api.ftth.iq/api/customers/summary?ids=${batch.join(',')}');
-        final resp = await http.get(url, headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json'
-        });
+        final urlStr =
+            'https://api.ftth.iq/api/customers/summary?ids=${batch.join(',')}';
+        final resp = await AuthService.instance.authenticatedRequest(
+          'GET',
+          urlStr,
+        );
         if (resp.statusCode == 200) {
           final data = jsonDecode(resp.body);
           final summaryItems = (data['items'] as List?) ?? [];
@@ -173,12 +178,9 @@ class _AllSubscriptionsDetailsPageState
 
   Future<Map<String, dynamic>?> _fetchSubscriptionDetails(String id) async {
     try {
-      final resp = await http.get(
-        Uri.parse('https://admin.ftth.iq/api/subscriptions/$id'),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json'
-        },
+      final resp = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/subscriptions/$id',
       );
       if (resp.statusCode == 200) return jsonDecode(resp.body);
     } catch (_) {}

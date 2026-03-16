@@ -147,7 +147,7 @@ class _TaskListScreenState extends State<TaskListScreen>
 
       print('✅ تم تحديث ${tasks.length} مهمة في ${DateTime.now()}');
     } catch (e) {
-      print('❌ خطأ في جلب المهام: $e');
+      print('❌ خطأ في جلب المهام');
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -158,7 +158,7 @@ class _TaskListScreenState extends State<TaskListScreen>
       if (showLoadingIndicator) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ أثناء جلب المهام: $e'),
+            content: Text('حدث خطأ أثناء جلب المهام'),
             backgroundColor: Colors.red,
           ),
         );

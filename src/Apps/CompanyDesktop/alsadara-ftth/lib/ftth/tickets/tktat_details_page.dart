@@ -8,10 +8,11 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart'; // لاستخدام Clipboard
-import 'package:http/http.dart' as http;
+import '../../services/auth_service.dart';
 import '../../task/add_task_api_dialog.dart'; // تأكد من استيراد صفحة AddTaskApiDialog
 // import 'utils/status_translator.dart'; // لم يعد مستخدماً بعد إخفاء زر مؤشرات SLA
 import 'package:url_launcher/url_launcher.dart'; // لفتح رابط التذكرة في المتصفح
+import '../auth/auth_error_handler.dart';
 
 // دوال مساعدة للاستخراج الآمن
 
@@ -98,6 +99,11 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   Duration _targetSla = const Duration(hours: 24);
   String _categoryName = '';
   Timer? _timer;
+  // بيانات إضافية للمشترك (هاتف، FBG، FAT)
+  String _customerPhone = '';
+  String _fbgValue = '';
+  String _fatValue = '';
+  bool _loadingExtraInfo = true;
   // حالة التعليقات
   bool _loadingComments = false;
   String? _commentsError;
@@ -108,16 +114,13 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   final TextEditingController _commentController = TextEditingController();
   int _commentsTotalCount = 0; // العدد الكلي من الخادم
 
-  // إعدادات تكبير (يمكن تعديلها لاحقاً بسهولة)
-  static const double kLabelFont = 15.0; // حجم تسمية الحقول
-  static const double kValueFont = 15.6; // حجم القيمة
-  static const double kIconSizeInfo = 18.0; // حجم أيقونة صف المعلومات
-  static const double kRowHPad = 14.0; // الحشو الأفقي للصف
-  static const double kRowVPad = 6.0; // الحشو الرأسي للصف
-  static const double kInlineGap = 10.0; // المسافة بين التسمية والقيمة
-  static const double kSlaTitleFont = 22.0; // عنوان بطاقة SLA
-  static const double kSlaTagFont = 14.0; // شارة التصنيف
-  static const double kSlaProgressHeight = 10; // (مصغر) ارتفاع شريط التقدم
+  // أحجام متجاوبة — تُحسب في build() حسب حجم الشاشة
+  late double kLabelFont;
+  late double kValueFont;
+  late double kIconSizeInfo;
+  late double kRowHPad;
+  late double kRowVPad;
+  late double kInlineGap;
 
   // تحويل الأرقام الغربية إلى أرقام عربية شرقية
   String _toArabicDigits(String input) {
@@ -160,6 +163,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   void initState() {
     super.initState();
     _initSlaData();
+    _fetchExtraCustomerInfo();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {}); // يعيد البناء لتحديث الزمن المتبقي
     });
@@ -192,6 +196,83 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     } catch (_) {}
   }
 
+  /// جلب بيانات إضافية عن المشترك (الهاتف، FBG، FAT)
+  Future<void> _fetchExtraCustomerInfo() async {
+    if (widget.authToken == null) return;
+    final tktat = widget.tktat;
+    if (tktat is! Map) return;
+
+    // استخراج معرف المشترك
+    String? customerId;
+    final customerObj = tktat['customer'];
+    if (customerObj is Map && customerObj['id'] != null) {
+      customerId = customerObj['id'].toString();
+    } else if (tktat['customerId'] != null) {
+      customerId = tktat['customerId'].toString();
+    } else if (tktat['userId'] != null) {
+      customerId = tktat['userId'].toString();
+    }
+
+    if (customerId == null || customerId.isEmpty) return;
+
+    // 1) جلب بيانات المشترك (رقم الهاتف)
+    try {
+      final r = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/customers/$customerId',
+        headers: {'Accept': 'application/json'},
+      );
+      if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
+      }
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        final model = (data is Map ? (data['model'] ?? data) : data);
+        if (model is Map) {
+          final pc = model['primaryContact'];
+          if (pc is Map) {
+            final mobile = pc['mobile']?.toString() ?? '';
+            if (mobile.isNotEmpty && mounted) {
+              setState(() => _customerPhone = mobile);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2) جلب بيانات الاشتراك (FBG, FAT)
+    try {
+      final r = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/customers/subscriptions?customerId=$customerId',
+        headers: {'Accept': 'application/json'},
+      );
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        final items = data['items'] as List?;
+        if (items != null && items.isNotEmpty) {
+          final sub = items.first;
+          if (sub is Map) {
+            final dd = sub['deviceDetails'];
+            if (dd is Map) {
+              final fbg = dd['fbg'];
+              if (fbg is Map) {
+                _fbgValue = fbg['displayValue']?.toString() ?? '';
+              }
+              final fat = dd['fat'];
+              if (fat is Map) {
+                _fatValue = fat['displayValue']?.toString() ?? '';
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (mounted) setState(() => _loadingExtraInfo = false);
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -202,6 +283,27 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // حساب الأحجام نسبياً من ارتفاع الشاشة لتملأ المساحة
+    final screenH = MediaQuery.of(context).size.height;
+    // معامل التحجيم: 1.0 عند 800px، يزيد مع الشاشات الأكبر
+    final double s = (screenH / 800).clamp(0.85, 1.5);
+
+    kLabelFont = 14.0 * s;
+    kValueFont = 14.0 * s;
+    kIconSizeInfo = 17.0 * s;
+    kRowHPad = 12.0 * s;
+    kRowVPad = 6.0 * s;
+    kInlineGap = 8.0 * s;
+
+    final double cardPadH = 10.0 * s;
+    final double cardPadV = 8.0 * s;
+    final double headingFont = 15.0 * s;
+    final double headingIconSize = 17.0 * s;
+    final double gapBetweenCards = 8.0 * s;
+    final double bodyPadH = 14.0 * s;
+    final double bodyPadV = 10.0 * s;
+    final double rowMarginBottom = 5.0 * s;
+
     final tktat = widget.tktat;
     try {
       // تحويل آمن: إذا كانت الخريطة تحوي مفاتيح غير String لن نفشل
@@ -341,6 +443,32 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
           title: const SizedBox.shrink(),
           actions: [
             _buildAppBarAction(
+              icon: Icons.copy_all,
+              color: Colors.amber,
+              tooltip: 'نسخ معلومات التذكرة والمشترك',
+              iconSize: 28,
+              boxSize: 50,
+              onTap: () {
+                final lines = <String>[
+                  '--- معلومات التذكرة ---',
+                  'رقم التذكرة: $ticketNumber',
+                  'العنوان: $title',
+                  'الخلاصة: $summary',
+                  '',
+                  '--- معلومات المشترك ---',
+                  'العميل: $customer',
+                  'رقم الهاتف: ${_customerPhone.isNotEmpty ? _customerPhone : 'غير متوفر'}',
+                  'FBG: $zone',
+                  'FAT: ${_fatValue.isNotEmpty ? _fatValue : 'غير متوفر'}',
+                ];
+                Clipboard.setData(ClipboardData(text: lines.join('\n')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم نسخ المعلومات')),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            _buildAppBarAction(
               icon: Icons.open_in_new,
               color: Colors.green,
               tooltip: 'فتح التذكرة في المتصفح',
@@ -396,7 +524,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
           ],
         ),
         body: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.symmetric(horizontal: bodyPadH, vertical: bodyPadV),
           child: SingleChildScrollView(
             controller: _scrollController,
             child: Column(
@@ -406,73 +534,102 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                 _buildSlaCard(
                   categoryName: _categoryName,
                   target: targetStr,
-                  elapsed: '$elapsedStr  ($elapsedVerbose)',
-                  remaining: '$remainingStr  ($remainingVerbose)',
+                  elapsed: elapsedVerbose,
+                  remaining: remainingVerbose,
                   slaStatus: slaStatus,
                   progress: _targetSla.inSeconds == 0
                       ? 0
                       : (elapsed.inSeconds / _targetSla.inSeconds).clamp(0, 1),
                 ),
-                const SizedBox(height: 8), // تقليل المسافة بعد بطاقة SLA
+                SizedBox(height: gapBetweenCards),
                 // المجموعة 1: معلومات التذكرة
                 _buildGroupCard(
                   heading: 'معلومات التذكرة',
                   startColor: Colors.blue.shade50,
                   endColor: Colors.blue.shade100,
+                  cardPadH: cardPadH, cardPadV: cardPadV,
+                  headingFont: headingFont, headingIconSize: headingIconSize,
                   rows: [
                     _buildInfoRow(
                         icon: Icons.confirmation_number,
                         label: 'رقم التذكرة',
                         value: ticketNumber,
-                        iconColor: Colors.indigo),
+                        iconColor: Colors.indigo,
+                        rowMargin: rowMarginBottom),
                     _buildInfoRow(
                         icon: Icons.title,
                         label: 'العنوان',
                         value: title,
-                        iconColor: Colors.blue),
+                        iconColor: Colors.blue,
+                        rowMargin: rowMarginBottom),
                     _buildInfoRow(
                         icon: Icons.description,
                         label: 'الخلاصة',
                         value: summary,
-                        iconColor: Colors.teal),
+                        iconColor: Colors.teal,
+                        rowMargin: rowMarginBottom),
                   ],
                 ),
-                SizedBox(
-                    height:
-                        4), // تقليل المسافة بين بطاقة معلومات التذكرة وبطاقة المشترك
+                SizedBox(height: gapBetweenCards),
                 // المجموعة 2: معلومات المشترك
                 _buildGroupCard(
                   heading: 'معلومات المشترك',
                   startColor: Colors.orange.shade50,
                   endColor: Colors.orange.shade100,
+                  cardPadH: cardPadH, cardPadV: cardPadV,
+                  headingFont: headingFont, headingIconSize: headingIconSize,
                   rows: [
                     _buildInfoRow(
                         icon: Icons.person,
                         label: 'العميل',
                         value: customer,
                         iconColor: Colors.orange,
-                        showCopyButton: true),
+                        showCopyButton: true,
+                        rowMargin: rowMarginBottom),
                     _buildInfoRow(
                         icon: Icons.badge,
                         label: 'معرف المستخدم',
                         value: userId,
-                        iconColor: Colors.deepOrange),
+                        iconColor: Colors.deepOrange,
+                        rowMargin: rowMarginBottom),
                     _buildInfoRow(
-                        icon: Icons.location_on,
-                        label: 'المنطقة',
+                        icon: Icons.phone,
+                        label: 'رقم الهاتف',
+                        value: _loadingExtraInfo
+                            ? 'جاري التحميل...'
+                            : (_customerPhone.isNotEmpty
+                                ? _customerPhone
+                                : 'غير متوفر'),
+                        iconColor: Colors.green,
+                        showCopyButton: _customerPhone.isNotEmpty,
+                        rowMargin: rowMarginBottom),
+                    _buildInfoRow(
+                        icon: Icons.router,
+                        label: 'FBG',
                         value: zone,
-                        iconColor: Colors.deepPurple),
+                        iconColor: Colors.teal,
+                        rowMargin: rowMarginBottom),
+                    _buildInfoRow(
+                        icon: Icons.cable,
+                        label: 'FAT',
+                        value: _loadingExtraInfo
+                            ? 'جاري التحميل...'
+                            : (_fatValue.isNotEmpty
+                                ? _fatValue
+                                : 'غير متوفر'),
+                        iconColor: Colors.indigo,
+                        rowMargin: rowMarginBottom),
                   ],
                 ),
-                SizedBox(
-                    height:
-                        4), // تقليل المسافة بين بطاقة المشترك وبطاقة معلومات أخرى
-                // المجموعة 3: معلومات أخرى (حذف وقت الإنشاء/التحديث ووضع زر التعليقات داخل البطاقة)
+                SizedBox(height: gapBetweenCards),
+                // المجموعة 3: معلومات أخرى
                 _buildGroupCard(
                   heading: 'معلومات أخرى',
                   startColor: Colors.green.shade50,
                   endColor: Colors.green.shade100,
                   compact: true,
+                  cardPadH: cardPadH, cardPadV: cardPadV,
+                  headingFont: headingFont, headingIconSize: headingIconSize,
                   rows: [
                     _buildInfoRowCompact(
                         icon: Icons.attach_file,
@@ -485,7 +642,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                         value: safeField(ticketMap, 'commentsCount'),
                         iconColor: Colors.cyan),
                     Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.only(top: 2),
                       child: _buildCommentsButton(ticketGuid),
                     ),
                   ],
@@ -514,7 +671,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                     style: TextStyle(
                         color: Colors.red, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-                Text('الرسالة: $e'),
+                Text('الرسالة'),
                 const SizedBox(height: 12),
                 Text('StackTrace:\n$st',
                     style:
@@ -543,7 +700,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ أثناء فتح الرابط: $e')),
+          SnackBar(content: Text('خطأ أثناء فتح الرابط')),
         );
       }
     }
@@ -568,12 +725,17 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
         });
         return;
       }
-      final url = Uri.parse(
-          'https://admin.ftth.iq/api/support/tickets/$ticketGuid/comments?pageSize=10&pageNumber=1');
-      final resp = await http.get(url, headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      });
+      final url =
+          'https://admin.ftth.iq/api/support/tickets/$ticketGuid/comments?pageSize=10&pageNumber=1';
+      final resp = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url,
+        headers: {'Accept': 'application/json'},
+      );
+      if (resp.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
+      }
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         final items = (data['items'] as List?) ?? [];
@@ -603,7 +765,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
       }
     } catch (e) {
       setState(() {
-        _commentsError = 'خطأ: $e';
+        _commentsError = 'خطأ';
         _commentsFetched = true;
       });
     } finally {
@@ -631,19 +793,25 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
       _postingComment = true;
     });
     try {
-      final url = Uri.parse(
-          'https://admin.ftth.iq/api/support/tickets/$ticketGuid/comments');
+      final url =
+          'https://admin.ftth.iq/api/support/tickets/$ticketGuid/comments';
       final body = jsonEncode({
         'body': text,
         'ticketId': ticketGuid,
       });
-      final resp = await http.post(url,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          body: body);
+      final resp = await AuthService.instance.authenticatedRequest(
+        'POST',
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+      if (resp.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
+      }
       if (resp.statusCode == 200 || resp.statusCode == 201) {
         // إدراج تفاؤلي للتعليق
         final newComment = {
@@ -665,7 +833,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('خطأ أثناء الإرسال: $e')));
+          .showSnackBar(SnackBar(content: Text('خطأ أثناء الإرسال')));
     } finally {
       if (mounted) {
         setState(() {
@@ -1046,11 +1214,14 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     Color? endColor,
     bool compact = false,
     List<Widget>? actions,
+    double cardPadH = 10,
+    double cardPadV = 6,
+    double headingFont = 15,
+    double headingIconSize = 17,
   }) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-          horizontal: compact ? 8 : 10, vertical: compact ? 6 : 8),
+      padding: EdgeInsets.symmetric(horizontal: cardPadH, vertical: cardPadV),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -1060,43 +1231,32 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black12, width: compact ? 0.7 : 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: compact ? 6 : 10,
-            offset: Offset(0, compact ? 2 : 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.black12, width: 0.7),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.folder_open,
-                  size: compact ? 16 : 18, color: Colors.black54),
-              SizedBox(width: 6),
+              Icon(Icons.folder_open, size: headingIconSize, color: Colors.black54),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   heading,
                   style: TextStyle(
-                    fontSize: compact ? 14.2 : 15.5,
-                    fontWeight: compact ? FontWeight.w700 : FontWeight.w800,
+                    fontSize: headingFont,
+                    fontWeight: FontWeight.w800,
                     color: Colors.black87,
-                    letterSpacing: 0.3,
                   ),
                 ),
               ),
-              if (actions != null) ...[
-                const SizedBox(width: 4),
+              if (actions != null)
                 ...actions.map((w) =>
                     Padding(padding: const EdgeInsets.only(left: 4), child: w)),
-              ],
             ],
           ),
-          SizedBox(height: compact ? 4 : 6),
+          const SizedBox(height: 2),
           ...rows,
         ],
       ),
@@ -1111,33 +1271,25 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     Color? iconColor,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      margin: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black12, width: 0.6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.black12, width: 0.5),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: (iconColor ?? Colors.indigo).withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(icon, size: 14, color: iconColor ?? Colors.indigo),
-          ),
-          SizedBox(width: 6),
+          Icon(icon, size: 13, color: iconColor ?? Colors.indigo),
+          const SizedBox(width: 6),
           Expanded(
             child: RichText(
               text: TextSpan(
                 style: const TextStyle(
-                    fontSize: 12.6,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
-                    height: 1.18),
+                    height: 1.15),
                 children: [
                   TextSpan(
                       text: '$label: ',
@@ -1145,7 +1297,7 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                   TextSpan(text: value),
                 ],
               ),
-              maxLines: 3,
+              maxLines: 2,
             ),
           ),
         ],
@@ -1163,82 +1315,61 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     required String value,
     Color? iconColor,
     bool showCopyButton = false,
+    double rowMargin = 4,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: EdgeInsets.only(bottom: rowMargin),
       padding: EdgeInsets.symmetric(horizontal: kRowHPad, vertical: kRowVPad),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.black12, width: 0.7),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.black12, width: 0.5),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: (iconColor ?? Colors.indigo).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon,
-                size: kIconSizeInfo, color: iconColor ?? Colors.indigo),
-          ),
+          Icon(icon, size: kIconSizeInfo, color: iconColor ?? Colors.indigo),
           SizedBox(width: kInlineGap),
           Expanded(
             child: SelectionArea(
-              // يجعل النص قابلاً للتحديد بدون تغيير التصميم أو الارتفاع
               child: RichText(
                 text: TextSpan(
                   style: TextStyle(
                       fontSize: kValueFont,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
-                      height: 1.30),
+                      height: 1.15),
                   children: [
                     TextSpan(
                         text: '$label: ',
                         style: TextStyle(
                             fontSize: kLabelFont,
-                            fontWeight: FontWeight.w800,
-                            height: 1.25)),
+                            fontWeight: FontWeight.w800)),
                     TextSpan(text: value),
                   ],
                 ),
-                maxLines: 5,
+                maxLines: 3,
               ),
             ),
           ),
-          if (showCopyButton) ...[
-            const SizedBox(width: 6),
-            Tooltip(
-              message: 'نسخ',
-              child: InkWell(
-                onTap: () async {
-                  await Clipboard.setData(ClipboardData(text: value));
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('تم نسخ "$value"'),
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
-                  }
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.blueGrey.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.black12, width: 0.6),
-                  ),
-                  child:
-                      const Icon(Icons.copy, size: 18, color: Colors.black87),
-                ),
+          if (showCopyButton)
+            InkWell(
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: value));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم نسخ "$value"'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(6),
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.copy, size: 14, color: Colors.black54),
               ),
             ),
-          ]
         ],
       ),
     );
@@ -1359,152 +1490,63 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     required double progress,
   }) {
     final bool breached = slaStatus == 'متجاوز';
-    final bool warning =
-        !breached && progress >= 0.75; // اقترب من الانتهاء (تبقى <=25%)
+    final bool warning = !breached && progress >= 0.75;
     final Color mainColor = breached
         ? Colors.red.shade600
         : warning
             ? Colors.orange.shade700
             : Colors.green.shade600;
-    final Color lightColor = breached
-        ? Colors.red.shade100
-        : warning
-            ? Colors.orange.shade100
-            : Colors.green.shade100;
+    final pct = '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%';
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-          horizontal: 12, vertical: 10), // تقليل الحشو
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [lightColor, Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: mainColor.withValues(alpha: .45), width: 1.1),
-        boxShadow: [
-          BoxShadow(
-            color: mainColor.withValues(alpha: .18),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: mainColor.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: mainColor.withValues(alpha: .3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Icon(Icons.timer_outlined, color: mainColor, size: 18),
+              const SizedBox(width: 6),
+              Text('SLA', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: mainColor)),
+              const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.all(6), // تقليل مساحة الأيقونة
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: mainColor.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(14),
+                  color: mainColor.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: Icon(Icons.timer_outlined,
-                    color: mainColor, size: 20), // تصغير الأيقونة
+                child: Text(slaStatus, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: mainColor)),
               ),
-              const SizedBox(width: 10),
+              if (categoryName.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Text(categoryName, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+              ],
+              const Spacer(),
+              Text('المنقضي: $elapsed', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
               Expanded(
-                child: Text(
-                  'مؤشر SLA ($slaStatus)',
-                  style: TextStyle(
-                    fontSize: kSlaTitleFont - 3, // تصغير الخط
-                    fontWeight: FontWeight.w800,
-                    color: mainColor,
-                    letterSpacing: .4,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    minHeight: 6,
+                    value: progress,
+                    backgroundColor: mainColor.withValues(alpha: .15),
+                    valueColor: AlwaysStoppedAnimation<Color>(mainColor),
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 5), // تصغير الشارة
-                decoration: BoxDecoration(
-                  color: mainColor.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                      color: mainColor.withValues(alpha: .35), width: .8),
-                ),
-                child: Text(
-                  categoryName,
-                  style: TextStyle(
-                      fontSize: kSlaTagFont - 2, // تصغير خط الشارة
-                      fontWeight: FontWeight.w700,
-                      color: mainColor),
-                ),
-              ),
+              const SizedBox(width: 8),
+              Text(pct, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: mainColor)),
             ],
-          ),
-          const SizedBox(height: 8), // تقليل الفراغ
-          _slaLine('الهدف', target, Icons.flag, mainColor),
-          _slaLine('المنقضي', elapsed, Icons.timelapse, Colors.indigo.shade600),
-          _slaLine(
-              'المتبقي',
-              remaining,
-              Icons.hourglass_bottom,
-              breached
-                  ? Colors.red.shade700
-                  : (warning ? Colors.orange.shade800 : Colors.teal.shade700)),
-          const SizedBox(height: 6), // تقليل الفراغ قبل الشريط
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: LinearProgressIndicator(
-              minHeight: kSlaProgressHeight,
-              value: progress,
-              backgroundColor: mainColor.withValues(alpha: .18),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                  breached ? Colors.red.shade400 : mainColor),
-            ),
-          ),
-          const SizedBox(height: 4), // تقليل الفراغ بعد الشريط
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('0%',
-                  style:
-                      TextStyle(fontSize: 11.5, color: Colors.grey.shade700)),
-              Text('${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: mainColor)),
-              const Text('100%',
-                  style: TextStyle(fontSize: 11.5, color: Colors.grey)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _slaLine(String label, String value, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4), // تقليل المسافة بين الأسطر
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: .15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style:
-                  const TextStyle(fontSize: 13.2, fontWeight: FontWeight.w800),
-            ),
-          ),
-          SelectableText(
-            value,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: color.darken()),
           ),
         ],
       ),

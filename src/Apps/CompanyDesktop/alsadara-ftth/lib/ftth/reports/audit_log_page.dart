@@ -6,8 +6,9 @@ library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
+import '../../services/auth_service.dart';
+import '../auth/auth_error_handler.dart';
 
 // صفحة سجل التدقيق لعرض (الأنواع، الملخص، السجلات) مع ترشيح و ترقيم صفحات
 class AuditLogPage extends StatefulWidget {
@@ -85,7 +86,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
         _fetchPage(reset: true),
       ]);
     } catch (e) {
-      _error = 'خطأ أثناء التحميل: $e';
+      _error = 'خطأ أثناء التحميل';
     } finally {
       if (mounted) setState(() => _initialLoading = false);
     }
@@ -95,15 +96,18 @@ class _AuditLogPageState extends State<AuditLogPage> {
 
   Future<void> _fetchSummary() async {
     try {
-      final url = Uri.parse(
-          'https://admin.ftth.iq/api/audit-logs/summary?customerId=${widget.customerId}');
-      final r = await http.get(url, headers: _headers());
+      final url =
+          'https://admin.ftth.iq/api/audit-logs/summary?customerId=${widget.customerId}';
+      final r = await AuthService.instance.authenticatedRequest('GET', url, headers: _headers());
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         final model = (data is Map) ? data['model'] : null;
         if (model is Map && model['totalAmount'] != null) {
           _totalAmount = double.tryParse(model['totalAmount'].toString());
         }
+      } else if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       }
     } catch (_) {}
   }
@@ -125,9 +129,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
         'sortCriteria.direction': _sortDir,
         'customerId': widget.customerId,
       };
-      // ملاحظة: لا نعلم إن كان السيرفر يدعم eventType كـ query param، سنرشح محلياً إن لم يكن
-      final url = Uri.https('admin.ftth.iq', '/api/audit-logs', query);
-      final r = await http.get(url, headers: _headers());
+      final url = Uri.https('admin.ftth.iq', '/api/audit-logs', query).toString();
+      final r = await AuthService.instance.authenticatedRequest('GET', url, headers: _headers());
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         final totalCount = (data is Map && data['totalCount'] != null)
@@ -152,7 +155,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
           _hasMore = false;
         }
       } else if (r.statusCode == 401) {
-        _error = 'غير مصرح (401) : انتهت الجلسة أو الرمز غير صالح';
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else if (r.statusCode == 403) {
         _error =
             'ممنوع (403): لا تملك صلاحية عرض سجل التدقيق. تأكد من إرسال الرؤوس المطلوبة (x-user-role / x-client-app) والصلاحيات.';
@@ -160,28 +164,19 @@ class _AuditLogPageState extends State<AuditLogPage> {
         _error = 'فشل تحميل الصفحة (${r.statusCode})';
       }
     } catch (e) {
-      _error = 'خطأ: $e';
+      _error = 'خطأ';
     } finally {
       if (mounted) setState(() => _pageLoading = false);
     }
   }
 
   Map<String, String> _headers() {
-    // بعض الواجهات تطلب رؤوس إضافية (كما ظهر في المتصفح) مثل x-user-role و x-client-app
-    // نضيفها إن توفرت وإلا نوفر قيم افتراضية آمنة.
-    final h = <String, String>{
-      'Authorization': 'Bearer ${widget.authToken}',
-      'Accept': 'application/json',
+    return {
+      'Accept': 'application/json, text/plain, */*',
       'Accept-Language': 'ar',
+      'x-user-role': widget.userRoleHeader ?? '0',
+      'x-client-app': widget.clientAppHeader ?? '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
     };
-    h['x-user-role'] = widget.userRoleHeader?.trim().isNotEmpty == true
-        ? widget.userRoleHeader!.trim()
-        : '0';
-    if (widget.clientAppHeader != null &&
-        widget.clientAppHeader!.trim().isNotEmpty) {
-      h['x-client-app'] = widget.clientAppHeader!.trim();
-    }
-    return h;
   }
 
   Future<void> _onRefresh() async {

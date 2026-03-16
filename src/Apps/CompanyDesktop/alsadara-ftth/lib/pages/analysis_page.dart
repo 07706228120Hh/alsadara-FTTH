@@ -97,7 +97,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'حدث خطأ: $e';
+        errorMessage = 'حدث خطأ';
         isLoading = false;
       });
     }

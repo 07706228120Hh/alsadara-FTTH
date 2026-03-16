@@ -54,7 +54,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في تحميل البيانات: $e')),
+          SnackBar(content: Text('خطأ في تحميل البيانات')),
         );
       }
     }
@@ -552,7 +552,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('خطأ: $e')),
+                        SnackBar(content: Text('خطأ')),
                       );
                     }
                   }
@@ -688,7 +688,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('خطأ: $e')),
+                        SnackBar(content: Text('خطأ')),
                       );
                     }
                   }
@@ -733,7 +733,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('خطأ: $e')),
+                    SnackBar(content: Text('خطأ')),
                   );
                 }
               }

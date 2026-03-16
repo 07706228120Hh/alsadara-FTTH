@@ -223,7 +223,7 @@ class ErrorReporterService {
       await file.writeAsString(jsonEncode(logs));
     } catch (e) {
       if (kDebugMode) {
-        print('❌ ErrorReporter: فشل الحفظ المحلي: $e');
+        print('❌ ErrorReporter: فشل الحفظ المحلي');
       }
     } finally {
       _isSaving = false;
@@ -246,7 +246,7 @@ class ErrorReporterService {
       final logs = List<Map<String, dynamic>>.from(jsonDecode(content));
       return logs.map((json) => ErrorReport.fromJson(json)).toList();
     } catch (e) {
-      print('❌ ErrorReporter: فشل قراءة السجلات: $e');
+      print('❌ ErrorReporter: فشل قراءة السجلات');
       return [];
     }
   }
@@ -262,7 +262,7 @@ class ErrorReporterService {
       }
       print('✅ ErrorReporter: تم مسح السجلات');
     } catch (e) {
-      print('❌ ErrorReporter: فشل مسح السجلات: $e');
+      print('❌ ErrorReporter: فشل مسح السجلات');
     }
   }
 

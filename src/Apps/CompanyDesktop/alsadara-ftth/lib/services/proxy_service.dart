@@ -68,7 +68,7 @@ class ProxyService {
       debugPrint('❌ فشل في الحصول على Guest Token: ${response.body}');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في الاتصال بـ Dashboard: $e');
+      debugPrint('❌ خطأ في الاتصال بـ Dashboard');
       return null;
     }
   }
@@ -134,7 +134,7 @@ class ProxyService {
       debugPrint('❌ فشل في جلب Chart Data: ${response.body}');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب Chart Data: $e');
+      debugPrint('❌ خطأ في جلب Chart Data');
       return null;
     }
   }
@@ -177,7 +177,7 @@ class ProxyService {
       debugPrint('❌ فشل في جلب Dashboard Data: ${response.body}');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب Dashboard Data: $e');
+      debugPrint('❌ خطأ في جلب Dashboard Data');
       return null;
     }
   }
@@ -200,7 +200,7 @@ class ProxyService {
       debugPrint('⚠️ Dashboard يستجيب بشكل غير متوقع: ${response.statusCode}');
       return false;
     } catch (e) {
-      debugPrint('❌ لا يمكن الاتصال بـ Dashboard: $e');
+      debugPrint('❌ لا يمكن الاتصال بـ Dashboard');
       return false;
     }
   }

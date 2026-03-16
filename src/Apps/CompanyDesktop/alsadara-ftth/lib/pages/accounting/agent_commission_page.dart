@@ -105,7 +105,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         await _loadAgentRates(_selectedAgent!.id);
       }
     } catch (e) {
-      _errorMessage = 'خطأ: $e';
+      _errorMessage = 'خطأ';
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -127,7 +127,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
             TextEditingController(text: pct > 0 ? pct.toStringAsFixed(1) : '');
       }
     } catch (e) {
-      _errorMessage = 'خطأ في جلب العمولات: $e';
+      _errorMessage = 'خطأ في جلب العمولات';
     }
     setState(() {});
   }
@@ -181,7 +181,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('خطأ: $e'),
+              content: Text('خطأ'),
               backgroundColor: AccountingTheme.danger),
         );
       }
@@ -204,7 +204,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('خطأ: $e'),
+              content: Text('خطأ'),
               backgroundColor: AccountingTheme.danger),
         );
       }

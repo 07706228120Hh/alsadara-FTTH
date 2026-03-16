@@ -189,7 +189,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
   void _showErrorSnackBar(dynamic e) {
     if (!mounted) return;
 
-    final errStr = e.toString();
+    final errStr = 'حدث خطأ';
     String errorTitle = 'خطأ في تحميل البيانات';
     String errorMessage =
         'حدث خطأ أثناء تحميل سجلات المستخدم.\nالتفاصيل: $errStr';

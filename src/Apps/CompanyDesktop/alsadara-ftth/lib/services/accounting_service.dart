@@ -125,12 +125,17 @@ class AccountingService {
     String? status,
     String? fromDate,
     String? toDate,
+    int? page,
+    int? pageSize,
   }) async {
-    String query = '/accounting/journal-entries?';
-    if (companyId != null) query += 'companyId=$companyId&';
-    if (status != null) query += 'status=$status&';
-    if (fromDate != null) query += 'fromDate=$fromDate&';
-    if (toDate != null) query += 'toDate=$toDate&';
+    final params = <String>[];
+    if (companyId != null) params.add('companyId=$companyId');
+    if (status != null) params.add('status=$status');
+    if (fromDate != null) params.add('fromDate=$fromDate');
+    if (toDate != null) params.add('toDate=$toDate');
+    if (page != null) params.add('page=$page');
+    if (pageSize != null) params.add('pageSize=$pageSize');
+    final query = '/accounting/journal-entries${params.isNotEmpty ? '?${params.join('&')}' : ''}';
     final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }
@@ -524,12 +529,17 @@ class AccountingService {
     String? fromDate,
     String? toDate,
     String? category,
+    int? page,
+    int? pageSize,
   }) async {
-    String query = '/accounting/expenses?';
-    if (companyId != null) query += 'companyId=$companyId&';
-    if (fromDate != null) query += 'fromDate=$fromDate&';
-    if (toDate != null) query += 'toDate=$toDate&';
-    if (category != null) query += 'category=${Uri.encodeComponent(category)}&';
+    final params = <String>[];
+    if (companyId != null) params.add('companyId=$companyId');
+    if (fromDate != null) params.add('fromDate=$fromDate');
+    if (toDate != null) params.add('toDate=$toDate');
+    if (category != null) params.add('category=${Uri.encodeComponent(category)}');
+    if (page != null) params.add('page=$page');
+    if (pageSize != null) params.add('pageSize=$pageSize');
+    final query = '/accounting/expenses${params.isNotEmpty ? '?${params.join('&')}' : ''}';
     final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }
@@ -863,6 +873,26 @@ class AccountingService {
     };
     final response = await _client.post(
       '/ftth-accounting/set-renewal-cycle',
+      body,
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// تعديل بيانات سجل اشتراك FTTH (نوع التحصيل، الفني، الملاحظات)
+  Future<Map<String, dynamic>> updateSubscriptionLog({
+    required int logId,
+    String? collectionType,
+    String? technicianName,
+    String? subscriptionNotes,
+  }) async {
+    final body = <String, dynamic>{
+      if (collectionType != null) 'CollectionType': collectionType,
+      if (technicianName != null) 'TechnicianName': technicianName,
+      if (subscriptionNotes != null) 'SubscriptionNotes': subscriptionNotes,
+    };
+    final response = await _client.put(
+      '/ftth-accounting/update-subscription-log/$logId',
       body,
       (json) => json,
     );

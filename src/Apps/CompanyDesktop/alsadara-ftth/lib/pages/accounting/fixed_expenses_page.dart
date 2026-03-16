@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_responsive.dart';
@@ -107,7 +108,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         }
       });
     } catch (e) {
-      _showError('خطأ في تحميل البيانات: $e');
+      _showError('خطأ في تحميل البيانات');
     } finally {
       setState(() => _loading = false);
     }
@@ -127,12 +128,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
     );
   }
 
+  static final _numFmt = NumberFormat('#,##0', 'ar');
   String _formatNumber(dynamic v) {
     if (v == null) return '0';
-    if (v is int) return v.toString();
-    if (v is double) return v.round().toString();
-    final n = double.tryParse(v.toString());
-    return n != null ? n.round().toString() : v.toString();
+    final n = v is num ? v : double.tryParse(v.toString());
+    return n != null ? _numFmt.format(n) : v.toString();
   }
 
   String _arabicMonth(int m) {
@@ -510,7 +510,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                               context.accR.cardRadius),
                                         ),
                                         child: Text(
-                                          item['CategoryAr'] ?? '',
+                                          catInfo['label'] as String? ?? '',
                                           style: TextStyle(
                                               fontSize: context.accR.small,
                                               color: catColor,
@@ -775,7 +775,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         _showError(res['message'] ?? 'خطأ');
       }
     } catch (e) {
-      _showError('خطأ: $e');
+      _showError('خطأ');
     }
   }
 
@@ -793,7 +793,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
           _loadData();
         }
       } catch (e) {
-        _showError('خطأ: $e');
+        _showError('خطأ');
       }
     } else if (action == 'delete') {
       final confirm = await showDialog<bool>(
@@ -821,7 +821,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
             _loadData();
           }
         } catch (e) {
-          _showError('خطأ: $e');
+          _showError('خطأ');
         }
       }
     }
@@ -933,7 +933,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         _loadData();
       }
     } catch (e) {
-      _showError('خطأ: $e');
+      _showError('خطأ');
     }
   }
 
@@ -954,7 +954,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         _showError(res['message'] ?? 'خطأ');
       }
     } catch (e) {
-      _showError('خطأ: $e');
+      _showError('خطأ');
     }
   }
 
@@ -975,7 +975,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         _showError(res['message'] ?? 'خطأ');
       }
     } catch (e) {
-      _showError('خطأ: $e');
+      _showError('خطأ');
     }
   }
 
@@ -987,7 +987,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         _loadData();
       }
     } catch (e) {
-      _showError('خطأ: $e');
+      _showError('خطأ');
     }
   }
 
@@ -1020,7 +1020,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         _showError(res['message'] ?? 'خطأ في الحذف');
       }
     } catch (e) {
-      _showError('خطأ: $e');
+      _showError('خطأ');
     }
   }
 }

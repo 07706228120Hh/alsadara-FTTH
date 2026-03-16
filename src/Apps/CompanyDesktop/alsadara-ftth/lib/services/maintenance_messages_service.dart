@@ -18,7 +18,7 @@ class MaintenanceMessagesService {
         return MaintenanceMessages.fromMap(messagesMap);
       }
     } catch (e) {
-      print('خطأ في تحميل الرسائل: $e');
+      print('خطأ في تحميل الرسائل');
     }
 
     // إرجاع الرسائل الافتراضية إذا لم توجد رسائل محفوظة
@@ -32,7 +32,7 @@ class MaintenanceMessagesService {
       final messagesJson = json.encode(messages.toMap());
       return await prefs.setString(_messagesKey, messagesJson);
     } catch (e) {
-      print('خطأ في حفظ الرسائل: $e');
+      print('خطأ في حفظ الرسائل');
       return false;
     }
   }
@@ -44,7 +44,7 @@ class MaintenanceMessagesService {
       final savedPassword = prefs.getString(_passwordKey) ?? _defaultPassword;
       return password == savedPassword;
     } catch (e) {
-      print('خطأ في التحقق من كلمة المرور: $e');
+      print('خطأ في التحقق من كلمة المرور');
       return false;
     }
   }
@@ -61,7 +61,7 @@ class MaintenanceMessagesService {
       final prefs = await SharedPreferences.getInstance();
       return await prefs.setString(_passwordKey, newPassword);
     } catch (e) {
-      print('خطأ في تغيير كلمة المرور: $e');
+      print('خطأ في تغيير كلمة المرور');
       return false;
     }
   }
@@ -77,7 +77,7 @@ class MaintenanceMessagesService {
       final defaultMessages = MaintenanceMessages.defaultMessages();
       return await saveMessages(defaultMessages);
     } catch (e) {
-      print('خطأ في إعادة التعيين: $e');
+      print('خطأ في إعادة التعيين');
       return false;
     }
   }
@@ -88,7 +88,7 @@ class MaintenanceMessagesService {
       final messages = await getMessages();
       return json.encode(messages.toMap());
     } catch (e) {
-      print('خطأ في تصدير الرسائل: $e');
+      print('خطأ في تصدير الرسائل');
       return null;
     }
   }
@@ -107,7 +107,7 @@ class MaintenanceMessagesService {
 
       return await saveMessages(updatedMessages);
     } catch (e) {
-      print('خطأ في استيراد الرسائل: $e');
+      print('خطأ في استيراد الرسائل');
       return false;
     }
   }

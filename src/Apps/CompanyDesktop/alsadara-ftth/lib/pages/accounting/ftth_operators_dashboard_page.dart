@@ -481,7 +481,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         } catch (e) {
                           setDlgState(() {
                             isLoading = false;
-                            errorMsg = 'خطأ: $e';
+                            errorMsg = 'خطأ';
                           });
                         }
                       },
@@ -552,7 +552,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         _errorOurs = 'خطأ في الاتصال: ${response.statusCode}';
       }
     } catch (e) {
-      _errorOurs = 'خطأ: $e';
+      _errorOurs = 'خطأ';
     }
     if (mounted) setState(() => _isLoadingOurs = false);
   }
@@ -592,6 +592,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
       // لا نفلتر بنوع العملية — نجلب الكل لعرض تفصيلي
       Map<String, _FtthOperatorData> operators = {};
+      final Set<String> seenTxIds = {}; // منع تكرار نفس العملية
       double totalNeg = 0, totalPos = 0;
       int totalCnt = 0;
       int page = 1;
@@ -656,6 +657,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 tx['subscription']?['displayValue']?.toString() ?? '';
             final occuredAt = tx['occuredAt']?.toString() ?? '';
             final txId = tx['id']?.toString() ?? '';
+            // تخطي العمليات المكررة (نفس المعرّف)
+            if (txId.isNotEmpty && !seenTxIds.add(txId)) continue;
+            // تخطي الخدمات الإضافية (فقط FIBER = إنترنت)
+            if (!planName.toUpperCase().contains('FIBER')) continue;
             final zoneId = tx['zoneId']?.toString() ?? '';
             final deviceUsername = tx['deviceUsername']?.toString() ?? '';
             final planDuration = (tx['planDurationInDays'] ??
@@ -780,7 +785,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       // ═══ المرحلة 2: نسب "بدون منشئ" عبر audit-logs (في الخلفية مع عداد) ═══
       _resolveOrphansInBackground();
     } catch (e) {
-      _errorFtth = 'خطأ في جلب بيانات FTTH: $e';
+      _errorFtth = 'خطأ في جلب بيانات FTTH';
       if (mounted) setState(() => _isLoadingFtth = false);
     }
   }
@@ -852,9 +857,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    // نسب العمليات للمشغلين
+    // نسب العمليات للمشغلين (مع منع التكرار بالمعرّف)
+    final Set<String> assignedIds = {};
     final List<_FtthTransaction> finalOrphan = [];
     for (final tx in orphanTxs) {
+      // تخطي إذا تم نسب هذه العملية مسبقاً
+      if (tx.id.isNotEmpty && !assignedIds.add(tx.id)) continue;
+      // تخطي الخدمات الإضافية (فقط FIBER = إنترنت)
+      if (!tx.planName.toUpperCase().contains('FIBER')) continue;
+
       final auditCreator =
           tx.customerId.isNotEmpty ? customerAuditCreator[tx.customerId] : null;
 
@@ -864,6 +875,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           _ftthOperators[auditCreator] = _FtthOperatorData(name: auditCreator);
         }
         final target = _ftthOperators[auditCreator]!;
+        // تحقق أن المشغل لا يحتوي على هذه العملية أصلاً
+        if (target.transactions.any((t) => t.id == tx.id)) continue;
         target.totalCount++;
         target.totalAmount += tx.amount;
         target.attributedOps++;
@@ -1120,7 +1133,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -1131,45 +1144,93 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   // ════════════════════════════════════════════════════════════════
 
   Future<void> _buildComparison() async {
-    if (_oursOperators.isEmpty && !_isLoadingOurs) await _loadOursData();
-    if (_ftthOperators.isEmpty && !_isLoadingFtth && _ftthAuthenticated) {
-      await _loadFtthData();
-    }
-
     if (!mounted) return;
     setState(() => _isLoadingCompare = true);
 
+    // 1. تحميل بيانات خادمنا إذا لم تُحمَّل
+    if (_oursOperators.isEmpty && !_isLoadingOurs) await _loadOursData();
+    // انتظار انتهاء تحميل بياناتنا
+    while (_isLoadingOurs && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    // 2. تحميل بيانات FTTH إذا لم تُحمَّل
+    if (_ftthOperators.isEmpty && _ftthAuthenticated) {
+      await _loadFtthData();
+    }
+    // انتظار انتهاء تحميل FTTH
+    while (_isLoadingFtth && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    // انتظار انتهاء نسب العمليات اليتيمة (مهم للحصول على أسماء المشغلين الصحيحة)
+    while (_isResolvingOrphans && mounted) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    if (!mounted) return;
+
     try {
-      // خريطة مشغلينا حسب ftthUsername أو operatorName
+      // 3. بناء خريطة مشغلينا مع عدة مفاتيح للمطابقة
+      // كل مشغل يمكن مطابقته بـ ftthUsername أو username أو operatorName
       final Map<String, Map<String, dynamic>> oursMap = {};
+      // خريطة عكسية: مفتاح المطابقة → اسم العرض
+      final Map<String, List<String>> oursAllKeys = {};
+
       for (final op in _oursOperators) {
         final m = op as Map<String, dynamic>;
-        final ftthUser =
-            (m['ftthUsername'] ?? m['operatorName'] ?? '').toString().trim();
-        if (ftthUser.isNotEmpty) {
-          oursMap[ftthUser.toLowerCase()] = m;
-        }
+        final ftthUser = (m['ftthUsername'] ?? '').toString().trim();
+        final username = (m['username'] ?? '').toString().trim();
+        final opName = (m['operatorName'] ?? '').toString().trim();
+
+        // المفتاح الأساسي للمطابقة (أولوية: ftthUsername > username > operatorName)
+        final primaryKey = ftthUser.isNotEmpty
+            ? ftthUser.toLowerCase()
+            : username.isNotEmpty
+                ? username.toLowerCase()
+                : opName.toLowerCase();
+
+        if (primaryKey.isEmpty) continue;
+        oursMap[primaryKey] = m;
+
+        // تجميع كل المفاتيح الممكنة لهذا المشغل
+        final keys = <String>[];
+        if (ftthUser.isNotEmpty) keys.add(ftthUser.toLowerCase());
+        if (username.isNotEmpty) keys.add(username.toLowerCase());
+        if (opName.isNotEmpty) keys.add(opName.toLowerCase());
+        oursAllKeys[primaryKey] = keys;
+      }
+
+      debugPrint('📊 مقارنة: ${oursMap.length} مشغل عندنا، ${_ftthOperators.length} مشغل FTTH');
+      for (final k in oursMap.keys) {
+        debugPrint('  ours key: "$k" (allKeys: ${oursAllKeys[k]})');
+      }
+      for (final k in _ftthOperators.keys) {
+        debugPrint('  ftth key: "$k" (subs: ${_ftthOperators[k]!.subscriptionOps})');
       }
 
       final List<_ComparisonRow> rows = [];
       final Set<String> processedFtth = {};
       int matched = 0, oursOnly = 0, ftthOnly = 0;
 
-      // مرور على مشغلي خادمنا
+      // 4. مرور على مشغلي خادمنا والبحث عن نظير في FTTH
       for (final entry in oursMap.entries) {
-        final oursKey = entry.key;
+        final primaryKey = entry.key;
         final oursOp = entry.value;
         final oursCount = (oursOp['totalCount'] ?? 0) as int;
         final oursAmount = (oursOp['totalAmount'] ?? 0).toDouble();
-        final oursName = oursOp['operatorName'] ?? oursKey;
+        final oursName = oursOp['operatorName'] ?? primaryKey;
 
-        // البحث عن نظير في FTTH (case-insensitive)
+        // البحث بكل المفاتيح الممكنة
         _FtthOperatorData? ftthOp;
-        for (final fEntry in _ftthOperators.entries) {
-          if (fEntry.key.toLowerCase() == oursKey) {
-            ftthOp = fEntry.value;
-            break;
+        final allKeys = oursAllKeys[primaryKey] ?? [primaryKey];
+        for (final key in allKeys) {
+          for (final fEntry in _ftthOperators.entries) {
+            if (fEntry.key.toLowerCase() == key) {
+              ftthOp = fEntry.value;
+              break;
+            }
           }
+          if (ftthOp != null) break;
         }
 
         if (ftthOp != null) {
@@ -1209,12 +1270,24 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         }
       }
 
-      // مشغلون في FTTH ليسوا عندنا
+      // 5. مشغلون في FTTH ليسوا عندنا
       for (final entry in _ftthOperators.entries) {
         if (processedFtth.contains(entry.key.toLowerCase())) continue;
         if (entry.key == 'بدون منشئ') continue;
 
+        // محاولة أخيرة: البحث في مفاتيحنا عن تطابق جزئي
+        bool found = false;
+        for (final oursEntry in oursMap.entries) {
+          final allKeys = oursAllKeys[oursEntry.key] ?? [];
+          if (allKeys.any((k) => k == entry.key.toLowerCase())) {
+            found = true;
+            break;
+          }
+        }
+        if (found) continue;
+
         final ftthOp = entry.value;
+        if (ftthOp.subscriptionOps == 0) continue;
         ftthOnly += ftthOp.subscriptionOps;
 
         rows.add(_ComparisonRow(
@@ -1229,9 +1302,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ));
       }
 
-      // ترتيب: الأكثر فروقاً أولاً
-      rows.sort((a, b) => (b.oursOnlyCount + b.ftthOnlyCount)
-          .compareTo(a.oursOnlyCount + a.ftthOnlyCount));
+      // ترتيب: الأكثر عمليات أولاً
+      rows.sort((a, b) => (b.oursCount + b.ftthCount)
+          .compareTo(a.oursCount + a.ftthCount));
 
       _comparisonRows = rows;
       _totalMatched = matched;
@@ -1767,7 +1840,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+          content: Text('خطأ', style: GoogleFonts.cairo()),
           backgroundColor: Colors.red,
         ),
       );
@@ -1839,7 +1912,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+          content: Text('خطأ', style: GoogleFonts.cairo()),
           backgroundColor: Colors.red,
         ),
       );
@@ -1957,7 +2030,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+        content: Text('خطأ', style: GoogleFonts.cairo()),
         backgroundColor: Colors.red,
       ));
     }
@@ -2022,7 +2095,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         if (mounted) setState(() => _availableZones = fetched);
       }
     } catch (e) {
-      debugPrint('خطأ تحميل المناطق: $e');
+      debugPrint('خطأ تحميل المناطق');
     } finally {
       if (mounted) setState(() => _isLoadingZones = false);
     }
@@ -2053,7 +2126,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         if (mounted) setState(() => _availableUsernames = sorted);
       }
     } catch (e) {
-      debugPrint('خطأ تحميل المستخدمين: $e');
+      debugPrint('خطأ تحميل المستخدمين');
     } finally {
       if (mounted) setState(() => _isLoadingUsernames = false);
     }
@@ -3941,6 +4014,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           userId: userId,
           operatorName: op['operatorName'] ?? 'مشغل',
           companyId: _companyId,
+          initialFromDate: _fromDate,
+          initialToDate: _toDate,
+          initialDateLabel: _dateLabel,
         ),
       ),
     );
@@ -4230,7 +4306,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         } catch (e) {
                           setDlgState(() {
                             isSubmitting = false;
-                            errorMsg = 'خطأ: $e';
+                            errorMsg = 'خطأ';
                           });
                         }
                       },
@@ -4372,7 +4448,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -5012,7 +5088,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -6682,14 +6758,21 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       );
     }
 
-    if (_isLoadingCompare || _isLoadingOurs || _isLoadingFtth) {
+    if (_isLoadingCompare || _isLoadingOurs || _isLoadingFtth || _isResolvingOrphans) {
+      final status = _isLoadingOurs
+          ? 'جاري تحميل بيانات خادمنا...'
+          : _isLoadingFtth
+              ? 'جاري تحميل بيانات FTTH...'
+              : _isResolvingOrphans
+                  ? 'جاري نسب العمليات ($_orphanResolved/$_orphanTotal)...'
+                  : 'جاري بناء المقارنة...';
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(),
             SizedBox(height: context.accR.spaceM),
-            Text('جاري بناء المقارنة...'),
+            Text(status),
           ],
         ),
       );
@@ -6720,23 +6803,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final total = _totalMatched + _totalOursOnly + _totalFtthOnly;
     final matchPercent = total > 0 ? (_totalMatched / total * 100) : 0;
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    return Row(
       children: [
-        _summaryCard(
+        Expanded(child: _summaryCard(
             'مطابقة',
             _totalMatched.toDouble(),
             '${matchPercent.toStringAsFixed(0)}% من الإجمالي',
             Colors.green.shade600,
             icon: Icons.check_circle,
-            isCount: true),
-        _summaryCard('في خادمنا فقط', _totalOursOnly.toDouble(),
+            isCount: true)),
+        const SizedBox(width: 8),
+        Expanded(child: _summaryCard('في خادمنا فقط', _totalOursOnly.toDouble(),
             'غير موجودة في FTTH', Colors.orange.shade600,
-            icon: Icons.warning_amber, isCount: true),
-        _summaryCard('في FTTH فقط', _totalFtthOnly.toDouble(),
+            icon: Icons.warning_amber, isCount: true)),
+        const SizedBox(width: 8),
+        Expanded(child: _summaryCard('في FTTH فقط', _totalFtthOnly.toDouble(),
             'غير موجودة عندنا', Colors.red.shade600,
-            icon: Icons.error_outline, isCount: true),
+            icon: Icons.error_outline, isCount: true)),
       ],
     );
   }
@@ -7645,7 +7728,7 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = 'حدث خطأ';
         _isLoading = false;
       });
     }
@@ -8399,7 +8482,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         _applyFiltersFromRecords(result);
       }
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+      if (mounted) setState(() { _error = 'حدث خطأ'; _isLoading = false; });
     }
   }
 
@@ -8648,7 +8731,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+        content: Text('خطأ', style: GoogleFonts.cairo()),
         backgroundColor: Colors.red,
       ));
     } finally {
@@ -8707,7 +8790,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+        content: Text('خطأ', style: GoogleFonts.cairo()),
         backgroundColor: Colors.red,
       ));
     }

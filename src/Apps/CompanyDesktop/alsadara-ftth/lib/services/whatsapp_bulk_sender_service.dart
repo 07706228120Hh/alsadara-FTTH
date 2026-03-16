@@ -109,7 +109,7 @@ class WhatsAppBulkSenderService {
             };
           }
         } catch (e) {
-          debugPrint('❌ خطأ في تحليل JSON: $e');
+          debugPrint('❌ خطأ في تحليل JSON');
           debugPrint('   الرد الخام: ${response.body}');
           return {
             'success': false,
@@ -127,11 +127,11 @@ class WhatsAppBulkSenderService {
         };
       }
     } catch (e) {
-      debugPrint('❌ خطأ في الاتصال: $e');
+      debugPrint('❌ خطأ في الاتصال');
       return {
         'success': false,
         'error': 'Connection error',
-        'message': e.toString(),
+        'message': 'حدث خطأ',
       };
     }
   }
@@ -254,7 +254,7 @@ class WhatsAppBulkSenderService {
             };
           }
         } catch (e) {
-          debugPrint('❌ خطأ في تحليل JSON: $e');
+          debugPrint('❌ خطأ في تحليل JSON');
           return {
             'success': false,
             'message': 'خطأ في تحليل استجابة الخادم: ${response.body}',
@@ -269,11 +269,11 @@ class WhatsAppBulkSenderService {
         };
       }
     } catch (e) {
-      debugPrint('❌ خطأ في الاتصال: $e');
+      debugPrint('❌ خطأ في الاتصال');
       return {
         'success': false,
         'error': 'Connection error',
-        'message': e.toString(),
+        'message': 'حدث خطأ',
       };
     }
   }

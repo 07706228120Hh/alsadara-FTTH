@@ -198,7 +198,7 @@ class _PermissionsTabState extends State<PermissionsTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+            content: Text('خطأ', style: GoogleFonts.cairo()),
             backgroundColor: _red,
           ),
         );

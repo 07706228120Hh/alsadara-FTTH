@@ -137,7 +137,7 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
       }
     } catch (e) {
       setState(() {
-        loginMessage = "خطأ في الاتصال: ${e.toString()}";
+        loginMessage = "فشل الاتصال بالخادم";
       });
     } finally {
       if (mounted) {

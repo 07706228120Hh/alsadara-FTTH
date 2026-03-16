@@ -21,8 +21,6 @@ class UsersPage extends StatefulWidget {
   final String activatedBy;
   final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
-  // صلاحيات النظام الأول لتمريرها إلى صفحة التفاصيل للتحكم بزر إضافة مهمة
-  final String? firstSystemPermissions;
   // علم إداري صريح
   final bool? isAdminFlag;
   // قائمة الصلاحيات المهمة المفلترة من نظام FTTH
@@ -34,7 +32,6 @@ class UsersPage extends StatefulWidget {
     required this.activatedBy,
     this.hasServerSavePermission = false,
     this.hasWhatsAppPermission = false,
-    this.firstSystemPermissions,
     this.isAdminFlag,
     this.importantFtthApiPermissions,
   });
@@ -243,7 +240,7 @@ class _UsersPageState extends State<UsersPage> {
         await Future.delayed(const Duration(milliseconds: 100));
         debugPrint('Memory optimization completed');
       } catch (e) {
-        debugPrint('Memory optimization failed: $e');
+        debugPrint('Memory optimization failed');
       }
     }
   }
@@ -310,7 +307,7 @@ class _UsersPageState extends State<UsersPage> {
           consecutiveFailures++;
           if (consecutiveFailures >= maxConsecutiveFailures) {
             throw Exception(
-                'توقف التصدير بعد فشل جلب $consecutiveFailures صفحات متتالية (آخر صفحة: $currentPage) - السبب: $e');
+                'توقف التصدير بعد فشل جلب $consecutiveFailures صفحات متتالية (آخر صفحة: $currentPage) - السبب');
           } else {
             setState(() {
               excelExportMessage =
@@ -490,7 +487,7 @@ class _UsersPageState extends State<UsersPage> {
         bytes = excel.encode();
       } catch (e) {
         throw Exception(
-            'فشل ترميز ملف الإكسل (ربما الحجم كبير جداً أو عمود غير مدعوم): $e');
+            'فشل ترميز ملف الإكسل (ربما الحجم كبير جداً أو عمود غير مدعوم)');
       }
       File file;
       try {
@@ -498,7 +495,7 @@ class _UsersPageState extends State<UsersPage> {
           ..createSync(recursive: true)
           ..writeAsBytesSync(bytes!);
       } catch (e) {
-        throw Exception('فشل حفظ الملف على القرص: $e');
+        throw Exception('فشل حفظ الملف على القرص');
       }
 
       setState(() {
@@ -512,9 +509,9 @@ class _UsersPageState extends State<UsersPage> {
     } catch (e, st) {
       // في حالة الفشل: جرّب أولاً توليد ملف مبسط أو CSV مرة واحدة
       setState(() {
-        excelExportMessage = 'فشل التصدير: $e';
+        excelExportMessage = 'فشل التصدير';
       });
-      debugPrint('Export Excel error: $e');
+      debugPrint('Export Excel error');
       debugPrint('Stack: $st');
       if (!_excelFallbackTried) {
         _excelFallbackTried = true;
@@ -536,7 +533,7 @@ class _UsersPageState extends State<UsersPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                     content:
-                        Text('فشل جميع المحاولات (Excel / مبسط / CSV): $e3')),
+                        Text('فشل تصدير البيانات')),
               );
             }
           }
@@ -544,7 +541,7 @@ class _UsersPageState extends State<UsersPage> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل التصدير: $e')),
+          SnackBar(content: Text('فشل التصدير')),
         );
       }
     } finally {
@@ -597,7 +594,7 @@ class _UsersPageState extends State<UsersPage> {
         }, maxAttempts: 4);
       } catch (e) {
         if (page == 1) {
-          throw Exception('فشل جلب الصفحة الأولى في النسخة المبسطة: $e');
+          throw Exception('فشل جلب الصفحة الأولى في النسخة المبسطة');
         }
         break; // صفحات لاحقة فقط
       }
@@ -671,14 +668,14 @@ class _UsersPageState extends State<UsersPage> {
     try {
       bytes = excel.encode();
     } catch (e) {
-      throw Exception('فشل ترميز النسخة المبسطة: $e');
+      throw Exception('فشل ترميز النسخة المبسطة');
     }
     try {
       File(path)
         ..createSync(recursive: true)
         ..writeAsBytesSync(bytes!);
     } catch (e) {
-      throw Exception('فشل حفظ النسخة المبسطة: $e');
+      throw Exception('فشل حفظ النسخة المبسطة');
     }
     setState(() {
       excelExportProgress = 1.0;
@@ -803,7 +800,7 @@ class _UsersPageState extends State<UsersPage> {
         ..createSync(recursive: true)
         ..writeAsStringSync(buffer.toString(), encoding: utf8);
     } catch (e) {
-      throw Exception('فشل حفظ CSV: $e');
+      throw Exception('فشل حفظ CSV');
     }
     setState(() {
       excelExportProgress = 1.0;
@@ -1243,7 +1240,6 @@ class _UsersPageState extends State<UsersPage> {
                       activatedBy: widget.activatedBy,
                       hasServerSavePermission: widget.hasServerSavePermission,
                       hasWhatsAppPermission: widget.hasWhatsAppPermission,
-                      firstSystemPermissions: widget.firstSystemPermissions,
                       isAdminFlag: widget.isAdminFlag,
                       importantFtthApiPermissions:
                           widget.importantFtthApiPermissions,

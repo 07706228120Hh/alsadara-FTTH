@@ -87,7 +87,7 @@ class SyncSettingsService {
             '⚙️ تم تحميل الإعدادات: اشتراكات=${_subscriptionsSettings.pageSize}/${_subscriptionsSettings.parallelPages}');
       }
     } catch (e) {
-      print('⚠️ خطأ في تحميل الإعدادات المتزامن: $e');
+      print('⚠️ خطأ في تحميل الإعدادات المتزامن');
     }
   }
 
@@ -176,7 +176,7 @@ class SyncSettingsService {
       print(
           '   📍 العناوين: ${_addressesSettings.pageSize}/صفحة، ${_addressesSettings.parallelPages} متوازي');
     } catch (e) {
-      print('⚠️ خطأ في تحميل الإعدادات: $e');
+      print('⚠️ خطأ في تحميل الإعدادات');
       _initialized = true;
     }
   }
@@ -214,7 +214,7 @@ class SyncSettingsService {
       await _settingsFile!.writeAsString(json.encode(data));
       print('💾 تم حفظ الإعدادات');
     } catch (e) {
-      print('⚠️ خطأ في حفظ الإعدادات: $e');
+      print('⚠️ خطأ في حفظ الإعدادات');
     }
   }
 

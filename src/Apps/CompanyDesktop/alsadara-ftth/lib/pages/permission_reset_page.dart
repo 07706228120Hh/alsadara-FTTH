@@ -63,7 +63,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ خطأ في إعادة تعيين الصلاحيات: $e'),
+          content: Text('❌ خطأ في إعادة تعيين الصلاحيات'),
           backgroundColor: Colors.red,
         ),
       );

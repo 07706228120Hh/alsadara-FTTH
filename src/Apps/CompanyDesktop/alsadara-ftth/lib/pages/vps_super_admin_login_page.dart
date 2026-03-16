@@ -78,7 +78,7 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
         setState(() => _errorMessage = result.errorMessage);
       }
     } catch (e) {
-      setState(() => _errorMessage = 'حدث خطأ: $e');
+      setState(() => _errorMessage = 'حدث خطأ');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

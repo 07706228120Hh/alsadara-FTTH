@@ -85,7 +85,7 @@ class AgentsAuthService {
             'فشل في تسجيل الدخول: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تسجيل الدخول: $e');
+      debugPrint('❌ خطأ في تسجيل الدخول');
 
       // 🔒 تم إزالة بيانات الاختبار لأسباب أمنية
       // في حالة فشل الاتصال، يتم إرجاع رسالة خطأ فقط
@@ -174,7 +174,7 @@ class AgentsAuthService {
               debugPrint('🎫 JWT Payload: $decoded');
             }
           } catch (e) {
-            debugPrint('⚠️ لم يتم فك تشفير JWT: $e');
+            debugPrint('⚠️ لم يتم فك تشفير JWT');
           }
 
           debugPrint('✅ تم الحصول على Guest Token بنجاح');
@@ -185,7 +185,7 @@ class AgentsAuthService {
       debugPrint('❌ فشل في الحصول على Guest Token: ${response.body}');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب Guest Token: $e');
+      debugPrint('❌ خطأ في جلب Guest Token');
       return null;
     }
   }
@@ -235,7 +235,7 @@ class AgentsAuthService {
       debugPrint('❌ فشل في الحصول على Guest Token (بسيط): ${response.body}');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب Guest Token (بسيط): $e');
+      debugPrint('❌ خطأ في جلب Guest Token (بسيط)');
       return null;
     }
   }
@@ -281,16 +281,20 @@ class AgentsAuthService {
       'Accept': 'application/json, text/plain, */*',
       'Content-Type': 'application/json',
       'x-guesttoken': guestToken,
+      'user-type': 'Partner',
       'origin': _dashboardBaseUrl,
-      'referer': authToken != null
-          ? '$refererUrl?Authorization=$authToken'
-          : refererUrl,
+      'referer': refererUrl,
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'same-origin',
       'sec-fetch-site': 'same-origin',
       'user-agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
     };
+
+    // إضافة Authorization header — مطلوب من APISIX gateway
+    if (authToken != null && authToken.isNotEmpty) {
+      headers['authorization'] = 'Bearer $authToken';
+    }
 
     // أولوية: استخدام cookies من خدمة تجاوز Cloudflare
     final cfBypass = CloudflareBypassService.instance;
@@ -355,7 +359,7 @@ class AgentsAuthService {
         return null;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب أدوار المستخدم: $e');
+      debugPrint('❌ خطأ في جلب أدوار المستخدم');
       return null;
     }
   }
@@ -395,7 +399,7 @@ class AgentsAuthService {
         return null;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات Dashboard: $e');
+      debugPrint('❌ خطأ في جلب بيانات Dashboard');
       return null;
     }
   }
@@ -471,83 +475,93 @@ class AgentsAuthService {
       debugPrint('❌ فشل في جلب بيانات Chart: ${response.body}');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات Chart: $e');
+      debugPrint('❌ خطأ في جلب بيانات Chart');
       return null;
     }
   }
 
-  /// جلب بيانات Chart باستخدام GET request (مثل المتصفح)
+  /// جلب بيانات Chart — خطوتان:
+  /// 1. GET /api/v1/chart/{id} → جلب metadata + query_context
+  /// 2. POST /api/v1/chart/data → إرسال query_context لجلب البيانات
   static Future<Map<String, dynamic>?> fetchChartDataGet(
       int sliceId, int dashboardId,
       {String? guestToken, String? authToken}) async {
     try {
-      debugPrint(
-          '📈 جلب بيانات Chart (GET): slice_id=$sliceId, dashboard_id=$dashboardId');
-
       final token =
           guestToken ?? _cachedGuestToken ?? await getStoredGuestToken();
       if (token == null) {
-        debugPrint('❌ لا يوجد Guest Token متاح');
+        debugPrint('❌ Slice $sliceId: لا يوجد Guest Token');
         return null;
       }
 
-      // استخدام GET مع query parameters (مثل المتصفح)
+      // GET مباشرة مع form_data في URL (نفس طريقة fetch_server_data_page)
       final formData = Uri.encodeComponent('{"slice_id":$sliceId}');
       final url = Uri.parse(
           '$_dashboardBaseUrl/api/v1/chart/data?form_data=$formData&dashboard_id=$dashboardId');
 
+      // Headers بسيطة بدون Content-Type (طلب GET)
       final headers = <String, String>{
         'x-guesttoken': token,
         'Accept': 'application/json',
         'origin': _dashboardBaseUrl,
         'referer': '$_dashboardBaseUrl/embedded/$_dashboardId',
       };
-
-      // إضافة cookies إذا كانت متوفرة
-      final cfBypass = CloudflareBypassService.instance;
-      if (cfBypass.hasValidCookies) {
-        headers['cookie'] = cfBypass.cookieString;
-      } else if (_sessionCookie != null && _sessionCookie!.isNotEmpty) {
-        headers['cookie'] = _sessionCookie!;
+      if (authToken != null && authToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $authToken';
       }
 
-      debugPrint('📈 GET Request URL: $url');
-      debugPrint('📈 GET Request headers: $headers');
+      debugPrint('📈 GET chart/data (slice $sliceId)...');
 
-      final response = await http
+      final resp = await http
           .get(url, headers: headers)
           .timeout(const Duration(seconds: 30));
 
-      debugPrint('📈 استجابة بيانات Chart (GET): ${response.statusCode}');
-      debugPrint('📈 Response body: ${response.body}');
+      debugPrint('📈 Slice $sliceId → Status: ${resp.statusCode}');
 
-      if (response.statusCode == 200) {
-        final jsonBody = json.decode(response.body);
+      // Capture cookies
+      _extractCookies(resp.headers);
 
-        // التحقق من وجود خطأ في الـ response (حتى مع status 200)
+      if (resp.statusCode == 200) {
+        final jsonBody = json.decode(resp.body);
+
         if (jsonBody['error_msg'] != null) {
-          debugPrint('❌ خطأ من Superset: ${jsonBody['error_msg']}');
+          debugPrint('❌ Slice $sliceId خطأ: ${jsonBody['error_msg']}');
           return null;
         }
 
         final resultList = jsonBody['result'] as List?;
-
         if (resultList != null && resultList.isNotEmpty) {
           final result = resultList[0] as Map<String, dynamic>;
-          debugPrint(
-              '✅ تم جلب بيانات Chart (GET) بنجاح - rows: ${result['rowcount']}');
+          debugPrint('✅ Slice $sliceId → ${result['rowcount']} rows');
           return result;
+        } else {
+          debugPrint('❌ Slice $sliceId → result فارغ');
         }
       } else {
-        debugPrint('❌ فشل Chart (GET) - Status: ${response.statusCode}');
-        debugPrint('❌ Response: ${response.body}');
+        debugPrint('❌ Slice $sliceId → ${resp.statusCode}');
+        debugPrint('❌ Body: ${resp.body.substring(0, (resp.body.length).clamp(0, 300))}');
       }
 
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات Chart (GET): $e');
+      debugPrint('❌ Slice $sliceId → خطأ: $e');
       return null;
     }
+  }
+
+  /// جلب بيانات عدة slices من Superset بالتوازي
+  static Future<Map<int, Map<String, dynamic>?>> fetchMultipleSlices({
+    required List<int> sliceIds,
+    required String guestToken,
+    String? authToken,
+    int dashboardId = 7,
+  }) async {
+    final results = <int, Map<String, dynamic>?>{};
+    await Future.wait(sliceIds.map((id) async {
+      results[id] = await fetchChartDataGet(id, dashboardId,
+          guestToken: guestToken, authToken: authToken);
+    }));
+    return results;
   }
 
   /// Fetch chart data with full request payload (from browser)
@@ -602,7 +616,7 @@ class AgentsAuthService {
 
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات Chart: $e');
+      debugPrint('❌ خطأ في جلب بيانات Chart');
       return null;
     }
   }
@@ -713,7 +727,7 @@ class AgentsAuthService {
 
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب Zones Stats: $e');
+      debugPrint('❌ خطأ في جلب Zones Stats');
       return null;
     }
   }
@@ -828,7 +842,7 @@ class AgentsAuthService {
 
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب My Related Zones: $e');
+      debugPrint('❌ خطأ في جلب My Related Zones');
       return null;
     }
   }
@@ -913,7 +927,7 @@ class AgentsAuthService {
 
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في جلب Zones من Admin: $e');
+      debugPrint('❌ خطأ في جلب Zones من Admin');
       return null;
     }
   }
@@ -952,7 +966,7 @@ class AgentsAuthService {
         return null;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات لوج Dashboard: $e');
+      debugPrint('❌ خطأ في جلب بيانات لوج Dashboard');
       return null;
     }
   }
@@ -999,7 +1013,7 @@ class AgentsAuthService {
       debugPrint('❌ فشل في تجديد Access Token');
       return null;
     } catch (e) {
-      debugPrint('❌ خطأ في تجديد Access Token: $e');
+      debugPrint('❌ خطأ في تجديد Access Token');
       return null;
     }
   }
@@ -1056,7 +1070,7 @@ class AgentsAuthService {
 
       debugPrint('✅ تم تسجيل الخروج بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في تسجيل الخروج: $e');
+      debugPrint('❌ خطأ في تسجيل الخروج');
     }
   }
 
@@ -1099,7 +1113,7 @@ class AgentsAuthService {
         return _cachedUserInfo;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في قراءة معلومات المستخدم: $e');
+      debugPrint('❌ خطأ في قراءة معلومات المستخدم');
     }
 
     return null;
@@ -1128,7 +1142,7 @@ class AgentsAuthService {
 
       debugPrint('💾 تم حفظ التوكنات بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ التوكنات: $e');
+      debugPrint('❌ خطأ في حفظ التوكنات');
     }
   }
 
@@ -1139,7 +1153,7 @@ class AgentsAuthService {
       _cachedGuestToken = guestToken;
       debugPrint('💾 تم حفظ Guest Token بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ Guest Token: $e');
+      debugPrint('❌ خطأ في حفظ Guest Token');
     }
   }
 
@@ -1151,7 +1165,7 @@ class AgentsAuthService {
       _cachedUserInfo = userInfo;
       debugPrint('💾 تم حفظ معلومات المستخدم بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ معلومات المستخدم: $e');
+      debugPrint('❌ خطأ في حفظ معلومات المستخدم');
     }
   }
 
@@ -1173,7 +1187,7 @@ class AgentsAuthService {
         return userInfo;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب معلومات المستخدم: $e');
+      debugPrint('❌ خطأ في جلب معلومات المستخدم');
     }
 
     // إرجاع بيانات افتراضية في حالة الفشل
@@ -1201,7 +1215,7 @@ class AgentsAuthService {
         return _tokenExpiry;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في قراءة وقت انتهاء التوكن: $e');
+      debugPrint('❌ خطأ في قراءة وقت انتهاء التوكن');
     }
 
     return null;

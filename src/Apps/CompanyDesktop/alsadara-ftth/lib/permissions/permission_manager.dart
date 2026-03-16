@@ -115,7 +115,7 @@ class PermissionManager {
       debugPrint('   النظام الأول: ${_firstSystemV2.keys.length} ميزة');
       debugPrint('   النظام الثاني: ${_secondSystemV2.keys.length} ميزة');
     } catch (e) {
-      debugPrint('❌ PermissionManager: خطأ في تحميل الصلاحيات: $e');
+      debugPrint('❌ PermissionManager: خطأ في تحميل الصلاحيات');
     }
   }
 
@@ -138,28 +138,20 @@ class PermissionManager {
   }
 
   /// تحديث صلاحيات V2 من بيانات API خام
-  /// يتعامل مع كلا الصيغتين: V1 (flat bool) و V2 (nested actions)
   Future<void> updateFromRawJson({
-    dynamic firstSystemV1Json,
     dynamic firstSystemV2Json,
-    dynamic secondSystemV1Json,
     dynamic secondSystemV2Json,
   }) async {
-    final firstV2 = _parseV2WithFallback(firstSystemV1Json, firstSystemV2Json);
-    final secondV2 =
-        _parseV2WithFallback(secondSystemV1Json, secondSystemV2Json);
+    final firstV2 = _parseV2(firstSystemV2Json);
+    final secondV2 = _parseV2(secondSystemV2Json);
 
     await savePermissions(firstSystem: firstV2, secondSystem: secondV2);
   }
 
-  /// معالجة بيانات V2 مع الرجوع إلى V1 إذا لزم الأمر
-  Map<String, Map<String, bool>> _parseV2WithFallback(
-    dynamic v1Source,
-    dynamic v2Source,
-  ) {
+  /// معالجة بيانات V2
+  Map<String, Map<String, bool>> _parseV2(dynamic v2Source) {
     final result = <String, Map<String, bool>>{};
 
-    // أولاً: حاول V2
     final v2Data = _decodeJsonSource(v2Source);
     if (v2Data != null) {
       v2Data.forEach((feature, value) {
@@ -169,38 +161,16 @@ class PermissionManager {
             result[feature]![action] = value[action] == true;
           }
         } else if (value == true) {
-          // V1 format في حقل V2 — حوّل إلى V2
-          result[feature] = _v1ToV2Actions(true);
-        }
-      });
-    }
-
-    // ثانياً: أضف ما ينقص من V1
-    final v1Data = _decodeJsonSource(v1Source);
-    if (v1Data != null) {
-      v1Data.forEach((feature, value) {
-        if (!result.containsKey(feature)) {
-          if (value is Map) {
-            result[feature] = {};
-            for (final action in PermissionService.availableActions) {
-              result[feature]![action] = value[action] == true;
-            }
-          } else {
-            result[feature] = _v1ToV2Actions(value == true);
-          }
+          // plain bool — treat as all-actions enabled
+          result[feature] = {
+            for (final action in PermissionService.availableActions)
+              action: true,
+          };
         }
       });
     }
 
     return result;
-  }
-
-  /// تحويل V1 (bool) إلى V2 (actions map)
-  Map<String, bool> _v1ToV2Actions(bool v1Value) {
-    return {
-      for (final action in PermissionService.availableActions)
-        action: action == 'view' ? v1Value : false,
-    };
   }
 
   /// فك تشفير مصدر JSON (String أو Map)
@@ -319,19 +289,6 @@ class PermissionManager {
 
   /// الحصول على جميع صلاحيات النظام الثاني
   Map<String, Map<String, bool>> get secondSystemPermissions => _secondSystemV2;
-
-  /// بناء خريطة pageAccess (V1 style) — للتوافق مع الكود القديم
-  @Deprecated('استخدم canView() مباشرة بدلاً من pageAccess')
-  Map<String, bool> buildPageAccess() {
-    final map = <String, bool>{};
-    for (final entry in _firstSystemV2.entries) {
-      map[entry.key] = entry.value['view'] == true;
-    }
-    for (final entry in _secondSystemV2.entries) {
-      map[entry.key] = entry.value['view'] == true;
-    }
-    return map;
-  }
 
   /// منح جميع الصلاحيات (للسوبر أدمن)
   void grantAll(List<String> features) {

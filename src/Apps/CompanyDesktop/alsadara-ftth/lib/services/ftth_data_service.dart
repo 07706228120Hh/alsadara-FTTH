@@ -29,7 +29,7 @@ class FtthDataService {
 
       return _parseData(data);
     } catch (e) {
-      print('Error loading FTTH data: $e');
+      print('Error loading FTTH data');
       return false;
     }
   }
@@ -52,7 +52,7 @@ class FtthDataService {
 
       return loadFromFile(files.first.path);
     } catch (e) {
-      print('Error finding latest FTTH file: $e');
+      print('Error finding latest FTTH file');
       return false;
     }
   }
@@ -97,7 +97,7 @@ class FtthDataService {
       _lastUpdate = DateTime.now();
       return _zones.isNotEmpty;
     } catch (e) {
-      print('Error parsing FTTH data: $e');
+      print('Error parsing FTTH data');
       return false;
     }
   }
@@ -222,7 +222,7 @@ class FtthDataService {
       await file.writeAsString(exportToCsv());
       return file.path;
     } catch (e) {
-      print('Error saving CSV: $e');
+      print('Error saving CSV');
       return null;
     }
   }

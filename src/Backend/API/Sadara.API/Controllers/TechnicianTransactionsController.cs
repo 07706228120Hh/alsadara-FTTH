@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
+using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 
 namespace Sadara.API.Controllers;
@@ -367,9 +368,15 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     {
         try
         {
-            // جلب جميع الفنيين الذين لديهم معاملات أو رصيد
+            // تحديد شركة المستخدم الحالي لفلترة البيانات
+            var currentUserId = GetCurrentUserId();
+            var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+            var userCompanyId = currentUser?.CompanyId;
+
+            // جلب جميع الفنيين الذين لديهم معاملات أو رصيد — مع فلتر الشركة
             var technicians = await _unitOfWork.Users.AsQueryable()
-                .Where(u => (u.TechTotalCharges > 0 || u.TechTotalPayments > 0 || u.TechNetBalance != 0))
+                .Where(u => (u.TechTotalCharges > 0 || u.TechTotalPayments > 0 || u.TechNetBalance != 0)
+                    && (userCompanyId == null || u.CompanyId == userCompanyId))
                 .Select(u => new
                 {
                     u.Id,
@@ -478,6 +485,53 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 CreatedAt = DateTime.UtcNow
             };
             await _unitOfWork.TechnicianTransactions.AddAsync(tx);
+
+            // === إنشاء قيد محاسبي تلقائي ===
+            var companyId = technician.CompanyId ?? Guid.Empty;
+            if (companyId != Guid.Empty)
+            {
+                try
+                {
+                    var cashAcct = await ServiceRequestAccountingHelper.FindAccountByCode(
+                        _unitOfWork, "1110", companyId);
+                    var techSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                        _unitOfWork, "1140", technician.Id, technician.FullName ?? "فني", companyId);
+
+                    if (cashAcct != null)
+                    {
+                        await _unitOfWork.SaveChangesAsync();
+
+                        // مدين: ذمة الفني (تخفيض) — دائن: النقدية (خروج كاش)
+                        var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                        {
+                            (techSubAcct.Id, request.Amount, 0, $"تسديد ذمة فني {technician.FullName}"),
+                            (cashAcct.Id, 0, request.Amount, $"صرف نقدي للفني {technician.FullName}")
+                        };
+                        await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                            _unitOfWork, companyId, GetCurrentUserId(),
+                            $"تسديد فني {technician.FullName} - {request.Amount:N0} دينار",
+                            JournalReferenceType.TechnicianCollection, technician.Id.ToString(),
+                            journalLines);
+
+                        // ربط القيد بالمعاملة
+                        var je = await _unitOfWork.JournalEntries.AsQueryable()
+                            .Where(j => j.ReferenceId == technician.Id.ToString()
+                                && j.CompanyId == companyId)
+                            .OrderByDescending(j => j.CreatedAt)
+                            .FirstOrDefaultAsync();
+                        if (je != null)
+                        {
+                            tx.JournalEntryId = je.Id;
+                            _unitOfWork.TechnicianTransactions.Update(tx);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "فشل إنشاء القيد المحاسبي لتسديد الفني {TechName}", technician.FullName);
+                }
+            }
+
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("تم تسجيل تسديد {Amount} من الفني {TechName}", request.Amount, technician.FullName);

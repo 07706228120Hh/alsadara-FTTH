@@ -71,7 +71,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'حدث خطأ';
         _isLoading = false;
       });
     }
@@ -92,7 +92,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
       try {
         agents = await _agentService.getAll();
       } catch (e) {
-        partialError = 'خطأ في جلب الوكلاء: $e';
+        partialError = 'خطأ في جلب الوكلاء';
       }
 
       try {
@@ -114,7 +114,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'حدث خطأ';
         _isLoading = false;
       });
     }
@@ -2017,7 +2017,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2156,7 +2156,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2306,7 +2306,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2469,7 +2469,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2588,7 +2588,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                          content: Text('خطأ: $e'),
+                          content: Text('خطأ'),
                           backgroundColor: Colors.red),
                     );
                   }
@@ -2670,7 +2670,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -2709,7 +2709,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                          content: Text('خطأ: $e'),
+                          content: Text('خطأ'),
                           backgroundColor: Colors.red),
                     );
                   }

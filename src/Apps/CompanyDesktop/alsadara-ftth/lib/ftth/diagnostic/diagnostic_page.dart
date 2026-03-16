@@ -5,23 +5,22 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../subscriptions/subscription_details_page.dart';
+import '../../services/auth_service.dart';
 import '../../services/whatsapp_template_storage.dart';
 import '../../services/template_password_storage.dart';
+import '../auth/auth_error_handler.dart';
 
 class DiagnosticPage extends StatefulWidget {
   final String authToken;
   final String activatedBy;
-  final String? firstSystemPermissions;
   final bool? isAdminFlag;
 
   const DiagnosticPage({
     super.key,
     required this.authToken,
     required this.activatedBy,
-    this.firstSystemPermissions,
     this.isAdminFlag,
   });
 
@@ -211,7 +210,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
         _log('   zoneId: ${subInfo.zoneId}');
         _log('   zoneDisplayValue: ${subInfo.zoneDisplayValue}');
       } catch (e, stack) {
-        _log('❌ SubscriptionInfo.fromJson فشل: $e', level: _LogLevel.error);
+        _log('❌ SubscriptionInfo.fromJson فشل', level: _LogLevel.error);
         _log('📋 ${stack.toString().split('\n').take(3).join('\n')}',
             level: _LogLevel.error);
       }
@@ -233,7 +232,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
         _log(
             '   technicians: ${rawTechs != null ? "${rawTechs.length} حرف" : "فارغ"}');
       } catch (e) {
-        _log('❌ SharedPreferences فشل: $e', level: _LogLevel.error);
+        _log('❌ SharedPreferences فشل', level: _LogLevel.error);
       }
 
       // ──── الخطوة 7ج: محاكاة WhatsAppTemplateStorage ────
@@ -250,7 +249,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
             '   template: ${template != null ? "${template.length} حرف" : "افتراضي"}');
         _log('   password: ${password != null ? "موجود" : "افتراضي"}');
       } catch (e) {
-        _log('❌ WhatsAppTemplate فشل: $e', level: _LogLevel.error);
+        _log('❌ WhatsAppTemplate فشل', level: _LogLevel.error);
       }
 
       // ──── النتيجة النهائية ────
@@ -337,7 +336,6 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                   _safeStr(_safeMap(deviceDetails?['fbg'])?['displayValue']),
               fatValue:
                   _safeStr(_safeMap(deviceDetails?['fat'])?['displayValue']),
-              firstSystemPermissions: widget.firstSystemPermissions,
               isAdminFlag: widget.isAdminFlag,
             ),
           ),
@@ -348,7 +346,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
       _log('⏱️ الوقت الكلي: ${_totalStopwatch.elapsedMilliseconds} مللي ثانية',
           level: _LogLevel.success);
     } catch (e, stack) {
-      _log('💥 خطأ غير متوقع: $e', level: _LogLevel.error);
+      _log('💥 خطأ غير متوقع', level: _LogLevel.error);
       _log('📋 Stack: ${stack.toString().split('\n').take(5).join('\n')}',
           level: _LogLevel.error);
     }
@@ -386,13 +384,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
     _log('📡 URL: $url');
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
-      );
+      final response = await AuthService.instance.authenticatedRequest('GET', url);
       sw.stop();
 
       _log(
@@ -430,6 +422,10 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                 '      ${i + 1}. ${u['self']?['displayValue'] ?? '?'} | ${u['primaryContact']?['mobile'] ?? '?'}');
           }
         }
+      } else if (response.statusCode == 401) {
+        _log('⚠️ خطأ 401 — انتهت صلاحية الجلسة', level: _LogLevel.error);
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         _log('❌ فشل البحث: ${response.statusCode}', level: _LogLevel.error);
         _log(
@@ -437,7 +433,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
       }
     } catch (e) {
       sw.stop();
-      _log('❌ خطأ في البحث (${sw.elapsedMilliseconds}ms): $e',
+      _log('❌ خطأ في البحث (${sw.elapsedMilliseconds}ms)',
           level: _LogLevel.error);
     }
   }
@@ -455,13 +451,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
     _log('📡 URL: $url');
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
-      );
+      final response = await AuthService.instance.authenticatedRequest('GET', url);
       sw.stop();
 
       _log(
@@ -505,13 +495,17 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
           _log(
               '   📡 FDT: ${_safeStr(_safeMap(dev['fdt'])?['displayValue']) ?? '?'}');
         }
+      } else if (response.statusCode == 401) {
+        _log('⚠️ خطأ 401 — انتهت صلاحية الجلسة', level: _LogLevel.error);
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         _log('❌ فشل جلب الاشتراكات: ${response.statusCode}',
             level: _LogLevel.error);
       }
     } catch (e) {
       sw.stop();
-      _log('❌ خطأ (${sw.elapsedMilliseconds}ms): $e', level: _LogLevel.error);
+      _log('❌ خطأ (${sw.elapsedMilliseconds}ms)', level: _LogLevel.error);
     }
   }
 
@@ -528,13 +522,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
     _log('📡 URL: $url');
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
-      );
+      final response = await AuthService.instance.authenticatedRequest('GET', url);
       sw.stop();
 
       _log(
@@ -561,12 +549,16 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                 '      ${i + 1}. ${_safeStr(_safeMap(svc?['baseService'])?['displayValue']) ?? '?'}');
           }
         }
+      } else if (response.statusCode == 401) {
+        _log('⚠️ خطأ 401 — انتهت صلاحية الجلسة', level: _LogLevel.error);
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         _log('⚠️ فشل: ${response.statusCode}', level: _LogLevel.warning);
       }
     } catch (e) {
       sw.stop();
-      _log('❌ خطأ (${sw.elapsedMilliseconds}ms): $e', level: _LogLevel.error);
+      _log('❌ خطأ (${sw.elapsedMilliseconds}ms)', level: _LogLevel.error);
     }
   }
 
@@ -592,13 +584,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
     _log('📡 URL: $url');
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
-      );
+      final response = await AuthService.instance.authenticatedRequest('GET', url);
       sw.stop();
 
       _log(
@@ -613,12 +599,16 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
           _log('   🔢 السيريال: ${_safeStr(model['serialNumber']) ?? '?'}');
           _log('   🌐 MAC: ${_safeStr(model['macAddress']) ?? '?'}');
         }
+      } else if (response.statusCode == 401) {
+        _log('⚠️ خطأ 401 — انتهت صلاحية الجلسة', level: _LogLevel.error);
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         _log('⚠️ فشل: ${response.statusCode}', level: _LogLevel.warning);
       }
     } catch (e) {
       sw.stop();
-      _log('❌ خطأ (${sw.elapsedMilliseconds}ms): $e', level: _LogLevel.error);
+      _log('❌ خطأ (${sw.elapsedMilliseconds}ms)', level: _LogLevel.error);
     }
   }
 
@@ -634,13 +624,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
     _log('📡 URL: $url');
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
-      );
+      final response = await AuthService.instance.authenticatedRequest('GET', url);
       sw.stop();
 
       _log(
@@ -665,12 +649,16 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
             _log('   🗺️ GPS: ${gps['latitude']}, ${gps['longitude']}');
           }
         }
+      } else if (response.statusCode == 401) {
+        _log('⚠️ خطأ 401 — انتهت صلاحية الجلسة', level: _LogLevel.error);
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         _log('⚠️ فشل: ${response.statusCode}', level: _LogLevel.warning);
       }
     } catch (e) {
       sw.stop();
-      _log('❌ خطأ (${sw.elapsedMilliseconds}ms): $e', level: _LogLevel.error);
+      _log('❌ خطأ (${sw.elapsedMilliseconds}ms)', level: _LogLevel.error);
     }
   }
 
@@ -754,7 +742,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
       _log('   💰 Customer Wallet: ${_customerWalletBalance ?? "غير متوفر"}');
     } catch (e) {
       sw.stop();
-      _log('❌ خطأ في الطلبات المتوازية (${sw.elapsedMilliseconds}ms): $e',
+      _log('❌ خطأ في الطلبات المتوازية (${sw.elapsedMilliseconds}ms)',
           level: _LogLevel.error);
     }
   }
@@ -763,24 +751,22 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
   Future<Map<String, dynamic>?> _fetchJson(String url, String label) async {
     final sw = Stopwatch()..start();
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
-      );
+      final response = await AuthService.instance.authenticatedRequest('GET', url);
       sw.stop();
       _log(
           '   📥 $label: ${response.statusCode} (${sw.elapsedMilliseconds}ms)');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        _log('   ⚠️ $label خطأ 401 — انتهت صلاحية الجلسة', level: _LogLevel.error);
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return null;
       }
       return null;
     } catch (e) {
       sw.stop();
-      _log('   ❌ $label خطأ (${sw.elapsedMilliseconds}ms): $e',
+      _log('   ❌ $label خطأ (${sw.elapsedMilliseconds}ms)',
           level: _LogLevel.error);
       return null;
     }

@@ -64,7 +64,7 @@ class CentersDataService {
         debugPrint('✅ CentersDataService: تم جلب ${_centerNames.length} مركز');
       }
     } catch (e) {
-      debugPrint('❌ CentersDataService: خطأ في جلب المراكز: $e');
+      debugPrint('❌ CentersDataService: خطأ في جلب المراكز');
     }
 
     return _centerNames;

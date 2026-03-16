@@ -106,7 +106,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'خطأ في الاتصال بالخادم: $e';
+        errorMessage = 'خطأ في الاتصال بالخادم';
         isLoading = false;
       });
     }

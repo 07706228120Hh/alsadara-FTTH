@@ -414,7 +414,7 @@ class UpdateManager {
         await UpdateDialog.show(context, updateInfo, currentVersion);
       }
     } catch (e) {
-      debugPrint('❌ خطأ في التحقق من التحديثات: $e');
+      debugPrint('❌ خطأ في التحقق من التحديثات');
     }
   }
 }

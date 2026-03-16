@@ -210,8 +210,8 @@ class ApiClient {
     } on FormatException {
       return ApiResponse.error('خطأ في تنسيق البيانات', statusCode: 0);
     } catch (e) {
-      if (kDebugMode) print('❌ API Error: $e');
-      return ApiResponse.error('خطأ: $e', statusCode: 0);
+      if (kDebugMode) print('❌ API Error');
+      return ApiResponse.error('فشل الاتصال بالخادم', statusCode: 0);
     }
   }
 
@@ -338,7 +338,7 @@ class ApiClient {
       }
     } catch (e) {
       return ApiResponse.error(
-        'خطأ في معالجة الاستجابة: $e',
+        'حدث خطأ في معالجة الاستجابة',
         statusCode: response.statusCode,
       );
     }

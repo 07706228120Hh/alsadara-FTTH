@@ -67,7 +67,7 @@ class SadaraApiService {
       return AuthResult(
           success: false, error: data['message'] ?? 'فشل تسجيل الدخول');
     } catch (e) {
-      return AuthResult(success: false, error: 'خطأ في الاتصال: $e');
+      return AuthResult(success: false, error: 'خطأ في الاتصال');
     }
   }
 
@@ -107,7 +107,7 @@ class SadaraApiService {
       return AuthResult(
           success: false, error: data['message'] ?? 'فشل المصادقة');
     } catch (e) {
-      return AuthResult(success: false, error: 'خطأ: $e');
+      return AuthResult(success: false, error: 'خطأ');
     }
   }
 
@@ -166,7 +166,7 @@ class SadaraApiService {
       throw Exception('خطأ في تحميل الملف (${response.statusCode})');
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception('خطأ في طلب getBytes: $e');
+      throw Exception('خطأ في طلب getBytes');
     }
   }
 
@@ -189,7 +189,7 @@ class SadaraApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في رفع الملف: $e');
+      throw Exception('خطأ في رفع الملف');
     }
   }
 
@@ -227,7 +227,7 @@ class SadaraApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في طلب $method: $e');
+      throw Exception('خطأ في طلب $method');
     }
   }
 

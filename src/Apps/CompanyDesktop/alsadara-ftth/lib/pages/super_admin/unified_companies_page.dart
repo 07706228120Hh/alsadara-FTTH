@@ -116,10 +116,10 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الشركات: $e');
+      debugPrint('❌ خطأ في جلب الشركات');
       if (mounted) {
         setState(() {
-          _errorMessage = 'خطأ في الاتصال: $e';
+          _errorMessage = 'خطأ في الاتصال';
           _isLoading = false;
         });
       }
@@ -138,7 +138,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل الشركة المرتبطة: $e');
+      debugPrint('❌ خطأ في تحميل الشركة المرتبطة');
       if (mounted) {
         setState(() => _isLoadingLinked = false);
       }
@@ -1505,7 +1505,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e')),
+            SnackBar(content: Text('خطأ')),
           );
         }
       }
@@ -1560,7 +1560,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e')),
+            SnackBar(content: Text('خطأ')),
           );
         }
       }
@@ -1651,8 +1651,6 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
         'accounting',
         'diagnostics',
       ]);
-      final fullPermissions = PermissionManager.instance.buildPageAccess();
-
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => HomePage(
@@ -1661,7 +1659,6 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             department: company.name,
             center: company.code,
             salary: '0',
-            pageAccess: fullPermissions,
             tenantId: company.id,
             tenantCode: company.code,
             isSuperAdminMode: true,
@@ -2853,7 +2850,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             children: [
               const Icon(Icons.error, color: Colors.white),
               const SizedBox(width: 8),
-              Expanded(child: Text('حدث خطأ: $e')),
+              Expanded(child: Text('حدث خطأ')),
             ],
           ),
           backgroundColor: Colors.red.shade600,

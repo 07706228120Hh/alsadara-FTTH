@@ -703,7 +703,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          errorMessage = 'خطأ في تحميل البيانات: $e';
+          errorMessage = 'خطأ في تحميل البيانات';
           isLoading = false;
         });
       }
@@ -737,7 +737,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
 
       return data;
     } catch (e) {
-      throw Exception('خطأ في جلب البيانات: $e');
+      throw Exception('خطأ في جلب البيانات');
     }
   }
 
@@ -2048,7 +2048,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'حدث خطأ أثناء التسديد: $e',
+                    'حدث خطأ أثناء التسديد',
                     style: const TextStyle(fontSize: 14),
                   ),
                 ),
@@ -2333,7 +2333,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في التسديد: $e'),
+            content: Text('خطأ في التسديد'),
             backgroundColor: Colors.red.shade600,
           ),
         );
@@ -2458,11 +2458,11 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
 
       print('🔄 تم إلغاء التسديد - البطاقة ستصبح حمراء الآن');
     } catch (e) {
-      print('❌ خطأ في إلغاء التسديد: $e');
+      print('❌ خطأ في إلغاء التسديد');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في إلغاء التسديد: $e'),
+            content: Text('خطأ في إلغاء التسديد'),
             backgroundColor: Colors.red.shade600,
           ),
         );

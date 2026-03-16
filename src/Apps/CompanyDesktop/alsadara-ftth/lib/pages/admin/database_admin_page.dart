@@ -97,11 +97,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ: $e');
+      debugPrint('❌ خطأ');
       if (!mounted) return;
       setState(() {
         _errorMessage = 'فشل الاتصال بالخادم';
-        _errorDetails = e.toString();
+        _errorDetails = 'حدث خطأ';
         _isLoadingTables = false;
       });
     }
@@ -129,7 +129,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         }
       }
     } catch (e) {
-      debugPrint('خطأ في تحميل الإحصائيات: $e');
+      debugPrint('خطأ في تحميل الإحصائيات');
     }
   }
 
@@ -176,7 +176,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'حدث خطأ';
         _isLoadingData = false;
       });
     }
@@ -440,7 +440,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     _showSnackBar(errorMsg, isError: true);
                   }
                 } catch (e) {
-                  debugPrint('❌ Exception: $e');
+                  debugPrint('❌ Exception');
                   _showSnackBar(e.toString(), isError: true);
                 }
               },

@@ -156,7 +156,7 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
     } on TimeoutException {
       debugPrint('⏰ [AuditDashboard] انتهت مهلة الاتصال');
     } catch (e) {
-      debugPrint('❌ [AuditDashboard] خطأ: $e');
+      debugPrint('❌ [AuditDashboard] خطأ');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

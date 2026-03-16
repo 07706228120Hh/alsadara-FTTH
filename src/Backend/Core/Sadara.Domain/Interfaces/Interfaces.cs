@@ -91,6 +91,9 @@ public interface IUnitOfWork : IDisposable
     IRepository<ISPSubscriber, long> ISPSubscribers { get; }
     IRepository<ZoneStatistic, int> ZoneStatistics { get; }
 
+    // IPTV Subscribers (مشتركي التلفزيون عبر الإنترنت)
+    IRepository<IptvSubscriber, long> IptvSubscribers { get; }
+
     // Accounting System (نظام المحاسبة)
     IRepository<Account, Guid> Accounts { get; }
     IRepository<JournalEntry, Guid> JournalEntries { get; }

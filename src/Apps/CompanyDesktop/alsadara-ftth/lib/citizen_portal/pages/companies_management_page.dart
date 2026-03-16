@@ -36,7 +36,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = e.toString();
+        errorMessage = 'حدث خطأ';
         isLoading = false;
       });
     }
@@ -85,7 +85,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل الربط: $e'),
+            content: Text('فشل الربط'),
             backgroundColor: Colors.red,
           ),
         );
@@ -133,7 +133,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل إلغاء الربط: $e'),
+            content: Text('فشل إلغاء الربط'),
             backgroundColor: Colors.red,
           ),
         );

@@ -58,7 +58,7 @@ class CloudflareBypassService {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل cookies: $e');
+      debugPrint('❌ خطأ في تحميل cookies');
     }
   }
 
@@ -70,7 +70,7 @@ class CloudflareBypassService {
       await prefs.setInt(
           'cf_bypass_time', DateTime.now().millisecondsSinceEpoch);
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ cookies: $e');
+      debugPrint('❌ خطأ في حفظ cookies');
     }
   }
 
@@ -196,10 +196,10 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
       // بدء فحص دوري للتحقق من تجاوز Cloudflare
       _startCheckTimer();
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة WebView: $e');
+      debugPrint('❌ خطأ في تهيئة WebView');
       if (mounted) {
         setState(() {
-          _status = 'فشل في تحميل الصفحة: $e';
+          _status = 'فشل في تحميل الصفحة';
           _isLoading = false;
         });
       }
@@ -276,7 +276,7 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فحص الحالة: $e');
+      debugPrint('❌ خطأ في فحص الحالة');
     }
   }
 

@@ -17,9 +17,6 @@ class EnhancedHomePage extends StatefulWidget {
   final String department;
   final String salary;
   final String center;
-  @Deprecated('استخدم PermissionManager.instance.canView() مباشرة')
-  final Map<String, bool> pageAccess;
-
   const EnhancedHomePage({
     super.key,
     required this.username,
@@ -27,7 +24,6 @@ class EnhancedHomePage extends StatefulWidget {
     required this.department,
     required this.salary,
     required this.center,
-    this.pageAccess = const {},
   });
 
   @override
@@ -270,8 +266,14 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
   Widget _buildPagesGrid() {
     // V2: بناء قائمة الصفحات المتاحة من PermissionManager فقط
     final pm = PermissionManager.instance;
-    final pageAccessMap = pm.buildPageAccess();
-    final availablePages = pageAccessMap.entries
+    final allPerms = <String, bool>{};
+    for (final entry in pm.firstSystemPermissions.entries) {
+      allPerms[entry.key] = entry.value['view'] == true;
+    }
+    for (final entry in pm.secondSystemPermissions.entries) {
+      allPerms[entry.key] = entry.value['view'] == true;
+    }
+    final availablePages = allPerms.entries
         .where((entry) => entry.value)
         .map((entry) => entry.key)
         .toList();
@@ -395,7 +397,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ فشل تجديد الجلسة: $e'),
+            content: Text('❌ فشل تجديد الجلسة'),
             backgroundColor: Colors.red,
           ),
         );

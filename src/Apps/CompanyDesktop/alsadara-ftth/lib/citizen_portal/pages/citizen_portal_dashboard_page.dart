@@ -45,7 +45,7 @@ class _CitizenPortalDashboardPageState
       });
     } catch (e) {
       setState(() {
-        errorMessage = e.toString();
+        errorMessage = 'حدث خطأ';
         isLoading = false;
       });
     }

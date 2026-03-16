@@ -32,7 +32,7 @@ class NotificationService {
     try {
       await _showRemoteAsLocal(message, fromBackground: true);
     } catch (e) {
-      debugPrint('🔥 خطأ في معالج خلفية FCM: $e');
+      debugPrint('🔥 خطأ في معالج خلفية FCM');
     }
   }
 
@@ -45,7 +45,7 @@ class NotificationService {
       await _initializeFirebaseMessaging();
       print('✅ تم تهيئة الإشعارات (محلية + FCM)');
     } catch (e) {
-      print('❌ خطأ في تهيئة الإشعارات: $e');
+      print('❌ خطأ في تهيئة الإشعارات');
       // الاستمرار حتى لو فشلت التهيئة
       try {
         await _initializeLocalNotifications();
@@ -111,7 +111,7 @@ class NotificationService {
       _fcmToken = await _messaging.getToken();
       debugPrint('📨 FCM Token: $_fcmToken');
     } catch (e) {
-      debugPrint('⚠️ فشل الحصول على FCM token: $e');
+      debugPrint('⚠️ فشل الحصول على FCM token');
     }
 
     // الاستماع لتحديث التوكن
@@ -339,7 +339,7 @@ class NotificationService {
         print('Failed to send push notification: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error sending push notification: $e');
+      print('Error sending push notification');
     }
   }
 
@@ -387,7 +387,7 @@ class NotificationService {
         Map<String, dynamic> data = jsonDecode(response.payload!);
         _handleNotificationNavigation(data);
       } catch (e) {
-        print('Error parsing notification payload: $e');
+        print('Error parsing notification payload');
       }
     }
   }
@@ -414,7 +414,7 @@ class NotificationService {
       debugPrint(
           '✅ تم عرض إشعار محلي (${fromBackground ? 'خلفية' : 'Foreground'})');
     } catch (e) {
-      debugPrint('❌ فشل تحويل رسالة FCM لإشعار محلي: $e');
+      debugPrint('❌ فشل تحويل رسالة FCM لإشعار محلي');
     }
   }
 

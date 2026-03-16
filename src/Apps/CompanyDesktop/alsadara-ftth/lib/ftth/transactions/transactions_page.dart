@@ -12,7 +12,6 @@ import 'dart:io';
 import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
-import 'package:http/http.dart' as http;
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
@@ -257,12 +256,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
       debugPrint('[transactions_page] _loadZones: بدء تحميل المناطق...');
 
       // استخدام نفس الطريقة المستخدمة في صفحة الاشتراكات
-      final response = await http.get(
-        Uri.parse('https://admin.ftth.iq/api/locations/zones'),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/locations/zones',
       );
 
       if (!mounted) return;
@@ -396,7 +392,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       // ignore: avoid_print
       debugPrint('[transactions_page] _loadUsernames error=$e');
       if (mounted) {
-        _showError('خطأ عند جلب أسماء المستخدمين: $e');
+        _showError('خطأ عند جلب أسماء المستخدمين');
       }
     } finally {
       if (mounted) {
@@ -538,7 +534,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         }
       }
     } catch (e) {
-      debugPrint('[transactions_page] Error fetching total count: $e');
+      debugPrint('[transactions_page] Error fetching total count');
       // في حالة فشل جلب العدد، سنعتمد على البيانات المستلمة
     }
   }
@@ -825,7 +821,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         _handle401Error();
         return;
       }
-      _showError('حدث خطأ في تحميل التحويلات: $e');
+      _showError('حدث خطأ في تحميل التحويلات');
     } finally {
       if (mounted) {
         setState(() {
@@ -1049,7 +1045,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-      _showError('فشل في جلب البيانات: $e');
+      _showError('فشل في جلب البيانات');
     }
   }
 
@@ -1142,8 +1138,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
           throw Exception('فشل في جلب البيانات: ${response.statusCode}');
         }
       } catch (e) {
-        debugPrint('خطأ في جلب الصفحة $pageTemp: $e');
-        throw Exception('خطأ في الاتصال: $e');
+        debugPrint('خطأ في جلب الصفحة $pageTemp');
+        throw Exception('خطأ في الاتصال');
       }
     }
 
@@ -3867,7 +3863,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       // عرض النتائج في نافذة منبثقة مع تمرير المعاملات المفصلة
       _showCreatorAmountsDialog(allTransactions);
     } catch (e) {
-      _showError('خطأ في حساب المبالغ حسب المنشأة: $e');
+      _showError('خطأ في حساب المبالغ حسب المنشأة');
     } finally {
       if (mounted) {
         setState(() {
@@ -4429,7 +4425,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('فشل في تصدير البيانات: $e'),
+          content: Text('فشل في تصدير البيانات'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape:

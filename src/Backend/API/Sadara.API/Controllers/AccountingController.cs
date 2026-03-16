@@ -846,6 +846,40 @@ public class AccountingController : ControllerBase
             };
 
             await _unitOfWork.CashTransactions.AddAsync(transaction);
+
+            // === إنشاء قيد محاسبي: مدين النقدية (إيداع) ===
+            try
+            {
+                var cashAcct = await FindAccountByCode("1110", box.CompanyId);
+                if (cashAcct != null)
+                {
+                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                    {
+                        (cashAcct.Id, dto.Amount, 0, $"إيداع في {box.Name}"),
+                        (cashAcct.Id, 0, dto.Amount, $"مصدر الإيداع - {dto.Description ?? "إيداع"}")
+                    };
+                    await CreateAndPostJournalEntry(
+                        box.CompanyId, dto.CreatedById,
+                        dto.Description ?? $"إيداع في صندوق {box.Name}",
+                        JournalReferenceType.CashDeposit, transaction.Id.ToString(), lines);
+
+                    // ربط القيد بالعملية
+                    var je = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Where(j => j.ReferenceType == JournalReferenceType.CashDeposit && j.CompanyId == box.CompanyId)
+                        .OrderByDescending(j => j.CreatedAt)
+                        .FirstOrDefaultAsync();
+                    if (je != null)
+                    {
+                        transaction.JournalEntryId = je.Id;
+                        _unitOfWork.CashTransactions.Update(transaction);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "فشل إنشاء قيد الإيداع");
+            }
+
             await _unitOfWork.CommitTransactionAsync();
 
             return Ok(new { success = true, message = "تم الإيداع", newBalance = box.CurrentBalance });
@@ -891,6 +925,39 @@ public class AccountingController : ControllerBase
             };
 
             await _unitOfWork.CashTransactions.AddAsync(transaction);
+
+            // === إنشاء قيد محاسبي: دائن النقدية (سحب) ===
+            try
+            {
+                var cashAcct = await FindAccountByCode("1110", box.CompanyId);
+                if (cashAcct != null)
+                {
+                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                    {
+                        (cashAcct.Id, dto.Amount, 0, $"سحب - {dto.Description ?? "سحب من الصندوق"}"),
+                        (cashAcct.Id, 0, dto.Amount, $"سحب من {box.Name}")
+                    };
+                    await CreateAndPostJournalEntry(
+                        box.CompanyId, dto.CreatedById,
+                        dto.Description ?? $"سحب من صندوق {box.Name}",
+                        JournalReferenceType.CashWithdrawal, transaction.Id.ToString(), lines);
+
+                    var je = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Where(j => j.ReferenceType == JournalReferenceType.CashWithdrawal && j.CompanyId == box.CompanyId)
+                        .OrderByDescending(j => j.CreatedAt)
+                        .FirstOrDefaultAsync();
+                    if (je != null)
+                    {
+                        transaction.JournalEntryId = je.Id;
+                        _unitOfWork.CashTransactions.Update(transaction);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "فشل إنشاء قيد السحب");
+            }
+
             await _unitOfWork.CommitTransactionAsync();
 
             return Ok(new { success = true, message = "تم السحب", newBalance = box.CurrentBalance });
@@ -4511,6 +4578,55 @@ public class AccountingController : ControllerBase
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // === إنشاء قيد محاسبي: مدين مصروف — دائن نقدية ===
+            try
+            {
+                var fe = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == payment.FixedExpenseId);
+                var expenseCode = fe?.Category switch
+                {
+                    FixedExpenseCategory.OfficeRent => "5210",
+                    FixedExpenseCategory.GeneratorCost => "5220",
+                    FixedExpenseCategory.Internet => "5230",
+                    FixedExpenseCategory.Electricity => "5240",
+                    FixedExpenseCategory.Water => "5250",
+                    _ => "5200"
+                };
+                var expenseName = fe?.Name ?? "مصروف ثابت";
+                var cashAcct = await FindAccountByCode("1110", dto.CompanyId);
+                var expenseAcct = await FindAccountByCode(expenseCode, dto.CompanyId)
+                    ?? await FindAccountByCode("5200", dto.CompanyId);
+
+                if (cashAcct != null && expenseAcct != null)
+                {
+                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                    {
+                        (expenseAcct.Id, payment.Amount, 0, $"{expenseName} - {dto.Month}/{dto.Year}"),
+                        (cashAcct.Id, 0, payment.Amount, $"دفع {expenseName}")
+                    };
+                    await CreateAndPostJournalEntry(
+                        dto.CompanyId, Guid.Empty,
+                        $"دفع مصروف ثابت: {expenseName} - {dto.Month}/{dto.Year}",
+                        JournalReferenceType.Expense, payment.Id.ToString(), lines);
+
+                    // ربط القيد
+                    var je = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Where(j => j.ReferenceType == JournalReferenceType.Expense && j.CompanyId == dto.CompanyId)
+                        .OrderByDescending(j => j.CreatedAt)
+                        .FirstOrDefaultAsync();
+                    if (je != null)
+                    {
+                        payment.JournalEntryId = je.Id;
+                        _unitOfWork.FixedExpensePayments.Update(payment);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "فشل إنشاء قيد المصروف الثابت");
+            }
+
             return Ok(new { success = true, message = "تم تسجيل الدفع بنجاح" });
         }
         catch (Exception ex)

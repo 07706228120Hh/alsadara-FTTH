@@ -241,7 +241,7 @@ class AuthService {
       }
       return false;
     } catch (e) {
-      print('خطأ في تحديث التوكن: $e');
+      print('خطأ في تحديث التوكن');
       return false;
     }
   }
@@ -312,7 +312,7 @@ class AuthService {
         return false;
       }
     } catch (e) {
-      print('❌ خطأ في إعادة تسجيل الدخول التلقائي: $e');
+      print('❌ خطأ في إعادة تسجيل الدخول التلقائي');
       return false;
     }
   }
@@ -488,7 +488,7 @@ class AuthService {
           e.toString().contains('لا يوجد توكن صالح')) {
         rethrow;
       }
-      throw Exception('خطأ في الطلب: $e');
+      throw Exception('خطأ في الطلب');
     }
   }
 

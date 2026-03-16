@@ -97,10 +97,10 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الشركات: $e');
+      debugPrint('❌ خطأ في جلب الشركات');
       if (mounted) {
         setState(() {
-          _errorMessage = 'خطأ في الاتصال: $e';
+          _errorMessage = 'خطأ في الاتصال';
           _isLoading = false;
         });
       }
@@ -119,7 +119,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل الشركة المرتبطة: $e');
+      debugPrint('❌ خطأ في تحميل الشركة المرتبطة');
       if (mounted) {
         setState(() => _isLoadingLinked = false);
       }
@@ -511,8 +511,6 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
         'accounting',
         'diagnostics',
       ]);
-      final fullPermissions = PermissionManager.instance.buildPageAccess();
-
       // الانتقال للصفحة الرئيسية كمدير
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -522,7 +520,6 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             department: company.name,
             center: company.code,
             salary: '0',
-            pageAccess: fullPermissions,
             tenantId: company.id,
             tenantCode: company.code,
             isSuperAdminMode: true,

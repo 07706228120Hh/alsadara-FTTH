@@ -93,7 +93,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         _handle401Error();
         return;
       }
-      _showError('حدث خطأ في تحميل الإشعارات: $e');
+      _showError('حدث خطأ في تحميل الإشعارات');
     } finally {
       setState(() {
         isLoading = false;
@@ -228,7 +228,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         });
       }
     } catch (e) {
-      print('Error marking notification as read: $e');
+      print('Error marking notification as read');
     }
   }
 

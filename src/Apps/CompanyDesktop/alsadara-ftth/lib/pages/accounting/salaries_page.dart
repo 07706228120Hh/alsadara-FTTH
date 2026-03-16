@@ -2,8 +2,11 @@
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../services/attendance_api_service.dart';
+import '../../services/period_closing_service.dart';
+import '../../services/audit_trail_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة إدارة الرواتب
 class SalariesPage extends StatefulWidget {
@@ -67,7 +70,7 @@ class _SalariesPageState extends State<SalariesPage> {
         _errorMessage = result['message'] ?? 'خطأ';
       }
     } catch (e) {
-      _errorMessage = 'خطأ: $e';
+      _errorMessage = 'خطأ';
     }
     setState(() {
       _isLoading = false;
@@ -152,6 +155,7 @@ class _SalariesPageState extends State<SalariesPage> {
                 foregroundColor: AccountingTheme.textSecondary),
           ),
           if (isMobile) ...[
+            if (PermissionManager.instance.canAdd('accounting.salaries'))
             SizedBox(
               height: 28,
               child: OutlinedButton(
@@ -165,7 +169,9 @@ class _SalariesPageState extends State<SalariesPage> {
                 child: Icon(Icons.auto_fix_high, size: 14),
               ),
             ),
+            if (PermissionManager.instance.canAdd('accounting.salaries'))
             SizedBox(width: 4),
+            if (PermissionManager.instance.canAdd('accounting.salaries'))
             SizedBox(
               height: 28,
               child: ElevatedButton(
@@ -180,6 +186,7 @@ class _SalariesPageState extends State<SalariesPage> {
               ),
             ),
           ] else ...[
+            if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
             SizedBox(width: context.accR.spaceS),
             OutlinedButton.icon(
               onPressed: _generateSalaries,
@@ -190,6 +197,8 @@ class _SalariesPageState extends State<SalariesPage> {
                 side: const BorderSide(color: AccountingTheme.neonPink),
               ),
             ),
+            ],
+            if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
             SizedBox(width: context.accR.spaceS),
             ElevatedButton.icon(
               onPressed: _payAllSalaries,
@@ -203,6 +212,7 @@ class _SalariesPageState extends State<SalariesPage> {
                     vertical: context.accR.spaceM),
               ),
             ),
+            ],
           ],
         ],
       ),
@@ -612,6 +622,13 @@ class _SalariesPageState extends State<SalariesPage> {
         'سيتم توليد رواتب شهر ${_months[_selectedMonth - 1]} $_selectedYear لجميع الموظفين. متابعة؟');
     if (confirm != true) return;
 
+    // فحص الفترة المحاسبية
+    final genDate = DateTime(_selectedYear, _selectedMonth, 1);
+    final periodOk = await PeriodClosingService.checkAndWarnIfClosed(
+      context, date: genDate, companyId: widget.companyId ?? '',
+    );
+    if (!periodOk) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -623,6 +640,12 @@ class _SalariesPageState extends State<SalariesPage> {
       );
       if (result['success'] == true) {
         _snack('تم توليد الرواتب بنجاح', AccountingTheme.success);
+        AuditTrailService.instance.log(
+          action: AuditAction.create,
+          entityType: AuditEntityType.salary,
+          entityId: '$_selectedYear-$_selectedMonth',
+          entityDescription: 'توليد رواتب ${_months[_selectedMonth - 1]} $_selectedYear',
+        );
         _loadData();
       } else {
         _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -631,7 +654,7 @@ class _SalariesPageState extends State<SalariesPage> {
         });
       }
     } catch (e) {
-      _snack('خطأ: $e', AccountingTheme.danger);
+      _snack('خطأ', AccountingTheme.danger);
       setState(() {
         _isLoading = false;
       });
@@ -648,6 +671,13 @@ class _SalariesPageState extends State<SalariesPage> {
         'صرف الكل', 'سيتم صرف $pending راتب معلق. متابعة؟');
     if (confirm != true) return;
 
+    // فحص الفترة المحاسبية
+    final payAllDate = DateTime(_selectedYear, _selectedMonth, 1);
+    final payAllOk = await PeriodClosingService.checkAndWarnIfClosed(
+      context, date: payAllDate, companyId: widget.companyId ?? '',
+    );
+    if (!payAllOk) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -659,6 +689,13 @@ class _SalariesPageState extends State<SalariesPage> {
       );
       if (result['success'] == true) {
         _snack('تم صرف جميع الرواتب', AccountingTheme.success);
+        AuditTrailService.instance.log(
+          action: AuditAction.edit,
+          entityType: AuditEntityType.salary,
+          entityId: '$_selectedYear-$_selectedMonth',
+          entityDescription: 'صرف جميع رواتب ${_months[_selectedMonth - 1]} $_selectedYear',
+          details: '$pending راتب',
+        );
         _loadData();
       } else {
         _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -667,7 +704,7 @@ class _SalariesPageState extends State<SalariesPage> {
         });
       }
     } catch (e) {
-      _snack('خطأ: $e', AccountingTheme.danger);
+      _snack('خطأ', AccountingTheme.danger);
       setState(() {
         _isLoading = false;
       });
@@ -675,6 +712,13 @@ class _SalariesPageState extends State<SalariesPage> {
   }
 
   Future<void> _paySalary(dynamic salary) async {
+    // فحص الفترة المحاسبية
+    final salDate = DateTime(_selectedYear, _selectedMonth, 1);
+    final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+      context, date: salDate, companyId: widget.companyId ?? '',
+    );
+    if (!allowed) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -683,6 +727,12 @@ class _SalariesPageState extends State<SalariesPage> {
           await AccountingService.instance.paySalary(salary['Id'].toString());
       if (result['success'] == true) {
         _snack('تم صرف الراتب', AccountingTheme.success);
+        AuditTrailService.instance.log(
+          action: AuditAction.edit,
+          entityType: AuditEntityType.salary,
+          entityId: salary['Id']?.toString() ?? '',
+          entityDescription: 'صرف راتب: ${salary['EmployeeName'] ?? ''}',
+        );
         _loadData();
       } else {
         _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -691,7 +741,7 @@ class _SalariesPageState extends State<SalariesPage> {
         });
       }
     } catch (e) {
-      _snack('خطأ: $e', AccountingTheme.danger);
+      _snack('خطأ', AccountingTheme.danger);
       setState(() {
         _isLoading = false;
       });
@@ -743,6 +793,12 @@ class _SalariesPageState extends State<SalariesPage> {
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final editDate = DateTime(_selectedYear, _selectedMonth, 1);
+                final editOk = await PeriodClosingService.checkAndWarnIfClosed(
+                  context, date: editDate, companyId: widget.companyId ?? '',
+                );
+                if (!editOk) return;
                 final result = await AccountingService.instance.updateSalary(
                   salary['Id'].toString(),
                   allowances: double.tryParse(allowCtrl.text),
@@ -752,6 +808,12 @@ class _SalariesPageState extends State<SalariesPage> {
                 );
                 if (result['success'] == true) {
                   _snack('تم التعديل', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.edit,
+                    entityType: AuditEntityType.salary,
+                    entityId: salary['Id']?.toString() ?? '',
+                    entityDescription: 'تعديل راتب: ${salary['EmployeeName'] ?? ''}',
+                  );
                   _loadData();
                 } else {
                   _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -837,10 +899,22 @@ class _SalariesPageState extends State<SalariesPage> {
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final delDate = DateTime(_selectedYear, _selectedMonth, 1);
+                final delOk = await PeriodClosingService.checkAndWarnIfClosed(
+                  context, date: delDate, companyId: widget.companyId ?? '',
+                );
+                if (!delOk) return;
                 final result = await AccountingService.instance
                     .deleteSalary(s['Id'].toString());
                 if (result['success'] == true) {
                   _snack('تم حذف الراتب', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.delete,
+                    entityType: AuditEntityType.salary,
+                    entityId: s['Id']?.toString() ?? '',
+                    entityDescription: 'حذف راتب: ${s['EmployeeName'] ?? ''}',
+                  );
                   _loadData();
                 } else {
                   _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -930,7 +1004,7 @@ class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
       );
       _records = (data['records'] is List) ? data['records'] : [];
     } catch (e) {
-      _error = 'خطأ في جلب البيانات: $e';
+      _error = 'خطأ في جلب البيانات';
     }
     setState(() {
       _loading = false;

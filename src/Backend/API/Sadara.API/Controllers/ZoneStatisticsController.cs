@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
@@ -14,7 +13,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>جلب إحصائيات جميع المناطق</summary>
     [HttpGet]
-    [Authorize(Policy = "Admin")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetAll([FromQuery] string? search)
     {
         var query = _unitOfWork.ZoneStatistics.AsQueryable();
@@ -29,7 +28,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>جلب ملخص إحصائي (مجاميع ومتوسطات)</summary>
     [HttpGet("summary")]
-    [Authorize(Policy = "Admin")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetSummary()
     {
         var zones = await _unitOfWork.ZoneStatistics.AsQueryable().ToListAsync();
@@ -55,7 +54,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>إضافة إحصائية منطقة</summary>
     [HttpPost]
-    [Authorize(Policy = "Admin")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> Create([FromBody] CreateZoneStatisticRequest request)
     {
         var zone = new ZoneStatistic
@@ -77,7 +76,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>إضافة إحصائيات بالجملة</summary>
     [HttpPost("bulk")]
-    [Authorize(Policy = "Admin")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> BulkCreate([FromBody] List<CreateZoneStatisticRequest> requests)
     {
         var zones = requests.Select(r => new ZoneStatistic
@@ -101,7 +100,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>تحديث إحصائية منطقة</summary>
     [HttpPut("{id}")]
-    [Authorize(Policy = "Admin")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> Update(int id, [FromBody] CreateZoneStatisticRequest request)
     {
         var zone = await _unitOfWork.ZoneStatistics.GetByIdAsync(id);
@@ -121,9 +120,64 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
         return Ok(zone);
     }
 
+    /// <summary>مزامنة الزونات من FTTH — إضافة الجديد وتحديث Fats فقط للموجود</summary>
+    [HttpPost("sync")]
+    [ApiKeyOrJwtAuth]
+    public async Task<IActionResult> SyncZones([FromBody] List<SyncZoneRequest> requests)
+    {
+        if (requests == null || requests.Count == 0)
+            return BadRequest(new { message = "لا توجد بيانات للمزامنة" });
+
+        var existingZones = await _unitOfWork.ZoneStatistics.AsQueryable().ToListAsync();
+        var existingMap = existingZones
+            .ToDictionary(z => z.ZoneName.Trim().ToLowerInvariant(), z => z);
+
+        int added = 0, updated = 0, unchanged = 0;
+
+        foreach (var req in requests)
+        {
+            if (string.IsNullOrWhiteSpace(req.ZoneName)) continue;
+
+            var key = req.ZoneName.Trim().ToLowerInvariant();
+
+            if (existingMap.TryGetValue(key, out var existing))
+            {
+                if (existing.Fats != req.Fats)
+                {
+                    existing.Fats = req.Fats;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.ZoneStatistics.Update(existing);
+                    updated++;
+                }
+                else
+                {
+                    unchanged++;
+                }
+            }
+            else
+            {
+                var zone = new ZoneStatistic
+                {
+                    ZoneName = req.ZoneName.Trim(),
+                    Fats = req.Fats,
+                    TotalUsers = 0,
+                    ActiveUsers = 0,
+                    InactiveUsers = 0,
+                    CompanyId = req.CompanyId,
+                };
+                await _unitOfWork.ZoneStatistics.AddAsync(zone);
+                added++;
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { added, updated, unchanged, total = added + updated + unchanged });
+    }
+
     /// <summary>حذف إحصائية منطقة</summary>
     [HttpDelete("{id}")]
-    [Authorize(Policy = "Admin")]
+    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> Delete(int id)
     {
         var zone = await _unitOfWork.ZoneStatistics.GetByIdAsync(id);
@@ -139,5 +193,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 }
 
 public record CreateZoneStatisticRequest(
-    string ZoneName, int Fats, int TotalUsers, int ActiveUsers, 
+    string ZoneName, int Fats, int TotalUsers, int ActiveUsers,
     int InactiveUsers, string? RegionName, Guid? CompanyId);
+
+public record SyncZoneRequest(string ZoneName, int Fats, Guid? CompanyId);

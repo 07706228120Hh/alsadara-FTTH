@@ -45,8 +45,6 @@ class _PermissionsManagementV2PageState
   Map<String, Map<String, bool>> _secondSystemPermissionsV2 = {};
 
   // ═══ صلاحيات الشركة (لفلترة صلاحيات الموظف) ═══
-  Map<String, bool> _companyFirstFeaturesV1 = {};
-  Map<String, bool> _companySecondFeaturesV1 = {};
   Map<String, Map<String, bool>> _companyFirstFeaturesV2 = {};
   Map<String, Map<String, bool>> _companySecondFeaturesV2 = {};
 
@@ -128,11 +126,11 @@ class _PermissionsManagementV2PageState
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint('Error loading V2 permissions: $e');
+      debugPrint('Error loading V2 permissions');
       _initDefaultPermissions();
       setState(() {
         _isLoading = false;
-        _error = 'تعذر تحميل الصلاحيات: $e';
+        _error = 'تعذر تحميل الصلاحيات';
       });
     }
   }
@@ -169,7 +167,7 @@ class _PermissionsManagementV2PageState
         }
       }
     } catch (e) {
-      debugPrint('Error parsing V2 permissions: $e');
+      debugPrint('Error parsing V2 permissions');
     }
 
     return result;
@@ -190,40 +188,6 @@ class _PermissionsManagementV2PageState
   /// جلب صلاحيات/ميزات الشركة لاستخدامها كفلتر عند تعديل صلاحيات الموظف
   Future<void> _loadCompanyFeatures() async {
     try {
-      // جلب V1 (ميزات بسيطة)
-      final companyRes = await _apiClient.get(
-        '/internal/companies/${widget.companyId}',
-        (json) => json,
-        useInternalKey: true,
-      );
-
-      if (companyRes.isSuccess && companyRes.data != null) {
-        final data = companyRes.data['data'] ?? companyRes.data;
-
-        // V1 features
-        final firstV1 = data['enabledFirstSystemFeatures'] ??
-            data['EnabledFirstSystemFeatures'];
-        final secondV1 = data['enabledSecondSystemFeatures'] ??
-            data['EnabledSecondSystemFeatures'];
-
-        if (firstV1 != null) {
-          if (firstV1 is String && firstV1.isNotEmpty) {
-            _companyFirstFeaturesV1 =
-                Map<String, bool>.from(jsonDecode(firstV1));
-          } else if (firstV1 is Map) {
-            _companyFirstFeaturesV1 = Map<String, bool>.from(firstV1);
-          }
-        }
-        if (secondV1 != null) {
-          if (secondV1 is String && secondV1.isNotEmpty) {
-            _companySecondFeaturesV1 =
-                Map<String, bool>.from(jsonDecode(secondV1));
-          } else if (secondV1 is Map) {
-            _companySecondFeaturesV1 = Map<String, bool>.from(secondV1);
-          }
-        }
-      }
-
       // جلب V2 (ميزات مفصلة)
       final v2Res = await _apiClient.get(
         '/internal/companies/${widget.companyId}/permissions-v2',
@@ -245,31 +209,24 @@ class _PermissionsManagementV2PageState
             _parsePermissionsV2(secondV2, _secondSystemFeatures.keys.toList());
       }
     } catch (e) {
-      debugPrint('Error loading company features for filtering: $e');
+      debugPrint('Error loading company features for filtering');
     }
   }
 
-  /// هل الميزة مفعلة للشركة؟ (V2 أو V1 fallback)
+  /// هل الميزة مفعلة للشركة؟ (V2 فقط)
   bool _isFeatureEnabledForCompany(String featureKey, bool isFirstSystem) {
-    // إذا ليس موظف (يعني نعدل صلاحيات الشركة نفسها) → لا قيود
     if (widget.employeeId == null) return true;
 
     final v2Map =
         isFirstSystem ? _companyFirstFeaturesV2 : _companySecondFeaturesV2;
-    final v1Map =
-        isFirstSystem ? _companyFirstFeaturesV1 : _companySecondFeaturesV1;
 
-    // تحقق V2: إذا أي إجراء مفعل → الميزة مفعلة
     if (v2Map.containsKey(featureKey)) {
       final actions = v2Map[featureKey]!;
       if (actions.values.any((v) => v == true)) return true;
     }
 
-    // fallback V1: إذا مفعل بشكل بسيط
-    if (v1Map.containsKey(featureKey) && v1Map[featureKey] == true) return true;
-
-    // إذا لم تُجلب بيانات الشركة أصلاً، نسمح (للتوافق العكسي)
-    if (v1Map.isEmpty && v2Map.isEmpty) return true;
+    // إذا لم تُجلب بيانات الشركة أصلاً، نسمح
+    if (v2Map.isEmpty) return true;
 
     return false;
   }
@@ -281,22 +238,15 @@ class _PermissionsManagementV2PageState
 
     final v2Map =
         isFirstSystem ? _companyFirstFeaturesV2 : _companySecondFeaturesV2;
-    final v1Map =
-        isFirstSystem ? _companyFirstFeaturesV1 : _companySecondFeaturesV1;
 
-    // V2: تحقق من الإجراء المحدد
     if (v2Map.containsKey(featureKey)) {
       final actions = v2Map[featureKey]!;
       if (actions.containsKey(action)) return actions[action] == true;
-      // إذا V2 موجود لكن الإجراء غير محدد → ممنوع
       return false;
     }
 
-    // fallback V1: إذا الميزة مفعلة بشكل بسيط → نسمح بكل الإجراءات
-    if (v1Map.containsKey(featureKey) && v1Map[featureKey] == true) return true;
-
-    // إذا لم تُجلب بيانات → نسمح (للتوافق)
-    if (v1Map.isEmpty && v2Map.isEmpty) return true;
+    // إذا لم تُجلب بيانات → نسمح
+    if (v2Map.isEmpty) return true;
 
     return false;
   }
@@ -355,7 +305,7 @@ class _PermissionsManagementV2PageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e'),
+            content: Text('خطأ'),
             backgroundColor: Colors.red,
           ),
         );

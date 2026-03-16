@@ -1025,7 +1025,7 @@ class _TaskCardState extends State<TaskCard> {
                                     amountController.dispose();
                                     notesController.dispose();
                                   } catch (e) {
-                                    print('تم تجاهل خطأ dispose: $e');
+                                    print('تم تجاهل خطأ dispose');
                                   }
 
                                   _updateTaskStatus(newStatus,
@@ -1108,25 +1108,13 @@ class _TaskCardState extends State<TaskCard> {
           );
         }
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       // التراجع عن التحديث المحلي عند حدوث خطأ
       widget.onStatusChanged(oldTask);
-      print('🔴 [ERROR] خطأ في تحديث حالة المهمة: $e');
+      print('🔴 [ERROR] خطأ في تحديث حالة المهمة');
 
       if (mounted) {
-        _showErrorDialog('خطأ في تحديث المهمة', '''
-تفاصيل الخطأ:
-${e.toString()}
-
-معلومات تقنية إضافية:
-$stackTrace
-
-البيانات المحاولة تحديثها:
-- الحالة: $newStatus
-- المبلغ: $amount
-- الملاحظات: $notes
-- معرف المهمة: ${widget.task.id}
-        ''');
+        _showErrorDialog('خطأ في تحديث المهمة', 'فشل تحديث حالة المهمة، يرجى المحاولة مرة أخرى');
       }
     }
   }
@@ -1163,7 +1151,7 @@ $stackTrace
         return false;
       }
     } catch (e) {
-      debugPrint('Error updating status via API: $e');
+      debugPrint('Error updating status via API');
       return false;
     }
   }
@@ -1199,11 +1187,11 @@ $stackTrace
         Navigator.of(context).pop();
       }
     } catch (e) {
-      debugPrint('Error deleting task: $e');
+      debugPrint('Error deleting task');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في حذف المهمة: $e'),
+            content: Text('خطأ في حذف المهمة'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1480,7 +1468,7 @@ $stackTrace
 
       return message;
     } catch (e) {
-      print('خطأ في بناء رسالة الواتساب: $e');
+      print('خطأ في بناء رسالة الواتساب');
       // في حالة حدوث خطأ، استخدم القالب الافتراضي
       return _getDefaultTemplate()
           .replaceAll('{id}', widget.task.id.toString())
@@ -1672,7 +1660,7 @@ $stackTrace
       debugPrint(
           '✅ تم جلب ${agents.length} مجموعة وكلاء للـ FBG: ${widget.task.fbg}');
     } catch (e) {
-      debugPrint('❌ خطأ في جلب بيانات الوكلاء: $e');
+      debugPrint('❌ خطأ في جلب بيانات الوكلاء');
       setState(() {
         isLoadingAgents = false;
       });
@@ -1680,7 +1668,7 @@ $stackTrace
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في جلب بيانات الوكلاء: $e'),
+            content: Text('خطأ في جلب بيانات الوكلاء'),
             backgroundColor: Colors.red,
           ),
         );
@@ -2094,7 +2082,7 @@ $stackTrace
             throw 'لم يتم العثور على تطبيق WhatsApp';
           }
         } catch (e) {
-          debugPrint('❌ خطأ في فتح الواتساب (ديسكتوب): $e');
+          debugPrint('❌ خطأ في فتح الواتساب (ديسكتوب)');
           _showDesktopFallbackMessage(formattedPhone, taskDetails, agentName);
         }
       } else {
@@ -2163,11 +2151,11 @@ $stackTrace
       debugPrint('📱 رقم الهاتف: $formattedPhone');
       debugPrint('📋 تم نسخ التفاصيل إلى الحافظة');
     } catch (e) {
-      debugPrint('❌ خطأ في نسخ تفاصيل المهمة: $e');
+      debugPrint('❌ خطأ في نسخ تفاصيل المهمة');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في نسخ تفاصيل المهمة: $e'),
+            content: Text('خطأ في نسخ تفاصيل المهمة'),
             backgroundColor: Colors.red,
           ),
         );
@@ -2304,11 +2292,11 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
         ),
       );
     } catch (e) {
-      debugPrint('خطأ في تعيين المهمة للوكيل: $e');
+      debugPrint('خطأ في تعيين المهمة للوكيل');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تعيين المهمة: $e'),
+            content: Text('خطأ في تعيين المهمة'),
             backgroundColor: Colors.red,
           ),
         );
@@ -2348,11 +2336,11 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
       await _launchWhatsAppForTechnician(
           technicianPhone, message, technicianName);
     } catch (e) {
-      debugPrint('خطأ في إرسال المهمة للفني: $e');
+      debugPrint('خطأ في إرسال المهمة للفني');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في إرسال المهمة للفني: $e'),
+            content: Text('خطأ في إرسال المهمة للفني'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -2388,12 +2376,12 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
           }
         }
       } catch (e) {
-        debugPrint('خطأ في البحث عن الفني من API: $e');
+        debugPrint('خطأ في البحث عن الفني من API');
       }
 
       return '';
     } catch (e) {
-      debugPrint('خطأ في البحث عن رقم هاتف الفني: $e');
+      debugPrint('خطأ في البحث عن رقم هاتف الفني');
       return '';
     }
   }

@@ -171,7 +171,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _errorMessage = 'حدث خطأ'.replaceAll('Exception: ', '');
         });
       }
     } finally {

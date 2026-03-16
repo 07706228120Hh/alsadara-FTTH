@@ -82,7 +82,7 @@ class _TechnicianTransactionsPageState
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'خطأ في الاتصال: $e';
+        _errorMessage = 'خطأ في الاتصال';
         _isLoading = false;
       });
     }

@@ -17,20 +17,16 @@ import '../../permissions/permissions.dart';
 class LoginPage extends StatefulWidget {
   // إضافة معاملات لاستقبال بيانات المستخدم من النظام الأول
   final String? firstSystemUsername;
-  final String? firstSystemPermissions;
   final String? firstSystemDepartment;
   final String? firstSystemCenter;
   final String? firstSystemSalary;
-  final Map<String, bool>? firstSystemPageAccess;
 
   const LoginPage({
     super.key,
     this.firstSystemUsername,
-    this.firstSystemPermissions,
     this.firstSystemDepartment,
     this.firstSystemCenter,
     this.firstSystemSalary,
-    this.firstSystemPageAccess,
   });
 
   @override
@@ -130,7 +126,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ خطأ في مسح البيانات: $e'),
+            content: Text('❌ خطأ في مسح البيانات'),
             backgroundColor: Colors.red,
           ),
         );
@@ -163,7 +159,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           await SessionManager.instance.onLoginCompleted();
         } catch (e) {
           // ignore: avoid_print
-          print('⚠️ تعذر تحديث الجلسة بعد تسجيل الدخول: $e');
+          print('⚠️ تعذر تحديث الجلسة بعد تسجيل الدخول');
         }
 
         // معلومات المستخدم من النظام الثاني (FTTH)
@@ -172,20 +168,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             ftthUsername.toLowerCase().contains('مدير') ||
             ftthUsername == 'admin';
 
-        // دمج الصلاحيات من النظامين
-        final combinedPermissions = _combinePermissions(ftthIsAdmin);
-
-        // تحديد الصلاحيات النهائية
+        // تحديد الصلاحيات النهائية باستخدام PermissionManager
         String finalPermissions;
-        if (widget.firstSystemPermissions != null) {
-          final isFirstSystemAdmin = widget.firstSystemPermissions!
-                  .toLowerCase()
-                  .contains('مدير') ||
-              widget.firstSystemPermissions!.toLowerCase().contains('admin');
-          finalPermissions =
-              (isFirstSystemAdmin || ftthIsAdmin) ? 'مدير مجمع' : 'مستخدم مجمع';
+        final isFirstSystemAdmin = PermissionManager.instance.canView('users');
+        if (isFirstSystemAdmin || ftthIsAdmin) {
+          finalPermissions = 'مدير مجمع';
         } else {
-          finalPermissions = ftthIsAdmin ? 'مدير FTTH' : 'مستخدم FTTH';
+          finalPermissions = 'مستخدم FTTH';
         }
 
         final tokenData = result['data'];
@@ -205,13 +194,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               department: widget.firstSystemDepartment ?? 'FTTH',
               center: widget.firstSystemCenter ?? 'المركز الرئيسي',
               salary: widget.firstSystemSalary ?? '0',
-              pageAccess: combinedPermissions,
               firstSystemUsername: widget.firstSystemUsername,
-              firstSystemPermissions: widget.firstSystemPermissions,
               firstSystemDepartment: widget.firstSystemDepartment,
               firstSystemCenter: widget.firstSystemCenter,
               firstSystemSalary: widget.firstSystemSalary,
-              firstSystemPageAccess: widget.firstSystemPageAccess,
             ),
           ),
         );
@@ -229,28 +215,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         isLoading = false;
       });
     }
-  }
-
-  // V2: بناء صلاحيات الصفحات من PermissionManager
-  Map<String, bool> _combinePermissions(bool ftthIsAdmin) {
-    final pm = PermissionManager.instance;
-    if (pm.isLoaded) {
-      print('🔐 V2: استخدام صلاحيات PermissionManager');
-      return pm.buildPageAccess();
-    }
-
-    // fallback: الصلاحيات الافتراضية لنظام FTTH
-    final ftthPermissions = <String, bool>{
-      'users': ftthIsAdmin,
-      'subscriptions': true,
-      'tasks': ftthIsAdmin,
-      'zones': ftthIsAdmin,
-      'accounts': ftthIsAdmin,
-      'export': ftthIsAdmin,
-      'agents': ftthIsAdmin,
-    };
-
-    return ftthPermissions;
   }
 
   @override
@@ -276,12 +240,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                       MaterialPageRoute(
                         builder: (context) => firstSystem.HomePage(
                           username: widget.firstSystemUsername ?? 'مستخدم',
-                          permissions:
-                              widget.firstSystemPermissions ?? 'default',
+                          permissions: 'default',
                           department: widget.firstSystemDepartment ?? 'عام',
                           center: widget.firstSystemCenter ?? 'الرئيسي',
                           salary: widget.firstSystemSalary ?? '0',
-                          pageAccess: widget.firstSystemPageAccess ?? {},
                         ),
                       ),
                     );

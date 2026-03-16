@@ -141,55 +141,9 @@ class CompanyLoginResponse {
     final userJson = json['user'] ?? json['User'] ?? {};
 
     final company = CompanyInfo.fromJson(companyJson);
-    var user = CompanyUser.fromJson(userJson);
+    final user = CompanyUser.fromJson(userJson);
 
-    // إذا كان مدير الشركة (CompanyAdmin)، يحصل على صلاحيات الشركة
-    if (user.isAdmin) {
-      // دمج صلاحيات الشركة مع صلاحيات المستخدم
-      final mergedFirstPerms =
-          Map<String, bool>.from(user.firstSystemPermissions);
-      final mergedSecondPerms =
-          Map<String, bool>.from(user.secondSystemPermissions);
-      final mergedPermissions = List<String>.from(user.permissions);
-
-      // إضافة صلاحيات الشركة
-      company.enabledFirstSystemFeatures.forEach((key, value) {
-        if (value == true) {
-          mergedFirstPerms[key] = true;
-          if (!mergedPermissions.contains(key)) {
-            mergedPermissions.add(key);
-          }
-        }
-      });
-
-      company.enabledSecondSystemFeatures.forEach((key, value) {
-        if (value == true) {
-          mergedSecondPerms[key] = true;
-          if (!mergedPermissions.contains(key)) {
-            mergedPermissions.add(key);
-          }
-        }
-      });
-
-      // إنشاء مستخدم جديد بالصلاحيات المدمجة
-      user = CompanyUser(
-        id: user.id,
-        username: user.username,
-        fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        permissions: mergedPermissions,
-        firstSystemPermissions: mergedFirstPerms,
-        secondSystemPermissions: mergedSecondPerms,
-        rawFirstSystemV1: user.rawFirstSystemV1,
-        rawFirstSystemV2: user.rawFirstSystemV2,
-        rawSecondSystemV1: user.rawSecondSystemV1,
-        rawSecondSystemV2: user.rawSecondSystemV2,
-        isActive: user.isActive,
-        lastLogin: user.lastLogin,
-      );
-    }
+    // ملاحظة: دمج صلاحيات المدير يتم الآن في VpsAuthService عبر PermissionManager
 
     return CompanyLoginResponse(
       user: user,
@@ -212,14 +166,10 @@ class CompanyUser {
   final String? phone;
   final String role;
   final List<String> permissions;
-  final Map<String, bool> firstSystemPermissions;
-  final Map<String, bool> secondSystemPermissions;
 
   /// صلاحيات V2 الخام — النظام الأول والثاني
   final String? rawFirstSystemV2;
   final String? rawSecondSystemV2;
-  final String? rawFirstSystemV1;
-  final String? rawSecondSystemV1;
   final bool isActive;
   final DateTime? lastLogin;
 
@@ -231,96 +181,26 @@ class CompanyUser {
     this.phone,
     required this.role,
     required this.permissions,
-    required this.firstSystemPermissions,
-    required this.secondSystemPermissions,
     this.rawFirstSystemV2,
     this.rawSecondSystemV2,
-    this.rawFirstSystemV1,
-    this.rawSecondSystemV1,
     required this.isActive,
     this.lastLogin,
   });
 
   factory CompanyUser.fromJson(Map<String, dynamic> json) {
-    // استخراج الصلاحيات من JSON strings
-    Map<String, bool> firstPerms = {};
-    Map<String, bool> secondPerms = {};
-    List<String> permissionsList = [];
-
-    // ============ قراءة صلاحيات V1 أو V2 للنظام الأول ============
-    final firstSystemStr =
-        json['firstSystemPermissions'] ?? json['FirstSystemPermissions'];
+    // قراءة V2 الخام فقط
     final firstSystemV2Str =
-        json['firstSystemPermissionsV2'] ?? json['FirstSystemPermissionsV2'];
-
-    // أولوية V2 إذا كان V1 فارغ
-    final firstSourceStr = (firstSystemStr != null &&
-            firstSystemStr.toString().isNotEmpty &&
-            firstSystemStr.toString() != 'null')
-        ? firstSystemStr
-        : firstSystemV2Str;
-
-    if (firstSourceStr != null &&
-        firstSourceStr is String &&
-        firstSourceStr.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(firstSourceStr) as Map<String, dynamic>;
-        // التعامل مع V2 format: {"feature": {"view": true, "add": true, ...}}
-        decoded.forEach((feature, value) {
-          if (value is Map) {
-            // V2 format - نحول إلى V1 (إذا view=true يعني الميزة مفعلة)
-            final hasViewPermission = value['view'] == true;
-            firstPerms[feature] = hasViewPermission;
-            if (hasViewPermission) permissionsList.add(feature);
-          } else if (value == true) {
-            // V1 format
-            firstPerms[feature] = true;
-            permissionsList.add(feature);
-          }
-        });
-      } catch (_) {}
-    }
-
-    // ============ قراءة صلاحيات V1 أو V2 للنظام الثاني ============
-    final secondSystemStr =
-        json['secondSystemPermissions'] ?? json['SecondSystemPermissions'];
+        (json['firstSystemPermissionsV2'] ?? json['FirstSystemPermissionsV2'])
+            ?.toString();
     final secondSystemV2Str =
-        json['secondSystemPermissionsV2'] ?? json['SecondSystemPermissionsV2'];
+        (json['secondSystemPermissionsV2'] ?? json['SecondSystemPermissionsV2'])
+            ?.toString();
 
-    // أولوية V2 إذا كان V1 فارغ
-    final secondSourceStr = (secondSystemStr != null &&
-            secondSystemStr.toString().isNotEmpty &&
-            secondSystemStr.toString() != 'null')
-        ? secondSystemStr
-        : secondSystemV2Str;
+    // بناء قائمة permissions من V2 (المفاتيح التي view==true)
+    List<String> permissionsList = [];
+    _extractViewPermissions(firstSystemV2Str, permissionsList);
+    _extractViewPermissions(secondSystemV2Str, permissionsList);
 
-    if (secondSourceStr != null &&
-        secondSourceStr is String &&
-        secondSourceStr.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(secondSourceStr) as Map<String, dynamic>;
-        // التعامل مع V2 format: {"feature": {"view": true, "add": true, ...}}
-        decoded.forEach((feature, value) {
-          if (value is Map) {
-            // V2 format - نحول إلى V1 (إذا view=true يعني الميزة مفعلة)
-            final hasViewPermission = value['view'] == true;
-            secondPerms[feature] = hasViewPermission;
-            if (hasViewPermission && !permissionsList.contains(feature)) {
-              permissionsList.add(feature);
-            }
-          } else if (value == true) {
-            // V1 format
-            secondPerms[feature] = true;
-            if (!permissionsList.contains(feature)) {
-              permissionsList.add(feature);
-            }
-          }
-        });
-      } catch (_) {}
-    }
-
-    // ملاحظة: مدير الشركة (CompanyAdmin) يحصل على صلاحيات الشركة
-    // وليس جميع الصلاحيات - سيتم دمجها في CompanyLoginResponse
     final role = json['role'] ?? json['Role'] ?? 'Employee';
 
     // استخراج الاسم واسم المستخدم (دعم camelCase و PascalCase)
@@ -341,26 +221,33 @@ class CompanyUser {
       phone: phone,
       role: role,
       permissions: permissionsList,
-      firstSystemPermissions: firstPerms,
-      secondSystemPermissions: secondPerms,
-      rawFirstSystemV1: firstSystemStr?.toString(),
-      rawFirstSystemV2: firstSystemV2Str?.toString(),
-      rawSecondSystemV1: secondSystemStr?.toString(),
-      rawSecondSystemV2: secondSystemV2Str?.toString(),
+      rawFirstSystemV2: firstSystemV2Str,
+      rawSecondSystemV2: secondSystemV2Str,
       isActive: isActive,
       lastLogin: lastLoginStr != null ? DateTime.parse(lastLoginStr) : null,
     );
   }
 
-  /// التحقق من صلاحية معينة
-  bool hasPermission(String permission) {
-    return permissions.contains(permission) ||
-        firstSystemPermissions[permission] == true ||
-        secondSystemPermissions[permission] == true;
+  /// استخراج مفاتيح الميزات التي view==true من V2 JSON
+  static void _extractViewPermissions(
+      String? v2JsonStr, List<String> target) {
+    if (v2JsonStr == null || v2JsonStr.isEmpty || v2JsonStr == 'null') return;
+    try {
+      final decoded = jsonDecode(v2JsonStr) as Map<String, dynamic>;
+      decoded.forEach((feature, value) {
+        if (value is Map && value['view'] == true) {
+          if (!target.contains(feature)) target.add(feature);
+        } else if (value == true) {
+          // بعض الحقول قد تكون bool مباشرة
+          if (!target.contains(feature)) target.add(feature);
+        }
+      });
+    } catch (_) {}
   }
 
   /// هل هو مدير الشركة
-  bool get isAdmin => role == 'CompanyAdmin' || role == 'Admin';
+  bool get isAdmin =>
+      role == 'CompanyAdmin' || role == 'Admin' || role == 'Manager';
 
   /// هل هو محاسب
   bool get isAccountant => role == 'Accountant' || isAdmin;

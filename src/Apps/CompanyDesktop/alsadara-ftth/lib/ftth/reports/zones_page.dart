@@ -5,10 +5,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../services/auth_service.dart';
 import '../../utils/smart_text_color.dart';
-import '../auth/login_page.dart';
+import '../../services/zone_statistics_api_service.dart';
+import '../auth/auth_error_handler.dart';
 
 class ZonesPage extends StatefulWidget {
   final String authToken;
@@ -27,6 +28,7 @@ class _ZonesPageState extends State<ZonesPage> {
   // إضافة متغيرات ج��يدة لتفاصيل الزونات
   Map<String, Map<String, dynamic>> zoneDetails = {};
   Map<String, bool> zoneDetailsLoading = {};
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -136,7 +138,7 @@ class _ZonesPageState extends State<ZonesPage> {
         }
       }
     } catch (e) {
-      debugPrint('Error extracting zones from data: $e');
+      debugPrint('Error extracting zones from data');
     }
 
     return fetchedZones;
@@ -145,10 +147,9 @@ class _ZonesPageState extends State<ZonesPage> {
   Future<void> fetchZones() async {
     try {
       // 1) محاولة الجلب من admin كتعليمات المستخدم للمعلومات العامة
-      final adminUrl = Uri.parse(
-          'https://admin.ftth.iq/api/locations/zones?pageSize=1000&pageNumber=1');
+      final adminUrl =
+          'https://admin.ftth.iq/api/locations/zones?pageSize=1000&pageNumber=1';
       final headersAdmin = {
-        'Authorization': 'Bearer ${widget.authToken}',
         'Accept': 'application/json',
         // محاكاة وكيل مستخدم كما في تفاصيل الزون لتقليل مشاكل الرفض
         'User-Agent':
@@ -157,7 +158,7 @@ class _ZonesPageState extends State<ZonesPage> {
         'x-user-role': '0',
       };
 
-      final adminResponse = await http.get(adminUrl, headers: headersAdmin);
+      final adminResponse = await AuthService.instance.authenticatedRequest('GET', adminUrl, headers: headersAdmin);
       debugPrint('Admin Zones Response Code: ${adminResponse.statusCode}');
 
       List<String> fetchedZones = [];
@@ -178,6 +179,9 @@ class _ZonesPageState extends State<ZonesPage> {
           serverTotalCount = 0;
         }
         lastStatusCode = 200;
+      } else if (adminResponse.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         lastStatusCode = adminResponse.statusCode;
         lastBody = adminResponse.body;
@@ -186,9 +190,8 @@ class _ZonesPageState extends State<ZonesPage> {
 
       // 2) في حال فشل أو لم نجد عناصر، نرجع لواجهة api العامة السابقة كبديل
       if (fetchedZones.isEmpty) {
-        final apiUrl = Uri.parse('https://api.ftth.iq/api/locations/zones');
-        final apiResponse = await http.get(apiUrl, headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
+        final apiUrl = 'https://api.ftth.iq/api/locations/zones';
+        final apiResponse = await AuthService.instance.authenticatedRequest('GET', apiUrl, headers: {
           'Accept': 'application/json',
           'x-user-role': '0',
         });
@@ -204,6 +207,9 @@ class _ZonesPageState extends State<ZonesPage> {
             serverTotalCount = totalCount is int ? totalCount : 0;
           }
           lastStatusCode = 200;
+        } else if (apiResponse.statusCode == 401) {
+          if (mounted) AuthErrorHandler.handle401Error(context);
+          return;
         } else {
           lastStatusCode = apiResponse.statusCode;
           lastBody = apiResponse.body;
@@ -236,18 +242,13 @@ class _ZonesPageState extends State<ZonesPage> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('Exception in fetchZones: $e');
+      debugPrint('Exception in fetchZones');
       // التحقق من أن الخطأ ليس متعلقاً بانتهاء الجلسة أو التوكن
       if (e.toString().contains('انتهت جلسة المستخدم') ||
           e.toString().contains('لا يوجد توكن صالح') ||
           e.toString().contains('401') ||
           e.toString().contains('Unauthorized')) {
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-            (Route<dynamic> route) => false,
-          );
-        }
+        if (mounted) AuthErrorHandler.handle401Error(context);
         return;
       }
       if (!mounted) return;
@@ -263,10 +264,9 @@ class _ZonesPageState extends State<ZonesPage> {
     try {
       debugPrint('🔍 جلب تفاصيل الزون: $zoneId');
 
-      final url = Uri.parse(
-          'https://admin.ftth.iq/api/network-elements?zoneId=$zoneId');
-      final response = await http.get(url, headers: {
-        'Authorization': 'Bearer ${widget.authToken}',
+      final url =
+          'https://admin.ftth.iq/api/network-elements?zoneId=$zoneId';
+      final response = await AuthService.instance.authenticatedRequest('GET', url, headers: {
         'Accept': 'application/json',
         'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -306,12 +306,15 @@ class _ZonesPageState extends State<ZonesPage> {
           debugPrint('  - عدد ONT Vendors: ${details['totalOntVendors']}');
           return details;
         }
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return null;
       } else {
         debugPrint('❌ فشل جلب تفاصيل الزون $zoneId: ${response.statusCode}');
         debugPrint('📄 رسالة الخطأ: ${response.body}');
       }
     } catch (e) {
-      debugPrint('💥 خطأ في جلب تفاصيل الزون $zoneId: $e');
+      debugPrint('💥 خطأ في جلب تفاصيل الزون $zoneId');
     }
 
     return null;
@@ -624,6 +627,205 @@ class _ZonesPageState extends State<ZonesPage> {
     );
   }
 
+  /// تصدير الزونات مع FAT إلى سيرفر VPS
+  Future<void> _exportToVps() async {
+    if (_isExporting || zones.isEmpty) return;
+
+    setState(() => _isExporting = true);
+    _exportCancelled = false;
+
+    try {
+      // عرض dialog لتتبع التقدم
+      int processed = 0;
+      final total = zones.length;
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            // حفظ مرجع لتحديث الـ dialog
+            _dialogSetState = setDialogState;
+            _dialogProcessed = processed;
+            _dialogTotal = total;
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.cloud_upload, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text('تصدير إلى السيرفر'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(
+                    value: _dialogTotal > 0 && _dialogProcessed >= 0
+                        ? _dialogProcessed / _dialogTotal
+                        : null,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        _dialogProcessed < 0 ? Colors.orange : Colors.blue),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    _dialogProcessed < 0
+                        ? 'السيرفر محظور مؤقتاً... جاري الانتظار 30 ثانية'
+                        : 'جاري جلب FAT... $_dialogProcessed/$_dialogTotal',
+                    style: TextStyle(
+                      color: _dialogProcessed < 0 ? Colors.orange[800] : null,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _exportCancelled = true;
+                    Navigator.of(ctx).pop();
+                  },
+                  child: Text('إلغاء', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      // جلب FAT لكل زون (واحد تلو الآخر لتجنب حظر السيرفر)
+      final List<Map<String, dynamic>> syncData = [];
+      int consecutiveFailures = 0;
+
+      for (int i = 0; i < zones.length; i++) {
+        if (_exportCancelled) break;
+        final zoneName = zones[i];
+
+        // إذا كانت التفاصيل محمّلة مسبقاً
+        if (zoneDetails.containsKey(zoneName)) {
+          syncData.add({
+            'zoneName': zoneName,
+            'fats': zoneDetails[zoneName]!['totalFats'] ?? 0,
+          });
+        } else {
+          final zoneId = extractZoneId(zoneName);
+          if (zoneId == null) {
+            syncData.add({'zoneName': zoneName, 'fats': 0});
+          } else {
+            bool success = false;
+            for (int attempt = 0; attempt < 3; attempt++) {
+              try {
+                final details = await fetchZoneDetails(zoneId);
+                if (details != null) {
+                  syncData.add({
+                    'zoneName': zoneName,
+                    'fats': details['totalFats'] ?? 0,
+                  });
+                  success = true;
+                  consecutiveFailures = 0;
+                  break;
+                }
+              } catch (_) {}
+              // تأخير متزايد بين المحاولات
+              await Future.delayed(Duration(seconds: 3 * (attempt + 1)));
+            }
+            if (!success) {
+              syncData.add({'zoneName': zoneName, 'fats': 0});
+              consecutiveFailures++;
+              // إذا فشل 5 متتالية → توقف 30 ثانية
+              if (consecutiveFailures >= 5) {
+                if (_dialogSetState != null) {
+                  _dialogSetState!(() {
+                    _dialogProcessed = -1; // إشارة للانتظار
+                  });
+                }
+                await Future.delayed(const Duration(seconds: 30));
+                consecutiveFailures = 0;
+              }
+            }
+          }
+        }
+
+        processed = syncData.length;
+        // تحديث dialog التقدم
+        if (_dialogSetState != null) {
+          _dialogSetState!(() {
+            _dialogProcessed = processed;
+          });
+        }
+
+        // تأخير 1.5 ثانية بين كل طلب
+        if (i < zones.length - 1 && !zoneDetails.containsKey(zones[i])) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+        }
+      }
+
+      // إذا تم الإلغاء
+      if (_exportCancelled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم إلغاء التصدير (تم جلب ${syncData.length}/${zones.length})'),
+              backgroundColor: Colors.orange[700],
+            ),
+          );
+        }
+        return;
+      }
+
+      // إغلاق dialog التقدم
+      if (mounted) Navigator.of(context).pop();
+
+      // إرسال إلى VPS
+      final result =
+          await ZoneStatisticsApiService.instance.syncZones(syncData);
+
+      if (!mounted) return;
+
+      final added = result['added'] ?? 0;
+      final updated = result['updated'] ?? 0;
+      final unchanged = result['unchanged'] ?? 0;
+      final error = result['error'];
+
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'تم التصدير: أُضيف $added، حُدّث $updated، لم يتغير $unchanged'),
+            backgroundColor: Colors.green[700],
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // إغلاق dialog إذا كان مفتوحاً
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في التصدير: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      _dialogSetState = null;
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  // متغيرات مؤقتة للـ dialog
+  void Function(void Function())? _dialogSetState;
+  int _dialogProcessed = 0;
+  int _dialogTotal = 0;
+  bool _exportCancelled = false;
+
   // دالة مساعدة لبناء بطاقة إحصائية
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
@@ -758,6 +960,24 @@ class _ZonesPageState extends State<ZonesPage> {
             tooltip: 'بحث عن منطقة',
             onPressed: zones.isEmpty ? null : _openZoneSearchDialog,
           ),
+          if (_isExporting)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(smartIconColor),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: Icon(Icons.cloud_upload, color: smartIconColor, size: 28),
+              tooltip: 'تصدير إلى السيرفر (VPS)',
+              onPressed: zones.isEmpty ? null : _exportToVps,
+            ),
           IconButton(
             icon: Icon(Icons.refresh, color: smartIconColor, size: 28),
             tooltip: 'إعادة تحميل الصفحة',
@@ -1133,10 +1353,9 @@ class ZoneNotificationsPage extends StatelessWidget {
   const ZoneNotificationsPage({super.key, required this.authToken});
 
   Future<List<Map<String, dynamic>>> fetchNotifications() async {
-    final url = Uri.parse(
-        'https://api.ftth.iq/api/notifications?onlyUnreadNotifications=true&pageSize=50&pageNumber=1');
-    final response = await http.get(url, headers: {
-      'Authorization': 'Bearer $authToken',
+    final url =
+        'https://api.ftth.iq/api/notifications?onlyUnreadNotifications=true&pageSize=50&pageNumber=1';
+    final response = await AuthService.instance.authenticatedRequest('GET', url, headers: {
       'Accept': 'application/json',
     });
 

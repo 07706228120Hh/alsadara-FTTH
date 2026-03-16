@@ -177,10 +177,10 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         });
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب قائمة الشركات: $e');
+      debugPrint('❌ خطأ في جلب قائمة الشركات');
       setState(() {
         _loadingCompanies = false;
-        _companiesLoadError = 'خطأ في الاتصال: $e';
+        _companiesLoadError = 'خطأ في الاتصال';
       });
     }
   }
@@ -201,7 +201,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         });
       }
     } catch (e) {
-      debugPrint('خطأ في تحميل بيانات الدخول المحفوظة: $e');
+      debugPrint('خطأ في تحميل بيانات الدخول المحفوظة');
     }
   }
 
@@ -240,7 +240,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         jsonEncode(_savedCredentials.map((c) => c.toJson()).toList()),
       );
     } catch (e) {
-      debugPrint('خطأ في حفظ بيانات الدخول: $e');
+      debugPrint('خطأ في حفظ بيانات الدخول');
     }
   }
 
@@ -270,7 +270,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         );
       }
     } catch (e) {
-      debugPrint('خطأ في حذف بيانات الدخول: $e');
+      debugPrint('خطأ في حذف بيانات الدخول');
     }
   }
 
@@ -437,7 +437,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'حدث خطأ في الاتصال: $e';
+        _errorMessage = 'حدث خطأ في الاتصال';
       });
     } finally {
       if (mounted) {
@@ -456,27 +456,41 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       final user = _authService.currentUser!;
       final company = _authService.currentCompany!;
 
-      // V2: بناء pageAccess من PermissionManager
+      // V2: تحميل الصلاحيات من PermissionManager
       final pm = PermissionManager.instance;
       if (!pm.isLoaded) {
         await pm.loadPermissions();
       }
-      final Map<String, bool> pageAccess = pm.buildPageAccess();
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => HomePage(
             username: user.fullName.isNotEmpty ? user.fullName : user.username,
-            permissions: user.isAdmin ? 'مدير' : user.role,
+            permissions: user.isAdmin ? 'مدير' : _mapRoleToArabic(user.role),
             department: company.name,
             center: company.code,
             salary: '0',
-            pageAccess: pageAccess,
             tenantId: company.id,
             tenantCode: company.code,
           ),
         ),
       );
+    }
+  }
+
+  String _mapRoleToArabic(String role) {
+    switch (role.toLowerCase()) {
+      case 'company_admin':
+      case 'admin':
+      case 'manager':
+      case 'super_admin':
+        return 'مدير';
+      case 'technical_leader':
+        return 'ليدر';
+      case 'technician':
+        return 'فني';
+      default:
+        return role;
     }
   }
 

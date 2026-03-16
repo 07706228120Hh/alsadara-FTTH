@@ -8,6 +8,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
@@ -138,6 +139,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   List<SavedCredential> _savedCredentials = [];
   SavedCredential? _selectedCredential;
 
+  // App version
+  String _appVersion = '';
+
   // Animations
   late AnimationController _formAnimController;
   late Animation<double> _formSlideAnimation;
@@ -158,6 +162,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     super.initState();
     _initAnimations();
     _loadAllData();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _appVersion = info.version);
+    });
   }
 
   /// تحميل جميع البيانات مع SharedPreferences موحد
@@ -280,7 +287,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         });
       }
     } catch (e) {
-      debugPrint('خطأ في تحميل بيانات الدخول المحفوظة: $e');
+      debugPrint('خطأ في تحميل بيانات الدخول المحفوظة');
     }
   }
 
@@ -314,7 +321,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         jsonEncode(_savedCredentials.map((c) => c.toJson()).toList()),
       );
     } catch (e) {
-      debugPrint('خطأ في حفظ بيانات الدخول: $e');
+      debugPrint('خطأ في حفظ بيانات الدخول');
     }
   }
 
@@ -338,7 +345,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         _showSnackBar('تم حذف بيانات الدخول', Colors.orange);
       }
     } catch (e) {
-      debugPrint('خطأ في حذف بيانات الدخول: $e');
+      debugPrint('خطأ في حذف بيانات الدخول');
     }
   }
 
@@ -441,12 +448,11 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       final user = _authService.currentUser!;
       final company = _authService.currentCompany!;
 
-      // V2: بناء pageAccess من PermissionManager بدلاً من V1
+      // V2: تحميل الصلاحيات من PermissionManager
       final pm = PermissionManager.instance;
       if (!pm.isLoaded) {
         await pm.loadPermissions();
       }
-      final Map<String, bool> pageAccess = pm.buildPageAccess();
 
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -457,7 +463,6 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             department: company.name,
             center: company.code,
             salary: '0',
-            pageAccess: pageAccess,
             tenantId: company.id,
             tenantCode: company.code,
           ),
@@ -485,7 +490,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         print('⚠️ [Login] فشل تسجيل دخول FTTH الصامت: ${result.message}');
       }
     } catch (e) {
-      print('⚠️ [Login] خطأ في تسجيل دخول FTTH الصامت: $e');
+      print('⚠️ [Login] خطأ في تسجيل دخول FTTH الصامت');
     }
   }
 
@@ -1017,7 +1022,15 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                   color: Colors.grey[600],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 6),
+              Text(
+                'v$_appVersion',
+                style: GoogleFonts.cairo(
+                  fontSize: 11,
+                  color: Colors.grey[400],
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
 
             // شارة VPS API

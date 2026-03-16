@@ -73,7 +73,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في تحميل الرواتب: $e')),
+          SnackBar(content: Text('خطأ في تحميل الرواتب')),
         );
       }
     }
@@ -143,7 +143,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -199,7 +199,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -253,7 +253,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -306,7 +306,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }
@@ -1393,7 +1393,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ: $e'),
+                            content: Text('خطأ'),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -1451,7 +1451,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
         );
       }
     }

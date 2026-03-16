@@ -17,7 +17,6 @@ class AccountRecordsPage extends StatefulWidget {
   final Map<String, bool>? permissions; // تمرير صلاحيات من الصفحة الرئيسية
   // معلومات النظام الأول
   final String? firstSystemUsername;
-  final String? firstSystemPermissions;
   final String? firstSystemDepartment;
   final String? firstSystemCenter;
 
@@ -27,7 +26,6 @@ class AccountRecordsPage extends StatefulWidget {
     required this.activatedBy,
     this.permissions,
     this.firstSystemUsername,
-    this.firstSystemPermissions,
     this.firstSystemDepartment,
     this.firstSystemCenter,
   });
@@ -146,15 +144,6 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     final perms = widget.permissions;
     if (perms != null) {
       isAdmin = (perms['admin'] == true) || (perms['is_admin'] == true);
-    }
-    // أولوية النظام الأول: النص الحر لصلاحيات النظام الأول قد يحتوي على كلمة مدير
-    if (!isAdmin && widget.firstSystemPermissions != null) {
-      final fs = widget.firstSystemPermissions!.toLowerCase();
-      if (fs.contains('مدير') ||
-          fs.contains('admin') ||
-          fs.contains('administrator')) {
-        isAdmin = true;
-      }
     }
     // fallback إذا لم تكن هناك صلاحيات صريحة
     if (!isAdmin) {
@@ -351,7 +340,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     } catch (e) {
       String errorTitle;
       String errorMessage;
-      final errStr = e.toString();
+      final errStr = 'حدث خطأ';
       if (errStr.contains('timeout') || errStr.contains('انتهت مهلة')) {
         errorTitle = 'انتهت مهلة الاتصال';
         errorMessage =
@@ -1177,7 +1166,6 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
     // بيانات النظام الأول
     final fsUser = widget.firstSystemUsername;
-    final fsPerm = widget.firstSystemPermissions;
     final fsDept = widget.firstSystemDepartment;
     final fsCenter = widget.firstSystemCenter;
 
@@ -2138,7 +2126,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         print('تم تحديث toDate إلى: $toDate');
       }
     } catch (e) {
-      print('خطأ في اختيار التاريخ: $e');
+      print('خطأ في اختيار التاريخ');
     }
   }
 
@@ -3475,13 +3463,13 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         print('❌ لم يتم اختيار أي تاريخ');
       }
     } catch (e, stackTrace) {
-      print('❌ خطأ في فتح التقويم: $e');
+      print('❌ خطأ في فتح التقويم');
       print('📋 Stack trace: $stackTrace');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e'),
+            content: Text('خطأ'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 5),
           ),

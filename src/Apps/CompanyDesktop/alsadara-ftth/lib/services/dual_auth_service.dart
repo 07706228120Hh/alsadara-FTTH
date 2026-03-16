@@ -90,7 +90,7 @@ class DualAuthService {
       await prefs.remove('savedPassword');
       await prefs.remove('rememberMe');
     } catch (e) {
-      print('⚠️ [DualAuth] خطأ في مسح بيانات FTTH: $e');
+      print('⚠️ [DualAuth] خطأ في مسح بيانات FTTH');
     }
   }
 
@@ -149,7 +149,7 @@ class DualAuthService {
       try {
         await SessionManager.instance.onLoginCompleted();
       } catch (e) {
-        print('⚠️ [DualAuth] تعذر تحديث الجلسة: $e');
+        print('⚠️ [DualAuth] تعذر تحديث الجلسة');
       }
 
       // 5) حفظ الحالة
@@ -179,8 +179,8 @@ class DualAuthService {
         message: 'تم تسجيل دخول FTTH بنجاح',
       );
     } catch (e) {
-      print('❌ [DualAuth] خطأ غير متوقع: $e');
-      return FtthSilentLoginResult.failed('خطأ غير متوقع: $e');
+      print('❌ [DualAuth] خطأ غير متوقع');
+      return FtthSilentLoginResult.failed('خطأ غير متوقع');
     }
   }
 
@@ -216,7 +216,7 @@ class DualAuthService {
         return true;
       }
     } catch (e) {
-      print('⚠️ [DualAuth] خطأ في فحص جلسة FTTH: $e');
+      print('⚠️ [DualAuth] خطأ في فحص جلسة FTTH');
     }
     _isFtthLoggedIn = false;
     _ftthToken = null;

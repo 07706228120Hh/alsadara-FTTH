@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/ticket_updates_service.dart';
+import '../../services/vps_sync_service.dart';
 import '../../services/whatsapp_conversation_service.dart';
 import '../../pages/whatsapp_conversations_page.dart' as conv_page;
 import '../../widgets/window_close_handler_fixed.dart';
@@ -19,6 +20,7 @@ class FloatingToolbar {
   // حالة الأزرار
   static bool _showWhatsApp = false;
   static bool _showConversations = false;
+  static bool _showVpsSync = false;
   static bool _isAdmin = false;
 
   // notifiers
@@ -35,7 +37,7 @@ class FloatingToolbar {
     try {
       _rootOverlay = Overlay.of(context, rootOverlay: true);
     } catch (e) {
-      debugPrint('[FloatingToolbar] init overlay failed: $e');
+      debugPrint('[FloatingToolbar] init overlay failed');
       return;
     }
 
@@ -98,6 +100,12 @@ class FloatingToolbar {
     _scheduleRefresh();
   }
 
+  /// إظهار زر تحديث VPS
+  static void enableVpsSync() {
+    _showVpsSync = true;
+    _scheduleRefresh();
+  }
+
   /// جدولة تحديث آمن — دائماً يؤجَّل لما بعد الـ frame الحالي
   static bool _refreshScheduled = false;
   static void _scheduleRefresh() {
@@ -111,10 +119,11 @@ class FloatingToolbar {
 
   static void _refreshConfig() {
     final hasAny =
-        _showWhatsApp || _showConversations || _taskCount.value > 0;
+        _showWhatsApp || _showConversations || _showVpsSync || _taskCount.value > 0;
     _configNotifier.value = _ToolbarConfig(
       showWhatsApp: _showWhatsApp,
       showConversations: _showConversations,
+      showVpsSync: _showVpsSync,
       taskCount: _taskCount.value,
     );
     if (hasAny && !_isShowing) {
@@ -150,6 +159,7 @@ class FloatingToolbar {
     _rootOverlay = null;
     _showWhatsApp = false;
     _showConversations = false;
+    _showVpsSync = false;
     _refreshScheduled = false;
     // تأجيل تصفير القيم لتجنب خطأ widget tree locked
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -164,10 +174,12 @@ class FloatingToolbar {
 class _ToolbarConfig {
   final bool showWhatsApp;
   final bool showConversations;
+  final bool showVpsSync;
   final int taskCount;
   _ToolbarConfig({
     this.showWhatsApp = false,
     this.showConversations = false,
+    this.showVpsSync = false,
     this.taskCount = 0,
   });
 }
@@ -263,10 +275,15 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
           buttons.add(_buildWhatsAppBtn(context));
         }
 
+        // زر تحديث VPS
+        if (config.showVpsSync) {
+          buttons.add(_buildVpsSyncBtn(context));
+        }
+
         if (buttons.isEmpty) return const SizedBox.shrink();
 
-        // الموضع الافتراضي: وسط الأسفل
-        final dx = _dx ?? (mq.width / 2 - (buttons.length * 24));
+        // الموضع الافتراضي: يسار الأسفل
+        final dx = _dx ?? 16.0;
         final dy = _dy ?? (mq.height - 70);
 
         return Positioned(
@@ -428,7 +445,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
               if (token == null || token.isEmpty) return;
               Navigator.of(ctx).push(
                 PageRouteBuilder(
-                  pageBuilder: (c, a, b) => TKTATsPage(authToken: token),
+                  pageBuilder: (c, a, b) => TKTATsPage(authToken: token, initialTab: 'open'),
                   transitionDuration: Duration.zero,
                   reverseTransitionDuration: Duration.zero,
                   transitionsBuilder: (c, a, b, child) => child,
@@ -457,6 +474,65 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
         ),
        ),
       ),
+    );
+  }
+
+  Widget _buildVpsSyncBtn(BuildContext context) {
+    final vps = VpsSyncService.instance;
+    return AnimatedBuilder(
+      animation: vps,
+      builder: (_, __) {
+        final syncing = vps.isSyncing;
+        return Tooltip(
+          message: syncing ? vps.statusMessage : 'تحديث البيانات من السيرفر',
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Material(
+                color: syncing ? Colors.blue.shade600 : Colors.indigo.shade600,
+                shape: const CircleBorder(),
+                elevation: 2,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: syncing
+                      ? null
+                      : () async {
+                          final result = await vps.syncFromVps();
+                          if (context.mounted) {
+                            final msg = result.success
+                                ? 'تم التحديث — ${result.totalCount} مشترك'
+                                : result.error ?? 'فشل التحديث';
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(msg),
+                                duration: const Duration(seconds: 3),
+                                backgroundColor:
+                                    result.success ? Colors.green : Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  child: Center(
+                    child: syncing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.cloud_download,
+                            color: Colors.white, size: 18),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/accounting_service.dart';
+import '../../services/accounting_cache_service.dart';
 import 'chart_of_accounts_page.dart';
 
 /// صفحة الإحصائيات - داشبورد محاسبي بمخططات بيانية (شاشة واحدة بدون تمرير)
@@ -63,17 +64,41 @@ class _StatisticsPageState extends State<StatisticsPage> {
       _errorMessage = null;
     });
     try {
-      final results = await Future.wait([
-        AccountingService.instance.getDashboard(companyId: widget.companyId),
-        AccountingService.instance.getAccounts(companyId: widget.companyId),
-        AccountingService.instance
-            .getFundsOverview(companyId: widget.companyId),
-      ]);
-      if (!mounted) return;
+      // محاولة التحميل من الكاش أولاً
+      final cachedAccounts = await AccountingCacheService.loadAccounts();
 
-      final dashResult = results[0];
-      final accountsResult = results[1];
-      final fundsResult = results[2];
+      late final Map<String, dynamic> dashResult;
+      late final Map<String, dynamic> accountsResult;
+      late final Map<String, dynamic> fundsResult;
+
+      if (cachedAccounts != null) {
+        // الحسابات موجودة في الكاش — جلب الداشبورد والأموال فقط
+        final results = await Future.wait([
+          AccountingService.instance.getDashboard(companyId: widget.companyId),
+          AccountingService.instance
+              .getFundsOverview(companyId: widget.companyId),
+        ]);
+        dashResult = results[0];
+        accountsResult = {'success': true, 'data': cachedAccounts};
+        fundsResult = results[1];
+      } else {
+        // لا يوجد كاش — جلب الكل بالتوازي
+        final results = await Future.wait([
+          AccountingService.instance.getDashboard(companyId: widget.companyId),
+          AccountingService.instance.getAccounts(companyId: widget.companyId),
+          AccountingService.instance
+              .getFundsOverview(companyId: widget.companyId),
+        ]);
+        dashResult = results[0];
+        accountsResult = results[1];
+        fundsResult = results[2];
+        // حفظ الحسابات في الكاش
+        if (accountsResult['success'] == true) {
+          final accountsList = (accountsResult['data'] as List?) ?? [];
+          AccountingCacheService.saveAccounts(accountsList);
+        }
+      }
+      if (!mounted) return;
 
       if (dashResult['success'] == true) {
         final data = dashResult['data'] is Map<String, dynamic>
@@ -112,7 +137,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'خطأ في الاتصال: $e';
+        _errorMessage = 'خطأ في الاتصال';
         _isLoading = false;
       });
     }

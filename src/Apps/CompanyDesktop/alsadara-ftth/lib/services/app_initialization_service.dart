@@ -20,7 +20,7 @@ class AppInitializationService {
 
       debugPrint('✅ تم تهيئة التطبيق بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة التطبيق: $e');
+      debugPrint('❌ خطأ في تهيئة التطبيق');
       rethrow;
     }
   }
@@ -61,7 +61,7 @@ class AppInitializationService {
       debugPrint('✅ الإعدادات صحيحة');
       return true;
     } catch (e) {
-      debugPrint('❌ خطأ في التحقق من الإعدادات: $e');
+      debugPrint('❌ خطأ في التحقق من الإعدادات');
       return false;
     }
   }
@@ -82,7 +82,7 @@ class AppInitializationService {
 
       debugPrint('✅ تم إنشاء الإعدادات الافتراضية');
     } catch (e) {
-      debugPrint('❌ خطأ في إنشاء الإعدادات الافتراضية: $e');
+      debugPrint('❌ خطأ في إنشاء الإعدادات الافتراضية');
     }
   }
 
@@ -92,7 +92,7 @@ class AppInitializationService {
       // يمكن إضافة منطق تحديث الإعدادات من .env هنا
       debugPrint('🔄 تم تحديث الإعدادات من البيئة');
     } catch (e) {
-      debugPrint('❌ خطأ في تحديث الإعدادات: $e');
+      debugPrint('❌ خطأ في تحديث الإعدادات');
     }
   }
 }

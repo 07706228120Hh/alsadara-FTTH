@@ -295,7 +295,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+            content: Text('خطأ', style: GoogleFonts.cairo()),
             backgroundColor: Colors.red,
           ),
         );
@@ -1256,7 +1256,13 @@ class _HrInfoTabState extends State<HrInfoTab> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2))))
                 : DropdownButtonFormField<int?>(
-                    value: _selectedScheduleId,
+                    value: _selectedScheduleId != null &&
+                            _schedulesList.any((s) =>
+                                (s['id'] ?? s['Id']) == _selectedScheduleId ||
+                                int.tryParse((s['id'] ?? s['Id']).toString()) ==
+                                    _selectedScheduleId)
+                        ? _selectedScheduleId
+                        : null,
                     isDense: true,
                     style: GoogleFonts.cairo(fontSize: 13, color: _valueColor),
                     decoration: InputDecoration(

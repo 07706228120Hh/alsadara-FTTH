@@ -180,7 +180,7 @@ class AutoUpdateService {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في التحقق من التحديثات: $e');
+      debugPrint('❌ خطأ في التحقق من التحديثات');
     }
     return null;
   }
@@ -200,7 +200,7 @@ class AutoUpdateService {
         if (newParts[i] < currentParts[i]) return false;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في مقارنة الإصدارات: $e');
+      debugPrint('❌ خطأ في مقارنة الإصدارات');
     }
     return false;
   }
@@ -262,7 +262,7 @@ class AutoUpdateService {
         return filePath;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل التحديث: $e');
+      debugPrint('❌ خطأ في تحميل التحديث');
     }
     return null;
   }
@@ -306,7 +306,7 @@ class AutoUpdateService {
       }
       return true;
     } catch (e) {
-      debugPrint('❌ خطأ في تثبيت التحديث: $e');
+      debugPrint('❌ خطأ في تثبيت التحديث');
     }
     return false;
   }

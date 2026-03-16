@@ -2,8 +2,12 @@
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../services/period_closing_service.dart';
+import '../../services/audit_trail_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../widgets/accounting_skeleton.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة القيود المحاسبية
 class JournalEntriesPage extends StatefulWidget {
@@ -20,6 +24,10 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   String? _errorMessage;
   List<dynamic> _entries = [];
   String _statusFilter = 'all'; // all, Draft, Posted, Voided
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _total = 0;
+  static const int _pageSize = 50;
 
   @override
   void initState() {
@@ -27,7 +35,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({int page = 1}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -36,7 +44,19 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
       final result = await AccountingService.instance
           .getJournalEntries(companyId: widget.companyId);
       if (result['success'] == true) {
-        final all = (result['data'] is List) ? result['data'] as List : [];
+        List all;
+        if (result['data'] is Map) {
+          final dataMap = result['data'] as Map<String, dynamic>;
+          all = (dataMap['items'] ?? dataMap['entries'] ?? []) as List;
+          _currentPage = (dataMap['page'] ?? page) as int;
+          _totalPages = (dataMap['totalPages'] ?? 1) as int;
+          _total = (dataMap['total'] ?? all.length) as int;
+        } else {
+          all = (result['data'] is List) ? result['data'] as List : [];
+          _currentPage = 1;
+          _totalPages = 1;
+          _total = all.length;
+        }
         if (_statusFilter != 'all') {
           _entries = all
               .where((e) => e['Status']?.toString() == _statusFilter)
@@ -48,7 +68,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         _errorMessage = result['message'] ?? 'خطأ';
       }
     } catch (e) {
-      _errorMessage = 'خطأ: $e';
+      _errorMessage = 'خطأ';
     }
     setState(() {
       _isLoading = false;
@@ -68,9 +88,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
               _buildFilterBar(),
               Expanded(
                 child: _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                    ? const AccountingSkeleton(rows: 8, columns: 4)
                     : _errorMessage != null
                         ? Center(
                             child: Column(
@@ -89,6 +107,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                           ))
                         : _buildList(),
               ),
+              _buildPaginationBar(),
             ],
           ),
         ),
@@ -160,38 +179,39 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                 foregroundColor: AccountingTheme.textSecondary),
           ),
           SizedBox(width: isMobile ? 0 : context.accR.spaceXS),
-          isMobile
-              ? SizedBox(
-                  height: 30,
-                  child: ElevatedButton(
+          if (PermissionManager.instance.canAdd('accounting.journals'))
+            isMobile
+                ? SizedBox(
+                    height: 30,
+                    child: ElevatedButton(
+                      onPressed: _showCreateDialog,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AccountingTheme.neonGreen,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: Size(30, 30),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6)),
+                      ),
+                      child: Icon(Icons.add, size: 16),
+                    ),
+                  )
+                : ElevatedButton.icon(
                     onPressed: _showCreateDialog,
+                    icon: Icon(Icons.add, size: context.accR.iconS),
+                    label: Text('إنشاء قيد',
+                        style: GoogleFonts.cairo(
+                            fontSize: context.accR.financialSmall)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AccountingTheme.neonGreen,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size(30, 30),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: context.accR.spaceL,
+                          vertical: context.accR.spaceS),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6)),
+                          borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: Icon(Icons.add, size: 16),
                   ),
-                )
-              : ElevatedButton.icon(
-                  onPressed: _showCreateDialog,
-                  icon: Icon(Icons.add, size: context.accR.iconS),
-                  label: Text('إنشاء قيد',
-                      style: GoogleFonts.cairo(
-                          fontSize: context.accR.financialSmall)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.accR.spaceL,
-                        vertical: context.accR.spaceS),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
         ],
       ),
     );
@@ -507,45 +527,49 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   if (status == 'Draft') ...[
-                    TextButton.icon(
-                      onPressed: () => _showEditEntryDialog(entry),
-                      icon: Icon(Icons.edit, size: context.accR.iconXS),
-                      label: Text('تعديل',
-                          style: TextStyle(fontSize: context.accR.small)),
-                      style: TextButton.styleFrom(
-                          foregroundColor: AccountingTheme.info),
-                    ),
+                    if (PermissionManager.instance.canEdit('accounting.journals'))
+                      TextButton.icon(
+                        onPressed: () => _showEditEntryDialog(entry),
+                        icon: Icon(Icons.edit, size: context.accR.iconXS),
+                        label: Text('تعديل',
+                            style: TextStyle(fontSize: context.accR.small)),
+                        style: TextButton.styleFrom(
+                            foregroundColor: AccountingTheme.info),
+                      ),
                     SizedBox(width: context.accR.spaceS),
-                    TextButton.icon(
-                      onPressed: () => _postEntry(entry),
-                      icon: Icon(Icons.check_circle, size: context.accR.iconXS),
-                      label: Text('ترحيل',
-                          style: TextStyle(fontSize: context.accR.small)),
-                      style: TextButton.styleFrom(
-                          foregroundColor: AccountingTheme.success),
-                    ),
+                    if (PermissionManager.instance.canEdit('accounting.journals'))
+                      TextButton.icon(
+                        onPressed: () => _postEntry(entry),
+                        icon: Icon(Icons.check_circle, size: context.accR.iconXS),
+                        label: Text('ترحيل',
+                            style: TextStyle(fontSize: context.accR.small)),
+                        style: TextButton.styleFrom(
+                            foregroundColor: AccountingTheme.success),
+                      ),
                     SizedBox(width: context.accR.spaceS),
                   ],
                   if (status == 'Posted')
-                    TextButton.icon(
-                      onPressed: () => _voidEntry(entry),
-                      icon: Icon(Icons.cancel, size: context.accR.iconXS),
-                      label: Text('إلغاء',
-                          style: TextStyle(fontSize: context.accR.small)),
-                      style: TextButton.styleFrom(
-                          foregroundColor: AccountingTheme.danger),
-                    ),
+                    if (PermissionManager.instance.canEdit('accounting.journals'))
+                      TextButton.icon(
+                        onPressed: () => _voidEntry(entry),
+                        icon: Icon(Icons.cancel, size: context.accR.iconXS),
+                        label: Text('إلغاء',
+                            style: TextStyle(fontSize: context.accR.small)),
+                        style: TextButton.styleFrom(
+                            foregroundColor: AccountingTheme.danger),
+                      ),
                   if (status != 'Voided') ...[
                     SizedBox(width: context.accR.spaceS),
-                    TextButton.icon(
-                      onPressed: () => _confirmDeleteEntry(entry),
-                      icon:
-                          Icon(Icons.delete_outline, size: context.accR.iconXS),
-                      label: Text('حذف',
-                          style: TextStyle(fontSize: context.accR.small)),
-                      style: TextButton.styleFrom(
-                          foregroundColor: AccountingTheme.danger),
-                    ),
+                    if (PermissionManager.instance.canDelete('accounting.journals'))
+                      TextButton.icon(
+                        onPressed: () => _confirmDeleteEntry(entry),
+                        icon:
+                            Icon(Icons.delete_outline, size: context.accR.iconXS),
+                        label: Text('حذف',
+                            style: TextStyle(fontSize: context.accR.small)),
+                        style: TextButton.styleFrom(
+                            foregroundColor: AccountingTheme.danger),
+                      ),
                   ],
                 ],
               ),
@@ -553,6 +577,34 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPaginationBar() {
+    if (_totalPages <= 1) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        color: AccountingTheme.bgCard,
+        border: Border(top: BorderSide(color: AccountingTheme.borderColor)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            onPressed: _currentPage > 1 ? () => _loadData(page: _currentPage - 1) : null,
+            icon: const Icon(Icons.chevron_right, color: AccountingTheme.textSecondary),
+          ),
+          Text(
+            'صفحة $_currentPage من $_totalPages ($_total سجل)',
+            style: GoogleFonts.cairo(color: AccountingTheme.textSecondary, fontSize: 13),
+          ),
+          IconButton(
+            onPressed: _currentPage < _totalPages ? () => _loadData(page: _currentPage + 1) : null,
+            icon: const Icon(Icons.chevron_left, color: AccountingTheme.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 
@@ -820,6 +872,11 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                             return;
                           }
                           Navigator.pop(ctx);
+                          // فحص الفترة المحاسبية
+                          final periodOk = await PeriodClosingService.checkAndWarnIfClosed(
+                            context, date: DateTime.now(), companyId: widget.companyId ?? '',
+                          );
+                          if (!periodOk) return;
                           final userId =
                               VpsAuthService.instance.currentUser?.id;
                           final result = await AccountingService.instance
@@ -839,6 +896,12 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                           );
                           if (result['success'] == true) {
                             _snack('تم إنشاء القيد', AccountingTheme.success);
+                            AuditTrailService.instance.log(
+                              action: AuditAction.create,
+                              entityType: AuditEntityType.journalEntry,
+                              entityId: result['data']?['Id']?.toString() ?? '',
+                              entityDescription: 'قيد: ${descCtrl.text}',
+                            );
                             _loadData();
                           } else {
                             _snack(result['message'] ?? 'خطأ',
@@ -885,11 +948,26 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     );
     if (confirm != true) return;
 
+    // فحص الفترة المحاسبية
+    final postDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? entry['CreatedAt']?.toString() ?? '');
+    if (postDate != null) {
+      final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+        context, date: postDate, companyId: widget.companyId ?? '',
+      );
+      if (!allowed) return;
+    }
+
     final result = await AccountingService.instance.postJournalEntry(
         entry['Id'].toString(),
         approvedById: VpsAuthService.instance.currentUser?.id);
     if (result['success'] == true) {
       _snack('تم ترحيل القيد', AccountingTheme.success);
+      AuditTrailService.instance.log(
+        action: AuditAction.post,
+        entityType: AuditEntityType.journalEntry,
+        entityId: entry['Id']?.toString() ?? '',
+        entityDescription: 'قيد: ${entry['Description'] ?? ''}',
+      );
       _loadData();
     } else {
       _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -924,10 +1002,25 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     );
     if (confirm != true) return;
 
+    // فحص الفترة المحاسبية
+    final voidDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? entry['CreatedAt']?.toString() ?? '');
+    if (voidDate != null) {
+      final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+        context, date: voidDate, companyId: widget.companyId ?? '',
+      );
+      if (!allowed) return;
+    }
+
     final result = await AccountingService.instance
         .voidJournalEntry(entry['Id'].toString());
     if (result['success'] == true) {
       _snack('تم إلغاء القيد', AccountingTheme.success);
+      AuditTrailService.instance.log(
+        action: AuditAction.void_,
+        entityType: AuditEntityType.journalEntry,
+        entityId: entry['Id']?.toString() ?? '',
+        entityDescription: 'قيد: ${entry['Description'] ?? ''}',
+      );
       _loadData();
     } else {
       _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -1040,6 +1133,14 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final editDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? entry['CreatedAt']?.toString() ?? '');
+                if (editDate != null) {
+                  final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: editDate, companyId: widget.companyId ?? '',
+                  );
+                  if (!allowed) return;
+                }
                 final result =
                     await AccountingService.instance.updateJournalEntry(
                   entry['Id'].toString(),
@@ -1050,6 +1151,12 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                 );
                 if (result['success'] == true) {
                   _snack('تم تحديث القيد', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.edit,
+                    entityType: AuditEntityType.journalEntry,
+                    entityId: entry['Id']?.toString() ?? '',
+                    entityDescription: 'قيد: ${descCtrl.text}',
+                  );
                   _loadData();
                 } else {
                   _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
@@ -1088,10 +1195,24 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
+                // فحص الفترة المحاسبية
+                final delDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? entry['CreatedAt']?.toString() ?? '');
+                if (delDate != null) {
+                  final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: delDate, companyId: widget.companyId ?? '',
+                  );
+                  if (!allowed) return;
+                }
                 final result = await AccountingService.instance
                     .deleteJournalEntry(entry['Id'].toString());
                 if (result['success'] == true) {
                   _snack('تم حذف القيد', AccountingTheme.success);
+                  AuditTrailService.instance.log(
+                    action: AuditAction.delete,
+                    entityType: AuditEntityType.journalEntry,
+                    entityId: entry['Id']?.toString() ?? '',
+                    entityDescription: 'قيد: ${entry['Description'] ?? ''}',
+                  );
                   _loadData();
                 } else {
                   _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);

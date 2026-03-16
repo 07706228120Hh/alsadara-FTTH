@@ -6,8 +6,9 @@ library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../auth/auth_error_handler.dart';
+import '../../services/auth_service.dart';
 // يمكن لاحقاً استخدام نظام الألوان الذكي إن لزم
 
 /// صفحة عرض نتائج واجهة الباقات والعروض
@@ -39,15 +40,15 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
     });
     try {
       debugPrint('[PlansBundles] fetching bundles...');
-      final resp = await http.get(
-        Uri.parse(
-            'https://admin.ftth.iq/api/plans/bundles?includePrices=false'),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-        },
+      final resp = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/plans/bundles?includePrices=false',
       );
       if (!mounted) return;
+      if (resp.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
+      }
       if (resp.statusCode == 200) {
         _rawBody = resp.body;
         Map<String, dynamic>? data;
@@ -61,7 +62,7 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
             _error = 'بنية غير متوقعة للبيانات';
           }
         } catch (e) {
-          debugPrint('[PlansBundles] JSON decode error: $e');
+          debugPrint('[PlansBundles] JSON decode error');
           _error = 'تعذر قراءة البيانات';
         }
         if (data != null) {
@@ -75,8 +76,8 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
         setState(() => _error = 'فشل الجلب: ${resp.statusCode}');
       }
     } catch (e) {
-      debugPrint('[PlansBundles] exception: $e');
-      if (mounted) setState(() => _error = 'خطأ: $e');
+      debugPrint('[PlansBundles] exception');
+      if (mounted) setState(() => _error = 'خطأ');
     } finally {
       if (mounted) setState(() => _loading = false);
     }

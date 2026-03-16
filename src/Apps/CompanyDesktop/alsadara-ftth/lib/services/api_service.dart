@@ -20,7 +20,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في طلب GET: $e');
+      throw Exception('خطأ في طلب GET');
     }
   }
 
@@ -35,7 +35,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في طلب POST: $e');
+      throw Exception('خطأ في طلب POST');
     }
   }
 
@@ -50,7 +50,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في طلب PUT: $e');
+      throw Exception('خطأ في طلب PUT');
     }
   }
 
@@ -64,7 +64,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في طلب DELETE: $e');
+      throw Exception('خطأ في طلب DELETE');
     }
   }
 
@@ -79,7 +79,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في طلب PATCH: $e');
+      throw Exception('خطأ في طلب PATCH');
     }
   }
 
@@ -141,7 +141,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في الطلب المخصص: $e');
+      throw Exception('خطأ في الطلب المخصص');
     }
   }
 
@@ -156,7 +156,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      throw Exception('خطأ في الطلب المخصص: $e');
+      throw Exception('خطأ في الطلب المخصص');
     }
   }
 
@@ -174,7 +174,7 @@ class ApiService {
         throw Exception('خطأ في التحميل: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('خطأ في تحميل الملف: $e');
+      throw Exception('خطأ في تحميل الملف');
     }
   }
 }

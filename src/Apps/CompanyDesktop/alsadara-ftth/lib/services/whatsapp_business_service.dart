@@ -47,7 +47,7 @@ class WhatsAppBusinessService {
       await prefs.setString(_userTokenKey, token);
       debugPrint('✅ تم حفظ User Token بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ User Token: $e');
+      debugPrint('❌ خطأ في حفظ User Token');
     }
   }
 
@@ -58,7 +58,7 @@ class WhatsAppBusinessService {
       await prefs.setString(_appTokenKey, token);
       debugPrint('✅ تم حفظ App Token بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ App Token: $e');
+      debugPrint('❌ خطأ في حفظ App Token');
     }
   }
 
@@ -69,7 +69,7 @@ class WhatsAppBusinessService {
       await prefs.setString(_phoneNumberIdKey, phoneNumberId);
       debugPrint('✅ تم حفظ Phone Number ID بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ Phone Number ID: $e');
+      debugPrint('❌ خطأ في حفظ Phone Number ID');
     }
   }
 
@@ -80,7 +80,7 @@ class WhatsAppBusinessService {
       await prefs.setString(_businessAccountIdKey, accountId);
       debugPrint('✅ تم حفظ Business Account ID بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ Business Account ID: $e');
+      debugPrint('❌ خطأ في حفظ Business Account ID');
     }
   }
 
@@ -91,7 +91,7 @@ class WhatsAppBusinessService {
       await prefs.setString(_webhookVerifyTokenKey, token);
       debugPrint('✅ تم حفظ Webhook Verify Token بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ Webhook Verify Token: $e');
+      debugPrint('❌ خطأ في حفظ Webhook Verify Token');
     }
   }
 
@@ -102,7 +102,7 @@ class WhatsAppBusinessService {
       await prefs.setString(_n8nApiTokenKey, token);
       debugPrint('✅ تم حفظ n8n API Token بنجاح');
     } catch (e) {
-      debugPrint('❌ خطأ في حفظ n8n API Token: $e');
+      debugPrint('❌ خطأ في حفظ n8n API Token');
     }
   }
 
@@ -283,12 +283,12 @@ class WhatsAppBusinessService {
                 '💡 الحل: الرسالة محظورة مؤقتاً. قد يكون هناك انتهاك للسياسات.');
           }
         } catch (e) {
-          debugPrint('⚠️ خطأ في تحليل رسالة الخطأ: $e');
+          debugPrint('⚠️ خطأ في تحليل رسالة الخطأ');
         }
         return null;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في إرسال رسالة WhatsApp: $e');
+      debugPrint('❌ خطأ في إرسال رسالة WhatsApp');
       return null;
     }
   }
@@ -411,12 +411,12 @@ class WhatsAppBusinessService {
             debugPrint('💡 الحل: القالب بحاجة للمراجعة والموافقة من Meta.');
           }
         } catch (e) {
-          debugPrint('⚠️ خطأ في تحليل رسالة الخطأ: $e');
+          debugPrint('⚠️ خطأ في تحليل رسالة الخطأ');
         }
         return null;
       }
     } catch (e) {
-      debugPrint('❌ خطأ في إرسال Template: $e');
+      debugPrint('❌ خطأ في إرسال Template');
       return null;
     }
   }
@@ -501,11 +501,11 @@ class WhatsAppBusinessService {
               return false;
             }
           } catch (e) {
-            debugPrint('⚠️ Error parsing debug_token response: $e');
+            debugPrint('⚠️ Error parsing debug_token response');
           }
         }
       } catch (e) {
-        debugPrint('❌ Method 2 exception: $e');
+        debugPrint('❌ Method 2 exception');
       }
 
       // المحاولة 3: التحقق البسيط عبر endpoint الرسائل
@@ -571,11 +571,11 @@ class WhatsAppBusinessService {
               return true;
             }
           } catch (e) {
-            debugPrint('⚠️ Error parsing 400 response: $e');
+            debugPrint('⚠️ Error parsing 400 response');
           }
         }
       } catch (e) {
-        debugPrint('❌ Method 3 exception: $e');
+        debugPrint('❌ Method 3 exception');
       }
 
       // إذا وصلنا هنا، نعتبر أن هناك مشكلة
@@ -588,7 +588,7 @@ class WhatsAppBusinessService {
       debugPrint('   4. App ID مرتبط بـ WhatsApp Business Account الصحيح');
       return false;
     } catch (e) {
-      debugPrint('❌ خطأ عام في التحقق من Token: $e');
+      debugPrint('❌ خطأ عام في التحقق من Token');
       return false;
     }
   }
@@ -603,7 +603,7 @@ class WhatsAppBusinessService {
       await prefs.remove(_businessAccountIdKey);
       debugPrint('✅ تم حذف جميع بيانات الاعتماد');
     } catch (e) {
-      debugPrint('❌ خطأ في حذف البيانات: $e');
+      debugPrint('❌ خطأ في حذف البيانات');
     }
   }
 

@@ -78,7 +78,7 @@ class _GoogleDriveFilesPageState extends State<GoogleDriveFilesPage> {
         throw Exception('فشل في جلب الملفات من Google Drive');
       }
     } catch (e) {
-      _showErrorDialog('خطأ أثناء جلب الملفات: $e');
+      _showErrorDialog('خطأ أثناء جلب الملفات');
     } finally {
       setState(() {
         isLoading = false;
@@ -118,7 +118,7 @@ class _GoogleDriveFilesPageState extends State<GoogleDriveFilesPage> {
         _showErrorDialog('تعذر فتح الملف. تحقق من تثبيت Google Earth.');
       }
     } catch (e) {
-      _showErrorDialog('تعذر فتح الرابط: $e');
+      _showErrorDialog('تعذر فتح الرابط');
     }
   }
 

@@ -47,7 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final savedPhone = prefs.getString('rasoul_phone_number') ?? '';
       _rasoulPhoneController.text = savedPhone;
     } catch (e) {
-      print('Error loading Rasoul phone: $e');
+      print('Error loading Rasoul phone');
     } finally {
       setState(() {
         _isLoading = false;
@@ -81,8 +81,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
       _showMessage('تم حفظ رقم هاتف رسول بنجاح ✅');
     } catch (e) {
-      print('Error saving Rasoul phone: $e');
-      _showMessage('خطأ في حفظ رقم الهاتف: $e', isError: true);
+      print('Error saving Rasoul phone');
+      _showMessage('خطأ في حفظ رقم الهاتف', isError: true);
     } finally {
       setState(() {
         _isLoading = false;

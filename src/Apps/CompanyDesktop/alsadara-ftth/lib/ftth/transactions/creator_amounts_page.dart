@@ -361,7 +361,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('فشل في تصدير بيانات المنشآت: $e'),
+          content: Text('فشل في تصدير بيانات المنشآت'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape:

@@ -46,7 +46,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
         _error = result['message'] ?? 'خطأ في جلب البيانات';
       }
     } catch (e) {
-      _error = 'خطأ: $e';
+      _error = 'خطأ';
     }
 
     if (mounted) setState(() => _isLoading = false);

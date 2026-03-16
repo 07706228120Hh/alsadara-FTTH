@@ -146,7 +146,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
         });
       }
     } catch (e) {
-      print('Error loading saved profits: $e');
+      print('Error loading saved profits');
     }
   }
 
@@ -159,7 +159,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
       });
       await prefs.setString('saved_category_profits', json.encode(dataToSave));
     } catch (e) {
-      print('Error saving profits: $e');
+      print('Error saving profits');
     }
   }
 
@@ -188,7 +188,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
       print('عدد المعاملات في profitDetails: ${profitDetails.length}');
       _processProfitData();
     } catch (e) {
-      _showError('حدث خطأ في حساب الأرباح: $e');
+      _showError('حدث خطأ في حساب الأرباح');
     } finally {
       setState(() {
         isLoading = false;
@@ -2802,7 +2802,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
         ),
       );
     } catch (e) {
-      _showError('حدث خطأ في حفظ البيانات: $e');
+      _showError('حدث خطأ في حفظ البيانات');
     }
   }
 
@@ -3321,7 +3321,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
         );
       }
     } catch (e) {
-      _showError('حدث خطأ في تصدير البيانات: $e');
+      _showError('حدث خطأ في تصدير البيانات');
     }
   }
 

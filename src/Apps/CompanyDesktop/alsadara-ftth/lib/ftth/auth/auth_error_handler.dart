@@ -1,35 +1,49 @@
 import 'package:flutter/material.dart';
-import '../auth/login_page.dart'; // إضافة استيراد صفحة تسجيل الدخول للنظام الثاني
+import '../../pages/login/premium_login_page.dart';
+import '../../services/dual_auth_service.dart';
 
 /// خدمة مساعدة للتعامل مع أخطاء المصادقة في النظام الثاني
 class AuthErrorHandler {
-  /// معالجة خطأ 401 - توجيه إلى صفحة تسجيل الدخول للنظام الثاني مباشرة
-  static void handle401Error(
+  // منع تنفيذ عمليات متزامنة لتسجيل الدخول الصامت
+  static bool _isHandling401 = false;
+
+  /// معالجة خطأ 401 - محاولة تسجيل دخول صامت أولاً، ثم صفحة تسجيل الدخول
+  static Future<void> handle401Error(
     BuildContext context, {
     String? customMessage,
     String? firstSystemUsername,
-    String? firstSystemPermissions,
     String? firstSystemDepartment,
     String? firstSystemCenter,
     String? firstSystemSalary,
-    Map<String, bool>? firstSystemPageAccess,
-  }) {
+  }) async {
     if (!context.mounted) return;
+    if (_isHandling401) return; // منع التكرار
+    _isHandling401 = true;
 
-    // التوجيه المباشر إلى صفحة تسجيل الدخول للنظام الثاني بدون رسائل تنبيه
+    try {
+      // محاولة تسجيل دخول صامت أولاً
+      print('🔄 [AuthErrorHandler] خطأ 401 — محاولة تسجيل دخول صامت...');
+      final dual = DualAuthService.instance;
+      final result = await dual.silentFtthLogin();
+
+      if (result.success && dual.ftthToken != null) {
+        print('✅ [AuthErrorHandler] نجح تسجيل الدخول الصامت — لا حاجة لشاشة تسجيل الدخول');
+        _isHandling401 = false;
+        return; // تم التجديد — لا حاجة للتوجيه لصفحة تسجيل الدخول
+      }
+
+      print('⚠️ [AuthErrorHandler] فشل تسجيل الدخول الصامت: ${result.message}');
+    } catch (e) {
+      print('❌ [AuthErrorHandler] خطأ في تسجيل الدخول الصامت');
+    }
+
+    _isHandling401 = false;
+
+    // فشل التجديد الصامت — توجيه لصفحة تسجيل الدخول
+    if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => LoginPage(
-          // تمرير بيانات النظام الأول للاحتفاظ بها
-          firstSystemUsername: firstSystemUsername,
-          firstSystemPermissions: firstSystemPermissions,
-          firstSystemDepartment: firstSystemDepartment,
-          firstSystemCenter: firstSystemCenter,
-          firstSystemSalary: firstSystemSalary,
-          firstSystemPageAccess: firstSystemPageAccess,
-        ),
-      ),
-      (route) => false, // إزالة جميع الصفحات السابقة
+      MaterialPageRoute(builder: (_) => const PremiumLoginPage()),
+      (route) => false,
     );
   }
 
@@ -38,16 +52,15 @@ class AuthErrorHandler {
       {String? responseBody}) {
     switch (statusCode) {
       case 401:
-        handle401Error(context); // إزالة الرسالة المخصصة
+        handle401Error(context);
         return false;
       case 403:
-        // إزالة رسالة التنبيه للخطأ 403 أيضاً
         return false;
       case 200:
       case 201:
         return true;
       default:
-        return true; // دع الصفحة تتعامل مع أخطاء أخرى
+        return true;
     }
   }
 }

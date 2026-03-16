@@ -61,7 +61,7 @@ class _ChartsPageState extends State<ChartsPage> {
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'حدث خطأ: $e';
+        errorMessage = 'حدث خطأ';
         isLoading = false;
       });
     }

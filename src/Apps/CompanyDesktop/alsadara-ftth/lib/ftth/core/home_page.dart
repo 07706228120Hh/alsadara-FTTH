@@ -33,34 +33,33 @@ import '../widgets/notification_filter.dart';
 import '../whatsapp/whatsapp_bottom_window.dart'; // استيراد نظام الواتساب العائم
 import '../widgets/floating_toolbar.dart'; // شريط الأدوات العائم الموحد
 import '../../services/ticket_updates_service.dart'; // خدمة تحديثات التذاكر
-import '../../pages/whatsapp_conversations_page.dart'; // صفحة محادثات WhatsApp
 import '../../pages/whatsapp_bulk_sender_page.dart'; // صفحة إرسال رسائل جماعية (تحتوي على إعدادات API والتقارير)
-import '../../pages/whatsapp_templates_page.dart'; // صفحة إدارة قوالب الواتساب
 import '../../whatsapp/pages/whatsapp_settings_hub_page.dart'; // مركز إعدادات الواتساب الموحد
 
+import '../users/user_details_page.dart';
 import '../users/users_page.dart';
 import '../tickets/tktats_page.dart'; // تغيير الاستيراد إلى tktats_page
 import '../reports/zones_page.dart';
 import '../subscriptions/subscriptions_page.dart';
-import '../tickets/technicians_page.dart'; // صفحة فني التوصيل المحلية
 import '../transactions/caounter_details_page.dart';
 import '../reports/export_page.dart';
-import '../reports/data_page.dart'; // صفحة البيانات الموحدة (تفاصيل الوكلاء + بيانات المستخدمين)
 import '../users/quick_search_users_page.dart';
 import '../transactions/account_records_page.dart';
 import '../../pages/local_storage_page.dart'; // صفحة التخزين الداخلي
 import '../../pages/ftth/fetch_server_data_page.dart'; // صفحة جلب بيانات الموقع
+import '../../pages/ftth/ftth_company_page.dart'; // صفحة الشركة
 import '../../services/background_sync_service.dart'; // خدمة المزامنة في الخلفية
 import '../subscriptions/expiring_soon_page.dart';
 import '../transactions/transactions_page.dart';
 import '../../services/badge_service.dart';
 import '../../services/auth/session_manager.dart';
+import '../../services/vps_sync_service.dart';
 import '../../services/auth/auth_context.dart';
 import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
-import '../widgets/pikachu_overlay.dart';
+
+import '../../utils/responsive_helper.dart';
 import '../../pages/super_admin/super_admin_dashboard.dart'; // ✅ لوحة تحكم Super Admin
-import '../../test_webview_standalone.dart'; // صفحة اختبار WebView للتقارير
 import '../../pages/server_data_page.dart'; // صفحة بيانات السيرفر
 
 class HomePage extends StatefulWidget {
@@ -70,14 +69,11 @@ class HomePage extends StatefulWidget {
   final String? department; // إضافة القسم
   final String? center; // إضافة المركز
   final String? salary; // إضافة الراتب
-  final Map<String, bool>? pageAccess; // إضافة صلاحيات الصفحات
   // معلومات النظام الأول
   final String? firstSystemUsername; // اسم المستخدم في النظام الأول
-  final String? firstSystemPermissions; // صلاحيات النظام الأول
   final String? firstSystemDepartment; // قسم النظام الأول
   final String? firstSystemCenter; // مركز النظام الأول
   final String? firstSystemSalary; // راتب النظام الأول
-  final Map<String, bool>? firstSystemPageAccess; // صلاحيات صفحات النظام الأول
   // ✅ دعم وضع Super Admin
   final bool isSuperAdminMode; // هل دخل كـ Super Admin
   final String? tenantId; // معرف الشركة
@@ -89,13 +85,10 @@ class HomePage extends StatefulWidget {
     this.department,
     this.center,
     this.salary,
-    this.pageAccess,
     this.firstSystemUsername,
-    this.firstSystemPermissions,
     this.firstSystemDepartment,
     this.firstSystemCenter,
     this.firstSystemSalary,
-    this.firstSystemPageAccess,
     this.isSuperAdminMode = false,
     this.tenantId,
     this.tenantCode,
@@ -111,7 +104,7 @@ class HomePage extends StatefulWidget {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool('whatsapp_auto_send') ?? true; // مُفعل افتراضياً
     } catch (e) {
-      debugPrint('❌ خطأ في تحميل إعداد الإرسال التلقائي: $e');
+      debugPrint('❌ خطأ في تحميل إعداد الإرسال التلقائي');
       return true; // افتراضي مُفعل في حالة الخطأ
     }
   }
@@ -135,6 +128,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool isLoadingDashboard = true;
   bool isRefreshing = false;
   Map<String, dynamic> dashboardData = {};
+  int _expiringSoonCount = 0;
   int hierarchyLevel = 0;
   double walletBalance = 0.0;
   double commission = 0.0;
@@ -145,53 +139,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   String? partnerName;
   bool isAdmin = false;
   DateTime? lastUpdateTime; // نظام إدارة الصلاحيات - الحالة الافتراضية
-  // نظام إدارة الصلاحيات - إعطاء صلاحيات أساسية للجميع
-  final Map<String, bool> _defaultPermissions = {
-    'users': false, // السماح بعرض المستخدمين للجميع
-    'subscriptions': false, // السماح بعرض الاشتراكات للجميع
-    'tasks': false, // السماح بعرض المهام للجميع
-    'zones': false, // منع إدارة المناطق افتراضياً (للمديرين فقط)
-    'accounts': false, // منع إدارة الحسابات افتراضياً (للمديرين فقط)
-    'account_records': false, // منع سجلات الحسابات افتراضياً (مستقلة)
-    'export': false, // منع ترحيل البيانات افتراضياً (للمديرين فقط)
-    'agents': false, // تعطيل افتراضياً وإظهاره عبر زر الصلاحيات
-    'google_sheets': false, // منع حفظ البيانات في الخادم افتراضياً
-    'whatsapp': false, // منع إرسال رسائل WhatsApp افتراضياً
-    'wallet_balance': false, // السماح بمشاهدة رصيد المحفظة للجميع
-    'expiring_soon':
-        false, // التحكم بزر "الانتهاء قريباً" في الوصول السريع والقائمة
-    'quick_search': false, // التحكم بزر "البحث السريع" في الوصول السريع
-    'transactions': false, // تعطيل افتراضياً وإظهاره عبر زر الصلاحيات
-    'notifications': false, // تعطيل افتراضياً وإظهاره عبر زر الصلاحيات
-    'audit_logs': false, // منع الوصول لسجل التدقيق افتراضياً (للمديرين فقط)
-    // مفاتيح جديدة لعناصر كانت تظهر دائماً
-    'whatsapp_link': false, // ربط الواتساب (QR)
-    'whatsapp_settings': false, // إعدادات الواتساب
-    'plans_bundles': false, // باقات وعروض
-    'technicians': false, // فني التوصيل (محلي) مخفي افتراضياً
-    'whatsapp_business_api': false, // إعدادات WhatsApp Business API
-    'whatsapp_bulk_sender': false, // إرسال رسائل جماعية
-    'whatsapp_conversations_fab': false, // الزر العائم لمحادثات الواتساب
-    'whatsapp_templates': false, // إدارة قوالب الواتساب
-    'local_storage': false, // التخزين المحلي للمشتركين
-    'local_storage_import': false, // زر استيراد البيانات في التخزين المحلي
-    'superset_reports': false, // تقارير Superset
-    'server_data': false, // بيانات السيرفر
-    'dashboard_project': false, // مشروع Dashboard
-    'fetch_server_data': false, // جلب بيانات الموقع
-  };
-
-  Map<String, bool> _userPermissions = {};
   // أعلام للتحميل المبكر وتحكم تكرار الطلبات
   bool _earlyPrefetchStarted = false;
   bool _dashboardRequested = false;
   bool _walletRequested = false;
 
-  // متغيرات إعدادات الواتساب
-  String? _defaultWhatsAppPhone;
-  bool _useWhatsAppWeb = true;
-  bool _whatsAppAutoSend = true; // الإرسال التلقائي للواتساب - مُفعل افتراضياً
-  bool _isGeneratingWhatsAppLink = false;
+  // Sidebar state (للشاشات العريضة)
+  bool _sidebarExpanded = false;
+  Timer? _autoCollapseTimer;
+
+  // --- البحث السريع في الشاشة الرئيسية ---
+  final TextEditingController _searchNameCtrl = TextEditingController();
+  final TextEditingController _searchPhoneCtrl = TextEditingController();
+  final List<dynamic> _searchZones = [];
+  final List<dynamic> _searchResults = [];
+  String _searchZoneId = '';
+  int _searchPage = 1;
+  int _searchTotal = 0;
+  bool _searchLoading = false;
+  bool _searchLoadingMore = false;
+  bool _searchDone = false; // هل تم تنفيذ بحث سابق
+  bool _searchWaiting = false; // انتظار debounce
+  int _searchSeq = 0;
+  int _lastSearchSeq = 0;
+  Timer? _searchDebounce;
+  final ScrollController _searchScrollCtrl = ScrollController();
 
   @override
   void initState() {
@@ -207,10 +179,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _initializeAnimations();
     _initializeApp();
     _startEarlyPrefetch();
-
-    // تحميل إعدادات الواتساب
-    _loadDefaultWhatsAppPhone();
-    _loadWhatsAppSettings();
+    _fetchSearchZones();
+    _searchScrollCtrl.addListener(_onSearchScroll);
 
     // بيكاتشو يُدار الآن من Overlay عالمي (لا حاجة لتحميل إعداداته هنا)
 
@@ -225,6 +195,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // إعداد إشعار المزامنة في الخلفية
     _setupBackgroundSyncNotification();
+
+    // بدء المزامنة التلقائية من VPS (تنزيل صامت في الخلفية)
+    VpsSyncService.instance.startAutoSync();
 
     // الزر العائم للواتساب يتم إظهاره بعد تحميل الصلاحيات في _initializeApp
   }
@@ -282,8 +255,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _showGlobalWhatsAppButton();
-        // التأكد من إظهار بيكاتشو وزر التحكم
-        PikachuOverlay.ensureVisible(context);
       }
     });
   }
@@ -308,19 +279,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    // الأولوية الثالثة: فحص الصلاحيات من النظام الأول
-    if (widget.firstSystemPermissions != null &&
-        widget.firstSystemPermissions!.isNotEmpty) {
-      final permissionsToCheck = widget.firstSystemPermissions!.toLowerCase();
-      if (permissionsToCheck.contains('مدير') ||
-          permissionsToCheck.contains('admin') ||
-          permissionsToCheck.contains('administrator')) {
-        debugPrint(
-          'تم تحديد المدير من خلال صلاحيات النظام الأول: ${widget.firstSystemPermissions}',
-        );
-        return true;
-      }
-    }
     debugPrint('لم يتم تحديد المدير - مستخدم عادي (لا توجد صلاحيات مدير)');
     return false;
   }
@@ -427,6 +385,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!_dashboardRequested) {
       _dashboardRequested = true;
       fetchDashboardData();
+      _fetchExpiringSoonCount();
     }
     if (partnerId != null && !_walletRequested) {
       _walletRequested = true;
@@ -447,6 +406,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    VpsSyncService.instance.stopAutoSync();
+    _autoCollapseTimer?.cancel();
     // التحقق من وجود Timer قبل إلغائه
     if (_timer != null && _timer!.isActive) {
       _timer!.cancel();
@@ -457,6 +418,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _refreshAnimationController.dispose();
     _cardAnimationController.dispose();
     _counterAnimationController.dispose();
+    _searchDebounce?.cancel();
+    _searchNameCtrl.dispose();
+    _searchPhoneCtrl.dispose();
+    _searchScrollCtrl.dispose();
 
     // تنظيف شريط الأدوات العائم الموحد
     FloatingToolbar.dispose();
@@ -490,11 +455,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     AuthErrorHandler.handle401Error(
       context,
       firstSystemUsername: widget.firstSystemUsername,
-      firstSystemPermissions: widget.firstSystemPermissions,
       firstSystemDepartment: widget.firstSystemDepartment,
       firstSystemCenter: widget.firstSystemCenter,
       firstSystemSalary: widget.firstSystemSalary,
-      firstSystemPageAccess: widget.firstSystemPageAccess,
     );
   }
 
@@ -674,15 +637,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> refreshToken() async {
     try {
-      // لا حاجة لهذه الدالة لأن AuthService يدير التحديث التلقائي
-      // تم تعطيل إشعار نجاح تحديث التوكن حسب الطلب (صامت)
+      // جلب التوكن الحالي من AuthService (يتم تجديده تلقائياً إذا اقترب من الانتهاء)
+      final freshToken = await AuthService.instance.getAccessToken();
+      if (freshToken != null && freshToken != currentToken && mounted) {
+        setState(() {
+          currentToken = freshToken;
+        });
+        // تحديث التوكن في الخدمات الأخرى
+        TicketUpdatesService.instance.updateAuthToken(freshToken);
+      }
     } catch (e) {
-      // التحقق من أن الخطأ ليس متعلقاً بانتهاء الجلسة
       if (e.toString().contains('انتهت جلسة المستخدم')) {
         _handle401Error();
         return;
       }
-      showError("حدث خطأ أ��ناء تجديد التوكن: $e");
     }
   } // نظام محدود لتحديد الصلاحيات الإدارية - النظام الأول فقط
 
@@ -705,33 +673,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    // المعيار الثالث: صلاحيات النظام الأول
-    if (widget.firstSystemPermissions != null &&
-        widget.firstSystemPermissions!.isNotEmpty) {
-      final permissionsToCheck = widget.firstSystemPermissions!.toLowerCase();
-      if (permissionsToCheck.contains('مدير') ||
-          permissionsToCheck.contains('admin') ||
-          permissionsToCheck.contains('administrator')) {
-        debugPrint(
-            'مدير معتمد من النظام الأول: ${widget.firstSystemPermissions}');
-        return true;
-      }
-    }
-
     debugPrint('مستخدم عادي - لم توجد صلاحيات مدير');
     return false;
   }
 
-  // فحص خاص لصلاحيات مدير النظام الأول فقط
+  // فحص خاص لصلاحيات مدير النظام الأول فقط (يستخدم PermissionManager بدلاً من النص)
   bool _isFirstSystemAdmin() {
-    if (widget.firstSystemPermissions != null &&
-        widget.firstSystemPermissions!.isNotEmpty) {
-      final permissionsToCheck = widget.firstSystemPermissions!.toLowerCase();
-      return permissionsToCheck.contains('مدير') ||
-          permissionsToCheck.contains('admin') ||
-          permissionsToCheck.contains('administrator');
-    }
-    return false;
+    return PermissionManager.instance.canView('users');
   }
 
   Future<void> fetchDashboardData() async {
@@ -799,6 +747,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           isLoadingDashboard = false;
         });
       }
+    }
+  }
+
+  /// جلب عدد الاشتراكات المنتهية قريباً (خلال 3 أيام)
+  Future<void> _fetchExpiringSoonCount() async {
+    try {
+      final now = DateTime.now();
+      final from = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final to3 = now.add(const Duration(days: 3));
+      final to = '${to3.year}-${to3.month.toString().padLeft(2, '0')}-${to3.day.toString().padLeft(2, '0')}';
+
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://admin.ftth.iq/api/subscriptions?pageSize=1&fromExpirationDate=$from&toExpirationDate=$to',
+      );
+      if (response.statusCode == 200 && mounted) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _expiringSoonCount = (data['totalCount'] ?? 0) as int;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ تعذر جلب عدد المنتهي قريباً');
     }
   }
 
@@ -895,7 +866,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _handle401Error();
         return;
       }
-      _showErrorMessage('فشل في تحديث البيانات: $e');
+      _showErrorMessage('فشل في تحديث البيانات');
     } finally {
       if (mounted) {
         _refreshAnimationController.stop();
@@ -928,7 +899,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _handle401Error();
         return;
       }
-      _showErrorMessage('فشل في التحديث الكامل: $e');
+      _showErrorMessage('فشل في التحديث الكامل');
     } finally {
       if (mounted) {
         _refreshAnimationController.stop();
@@ -956,9 +927,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // دوال إدارة الصلاحيات مع الحفظ الدائم للجميع (بما في ذلك المديرين)
+  // تحميل الصلاحيات من PermissionManager (V2)
   Future<void> _loadUserPermissions() async {
-    // V2: استخدام PermissionManager كمصدر وحيد للصلاحيات
     final pm = PermissionManager.instance;
     if (!pm.isLoaded) {
       await pm.loadPermissions();
@@ -966,16 +936,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     debugPrint(
         'تحميل الصلاحيات V2 - مدير النظام الأول: ${_isFirstSystemAdmin()}');
     debugPrint('اسم المستخدم: ${widget.username}');
-
-    // تحويل صلاحيات V2 إلى صلاحيات الصفحة المحلية
-    final permissions = <String, bool>{};
-    for (var key in _defaultPermissions.keys) {
-      permissions[key] = pm.canView(key);
-      debugPrint('صلاحية $key: ${permissions[key]} (V2 canView)');
-    }
-
-    setState(() => _userPermissions = permissions);
-    debugPrint('تم تحميل الصلاحيات النهائية: $_userPermissions');
+    // تحديث الواجهة بعد تحميل الصلاحيات
+    if (mounted) setState(() {});
   }
 
   // نافذة إدخال كلمة المرور للدخول لصفحة التحويلات
@@ -1041,7 +1003,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 if (context.mounted) {
                   ScaffoldMessenger.of(this.context).showSnackBar(
                     SnackBar(
-                      content: Text('خطأ في التحقق من كلمة المرور: $e'),
+                      content: Text('خطأ في التحقق من كلمة المرور'),
                       backgroundColor: Colors.red,
                       duration: const Duration(seconds: 3),
                     ),
@@ -1251,8 +1213,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return 'إعدادات الواتساب';
       case 'plans_bundles':
         return 'باقات وعروض';
-      case 'technicians':
-        return 'فني التوصيل';
       case 'whatsapp_business_api':
         return 'WhatsApp Business API';
       case 'whatsapp_bulk_sender':
@@ -1279,9 +1239,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return _hasPermission('wallet_balance');
   }
 
-  // دالة للحصول على جميع الصلاحيات (لاستخدامها في الصفحا�� الأخرى)
+  // دالة للحصول على جميع الصلاحيات (من PermissionManager مباشرة)
   Map<String, bool> getAllPermissions() {
-    return Map<String, bool>.from(_userPermissions);
+    final pm = PermissionManager.instance;
+    final result = <String, bool>{};
+    for (final entry in pm.firstSystemPermissions.entries) {
+      result[entry.key] = entry.value['view'] == true;
+    }
+    for (final entry in pm.secondSystemPermissions.entries) {
+      result[entry.key] = entry.value['view'] == true;
+    }
+    return result;
   }
 
   void showError(String message) {
@@ -1302,50 +1270,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // دوال إعدادات الواتساب
-  Future<void> _loadDefaultWhatsAppPhone() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final v = prefs.getString('default_whatsapp_phone');
-      if (v != null && v.trim().isNotEmpty) {
-        setState(() => _defaultWhatsAppPhone = v.trim());
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _saveDefaultWhatsAppPhone(String phone) async {
-    final prefs = await SharedPreferences.getInstance();
-    final clean = phone.trim();
-    await prefs.setString('default_whatsapp_phone', clean);
-    setState(() => _defaultWhatsAppPhone = clean);
-  }
-
-  Future<void> _loadWhatsAppSettings() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final useWebSaved = prefs.getBool('whatsapp_use_web') ?? true;
-      final autoSendSaved =
-          prefs.getBool('whatsapp_auto_send') ?? true; // مُفعل افتراضياً
-      setState(() {
-        _useWhatsAppWeb = useWebSaved;
-        _whatsAppAutoSend = autoSendSaved;
-      });
-    } catch (e) {
-      debugPrint('❌ خطأ في تحميل إعدادات الواتساب: $e');
-    }
-  }
-
   // بيكاتشو الآن في Overlay عالمي - لا حاجة لدوال محلية
-
-  Future<void> _saveWhatsAppSettings() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('whatsapp_use_web', _useWhatsAppWeb);
-      await prefs.setBool('whatsapp_auto_send', _whatsAppAutoSend);
-    } catch (e) {
-      debugPrint('❌ خطأ في حفظ إعدادات الواتساب: $e');
-    }
-  }
 
   void _openWhatsAppWebLogin() async {
     try {
@@ -1370,7 +1295,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         showMessage('تم تسجيل الدخول بنجاح لواتساب ويب', Colors.green);
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فتح صفحة ربط الواتساب: $e');
+      debugPrint('❌ خطأ في فتح صفحة ربط الواتساب');
       if (mounted) {
         showDialog(
           context: context,
@@ -1396,7 +1321,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   const Text('2. أعد تشغيل التطبيق'),
                   const SizedBox(height: 12),
                 ],
-                Text('تفاصيل الخطأ: ${e.toString()}'),
+                Text('تفاصيل الخطأ'),
               ],
             ),
             actions: [
@@ -1435,7 +1360,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فتح رابط التحميل: $e');
+      debugPrint('❌ خطأ في فتح رابط التحميل');
       if (mounted) {
         showMessage(
           'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
@@ -1443,156 +1368,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         );
       }
     }
-  }
-
-  void _openWhatsAppSettingsDialog() async {
-    // تحميل الإعدادات أولاً
-    await _loadDefaultWhatsAppPhone();
-    await _loadWhatsAppSettings();
-
-    final controller = TextEditingController(text: _defaultWhatsAppPhone ?? '');
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('إعداد الواتساب'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'رقم العميل (مع رمز الدولة بدون +)',
-                hintText: 'مثال: 9647XXXXXXXXX',
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: SwitchListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'واتساب ويب داخلي',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    subtitle: const Text(
-                      'إرسال عبر نافذة واتساب ويب داخل التطبيق',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    value: _useWhatsAppWeb,
-                    onChanged: (v) {
-                      setState(() => _useWhatsAppWeb = v);
-                      _saveWhatsAppSettings();
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: SwitchListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'الإرسال التلقائي',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    subtitle: const Text(
-                      'إرسال الرسالة تلقائياً بعد لصق النص (TAB×16 + Enter)',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    value: _whatsAppAutoSend,
-                    onChanged: (v) {
-                      setState(() => _whatsAppAutoSend = v);
-                      _saveWhatsAppSettings();
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isGeneratingWhatsAppLink
-                        ? null
-                        : () async {
-                            final val = controller.text.trim();
-                            if (val.isEmpty) {
-                              showMessage('ادخل الرقم أولاً', Colors.red);
-                              return;
-                            }
-
-                            if (_isGeneratingWhatsAppLink) return;
-                            setState(() => _isGeneratingWhatsAppLink = true);
-                            try {
-                              // استخدام رابط wa.me المباشر
-                              final msg = Uri.encodeComponent(
-                                'رسالة تجريبية من نظام الصفحة الرئيسية',
-                              );
-                              final url = 'https://wa.me/$val?text=$msg';
-                              await launchUrl(
-                                Uri.parse(url),
-                                mode: LaunchMode.externalApplication,
-                              );
-                            } catch (e) {
-                              if (mounted) {
-                                showMessage('خطأ: $e', Colors.red);
-                              }
-                            } finally {
-                              if (mounted) {
-                                setState(
-                                  () => _isGeneratingWhatsAppLink = false,
-                                );
-                              }
-                            }
-                          },
-                    icon: _isGeneratingWhatsAppLink
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(IconsaxPlusLinear.message),
-                    label: const Text('إرسال تجريبي'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              final val = controller.text.trim();
-              if (val.isEmpty) {
-                showMessage('الرقم فارغ', Colors.red);
-                return;
-              }
-              await _saveDefaultWhatsAppPhone(val);
-              await _saveWhatsAppSettings();
-              if (mounted) {
-                Navigator.of(ctx).pop();
-                showMessage('تم الحفظ', Colors.green);
-              }
-            },
-            icon: Icon(IconsaxPlusBold.directbox_send),
-            label: const Text('حفظ'),
-          ),
-        ],
-      ),
-    );
   }
 
   void changeHierarchyLevel(int level) {
@@ -1711,7 +1486,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                           _buildInfoRow(
                             'الصلاحيات',
-                            widget.firstSystemPermissions ?? 'غير محدد',
+                            widget.permissions ?? 'غير محدد',
                             IconsaxPlusLinear.shield_tick,
                           ),
                           _buildInfoRow(
@@ -2056,7 +1831,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        ..._userPermissions.entries.map((permission) {
+                        ...getAllPermissions().entries.map((permission) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: Row(
@@ -2316,7 +2091,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         FloatingToolbar.disableConversations();
       }
     } catch (e) {
-      debugPrint('⚠️ خطأ في إظهار الأزرار العائمة: $e');
+      debugPrint('⚠️ خطأ في إظهار الأزرار العائمة');
     }
   }
 
@@ -2408,13 +2183,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           Scaffold(
             backgroundColor: Colors.transparent,
             appBar: _buildAppBar(isTablet, isSmallPhone, screenWidth),
-            drawer: _buildDrawer(isTablet, isSmallPhone, screenWidth),
-            body: isLoadingDashboard
-                ? _buildLoadingIndicator(isTablet)
-                : _buildDashboardContent(isTablet, screenWidth),
+            drawer: screenWidth <= 700 ? _buildDrawer(isTablet, isSmallPhone, screenWidth) : null,
+            body: Row(
+              children: [
+                if (screenWidth > 700) _buildSidebar(isTablet, isSmallPhone),
+                Expanded(
+                  child: isLoadingDashboard
+                      ? _buildLoadingIndicator(isTablet)
+                      : _buildDashboardContent(isTablet, screenWidth),
+                ),
+              ],
+            ),
           ),
           // مؤشر الجلب في الخلفية - عائم
           _buildFloatingBackgroundSyncIndicator(),
+          // مؤشر تنزيل VPS العائم
+          _buildFloatingVpsSyncIndicator(),
         ],
       ),
     );
@@ -2558,6 +2342,82 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  /// مؤشر تنزيل VPS العائم — يظهر فقط أثناء التنزيل
+  Widget _buildFloatingVpsSyncIndicator() {
+    return ListenableBuilder(
+      listenable: VpsSyncService.instance,
+      builder: (context, _) {
+        final vps = VpsSyncService.instance;
+        if (!vps.isSyncing && vps.progress <= 0) {
+          return const SizedBox.shrink();
+        }
+
+        final isError = vps.lastResult?.success == false;
+        final color = isError ? const Color(0xFFDC2626) : const Color(0xFF0D9488);
+
+        return Positioned(
+          bottom: 16,
+          left: 16,
+          child: Material(
+            color: Colors.transparent,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (vps.isSyncing)
+                    SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: vps.progress > 0.05 ? vps.progress : null,
+                        valueColor: AlwaysStoppedAnimation(color),
+                        backgroundColor: color.withValues(alpha: 0.15),
+                      ),
+                    )
+                  else
+                    Icon(
+                      isError ? Icons.error_outline : Icons.check_circle_outline,
+                      size: 18, color: color,
+                    ),
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 220),
+                    child: Text(
+                      vps.statusMessage,
+                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (vps.isSyncing && vps.progress > 0.05) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '${(vps.progress * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   PreferredSizeWidget _buildAppBar(
     bool isTablet,
     bool isSmallPhone,
@@ -2580,91 +2440,70 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final actionPadding = isSmallPhone ? 6.0 : (isTablet ? 10.0 : 8.0);
     final actionIconSize = isSmallPhone ? 20.0 : (isTablet ? 28.0 : 24.0);
 
+    // لون موحد للأزرار
+    const btnColor = Color(0xFF94A3B8); // رمادي فاتح أنيق
+
+    Widget iconBtn({
+      required IconData icon,
+      required VoidCallback? onPressed,
+      required String tooltip,
+      bool animated = false,
+    }) {
+      final btn = IconButton(
+        icon: Icon(icon, color: Colors.white.withValues(alpha: 0.85), size: actionIconSize),
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: EdgeInsets.all(actionPadding),
+        constraints: const BoxConstraints(),
+      );
+      return Container(
+        margin: EdgeInsets.symmetric(horizontal: actionMarginH + 1),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(actionRadius),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 1,
+          ),
+        ),
+        child: animated
+            ? AnimatedBuilder(
+                animation: _refreshAnimationController,
+                builder: (context, child) => Transform.rotate(
+                  angle: _refreshAnimationController.value * 2 * 3.14159,
+                  child: btn,
+                ),
+              )
+            : btn,
+      );
+    }
+
     return AppBar(
       elevation: 0,
       toolbarHeight: appBarHeight,
       shadowColor: Colors.transparent,
       backgroundColor: Colors.transparent,
-      leading: Builder(
-        builder: (BuildContext context) {
-          return Container(
-            margin: EdgeInsets.all(leadingMargin),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF8B5CF6).withValues(alpha: 0.25),
-                  const Color(0xFF8B5CF6).withValues(alpha: 0.10),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(leadingRadius),
-              border: Border.all(
-                color: const Color(0xFF8B5CF6).withValues(alpha: 0.5),
-                width: actionBorderW,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: Icon(
-                IconsaxPlusBold.menu_1,
-                color: const Color(0xFFC4B5FD),
-                size: isSmallPhone ? 22.0 : (isTablet ? 26.0 : 24.0),
-              ),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-              tooltip: 'القائمة الجانبية',
-            ),
-          );
-        },
-      ),
+      automaticallyImplyLeading: false,
+      leadingWidth: 0,
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFF2C3E50), // أساس
-              const Color(0xFF34495E), // متوسط
-              const Color(0xFF2C3E50), // عودة
-              const Color(0xFF34495E), // تكرار
+              const Color(0xFF1E293B),
+              const Color(0xFF334155),
+              const Color(0xFF1E293B),
             ],
-            stops: const [0.0, 0.3, 0.7, 1.0],
+            stops: const [0.0, 0.5, 1.0],
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF2C3E50).withValues(alpha: 0.15),
-              blurRadius: 30,
-              spreadRadius: 2,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: const Color(0xFF2C3E50).withValues(alpha: 0.3),
-              blurRadius: 40,
-              spreadRadius: -5,
-              offset: const Offset(0, 10),
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
             ),
           ],
-        ),
-        // طبقة بريق شفافة فوق التدرج
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                const Color(0xFF3498DB).withValues(alpha: 0.05),
-                Colors.transparent,
-                Colors.black.withValues(alpha: 0.05),
-              ],
-              stops: const [0.0, 0.5, 1.0],
-            ),
-          ),
         ),
       ),
       centerTitle: true,
@@ -2672,61 +2511,46 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ? GestureDetector(
               onTap: _showUserInfoDialog,
               child: Container(
-                constraints: BoxConstraints(maxWidth: screenWidth * 0.4),
+                constraints: BoxConstraints(maxWidth: screenWidth * 0.45),
                 padding: EdgeInsets.symmetric(
-                  horizontal: isSmallPhone ? 8.0 : 10.0,
-                  vertical: isSmallPhone ? 4.0 : 6.0,
+                  horizontal: isSmallPhone ? 10.0 : 14.0,
+                  vertical: isSmallPhone ? 6.0 : 8.0,
                 ),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF3B82F6).withValues(alpha: 0.18),
-                      const Color(0xFF3B82F6).withValues(alpha: 0.06),
-                    ],
-                  ),
+                  color: Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12.0),
                   border: Border.all(
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                    color: Colors.white.withValues(alpha: 0.12),
                     width: 1,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       IconsaxPlusLinear.user,
-                      color: Colors.white,
-                      size: isSmallPhone ? 18.0 : (isTablet ? 20.0 : 19.0),
+                      color: Colors.white.withValues(alpha: 0.8),
+                      size: isSmallPhone ? 17.0 : 19.0,
                     ),
-                    SizedBox(width: isSmallPhone ? 4.0 : 6.0),
+                    SizedBox(width: isSmallPhone ? 6.0 : 8.0),
                     Flexible(
                       child: Text(
                         partnerName!,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize:
-                              isSmallPhone ? 12.0 : (isTablet ? 14.0 : 13.0),
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
+                          fontSize: isSmallPhone ? 12.0 : (isTablet ? 14.0 : 13.0),
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.3,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
                     ),
-                    SizedBox(width: isSmallPhone ? 2.0 : 4.0),
+                    SizedBox(width: isSmallPhone ? 4.0 : 6.0),
                     Icon(
                       IconsaxPlusLinear.info_circle,
-                      color: Colors.white.withValues(alpha: 0.7),
-                      size: isSmallPhone ? 16.0 : (isTablet ? 18.0 : 17.0),
+                      color: Colors.white.withValues(alpha: 0.5),
+                      size: isSmallPhone ? 15.0 : 16.0,
                     ),
                   ],
                 ),
@@ -2741,118 +2565,348 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
       actions: [
-        // ✅ زر العودة للوحة تحكم Super Admin
-        if (widget.isSuperAdminMode)
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: actionMarginH * 2),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(actionRadius - 2),
-              border: Border.all(
-                color: Colors.amber.withValues(alpha: 0.4),
-                width: 1,
-              ),
-            ),
-            child: IconButton(
-              icon: Icon(
-                IconsaxPlusBold.security_user,
-                color: Colors.amber,
-                size: actionIconSize,
-              ),
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => const SuperAdminDashboard(),
-                  ),
-                  (route) => false,
-                );
-              },
-              tooltip: 'العودة للوحة تحكم مدير النظام',
-            ),
-          ),
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: actionMarginH),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFEC4899).withValues(alpha: 0.22),
-                const Color(0xFFEC4899).withValues(alpha: 0.08),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(actionRadius),
-            border: Border.all(
-              color: const Color(0xFFEC4899).withValues(alpha: 0.45),
-              width: actionBorderW,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFEC4899).withValues(alpha: 0.15),
-                blurRadius: isSmallPhone ? 6 : 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: IconButton(
-            icon: Icon(
-              IconsaxPlusBold.arrow_right_1,
-              color: const Color(0xFFF9A8D4),
-              size: actionIconSize,
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            tooltip: 'رجوع',
-            padding: EdgeInsets.all(actionPadding),
-          ),
+        // ── الجهة اليسرى (في RTL): الرجوع ──
+        iconBtn(
+          icon: IconsaxPlusBold.arrow_right_1,
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'رجوع',
         ),
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: actionMarginH),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF10B981).withValues(alpha: 0.22),
-                const Color(0xFF10B981).withValues(alpha: 0.08),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(actionRadius),
-            border: Border.all(
-              color: const Color(0xFF10B981).withValues(alpha: 0.45),
-              width: actionBorderW,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                blurRadius: isSmallPhone ? 6 : 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: AnimatedBuilder(
-            animation: _refreshAnimationController,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _refreshAnimationController.value * 2 * 3.14159,
-                child: IconButton(
-                  icon: Icon(
-                    IconsaxPlusBold.refresh,
-                    color: const Color(0xFF6EE7B7),
-                    size: actionIconSize + 2,
-                  ),
-                  onPressed: isRefreshing ? null : _manualFullRefresh,
-                  tooltip: 'تحديث كامل',
-                  padding: EdgeInsets.all(actionPadding),
-                ),
+        if (widget.isSuperAdminMode)
+          iconBtn(
+            icon: IconsaxPlusBold.security_user,
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const SuperAdminDashboard()),
+                (route) => false,
               );
             },
+            tooltip: 'العودة للوحة تحكم مدير النظام',
           ),
+        // ── فاصل مرن ──
+        const Spacer(),
+        // ── الجهة اليمنى (في RTL): تحديث + قائمة ──
+        iconBtn(
+          icon: IconsaxPlusBold.refresh,
+          onPressed: isRefreshing ? null : _manualFullRefresh,
+          tooltip: 'تحديث كامل',
+          animated: true,
         ),
+        if (screenWidth <= 700)
+          Builder(
+            builder: (ctx) => iconBtn(
+              icon: IconsaxPlusBold.menu_1,
+              onPressed: () => Scaffold.of(ctx).openDrawer(),
+              tooltip: 'القائمة الجانبية',
+            ),
+          ),
+        SizedBox(width: leadingMargin),
       ],
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(24.0)),
+      ),
+    );
+  }
+
+  // ═══ Sidebar قابل للطي (للشاشات العريضة) ═══
+
+  bool _sidebarHovered = false;
+
+  void _toggleSidebar() {
+    _autoCollapseTimer?.cancel();
+    setState(() => _sidebarExpanded = !_sidebarExpanded);
+    if (_sidebarExpanded && !_sidebarHovered) {
+      _startAutoCollapseTimer();
+    }
+  }
+
+  void _startAutoCollapseTimer() {
+    _autoCollapseTimer?.cancel();
+    _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _sidebarExpanded && !_sidebarHovered) {
+        setState(() => _sidebarExpanded = false);
+      }
+    });
+  }
+
+  Widget _buildSidebar(bool isTablet, bool isSmallPhone) {
+    final r = context.responsive;
+    final expanded = _sidebarExpanded;
+    final width = expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth;
+    return MouseRegion(
+      onEnter: (_) {
+        _sidebarHovered = true;
+        _autoCollapseTimer?.cancel();
+      },
+      onExit: (_) {
+        _sidebarHovered = false;
+        if (_sidebarExpanded) _startAutoCollapseTimer();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        width: width,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(
+            left: BorderSide(color: Color(0xFFE8E8E8), width: 1),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(-2, 0),
+            ),
+          ],
+        ),
+        child: Column(
+        children: [
+          const SizedBox(height: 8),
+          // زر طي/فتح القائمة
+          InkWell(
+            onTap: _toggleSidebar,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                mainAxisAlignment:
+                    expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                children: [
+                  AnimatedRotation(
+                    turns: expanded ? 0.0 : 0.5,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.menu_open,
+                        color: const Color(0xFF2C3E50), size: r.iconSizeMedium),
+                  ),
+                  if (expanded) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'القائمة',
+                      style: TextStyle(
+                        fontSize: r.menuItemTitleSize,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2C3E50),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          const SizedBox(height: 8),
+          // ── عناصر القائمة ──
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                // if (_hasPermission('server_data'))
+                //   _sidebarBtn(
+                //     icon: IconsaxPlusBold.data,
+                //     label: 'بيانات السيرفر',
+                //     color: Colors.indigo,
+                //     onTap: () => navigateToPage(
+                //       DashboardProjectPage(authToken: currentToken),
+                //     ),
+                //   ),
+                if (_hasPermission('zones'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.location,
+                    label: 'إدارة الزونات',
+                    color: Colors.teal,
+                    onTap: () =>
+                        navigateToPage(ZonesPage(authToken: currentToken)),
+                  ),
+                if (_hasPermission('audit_logs'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.clock,
+                    label: 'سجل التدقيق',
+                    color: Colors.indigo,
+                    onTap: () => navigateToPage(
+                      CaounterDetailsPage(
+                        authToken: currentToken,
+                        username: widget.username,
+                      ),
+                    ),
+                  ),
+                if (_hasPermission('export'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.export_1,
+                    label: 'تصدير البيانات',
+                    color: Colors.brown,
+                    onTap: () =>
+                        navigateToPage(ExportPage(authToken: currentToken)),
+                  ),
+                if (_hasPermission('transactions'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.wallet_2,
+                    label: 'التحويلات',
+                    color: Colors.amber,
+                    onTap: _navigateToTransactionsWithPassword,
+                  ),
+                // مخفي — متاح من الواجهة الرئيسية
+                // if (_hasPermission('whatsapp_bulk_sender'))
+                //   _sidebarBtn(
+                //     icon: IconsaxPlusBold.send_2,
+                //     label: 'إرسال جماعي',
+                //     color: Colors.teal,
+                //     onTap: () =>
+                //         navigateToPage(const WhatsAppBulkSenderPage()),
+                //   ),
+                if (_hasPermission('whatsapp_settings'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.mobile,
+                    label: 'مركز الواتساب',
+                    color: Colors.green,
+                    onTap: () =>
+                        navigateToPage(const WhatsAppSettingsHubPage()),
+                  ),
+                if (_hasPermission('local_storage'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.box_1,
+                    label: 'التخزين الداخلي',
+                    color: Colors.cyan,
+                    onTap: () => navigateToPage(
+                      LocalStoragePage(authToken: currentToken),
+                    ),
+                  ),
+                // مخفي — متاح من الواجهة الرئيسية
+                // _sidebarBtn(
+                //   icon: IconsaxPlusBold.video_play,
+                //   label: 'مشتركي IPTV',
+                //   color: Colors.deepPurple,
+                //   onTap: () => navigateToPage(const IptvSubscribersPage()),
+                // ),
+                if (_hasPermission('fetch_server_data'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.cloud_connection,
+                    label: 'جلب بيانات الموقع',
+                    color: Colors.teal,
+                    onTap: () => navigateToPage(FetchServerDataPage(authToken: currentToken)),
+                  ),
+                _sidebarBtn(
+                  icon: IconsaxPlusBold.chart,
+                  label: 'تحليلات Superset',
+                  color: const Color(0xFF6A1B9A),
+                  onTap: () => navigateToPage(DashboardProjectPage(authToken: currentToken)),
+                ),
+                if (_hasPermission('quick_search'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.search_normal_1,
+                    label: 'البحث السريع',
+                    color: Colors.green,
+                    onTap: () => navigateToPage(
+                      QuickSearchUsersPage(
+                        authToken: currentToken,
+                        activatedBy: widget.username,
+                        hasServerSavePermission: hasServerSavePermission(),
+                        hasWhatsAppPermission: hasWhatsAppPermission(),
+                        isAdminFlag: isAdmin,
+                        importantFtthApiPermissions: _getImportantPermissions(),
+                      ),
+                    ),
+                  ),
+                if (_hasPermission('users'))
+                  _sidebarBtn(
+                    icon: IconsaxPlusBold.profile_2user,
+                    label: 'المشتركين',
+                    color: Colors.purple,
+                    onTap: () => navigateToPage(
+                      UsersPage(
+                        authToken: currentToken,
+                        activatedBy: widget.username,
+                        hasServerSavePermission: hasServerSavePermission(),
+                        hasWhatsAppPermission: hasWhatsAppPermission(),
+                        isAdminFlag: isAdmin,
+                        importantFtthApiPermissions: _getImportantPermissions(),
+                      ),
+                    ),
+                  ),
+                // مخفي — متاح من الواجهة الرئيسية
+                // if (_hasPermission('expiring_soon'))
+                //   _sidebarBtn(
+                //     icon: IconsaxPlusBold.timer_1,
+                //     label: 'المنتهي قريباً',
+                //     color: Colors.red,
+                //     onTap: () => navigateToPage(
+                //       ExpiringSoonPage(
+                //         activatedBy: widget.username,
+                //         hasServerSavePermission: hasServerSavePermission(),
+                //         hasWhatsAppPermission: hasWhatsAppPermission(),
+                //         importantFtthApiPermissions: _getImportantPermissions(),
+                //       ),
+                //     ),
+                //   ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _sidebarBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final r = context.responsive;
+    final expanded = _sidebarExpanded;
+    final iconBoxSize = r.scaled(24, 28, 32);
+    final iconInnerSize = r.iconSizeSmall;
+    final labelSize = r.menuItemSubtitleSize;
+    return Tooltip(
+      message: expanded ? '' : label,
+      preferBelow: false,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+            horizontal: expanded ? 4 : 4, vertical: 1),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(6),
+            hoverColor: color.withOpacity(0.15),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: expanded ? 6 : 0, vertical: 5),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.black, width: 0.5),
+              ),
+              child: expanded
+                  ? Row(
+                      children: [
+                        Container(
+                          width: iconBoxSize,
+                          height: iconBoxSize,
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Icon(icon, color: color, size: iconInnerSize),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: labelSize,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF333333),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      child: Icon(icon, color: color, size: iconInnerSize),
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -2871,7 +2925,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            _buildDrawerHeader(isTablet, isSmallPhone),
+            SizedBox(height: isSmallPhone ? 8 : 12),
             Container(
               color: const Color(0xFFF5F6FA),
               child: Column(
@@ -2884,29 +2938,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 📊 قسم البيانات والإدارة
                   // ═══════════════════════════════════════════════════════════════════
 
-                  // 0 تقارير Superset (WebView)
-                  if (_hasPermission('superset_reports'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.chart_21,
-                      title: 'تقارير Superset',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.blue,
-                      onTap: () => navigateToPage(const TestWebViewPage()),
-                    ),
-
-                  // 0.5 بيانات السيرفر (ملفات JSON المحلية)
-                  if (_hasPermission('server_data'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.data,
-                      title: 'بيانات السيرفر',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.indigo,
-                      onTap: () => navigateToPage(
-                        ServerDataPage(authToken: currentToken),
-                      ),
-                    ),
+                  // 0.5 بيانات السيرفر (ملفات JSON المحلية) — مخفي حالياً
+                  // if (_hasPermission('server_data'))
+                  //   _buildDrawerItem(
+                  //     icon: IconsaxPlusBold.data,
+                  //     title: 'بيانات السيرفر',
+                  //     isTablet: isTablet,
+                  //     isSmallPhone: isSmallPhone,
+                  //     color: Colors.indigo,
+                  //     onTap: () => navigateToPage(
+                  //       DashboardProjectPage(authToken: currentToken),
+                  //     ),
+                  //   ),
 
                   // 0.6 مشروع Dashboard (جلب بيانات الشارتات)
                   if (_hasPermission('dashboard_project'))
@@ -2921,17 +2964,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                     ),
 
-                  // 1 بيانات (تفاصيل الوكلاء + بيانات المستخدمين)
-                  if (_hasPermission('agents'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.folder_open,
-                      title: 'بيانات',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.deepPurple,
-                      onTap: () =>
-                          navigateToPage(DataPage(authToken: currentToken)),
-                    ),
 
                   // 2 إدارة الزونات
                   if (_hasPermission('zones'))
@@ -2992,19 +3024,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 💬 قسم الواتساب
                   // ═══════════════════════════════════════════════════════════════════
 
-                  // 6 محادثات WhatsApp
-                  if (_hasPermission('whatsapp_conversations_fab'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.message,
-                      title: 'محادثات WhatsApp',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.green,
-                      onTap: () => navigateToPage(
-                        WhatsAppConversationsPage(isAdmin: isAdmin),
-                      ),
-                    ),
-
                   // 7 إرسال رسائل جماعية (يحتوي على إعدادات API والتقارير)
                   if (_hasPermission('whatsapp_bulk_sender'))
                     _buildDrawerItem(
@@ -3017,27 +3036,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           navigateToPage(const WhatsAppBulkSenderPage()),
                     ),
 
-                  // 8 قوالب الرسائل
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.document_text,
-                    title: 'قوالب الرسائل',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.deepPurple,
-                    onTap: () => navigateToPage(const WhatsAppTemplatesPage()),
-                  ),
-
-                  // 9 إعدادات الواتساب
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.setting_2,
-                    title: 'إعدادات الواتساب',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.green,
-                    onTap: _openWhatsAppSettingsDialog,
-                  ),
-
-                  // 10 مركز إعدادات الواتساب (السيرفر، API، ويب)
+                  // 9 مركز إعدادات الواتساب (السيرفر، API، ويب)
                   if (_hasPermission('whatsapp_settings'))
                     _buildDrawerItem(
                       icon: IconsaxPlusBold.mobile,
@@ -3053,17 +3052,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // 🔧 قسم الخدمات
                   // ═══════════════════════════════════════════════════════════════════
 
-                  // 10 فني التوصيل
-                  if (_hasPermission('technicians'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.user_octagon,
-                      title: 'فني التوصيل',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.blueGrey,
-                      onTap: () => navigateToPage(const TechniciansPage()),
-                    ),
-
                   // 11 التخزين الداخلي
                   if (_hasPermission('local_storage'))
                     _buildDrawerItem(
@@ -3077,6 +3065,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                     ),
 
+                  // مخفي — متاح من الواجهة الرئيسية
+                  // _buildDrawerItem(
+                  //   icon: IconsaxPlusBold.video_play,
+                  //   title: 'مشتركي IPTV',
+                  //   isTablet: isTablet,
+                  //   isSmallPhone: isSmallPhone,
+                  //   color: Colors.deepPurple,
+                  //   onTap: () => navigateToPage(const IptvSubscribersPage()),
+                  // ),
+
                   // 12 جلب بيانات الموقع
                   if (_hasPermission('fetch_server_data'))
                     _buildDrawerItem(
@@ -3085,8 +3083,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       isTablet: isTablet,
                       isSmallPhone: isSmallPhone,
                       color: Colors.teal,
-                      onTap: () => navigateToPage(const FetchServerDataPage()),
+                      onTap: () => navigateToPage(FetchServerDataPage(authToken: currentToken)),
                     ),
+
+                  // 13 تحليلات Superset
+                  _buildDrawerItem(
+                    icon: IconsaxPlusBold.chart,
+                    title: 'تحليلات Superset',
+                    isTablet: isTablet,
+                    isSmallPhone: isSmallPhone,
+                    color: Colors.purple,
+                    onTap: () => navigateToPage(DashboardProjectPage(authToken: currentToken)),
+                  ),
 
                   // تمت إزالة زر معلومات الشريك من القائمة الجانبية بناءً على الطلب
 
@@ -3108,9 +3116,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       !_hasPermission('whatsapp_link') &&
                       !_hasPermission('whatsapp_settings') &&
                       !_hasPermission('plans_bundles') &&
-                      !_hasPermission('technicians') &&
                       !_hasPermission('local_storage') &&
-                      !_hasPermission('superset_reports') &&
                       !_hasPermission('server_data') &&
                       !_hasPermission('dashboard_project') &&
                       !_hasPermission('fetch_server_data'))
@@ -3272,116 +3278,47 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required MaterialColor color,
     required VoidCallback onTap,
   }) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    double scale;
-    if (screenWidth < 330) {
-      scale = 0.78;
-    } else if (screenWidth < 370) {
-      scale = 0.84;
-    } else if (screenWidth < 420) {
-      scale = 0.88;
-    } else if (screenWidth < 500) {
-      scale = 0.92;
-    } else if (screenWidth < 600) {
-      scale = 0.95;
-    } else {
-      scale = 1.0;
-    }
-
-    final double baseBox = isTablet ? 52 : 48;
-    final double boxSize = ((isSmallPhone ? 40 : baseBox * scale).clamp(
-      36,
-      52,
-    )).toDouble();
-    final double iconSize =
-        ((isSmallPhone ? 18 : (isTablet ? 24 : 20)) * scale).toDouble();
-    final double titleFont = ((isSmallPhone ? 12 : (isTablet ? 14 : 13)) *
-            (scale < 0.85 ? 0.95 : 1.0))
-        .toDouble();
-    final double trailingSize =
-        ((isSmallPhone ? 16 : (isTablet ? 20 : 18)) * scale).toDouble();
-    final double horizPad = ((isSmallPhone ? 8 : 12) * scale).toDouble();
-    final double vertPad = ((isSmallPhone ? 6 : 8) * scale).toDouble();
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            spreadRadius: -2,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ListTile(
-        leading: Container(
-          width: boxSize,
-          height: boxSize,
-          padding: EdgeInsets.all(isSmallPhone ? 8 : (boxSize * 0.22)),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                color.shade300.withValues(alpha: 0.12),
-                color.shade500.withValues(alpha: 0.25),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.pop(context);
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: color.withOpacity(0.08),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: isSmallPhone ? 12 : 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF333333),
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_left,
+                    color: const Color(0xFF999999), size: 18),
               ],
             ),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: color.shade400.withValues(alpha: 0.55),
-              width: 2.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: color.shade400.withValues(alpha: 0.2),
-                blurRadius: 14,
-                spreadRadius: -2,
-                offset: const Offset(0, 4),
-              ),
-              BoxShadow(
-                color: color.shade300.withValues(alpha: 0.08),
-                blurRadius: 24,
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Icon(
-            icon,
-            size: iconSize.clamp(16, 26).toDouble(),
-            color: color.shade300,
           ),
         ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: titleFont.clamp(11, 15).toDouble(),
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF1A1A1A),
-            height: 1.15,
-          ),
-        ),
-        trailing: Icon(
-          IconsaxPlusBold.arrow_left_2,
-          size: trailingSize.clamp(14, 20).toDouble(),
-          color: const Color(0xFF555555),
-        ),
-        onTap: () {
-          Navigator.pop(context);
-          onTap();
-        },
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: horizPad.clamp(8, 16).toDouble(),
-          vertical: vertPad.clamp(4, 12).toDouble(),
-        ),
-        minLeadingWidth: 0,
-        dense: true,
       ),
     );
   }
@@ -3497,6 +3434,438 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ========== البحث السريع في الشاشة الرئيسية ==========
+
+  String _toWestern(String s) {
+    const ea = '٠١٢٣٤٥٦٧٨٩';
+    const pe = '۰۱۲۳۴۵۶۷۸۹';
+    final b = StringBuffer();
+    for (final c in s.split('')) {
+      final i1 = ea.indexOf(c);
+      if (i1 != -1) { b.write(i1); continue; }
+      final i2 = pe.indexOf(c);
+      if (i2 != -1) { b.write(i2); continue; }
+      b.write(c);
+    }
+    return b.toString();
+  }
+
+  Future<void> _fetchSearchZones() async {
+    try {
+      final r = await AuthService.instance.authenticatedRequest(
+        'GET', 'https://api.ftth.iq/api/locations/zones',
+      );
+      if (r.statusCode == 200 && mounted) {
+        final data = jsonDecode(r.body);
+        final items = List<dynamic>.from(data['items'] as List? ?? []);
+        items.sort((a, b) {
+          final sa = a['self']?['displayValue']?.toString().trim() ?? '';
+          final sb = b['self']?['displayValue']?.toString().trim() ?? '';
+          final re = RegExp(r'^(\D*)(\d+)?');
+          final ma = re.firstMatch(sa), mb = re.firstMatch(sb);
+          final cmp = (ma?.group(1) ?? '').toLowerCase().compareTo((mb?.group(1) ?? '').toLowerCase());
+          if (cmp != 0) return cmp;
+          final na = int.tryParse(ma?.group(2) ?? ''), nb = int.tryParse(mb?.group(2) ?? '');
+          if (na != null && nb != null && na != nb) return na.compareTo(nb);
+          return sa.toLowerCase().compareTo(sb.toLowerCase());
+        });
+        setState(() { _searchZones..clear()..addAll(items); });
+      }
+    } catch (_) {}
+  }
+
+  void _onSearchQueryChanged() {
+    _searchDebounce?.cancel();
+    final name = _toWestern(_searchNameCtrl.text).trim();
+    final phone = _toWestern(_searchPhoneCtrl.text).replaceAll(RegExp(r'[^0-9+]'), '').trim();
+    if (name.isEmpty && phone.isEmpty) {
+      setState(() { _searchDone = false; _searchLoading = false; _searchWaiting = false; _searchResults.clear(); _searchTotal = 0; });
+      return;
+    }
+    setState(() => _searchWaiting = true);
+    _searchDebounce = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      // تحقق مرة أخرى بعد الانتظار — قد يكون المستخدم مسح النص
+      final n2 = _toWestern(_searchNameCtrl.text).trim();
+      final p2 = _toWestern(_searchPhoneCtrl.text).replaceAll(RegExp(r'[^0-9+]'), '').trim();
+      if (n2.isEmpty && p2.isEmpty) {
+        setState(() { _searchDone = false; _searchLoading = false; _searchWaiting = false; _searchResults.clear(); _searchTotal = 0; });
+        return;
+      }
+      setState(() { _searchPage = 1; _searchDone = true; _searchWaiting = false; });
+      _performQuickSearch();
+    });
+  }
+
+  void _onSearchScroll() {
+    if (!_searchDone || _searchLoadingMore || _searchLoading) return;
+    if ((_searchPage * 25) >= _searchTotal) return;
+    if (_searchScrollCtrl.position.pixels >= _searchScrollCtrl.position.maxScrollExtent - 200) {
+      setState(() { _searchPage++; _searchLoadingMore = true; });
+      _performQuickSearch(append: true);
+    }
+  }
+
+  Future<void> _performQuickSearch({bool append = false}) async {
+    final name = _toWestern(_searchNameCtrl.text).trim();
+    final phone = _toWestern(_searchPhoneCtrl.text).replaceAll(RegExp(r'[^0-9+]'), '').trim();
+    if (name.isEmpty && phone.isEmpty) {
+      if (!append) setState(() { _searchResults.clear(); _searchTotal = 0; });
+      return;
+    }
+    if (phone.isEmpty && name.isNotEmpty && name.length < 2) return;
+    final phoneDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (name.isEmpty && phoneDigits.isNotEmpty && phoneDigits.length < 7) return;
+
+    final seq = ++_searchSeq;
+    if (!append) setState(() { _searchLoading = true; if (_searchPage == 1) _searchResults.clear(); });
+
+    try {
+      var url = 'https://api.ftth.iq/api/customers?pageSize=25&pageNumber=$_searchPage&sortCriteria.property=self.displayValue&sortCriteria.direction=asc';
+      if (name.isNotEmpty) url += '&name=${Uri.encodeQueryComponent(name)}';
+      if (phone.isNotEmpty) url += '&phone=${Uri.encodeQueryComponent(phone)}';
+      if (_searchZoneId.isNotEmpty) url += '&zoneId=$_searchZoneId';
+
+      final r = await AuthService.instance.authenticatedRequest('GET', url);
+      if (!mounted || seq < _lastSearchSeq) return;
+
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        final items = List<dynamic>.from(data['items'] as List? ?? []);
+        setState(() {
+          _lastSearchSeq = seq;
+          _searchTotal = data['totalCount'] ?? 0;
+          if (append) { _searchResults.addAll(items); } else { _searchResults..clear()..addAll(items); }
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() { _searchLoading = false; _searchLoadingMore = false; _searchWaiting = false; });
+    }
+  }
+
+  void _resetQuickSearch() {
+    setState(() {
+      _searchNameCtrl.clear();
+      _searchPhoneCtrl.clear();
+      _searchZoneId = '';
+      _searchPage = 1;
+      _searchResults.clear();
+      _searchTotal = 0;
+      _searchDone = false;
+    });
+  }
+
+  Widget _buildQuickSearchSection(bool isLargeScreen) {
+    final r = context.responsive;
+    final bdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: Colors.black, width: 1.5));
+    final fbdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2));
+    final lbl = TextStyle(fontSize: r.bodySize, fontWeight: FontWeight.w700, color: Colors.grey.shade700);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // بطاقة البحث
+        Container(
+          padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.black, width: 2),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 3)),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // المنطقة — حقل بحث مع تصفية
+              SizedBox(
+                width: r.scaled(140, 180, 220),
+                child: Autocomplete<Map<String, dynamic>>(
+                  optionsBuilder: (textEditingValue) {
+                    final query = textEditingValue.text.trim().toLowerCase();
+                    final typed = _searchZones.cast<Map<String, dynamic>>();
+                    if (query.isEmpty) return typed;
+                    return typed.where((z) {
+                      final name = (z['self']?['displayValue'] ?? '').toString().toLowerCase();
+                      return name.contains(query);
+                    });
+                  },
+                  displayStringForOption: (z) => z['self']?['displayValue'] ?? '',
+                  onSelected: (z) {
+                    setState(() => _searchZoneId = z['self']?['id']?.toString() ?? '');
+                    if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty) _onSearchQueryChanged();
+                  },
+                  fieldViewBuilder: (ctx, controller, focusNode, onSubmit) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      textAlign: TextAlign.right,
+                      decoration: InputDecoration(
+                        labelText: 'المنطقة',
+                        labelStyle: lbl,
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        floatingLabelAlignment: FloatingLabelAlignment.center,
+                        filled: true, fillColor: Colors.white, isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
+                        prefixIcon: Icon(Icons.location_on, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                        suffixIcon: controller.text.isNotEmpty
+                            ? IconButton(
+                                tooltip: 'مسح المنطقة',
+                                icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                                onPressed: () {
+                                  controller.clear();
+                                  setState(() => _searchZoneId = '');
+                                  if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty) _onSearchQueryChanged();
+                                },
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              )
+                            : null,
+                        enabledBorder: bdr,
+                        focusedBorder: fbdr,
+                      ),
+                      style: TextStyle(fontSize: r.bodySize),
+                      onChanged: (v) {
+                        if (v.isEmpty) setState(() => _searchZoneId = '');
+                      },
+                    );
+                  },
+                  optionsViewBuilder: (ctx, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topRight,
+                      child: Material(
+                        elevation: 6,
+                        borderRadius: BorderRadius.circular(10),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: 250, maxWidth: r.scaled(140, 180, 220)),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (ctx, i) {
+                              final z = options.elementAt(i);
+                              final name = z['self']?['displayValue'] ?? '';
+                              return InkWell(
+                                onTap: () => onSelected(z),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  child: Text(name, style: const TextStyle(fontSize: 13), textAlign: TextAlign.right),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // اسم المشترك
+              Expanded(
+                flex: 3,
+                child: TextField(
+                  controller: _searchNameCtrl,
+                  textAlign: TextAlign.right,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
+                  onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
+                  decoration: InputDecoration(
+                    labelText: 'اسم المشترك',
+                    labelStyle: lbl,
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                        floatingLabelAlignment: FloatingLabelAlignment.center,
+                    filled: true, fillColor: Colors.white, isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
+                    prefixIcon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: r.iconSizeMedium),
+                    suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                    suffixIcon: (_searchLoading && _searchNameCtrl.text.isNotEmpty)
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : _searchWaiting
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
+                            : (_searchNameCtrl.text.isNotEmpty
+                                ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                                : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                    if (data?.text != null && data!.text!.isNotEmpty && mounted) {
+                                      _searchNameCtrl.text = _toWestern(data.text!).trim();
+                                      _searchNameCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchNameCtrl.text.length));
+                                      setState(() {}); _onSearchQueryChanged();
+                                    }
+                                  }, padding: EdgeInsets.zero, constraints: const BoxConstraints())),
+                    enabledBorder: bdr,
+                    focusedBorder: fbdr,
+                  ),
+                  style: TextStyle(fontSize: r.bodySize),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // رقم الهاتف
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _searchPhoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  textAlign: TextAlign.right,
+                  onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
+                  onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
+                  decoration: InputDecoration(
+                    labelText: 'رقم الهاتف',
+                    labelStyle: lbl,
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                        floatingLabelAlignment: FloatingLabelAlignment.center,
+                    filled: true, fillColor: Colors.white, isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
+                    prefixIcon: Icon(Icons.phone, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                    suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                    suffixIcon: _searchPhoneCtrl.text.isNotEmpty
+                        ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                        : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                            final data = await Clipboard.getData(Clipboard.kTextPlain);
+                            if (data?.text != null && data!.text!.isNotEmpty && mounted) {
+                              final cleaned = _toWestern(data.text!).replaceAll(RegExp(r'[^0-9+]'), '').trim();
+                              if (cleaned.isEmpty) return;
+                              _searchPhoneCtrl.text = cleaned;
+                              _searchPhoneCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchPhoneCtrl.text.length));
+                              setState(() {}); _onSearchQueryChanged();
+                            }
+                          }, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                    enabledBorder: bdr,
+                    focusedBorder: fbdr,
+                  ),
+                  style: TextStyle(fontSize: r.bodySize),
+                ),
+              ),
+              const SizedBox(width: 6),
+              if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty || _searchZoneId.isNotEmpty)
+                IconButton(
+                  tooltip: 'مسح الكل',
+                  icon: Icon(Icons.clear_all, color: Colors.red, size: r.iconSizeMedium),
+                  onPressed: _resetQuickSearch,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                ),
+            ],
+          ),
+        ),
+
+        // نتائج البحث
+        if (_searchLoading)
+          Container(
+            margin: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            alignment: Alignment.center,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Color(0xFF1A237E)))),
+                SizedBox(width: 12),
+                Text('جاري البحث...', style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.w600)),
+              ],
+            ),
+          )
+        else if (_searchDone && _searchResults.isEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            alignment: Alignment.center,
+            child: Text('لا توجد نتائج', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+          )
+        else if (_searchResults.isNotEmpty) ...[
+          // عداد النتائج
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(color: const Color(0xFF1A237E), borderRadius: BorderRadius.circular(10)),
+            child: Row(
+              children: [
+                const Icon(Icons.manage_search, color: Colors.white, size: 16),
+                const SizedBox(width: 6),
+                Text('$_searchTotal مستخدم', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          // قائمة النتائج
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.45),
+            child: ListView.builder(
+              controller: _searchScrollCtrl,
+              shrinkWrap: true,
+              itemCount: _searchResults.length + (_searchLoadingMore ? 1 : 0),
+              itemBuilder: (ctx, i) {
+                if (_searchLoadingMore && i == _searchResults.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3))),
+                  );
+                }
+                final user = _searchResults[i];
+                final userName = user['self']?['displayValue'] ?? 'غير متوفر';
+                final userId = user['self']?['id']?.toString() ?? '';
+                final zone = user['zone']?['displayValue'] ?? '';
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Colors.black, width: 1)),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      navigateToPage(UserDetailsPage(
+                        authToken: currentToken,
+                        userId: userId,
+                        userName: userName,
+                        userPhone: user['primaryContact']?['mobile'] ?? '',
+                        activatedBy: widget.username,
+                        hasServerSavePermission: _hasPermission('server_save'),
+                        hasWhatsAppPermission: _hasPermission('whatsapp'),
+                        isAdminFlag: isAdmin,
+                        userRoleHeader: '0',
+                        clientAppHeader: '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+                        importantFtthApiPermissions: _getImportantPermissions(),
+                      ));
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF3949AB)]),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.person, color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(userName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1A237E)), overflow: TextOverflow.ellipsis),
+                                if (zone.isNotEmpty)
+                                  Text(zone, style: TextStyle(fontSize: 11, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildDashboardContent(bool isLargeScreen, double screenWidth) {
     // بيكاتشو الآن في Overlay عالمي (لا حاجة لـ MouseRegion هنا)
     return RefreshIndicator(
@@ -3508,12 +3877,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(
-                horizontal: isLargeScreen ? 28 : 16,
+                horizontal: context.responsive.contentPaddingH,
                 vertical: isLargeScreen ? 16 : 10,
               ),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
+                  constraints: BoxConstraints(maxWidth: context.responsive.maxContentWidth),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -3536,6 +3905,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                       // شريط الأدوات السريعة المحدث
                       _buildQuickActionsBar(isLargeScreen, screenWidth),
+                      const SizedBox(height: 10),
+                      // البحث السريع عن المشتركين
+                      _buildQuickSearchSection(isLargeScreen),
                       const SizedBox(
                         height: 80,
                       ), // مسافة سفلية حتى لا يغطيها شريط "آخر تحديث"
@@ -3544,23 +3916,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            // معلومات آخر تحديث - مثبتة أسفل الشاشة
-            if (lastUpdateTime != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    child: _buildLastUpdateInfo(isLargeScreen),
-                  ),
-                ),
-              ),
+            // تم إزالة بطاقة "آخر تحديث" بناءً على طلب المستخدم
             // ⚡ بيكاتشو الآن في Overlay عالمي (pikachu_overlay.dart)
           ],
         ),
@@ -3622,6 +3978,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             isPositive: false,
           ),
         ),
+        SizedBox(width: gap),
+        Expanded(
+          child: _buildCleanStatCard(
+            label: 'ينتهي قريباً',
+            value: _expiringSoonCount,
+            icon: IconsaxPlusBold.timer_1,
+            color: const Color(0xFFEA580C),
+            changeText: total > 0
+                ? '${(_expiringSoonCount / total * 100).toStringAsFixed(1)}%'
+                : '0%',
+            isPositive: false,
+          ),
+        ),
       ],
     );
   }
@@ -3652,13 +4021,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
         // أحجام متجاوبة حسب عرض البطاقة المتاح
-        final circleSize = (cardWidth * 0.72).clamp(60.0, 90.0);
-        final valueFontSize = (cardWidth * 0.14).clamp(12.0, 17.0);
-        final pctFontSize = (cardWidth * 0.08).clamp(7.0, 9.0);
-        final labelFontSize = (cardWidth * 0.09).clamp(8.0, 10.0);
-        final iconSize = (cardWidth * 0.1).clamp(9.0, 12.0);
-        final vPad = cardWidth < 100 ? 8.0 : (cardWidth < 120 ? 10.0 : 14.0);
-        final hPad = cardWidth < 100 ? 6.0 : (cardWidth < 120 ? 8.0 : 10.0);
+        final circleSize = (cardWidth * 0.65).clamp(45.0, 100.0);
+        final valueFontSize = (cardWidth * 0.13).clamp(11.0, 22.0);
+        final pctFontSize = (cardWidth * 0.07).clamp(6.0, 12.0);
+        final labelFontSize = (cardWidth * 0.085).clamp(7.0, 13.0);
+        final iconSize = (cardWidth * 0.09).clamp(8.0, 16.0);
+        final vPad = cardWidth < 100 ? 6.0 : (cardWidth < 120 ? 8.0 : (cardWidth < 200 ? 10.0 : 14.0));
+        final hPad = cardWidth < 100 ? 4.0 : (cardWidth < 120 ? 6.0 : (cardWidth < 200 ? 8.0 : 12.0));
 
         return ValueListenableBuilder<bool>(
           valueListenable: hoverNotifier,
@@ -3982,25 +4351,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // شريط الأد��ات السريعة المحدث
   Widget _buildQuickActionsBar(bool isLargeScreen, double screenWidth) {
-    // تحديد عدد الأعمدة حسب حجم الشاشة - تصميم أفقي
-    int crossAxisCount;
+    final items = _buildQuickActionItems(screenWidth);
+    final itemCount = items.length;
+    if (itemCount == 0) return const SizedBox.shrink();
+
+    // عدد الأعمدة = عدد العناصر الفعلي (صف واحد دائماً)
+    int crossAxisCount = itemCount;
     double childAspectRatio;
 
-    if (screenWidth < 320) {
-      crossAxisCount = 1;
-      childAspectRatio = 3.5;
-    } else if (screenWidth < 380) {
-      crossAxisCount = 1;
-      childAspectRatio = 3.8;
-    } else if (screenWidth < 500) {
-      crossAxisCount = 2;
-      childAspectRatio = 2.8;
-    } else if (screenWidth < 600) {
-      crossAxisCount = 2;
-      childAspectRatio = 3.0;
-    } else {
-      crossAxisCount = 3;
+    if (screenWidth < 380) {
       childAspectRatio = 3.2;
+    } else if (screenWidth < 600) {
+      childAspectRatio = 3.5;
+    } else {
+      childAspectRatio = 3.8;
     }
 
     return Column(
@@ -4077,7 +4441,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           childAspectRatio: childAspectRatio,
           mainAxisSpacing: screenWidth < 380 ? 6 : 8,
           crossAxisSpacing: screenWidth < 380 ? 6 : 8,
-          children: _buildQuickActionItems(screenWidth),
+          children: items,
         ),
       ],
     );
@@ -4086,67 +4450,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   List<Widget> _buildQuickActionItems(double screenWidth) {
     final actions = <Widget>[];
 
-    // البحث السريع - يخضع لصلاحية quick_search
-    if (_hasPermission('quick_search')) {
-      actions.add(
-        _buildQuickActionItem(
-          'البحث السريع',
-          IconsaxPlusBold.search_normal_1,
-          Colors.green,
-          () => navigateToPage(
-            QuickSearchUsersPage(
-              authToken: currentToken,
-              activatedBy: widget.username,
-              hasServerSavePermission: hasServerSavePermission(),
-              hasWhatsAppPermission: hasWhatsAppPermission(),
-              firstSystemPermissions: widget.firstSystemPermissions,
-              isAdminFlag: isAdmin,
-              importantFtthApiPermissions: _getImportantPermissions(),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // المشتركين - أداة سريعة (تم تقديمها مكان الانتهاء قريباً)
-    if (_hasPermission('users')) {
-      actions.add(
-        _buildQuickActionItem(
-          'المشتركين',
-          IconsaxPlusBold.profile_2user,
-          Colors.purple,
-          () => navigateToPage(
-            UsersPage(
-              authToken: currentToken,
-              activatedBy: widget.username,
-              hasServerSavePermission: hasServerSavePermission(),
-              hasWhatsAppPermission: hasWhatsAppPermission(),
-              firstSystemPermissions: widget.firstSystemPermissions,
-              isAdminFlag: isAdmin,
-              importantFtthApiPermissions: _getImportantPermissions(),
-            ),
-          ),
-        ),
-      );
-    }
+    // البحث السريع — تم نقله إلى القائمة الجانبية
 
     // الاشتراكات - أداة سريعة
     if (_hasPermission('subscriptions')) {
       actions.add(
         _buildQuickActionItem(
           'الاشتراكات',
-          IconsaxPlusBold.receipt_2,
+          IconsaxPlusBold.wifi_square,
           Colors.blue,
           () => navigateToPage(SubscriptionsPage(authToken: currentToken)),
         ),
       );
     }
 
-    // الاشتراكات المنتهية قريباً - يخضع لصلاحية expiring_soon
+    // التذاكر - أداة سريعة
+    if (_hasPermission('tasks')) {
+      actions.add(_buildTasksActionItem());
+    }
+
+    // المنتهي قريباً - أداة سريعة
     if (_hasPermission('expiring_soon')) {
       actions.add(
         _buildQuickActionItem(
-          'الانتهاء قريباً',
+          'المنتهي قريباً',
           IconsaxPlusBold.timer_1,
           Colors.red,
           () => navigateToPage(
@@ -4154,7 +4481,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               activatedBy: widget.username,
               hasServerSavePermission: hasServerSavePermission(),
               hasWhatsAppPermission: hasWhatsAppPermission(),
-              firstSystemPermissions: widget.firstSystemPermissions,
               importantFtthApiPermissions: _getImportantPermissions(),
             ),
           ),
@@ -4162,25 +4488,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     }
 
-    // المهام - أداة سريعة
-    if (_hasPermission('tasks')) {
-      actions.add(_buildTasksActionItem());
-    }
-
     // سجلات الحسابات - أداة سريعة (صلاحية مستقلة account_records)
     if (_hasPermission('account_records')) {
       actions.add(
         _buildQuickActionItem(
           'سجلات الحسابات',
-          IconsaxPlusBold.document_text,
+          IconsaxPlusBold.book_1,
           Colors.cyan,
           () => navigateToPage(
             AccountRecordsPage(
               authToken: currentToken,
               activatedBy: widget.username,
-              permissions: _userPermissions,
+              permissions: getAllPermissions(),
               firstSystemUsername: widget.firstSystemUsername,
-              firstSystemPermissions: widget.firstSystemPermissions,
               firstSystemDepartment: widget.firstSystemDepartment,
               firstSystemCenter: widget.firstSystemCenter,
             ),
@@ -4188,6 +4508,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     }
+
+    // صفحة الشركة - فتح لوحة تحكم FTTH في WebView
+    actions.add(
+      _buildQuickActionItem(
+        'صفحة الشركة',
+        IconsaxPlusBold.building_4,
+        Colors.indigo,
+        () => navigateToPage(const FtthCompanyPage()),
+      ),
+    );
 
     return actions;
   }
@@ -4198,368 +4528,89 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     MaterialColor color,
     VoidCallback onTap,
   ) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    double iconSize;
-    double fontSize;
-    double padding;
-    double verticalSpacing;
-    int maxLines;
-
-    if (screenWidth < 320) {
-      iconSize = 22;
-      fontSize = 11;
-      padding = 8;
-      verticalSpacing = 4;
-      maxLines = 2;
-    } else if (screenWidth < 380) {
-      iconSize = 24;
-      fontSize = 12;
-      padding = 10;
-      verticalSpacing = 5;
-      maxLines = 2;
-    } else if (screenWidth < 500) {
-      iconSize = 26;
-      fontSize = 13;
-      padding = 12;
-      verticalSpacing = 6;
-      maxLines = 2;
-    } else if (screenWidth < 600) {
-      iconSize = 28;
-      fontSize = 14;
-      padding = 14;
-      verticalSpacing = 7;
-      maxLines = 2;
-    } else {
-      iconSize = 32;
-      fontSize = 16;
-      padding = 16;
-      verticalSpacing = 8;
-      maxLines = 2;
-    }
-
-    final circleSize = iconSize + 22;
     final hoverNotifier = ValueNotifier<bool>(false);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cellHeight = constraints.maxHeight;
-        final effectiveHeight = cellHeight.isFinite && cellHeight > 0
-            ? cellHeight
-            : (padding * 6 + iconSize);
-
-        return SizedBox(
-          height: effectiveHeight,
-          width: double.infinity,
-          child: ValueListenableBuilder<bool>(
-            valueListenable: hoverNotifier,
-            builder: (context, isHovered, _) {
-              return MouseRegion(
-                onEnter: (_) => hoverNotifier.value = true,
-                onExit: (_) => hoverNotifier.value = false,
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () {
-                    if (mounted) onTap();
-                  },
-                  child: AnimatedScale(
-                    scale: isHovered ? 1.045 : 1.0,
-                    duration: const Duration(milliseconds: 280),
-                    curve: Curves.easeOutCubic,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 380),
-                      curve: Curves.easeOutCubic,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: isHovered
-                              ? [
-                                  Color.lerp(Colors.white, color, 0.08)!,
-                                  Color.lerp(
-                                    const Color(0xFFF5F6FA),
-                                    color,
-                                    0.10,
-                                  )!,
-                                ]
-                              : [Colors.white, const Color(0xFFF5F6FA)],
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: isHovered
-                              ? color.withValues(alpha: 0.35)
-                              : const Color(0xFFE0E0E0),
-                          width: isHovered ? 2.8 : 2.0,
-                        ),
-                        boxShadow: isHovered
-                            ? [
-                                BoxShadow(
-                                  color: color.withValues(alpha: 0.15),
-                                  blurRadius: 20,
-                                  spreadRadius: -4,
-                                  offset: const Offset(0, 10),
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.06),
-                                  blurRadius: 20,
-                                  spreadRadius: -8,
-                                  offset: const Offset(0, 16),
-                                ),
-                              ]
-                            : [
-                                BoxShadow(
-                                  color: color.withValues(alpha: 0.06),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(22),
-                        child: Stack(
-                          children: [
-                            // توهج خلفي متحرك عند المرور
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeOutCubic,
-                              right: isHovered ? -10 : -70,
-                              top: isHovered ? -10 : -70,
-                              child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 400),
-                                opacity: isHovered ? 1.0 : 0.0,
-                                child: Container(
-                                  width: circleSize * 3,
-                                  height: circleSize * 3,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        color.withValues(alpha: 0.12),
-                                        color.withValues(alpha: 0.04),
-                                        Colors.transparent,
-                                      ],
-                                      stops: const [0.0, 0.45, 1.0],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // توهج سفلي
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 600),
-                              curve: Curves.easeOutCubic,
-                              left: isHovered ? -20 : -80,
-                              bottom: isHovered ? -20 : -80,
-                              child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 400),
-                                opacity: isHovered ? 0.7 : 0.0,
-                                child: Container(
-                                  width: circleSize * 2,
-                                  height: circleSize * 2,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: RadialGradient(
-                                      colors: [
-                                        color.withValues(alpha: 0.08),
-                                        Colors.transparent,
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // شريط ملون جانبي أيمن متحرك
-                            Positioned(
-                              top: 0,
-                              bottom: 0,
-                              right: 0,
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 380),
-                                curve: Curves.easeOutCubic,
-                                width: isHovered ? 6 : 4,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: isHovered
-                                        ? [
-                                            color.shade200,
-                                            color.shade500,
-                                            color.shade200,
-                                          ]
-                                        : [
-                                            color.withValues(alpha: 0.3),
-                                            color,
-                                            color.withValues(alpha: 0.3),
-                                          ],
-                                  ),
-                                  boxShadow: isHovered
-                                      ? [
-                                          BoxShadow(
-                                            color: color.withValues(
-                                              alpha: 0.55,
-                                            ),
-                                            blurRadius: 14,
-                                            spreadRadius: -1,
-                                          ),
-                                        ]
-                                      : [],
-                                ),
-                              ),
-                            ),
-                            // المحتوى الرئيسي
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: padding,
-                                vertical: verticalSpacing,
-                              ),
-                              child: Row(
-                                children: [
-                                  // الأيقونة الملونة مع تأثيرات
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 380),
-                                    curve: Curves.easeOutCubic,
-                                    width:
-                                        isHovered ? circleSize + 6 : circleSize,
-                                    height:
-                                        isHovered ? circleSize + 6 : circleSize,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: isHovered
-                                            ? [color.shade300, color.shade800]
-                                            : [color.shade400, color.shade700],
-                                      ),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: color.withValues(
-                                            alpha: isHovered ? 0.6 : 0.3,
-                                          ),
-                                          blurRadius: isHovered ? 22 : 10,
-                                          spreadRadius: isHovered ? 0 : -2,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                        if (isHovered)
-                                          BoxShadow(
-                                            color: color.withValues(alpha: 0.2),
-                                            blurRadius: 32,
-                                            spreadRadius: -4,
-                                          ),
-                                      ],
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: AnimatedRotation(
-                                      turns: isHovered ? 0.04 : 0.0,
-                                      duration: const Duration(
-                                        milliseconds: 400,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      child: Icon(
-                                        icon,
-                                        size: iconSize,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: padding * 0.6),
-                                  // النص مع تأثير متحرك
-                                  Expanded(
-                                    child: AnimatedDefaultTextStyle(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      curve: Curves.easeOut,
-                                      style: TextStyle(
-                                        fontSize: isHovered
-                                            ? fontSize + 0.5
-                                            : fontSize,
-                                        fontWeight: isHovered
-                                            ? FontWeight.w800
-                                            : FontWeight.w700,
-                                        color: isHovered
-                                            ? color.shade700
-                                            : const Color(0xFF1A1A1A),
-                                        height: 1.2,
-                                        letterSpacing: isHovered ? 0.4 : 0.2,
-                                      ),
-                                      child: Text(
-                                        title,
-                                        maxLines: maxLines,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: padding * 0.3),
-                                  // سهم التنقل متحرك
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 380),
-                                    curve: Curves.easeOutCubic,
-                                    width: isHovered ? 36 : 28,
-                                    height: isHovered ? 36 : 28,
-                                    decoration: BoxDecoration(
-                                      gradient: isHovered
-                                          ? LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                color.shade400,
-                                                color.shade700,
-                                              ],
-                                            )
-                                          : null,
-                                      color: isHovered
-                                          ? null
-                                          : color.withValues(alpha: 0.15),
-                                      shape: BoxShape.circle,
-                                      boxShadow: isHovered
-                                          ? [
-                                              BoxShadow(
-                                                color: color.withValues(
-                                                  alpha: 0.4,
-                                                ),
-                                                blurRadius: 12,
-                                                spreadRadius: -2,
-                                              ),
-                                            ]
-                                          : [],
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: AnimatedSlide(
-                                      duration: const Duration(
-                                        milliseconds: 350,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      offset: isHovered
-                                          ? const Offset(-0.2, 0)
-                                          : Offset.zero,
-                                      child: Icon(
-                                        IconsaxPlusLinear.arrow_left_2,
-                                        size: isHovered ? 16 : 14,
-                                        color: isHovered
-                                            ? Colors.white
-                                            : color.shade600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: hoverNotifier,
+      builder: (context, isHovered, _) {
+        return MouseRegion(
+          onEnter: (_) => hoverNotifier.value = true,
+          onExit: (_) => hoverNotifier.value = false,
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () { if (mounted) onTap(); },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isHovered
+                      ? [color.shade600, color.shade800]
+                      : [color.shade500, color.shade700],
                 ),
-              );
-            },
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: isHovered ? 0.5 : 0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: isHovered ? 0.45 : 0.25),
+                    blurRadius: isHovered ? 16 : 8,
+                    offset: Offset(0, isHovered ? 6 : 3),
+                  ),
+                ],
+              ),
+              child: Builder(
+                builder: (context) {
+                  final r = context.responsive;
+                  final iconBoxSize = r.scaled(36, 42, 52);
+                  final iconSz = r.scaled(18, 22, 28);
+                  final textSz = r.scaled(13, 15, 17);
+                  final hPad = r.scaled(12, 16, 20);
+                  final vPad = r.scaled(10, 12, 14);
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // الأيقونة
+                        Container(
+                          width: iconBoxSize, height: iconBoxSize,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              width: 1.5,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(icon, size: iconSz, color: Colors.white),
+                        ),
+                        const SizedBox(width: 12),
+                        // النص
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: textSz,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         );
       },
@@ -4571,9 +4622,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return ValueListenableBuilder<int>(
       valueListenable: BadgeService.instance.unreadNotifier,
       builder: (context, count, _) {
-        // نستخدم Stack لكن بدون إزاحات سالبة، مع محاذاة الشارة داخل حدود الزر
         final taskButton = _buildQuickActionItem(
-          'المهام',
+          'تذاكر',
           IconsaxPlusBold.task_square,
           Colors.orange,
           () {
@@ -4582,52 +4632,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           },
         );
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // تقدير ارتفاع الزر القياسي (نفسه المستخدم في الأزرار الأخرى) عبر constraint
-            // لا نحدد ارتفاعاً ثابتاً حتى يستمر التكيّف مع أحجام الشاشات، فقط نضمن ان الشارة داخل.
-            return Stack(
-              alignment: Alignment.topRight,
-              children: [
-                taskButton,
-                if (count > 0)
-                  Positioned(
-                    top: 6, // داخل حدود الزر بدل قيم سالبة
-                    right: 6,
-                    child: AnimatedScale(
-                      scale: 1,
-                      duration: const Duration(milliseconds: 200),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red[700],
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.35),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          count > 99 ? '99+' : count.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                    ),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            taskButton,
+            if (count > 0)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.red[700],
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(color: Colors.red.withValues(alpha: 0.35), blurRadius: 5, offset: const Offset(0, 2)),
+                    ],
                   ),
-              ],
-            );
-          },
+                  child: Text(
+                    count > 99 ? '99+' : count.toString(),
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, height: 1),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -4720,14 +4748,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // أحجام متجاوبة مع عرض البطاقة
         final isVeryCompact = cardWidth < 160;
         final isCompact = cardWidth < 240;
-        final iconBoxSize = isVeryCompact ? 34.0 : (isCompact ? 40.0 : 52.0);
-        final iconSize = isVeryCompact ? 18.0 : (isCompact ? 20.0 : 26.0);
-        final valueFontSize = isVeryCompact ? 14.0 : (isCompact ? 17.0 : 24.0);
-        final titleFontSize = isVeryCompact ? 9.0 : (isCompact ? 10.0 : 12.0);
-        final hPadding = isVeryCompact ? 8.0 : (isCompact ? 12.0 : 18.0);
-        final vPadding = isVeryCompact ? 10.0 : (isCompact ? 12.0 : 16.0);
-        final stripHeight = isVeryCompact ? 36.0 : (isCompact ? 44.0 : 56.0);
-        final cardRadius = isVeryCompact ? 12.0 : 18.0;
+        final iconBoxSize = isVeryCompact ? 28.0 : (isCompact ? 32.0 : 38.0);
+        final iconSize = isVeryCompact ? 15.0 : (isCompact ? 17.0 : 20.0);
+        final valueFontSize = isVeryCompact ? 12.0 : (isCompact ? 14.0 : 18.0);
+        final titleFontSize = isVeryCompact ? 8.0 : (isCompact ? 9.0 : 10.0);
+        final hPadding = isVeryCompact ? 6.0 : (isCompact ? 8.0 : 12.0);
+        final vPadding = isVeryCompact ? 6.0 : (isCompact ? 8.0 : 10.0);
+        final stripHeight = isVeryCompact ? 28.0 : (isCompact ? 34.0 : 40.0);
+        final cardRadius = isVeryCompact ? 10.0 : 14.0;
 
         return Container(
           decoration: BoxDecoration(
@@ -4809,7 +4837,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 textAlign: TextAlign.center,
                               ),
                             ),
-                            SizedBox(height: isVeryCompact ? 4 : 8),
+                            SizedBox(height: isVeryCompact ? 2 : 4),
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: _animatedCount(
@@ -5542,14 +5570,14 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         await _initFlutterWebView();
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة WebView: $e');
+      debugPrint('❌ خطأ في تهيئة WebView');
       if (mounted) {
         setState(() {
           if (Platform.isWindows && e.toString().contains('WebView2')) {
             _error =
                 'يتطلب Microsoft Edge WebView2 Runtime لعمل الواتساب.\n\nيرجى تحميله وتثبيته من موقع مايكروسوفت الرسمي.';
           } else {
-            _error = 'خطأ في تحميل واتساب ويب: ${e.toString()}';
+            _error = 'خطأ في تحميل واتساب ويب';
           }
           _isLoading = false;
         });
@@ -5574,9 +5602,9 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         _startMonitor();
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة Windows WebView: $e');
+      debugPrint('❌ خطأ في تهيئة Windows WebView');
       // إعادة رمي الخطأ ليتم التعامل معه في _initWeb
-      throw Exception('Windows WebView2 initialization failed: $e');
+      throw Exception('Windows WebView2 initialization failed');
     }
   }
 
@@ -5611,8 +5639,8 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         _startMonitor();
       }
     } catch (e) {
-      debugPrint('❌ خطأ في تهيئة Flutter WebView: $e');
-      throw Exception('Flutter WebView initialization failed: $e');
+      debugPrint('❌ خطأ في تهيئة Flutter WebView');
+      throw Exception('Flutter WebView initialization failed');
     }
   }
 
@@ -5703,7 +5731,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('فشل تسجيل الخروج: $e')));
+        ).showSnackBar(SnackBar(content: Text('فشل تسجيل الخروج')));
       }
     }
   }
@@ -5729,7 +5757,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         }
       }
     } catch (e) {
-      debugPrint('❌ خطأ في فتح رابط التحميل: $e');
+      debugPrint('❌ خطأ في فتح رابط التحميل');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

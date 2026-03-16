@@ -195,7 +195,7 @@ FBG: {fbg}
       print('✅ تم حفظ قالب ${templateNames[type]}');
       return true;
     } catch (e) {
-      print('❌ خطأ في حفظ القالب: $e');
+      print('❌ خطأ في حفظ القالب');
       return false;
     }
   }
@@ -224,7 +224,7 @@ FBG: {fbg}
 
       return defaultTemplates[type]!;
     } catch (e) {
-      print('⚠️ خطأ في تحميل القالب، استخدام الافتراضي: $e');
+      print('⚠️ خطأ في تحميل القالب، استخدام الافتراضي');
       return defaultTemplates[type]!;
     }
   }
@@ -260,7 +260,7 @@ FBG: {fbg}
       }
       return true;
     } catch (e) {
-      print('❌ خطأ في إعادة تعيين القوالب: $e');
+      print('❌ خطأ في إعادة تعيين القوالب');
       return false;
     }
   }

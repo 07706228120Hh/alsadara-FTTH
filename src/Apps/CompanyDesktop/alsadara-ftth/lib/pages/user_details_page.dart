@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/tenant_user.dart';
+import '../permissions/permission_registry.dart';
 import '../services/custom_auth_service.dart';
 
 class UserDetailsPage extends StatefulWidget {
@@ -35,8 +36,8 @@ class _UserDetailsPageState extends State<UserDetailsPage>
 
   late UserRole _selectedRole;
   late bool _isActive;
-  late Map<String, bool> _firstSystemPermissions;
-  late Map<String, bool> _secondSystemPermissions;
+  late Map<String, Map<String, bool>> _firstSystemPermissionsV2;
+  late Map<String, Map<String, bool>> _secondSystemPermissionsV2;
 
   bool _isEditing = false;
   bool _isSaving = false;
@@ -58,10 +59,12 @@ class _UserDetailsPageState extends State<UserDetailsPage>
     // تهيئة البيانات
     _selectedRole = widget.user.role;
     _isActive = widget.user.isActive;
-    _firstSystemPermissions =
-        Map<String, bool>.from(widget.user.firstSystemPermissions);
-    _secondSystemPermissions =
-        Map<String, bool>.from(widget.user.secondSystemPermissions);
+    _firstSystemPermissionsV2 = widget.user.firstSystemPermissionsV2.map(
+      (key, value) => MapEntry(key, Map<String, bool>.from(value)),
+    );
+    _secondSystemPermissionsV2 = widget.user.secondSystemPermissionsV2.map(
+      (key, value) => MapEntry(key, Map<String, bool>.from(value)),
+    );
   }
 
   @override
@@ -96,8 +99,8 @@ class _UserDetailsPageState extends State<UserDetailsPage>
         'salary': _salaryController.text.trim(),
         'role': _selectedRole.value,
         'isActive': _isActive,
-        'firstSystemPermissions': _firstSystemPermissions,
-        'secondSystemPermissions': _secondSystemPermissions,
+        'firstSystemPermissions': _firstSystemPermissionsV2,
+        'secondSystemPermissions': _secondSystemPermissionsV2,
       });
 
       if (mounted) {
@@ -120,7 +123,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'حدث خطأ: $e',
+              'حدث خطأ',
               style: GoogleFonts.cairo(),
             ),
             backgroundColor: Colors.red,
@@ -242,7 +245,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'حدث خطأ: $e',
+              'حدث خطأ',
               style: GoogleFonts.cairo(),
             ),
             backgroundColor: Colors.red,
@@ -635,20 +638,11 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           ),
         ),
         const SizedBox(height: 16),
-        ..._firstSystemPermissions.entries.map((entry) {
-          return _buildPermissionTile(
-            title: _getPermissionArabicName(entry.key),
-            value: entry.value,
-            onChanged: (value) {
-              if (_isEditing) {
-                setState(() {
-                  _firstSystemPermissions[entry.key] = value ?? false;
-                });
-              }
-            },
-            enabled: _isEditing,
-          );
-        }),
+        ..._buildV2PermissionWidgets(
+          _firstSystemPermissionsV2,
+          PermissionRegistry.firstSystem,
+          isFirstSystem: true,
+        ),
       ],
     );
   }
@@ -665,22 +659,57 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           ),
         ),
         const SizedBox(height: 16),
-        ..._secondSystemPermissions.entries.map((entry) {
-          return _buildPermissionTile(
-            title: _getPermissionArabicName(entry.key),
-            value: entry.value,
-            onChanged: (value) {
-              if (_isEditing) {
-                setState(() {
-                  _secondSystemPermissions[entry.key] = value ?? false;
-                });
-              }
-            },
-            enabled: _isEditing,
-          );
-        }),
+        ..._buildV2PermissionWidgets(
+          _secondSystemPermissionsV2,
+          PermissionRegistry.secondSystem,
+          isFirstSystem: false,
+        ),
       ],
     );
+  }
+
+  /// بناء ويدجات الصلاحيات V2 — لكل ميزة رئيسية مفتاح تشغيل/إيقاف رئيسي
+  List<Widget> _buildV2PermissionWidgets(
+    Map<String, Map<String, bool>> permissionsV2,
+    List<PermissionEntry> registry, {
+    required bool isFirstSystem,
+  }) {
+    final topLevel = PermissionRegistry.getTopLevel(registry);
+    final widgets = <Widget>[];
+
+    for (final entry in topLevel) {
+      final actions = permissionsV2[entry.key] ?? {};
+      // هل أي إجراء مفعل؟
+      final anyEnabled = actions.values.any((v) => v);
+
+      widgets.add(
+        _buildPermissionTile(
+          title: entry.labelAr,
+          value: anyEnabled,
+          onChanged: (value) {
+            if (_isEditing) {
+              setState(() {
+                final newVal = value ?? false;
+                final allowedActions =
+                    entry.allowedActions ?? PermissionRegistry.getAllowedActions(entry.key);
+                if (isFirstSystem) {
+                  _firstSystemPermissionsV2[entry.key] = {
+                    for (final a in allowedActions) a: newVal,
+                  };
+                } else {
+                  _secondSystemPermissionsV2[entry.key] = {
+                    for (final a in allowedActions) a: newVal,
+                  };
+                }
+              });
+            }
+          },
+          enabled: _isEditing,
+        ),
+      );
+    }
+
+    return widgets;
   }
 
   Widget _buildInfoCard({

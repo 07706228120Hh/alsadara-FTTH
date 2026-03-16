@@ -95,7 +95,7 @@ class DepartmentsDataService {
             '✅ DepartmentsDataService: تم جلب ${_departmentNames.length} قسم');
       }
     } catch (e) {
-      debugPrint('❌ DepartmentsDataService: خطأ في جلب الأقسام: $e');
+      debugPrint('❌ DepartmentsDataService: خطأ في جلب الأقسام');
     }
 
     return _departmentNames.isNotEmpty ? _departmentNames : _defaultDepartments;

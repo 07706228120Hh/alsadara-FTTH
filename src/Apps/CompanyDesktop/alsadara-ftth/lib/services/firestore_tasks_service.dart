@@ -49,13 +49,13 @@ class FirestoreTasksService {
           final task = _taskFromFirestore(doc.id, data);
           tasks.add(task);
         } catch (e) {
-          print('⚠️ خطأ في تحويل المهمة ${doc.id}: $e');
+          print('⚠️ خطأ في تحويل المهمة ${doc.id}');
         }
       }
 
       return tasks;
     } catch (e) {
-      print('❌ خطأ في جلب المهام: $e');
+      print('❌ خطأ في جلب المهام');
       return [];
     }
   }
@@ -112,13 +112,13 @@ class FirestoreTasksService {
             tasks.add(task);
           }
         } catch (e) {
-          print('⚠️ خطأ في معالجة المهمة ${doc.id}: $e');
+          print('⚠️ خطأ في معالجة المهمة ${doc.id}');
         }
       }
 
       return tasks;
     } catch (e) {
-      print('❌ خطأ في جلب المهام المفلترة: $e');
+      print('❌ خطأ في جلب المهام المفلترة');
       return [];
     }
   }
@@ -170,7 +170,7 @@ class FirestoreTasksService {
       print('✅ تم إنشاء المهمة: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      print('❌ خطأ في إضافة المهمة: $e');
+      print('❌ خطأ في إضافة المهمة');
       return null;
     }
   }
@@ -212,7 +212,7 @@ class FirestoreTasksService {
       print('✅ تم تحديث المهمة: $taskId');
       return true;
     } catch (e) {
-      print('❌ خطأ في تحديث المهمة: $e');
+      print('❌ خطأ في تحديث المهمة');
       return false;
     }
   }
@@ -247,7 +247,7 @@ class FirestoreTasksService {
       print('✅ تم تحديث حالة المهمة: $taskId إلى $newStatus');
       return true;
     } catch (e) {
-      print('❌ خطأ في تحديث حالة المهمة: $e');
+      print('❌ خطأ في تحديث حالة المهمة');
       return false;
     }
   }
@@ -260,7 +260,7 @@ class FirestoreTasksService {
       print('✅ تم حذف المهمة: $taskId');
       return true;
     } catch (e) {
-      print('❌ خطأ في حذف المهمة: $e');
+      print('❌ خطأ في حذف المهمة');
       return false;
     }
   }
@@ -280,7 +280,7 @@ class FirestoreTasksService {
           final task = _taskFromFirestore(doc.id, data);
           tasks.add(task);
         } catch (e) {
-          print('⚠️ خطأ في معالجة المهمة ${doc.id}: $e');
+          print('⚠️ خطأ في معالجة المهمة ${doc.id}');
         }
       }
       return tasks;
@@ -296,7 +296,7 @@ class FirestoreTasksService {
         final data = doc.data() as Map<String, dynamic>;
         return _taskFromFirestore(doc.id, data);
       } catch (e) {
-        print('⚠️ خطأ في معالجة المهمة $taskId: $e');
+        print('⚠️ خطأ في معالجة المهمة $taskId');
         return null;
       }
     });
@@ -412,7 +412,7 @@ class FirestoreTasksService {
         'cancelled': cancelled,
       };
     } catch (e) {
-      print('❌ خطأ في جلب إحصائيات المهام: $e');
+      print('❌ خطأ في جلب إحصائيات المهام');
       return {
         'total': 0,
         'pending': 0,

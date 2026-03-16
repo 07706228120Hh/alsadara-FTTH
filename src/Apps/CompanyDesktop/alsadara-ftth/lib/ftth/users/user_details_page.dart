@@ -8,12 +8,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import '../subscriptions/subscription_details_page.dart';
 // إضافة زر فتح نافذة إضافة مهمة
 import '../../task/add_task_api_dialog.dart';
 import '../tickets/customer_tickets_page.dart';
 import '../reports/audit_log_page.dart';
+import '../../permissions/permissions.dart';
+import '../auth/auth_error_handler.dart';
+import '../../services/auth_service.dart';
 
 // أنماط نص موحدة مختصرة
 class _TextStyles {
@@ -31,8 +33,6 @@ class UserDetailsPage extends StatefulWidget {
   final String activatedBy;
   final bool hasServerSavePermission;
   final bool hasWhatsAppPermission;
-  // صلاحيات النظام الأول (للتأكد من إظهار زر إضافة مهمة فقط للمدير/ليدر)
-  final String? firstSystemPermissions;
   // علم إداري صريح يتم تمريره من الصفحة الرئيسية إذا كان المستخدم مديرا
   final bool? isAdminFlag;
   // تمرير القسم / المركز / الراتب من النظام الأول عند الحاجة
@@ -55,7 +55,6 @@ class UserDetailsPage extends StatefulWidget {
       required this.activatedBy,
       this.hasServerSavePermission = false,
       this.hasWhatsAppPermission = false,
-      this.firstSystemPermissions,
       this.isAdminFlag,
       this.firstSystemDepartment,
       this.firstSystemCenter,
@@ -90,29 +89,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     _fetchAndStoreCustomerDetails();
   }
 
-  // يسمح بإضافة مهمة إذا تحقق أحد الشروط: isAdminFlag أو نص الصلاحيات يحتوي مفاتيح إدارية
+  // يسمح بإضافة مهمة إذا تحقق أحد الشروط: isAdminFlag أو صلاحية tasks من PermissionManager
   bool get _canAddTask {
     if (widget.isAdminFlag == true) {
       debugPrint('[UserDetailsPage] isAdminFlag=true => السماح بزر المهمة');
       return true;
     }
-    final raw = widget.firstSystemPermissions ?? '';
-    final perms = raw.toLowerCase().replaceAll(RegExp(r'[\s_]+'), ' ');
-    if (perms.isEmpty) {
-      debugPrint(
-          '[UserDetailsPage] لا توجد صلاحيات نصية ولا isAdminFlag => إخفاء زر المهمة');
-      return false;
-    }
-    final tokens = [
-      'مدير',
-      'ليدر',
-    ];
-    final allowed = tokens.any((t) {
-      final tt = t.toLowerCase();
-      return perms.contains(tt);
-    });
-    debugPrint(
-        '[UserDetailsPage] فحص زر المهمة - raw:"$raw" => normalized:"$perms" allowed=$allowed');
+    // استخدام PermissionManager بدلاً من فحص النص
+    final allowed = PermissionManager.instance.canAdd('tasks');
+    debugPrint('[UserDetailsPage] فحص زر المهمة - PermissionManager.canAdd(tasks)=$allowed');
     return allowed;
   }
 
@@ -127,7 +112,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
   ButtonStyle _renewButtonStyle(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     final isMobile = _isMobile(context);
     final double fontSize = (isMobile ? 15 : 16) * sc;
     final double vPad = (isMobile ? 12 : 16) * sc;
@@ -148,13 +133,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   // ---------------- API -----------------
   Future<void> fetchDetails() async {
     try {
-      final r = await http.get(
-          Uri.parse(
-              'https://admin.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}'),
-          headers: {
-            'Authorization': 'Bearer ${widget.authToken}',
-            'Accept': 'application/json'
-          });
+      final r = await AuthService.instance.authenticatedRequest(
+          'GET',
+          'https://admin.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}');
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         final items = data['items'] as List?;
@@ -168,12 +149,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 (_allSubscriptions.isNotEmpty) ? _allSubscriptions.first : null;
           });
         }
+      } else if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else if (mounted) {
         setState(
             () => errorMessage = 'فشل جلب بيانات الاشتراك: ${r.statusCode}');
       }
     } catch (e) {
-      if (mounted) setState(() => errorMessage = 'خطأ: $e');
+      if (mounted) setState(() => errorMessage = 'خطأ');
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -188,12 +172,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
   Future<void> fetchFullSubscriptionDetails(String id) async {
     try {
-      final r = await http.get(
-          Uri.parse('https://admin.ftth.iq/api/subscriptions/$id'),
-          headers: {
-            'Authorization': 'Bearer ${widget.authToken}',
-            'Accept': 'application/json'
-          });
+      final r = await AuthService.instance.authenticatedRequest(
+          'GET',
+          'https://admin.ftth.iq/api/subscriptions/$id');
       if (r.statusCode == 200 && mounted && subscriptionDetails != null) {
         final full = jsonDecode(r.body);
         final merged = Map<String, dynamic>.from({...subscriptionDetails!, ...full});
@@ -204,6 +185,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             _allSubscriptions[_selectedSubscriptionIndex] = Map<String, dynamic>.from(merged);
           }
         });
+      } else if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       }
     } catch (_) {}
   }
@@ -239,13 +223,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       });
     }
     try {
-      final r = await http.get(
-          Uri.parse(
-              'https://admin.ftth.iq/api/subscriptions/device/ont?username=${username.trim()}'),
-          headers: {
-            'Authorization': 'Bearer ${widget.authToken}',
-            'Accept': 'application/json'
-          });
+      final r = await AuthService.instance.authenticatedRequest(
+          'GET',
+          'https://admin.ftth.iq/api/subscriptions/device/ont?username=${username.trim()}');
       if (!mounted) return;
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
@@ -253,6 +233,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           deviceOntInfo = data;
           isLoadingOntInfo = false;
         });
+      } else if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else if (r.statusCode == 404) {
         setState(() {
           ontErrorMessage = 'معلومات الجهاز غير متوفرة لهذا المشترك';
@@ -267,7 +250,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          ontErrorMessage = 'خطأ: $e';
+          ontErrorMessage = 'خطأ';
           isLoadingOntInfo = false;
         });
       }
@@ -378,7 +361,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     int valueMaxLines = 1,
   }) {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     final color = accent ?? Colors.blueGrey;
     final bool isMobile = _isMobile(context);
     final double lblSize = labelFontSize ?? ((isMobile ? 15 : 18) * sc);
@@ -424,28 +407,30 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     if (tiles.isEmpty) return const SizedBox();
     final double width = MediaQuery.of(context).size.width;
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
-    final double spacing = 16 * sc;
-    // On very small phones, use a single column for better readability.
-    final bool singleColumn = width < 380;
-    if (singleColumn) {
-      return Column(
-        children: [
-          for (int i = 0; i < tiles.length; i++) ...[
-            tiles[i],
-            if (i + 1 < tiles.length) SizedBox(height: spacing),
-          ],
-        ],
-      );
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
+    final double spacing = 12 * sc;
+
+    // عدد الأعمدة حسب عرض الشاشة
+    final int cols;
+    if (width < 380) {
+      cols = 1;
+    } else if (width < 900) {
+      cols = 2;
+    } else {
+      cols = 4;
     }
+
     final children = <Widget>[];
-    for (int i = 0; i < tiles.length; i += 2) {
-      final left = Expanded(child: tiles[i]);
-      final right = (i + 1 < tiles.length)
-          ? Expanded(child: tiles[i + 1])
-          : const Expanded(child: SizedBox());
-      children.add(Row(children: [left, SizedBox(width: spacing), right]));
-      if (i + 2 < tiles.length) children.add(SizedBox(height: spacing));
+    for (int i = 0; i < tiles.length; i += cols) {
+      final rowItems = <Widget>[];
+      for (int j = 0; j < cols; j++) {
+        if (j > 0) rowItems.add(SizedBox(width: spacing));
+        rowItems.add(Expanded(
+          child: (i + j < tiles.length) ? tiles[i + j] : const SizedBox(),
+        ));
+      }
+      children.add(Row(children: rowItems));
+      if (i + cols < tiles.length) children.add(SizedBox(height: spacing));
     }
     return Column(children: children);
   }
@@ -683,7 +668,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
   Widget _deviceBox(Map<String, dynamic> dev) {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     final int valueLines = _isMobile(context) ? 2 : 1;
 
     final username = _safeGetString(dev['username']) ?? 'غير متوفر';
@@ -727,6 +712,97 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             accent: Colors.deepPurple, valueMaxLines: valueLines),
     ];
 
+    return _twoPerRowGrid(tiles);
+  }
+
+  /// معلومات الجهاز + حالة الجهاز + قوة الإشارة في شبكة واحدة
+  Widget _deviceAndOntCombined(Map<String, dynamic>? deviceDetails) {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
+    final int valueLines = _isMobile(context) ? 2 : 1;
+
+    final tiles = <Widget>[];
+
+    // بيانات الجهاز (يوزر نيم + سيريال + MAC)
+    if (deviceDetails != null) {
+      final username = _safeGetString(deviceDetails['username']) ?? 'غير متوفر';
+      final serial = _safeGetString(deviceDetails['serial']) ?? 'غير متوفر';
+      final mac = _safeGetString(deviceDetails['macAddress']);
+
+      tiles.add(_metricTile(Icons.person, 'اليوزر نيم', username,
+          accent: Colors.indigo, valueMaxLines: valueLines));
+
+      tiles.add(Stack(
+        children: [
+          _metricTile(Icons.memory, 'السيريال', serial,
+              accent: Colors.teal, valueMaxLines: valueLines),
+          Positioned(
+            left: 6 * sc, top: 0, bottom: 0,
+            child: Center(
+              child: Material(
+                color: Colors.teal.shade700,
+                shape: const CircleBorder(),
+                elevation: 2,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => _showEditSerialDialog(serial),
+                  child: Padding(
+                    padding: EdgeInsets.all(6 * sc),
+                    child: Icon(Icons.edit, size: 22 * sc, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ));
+
+      if (mac != null && mac.isNotEmpty) {
+        tiles.add(_metricTile(Icons.lan, 'MAC Address', mac,
+            accent: Colors.deepPurple, valueMaxLines: valueLines));
+      }
+    }
+
+    // حالة الجهاز + قوة الإشارة من ONT
+    if (isLoadingOntInfo) {
+      tiles.add(const Center(child: CircularProgressIndicator(strokeWidth: 2)));
+    } else if (deviceOntInfo != null) {
+      final model = _safeGetMap(deviceOntInfo!['model']);
+      final status = _safeGetMap(model?['status']);
+      final rxPower = model?['rxPower'];
+      final rawStatusDisp = _safeGetString(status?['displayValue']);
+      final statusVal = rawStatusDisp?.toLowerCase() ?? '';
+      Color statusColor = Colors.grey;
+      IconData statusIcon = Icons.device_unknown;
+      if (statusVal == 'up') {
+        statusColor = Colors.green;
+        statusIcon = Icons.signal_wifi_4_bar;
+      } else if (statusVal == 'down') {
+        statusColor = Colors.red;
+        statusIcon = Icons.signal_wifi_off;
+      }
+      final localizedStatus = _localizedDeviceStatus(rawStatusDisp);
+      tiles.add(_statusTile(statusIcon, 'حالة الجهاز', localizedStatus, statusColor));
+
+      Color powerColor = Colors.grey;
+      String powerStatus = '';
+      if (rxPower != null) {
+        try {
+          final p = double.parse(rxPower.toString());
+          if (p >= -20) { powerColor = Colors.green; powerStatus = 'ممتازة'; }
+          else if (p >= -25) { powerColor = Colors.orange; powerStatus = 'جيدة'; }
+          else if (p >= -30) { powerColor = Colors.amber; powerStatus = 'متوسطة'; }
+          else { powerColor = Colors.red; powerStatus = 'ضعيفة'; }
+        } catch (_) {}
+      }
+      tiles.add(_statusTile(null, 'قوة الإشارة',
+          '${_safeGetString(rxPower) ?? 'غير معروف'} dBm', powerColor,
+          badge: powerStatus));
+    }
+
+    if (tiles.isEmpty) {
+      return _msgBox('لا توجد معلومات تقنية متاحة للجهاز', Colors.grey, Icons.info_outline);
+    }
     return _twoPerRowGrid(tiles);
   }
 
@@ -789,14 +865,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   }
                   setDialogState(() { saving = true; error = null; });
                   try {
-                    final url = Uri.parse(
-                        'https://admin.ftth.iq/api/subscriptions/$id/device');
-                    final r = await http.put(url,
-                        headers: {
-                          'Authorization': 'Bearer ${widget.authToken}',
-                          'Content-Type': 'application/json',
-                          'Accept': 'application/json',
-                        },
+                    final r = await AuthService.instance.authenticatedRequest(
+                        'PUT',
+                        'https://admin.ftth.iq/api/subscriptions/$id/device',
                         body: jsonEncode({
                           'username': username,
                           'ontSerial': newSerial,
@@ -809,11 +880,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                         if (ctx.mounted) Navigator.pop(ctx);
                         fetchUserDetailsAndSubscription();
                       });
+                    } else if (r.statusCode == 401) {
+                      if (mounted) AuthErrorHandler.handle401Error(context);
+                      return;
                     } else {
                       setDialogState(() => error = 'فشل: ${r.statusCode}');
                     }
                   } catch (e) {
-                    if (ctx.mounted) setDialogState(() => error = 'خطأ: $e');
+                    if (ctx.mounted) setDialogState(() => error = 'خطأ');
                   } finally {
                     if (ctx.mounted) setDialogState(() => saving = false);
                   }
@@ -842,7 +916,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final serial = _safeGetString(dev['serial']) ?? '';
     final mac = _safeGetString(dev['macAddress']) ?? '';
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     return Padding(
       padding: EdgeInsets.only(top: 8 * sc),
       child: SizedBox(
@@ -887,7 +961,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
   Widget _sessionBox(Map<String, dynamic> s) {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     final totalSecs =
         int.tryParse(_safeGetString(s['sessionTimeInSeconds']) ?? '0') ?? 0;
 
@@ -971,7 +1045,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   Widget _statusTile(IconData? icon, String label, String value, Color c,
           {String? badge}) {
       final screenH = MediaQuery.of(context).size.height;
-      final double sc = (screenH / 900).clamp(0.75, 1.3);
+      final double sc = (screenH / 900).clamp(0.75, 1.0);
       return InputDecorator(
         decoration: InputDecoration(
           label: Row(
@@ -1088,18 +1162,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      _showErrorDialog('حدث خطأ أثناء تحميل البيانات: $e');
+      _showErrorDialog('حدث خطأ أثناء تحميل البيانات');
     }
   }
 
   Future<Map<String, dynamic>?> _fetchCustomerDetails() async {
     try {
-      final r = await http.get(
-          Uri.parse('https://admin.ftth.iq/api/customers/${widget.userId}'),
-          headers: {
-            'Authorization': 'Bearer ${widget.authToken}',
-            'Accept': 'application/json',
-          });
+      final r = await AuthService.instance.authenticatedRequest(
+          'GET',
+          'https://admin.ftth.iq/api/customers/${widget.userId}');
       debugPrint('📞 [fetchCustomerDetails] status=${r.statusCode}');
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
@@ -1114,6 +1185,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           debugPrint('📞 [fetchCustomerDetails] primaryContact=${data['primaryContact']}');
           return data;
         }
+      } else if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return null;
       } else {
         debugPrint('📞 [fetchCustomerDetails] body=${r.body.substring(0, r.body.length.clamp(0, 200))}');
       }
@@ -1493,7 +1567,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   Widget _buildPhoneTile(double width, Color? tileBg, Color? tileBorder,
       Color? iconBg) {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     return SizedBox(
       width: width,
       child: Container(
@@ -1596,7 +1670,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       Color? borderColor,
       Color? iconBgColor}) {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     return SizedBox(
       width: width,
       child: Container(
@@ -1739,7 +1813,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   /// صف واحد يحتوي الاسم + الهاتف + المعرف (3 حقول في صف)
   Widget _userInfoRow() {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     final double lblSize = 18 * sc;
     final double valSize = 18 * sc;
 
@@ -1830,7 +1904,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
   Widget _userNameRow() {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 6 * sc),
       decoration: BoxDecoration(
@@ -1940,16 +2014,16 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     double? customerWalletBalance;
     try {
       Future<Map<String, dynamic>?> get(String url) async {
-        final r = await http.get(Uri.parse(url), headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json'
-        }).timeout(const Duration(seconds: 20));
+        final r = await AuthService.instance.authenticatedRequest('GET', url);
         if (r.statusCode == 200) {
           try {
             return jsonDecode(r.body) as Map<String, dynamic>;
           } catch (_) {
             return null;
           }
+        } else if (r.statusCode == 401) {
+          if (mounted) AuthErrorHandler.handle401Error(context);
+          return null;
         }
         return null;
       }
@@ -1996,7 +2070,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         }
       } catch (_) {}
     } catch (e) {
-      debugPrint('⚠️ فشل التحضير المسبق للتجديد: $e');
+      debugPrint('⚠️ فشل التحضير المسبق للتجديد');
     } finally {
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context, rootNavigator: false).pop();
@@ -2081,7 +2155,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     debugPrint('🔗 FAT Value: $fatValue');
     debugPrint('🔗 FDT Display: $fdtDisplay');
     debugPrint('🔗 FAT Display: $fatDisplay');
-    debugPrint('🔐 firstSystemPermissions: ${widget.firstSystemPermissions}');
+    debugPrint('🔐 isAdminFlag: ${widget.isAdminFlag}');
     debugPrint('👨‍💼 isAdminFlag: ${widget.isAdminFlag}');
     debugPrint('🏢 firstSystemDepartment: ${widget.firstSystemDepartment}');
     debugPrint('🏢 firstSystemCenter: ${widget.firstSystemCenter}');
@@ -2133,7 +2207,6 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   fbgValue: fbgValue,
                   fatValue: fatValue,
                   // معلومات النظام الأول والصلاحيات
-                  firstSystemPermissions: widget.firstSystemPermissions,
                   isAdminFlag: widget.isAdminFlag,
                   firstSystemDepartment: widget.firstSystemDepartment,
                   firstSystemCenter: widget.firstSystemCenter,
@@ -2167,7 +2240,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
-    final double sc = (screenH / 900).clamp(0.75, 1.3);
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
     final double s = sc;
     final pad = 10.0 * sc;
     final gap = 10.0 * sc;
@@ -2359,8 +2432,21 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                           final phone = _resolvedPhone.isNotEmpty
                                               ? _fmtPhoneLocal(_resolvedPhone)
                                               : 'غير متوفر';
-                                          final text =
-                                              'الاسم: ${widget.userName}\nرقم الهاتف: $phone\nالمعرف: ${widget.userId}';
+                                          final fbgFat = _getFbgFat();
+                                          final fbg = fbgFat.$1 ?? '';
+                                          final fat = fbgFat.$2 ?? '';
+                                          final services = subscriptionDetails != null
+                                              ? _safeGetList(subscriptionDetails!['services'])
+                                              : null;
+                                          final bundle = _baseService(services);
+                                          final parts = <String>[
+                                            'الاسم: ${widget.userName}',
+                                            'رقم الهاتف: $phone',
+                                          ];
+                                          if (fbg.isNotEmpty) parts.add('FBG: $fbg');
+                                          if (fat.isNotEmpty) parts.add('FAT: $fat');
+                                          parts.add('الحزمة: $bundle');
+                                          final text = parts.join('\n');
                                           Clipboard.setData(
                                               ClipboardData(text: text));
                                           ScaffoldMessenger.of(context)
@@ -2517,33 +2603,20 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                     SizedBox(height: gap),
                                     _subscriptionDetails(),
 
-                                    // ── معلومات الجهاز ──
+                                    // ── معلومات الجهاز + حالة الجهاز + قوة الإشارة ──
                                     Divider(height: gap * 3, thickness: 1.5, color: Colors.black54),
                                     Text('معلومات الجهاز',
                                         style: _TextStyles.sectionHeader
                                             .copyWith(fontSize: titleSize)),
                                     SizedBox(height: gap),
-                                    if (deviceDetails != null) ...[
-                                      _deviceBox(deviceDetails),
-                                      SizedBox(height: gap)
-                                    ],
-                                    _ontInfoSection(),
+                                    _deviceAndOntCombined(deviceDetails),
                                     SizedBox(height: gap),
 
-                                    // ── الجلسة + الموقع ──
-                                    if (activeSession != null || coords != null) ...[
+                                    // ── الجلسة ──
+                                    if (activeSession != null) ...[
                                       Divider(height: gap * 3, thickness: 1.5, color: Colors.black54),
                                       Row(children: [
-                                        if (activeSession != null)
-                                          Expanded(child: _sessionBox(activeSession!)),
-                                        if (activeSession != null && coords != null)
-                                          SizedBox(width: 16 * (screenH / 900).clamp(0.75, 1.3)),
-                                        if (coords != null)
-                                          Expanded(
-                                            child: _metricTile(Icons.location_on, 'الموقع',
-                                                '${coords.$1},${coords.$2}',
-                                                accent: Colors.orange.shade700),
-                                          ),
+                                        Expanded(child: _sessionBox(activeSession!)),
                                       ]),
                                     ],
                                   ],
@@ -2914,15 +2987,10 @@ class EditDevicePageState extends State<EditDevicePage> {
       'ontSerial': serialController.text.trim(),
       'macAddress': macController.text.trim()
     };
-    final url = Uri.parse(
-        'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/device');
     try {
-      final r = await http.put(url,
-          headers: {
-            'Authorization': 'Bearer ${widget.authToken}',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
+      final r = await AuthService.instance.authenticatedRequest(
+          'PUT',
+          'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/device',
           body: jsonEncode(body));
       if (!mounted) return;
       if (r.statusCode == 200) {
@@ -2930,11 +2998,14 @@ class EditDevicePageState extends State<EditDevicePage> {
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) Navigator.of(context).pop(true);
         });
+      } else if (r.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         setState(() => errorMessage = 'فشل: ${r.statusCode} - ${r.body}');
       }
     } catch (e) {
-      if (mounted) setState(() => errorMessage = 'خطأ: $e');
+      if (mounted) setState(() => errorMessage = 'خطأ');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }

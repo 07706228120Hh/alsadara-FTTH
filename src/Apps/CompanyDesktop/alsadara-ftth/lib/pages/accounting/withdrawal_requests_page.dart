@@ -72,7 +72,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading withdrawal requests: $e');
+      debugPrint('Error loading withdrawal requests');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -100,7 +100,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
             0, (sum, r) => sum + ((r['Amount'] ?? 0) as num).toDouble());
       });
     } catch (e) {
-      debugPrint('Error loading stats: $e');
+      debugPrint('Error loading stats');
     }
   }
 
@@ -884,7 +884,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في الصرف: $e', style: GoogleFonts.cairo()),
+          content: Text('خطأ في الصرف', style: GoogleFonts.cairo()),
           backgroundColor: _accentRed,
         ),
       );
@@ -907,7 +907,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في الرفض: $e', style: GoogleFonts.cairo()),
+          content: Text('خطأ في الرفض', style: GoogleFonts.cairo()),
           backgroundColor: _accentRed,
         ),
       );

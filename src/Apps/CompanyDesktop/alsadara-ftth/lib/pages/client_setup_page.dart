@@ -103,7 +103,7 @@ class _ClientSetupPageState extends State<ClientSetupPage>
         _showError('فشل في إعداد التطبيق. يرجى المحاولة مرة أخرى.');
       }
     } catch (e) {
-      _showError('حدث خطأ في الإعداد: $e');
+      _showError('حدث خطأ في الإعداد');
     }
 
     setState(() => _isLoading = false);

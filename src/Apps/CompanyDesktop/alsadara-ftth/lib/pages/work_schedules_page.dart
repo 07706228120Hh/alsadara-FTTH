@@ -49,7 +49,7 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في تحميل الجداول: $e')),
+          SnackBar(content: Text('خطأ في تحميل الجداول')),
         );
       }
     }
@@ -276,7 +276,7 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e')),
+          SnackBar(content: Text('خطأ')),
         );
       }
     }
@@ -330,7 +330,7 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في الحذف: $e')),
+          SnackBar(content: Text('خطأ في الحذف')),
         );
       }
     }

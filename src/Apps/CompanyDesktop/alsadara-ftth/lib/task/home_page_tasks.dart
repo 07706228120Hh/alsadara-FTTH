@@ -1269,10 +1269,10 @@ class HomePageTasksState extends State<HomePageTasks> {
         ),
       );
     } catch (e) {
-      debugPrint('حدث خطأ أثناء فتح التقارير: $e');
+      debugPrint('حدث خطأ أثناء فتح التقارير');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('حدث خطأ أثناء فتح التقارير: $e'),
+          content: Text('حدث خطأ أثناء فتح التقارير'),
           backgroundColor: Colors.red,
         ),
       );
@@ -2252,7 +2252,7 @@ class _WhatsAppTemplateEditorDialogState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في حفظ القالب: $e'),
+            content: Text('خطأ في حفظ القالب'),
             backgroundColor: Colors.red,
           ),
         );

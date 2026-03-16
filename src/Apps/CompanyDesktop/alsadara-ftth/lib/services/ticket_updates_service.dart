@@ -25,6 +25,31 @@ class TicketUpdatesService {
 
   Stream<List<Map<String, dynamic>>> get newTicketsStream => _newTicketsController.stream;
 
+  // عدد تاسكات الوكيل المفتوحة
+  final StreamController<int> _agentCountController = StreamController<int>.broadcast();
+  Stream<int> get agentTaskCountStream => _agentCountController.stream;
+  int _lastAgentCount = 0;
+  int get lastAgentCount => _lastAgentCount;
+
+  /// التوكن الحالي (للاستخدام من الفقاعة العائمة)
+  String? get currentToken => _authToken;
+
+  /// تحديث التوكن بعد تسجيل الدخول
+  void updateAuthToken(String token) {
+    _authToken = token;
+    if (!_running) {
+      start(authToken: token);
+    }
+  }
+
+  /// مزامنة عدد تاسكات الوكيل من tktats_page
+  void updateAgentCount(int count) {
+    if (count != _lastAgentCount) {
+      _lastAgentCount = count;
+      _agentCountController.add(count);
+    }
+  }
+
   Future<void> start({String? authToken, Duration? interval}) async {
     if (!Platform.isWindows) return; // لا نفعّل على غير Windows
     if (_running) return;
@@ -55,11 +80,17 @@ class TicketUpdatesService {
     if (_authToken == null || _authToken!.isEmpty) return;
     _fetchInProgress = true;
     try {
+      // status=0 يجلب التذاكر المفتوحة فقط (أسرع - 160 بدل 58000+)
       final uri = Uri.parse(
-          'https://api.ftth.iq/api/support/tickets?pageSize=30&pageNumber=1&sortCriteria.property=createdAt&sortCriteria.direction=desc&status=0&hierarchyLevel=0');
+          'https://admin.ftth.iq/api/support/tickets?pageSize=50&pageNumber=1&sortCriteria.property=createdAt&sortCriteria.direction=desc&status=0&hierarchyLevel=0');
       final resp = await http.get(uri, headers: {
         'Authorization': 'Bearer $_authToken',
-        'Accept': 'application/json'
+        'Accept': 'application/json, text/plain, */*',
+        'X-Client-App': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+        'X-User-Role': '0',
+        'Origin': 'https://admin.ftth.iq',
+        'Referer': 'https://admin.ftth.iq/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
       }).timeout(const Duration(seconds: 25));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -68,6 +99,23 @@ class TicketUpdatesService {
             .whereType<Map<String, dynamic>>()
             .map((e) => e)
             .toList(growable: false);
+
+        // حساب عدد التذاكر المفتوحة (بدون "قيد المعالجة")
+        int openCount = 0;
+        for (final t in parsed) {
+          final s = (t['status']?.toString() ?? '').trim().toLowerCase();
+          if (s.contains('in progress')) continue; // تجاهل قيد المعالجة
+          final isOpen = s.contains('new') ||
+              s.contains('waiting') ||
+              s.contains('on hold') ||
+              s.contains('contractor') ||
+              s.contains('reopened');
+          if (isOpen) openCount++;
+        }
+        if (openCount != _lastAgentCount) {
+          _lastAgentCount = openCount;
+          _agentCountController.add(openCount);
+        }
 
         final List<Map<String, dynamic>> fresh = [];
         for (final t in parsed) {

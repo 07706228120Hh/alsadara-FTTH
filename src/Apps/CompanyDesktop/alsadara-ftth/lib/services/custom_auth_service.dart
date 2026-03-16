@@ -116,7 +116,7 @@ class CustomAuthService {
         superAdmin: admin,
       );
     } catch (e) {
-      return AuthResult.failure('حدث خطأ أثناء تسجيل الدخول: $e');
+      return AuthResult.failure('حدث خطأ أثناء تسجيل الدخول');
     }
   }
 
@@ -245,7 +245,7 @@ class CustomAuthService {
         tenant: tenant,
       );
     } catch (e) {
-      return AuthResult.failure('حدث خطأ أثناء تسجيل الدخول: $e');
+      return AuthResult.failure('حدث خطأ أثناء تسجيل الدخول');
     }
   }
 
@@ -343,8 +343,8 @@ class CustomAuthService {
     UserRole role = UserRole.employee,
     String? department,
     String? center,
-    Map<String, bool>? firstSystemPermissions,
-    Map<String, bool>? secondSystemPermissions,
+    Map<String, Map<String, bool>>? firstSystemPermissions,
+    Map<String, Map<String, bool>>? secondSystemPermissions,
   }) async {
     if (!FirebaseAvailability.isAvailable) return null;
     try {
@@ -364,11 +364,11 @@ class CustomAuthService {
 
       // استخدام صلاحيات المدير إذا كان الدور admin
       final first = role == UserRole.admin
-          ? adminFirstSystemPermissions
-          : (firstSystemPermissions ?? defaultFirstSystemPermissions);
+          ? buildAdminFirstSystemPermissionsV2()
+          : (firstSystemPermissions ?? buildDefaultFirstSystemPermissionsV2());
       final second = role == UserRole.admin
-          ? adminSecondSystemPermissions
-          : (secondSystemPermissions ?? defaultSecondSystemPermissions);
+          ? buildAdminSecondSystemPermissionsV2()
+          : (secondSystemPermissions ?? buildDefaultSecondSystemPermissionsV2());
 
       final docRef = await _firestore
           .collection('tenants')

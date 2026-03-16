@@ -11,9 +11,10 @@ import 'dart:io';
 import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../services/auth_service.dart';
 import '../transactions/transactions_page.dart';
+import '../auth/auth_error_handler.dart';
 
 /// صفحة عرض تفاصيل معاملات منشأة محددة
 class CreatorTransactionsDetailPage extends StatefulWidget {
@@ -128,13 +129,9 @@ class _CreatorTransactionsDetailPageState
       final url =
           'https://admin.ftth.iq/api/audit-logs?pageSize=20&pageNumber=1&sortCriteria.property=CreatedAt&sortCriteria.direction=%20desc&customerId=$customerId';
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url,
       );
 
       if (response.statusCode == 200) {
@@ -199,6 +196,9 @@ class _CreatorTransactionsDetailPageState
             };
           });
         }
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         throw Exception('فشل في جلب البيانات: ${response.statusCode}');
       }
@@ -206,7 +206,7 @@ class _CreatorTransactionsDetailPageState
       setState(() {
         customerDetails[customerId] = {
           'id': customerId,
-          'error': 'خطأ في جلب البيانات: ${e.toString()}',
+          'error': 'خطأ في جلب البيانات',
           'displayValue': 'خطأ في الجلب'
         };
       });
@@ -214,7 +214,7 @@ class _CreatorTransactionsDetailPageState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل في جلب معلومات العميل: ${e.toString()}'),
+            content: Text('فشل في جلب معلومات العميل'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -265,13 +265,9 @@ class _CreatorTransactionsDetailPageState
       final url =
           'https://admin.ftth.iq/api/audit-logs?pageSize=10&pageNumber=1&sortCriteria.property=CreatedAt&sortCriteria.direction=%20desc&customerId=$customerId';
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer ${widget.authToken}',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        url,
       );
 
       if (response.statusCode == 200) {
@@ -364,23 +360,26 @@ class _CreatorTransactionsDetailPageState
             };
           });
         }
+      } else if (response.statusCode == 401) {
+        if (mounted) AuthErrorHandler.handle401Error(context);
+        return;
       } else {
         throw Exception('فشل في جلب البيانات: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
         customerOrganizations[customerId] =
-            'خطأ في جلب البيانات: ${e.toString()}';
+            'خطأ في جلب البيانات';
         customerActors[customerId] = {
           'username': 'خطأ في الجلب',
-          'error': e.toString()
+          'error': 'حدث خطأ'
         };
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل في جلب معلومات العميل: ${e.toString()}'),
+            content: Text('فشل في جلب معلومات العميل'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -910,7 +909,7 @@ class _CreatorTransactionsDetailPageState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('فشل في تصدير البيانات: $e'),
+          content: Text('فشل في تصدير البيانات'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape:

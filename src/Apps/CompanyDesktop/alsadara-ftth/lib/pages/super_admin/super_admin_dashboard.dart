@@ -83,7 +83,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _vpsTenantsError = e.toString();
+          _vpsTenantsError = 'حدث خطأ';
           _isLoadingVpsTenants = false;
         });
       }
@@ -2796,8 +2796,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       'accounting',
       'diagnostics',
     ]);
-    final fullPermissions = PermissionManager.instance.buildPageAccess();
-
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => HomePage(
@@ -2806,7 +2804,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           department: tenant.name,
           center: tenant.code,
           salary: '0',
-          pageAccess: fullPermissions,
           tenantId: tenant.id,
           tenantCode: tenant.code,
           isSuperAdminMode: true,

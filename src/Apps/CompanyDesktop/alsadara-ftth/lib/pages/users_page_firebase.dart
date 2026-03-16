@@ -12,14 +12,10 @@ import 'user_details_page.dart';
 class UsersPageFirebase extends StatefulWidget {
   final String tenantId; // معرف الشركة
   final String permissions; // صلاحيات المستخدم الحالي
-  @Deprecated('استخدم PermissionManager.instance.canView() مباشرة')
-  final Map<String, bool> pageAccess; // صلاحيات الصفحات
-
   const UsersPageFirebase({
     super.key,
     required this.tenantId,
     required this.permissions,
-    this.pageAccess = const {},
   });
 
   @override
@@ -71,7 +67,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'حدث خطأ أثناء جلب المستخدمين: $e';
+        _errorMessage = 'حدث خطأ أثناء جلب المستخدمين';
         _isLoading = false;
       });
     }
@@ -300,8 +296,8 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': 'admin', // يمكن تعديله لاحقاً
-        'firstSystemPermissions': defaultFirstSystemPermissions,
-        'secondSystemPermissions': defaultSecondSystemPermissions,
+        'firstSystemPermissions': buildDefaultFirstSystemPermissionsV2(),
+        'secondSystemPermissions': buildDefaultSecondSystemPermissionsV2(),
       });
 
       if (mounted) {
@@ -322,7 +318,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'حدث خطأ أثناء إضافة المستخدم: $e',
+              'حدث خطأ أثناء إضافة المستخدم',
               style: GoogleFonts.cairo(),
             ),
             backgroundColor: Colors.red,
@@ -504,7 +500,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'حدث خطأ أثناء تحديث المستخدم: $e',
+              'حدث خطأ أثناء تحديث المستخدم',
               style: GoogleFonts.cairo(),
             ),
             backgroundColor: Colors.red,
@@ -564,7 +560,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'حدث خطأ أثناء حذف المستخدم: $e',
+                'حدث خطأ أثناء حذف المستخدم',
                 style: GoogleFonts.cairo(),
               ),
               backgroundColor: Colors.red,
@@ -683,7 +679,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'حدث خطأ أثناء تغيير كلمة المرور: $e',
+              'حدث خطأ أثناء تغيير كلمة المرور',
               style: GoogleFonts.cairo(),
             ),
             backgroundColor: Colors.red,

@@ -175,7 +175,7 @@ class SuperAdminApi {
       }
       return [];
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الشركات من VPS: $e');
+      debugPrint('❌ خطأ في جلب الشركات من VPS');
       return [];
     }
   }

@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
@@ -6,6 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'escpos_cutter.dart';
 import 'printer_settings_storage.dart';
+import 'receipt_pdf_builder.dart';
+import 'receipt_template_storage.dart';
 
 enum PrinterType { bluetooth, defaultPrinter }
 
@@ -47,6 +51,24 @@ class ThermalPrinterService {
   static pw.Font? _arabicFont;
   static pw.Font? _englishFont;
 
+  // ============ Public API for ReceiptPdfBuilder ============
+  static pw.Font? get arabicFont => _arabicFont;
+  static pw.Font? get englishFont => _englishFont;
+  static Future<void> ensureFontsLoaded() => _loadFonts();
+  static pw.Widget buildMixedText(
+    String text, {
+    double fontSize = 12,
+    pw.FontWeight fontWeight = pw.FontWeight.normal,
+    PdfColor? color,
+    pw.TextAlign textAlign = pw.TextAlign.right,
+  }) =>
+      _buildMixedText(text,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: color,
+          textAlign: textAlign);
+  // =========================================================
+
   /// تحميل الخطوط (العربي والإنجليزي)
   static Future<void> _loadFonts() async {
     // تحميل الخط العربي
@@ -63,7 +85,7 @@ class ThermalPrinterService {
           debugPrint('$_tag: Google Fonts Arabic font loaded successfully');
         }
       } catch (e) {
-        debugPrint('$_tag: Error loading Arabic font: $e');
+        debugPrint('$_tag: Error loading Arabic font');
         _arabicFont = null;
       }
     }
@@ -75,7 +97,7 @@ class ThermalPrinterService {
         _englishFont = fontData;
         debugPrint('$_tag: English font loaded successfully');
       } catch (e) {
-        debugPrint('$_tag: Error loading English font: $e');
+        debugPrint('$_tag: Error loading English font');
         _englishFont = null;
       }
     }
@@ -257,7 +279,7 @@ class ThermalPrinterService {
         isNewSubscription: isNewSubscription,
       );
     } catch (e) {
-      debugPrint('$_tag: Error printing receipt: $e');
+      debugPrint('$_tag: Error printing receipt');
       return false;
     }
   }
@@ -270,7 +292,7 @@ class ThermalPrinterService {
       // الطباعة على الطابعة الافتراضية فقط
       return await _testPrintDefaultPrinter();
     } catch (e) {
-      debugPrint('$_tag: Error in test print: $e');
+      debugPrint('$_tag: Error in test print');
       return false;
     }
   }
@@ -386,7 +408,7 @@ class ThermalPrinterService {
       debugPrint('$_tag: Default printer test completed successfully');
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error in default printer test: $e');
+      debugPrint('$_tag: Error in default printer test');
       return false;
     }
   }
@@ -573,11 +595,11 @@ class ThermalPrinterService {
           debugPrint('$_tag: ESC/POS cut command sent');
         }
       } catch (e) {
-        debugPrint('$_tag: Failed to send cut command: $e');
+        debugPrint('$_tag: Failed to send cut command');
       }
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error printing PDF receipt: $e');
+      debugPrint('$_tag: Error printing PDF receipt');
       return false;
     }
   }
@@ -1077,7 +1099,7 @@ class ThermalPrinterService {
       );
       return defaultPrinter.isAvailable;
     } catch (e) {
-      debugPrint('$_tag: Error checking printers availability: $e');
+      debugPrint('$_tag: Error checking printers availability');
       return false;
     }
   }
@@ -1152,9 +1174,9 @@ class ThermalPrinterService {
 
       debugPrint('$_tag: Print test completed successfully');
     } catch (e) {
-      results['error'] = 'خطأ في الطباعة: $e';
+      results['error'] = 'خطأ في الطباعة';
       results['success'] = 'false';
-      debugPrint('$_tag: Print test failed: $e');
+      debugPrint('$_tag: Print test failed');
     }
 
     return results;
@@ -1321,7 +1343,7 @@ class ThermalPrinterService {
               .add('تم العثور على ${printers.length} طابعة');
         }
       } catch (e) {
-        diagnostic['errors'].add('خطأ في جلب قائمة الطابعات: $e');
+        diagnostic['errors'].add('خطأ في جلب قائمة الطابعات');
         diagnostic['recommendations']
             .add('تحقق من صلاحيات التطبيق للوصول للطابعات');
       }
@@ -1338,11 +1360,11 @@ class ThermalPrinterService {
         diagnostic['pdfGeneration'] = 'نجح';
         diagnostic['pdfSize'] = '${pdfBytes.length} بايت';
       } catch (e) {
-        diagnostic['errors'].add('خطأ في إنشاء PDF: $e');
+        diagnostic['errors'].add('خطأ في إنشاء PDF');
         diagnostic['pdfGeneration'] = 'فشل';
       }
     } catch (e) {
-      diagnostic['errors'].add('خطأ عام في التشخيص: $e');
+      diagnostic['errors'].add('خطأ عام في التشخيص');
     }
 
     return diagnostic;
@@ -1519,7 +1541,7 @@ class ThermalPrinterService {
       debugPrint('$_tag: Print dialog opened successfully');
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error opening print dialog: $e');
+      debugPrint('$_tag: Error opening print dialog');
       return false;
     }
   }
@@ -1544,6 +1566,8 @@ class ThermalPrinterService {
     String? fatInfo,
     String? activatedBy,
     String? subscriptionNotes, // إضافة معامل الملاحظات
+    int? copyNumber, // رقم النسخة المطبوعة (1 = أصلي، 2+ = نسخة مكررة)
+    bool saveAsPdf = false, // حفظ كملف PDF بدلاً من الطباعة
   }) async {
     try {
       // تحميل الخط العربي أولاً
@@ -1569,9 +1593,80 @@ class ThermalPrinterService {
         fatInfo: fatInfo,
         activatedBy: activatedBy,
         subscriptionNotes: subscriptionNotes, // تمرير الملاحظات
+        copyNumber: copyNumber,
+        saveAsPdf: saveAsPdf,
       );
     } catch (e) {
-      debugPrint('$_tag: Error printing custom receipt: $e');
+      debugPrint('$_tag: Error printing custom receipt');
+      return false;
+    }
+  }
+
+  /// طباعة/حفظ وصل باستخدام نظام القالب الجديد (V2)
+  static Future<bool> printFromReceiptTemplate({
+    required Map<String, String> variableValues,
+    Map<String, bool> conditions = const {},
+    bool saveAsPdf = false,
+  }) async {
+    try {
+      final template = await ReceiptTemplateStorageV2.loadTemplate();
+
+      final builder = ReceiptPdfBuilder(
+        template: template,
+        variableValues: variableValues,
+        conditions: conditions,
+      );
+
+      final pdfBytes = await builder.buildBytes();
+
+      if (saveAsPdf) {
+        debugPrint('$_tag: Saving V2 receipt as PDF file...');
+        final customerName = variableValues['customerName'] ?? '';
+        final result = await FilePicker.platform.saveFile(
+          dialogTitle: 'حفظ الوصل كـ PDF',
+          fileName:
+              'وصل_${customerName}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+        );
+        if (result != null) {
+          await File(result).writeAsBytes(pdfBytes);
+          debugPrint('$_tag: V2 PDF saved to: $result');
+        } else {
+          debugPrint('$_tag: User cancelled PDF save');
+          return false;
+        }
+      } else {
+        debugPrint('$_tag: Printing V2 receipt...');
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfBytes,
+          name:
+              'وصل_${variableValues['operationType'] ?? ''}_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        debugPrint('$_tag: V2 receipt printed successfully');
+
+        // أمر القطع بعد الطباعة
+        try {
+          final settings = await PrinterSettingsStorage.loadCutSettings();
+          if (settings.enabled && settings.host.isNotEmpty) {
+            if (settings.delayMs > 0) {
+              await Future<void>.delayed(
+                  Duration(milliseconds: settings.delayMs));
+            }
+            await EscposCutterService.sendCut(
+              host: settings.host,
+              port: settings.port,
+              feedLines: settings.feedLines,
+            );
+          }
+        } catch (cutErr) {
+          debugPrint('$_tag: Cut command error (non-fatal): $cutErr');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('$_tag: Error printing V2 receipt');
       return false;
     }
   }
@@ -1596,6 +1691,8 @@ class ThermalPrinterService {
     String? fatInfo,
     String? activatedBy,
     String? subscriptionNotes, // إضافة معامل الملاحظات
+    int? copyNumber, // رقم النسخة المطبوعة
+    bool saveAsPdf = false, // حفظ كملف PDF بدلاً من الطباعة
   }) async {
     try {
       final pdf = pw.Document();
@@ -1715,6 +1812,27 @@ class ThermalPrinterService {
 
                 // تعريف نمط الصندوق للصفوف
                 // (يُستخدم لاحقاً لكل صف معلومات)
+                // عرض رقم النسخة إذا كانت نسخة مكررة (2+)
+                if (copyNumber != null && copyNumber > 1)
+                  pw.Center(
+                    child: pw.Container(
+                      padding:
+                          pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      margin: pw.EdgeInsets.only(bottom: 4),
+                      decoration: pw.BoxDecoration(
+                        border:
+                            pw.Border.all(color: PdfColors.black, width: 1.5),
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: _buildMixedText(
+                        'نسخة $copyNumber',
+                        fontSize: template.fontSize + 2,
+                        fontWeight: pw.FontWeight.bold,
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
+                  ),
+
                 // السطر الأول: المنشط والوصل داخل صندوق
                 pw.Container(
                   decoration: pw.BoxDecoration(
@@ -1963,41 +2081,61 @@ class ThermalPrinterService {
         ),
       );
 
-      // عرض نافذة الطباعة
-      debugPrint('$_tag: Opening print dialog for custom template...');
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async {
-          debugPrint('$_tag: Generating PDF for custom template...');
-          return pdf.save();
-        },
-        name:
-            'وصل_مخصص_${operationType}_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      debugPrint('$_tag: Custom PDF receipt printed successfully');
-
-      // إرسال أمر القطع (ESC/POS) بعد الطباعة إذا كان مفعلاً (الوصل المخصص)
-      try {
-        final settings = await PrinterSettingsStorage.loadCutSettings();
-        if (settings.enabled && settings.host.isNotEmpty) {
-          if (settings.delayMs > 0) {
-            await Future<void>.delayed(
-                Duration(milliseconds: settings.delayMs));
-          }
-          await EscposCutterService.sendCut(
-            host: settings.host,
-            port: settings.port,
-            feedLines: settings.feedLines,
-            partial: true,
-          );
-          debugPrint('$_tag: ESC/POS cut command sent (custom)');
+      // حفظ كـ PDF مباشرة أو طباعة
+      if (saveAsPdf) {
+        debugPrint('$_tag: Saving receipt as PDF file...');
+        final pdfBytes = await pdf.save();
+        final result = await FilePicker.platform.saveFile(
+          dialogTitle: 'حفظ الوصل كـ PDF',
+          fileName:
+              'وصل_${customerName}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+        );
+        if (result != null) {
+          await File(result).writeAsBytes(pdfBytes);
+          debugPrint('$_tag: PDF saved to: $result');
+        } else {
+          debugPrint('$_tag: User cancelled PDF save');
+          return false;
         }
-      } catch (e) {
-        debugPrint('$_tag: Failed to send cut command (custom): $e');
+      } else {
+        // عرض نافذة الطباعة
+        debugPrint('$_tag: Opening print dialog for custom template...');
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async {
+            debugPrint('$_tag: Generating PDF for custom template...');
+            return pdf.save();
+          },
+          name:
+              'وصل_مخصص_${operationType}_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        debugPrint('$_tag: Custom PDF receipt printed successfully');
+
+        // إرسال أمر القطع (ESC/POS) بعد الطباعة إذا كان مفعلاً (الوصل المخصص)
+        try {
+          final settings = await PrinterSettingsStorage.loadCutSettings();
+          if (settings.enabled && settings.host.isNotEmpty) {
+            if (settings.delayMs > 0) {
+              await Future<void>.delayed(
+                  Duration(milliseconds: settings.delayMs));
+            }
+            await EscposCutterService.sendCut(
+              host: settings.host,
+              port: settings.port,
+              feedLines: settings.feedLines,
+              partial: true,
+            );
+            debugPrint('$_tag: ESC/POS cut command sent (custom)');
+          }
+        } catch (e) {
+          debugPrint('$_tag: Failed to send cut command (custom)');
+        }
       }
 
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error printing custom PDF receipt: $e');
+      debugPrint('$_tag: Error printing custom PDF receipt');
       return false;
     }
   }
@@ -2098,7 +2236,7 @@ class ThermalPrinterService {
 
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error in mixed text test print: $e');
+      debugPrint('$_tag: Error in mixed text test print');
       return false;
     }
   }
@@ -2280,7 +2418,7 @@ class ThermalPrinterService {
 
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error in new layout test print: $e');
+      debugPrint('$_tag: Error in new layout test print');
       return false;
     }
   }
@@ -2312,7 +2450,7 @@ class ThermalPrinterService {
 
       return await _printTestReceiptNew72mm(testData);
     } catch (e) {
-      debugPrint('$_tag: Error in test: $e');
+      debugPrint('$_tag: Error in test');
       return false;
     }
   }
@@ -2506,7 +2644,7 @@ class ThermalPrinterService {
       debugPrint('$_tag: Test print completed successfully');
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error in test print: $e');
+      debugPrint('$_tag: Error in test print');
       return false;
     }
   }
@@ -2614,7 +2752,7 @@ class ThermalPrinterService {
       debugPrint('$_tag: Optimized test print completed successfully');
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error in optimized test print: $e');
+      debugPrint('$_tag: Error in optimized test print');
       return false;
     }
   }
@@ -2720,7 +2858,7 @@ class ThermalPrinterService {
       debugPrint('$_tag: Final optimized test print completed successfully');
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error in final optimized test print: $e');
+      debugPrint('$_tag: Error in final optimized test print');
       return false;
     }
   }
@@ -2887,7 +3025,7 @@ class ThermalPrinterService {
       debugPrint('$_tag: Super optimized layout test completed successfully');
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error in super optimized layout test: $e');
+      debugPrint('$_tag: Error in super optimized layout test');
       return false;
     }
   }
@@ -2911,7 +3049,7 @@ class ThermalPrinterService {
 
       return currentNumber;
     } catch (e) {
-      debugPrint('$_tag: Error getting receipt number: $e');
+      debugPrint('$_tag: Error getting receipt number');
       // إرجاع رقم عشوائي في حالة الخطأ
       return DateTime.now().millisecondsSinceEpoch % 10000;
     }
@@ -3020,7 +3158,7 @@ class ThermalPrinterService {
       );
       return true;
     } catch (e) {
-      debugPrint('$_tag: Error printing layout settings: $e');
+      debugPrint('$_tag: Error printing layout settings');
       return false;
     }
   }

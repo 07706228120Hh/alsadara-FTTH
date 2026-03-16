@@ -3,6 +3,7 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../permissions/permission_registry.dart';
 
 class TenantUser {
   final String id;
@@ -22,8 +23,8 @@ class TenantUser {
   final DateTime createdAt;
   final String createdBy;
   final DateTime? lastLogin;
-  final Map<String, bool> firstSystemPermissions;
-  final Map<String, bool> secondSystemPermissions;
+  final Map<String, Map<String, bool>> firstSystemPermissionsV2;
+  final Map<String, Map<String, bool>> secondSystemPermissionsV2;
 
   TenantUser({
     required this.id,
@@ -43,8 +44,8 @@ class TenantUser {
     required this.createdAt,
     required this.createdBy,
     this.lastLogin,
-    required this.firstSystemPermissions,
-    required this.secondSystemPermissions,
+    required this.firstSystemPermissionsV2,
+    required this.secondSystemPermissionsV2,
   });
 
   /// هل هو مدير الشركة؟
@@ -79,20 +80,48 @@ class TenantUser {
       lastLogin: data['lastLogin'] != null
           ? (data['lastLogin'] as Timestamp).toDate()
           : null,
-      firstSystemPermissions: _parsePermissions(data['firstSystemPermissions']),
-      secondSystemPermissions:
-          _parsePermissions(data['secondSystemPermissions']),
+      firstSystemPermissionsV2: _parsePermissionsV2(
+        data['firstSystemPermissions'],
+        PermissionRegistry.firstSystem,
+      ),
+      secondSystemPermissionsV2: _parsePermissionsV2(
+        data['secondSystemPermissions'],
+        PermissionRegistry.secondSystem,
+      ),
     );
   }
 
-  static Map<String, bool> _parsePermissions(dynamic data) {
+  /// تحليل صلاحيات V2 مع توافق V1
+  /// إذا كانت البيانات بصيغة V1 (flat bool)، يتم تحويلها إلى V2
+  /// إذا كانت بصيغة V2 (nested map)، تُستخدم مباشرة
+  static Map<String, Map<String, bool>> _parsePermissionsV2(
+    dynamic data,
+    List<PermissionEntry> registry,
+  ) {
     if (data == null) return {};
-    if (data is Map) {
-      return Map<String, bool>.from(
-        data.map((key, value) => MapEntry(key.toString(), value == true)),
-      );
+    if (data is! Map) return {};
+
+    final result = <String, Map<String, bool>>{};
+
+    for (final entry in data.entries) {
+      final key = entry.key.toString();
+      final value = entry.value;
+
+      if (value is Map) {
+        // V2 format: nested map of actions
+        result[key] = Map<String, bool>.from(
+          value.map((k, v) => MapEntry(k.toString(), v == true)),
+        );
+      } else if (value is bool) {
+        // V1 format: flat bool — convert to V2 (all actions = that bool value)
+        final registryEntry = PermissionRegistry.findByKey(key);
+        final actions =
+            registryEntry?.allowedActions ?? PermissionRegistry.getAllowedActions(key);
+        result[key] = {for (final action in actions) action: value};
+      }
     }
-    return {};
+
+    return result;
   }
 
   /// تحويل إلى Map للحفظ في Firestore
@@ -113,8 +142,8 @@ class TenantUser {
       'createdAt': Timestamp.fromDate(createdAt),
       'createdBy': createdBy,
       'lastLogin': lastLogin != null ? Timestamp.fromDate(lastLogin!) : null,
-      'firstSystemPermissions': firstSystemPermissions,
-      'secondSystemPermissions': secondSystemPermissions,
+      'firstSystemPermissions': firstSystemPermissionsV2,
+      'secondSystemPermissions': secondSystemPermissionsV2,
     };
   }
 
@@ -137,8 +166,8 @@ class TenantUser {
     DateTime? createdAt,
     String? createdBy,
     DateTime? lastLogin,
-    Map<String, bool>? firstSystemPermissions,
-    Map<String, bool>? secondSystemPermissions,
+    Map<String, Map<String, bool>>? firstSystemPermissionsV2,
+    Map<String, Map<String, bool>>? secondSystemPermissionsV2,
   }) {
     return TenantUser(
       id: id ?? this.id,
@@ -158,10 +187,10 @@ class TenantUser {
       createdAt: createdAt ?? this.createdAt,
       createdBy: createdBy ?? this.createdBy,
       lastLogin: lastLogin ?? this.lastLogin,
-      firstSystemPermissions:
-          firstSystemPermissions ?? this.firstSystemPermissions,
-      secondSystemPermissions:
-          secondSystemPermissions ?? this.secondSystemPermissions,
+      firstSystemPermissionsV2:
+          firstSystemPermissionsV2 ?? this.firstSystemPermissionsV2,
+      secondSystemPermissionsV2:
+          secondSystemPermissionsV2 ?? this.secondSystemPermissionsV2,
     );
   }
 }
@@ -187,47 +216,42 @@ enum UserRole {
   }
 }
 
-/// صلاحيات النظام الأول الافتراضية
-const Map<String, bool> defaultFirstSystemPermissions = {
-  'attendance': false,
-  'agent': false,
-  'tasks': false,
-  'zones': false,
-  'ai_search': false,
-};
+/// بناء صلاحيات V2 الافتراضية (جميعها مغلقة) للنظام الأول
+Map<String, Map<String, bool>> buildDefaultFirstSystemPermissionsV2() {
+  final result = <String, Map<String, bool>>{};
+  for (final entry in PermissionRegistry.firstSystem) {
+    final actions = entry.allowedActions ?? PermissionRegistry.getAllowedActions(entry.key);
+    result[entry.key] = {for (final a in actions) a: false};
+  }
+  return result;
+}
 
-/// صلاحيات النظام الثاني الافتراضية
-const Map<String, bool> defaultSecondSystemPermissions = {
-  'users': false,
-  'subscriptions': false,
-  'tasks': false,
-  'zones': false,
-  'accounts': false,
-  'account_records': false,
-  'export': false,
-  'agents': false,
-  'google_sheets': false,
-  'whatsapp': false,
-  'wallet_balance': false,
-  'expiring_soon': false,
-  'quick_search': false,
-  'technicians': false,
-  'transactions': false,
-  'notifications': false,
-  'audit_logs': false,
-  'whatsapp_link': false,
-  'whatsapp_settings': false,
-  'plans_bundles': false,
-  'whatsapp_business_api': false,
-  'whatsapp_bulk_sender': false,
-  'whatsapp_conversations_fab': false,
-  'local_storage': false,
-  'local_storage_import': false,
-};
+/// بناء صلاحيات V2 الافتراضية (جميعها مغلقة) للنظام الثاني
+Map<String, Map<String, bool>> buildDefaultSecondSystemPermissionsV2() {
+  final result = <String, Map<String, bool>>{};
+  for (final entry in PermissionRegistry.secondSystem) {
+    final actions = entry.allowedActions ?? PermissionRegistry.getAllowedActions(entry.key);
+    result[entry.key] = {for (final a in actions) a: false};
+  }
+  return result;
+}
 
-/// صلاحيات كاملة للمدير
-Map<String, bool> get adminFirstSystemPermissions =>
-    defaultFirstSystemPermissions.map((key, _) => MapEntry(key, true));
+/// بناء صلاحيات V2 كاملة (للمدير) للنظام الأول
+Map<String, Map<String, bool>> buildAdminFirstSystemPermissionsV2() {
+  final result = <String, Map<String, bool>>{};
+  for (final entry in PermissionRegistry.firstSystem) {
+    final actions = entry.allowedActions ?? PermissionRegistry.getAllowedActions(entry.key);
+    result[entry.key] = {for (final a in actions) a: true};
+  }
+  return result;
+}
 
-Map<String, bool> get adminSecondSystemPermissions =>
-    defaultSecondSystemPermissions.map((key, _) => MapEntry(key, true));
+/// بناء صلاحيات V2 كاملة (للمدير) للنظام الثاني
+Map<String, Map<String, bool>> buildAdminSecondSystemPermissionsV2() {
+  final result = <String, Map<String, bool>>{};
+  for (final entry in PermissionRegistry.secondSystem) {
+    final actions = entry.allowedActions ?? PermissionRegistry.getAllowedActions(entry.key);
+    result[entry.key] = {for (final a in actions) a: true};
+  }
+  return result;
+}

@@ -71,6 +71,10 @@ class SubscriptionLogsService {
     String? linkedAgentId,
     String? linkedTechnicianId,
     String? technicianName,
+    // حقول الخصم
+    double? manualDiscount,
+    double? systemDiscount,
+    bool? systemDiscountEnabled,
   }) async {
     try {
       final body = {
@@ -123,6 +127,10 @@ class SubscriptionLogsService {
         'linkedAgentId': linkedAgentId,
         'linkedTechnicianId': linkedTechnicianId,
         'technicianName': technicianName,
+        // حقول الخصم
+        'manualDiscount': manualDiscount,
+        'systemDiscount': systemDiscount,
+        'systemDiscountEnabled': systemDiscountEnabled,
       };
 
       // إزالة القيم null
@@ -171,12 +179,14 @@ class SubscriptionLogsService {
     bool? isPrinted,
     bool? isWhatsAppSent,
     String? notes,
+    int? printCount,
   }) async {
     try {
       final body = <String, dynamic>{};
       if (isPrinted != null) body['isPrinted'] = isPrinted;
       if (isWhatsAppSent != null) body['isWhatsAppSent'] = isWhatsAppSent;
       if (notes != null) body['subscriptionNotes'] = notes;
+      if (printCount != null) body['printCount'] = printCount;
 
       final response = await http.put(
         Uri.parse('$baseUrl/subscriptionlogs/$logId'),
@@ -297,7 +307,7 @@ class SubscriptionLogsService {
       );
       debugPrint('✅ تم تحديث حالة الدفع للسجل $logId');
     } catch (e) {
-      debugPrint('❌ خطأ في تحديث حالة الدفع: $e');
+      debugPrint('❌ خطأ في تحديث حالة الدفع');
       rethrow;
     }
   }
@@ -319,7 +329,7 @@ class SubscriptionLogsService {
       );
       debugPrint('✅ تم تحديث حالة الدفع لـ ${longIds.length} سجل');
     } catch (e) {
-      debugPrint('❌ خطأ في تحديث حالة الدفع الجماعي: $e');
+      debugPrint('❌ خطأ في تحديث حالة الدفع الجماعي');
       rethrow;
     }
   }
@@ -335,7 +345,7 @@ class SubscriptionLogsService {
         return _mapToArabicKeys(item as Map<String, dynamic>);
       }).toList();
     } catch (e) {
-      debugPrint('❌ خطأ في جلب جميع السجلات: $e');
+      debugPrint('❌ خطأ في جلب جميع السجلات');
       rethrow;
     }
   }

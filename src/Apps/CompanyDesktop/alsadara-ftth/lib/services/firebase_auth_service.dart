@@ -127,7 +127,7 @@ class FirebaseAuthService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'خطأ في تسجيل الدخول: $e',
+        'message': 'خطأ في تسجيل الدخول',
       };
     }
   }
@@ -181,7 +181,7 @@ class FirebaseAuthService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'خطأ في إنشاء المستخدم: $e',
+        'message': 'خطأ في إنشاء المستخدم',
       };
     }
   }
@@ -193,7 +193,7 @@ class FirebaseAuthService {
       _currentUserData = null;
       await _clearSessionLocally();
     } catch (e) {
-      print('خطأ في تسجيل الخروج: $e');
+      print('خطأ في تسجيل الخروج');
     }
   }
 
@@ -209,7 +209,7 @@ class FirebaseAuthService {
           'organization_id', userData['organizationId'] ?? '');
       await prefs.setString('user_role', userData['role'] ?? 'user');
     } catch (e) {
-      print('خطأ في حفظ الجلسة المحلية: $e');
+      print('خطأ في حفظ الجلسة المحلية');
     }
   }
 
@@ -223,7 +223,7 @@ class FirebaseAuthService {
       await prefs.remove('organization_id');
       await prefs.remove('user_role');
     } catch (e) {
-      print('خطأ في مسح الجلسة: $e');
+      print('خطأ في مسح الجلسة');
     }
   }
 
@@ -243,7 +243,7 @@ class FirebaseAuthService {
       data['exists'] = true;
       return data;
     } catch (e) {
-      print('خطأ في قراءة بيانات المستخدم: $e');
+      print('خطأ في قراءة بيانات المستخدم');
       return {'exists': false};
     }
   }
@@ -286,7 +286,7 @@ class FirebaseAuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('organization_id', organizationId);
     } catch (e) {
-      print('خطأ في تحديث Organization ID: $e');
+      print('خطأ في تحديث Organization ID');
     }
   }
 
