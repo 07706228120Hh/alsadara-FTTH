@@ -593,6 +593,65 @@ class WhatsAppBusinessService {
     }
   }
 
+  /// جلب رابط تحميل الوسائط من Meta API
+  /// يُرجع URL مؤقت لتحميل الملف (صالح لدقائق قليلة)
+  static Future<String?> getMediaDownloadUrl(String mediaId) async {
+    try {
+      final userToken = await getUserToken();
+      if (userToken == null) {
+        debugPrint('❌ لا يوجد Access Token لتحميل الوسائط');
+        return null;
+      }
+
+      final url = Uri.parse('$_baseUrl/$_apiVersion/$mediaId');
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $userToken'},
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final downloadUrl = data['url'] as String?;
+        debugPrint('✅ تم جلب رابط الوسائط: $mediaId');
+        return downloadUrl;
+      } else {
+        debugPrint('❌ فشل جلب رابط الوسائط: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في جلب رابط الوسائط');
+      return null;
+    }
+  }
+
+  /// تحميل ملف الوسائط كـ bytes
+  static Future<Uint8List?> downloadMedia(String mediaId) async {
+    try {
+      final downloadUrl = await getMediaDownloadUrl(mediaId);
+      if (downloadUrl == null) return null;
+
+      final userToken = await getUserToken();
+      if (userToken == null) return null;
+
+      final response = await http.get(
+        Uri.parse(downloadUrl),
+        headers: {'Authorization': 'Bearer $userToken'},
+      ).timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        debugPrint(
+            '✅ تم تحميل الوسائط بنجاح: ${response.bodyBytes.length} bytes');
+        return response.bodyBytes;
+      } else {
+        debugPrint('❌ فشل تحميل الوسائط: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في تحميل الوسائط');
+      return null;
+    }
+  }
+
   /// حذف جميع البيانات المحفوظة
   static Future<void> clearCredentials() async {
     try {

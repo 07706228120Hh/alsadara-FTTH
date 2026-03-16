@@ -93,6 +93,10 @@ class WhatsAppMessage {
   final bool isIncoming;
   final String status; // pending, sent, delivered, read, failed
   final DateTime? statusUpdatedAt;
+  final String? mediaId; // معرف الوسائط من Meta API
+  final String? mediaUrl; // رابط الوسائط المحملة
+  final String? mimeType; // نوع الملف (image/jpeg, audio/ogg, etc.)
+  final String? mediaFileName; // اسم الملف للمستندات
 
   WhatsAppMessage({
     required this.messageId,
@@ -103,7 +107,27 @@ class WhatsAppMessage {
     required this.isIncoming,
     this.status = 'pending',
     this.statusUpdatedAt,
+    this.mediaId,
+    this.mediaUrl,
+    this.mimeType,
+    this.mediaFileName,
   });
+
+  /// هل الرسالة تحتوي وسائط؟
+  bool get hasMedia =>
+      mediaId != null && mediaId!.isNotEmpty && type != 'text';
+
+  /// هل الرسالة صورة؟
+  bool get isImage => type == 'image' || type == 'sticker';
+
+  /// هل الرسالة صوتية؟
+  bool get isAudio => type == 'audio';
+
+  /// هل الرسالة فيديو؟
+  bool get isVideo => type == 'video';
+
+  /// هل الرسالة مستند؟
+  bool get isDocument => type == 'document';
 
   factory WhatsAppMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -146,6 +170,16 @@ class WhatsAppMessage {
     // معالجة isIncoming - من direction إذا موجود
     bool isIncoming = data['isIncoming'] ?? (data['direction'] == 'incoming');
 
+    // معالجة حقول الوسائط
+    String? mediaId = data['mediaId'] as String?;
+    if (mediaId != null && mediaId.isEmpty) mediaId = null;
+    String? mediaUrl = data['mediaUrl'] as String?;
+    if (mediaUrl != null && mediaUrl.isEmpty) mediaUrl = null;
+    String? mimeType = data['mimeType'] as String?;
+    if (mimeType != null && mimeType.isEmpty) mimeType = null;
+    String? mediaFileName = data['mediaFileName'] as String?;
+    if (mediaFileName != null && mediaFileName.isEmpty) mediaFileName = null;
+
     return WhatsAppMessage(
       messageId: data['messageId'] ?? doc.id,
       phoneNumber: phoneNumber,
@@ -155,6 +189,10 @@ class WhatsAppMessage {
       isIncoming: isIncoming,
       status: data['status'] ?? 'received',
       statusUpdatedAt: statusUpdatedAt,
+      mediaId: mediaId,
+      mediaUrl: mediaUrl,
+      mimeType: mimeType,
+      mediaFileName: mediaFileName,
     );
   }
 
@@ -169,6 +207,10 @@ class WhatsAppMessage {
       'status': status,
       if (statusUpdatedAt != null)
         'statusUpdatedAt': Timestamp.fromDate(statusUpdatedAt!),
+      if (mediaId != null) 'mediaId': mediaId,
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
+      if (mimeType != null) 'mimeType': mimeType,
+      if (mediaFileName != null) 'mediaFileName': mediaFileName,
     };
   }
 

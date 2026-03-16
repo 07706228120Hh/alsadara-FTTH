@@ -23,6 +23,12 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
 
+  /// كاش الوسائط المحملة (mediaId -> bytes)
+  final Map<String, Uint8List> _mediaCache = {};
+
+  /// قائمة الوسائط قيد التحميل
+  final Set<String> _loadingMedia = {};
+
   @override
   void initState() {
     super.initState();
@@ -389,15 +395,25 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // عرض الوسائط إن وُجدت
+                    if (message.hasMedia) ...[
+                      _buildMediaContent(message),
+                      if (message.text.isNotEmpty &&
+                          !message.text.startsWith('['))
+                        const SizedBox(height: 6),
+                    ],
                     // نص الرسالة - قابل للتحديد والنسخ
-                    SelectableText(
-                      message.text,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey[900],
-                        height: 1.4,
+                    if (!message.hasMedia ||
+                        (message.text.isNotEmpty &&
+                            !message.text.startsWith('[')))
+                      SelectableText(
+                        message.text,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey[900],
+                          height: 1.4,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 6),
                     // الوقت والحالة
                     Row(
@@ -447,6 +463,358 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
           if (isMe) _buildCopyButton(message.text),
           if (isMe) const SizedBox(width: 12),
         ],
+      ),
+    );
+  }
+
+  /// عرض محتوى الوسائط حسب النوع
+  Widget _buildMediaContent(WhatsAppMessage message) {
+    if (message.isImage) {
+      return _buildImageMedia(message);
+    } else if (message.isAudio) {
+      return _buildAudioMedia(message);
+    } else if (message.isVideo) {
+      return _buildVideoMedia(message);
+    } else if (message.isDocument) {
+      return _buildDocumentMedia(message);
+    }
+    // نوع غير معروف — أيقونة عامة
+    return _buildGenericMedia(message);
+  }
+
+  /// عرض صورة
+  Widget _buildImageMedia(WhatsAppMessage message) {
+    final mediaId = message.mediaId!;
+
+    // إذا الصورة محملة في الكاش
+    if (_mediaCache.containsKey(mediaId)) {
+      return GestureDetector(
+        onTap: () => _showFullImage(_mediaCache[mediaId]!),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 280, maxHeight: 300),
+            child: Image.memory(
+              _mediaCache[mediaId]!,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // إذا قيد التحميل
+    if (_loadingMedia.contains(mediaId)) {
+      return Container(
+        width: 200,
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 30,
+                height: 30,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(height: 8),
+              Text('جاري تحميل الصورة...', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // لم يتم التحميل بعد — عرض placeholder مع زر تحميل
+    return GestureDetector(
+      onTap: () => _downloadAndCacheMedia(mediaId),
+      child: Container(
+        width: 200,
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.image, size: 48, color: Colors.grey[500]),
+              const SizedBox(height: 8),
+              Text(
+                'اضغط لتحميل الصورة',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// عرض رسالة صوتية
+  Widget _buildAudioMedia(WhatsAppMessage message) {
+    final mediaId = message.mediaId!;
+    final isLoaded = _mediaCache.containsKey(mediaId);
+    final isLoading = _loadingMedia.contains(mediaId);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: isLoading ? null : () => _downloadAndCacheMedia(mediaId),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366),
+                shape: BoxShape.circle,
+              ),
+              child: isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      isLoaded ? Icons.play_arrow : Icons.download,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'رسالة صوتية',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[800],
+                ),
+              ),
+              Text(
+                isLoaded
+                    ? 'تم التحميل'
+                    : isLoading
+                        ? 'جاري التحميل...'
+                        : 'اضغط للتحميل',
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// عرض فيديو
+  Widget _buildVideoMedia(WhatsAppMessage message) {
+    final mediaId = message.mediaId!;
+    final isLoaded = _mediaCache.containsKey(mediaId);
+    final isLoading = _loadingMedia.contains(mediaId);
+
+    return GestureDetector(
+      onTap: isLoading ? null : () => _downloadAndCacheMedia(mediaId),
+      child: Container(
+        width: 220,
+        height: 160,
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isLoading)
+                const SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              else
+                Icon(
+                  isLoaded ? Icons.play_circle_filled : Icons.download,
+                  size: 52,
+                  color: Colors.white,
+                ),
+              const SizedBox(height: 8),
+              Text(
+                isLoaded
+                    ? 'فيديو (تم التحميل)'
+                    : isLoading
+                        ? 'جاري تحميل الفيديو...'
+                        : 'اضغط لتحميل الفيديو',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// عرض مستند
+  Widget _buildDocumentMedia(WhatsAppMessage message) {
+    final mediaId = message.mediaId!;
+    final isLoading = _loadingMedia.contains(mediaId);
+    final fileName = message.mediaFileName ?? message.text;
+
+    return GestureDetector(
+      onTap: isLoading ? null : () => _downloadAndCacheMedia(mediaId),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.insert_drive_file, size: 36, color: Colors.blue[700]),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[800],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isLoading ? 'جاري التحميل...' : 'اضغط للتحميل',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
+            if (isLoading)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(Icons.download, color: Colors.grey[500]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// عرض وسائط غير معروفة
+  Widget _buildGenericMedia(WhatsAppMessage message) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.attachment, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Text(
+            message.type,
+            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// تحميل الوسائط وتخزينها في الكاش
+  Future<void> _downloadAndCacheMedia(String mediaId) async {
+    if (_loadingMedia.contains(mediaId) || _mediaCache.containsKey(mediaId)) {
+      return;
+    }
+
+    setState(() => _loadingMedia.add(mediaId));
+
+    try {
+      final bytes = await WhatsAppBusinessService.downloadMedia(mediaId);
+      if (bytes != null && mounted) {
+        setState(() {
+          _mediaCache[mediaId] = bytes;
+          _loadingMedia.remove(mediaId);
+        });
+      } else if (mounted) {
+        setState(() => _loadingMedia.remove(mediaId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('فشل في تحميل الوسائط'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingMedia.remove(mediaId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('خطأ في تحميل الوسائط'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// عرض الصورة بحجم كامل
+  void _showFullImage(Uint8List imageBytes) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.memory(imageBytes),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon:
+                    const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
