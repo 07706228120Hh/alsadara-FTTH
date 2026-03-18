@@ -4355,7 +4355,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final itemCount = items.length;
     if (itemCount == 0) return const SizedBox.shrink();
 
-    // عدد الأعمدة = عدد العناصر الفعلي (صف واحد دائماً)
+    // صف واحد دائماً — FittedBox يتكفل بتصغير النص ليتسع
     int crossAxisCount = itemCount;
     double childAspectRatio;
 
@@ -4566,34 +4566,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: Builder(
                 builder: (context) {
                   final r = context.responsive;
-                  final iconBoxSize = r.scaled(36, 42, 52);
-                  final iconSz = r.scaled(18, 22, 28);
-                  final textSz = r.scaled(13, 15, 17);
-                  final hPad = r.scaled(12, 16, 20);
-                  final vPad = r.scaled(10, 12, 14);
+                  final iconBoxSize = r.scaled(28, 32, 36);
+                  final iconSz = r.scaled(15, 18, 20);
+                  final textSz = r.scaled(15, 18, 21);
+                  final hPad = r.scaled(6, 8, 10);
+                  final vPad = r.scaled(8, 10, 12);
                   return Padding(
                     padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // الأيقونة
-                        Container(
-                          width: iconBoxSize, height: iconBoxSize,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.22),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 1.5,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // الأيقونة
+                          Container(
+                            width: iconBoxSize, height: iconBoxSize,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.35),
+                                width: 1.5,
+                              ),
                             ),
+                            alignment: Alignment.center,
+                            child: Icon(icon, size: iconSz, color: Colors.white),
                           ),
-                          alignment: Alignment.center,
-                          child: Icon(icon, size: iconSz, color: Colors.white),
-                        ),
-                        const SizedBox(width: 12),
-                        // النص
-                        Flexible(
-                          child: Text(
+                          const SizedBox(width: 8),
+                          // النص
+                          Text(
                             title,
                             style: TextStyle(
                               fontSize: textSz,
@@ -4602,10 +4603,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               letterSpacing: 0.3,
                             ),
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },

@@ -18,9 +18,11 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
   );
 
   bool _isSending = false;
+  bool _isPolling = false;
   bool _isConfigured = false;
   bool _isWebhookConfigured = false;
   Map<String, dynamic>? _lastResult;
+  String? _batchId;
 
   // نوع القالب المحدد
   String _selectedTemplateType = 'sadara_reminder';
@@ -110,19 +112,35 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
         offerText: _offerTextController.text,
       );
 
-      setState(() {
-        _lastResult = result;
-        _isSending = false;
-      });
-
       if (result['success'] == true) {
-        _showSuccess('تم الإرسال بنجاح!');
+        if (result['isAsync'] == true) {
+          // الإرسال في الخلفية — نبدأ متابعة النتائج الحقيقية
+          final batchId = result['data']?['batchId']?.toString();
+          if (batchId != null) {
+            setState(() {
+              _batchId = batchId;
+              _isPolling = true;
+              _lastResult = null;
+            });
+            _showInfo('جاري الإرسال في الخلفية... يتم متابعة النتائج');
+            _startPolling(batchId);
+          } else {
+            setState(() { _lastResult = result; _isSending = false; });
+            _showWarning('تم إرسال الطلب لكن لم يُرجع معرف دفعة للمتابعة');
+          }
+        } else {
+          // رد متزامن — نتائج حقيقية
+          setState(() { _lastResult = result; _isSending = false; });
+          _showSuccess('تم الإرسال بنجاح!');
+        }
       } else {
+        setState(() { _isSending = false; });
         _showError('فشل الإرسال: ${result['message']}');
       }
     } catch (e) {
       setState(() {
         _isSending = false;
+        _isPolling = false;
       });
       _showError('خطأ');
     }
@@ -144,6 +162,79 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
         backgroundColor: Colors.green,
       ),
     );
+  }
+
+  void _showWarning(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  void _showInfo(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  Future<void> _startPolling(String batchId) async {
+    const maxAttempts = 40;
+    const pollInterval = Duration(seconds: 3);
+
+    for (int i = 0; i < maxAttempts; i++) {
+      if (!mounted) return;
+      await Future.delayed(pollInterval);
+
+      final report = await WhatsAppBulkSenderService.pollBatchResult(batchId);
+      if (report == null) continue;
+
+      final status = report['status']?.toString().toLowerCase();
+      if (status == 'completed' || status == 'failed' || status == 'stopped') {
+        if (!mounted) return;
+        final sent = report['sent'] ?? 0;
+        final failed = report['failed'] ?? 0;
+        final total = report['total'] ?? 0;
+        final rate = report['rate'] ?? '0%';
+
+        setState(() {
+          _lastResult = {
+            'success': sent > 0,
+            'data': {
+              'totalSent': sent,
+              'totalFailed': failed,
+              'total': total,
+              'successRate': rate,
+            },
+            'message': report['warning'] ?? '',
+          };
+          _isSending = false;
+          _isPolling = false;
+        });
+
+        if (failed == 0 && sent > 0) {
+          _showSuccess('تم الإرسال بنجاح! ($sent من $total)');
+        } else if (sent > 0) {
+          _showWarning('اكتمل الإرسال: $sent نجح، $failed فشل من $total');
+        } else {
+          _showError('فشل الإرسال بالكامل ($failed رسالة)');
+        }
+        return;
+      }
+    }
+
+    // انتهت المحاولات بدون نتيجة
+    if (!mounted) return;
+    setState(() {
+      _isSending = false;
+      _isPolling = false;
+    });
+    _showWarning('انتهت مدة المتابعة. تحقق من تقارير الإرسال لمعرفة النتائج.');
   }
 
   void _showAddRecipientDialog() {
@@ -687,7 +778,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                       ),
                     )
                   : const Icon(Icons.send),
-              label: Text(_isSending ? 'جاري الإرسال...' : 'إرسال الرسائل'),
+              label: Text(_isPolling ? 'جاري متابعة النتائج...' : _isSending ? 'جاري الإرسال...' : 'إرسال الرسائل'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF25D366),
                 foregroundColor: Colors.white,
@@ -696,6 +787,32 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // حالة المتابعة
+            if (_isPolling) ...[
+              Card(
+                color: Colors.orange[50],
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'جاري الإرسال في الخلفية... يتم متابعة النتائج الحقيقية',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
 
             // النتائج
             if (_lastResult != null) ...[

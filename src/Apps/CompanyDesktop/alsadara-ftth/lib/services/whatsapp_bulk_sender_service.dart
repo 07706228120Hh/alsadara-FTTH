@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firebase_availability.dart';
 
 /// خدمة إرسال رسائل WhatsApp جماعية عبر n8n
 class WhatsAppBulkSenderService {
@@ -325,6 +327,21 @@ class WhatsAppBulkSenderService {
       phoneNumberId: phoneNumberId,
       accessToken: accessToken,
     );
+  }
+
+  /// متابعة نتائج الإرسال الحقيقية من Firestore
+  static Future<Map<String, dynamic>?> pollBatchResult(String batchId) async {
+    if (!FirebaseAvailability.isAvailable) return null;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('whatsapp_batch_reports')
+          .doc(batchId)
+          .get();
+      return doc.exists ? doc.data() : null;
+    } catch (e) {
+      debugPrint('❌ خطأ في قراءة تقرير الدفعة: $e');
+      return null;
+    }
   }
 
   /// إرسال عرض للمشتركين المنتهية اشتراكاتهم
