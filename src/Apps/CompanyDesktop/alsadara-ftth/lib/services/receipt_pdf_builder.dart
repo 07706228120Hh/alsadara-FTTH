@@ -9,11 +9,13 @@ class ReceiptPdfBuilder {
   final ReceiptTemplate template;
   final Map<String, String> variableValues;
   final Map<String, bool> conditions;
+  final Uint8List? logoImageBytes;
 
   ReceiptPdfBuilder({
     required this.template,
     required this.variableValues,
     this.conditions = const {},
+    this.logoImageBytes,
   });
 
   /// بناء مستند PDF
@@ -82,7 +84,27 @@ class ReceiptPdfBuilder {
 
       case ReceiptRowType.cells:
         return _buildCellsRow(row);
+
+      case ReceiptRowType.image:
+        return _buildImageRow(row);
     }
+  }
+
+  // ==================== Image ====================
+
+  pw.Widget _buildImageRow(ReceiptRow row) {
+    if (logoImageBytes == null || logoImageBytes!.isEmpty) {
+      return pw.SizedBox.shrink();
+    }
+    final image = pw.MemoryImage(logoImageBytes!);
+    final w = row.imageWidth ?? 60;
+    final h = row.imageHeight ?? 60;
+    return pw.Center(
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 1),
+        child: pw.Image(image, width: w, height: h),
+      ),
+    );
   }
 
   // ==================== Centered Text ====================
@@ -110,7 +132,7 @@ class ReceiptPdfBuilder {
     }
 
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 1),
+      padding: const pw.EdgeInsets.symmetric(vertical: 0),
       child: textWidget,
     );
   }

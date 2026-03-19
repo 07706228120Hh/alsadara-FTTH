@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -1609,19 +1610,38 @@ class ThermalPrinterService {
     bool saveAsPdf = false,
   }) async {
     try {
+      // زيادة عداد الوصل تلقائياً وتحديث المتغير
+      final receiptNum = await getAndIncrementReceiptCounter();
+      final updatedValues = Map<String, String>.from(variableValues);
+      updatedValues['receiptNumber'] = receiptNum.toString();
+
       final template = await ReceiptTemplateStorageV2.loadTemplate();
+
+      // تحميل اللوغو: مخصص أولاً، ثم الافتراضي
+      Uint8List? logoBytes;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final customLogo = prefs.getString('receipt_custom_logo');
+        if (customLogo != null && customLogo.isNotEmpty) {
+          logoBytes = base64Decode(customLogo);
+        } else {
+          final data = await rootBundle.load('assets/logo.png');
+          logoBytes = data.buffer.asUint8List();
+        }
+      } catch (_) {}
 
       final builder = ReceiptPdfBuilder(
         template: template,
-        variableValues: variableValues,
+        variableValues: updatedValues,
         conditions: conditions,
+        logoImageBytes: logoBytes,
       );
 
       final pdfBytes = await builder.buildBytes();
 
       if (saveAsPdf) {
         debugPrint('$_tag: Saving V2 receipt as PDF file...');
-        final customerName = variableValues['customerName'] ?? '';
+        final customerName = updatedValues['customerName'] ?? '';
         final result = await FilePicker.platform.saveFile(
           dialogTitle: 'حفظ الوصل كـ PDF',
           fileName:
@@ -3053,6 +3073,30 @@ class ThermalPrinterService {
       // إرجاع رقم عشوائي في حالة الخطأ
       return DateTime.now().millisecondsSinceEpoch % 10000;
     }
+  }
+
+  /// مفتاح عداد الوصل الثابت
+  static const _receiptCounterKey = 'persistent_receipt_counter';
+
+  /// الحصول على رقم الوصل التالي وزيادة العداد
+  static Future<int> getAndIncrementReceiptCounter() async {
+    final prefs = await SharedPreferences.getInstance();
+    int current = prefs.getInt(_receiptCounterKey) ?? 0;
+    current++;
+    await prefs.setInt(_receiptCounterKey, current);
+    return current;
+  }
+
+  /// الحصول على رقم الوصل الحالي بدون زيادة
+  static Future<int> getCurrentReceiptCounter() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_receiptCounterKey) ?? 0;
+  }
+
+  /// تصفير عداد الوصل
+  static Future<void> resetReceiptCounter() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_receiptCounterKey, 0);
   }
 
   /// طباعة ملخص إعدادات تخطيط الوصل (تشخيصي)

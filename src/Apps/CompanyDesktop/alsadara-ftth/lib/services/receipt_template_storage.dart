@@ -8,6 +8,7 @@ import '../models/receipt_template_models.dart';
 class ReceiptTemplateStorageV2 {
   static const _key = 'receipt_template_v2';
   static const _oldKey = 'print_template'; // المفتاح القديم
+  static const _currentVersion = 8; // v8: شعار مخفي افتراضياً + تقليل المسافات
 
   /// تحميل القالب — يُرحّل من النظام القديم تلقائياً إذا لزم
   static Future<ReceiptTemplate> loadTemplate() async {
@@ -16,7 +17,15 @@ class ReceiptTemplateStorageV2 {
 
     if (jsonStr != null) {
       try {
-        return ReceiptTemplate.fromJson(json.decode(jsonStr) as Map<String, dynamic>);
+        final saved = ReceiptTemplate.fromJson(json.decode(jsonStr) as Map<String, dynamic>);
+        // إذا كان القالب المحفوظ أقدم من النسخة الحالية — نستبدله بالافتراضي الجديد
+        if (saved.version < _currentVersion) {
+          debugPrint('📋 تحديث القالب من v${saved.version} إلى v$_currentVersion');
+          final newDefault = ReceiptTemplate.defaultTemplate();
+          await saveTemplate(newDefault);
+          return newDefault;
+        }
+        return saved;
       } catch (e) {
         debugPrint('⚠️ خطأ في تحميل القالب V2: $e — استخدام الافتراضي');
       }
@@ -120,7 +129,7 @@ class ReceiptTemplateStorageV2 {
     int? copyNumber,
     // ── الترويسة ──
     String companyName = 'شركة رمز الاتصالات',
-    String companySubtitle = 'خدمات الإنترنت والاتصالات',
+    String companySubtitle = 'المشغل الرسمي للمشروع الوطني',
     String contactInfo = 'للاستفسار: 0123456789',
     String footerMessage = 'شكراً لاختياركم شركة رمز الاتصالات',
     // ── الفني / الوكيل (مفصولة) ──

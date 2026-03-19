@@ -4,7 +4,7 @@ library;
 
 // ==================== Enums ====================
 
-enum ReceiptRowType { cells, divider, spacer, centeredText }
+enum ReceiptRowType { cells, divider, spacer, centeredText, image }
 
 enum ReceiptCellAlignment { right, center, left }
 
@@ -175,6 +175,8 @@ class ReceiptRow {
   final List<ReceiptCell> cells;
   final double? spacerHeight;
   final double? dividerThickness;
+  final double? imageWidth; // عرض الصورة (px) — لصفوف image فقط
+  final double? imageHeight; // ارتفاع الصورة (px) — لصفوف image فقط
 
   const ReceiptRow({
     required this.id,
@@ -185,6 +187,8 @@ class ReceiptRow {
     this.cells = const [],
     this.spacerHeight,
     this.dividerThickness,
+    this.imageWidth,
+    this.imageHeight,
   });
 
   /// وصف مختصر للعرض في قائمة الصفوف
@@ -211,6 +215,8 @@ class ReceiptRow {
             .where((c) => c.isLabel)
             .map((c) => c.content.replaceAll(':', ''));
         return labels.isNotEmpty ? labels.join(' / ') : 'صف خلايا';
+      case ReceiptRowType.image:
+        return 'شعار';
     }
   }
 
@@ -223,6 +229,8 @@ class ReceiptRow {
         'cells': cells.map((c) => c.toJson()).toList(),
         'spacerHeight': spacerHeight,
         'dividerThickness': dividerThickness,
+        'imageWidth': imageWidth,
+        'imageHeight': imageHeight,
       };
 
   factory ReceiptRow.fromJson(Map<String, dynamic> json) {
@@ -244,6 +252,8 @@ class ReceiptRow {
           [],
       spacerHeight: (json['spacerHeight'] as num?)?.toDouble(),
       dividerThickness: (json['dividerThickness'] as num?)?.toDouble(),
+      imageWidth: (json['imageWidth'] as num?)?.toDouble(),
+      imageHeight: (json['imageHeight'] as num?)?.toDouble(),
     );
   }
 
@@ -256,6 +266,8 @@ class ReceiptRow {
     List<ReceiptCell>? cells,
     double? Function()? spacerHeight,
     double? Function()? dividerThickness,
+    double? Function()? imageWidth,
+    double? Function()? imageHeight,
   }) {
     return ReceiptRow(
       id: id ?? this.id,
@@ -269,6 +281,8 @@ class ReceiptRow {
       spacerHeight: spacerHeight != null ? spacerHeight() : this.spacerHeight,
       dividerThickness:
           dividerThickness != null ? dividerThickness() : this.dividerThickness,
+      imageWidth: imageWidth != null ? imageWidth() : this.imageWidth,
+      imageHeight: imageHeight != null ? imageHeight() : this.imageHeight,
     );
   }
 }
@@ -331,7 +345,7 @@ class ReceiptTemplate {
   const ReceiptTemplate({
     required this.id,
     required this.name,
-    this.version = 2,
+    this.version = 3,
     this.pageSettings = const ReceiptPageSettings(),
     this.rows = const [],
   });
@@ -376,7 +390,7 @@ class ReceiptTemplate {
     );
   }
 
-  /// القالب الافتراضي — يُطابق تخطيط الوصل الحالي تماماً
+  /// القالب الافتراضي — يُطابق تخطيط الوصل المطلوب
   factory ReceiptTemplate.defaultTemplate() {
     const bordered = ReceiptBoxDecoration(
       borderWidth: 0.8,
@@ -389,9 +403,17 @@ class ReceiptTemplate {
     return ReceiptTemplate(
       id: 'default',
       name: 'افتراضي',
-      version: 2,
+      version: 8,
       pageSettings: const ReceiptPageSettings(),
       rows: [
+        // 0. شعار الشركة (مخفي افتراضياً)
+        const ReceiptRow(
+          id: 'r0',
+          type: ReceiptRowType.image,
+          visible: false,
+          imageWidth: 60,
+          imageHeight: 60,
+        ),
         // 1. اسم الشركة
         ReceiptRow(
           id: 'r1',
@@ -417,111 +439,105 @@ class ReceiptTemplate {
             ),
           ],
         ),
-        // 3. خط فاصل
-        const ReceiptRow(
-            id: 'r3', type: ReceiptRowType.divider, dividerThickness: 2),
-        // 4. نوع العملية + المبلغ
+        // 3. الوصل + المبلغ
         ReceiptRow(
-          id: 'r4',
-          type: ReceiptRowType.cells,
-          decoration: const ReceiptBoxDecoration(
-            borderWidth: 0.8,
-            borderRadius: 6,
-            paddingH: 8,
-            paddingV: 6,
-            marginBottom: 4,
-          ),
-          cells: [
-            ReceiptCell(
-              id: 'r4c1',
-              content: '{{totalPrice}} {{currency}}',
-              flex: 4,
-              alignment: ReceiptCellAlignment.center,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: 3, bold: true),
-            ),
-            const ReceiptCell(
-              id: 'r4c2',
-              content: '|',
-              flex: 1,
-              alignment: ReceiptCellAlignment.center,
-            ),
-            ReceiptCell(
-              id: 'r4c3',
-              content: '{{operationType}}',
-              flex: 5,
-              alignment: ReceiptCellAlignment.center,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: 2, bold: true),
-            ),
-          ],
-        ),
-        // 5. خط فاصل
-        const ReceiptRow(
-            id: 'r5', type: ReceiptRowType.divider, dividerThickness: 2),
-        // 6. مسافة
-        const ReceiptRow(
-            id: 'r6', type: ReceiptRowType.spacer, spacerHeight: 5),
-        // 7. المنشط + رقم الوصل
-        ReceiptRow(
-          id: 'r7',
+          id: 'r3',
           type: ReceiptRowType.cells,
           decoration: bordered,
           cells: [
             ReceiptCell(
-              id: 'r7c1',
-              content: 'المنشط:',
-              flex: 3,
-              alignment: ReceiptCellAlignment.right,
-              isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -1),
-            ),
-            ReceiptCell(
-              id: 'r7c2',
-              content: '{{activatedBy}}',
-              flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -1),
-            ),
-            ReceiptCell(
-              id: 'r7c3',
+              id: 'r3c1',
               content: 'الوصل:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
               isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -1),
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r7c4',
+              id: 'r3c2',
               content: '{{receiptNumber}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -1),
+              alignment: ReceiptCellAlignment.right,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+            ),
+            ReceiptCell(
+              id: 'r3c3',
+              content: 'المبلغ:',
+              flex: 3,
+              alignment: ReceiptCellAlignment.right,
+              isLabel: true,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+            ),
+            ReceiptCell(
+              id: 'r3c4',
+              content: '{{totalPrice}}',
+              flex: 4,
+              alignment: ReceiptCellAlignment.right,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
           ],
         ),
-        // 8. الاسم + الرقم
+        // 4. محاسب + FBG-FAT
         ReceiptRow(
-          id: 'r8',
+          id: 'r4',
+          type: ReceiptRowType.cells,
+          decoration: bordered,
+          cells: [
+            ReceiptCell(
+              id: 'r4c1',
+              content: 'محاسب:',
+              flex: 3,
+              alignment: ReceiptCellAlignment.right,
+              isLabel: true,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -1.5),
+            ),
+            ReceiptCell(
+              id: 'r4c2',
+              content: '{{operatorFullName}}',
+              flex: 4,
+              alignment: ReceiptCellAlignment.right,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -1.5),
+            ),
+            ReceiptCell(
+              id: 'r4c3',
+              content: '-',
+              flex: 1,
+              alignment: ReceiptCellAlignment.center,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+            ),
+            ReceiptCell(
+              id: 'r4c4',
+              content: '{{fatInfo}}-{{fbgInfo}}',
+              flex: 7,
+              alignment: ReceiptCellAlignment.right,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+            ),
+          ],
+        ),
+        // 5. الاسم + الرقم
+        ReceiptRow(
+          id: 'r5',
           type: ReceiptRowType.cells,
           conditionVariable: 'showCustomerInfo',
           decoration: bordered,
           cells: [
             ReceiptCell(
-              id: 'r8c1',
+              id: 'r5c1',
               content: 'الاسم:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
               isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -1.5),
             ),
             ReceiptCell(
-              id: 'r8c2',
+              id: 'r5c2',
               content: '{{customerName}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+              alignment: ReceiptCellAlignment.right,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -1.5),
             ),
             ReceiptCell(
-              id: 'r8c3',
+              id: 'r5c3',
               content: 'الرقم:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
@@ -529,23 +545,23 @@ class ReceiptTemplate {
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r8c4',
+              id: 'r5c4',
               content: '{{customerPhone}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
+              alignment: ReceiptCellAlignment.right,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
           ],
         ),
-        // 9. الدفع + المحصّل
+        // 6. الدفع + المحصّل
         ReceiptRow(
-          id: 'r9',
+          id: 'r6',
           type: ReceiptRowType.cells,
           conditionVariable: 'showPaymentDetails',
           decoration: bordered,
           cells: [
             ReceiptCell(
-              id: 'r9c1',
+              id: 'r6c1',
               content: 'الدفع:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
@@ -553,75 +569,37 @@ class ReceiptTemplate {
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r9c2',
+              id: 'r6c2',
               content: '{{paymentMethod}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
+              alignment: ReceiptCellAlignment.right,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r9c3',
+              id: 'r6c3',
               content: 'المحصّل:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
               isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -1.5),
             ),
             ReceiptCell(
-              id: 'r9c4',
+              id: 'r6c4',
               content: '{{collectorName}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+              alignment: ReceiptCellAlignment.right,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -1.5),
             ),
           ],
         ),
-        // 9b. الانتهاء + المنطقة
+        // 7. التفعيل + الوقت
         ReceiptRow(
-          id: 'r9b',
+          id: 'r7',
           type: ReceiptRowType.cells,
           decoration: bordered,
           cells: [
             ReceiptCell(
-              id: 'r9bc1',
-              content: 'الانتهاء:',
-              flex: 3,
-              alignment: ReceiptCellAlignment.right,
-              isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-            ReceiptCell(
-              id: 'r9bc2',
-              content: '{{endDate}}',
-              flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-            ReceiptCell(
-              id: 'r9bc3',
-              content: 'المنطقة:',
-              flex: 3,
-              alignment: ReceiptCellAlignment.right,
-              isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-            ReceiptCell(
-              id: 'r9bc4',
-              content: '{{zoneDisplayValue}}',
-              flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-          ],
-        ),
-        // 10. التفعيل + الوقت
-        ReceiptRow(
-          id: 'r10',
-          type: ReceiptRowType.cells,
-          decoration: bordered,
-          cells: [
-            ReceiptCell(
-              id: 'r10c1',
+              id: 'r7c1',
               content: 'التفعيل:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
@@ -629,14 +607,14 @@ class ReceiptTemplate {
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r10c2',
+              id: 'r7c2',
               content: '{{activationDate}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
+              alignment: ReceiptCellAlignment.right,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r10c3',
+              id: 'r7c3',
               content: 'الوقت:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
@@ -644,62 +622,23 @@ class ReceiptTemplate {
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r10c4',
+              id: 'r7c4',
               content: '{{activationTime}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
+              alignment: ReceiptCellAlignment.right,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
           ],
         ),
-        // 11. FAT + FDT
+        // 8. الخدمة + المدة
         ReceiptRow(
-          id: 'r11',
+          id: 'r8',
           type: ReceiptRowType.cells,
           conditionVariable: 'showServiceDetails',
           decoration: bordered,
           cells: [
             ReceiptCell(
-              id: 'r11c1',
-              content: ':FAT',
-              flex: 3,
-              alignment: ReceiptCellAlignment.right,
-              isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-            ReceiptCell(
-              id: 'r11c2',
-              content: '{{fatInfo}}',
-              flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-            ReceiptCell(
-              id: 'r11c3',
-              content: ':FDT',
-              flex: 3,
-              alignment: ReceiptCellAlignment.right,
-              isLabel: true,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-            ReceiptCell(
-              id: 'r11c4',
-              content: '{{fdtInfo}}',
-              flex: 4,
-              alignment: ReceiptCellAlignment.left,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
-            ),
-          ],
-        ),
-        // 12. الخدمة + المدة
-        ReceiptRow(
-          id: 'r12',
-          type: ReceiptRowType.cells,
-          conditionVariable: 'showServiceDetails',
-          decoration: bordered,
-          cells: [
-            ReceiptCell(
-              id: 'r12c1',
+              id: 'r8c1',
               content: 'الخدمة:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
@@ -707,14 +646,14 @@ class ReceiptTemplate {
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r12c2',
+              id: 'r8c2',
               content: '{{selectedPlan}}',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
+              alignment: ReceiptCellAlignment.right,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r12c3',
+              id: 'r8c3',
               content: 'المدة:',
               flex: 3,
               alignment: ReceiptCellAlignment.right,
@@ -722,64 +661,22 @@ class ReceiptTemplate {
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
             ReceiptCell(
-              id: 'r12c4',
+              id: 'r8c4',
               content: '{{commitmentPeriod}} شهر',
               flex: 4,
-              alignment: ReceiptCellAlignment.left,
+              alignment: ReceiptCellAlignment.right,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
             ),
           ],
         ),
-        // 13. ملاحظات
+        // 9. معلومات الاتصال (فوتر)
         ReceiptRow(
-          id: 'r13',
+          id: 'r9',
           type: ReceiptRowType.centeredText,
-          conditionVariable: 'hasNotes',
-          decoration: const ReceiptBoxDecoration(
-            borderWidth: 0.5,
-            borderRadius: 4,
-            paddingH: 8,
-            paddingV: 6,
-            marginBottom: 3,
-          ),
           cells: [
             ReceiptCell(
-              id: 'r13c1',
-              content: '{{subscriptionNotes}}',
-              alignment: ReceiptCellAlignment.center,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -1),
-            ),
-          ],
-        ),
-        // 14. خط فاصل قبل الفوتر
-        const ReceiptRow(
-          id: 'r14',
-          type: ReceiptRowType.divider,
-          conditionVariable: 'showContactInfo',
-          dividerThickness: 1,
-        ),
-        // 15. معلومات الاتصال
-        ReceiptRow(
-          id: 'r15',
-          type: ReceiptRowType.centeredText,
-          conditionVariable: 'showContactInfo',
-          cells: [
-            ReceiptCell(
-              id: 'r15c1',
+              id: 'r9c1',
               content: '{{contactInfo}}',
-              alignment: ReceiptCellAlignment.center,
-              textStyle: const ReceiptTextStyle(fontSizeOffset: -1),
-            ),
-          ],
-        ),
-        // 16. رسالة التذييل
-        ReceiptRow(
-          id: 'r16',
-          type: ReceiptRowType.centeredText,
-          cells: [
-            ReceiptCell(
-              id: 'r16c1',
-              content: '{{footerMessage}}',
               alignment: ReceiptCellAlignment.center,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -1),
             ),
@@ -817,7 +714,7 @@ class TemplateVariableRegistry {
     TemplateVariable(
         key: 'companySubtitle',
         displayName: 'السطر الفرعي',
-        sampleValue: 'خدمات الإنترنت والاتصالات',
+        sampleValue: 'المشغل الرسمي للمشروع الوطني',
         category: 'header'),
     TemplateVariable(
         key: 'contactInfo',

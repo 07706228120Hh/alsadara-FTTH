@@ -1,10 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/receipt_template_models.dart';
 import '../services/receipt_template_storage.dart';
 import '../services/receipt_pdf_builder.dart';
+import '../services/print_template_storage.dart';
+import '../services/thermal_printer_service.dart';
 
 /// صفحة محرر قالب الوصل المرئي
 class ReceiptTemplateEditorPage extends StatefulWidget {
@@ -23,6 +30,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
   bool _isLoadingPreview = false;
   bool _isSaving = false;
   Timer? _previewDebounce;
+  Map<String, String> _companyValues = {};
+  Uint8List? _logoBytes;
 
   @override
   void initState() {
@@ -38,8 +47,66 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
 
   Future<void> _loadTemplate() async {
     final template = await ReceiptTemplateStorageV2.loadTemplate();
+    await _loadCompanyValues();
+    await _loadLogoBytes();
     setState(() => _template = template);
     _regeneratePreview();
+  }
+
+  /// تحميل اللوغو: مخصص (SharedPreferences) أو الافتراضي (assets)
+  static const _logoKey = 'receipt_custom_logo';
+
+  Future<void> _loadLogoBytes() async {
+    // أولاً: لوغو مخصص
+    final prefs = await SharedPreferences.getInstance();
+    final customLogo = prefs.getString(_logoKey);
+    if (customLogo != null && customLogo.isNotEmpty) {
+      _logoBytes = base64Decode(customLogo);
+      return;
+    }
+    // ثانياً: اللوغو الافتراضي
+    try {
+      final data = await rootBundle.load('assets/logo.png');
+      _logoBytes = data.buffer.asUint8List();
+    } catch (_) {}
+  }
+
+  Future<void> _pickCustomLogo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.first.path;
+    if (path == null) return;
+
+    final bytes = await File(path).readAsBytes();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_logoKey, base64Encode(bytes));
+    _logoBytes = bytes;
+    _onTemplateChanged();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تغيير الشعار'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+      );
+    }
+  }
+
+  Future<void> _resetLogo() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_logoKey);
+    await _loadLogoBytes();
+    _onTemplateChanged();
+  }
+
+  Future<void> _loadCompanyValues() async {
+    final pt = await PrintTemplateStorage.loadTemplate();
+    _companyValues = {
+      'companyName': pt.companyName,
+      'companySubtitle': pt.companySubtitle,
+      'contactInfo': pt.contactInfo,
+      'footerMessage': pt.footerMessage,
+    };
   }
 
   void _onTemplateChanged() {
@@ -53,9 +120,13 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     setState(() => _isLoadingPreview = true);
 
     try {
+      final previewValues = {
+        ...TemplateVariableRegistry.sampleValues,
+        ..._companyValues,
+      };
       final builder = ReceiptPdfBuilder(
         template: _template,
-        variableValues: TemplateVariableRegistry.sampleValues,
+        variableValues: previewValues,
         conditions: {
           'showCustomerInfo': true,
           'showServiceDetails': true,
@@ -64,6 +135,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
           'showContactInfo': true,
           'hasNotes': true,
         },
+        logoImageBytes: _logoBytes,
       );
       final bytes = await builder.buildBytes();
       final pages = Printing.raster(bytes, pages: [0], dpi: 150);
@@ -131,6 +203,40 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     }
   }
 
+  Future<void> _resetReceiptCounter() async {
+    final current = await ThermalPrinterService.getCurrentReceiptCounter();
+    if (!mounted) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تصفير عداد الوصل'),
+        content: Text('العداد الحالي: $current\nسيتم إعادة تعيينه إلى 0. هل أنت متأكد؟'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('تصفير', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await ThermalPrinterService.resetReceiptCounter();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم تصفير عداد الوصل'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   // ==================== Row Operations ====================
 
   void _updateRow(String rowId, ReceiptRow Function(ReceiptRow) updater) {
@@ -173,6 +279,9 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                 alignment: ReceiptCellAlignment.center)
           ],
         );
+        break;
+      case ReceiptRowType.image:
+        newRow = ReceiptRow(id: id, type: type, imageWidth: 60, imageHeight: 60);
         break;
       case ReceiptRowType.cells:
         newRow = ReceiptRow(
@@ -298,6 +407,31 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
+        // تصفير عداد الوصل
+        TextButton.icon(
+          onPressed: _resetReceiptCounter,
+          icon: const Icon(Icons.restart_alt, color: Colors.red, size: 18),
+          label: const Text('تصفير العداد',
+              style: TextStyle(color: Colors.red, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
+        // تغيير الشعار
+        TextButton.icon(
+          onPressed: _pickCustomLogo,
+          onLongPress: _resetLogo,
+          icon: const Icon(Icons.image, color: Colors.purple, size: 18),
+          label: const Text('تغيير الشعار',
+              style: TextStyle(color: Colors.purple, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
+        // معلومات الشركة
+        TextButton.icon(
+          onPressed: _showCompanyInfoDialog,
+          icon: const Icon(Icons.business, color: Colors.cyan, size: 18),
+          label: const Text('معلومات الشركة',
+              style: TextStyle(color: Colors.cyan, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
         // إعدادات الصفحة
         IconButton(
           icon: const Icon(Icons.settings, color: Colors.white70, size: 20),
@@ -950,6 +1084,140 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     );
   }
 
+  // ==================== Company Info Dialog ====================
+
+  void _showCompanyInfoDialog() async {
+    final oldTemplate = await PrintTemplateStorage.loadTemplate();
+    var companyName = oldTemplate.companyName;
+    var companySubtitle = oldTemplate.companySubtitle;
+    var contactInfo = oldTemplate.contactInfo;
+    var footerMessage = oldTemplate.footerMessage;
+
+    if (!mounted) return;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1e1e2e),
+          title: const Row(
+            children: [
+              Icon(Icons.business, color: Colors.cyan, size: 22),
+              SizedBox(width: 8),
+              Text('معلومات الشركة',
+                  style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: TextEditingController(text: companyName),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: _companyInputDecoration('اسم الشركة'),
+                  onChanged: (v) => companyName = v,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: TextEditingController(text: companySubtitle),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: _companyInputDecoration('السطر الفرعي'),
+                  onChanged: (v) => companySubtitle = v,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: TextEditingController(text: contactInfo),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: _companyInputDecoration('معلومات الاتصال'),
+                  onChanged: (v) => contactInfo = v,
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: TextEditingController(text: footerMessage),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: _companyInputDecoration('رسالة التذييل'),
+                  maxLines: 2,
+                  onChanged: (v) => footerMessage = v,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      final newTemplate = PrintTemplate(
+        companyName: companyName,
+        companySubtitle: companySubtitle,
+        footerMessage: footerMessage,
+        contactInfo: contactInfo,
+        showCustomerInfo: oldTemplate.showCustomerInfo,
+        showServiceDetails: oldTemplate.showServiceDetails,
+        showPaymentDetails: oldTemplate.showPaymentDetails,
+        showAdditionalInfo: oldTemplate.showAdditionalInfo,
+        showContactInfo: oldTemplate.showContactInfo,
+        fontSize: oldTemplate.fontSize,
+        boldHeaders: oldTemplate.boldHeaders,
+      );
+      await PrintTemplateStorage.saveTemplate(newTemplate);
+
+      // تحديث قيم المعاينة بالقيم الجديدة
+      _companyValues = {
+        'companyName': companyName,
+        'companySubtitle': companySubtitle,
+        'contactInfo': contactInfo,
+        'footerMessage': footerMessage,
+      };
+      _regeneratePreview();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم حفظ معلومات الشركة'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  InputDecoration _companyInputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white54, fontSize: 12),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.05),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.white24)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.white24)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.cyan.shade400)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      isDense: true,
+    );
+  }
+
   // ==================== Page Settings Dialog ====================
 
   void _showPageSettingsDialog() {
@@ -1138,6 +1406,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         return Icons.horizontal_rule;
       case ReceiptRowType.spacer:
         return Icons.space_bar;
+      case ReceiptRowType.image:
+        return Icons.image;
     }
   }
 
@@ -1151,6 +1421,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         return Colors.grey.shade400;
       case ReceiptRowType.spacer:
         return Colors.teal.shade300;
+      case ReceiptRowType.image:
+        return Colors.purple.shade300;
     }
   }
 
@@ -1164,6 +1436,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         return 'خط فاصل';
       case ReceiptRowType.spacer:
         return 'مسافة';
+      case ReceiptRowType.image:
+        return 'شعار';
     }
   }
 
