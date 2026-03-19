@@ -1,1 +1,0 @@
-﻿SELECT * FROM "__EFMigrationsHistory" ORDER BY 1;

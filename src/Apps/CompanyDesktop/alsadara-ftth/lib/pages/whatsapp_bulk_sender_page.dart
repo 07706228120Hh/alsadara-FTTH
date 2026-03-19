@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/whatsapp_bulk_sender_service.dart';
 import '../services/whatsapp_business_service.dart';
+import '../services/bulk_messaging_service.dart';
+import '../services/custom_auth_service.dart';
+import '../whatsapp/services/whatsapp_system_settings_service.dart';
 import 'whatsapp_batch_reports_page.dart';
 import 'whatsapp_business_config_page.dart';
 
@@ -23,6 +26,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
   bool _isWebhookConfigured = false;
   Map<String, dynamic>? _lastResult;
   String? _batchId;
+  WhatsAppSystem _bulkSystem = WhatsAppSystem.api; // النظام المحدد للإرسال الجماعي
 
   // نوع القالب المحدد
   String _selectedTemplateType = 'sadara_reminder';
@@ -62,23 +66,42 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
   }
 
   Future<void> _checkConfiguration() async {
-    final configured = await WhatsAppBusinessService.isConfigured();
-    final webhookConfigured =
-        await WhatsAppBulkSenderService.isWebhookConfigured();
-    setState(() {
-      _isConfigured = configured;
-      _isWebhookConfigured = webhookConfigured;
-    });
+    // قراءة النظام المحدد للإرسال الجماعي من الإعدادات
+    final system = await WhatsAppSystemSettingsService.getSystemForOperation(
+      WhatsAppOperationType.bulk,
+    );
+
+    if (system == WhatsAppSystem.server) {
+      // نظام السيرفر — نتحقق من توفر السيرفر
+      final serverAvailable = await WhatsAppSystemSettingsService.isSystemAvailable(WhatsAppSystem.server);
+      setState(() {
+        _bulkSystem = system;
+        _isConfigured = serverAvailable;
+        _isWebhookConfigured = true; // لا يحتاج webhook في وضع السيرفر
+      });
+    } else {
+      // نظام API — نتحقق من API + webhook
+      final configured = await WhatsAppBusinessService.isConfigured();
+      final webhookConfigured =
+          await WhatsAppBulkSenderService.isWebhookConfigured();
+      setState(() {
+        _bulkSystem = system;
+        _isConfigured = configured;
+        _isWebhookConfigured = webhookConfigured;
+      });
+    }
   }
 
   Future<void> _sendTestMessage() async {
     // التحقق من الإعدادات
     if (!_isConfigured) {
-      _showError('يرجى إعداد WhatsApp Business API أولاً من القائمة');
+      _showError(_bulkSystem == WhatsAppSystem.server
+          ? 'السيرفر غير متصل. يرجى التحقق من إعدادات السيرفر'
+          : 'يرجى إعداد WhatsApp Business API أولاً من القائمة');
       return;
     }
 
-    if (!_isWebhookConfigured) {
+    if (_bulkSystem == WhatsAppSystem.api && !_isWebhookConfigured) {
       _showError('يرجى إعداد رابط n8n Webhook أولاً');
       return;
     }
@@ -94,55 +117,127 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
     });
 
     try {
-      // قراءة الإعدادات المحفوظة
-      final phoneNumberId = await WhatsAppBusinessService.getPhoneNumberId();
-      final accessToken = await WhatsAppBusinessService.getAccessToken();
-
-      if (phoneNumberId == null || accessToken == null) {
-        _showError('بيانات API غير مكتملة. يرجى إعداد الإعدادات أولاً');
-        setState(() => _isSending = false);
-        return;
-      }
-
-      final result = await WhatsAppBulkSenderService.sendTemplateMessages(
-        templateType: _selectedTemplateType,
-        recipients: _recipients,
-        phoneNumberId: phoneNumberId,
-        accessToken: accessToken,
-        offerText: _offerTextController.text,
-      );
-
-      if (result['success'] == true) {
-        if (result['isAsync'] == true) {
-          // الإرسال في الخلفية — نبدأ متابعة النتائج الحقيقية
-          final batchId = result['data']?['batchId']?.toString();
-          if (batchId != null) {
-            setState(() {
-              _batchId = batchId;
-              _isPolling = true;
-              _lastResult = null;
-            });
-            _showInfo('جاري الإرسال في الخلفية... يتم متابعة النتائج');
-            _startPolling(batchId);
-          } else {
-            setState(() { _lastResult = result; _isSending = false; });
-            _showWarning('تم إرسال الطلب لكن لم يُرجع معرف دفعة للمتابعة');
-          }
-        } else {
-          // رد متزامن — نتائج حقيقية
-          setState(() { _lastResult = result; _isSending = false; });
-          _showSuccess('تم الإرسال بنجاح!');
-        }
+      if (_bulkSystem == WhatsAppSystem.server) {
+        // ========== الإرسال عبر السيرفر ==========
+        await _sendViaServer();
       } else {
-        setState(() { _isSending = false; });
-        _showError('فشل الإرسال: ${result['message']}');
+        // ========== الإرسال عبر API (n8n) ==========
+        await _sendViaAPI();
       }
     } catch (e) {
       setState(() {
         _isSending = false;
         _isPolling = false;
       });
-      _showError('خطأ');
+      _showError('خطأ: $e');
+    }
+  }
+
+  /// الإرسال عبر السيرفر باستخدام BulkMessagingService
+  Future<void> _sendViaServer() async {
+    // تحويل المستلمين إلى BulkMessage
+    final bulkMessages = _recipients.map((r) => BulkMessage(
+      phone: r['phoneNumber'] ?? '',
+      subscriberName: r['name'] ?? '',
+      planName: r['planName'],
+      endDate: r['expiryDate'],
+      offer: _offerTextController.text,
+    )).toList();
+
+    // تحديد نوع القالب
+    final templateType = _mapTemplateToBulkType(_selectedTemplateType);
+
+    final tenantId = CustomAuthService().currentTenantId;
+
+    final result = await BulkMessagingService.send(
+      messages: bulkMessages,
+      templateType: templateType,
+      tenantId: tenantId,
+      onProgress: (sent, total, currentPhone) {
+        // يمكن تحديث الواجهة بالتقدم لاحقاً
+      },
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSending = false;
+      _lastResult = {
+        'success': result.isSuccess || result.totalSent > 0,
+        'data': {
+          'totalSent': result.totalSent,
+          'totalFailed': result.totalFailed,
+          'total': result.totalSent + result.totalFailed,
+          'successRate': '${(result.successRate * 100).toStringAsFixed(1)}%',
+        },
+        'message': result.errorMessage ?? '',
+      };
+    });
+
+    if (result.isSuccess) {
+      _showSuccess('تم الإرسال بنجاح عبر السيرفر! (${result.totalSent} رسالة)');
+    } else if (result.totalSent > 0) {
+      _showWarning('اكتمل: ${result.totalSent} نجح، ${result.totalFailed} فشل');
+    } else {
+      _showError('فشل الإرسال: ${result.errorMessage ?? 'خطأ غير معروف'}');
+    }
+  }
+
+  /// الإرسال عبر API (n8n) — السلوك الحالي
+  Future<void> _sendViaAPI() async {
+    final phoneNumberId = await WhatsAppBusinessService.getPhoneNumberId();
+    final accessToken = await WhatsAppBusinessService.getAccessToken();
+
+    if (phoneNumberId == null || accessToken == null) {
+      _showError('بيانات API غير مكتملة. يرجى إعداد الإعدادات أولاً');
+      setState(() => _isSending = false);
+      return;
+    }
+
+    final result = await WhatsAppBulkSenderService.sendTemplateMessages(
+      templateType: _selectedTemplateType,
+      recipients: _recipients,
+      phoneNumberId: phoneNumberId,
+      accessToken: accessToken,
+      offerText: _offerTextController.text,
+    );
+
+    if (result['success'] == true) {
+      if (result['isAsync'] == true) {
+        final batchId = result['data']?['batchId']?.toString();
+        if (batchId != null) {
+          setState(() {
+            _batchId = batchId;
+            _isPolling = true;
+            _lastResult = null;
+          });
+          _showInfo('جاري الإرسال في الخلفية... يتم متابعة النتائج');
+          _startPolling(batchId);
+        } else {
+          setState(() { _lastResult = result; _isSending = false; });
+          _showWarning('تم إرسال الطلب لكن لم يُرجع معرف دفعة للمتابعة');
+        }
+      } else {
+        setState(() { _lastResult = result; _isSending = false; });
+        _showSuccess('تم الإرسال بنجاح!');
+      }
+    } else {
+      setState(() { _isSending = false; });
+      _showError('فشل الإرسال: ${result['message']}');
+    }
+  }
+
+  /// تحويل نوع القالب من String إلى BulkTemplateType
+  BulkTemplateType _mapTemplateToBulkType(String templateType) {
+    switch (templateType) {
+      case 'sadara_reminder':
+        return BulkTemplateType.expiringSoon;
+      case 'sadara_renewed':
+        return BulkTemplateType.renewal;
+      case 'sadara_expired':
+        return BulkTemplateType.expired;
+      default:
+        return BulkTemplateType.notification;
     }
   }
 
@@ -187,12 +282,21 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
     const maxAttempts = 40;
     const pollInterval = Duration(seconds: 3);
 
+    debugPrint('🔄 بدء متابعة النتائج - batchId: $batchId');
+
     for (int i = 0; i < maxAttempts; i++) {
       if (!mounted) return;
       await Future.delayed(pollInterval);
 
+      debugPrint('🔍 محاولة ${i + 1}/$maxAttempts - البحث عن تقرير: $batchId');
+
       final report = await WhatsAppBulkSenderService.pollBatchResult(batchId);
-      if (report == null) continue;
+      if (report == null) {
+        debugPrint('   ⏳ لم يُعثر على التقرير بعد...');
+        continue;
+      }
+
+      debugPrint('   📋 وُجد التقرير: $report');
 
       final status = report['status']?.toString().toLowerCase();
       if (status == 'completed' || status == 'failed' || status == 'stopped') {
@@ -238,11 +342,11 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
   }
 
   void _showAddRecipientDialog() {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final expiryDateController = TextEditingController();
-    final planNameController = TextEditingController();
-    final priceController = TextEditingController();
+    final nameController = TextEditingController(text: 'حيدر علي ميذاب');
+    final phoneController = TextEditingController(text: '07727787789');
+    final expiryDateController = TextEditingController(text: '1/1/2026');
+    final planNameController = TextEditingController(text: '35');
+    final priceController = TextEditingController(text: '45');
 
     showDialog(
       context: context,
@@ -498,7 +602,41 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // حالة الإعداد - WhatsApp API
+            // مؤشر النظام المستخدم
+            Card(
+              color: Colors.blue[50],
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(
+                      _bulkSystem == WhatsAppSystem.server
+                          ? Icons.dns_rounded
+                          : Icons.api_rounded,
+                      color: Colors.blue[700],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'النظام المستخدم: ${_bulkSystem == WhatsAppSystem.server ? 'السيرفر (Server)' : 'واجهة API (n8n)'}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[900],
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'يمكن تغييره من إعدادات الناظم',
+                      style: TextStyle(fontSize: 11, color: Colors.blue[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // حالة الإعداد
             Card(
               color: _isConfigured ? Colors.green[50] : Colors.orange[50],
               child: Padding(
@@ -518,8 +656,12 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                         children: [
                           Text(
                             _isConfigured
-                                ? 'WhatsApp API مُعد وجاهز'
-                                : 'يرجى إعداد WhatsApp API أولاً',
+                                ? (_bulkSystem == WhatsAppSystem.server
+                                    ? 'السيرفر متصل وجاهز'
+                                    : 'WhatsApp API مُعد وجاهز')
+                                : (_bulkSystem == WhatsAppSystem.server
+                                    ? 'السيرفر غير متصل'
+                                    : 'يرجى إعداد WhatsApp API أولاً'),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -530,9 +672,11 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                           ),
                           if (!_isConfigured) ...[
                             const SizedBox(height: 4),
-                            const Text(
-                              'اذهب إلى: القائمة → WhatsApp Business API',
-                              style: TextStyle(fontSize: 12),
+                            Text(
+                              _bulkSystem == WhatsAppSystem.server
+                                  ? 'تحقق من اتصال السيرفر في إعدادات الواتساب'
+                                  : 'اذهب إلى: القائمة → WhatsApp Business API',
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ],
                         ],
@@ -544,8 +688,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             ),
             const SizedBox(height: 16),
 
-            // حالة الإعداد - n8n Webhook
-            Card(
+            // حالة الإعداد - n8n Webhook (يظهر فقط في وضع API)
+            if (_bulkSystem == WhatsAppSystem.api) Card(
               color:
                   _isWebhookConfigured ? Colors.green[50] : Colors.orange[50],
               child: Padding(

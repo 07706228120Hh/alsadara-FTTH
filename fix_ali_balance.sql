@@ -1,1 +1,0 @@
-﻿UPDATE "Users" SET "TechTotalPayments" = "TechTotalPayments" + 40000, "TechNetBalance" = "TechTotalPayments" + 40000 - "TechTotalCharges" WHERE "FullName" = 'علي علي' AND ("TechTotalCharges" > 0 OR "TechTotalPayments" > 0);

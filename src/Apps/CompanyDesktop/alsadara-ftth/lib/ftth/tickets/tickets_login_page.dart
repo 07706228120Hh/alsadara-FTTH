@@ -4,9 +4,13 @@
 /// تاريخ الإنشاء: 2024
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/auth_service.dart';
+import '../../services/company_settings_service.dart';
+import '../../services/custom_auth_service.dart';
+import '../../services/vps_auth_service.dart';
 import 'tktats_page.dart';
 
 class TicketsLoginPage extends StatefulWidget {
@@ -58,6 +62,36 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
   }
 
   Future<void> loadSavedCredentials() async {
+    // 1. محاولة الدخول ببيانات المستخدم الميداني من إعدادات الشركة
+    try {
+      // محاولة بـ tenantId من VpsAuth ثم CustomAuth (نفس أولوية CompanySettingsPage)
+      final vpsId = VpsAuthService.instance.currentCompanyId;
+      final customId = CustomAuthService().currentTenantId;
+      final tenantId = vpsId ?? customId;
+      debugPrint('🎫 تذاكر: VPS companyId=$vpsId, CustomAuth tenantId=$customId, resolved=$tenantId');
+
+      if (tenantId != null) {
+        final fieldUser = await CompanySettingsService.getFieldUser(tenantId: tenantId);
+        debugPrint('🎫 تذاكر: fieldUser = ${fieldUser != null ? "موجود (${fieldUser.username})" : "غير موجود"}');
+
+        if (fieldUser != null) {
+          if (!mounted) return;
+          setState(() {
+            usernameController.text = fieldUser.username;
+            passwordController.text = fieldUser.password;
+          });
+          debugPrint('🎫 تذاكر: بدء الدخول التلقائي بـ ${fieldUser.username}');
+          handleLogin();
+          return;
+        }
+      } else {
+        debugPrint('🎫 تذاكر: لا يوجد tenantId - تخطي المستخدم الميداني');
+      }
+    } catch (e) {
+      debugPrint('🎫 تذاكر: خطأ في قراءة المستخدم الميداني: $e');
+    }
+
+    // 2. إذا لم يوجد مستخدم ميداني، استخدم البيانات المحفوظة محلياً
     final prefs = await SharedPreferences.getInstance();
     final savedUsername = prefs.getString('tickets_username');
     final savedPassword = prefs.getString('tickets_password');
@@ -69,7 +103,6 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
         passwordController.text = savedPassword;
         rememberMe = savedRememberMe;
       });
-      // تسجيل دخول تلقائي إذا كانت البيانات محفوظة
       handleLogin();
     }
   }
@@ -151,7 +184,9 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: Stack(
+        children: [
+          Container(
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
@@ -487,6 +522,23 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
             },
           ),
         ),
+      ),
+          // زر العودة
+          Positioned(
+            top: 16,
+            right: 16,
+            child: SafeArea(
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 28),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                ),
+                tooltip: 'رجوع',
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

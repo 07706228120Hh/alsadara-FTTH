@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,26 +18,35 @@ class WhatsAppBusinessService {
   static const String _webhookVerifyTokenKey = 'whatsapp_webhook_verify_token';
   static const String _n8nApiTokenKey = 'n8n_api_token';
 
-  // Webhook Verify Token (للـ n8n webhook verification)
-  // يستخدم في Meta Webhook Configuration عند ربط webhook URL
-  static const String webhookVerifyToken =
+  // ── قراءة القيم من .env كـ fallback ──
+  static String? _env(String key) {
+    try {
+      final val = dotenv.env[key];
+      return (val != null && val.isNotEmpty && !val.startsWith('PUT_YOUR')) ? val : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Webhook Verify Token
+  static String get webhookVerifyToken =>
+      _env('WHATSAPP_WEBHOOK_VERIFY_TOKEN') ??
       '4bZXa4hJ6whfqWf9JsyNjQpHzaBZOxZA1A81SBGH4ce90e2e';
 
-  // n8n API Token (JWT Token للوصول إلى n8n API)
-  // يستخدم للتفاعل مع n8n workflows والحصول على البيانات
-  static const String n8nApiToken =
+  // n8n API Token
+  static String get n8nApiToken =>
+      _env('N8N_API_TOKEN') ??
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZDFmZTVkNy04OTczLTQ0ZmQtYjQzNi0yNWRhMTUyN2YzOTYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY1OTQ3NjgzfQ.IjycTVGdoGHjM9xvVO1C2xyeaa0f2v09tpwSXOpq298';
 
   /// الحصول على جميع إعدادات واجهة WhatsApp
   static Future<Map<String, String>> getConfiguration() async {
-    final prefs = await SharedPreferences.getInstance();
     return {
-      'userToken': prefs.getString(_userTokenKey) ?? '',
-      'appToken': prefs.getString(_appTokenKey) ?? '',
-      'phoneNumberId': prefs.getString(_phoneNumberIdKey) ?? '',
-      'businessAccountId': prefs.getString(_businessAccountIdKey) ?? '',
-      'webhookVerifyToken': prefs.getString(_webhookVerifyTokenKey) ?? '',
-      'n8nApiToken': prefs.getString(_n8nApiTokenKey) ?? '',
+      'userToken': (await getUserToken()) ?? '',
+      'appToken': (await getAppToken()) ?? '',
+      'phoneNumberId': (await getPhoneNumberId()) ?? '',
+      'businessAccountId': (await getBusinessAccountId()) ?? '',
+      'webhookVerifyToken': (await getWebhookVerifyToken()) ?? '',
+      'n8nApiToken': (await getN8nApiToken()) ?? '',
     };
   }
 
@@ -130,22 +140,22 @@ class WhatsAppBusinessService {
     debugPrint('✅ تم حفظ جميع بيانات الاعتماد بنجاح');
   }
 
-  /// جلب User Token المحفوظ
+  /// جلب User Token المحفوظ (SharedPreferences → .env)
   static Future<String?> getUserToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_userTokenKey);
+    return prefs.getString(_userTokenKey) ?? _env('WHATSAPP_USER_TOKEN');
   }
 
-  /// جلب App Token المحفوظ
+  /// جلب App Token المحفوظ (SharedPreferences → .env)
   static Future<String?> getAppToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_appTokenKey);
+    return prefs.getString(_appTokenKey) ?? _env('WHATSAPP_APP_TOKEN');
   }
 
-  /// جلب Phone Number ID المحفوظ
+  /// جلب Phone Number ID المحفوظ (SharedPreferences → .env)
   static Future<String?> getPhoneNumberId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_phoneNumberIdKey);
+    return prefs.getString(_phoneNumberIdKey) ?? _env('WHATSAPP_PHONE_NUMBER_ID');
   }
 
   /// جلب Access Token المحفوظ (نفس User Token)
@@ -153,10 +163,10 @@ class WhatsAppBusinessService {
     return getUserToken();
   }
 
-  /// جلب Business Account ID المحفوظ
+  /// جلب Business Account ID المحفوظ (SharedPreferences → .env)
   static Future<String?> getBusinessAccountId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_businessAccountIdKey);
+    return prefs.getString(_businessAccountIdKey) ?? _env('WHATSAPP_BUSINESS_ACCOUNT_ID');
   }
 
   /// جلب Webhook Verify Token المحفوظ

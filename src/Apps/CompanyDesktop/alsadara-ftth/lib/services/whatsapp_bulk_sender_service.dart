@@ -182,9 +182,9 @@ class WhatsAppBulkSenderService {
         'phoneNumberId': phoneNumberId,
         'accessToken': accessToken,
         'offerText': offerText ?? 'لدينا عروض مميزة لك!',
-        'contactNumbers': contactNumbers ?? '07705210210 - 07717727720',
+        'contactNumbers': contactNumbers ?? '07705210210',
         'location': location ??
-            'بغداد/حي الامانة https://maps.app.goo.gl/hfYqRMZNr2qYnsV3A',
+            'شركة الصدارة المشغل الرسمي للمشروع الوطني https://maps.app.goo.gl/LvgqPrKt2R4f3KFP6',
       };
 
       debugPrint('📡 إرسال البيانات إلى n8n...');

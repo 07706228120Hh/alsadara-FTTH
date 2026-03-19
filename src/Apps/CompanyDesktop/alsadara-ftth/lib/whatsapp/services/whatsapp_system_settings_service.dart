@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/whatsapp_business_service.dart';
 
 /// أنظمة الواتساب المتاحة
 enum WhatsAppSystem {
@@ -147,9 +148,7 @@ class WhatsAppSystemSettingsService {
 
       case WhatsAppSystem.api:
         try {
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString('whatsapp_api_token') ?? '';
-          return token.isNotEmpty;
+          return await WhatsAppBusinessService.isConfigured();
         } catch (_) {
           return false;
         }

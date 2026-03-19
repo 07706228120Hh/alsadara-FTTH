@@ -35,6 +35,10 @@ class AppCloseHandler {
       // مسح بيانات صفحة التذاكر من SharedPreferences
       await _clearTicketsCredentials(prefs);
 
+      // مسح قائمة الحسابات المحفوظة في صفحة تسجيل الدخول
+      await prefs.remove('vps_saved_credentials');
+      debugPrint('✅ تم مسح قائمة الحسابات المحفوظة');
+
       // إجبار حفظ التغييرات
       await prefs.reload();
 

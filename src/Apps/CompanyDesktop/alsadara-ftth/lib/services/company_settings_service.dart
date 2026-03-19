@@ -20,6 +20,10 @@ class CompanySettings {
   final bool dailyReport; // تقرير يومي (مستقبلاً)
   final bool weeklyReport; // تقرير أسبوعي (مستقبلاً)
 
+  // بيانات المستخدم الميداني (لتسجيل الدخول التلقائي للتذاكر)
+  final String? fieldUsername;
+  final String? fieldPassword;
+
   final DateTime? updatedAt;
 
   CompanySettings({
@@ -29,6 +33,8 @@ class CompanySettings {
     this.bulkSendReport = true,
     this.dailyReport = false,
     this.weeklyReport = false,
+    this.fieldUsername,
+    this.fieldPassword,
     this.updatedAt,
   });
 
@@ -37,6 +43,9 @@ class CompanySettings {
     final reportSettings =
         data['reportSettings'] as Map<String, dynamic>? ?? {};
 
+    final fieldUser =
+        data['fieldUser'] as Map<String, dynamic>? ?? {};
+
     return CompanySettings(
       managerName: data['managerName'] as String?,
       managerWhatsApp: data['managerWhatsApp'] as String?,
@@ -44,6 +53,8 @@ class CompanySettings {
       bulkSendReport: reportSettings['bulkSendReport'] as bool? ?? true,
       dailyReport: reportSettings['dailyReport'] as bool? ?? false,
       weeklyReport: reportSettings['weeklyReport'] as bool? ?? false,
+      fieldUsername: fieldUser['username'] as String?,
+      fieldPassword: fieldUser['password'] as String?,
       updatedAt: data['updatedAt'] != null
           ? (data['updatedAt'] as Timestamp).toDate()
           : null,
@@ -61,6 +72,10 @@ class CompanySettings {
         'dailyReport': dailyReport,
         'weeklyReport': weeklyReport,
       },
+      'fieldUser': {
+        'username': fieldUsername,
+        'password': fieldPassword,
+      },
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -73,6 +88,8 @@ class CompanySettings {
     bool? bulkSendReport,
     bool? dailyReport,
     bool? weeklyReport,
+    String? fieldUsername,
+    String? fieldPassword,
   }) {
     return CompanySettings(
       managerName: managerName ?? this.managerName,
@@ -81,9 +98,18 @@ class CompanySettings {
       bulkSendReport: bulkSendReport ?? this.bulkSendReport,
       dailyReport: dailyReport ?? this.dailyReport,
       weeklyReport: weeklyReport ?? this.weeklyReport,
+      fieldUsername: fieldUsername ?? this.fieldUsername,
+      fieldPassword: fieldPassword ?? this.fieldPassword,
       updatedAt: updatedAt,
     );
   }
+
+  /// التحقق من وجود بيانات المستخدم الميداني
+  bool get hasFieldUser =>
+      fieldUsername != null &&
+      fieldUsername!.isNotEmpty &&
+      fieldPassword != null &&
+      fieldPassword!.isNotEmpty;
 }
 
 /// خدمة إعدادات الشركة
@@ -141,6 +167,16 @@ class CompanySettingsService {
       debugPrint('⚠️ خطأ في تحميل الإعدادات');
       return CompanySettings();
     }
+  }
+
+  /// الحصول على بيانات المستخدم الميداني
+  static Future<({String username, String password})?> getFieldUser(
+      {String? tenantId}) async {
+    final settings = await getSettings(tenantId: tenantId);
+    if (settings.hasFieldUser) {
+      return (username: settings.fieldUsername!, password: settings.fieldPassword!);
+    }
+    return null;
   }
 
   /// حفظ رقم واتساب المدير فقط

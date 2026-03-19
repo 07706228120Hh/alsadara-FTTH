@@ -64,6 +64,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   bool _isReportSettingsLoading = false;
   bool _isReportSettingsSaving = false;
 
+  // بيانات المستخدم الميداني
+  final _fieldUsernameCtrl = TextEditingController();
+  final _fieldPasswordCtrl = TextEditingController();
+  bool _showFieldPassword = false;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +84,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     _tabController.dispose();
     _managerNameCtrl.dispose();
     _managerWhatsAppCtrl.dispose();
+    _fieldUsernameCtrl.dispose();
+    _fieldPasswordCtrl.dispose();
     super.dispose();
   }
 
@@ -1133,6 +1140,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           _bulkSendReport = settings.bulkSendReport;
           _dailyReport = settings.dailyReport;
           _weeklyReport = settings.weeklyReport;
+          _fieldUsernameCtrl.text = settings.fieldUsername ?? '';
+          _fieldPasswordCtrl.text = settings.fieldPassword ?? '';
         });
       }
     } catch (e) {
@@ -1163,6 +1172,12 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
         bulkSendReport: _bulkSendReport,
         dailyReport: _dailyReport,
         weeklyReport: _weeklyReport,
+        fieldUsername: _fieldUsernameCtrl.text.trim().isEmpty
+            ? null
+            : _fieldUsernameCtrl.text.trim(),
+        fieldPassword: _fieldPasswordCtrl.text.trim().isEmpty
+            ? null
+            : _fieldPasswordCtrl.text.trim(),
       );
 
       debugPrint('💾 حفظ إعدادات التقارير - tenantId: $tid');
@@ -1270,6 +1285,87 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         labelStyle: GoogleFonts.cairo(),
                         hintText: '07xxxxxxxxx',
                         prefixIcon: const Icon(Icons.phone, color: Colors.green),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // بطاقة المستخدم الميداني
+        Container(
+          decoration: BoxDecoration(
+            color: _bgCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _dividerColor),
+            boxShadow: const [BoxShadow(color: _shadowColor, blurRadius: 10, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.05),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.engineering, color: Colors.blue, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('المستخدم الميداني',
+                              style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+                          Text('يُستخدم لتسجيل الدخول التلقائي لنظام التذاكر',
+                              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600])),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _fieldUsernameCtrl,
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(
+                        labelText: 'اسم المستخدم',
+                        labelStyle: GoogleFonts.cairo(),
+                        prefixIcon: const Icon(Icons.person_outline, color: Colors.blue),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _fieldPasswordCtrl,
+                      textDirection: TextDirection.ltr,
+                      obscureText: !_showFieldPassword,
+                      decoration: InputDecoration(
+                        labelText: 'كلمة المرور',
+                        labelStyle: GoogleFonts.cairo(),
+                        prefixIcon: const Icon(Icons.lock_outline, color: Colors.blue),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showFieldPassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () => setState(() => _showFieldPassword = !_showFieldPassword),
+                        ),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
