@@ -365,9 +365,15 @@ public class AccountingController : ControllerBase
             if (!string.IsNullOrEmpty(status) && Enum.TryParse<JournalEntryStatus>(status, true, out var st))
                 query = query.Where(j => j.Status == st);
             if (fromDate.HasValue)
-                query = query.Where(j => j.EntryDate >= fromDate.Value);
+            {
+                var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                query = query.Where(j => j.EntryDate >= from);
+            }
             if (toDate.HasValue)
-                query = query.Where(j => j.EntryDate <= toDate.Value);
+            {
+                var to = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                query = query.Where(j => j.EntryDate <= to);
+            }
 
             var total = await query.CountAsync();
             var entries = await query

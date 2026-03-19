@@ -155,7 +155,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         fromDate: fromDate,
         toDate: toDate,
         page: page,
-        pageSize: _pageSize,
+        pageSize: 10000, // جلب كل سجلات الفترة — التاريخ يحدّ البيانات طبيعياً
       );
       if (result['success'] == true) {
         List all;
