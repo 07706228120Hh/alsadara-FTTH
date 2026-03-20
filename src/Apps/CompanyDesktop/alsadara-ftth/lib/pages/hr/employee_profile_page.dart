@@ -15,10 +15,10 @@ import 'tabs/hr_info_tab.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/tasks_tab.dart';
 import 'tabs/salary_tab.dart';
-import 'tabs/permissions_tab.dart';
 import 'tabs/ftth_tab.dart';
 import 'tabs/transactions_tab.dart';
 import 'tabs/performance_tab.dart';
+import '../accounting/ftth_operator_linking_page.dart';
 
 class EmployeeProfilePage extends StatefulWidget {
   final String companyId;
@@ -361,15 +361,14 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
               onTap: () => _showPasswordDialog(),
             ),
             const SizedBox(width: 4),
-            // الصلاحيات
-            if (_pm.canEdit('users'))
-              _headerActionBtn(
-                icon: Icons.shield_outlined,
-                tooltip: 'إدارة الصلاحيات',
-                color: const Color(0xFFAB47BC),
-                onTap: () => _openPermissionsPage(),
-              ),
-            if (_pm.canEdit('users')) const SizedBox(width: 4),
+            // ربط حساب FTTH
+            _headerActionBtn(
+              icon: Icons.link_rounded,
+              tooltip: 'ربط حساب FTTH',
+              color: const Color(0xFFCDDC39),
+              onTap: () => _openFtthLinking(),
+            ),
+            const SizedBox(width: 4),
             // حذف الموظف
             if (_pm.canDelete('users'))
               _headerActionBtn(
@@ -415,6 +414,18 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
             ),
             child: Icon(icon, size: 16, color: color),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// ═══ فتح صفحة ربط حساب FTTH ═══
+  void _openFtthLinking() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FtthOperatorLinkingPage(
+          companyId: widget.companyId,
         ),
       ),
     );
@@ -603,22 +614,6 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     );
   }
 
-  /// ═══ فتح صفحة إدارة الصلاحيات ═══
-  Future<void> _openPermissionsPage() async {
-    final empName = _employee['fullName'] ?? _employee['FullName'] ?? '';
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PermissionsManagementV2Page(
-          companyId: widget.companyId,
-          companyName: widget.companyName,
-          employeeId: widget.employeeId,
-          employeeName: empName,
-        ),
-      ),
-    );
-    if (result == true) _loadFullProfile();
-  }
 
   /// ═══ حذف الموظف ═══
   Future<void> _deleteEmployee() async {
@@ -807,11 +802,12 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
               _pm.canEdit('accounting'),
         );
       case 'permissions':
-        return PermissionsTab(
+        return PermissionsManagementV2Page(
           companyId: widget.companyId,
+          companyName: widget.companyName,
           employeeId: widget.employeeId,
           employeeName: _employee['fullName'] ?? _employee['FullName'] ?? '',
-          canEdit: _pm.canEdit('hr.permissions') || _pm.canEdit('users'),
+          embedded: true,
         );
       case 'ftth':
         return FtthTab(

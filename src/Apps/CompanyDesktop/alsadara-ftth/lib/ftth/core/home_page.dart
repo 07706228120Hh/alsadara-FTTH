@@ -164,6 +164,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _lastSearchSeq = 0;
   Timer? _searchDebounce;
   final ScrollController _searchScrollCtrl = ScrollController();
+  StreamSubscription<String>? _ftthEventBusSub;
 
   @override
   void initState() {
@@ -184,11 +185,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // بيكاتشو يُدار الآن من Overlay عالمي (لا حاجة لتحميل إعداداته هنا)
 
-    // الاشتراك في قناة التحديث الفوري
-    FtthEventBus.instance.stream.listen((event) {
+    // الاشتراك في قناة التحديث الفوري (مع حفظ المرجع لإلغائه في dispose)
+    _ftthEventBusSub = FtthEventBus.instance.stream.listen((event) {
       if (!mounted) return;
       if (event == FtthEvents.forceRefresh) {
-        // تحديث سريع: نحاول تحديث المحفظة أولاً ثم لوحة التحكم
         _performRefresh();
       }
     });
@@ -406,25 +406,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // إلغاء اشتراك EventBus أولاً لمنع أي callbacks بعد dispose
+    _ftthEventBusSub?.cancel();
+    _ftthEventBusSub = null;
+
+    // إلغاء callback المزامنة لمنع استدعاءات على widget محذوف
+    BackgroundSyncService.instance.onSyncComplete = null;
+
     VpsSyncService.instance.stopAutoSync();
     _autoCollapseTimer?.cancel();
-    // التحقق من وجود Timer قبل إلغائه
-    if (_timer != null && _timer!.isActive) {
-      _timer!.cancel();
-    }
-    if (_walletTimer != null && _walletTimer!.isActive) {
-      _walletTimer!.cancel();
-    }
+    _timer?.cancel();
+    _walletTimer?.cancel();
+    _searchDebounce?.cancel();
+
+    // إخفاء الأزرار العائمة قبل dispose لتجنب الشاشة السوداء
+    Future.microtask(() {
+      WhatsAppBottomWindow.hideConversationsFloatingButton();
+    });
+    FloatingToolbar.dispose();
+
     _refreshAnimationController.dispose();
     _cardAnimationController.dispose();
     _counterAnimationController.dispose();
-    _searchDebounce?.cancel();
     _searchNameCtrl.dispose();
     _searchPhoneCtrl.dispose();
     _searchScrollCtrl.dispose();
-
-    // تنظيف شريط الأدوات العائم الموحد
-    FloatingToolbar.dispose();
     super.dispose();
   }
 
@@ -2081,8 +2087,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   // إظهار الأزرار العائمة عبر الشريط الموحد
   void _showGlobalWhatsAppButton() {
     try {
-      // تفعيل زر واتساب ويب — دائماً ظاهر
-      FloatingToolbar.enableWhatsApp();
+      // تفعيل زر واتساب ويب — فقط إذا مصرح للمستخدم
+      if (_hasPermission('whatsapp')) {
+        FloatingToolbar.enableWhatsApp();
+      }
 
       // التحقق من صلاحية إظهار زر المحادثات
       if (_hasPermission('whatsapp_conversations_fab')) {
@@ -2568,7 +2576,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // ── الجهة اليسرى (في RTL): الرجوع ──
         iconBtn(
           icon: IconsaxPlusBold.arrow_right_1,
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // تنظيف العناصر العائمة قبل الخروج لتجنب الشاشة السوداء
+            WhatsAppBottomWindow.hideConversationsFloatingButton();
+            FloatingToolbar.dispose();
+            Navigator.of(context).pop();
+          },
           tooltip: 'رجوع',
         ),
         if (widget.isSuperAdminMode)
