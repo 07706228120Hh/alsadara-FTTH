@@ -7,6 +7,7 @@ import 'package:open_file/open_file.dart';
 import '../models/whatsapp_conversation.dart';
 import '../services/whatsapp_conversation_service.dart';
 import '../services/whatsapp_business_service.dart';
+import '../ftth/core/home_page.dart';
 
 /// صفحة المحادثة الفردية
 class WhatsAppChatPage extends StatefulWidget {
@@ -174,10 +175,16 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
           ],
         ),
         actions: [
+          // زر البحث عن المشترك
           IconButton(
-            icon: const Icon(Icons.phone),
+            icon: const Icon(Icons.person_search),
+            tooltip: 'بحث عن المشترك',
             onPressed: () {
-              // يمكن إضافة وظيفة للاتصال
+              final phone = _formatPhoneNumber(widget.phoneNumber);
+              HomePage.phoneSearchNotifier.value = phone;
+              Navigator.pop(context); // إغلاق المحادثة
+              // إغلاق صفحة المحادثات أيضاً إذا كانت موجودة
+              if (Navigator.of(context).canPop()) Navigator.pop(context);
             },
           ),
           IconButton(
@@ -1031,7 +1038,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
 
   String _formatPhoneNumber(String phone) {
     if (phone.startsWith('964')) {
-      return '+${phone.substring(0, 3)} ${phone.substring(3)}';
+      return '0${phone.substring(3)}';
     }
     return phone;
   }
