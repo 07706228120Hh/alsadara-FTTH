@@ -18,6 +18,8 @@ import '../../services/dual_auth_service.dart';
 import '../../whatsapp/services/whatsapp_system_settings_service.dart';
 import '../../whatsapp/services/whatsapp_server_service.dart';
 import '../../whatsapp/services/whatsapp_message_log_service.dart';
+import '../../services/whatsapp_business_service.dart';
+import '../../services/whatsapp_bulk_sender_service.dart';
 import '../../services/message_log_service.dart';
 import '../../services/thermal_printer_service.dart';
 import '../../services/print_template_storage.dart';
@@ -1034,6 +1036,25 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.chat_outlined),
                     label: const Text('إرسال تجريبي'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green.shade700,
+                      side: BorderSide(color: Colors.green.shade400),
+                    ),
+                    onPressed: _isSendingWhatsApp
+                        ? null
+                        : () => sendWhatsAppMessage(),
+                    icon: _isSendingWhatsApp
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.send),
+                    label: const Text('اختبار واتساب API'),
                   ),
                 ),
               ],
@@ -2428,7 +2449,6 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
       if (system == WhatsAppSystem.server) {
         // ===== إرسال عبر السيرفر =====
-        // يجب أن يطابق نفس tenantId المستخدم عند إنشاء الجلسة في صفحة الإعدادات
         final tenantId = VpsAuthService.instance.currentCompanyId ?? 'default';
         final success = await WhatsAppServerService.sendMessage(
           phone: cleanPhone,
@@ -2443,8 +2463,56 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             ftthShowErrorNotification(context, '❌ فشل إرسال الرسالة عبر السيرفر');
           }
         }
+      } else if (system == WhatsAppSystem.api) {
+        // ===== إرسال عبر n8n webhook (يرسل + يحفظ في Firestore تلقائياً) =====
+        debugPrint('☁️ إرسال قالب sadara_renewed عبر n8n webhook...');
+
+        final customerName = subscriptionInfo?.customerName ?? 'عزيزي المشترك';
+        final planName = selectedPlan ?? subscriptionInfo?.currentPlan ?? 'غير محدد';
+        // حساب السعر الإجمالي الفعلي (نفس المنطق المعروض في الواجهة)
+        String price = '0';
+        if (priceDetails != null) {
+          final totalVal = _asDouble(priceDetails!['totalPrice']);
+          final discountVal = _asDouble(priceDetails!['discount'] ?? 0);
+          final effectiveTotal = systemDiscountEnabled ? totalVal : (totalVal + discountVal);
+          final finalTotal = (effectiveTotal - manualDiscount).clamp(0, double.infinity);
+          price = finalTotal.round().toString();
+        }
+        final expiryDate = widget.expires?.split('T').first ?? DateTime.now().toIso8601String().split('T').first;
+        const contactNumbers = '07705210210';
+
+        final phoneNumberId = await WhatsAppBusinessService.getPhoneNumberId() ?? '';
+        final accessToken = await WhatsAppBusinessService.getUserToken() ?? '';
+
+        final result = await WhatsAppBulkSenderService.sendTemplateMessages(
+          templateType: 'sadara_renewed',
+          recipients: [
+            {
+              'phoneNumber': cleanPhone,
+              'name': customerName,
+              'planName': planName,
+              'price': price,
+              'expiryDate': expiryDate,
+            },
+          ],
+          phoneNumberId: phoneNumberId,
+          accessToken: accessToken,
+          contactNumbers: contactNumbers,
+        );
+
+        if (result['success'] == true) {
+          sent = true;
+          if (mounted) {
+            ftthShowSuccessNotification(context, '✅ تم إرسال رسالة واتساب عبر API بنجاح!');
+          }
+        } else {
+          sent = false;
+          if (mounted) {
+            ftthShowErrorNotification(context, '❌ فشل API: ${result['message'] ?? 'خطأ غير معروف'}');
+          }
+        }
       } else {
-        // ===== إرسال عبر تطبيق الواتساب (الطريقة الافتراضية) =====
+        // ===== إرسال عبر تطبيق الواتساب (app / web) =====
         await Clipboard.setData(ClipboardData(text: message));
 
         debugPrint('🚀 فتح واتساب ديسكتوب مع إرسال تلقائي...');
@@ -9149,15 +9217,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               tooltip: 'الصفحة الرئيسية',
               icon: const Icon(Icons.home),
               onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => HomePage(
-                      username: widget.activatedBy,
-                      authToken: widget.authToken,
-                    ),
-                  ),
-                  (Route<dynamic> route) => false,
-                );
+                // العودة إلى صفحة FTTH الرئيسية بدون حذف routes النظام الأول
+                Navigator.of(context).popUntil(ModalRoute.withName('/ftth-home'));
               },
             ),
             // زر القائمة الجانبية (بعد زر الرجوع الافتراضي)

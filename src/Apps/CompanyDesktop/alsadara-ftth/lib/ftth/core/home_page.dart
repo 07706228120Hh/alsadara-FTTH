@@ -98,6 +98,10 @@ class HomePage extends StatefulWidget {
   @override
   State<HomePage> createState() => _HomePageState();
 
+  /// رقم هاتف معلّق للبحث (يُملأ من صفحة المحادثات)
+  static String? pendingPhoneSearch;
+  static final ValueNotifier<String?> phoneSearchNotifier = ValueNotifier(null);
+
   // دالة عامة للحصول على إعداد الإرسال التلقائي
   static Future<bool> getWhatsAppAutoSendSetting() async {
     try {
@@ -164,12 +168,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _lastSearchSeq = 0;
   Timer? _searchDebounce;
   final ScrollController _searchScrollCtrl = ScrollController();
+  // كاش المنطقة للبحث السريع
+  static final Map<String, String> _searchZoneCache = {};
+  final Set<String> _searchZoneFetching = {};
   StreamSubscription<String>? _ftthEventBusSub;
 
   @override
   void initState() {
     super.initState();
     currentToken = widget.authToken;
+
+    // مراقبة بحث الهاتف من صفحة المحادثات
+    HomePage.phoneSearchNotifier.addListener(_onPhoneSearchRequested);
 
     // تحديث التوكن في خدمة تحديثات التذاكر
     TicketUpdatesService.instance.updateAuthToken(widget.authToken);
@@ -257,6 +267,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _showGlobalWhatsAppButton();
       }
     });
+  }
+
+  void _onPhoneSearchRequested() {
+    final phone = HomePage.phoneSearchNotifier.value;
+    if (phone != null && phone.isNotEmpty && mounted) {
+      HomePage.phoneSearchNotifier.value = null;
+      _searchPhoneCtrl.text = phone;
+      _searchNameCtrl.clear();
+      _searchZoneId = '';
+      setState(() { _searchPage = 1; _searchDone = true; });
+      _performQuickSearch();
+    }
   }
 
   // فحص صلاحيات المدير من النظام الأول فقط
@@ -366,8 +388,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (mounted) {
         FloatingToolbar.init(context);
         _showGlobalWhatsAppButton();
-        // إبقاء AgentTasksBubble القديم معطلاً — FloatingToolbar يتولى المهمة
       }
+
+      // التذكير التلقائي يُدار عبر n8n workflow على السيرفر
 
       _cardAnimationController.forward();
       _counterAnimationController.forward(from: 0.0);
@@ -406,6 +429,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    HomePage.phoneSearchNotifier.removeListener(_onPhoneSearchRequested);
+
     // إلغاء اشتراك EventBus أولاً لمنع أي callbacks بعد dispose
     _ftthEventBusSub?.cancel();
     _ftthEventBusSub = null;
@@ -2580,7 +2605,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             // تنظيف العناصر العائمة قبل الخروج لتجنب الشاشة السوداء
             WhatsAppBottomWindow.hideConversationsFloatingButton();
             FloatingToolbar.dispose();
-            Navigator.of(context).pop();
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
           },
           tooltip: 'رجوع',
         ),
@@ -3545,6 +3572,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         final items = List<dynamic>.from(data['items'] as List? ?? []);
+        if (items.isNotEmpty) {
+        }
         setState(() {
           _lastSearchSeq = seq;
           _searchTotal = data['totalCount'] ?? 0;
@@ -3555,6 +3584,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } finally {
       if (mounted) setState(() { _searchLoading = false; _searchLoadingMore = false; _searchWaiting = false; });
     }
+  }
+
+  void _fetchSearchZone(String customerId) {
+    if (_searchZoneCache.containsKey(customerId) || _searchZoneFetching.contains(customerId)) return;
+    _searchZoneFetching.add(customerId);
+    AuthService.instance.authenticatedRequest('GET',
+      'https://admin.ftth.iq/api/customers/subscriptions?customerId=$customerId',
+    ).then((r) {
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        final items = data['items'] as List? ?? [];
+        if (items.isNotEmpty) {
+          final zone = items[0]['zone']?['displayValue']?.toString() ?? '';
+          if (zone.isNotEmpty && mounted) {
+            setState(() => _searchZoneCache[customerId] = zone);
+          }
+        }
+      }
+      _searchZoneFetching.remove(customerId);
+    }).catchError((_) => _searchZoneFetching.remove(customerId));
   }
 
   void _resetQuickSearch() {
@@ -3819,7 +3868,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 final user = _searchResults[i];
                 final userName = user['self']?['displayValue'] ?? 'غير متوفر';
                 final userId = user['self']?['id']?.toString() ?? '';
-                final zone = user['zone']?['displayValue'] ?? '';
+                // جلب المنطقة من API أو من الكاش
+                var zone = user['zone']?['displayValue']?.toString() ?? '';
+                if (zone.isEmpty && userId.isNotEmpty) {
+                  zone = _searchZoneCache[userId] ?? '';
+                  if (zone.isEmpty) _fetchSearchZone(userId);
+                }
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 6),
@@ -4494,6 +4548,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               activatedBy: widget.username,
               hasServerSavePermission: hasServerSavePermission(),
               hasWhatsAppPermission: hasWhatsAppPermission(),
+              isAdminFlag: isAdmin,
               importantFtthApiPermissions: _getImportantPermissions(),
             ),
           ),

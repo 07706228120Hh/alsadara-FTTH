@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// سجل الصلاحيات المركزي V3 — هرمي دقيق
@@ -528,6 +530,24 @@ class PermissionRegistry {
       icon: Icons.bug_report_rounded,
       category: 'النظام',
     ),
+
+    // ─── واتساب (النظام الأول) ───
+    PermissionEntry(
+      key: 'whatsapp',
+      labelAr: 'رسائل WhatsApp',
+      description: 'إرسال رسائل واتساب',
+      icon: Icons.chat_rounded,
+      category: 'واتساب',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'whatsapp_conversations_fab',
+      labelAr: 'محادثات واتساب',
+      description: 'عرض زر المحادثات العائم',
+      icon: Icons.forum_rounded,
+      category: 'واتساب',
+      allowedActions: ['view'],
+    ),
   ];
 
   // ═══════════════════════════════════════
@@ -826,11 +846,71 @@ class PermissionRegistry {
   /// قالب: مشاهد — عرض فقط بدون أي إجراء
   static const String templateViewer = 'viewer';
 
-  /// تعريف القوالب
+  // ═══ القوالب المخصصة (محفوظة محلياً) ═══
+  static const String _customTemplatesKey = 'custom_permission_templates';
+  static Map<String, Map<String, Map<String, List<String>>>> _customTemplates =
+      {};
+
+  /// تحميل القوالب المخصصة من SharedPreferences
+  static Future<void> loadCustomTemplates() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = prefs.getString(_customTemplatesKey);
+    if (jsonStr == null) return;
+    try {
+      final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+      _customTemplates = decoded.map((key, value) {
+        final templateMap = (value as Map<String, dynamic>).map((fKey, fVal) {
+          final actions = (fVal as Map<String, dynamic>)['actions'] as List;
+          return MapEntry(
+              fKey, {'actions': actions.cast<String>().toList()});
+        });
+        return MapEntry(key, templateMap);
+      });
+    } catch (_) {
+      _customTemplates = {};
+    }
+  }
+
+  /// حفظ قالب مخصص
+  static Future<void> saveCustomTemplate(
+      String key, Map<String, Map<String, List<String>>> template) async {
+    _customTemplates[key] = template;
+    await _persistCustomTemplates();
+  }
+
+  /// حذف قالب مخصص (إعادة للافتراضي)
+  static Future<void> resetTemplate(String key) async {
+    _customTemplates.remove(key);
+    await _persistCustomTemplates();
+  }
+
+  /// هل القالب معدّل عن الافتراضي؟
+  static bool isCustomized(String key) => _customTemplates.containsKey(key);
+
+  /// القالب الافتراضي (الأصلي)
+  static Map<String, Map<String, List<String>>> getDefaultTemplate(
+      String name) {
+    return _getBuiltInTemplate(name);
+  }
+
+  static Future<void> _persistCustomTemplates() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = jsonEncode(_customTemplates);
+    await prefs.setString(_customTemplatesKey, encoded);
+  }
+
+  /// تعريف القوالب — يتحقق أولاً من المخصصة ثم الافتراضية
   static Map<String, Map<String, List<String>>> getTemplate(String name) {
+    if (_customTemplates.containsKey(name)) {
+      return _customTemplates[name]!;
+    }
+    return _getBuiltInTemplate(name);
+  }
+
+  static Map<String, Map<String, List<String>>> _getBuiltInTemplate(
+      String name) {
     switch (name) {
       case 'manager':
-        // جميع الميزات مفتوحة بالكامل
         return _buildTemplateAll(true);
       case 'accountant':
         return _buildAccountantTemplate();
@@ -934,6 +1014,15 @@ class PermissionRegistry {
     'technician': 'فني — المهام والحضور',
     'employee': 'موظف — أساسية',
     'viewer': 'مشاهد — عرض فقط',
+  };
+
+  /// أيقونة كل قالب
+  static const Map<String, IconData> templateIcons = {
+    'manager': Icons.admin_panel_settings_rounded,
+    'accountant': Icons.account_balance_rounded,
+    'technician': Icons.engineering_rounded,
+    'employee': Icons.person_rounded,
+    'viewer': Icons.visibility_rounded,
   };
 
   // ═══════════════════════════════════════

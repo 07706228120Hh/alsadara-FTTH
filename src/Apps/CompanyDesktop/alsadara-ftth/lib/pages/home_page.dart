@@ -466,6 +466,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     int badgeCount = 0,
   }) {
     final hasPermission = PermissionManager.instance.canView(permissionKey);
+    if (!hasPermission) return const SizedBox.shrink();
     final r = context.responsive;
 
     return AnimatedContainer(
@@ -1759,6 +1760,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: '/ftth-home'),
         builder: (context) => ftth_home.HomePage(
           username: ftthUsername,
           authToken: dual.ftthToken!,
@@ -2204,10 +2206,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ];
 
+        // فلترة العناصر المخفية (غير المصرح بها)
+        final visibleItems = items
+            .where((item) {
+              if (item is SizedBox) return item.width != 0;
+              return true;
+            })
+            .toList();
+
         return Wrap(
           spacing: spacing,
           runSpacing: r.isMobile ? 8 : 12,
-          children: items
+          children: visibleItems
               .map((item) => SizedBox(width: itemWidth, child: item))
               .toList(),
         );
