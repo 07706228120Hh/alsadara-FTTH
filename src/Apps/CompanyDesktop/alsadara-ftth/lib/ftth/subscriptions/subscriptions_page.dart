@@ -31,7 +31,20 @@ class _CancelledExport implements Exception {
 
 class SubscriptionsPage extends StatefulWidget {
   final String authToken;
-  const SubscriptionsPage({super.key, required this.authToken});
+  final bool hasServerSavePermission;
+  final bool hasWhatsAppPermission;
+  final bool? isAdminFlag;
+  final List<String>? importantFtthApiPermissions;
+  final String? activatedBy;
+  const SubscriptionsPage({
+    super.key,
+    required this.authToken,
+    this.hasServerSavePermission = false,
+    this.hasWhatsAppPermission = false,
+    this.isAdminFlag,
+    this.importantFtthApiPermissions,
+    this.activatedBy,
+  });
 
   @override
   State<SubscriptionsPage> createState() => _SubscriptionsPageState();
@@ -90,6 +103,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   final TextEditingController fromDateController = TextEditingController();
   final TextEditingController toDateController = TextEditingController();
   final TextEditingController customerNameController = TextEditingController();
+  final TextEditingController customerPhoneController = TextEditingController();
 
   // === التقسيم إلى صفحات ===
   int pageSize = 25;
@@ -1466,6 +1480,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         fromDateController.clear();
         toDateController.clear();
         customerNameController.clear();
+        customerPhoneController.clear();
         currentPage = 1;
         isFiltering = false;
         selectedSessionFilter = 'الكل';
@@ -2189,16 +2204,12 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   Widget _buildFilterSection() {
     if (!isFiltering) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
       ),
-      child: Column(
-        children: [
-          _buildAdvancedFilters(),
-        ],
-      ),
+      child: _buildAdvancedFilters(),
     );
   }
 
@@ -2293,128 +2304,156 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     }
   }
 
-  Widget _buildAdvancedFilters() {
-    const double h = 30.0;
-    const border = OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(6)),
-      borderSide: BorderSide(color: Color(0xFFBDBDBD)),
-    );
-    const ts = TextStyle(fontSize: 11);
-    final hintTs = TextStyle(fontSize: 11, color: Colors.grey.shade400);
+  void _triggerSearch() {
+    if (isLoading || isExporting) return;
+    if (!mounted) return;
+    // إذا أُدخل رقم هاتف → نبحث عن اسم المشترك أولاً ثم نفلتر
+    final phone = customerPhoneController.text.replaceAll(RegExp(r'[^0-9+]'), '').trim();
+    if (phone.isNotEmpty && phone.length >= 7) {
+      _searchByPhone(phone);
+    } else {
+      setState(() { currentPage = 1; isFiltering = false; });
+      fetchSubscriptions(applyFilters: true);
+    }
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(top: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
+  Future<void> _searchByPhone(String phone) async {
+    setState(() { isLoading = true; });
+    try {
+      final r = await AuthService.instance.authenticatedRequest(
+        'GET', 'https://api.ftth.iq/api/customers?pageSize=5&pageNumber=1&phone=${Uri.encodeQueryComponent(phone)}',
+      );
+      if (r.statusCode == 200 && mounted) {
+        final data = jsonDecode(r.body);
+        final items = (data['items'] as List?) ?? [];
+        if (items.isNotEmpty) {
+          final name = items[0]['self']?['displayValue']?.toString() ?? '';
+          if (name.isNotEmpty) {
+            customerNameController.text = name;
+          }
+        }
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() { currentPage = 1; isFiltering = false; });
+      fetchSubscriptions(applyFilters: true);
+    }
+  }
+
+  Widget _buildAdvancedFilters() {
+    // === نمط موحد لكل العناصر ===
+    const double h = 34.0;
+    final borderColor = Colors.grey.shade300;
+    const radius = BorderRadius.all(Radius.circular(8));
+    final fieldBorder = OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: borderColor));
+    final focusBorder = OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5));
+    const ts = TextStyle(fontSize: 12);
+    final hintTs = TextStyle(fontSize: 12, color: Colors.grey.shade400);
+
+    // === حقل إدخال موحد ===
+    Widget field(TextEditingController ctrl, String hint, IconData icon, {int flex = 1, TextInputType? kb}) {
+      return Expanded(
+        flex: flex,
+        child: SizedBox(
+          height: h,
+          child: TextFormField(
+            controller: ctrl, style: ts, keyboardType: kb,
+            onFieldSubmitted: (_) => _triggerSearch(),
+            decoration: InputDecoration(
+              hintText: hint, hintStyle: hintTs,
+              border: fieldBorder, enabledBorder: fieldBorder, focusedBorder: focusBorder,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+              prefixIcon: Icon(icon, size: 16, color: Colors.grey.shade500),
+              prefixIconConstraints: const BoxConstraints(minWidth: 34),
+              isDense: true,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // === زر جلسة موحد (نفس حدود وارتفاع الحقول) ===
+    Widget sessionChip(String label, Color activeColor) {
+      final sel = selectedSessionFilter == label;
+      return GestureDetector(
+        onTap: () => setState(() => selectedSessionFilter = label),
+        child: Container(
+          height: h,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? activeColor : Colors.white,
+            borderRadius: radius,
+            border: Border.all(color: sel ? activeColor : borderColor),
+          ),
+          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+            color: sel ? Colors.white : Colors.grey.shade600)),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
       child: Row(
         children: [
-          // فلتر الجلسة
-          ..._buildSessionButtons(),
-          _separator(),
-          // اسم المشترك
-          Expanded(
-            child: SizedBox(
-              height: h,
-              child: TextFormField(
-                controller: customerNameController,
-                style: ts,
-                decoration: InputDecoration(
-                  hintText: 'اسم المشترك',
-                  hintStyle: hintTs,
-                  border: border,
-                  enabledBorder: border,
-                  focusedBorder: border.copyWith(borderSide: const BorderSide(color: Colors.blue)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  prefixIcon: Icon(Icons.person_search, size: 14, color: Colors.grey.shade500),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 28),
-                  isDense: true,
-                ),
+          // === الجلسة ===
+          sessionChip('الكل', Colors.blueGrey),
+          const SizedBox(width: 4),
+          sessionChip('نشطة', const Color(0xFF388E3C)),
+          const SizedBox(width: 4),
+          sessionChip('غير نشطة', const Color(0xFFC62828)),
+          const SizedBox(width: 10),
+          // === البحث ===
+          field(customerNameController, 'اسم المشترك', Icons.person_search, flex: 3),
+          const SizedBox(width: 6),
+          field(customerPhoneController, 'رقم الهاتف', Icons.phone, flex: 2, kb: TextInputType.phone),
+          const SizedBox(width: 6),
+          // === التواريخ ===
+          SizedBox(width: 120, height: h, child: _buildMiniDateField(fromDateController, 'من تاريخ', fieldBorder, ts, hintTs, focusBorder: focusBorder)),
+          const SizedBox(width: 4),
+          SizedBox(width: 120, height: h, child: _buildMiniDateField(toDateController, 'إلى تاريخ', fieldBorder, ts, hintTs, focusBorder: focusBorder)),
+          const SizedBox(width: 8),
+          // === ترتيب ===
+          _buildSortButton(h),
+          const SizedBox(width: 6),
+          // === بحث ===
+          SizedBox(
+            height: h,
+            child: ElevatedButton.icon(
+              onPressed: (isLoading || isExporting) ? null : _triggerSearch,
+              icon: const Icon(Icons.search, size: 15),
+              label: const Text('بحث', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
               ),
             ),
           ),
           const SizedBox(width: 4),
-          // من تاريخ
-          SizedBox(width: 105, height: h, child: _buildMiniDateField(fromDateController, 'من تاريخ', border, ts, hintTs)),
-          const SizedBox(width: 4),
-          // إلى تاريخ
-          SizedBox(width: 105, height: h, child: _buildMiniDateField(toDateController, 'إلى تاريخ', border, ts, hintTs)),
-          _separator(),
-          // ترتيب
-          _buildSortButton(h),
-          const SizedBox(width: 4),
-          // بحث
-          _miniBtn(Icons.search, Colors.blue, Colors.white, (isLoading || isExporting)
-              ? null
-              : () {
-                  if (mounted) {
-                    setState(() { currentPage = 1; isFiltering = false; });
-                    fetchSubscriptions(applyFilters: true);
-                  }
-                }, h),
-          const SizedBox(width: 3),
-          // مسح
-          _miniBtn(Icons.clear, Colors.grey.shade200, Colors.grey.shade700, resetFilters, h),
+          // === مسح ===
+          GestureDetector(
+            onTap: resetFilters,
+            child: Container(
+              height: h, width: h,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: radius,
+                border: Border.all(color: borderColor),
+              ),
+              child: Icon(Icons.close, size: 16, color: Colors.grey.shade500),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _separator() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6),
-    child: SizedBox(height: 20, child: VerticalDivider(width: 1, color: Colors.grey.shade300)),
-  );
-
-  Widget _miniBtn(IconData icon, Color bg, Color fg, VoidCallback? onTap, double h) {
-    return SizedBox(
-      height: h, width: h,
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(6),
-          onTap: onTap,
-          child: Icon(icon, size: 15, color: fg),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildSessionButtons() {
-    final options = [
-      ('الكل', Colors.blueGrey),
-      ('نشطة', Colors.green),
-      ('غير نشطة', Colors.red),
-    ];
-    return options.map((opt) {
-      final sel = selectedSessionFilter == opt.$1;
-      return Padding(
-        padding: const EdgeInsets.only(left: 2),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(5),
-          onTap: () => setState(() => selectedSessionFilter = opt.$1),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            decoration: BoxDecoration(
-              color: sel ? opt.$2 : Colors.transparent,
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: sel ? opt.$2 : Colors.grey.shade300),
-            ),
-            child: Text(
-              opt.$1,
-              style: TextStyle(fontSize: 10, fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                  color: sel ? Colors.white : opt.$2),
-            ),
-          ),
-        ),
-      );
-    }).toList();
-  }
-
   Widget _buildSortButton(double h) {
+    final borderColor = Colors.grey.shade300;
     return SizedBox(
       height: h,
       child: PopupMenuButton<String>(
@@ -2422,17 +2461,18 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         padding: EdgeInsets.zero,
         constraints: BoxConstraints(minWidth: h, minHeight: h),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.grey.shade300),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 13, color: Colors.blue),
-              const SizedBox(width: 2),
-              Text(_sortField, style: const TextStyle(fontSize: 10, color: Colors.blue)),
+              Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.blue.shade600),
+              const SizedBox(width: 4),
+              Text(_sortField, style: TextStyle(fontSize: 12, color: Colors.blue.shade600, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -2477,19 +2517,21 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   }
 
   Widget _buildMiniDateField(TextEditingController controller, String hint,
-      OutlineInputBorder border, TextStyle ts, TextStyle hintTs) {
+      OutlineInputBorder border, TextStyle ts, TextStyle hintTs, {Color? fillColor, OutlineInputBorder? focusBorder}) {
     return TextFormField(
       controller: controller,
       style: ts,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: hintTs,
+        filled: fillColor != null,
+        fillColor: fillColor,
         border: border,
         enabledBorder: border,
-        focusedBorder: border.copyWith(borderSide: const BorderSide(color: Colors.blue)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 6),
-        suffixIcon: Icon(Icons.calendar_today, size: 12, color: Colors.grey.shade500),
-        suffixIconConstraints: const BoxConstraints(minWidth: 24),
+        focusedBorder: focusBorder ?? border.copyWith(borderSide: const BorderSide(color: Colors.blue)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        suffixIcon: Icon(Icons.calendar_today, size: 13, color: Colors.grey.shade400),
+        suffixIconConstraints: const BoxConstraints(minWidth: 26),
         isDense: true,
       ),
       readOnly: true,
@@ -2611,12 +2653,15 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
         // نسخة عمل مؤقتة (حتى يتم الحفظ)
         final tempSelected = Set<String>.from(selectedZoneIds);
+        Set<String>? undoBackup; // نسخة احتياطية للتراجع
         String localSearch = '';
         // تجنب إنشاء نسخة كاملة جديدة كبيرة: استخدام cast فقط (O(1))
         final List<Map<String, dynamic>> allZones =
@@ -2729,14 +2774,35 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                             value: tempSelected.isEmpty,
                             onChanged: (v) {
                               setModalState(() {
+                                if (tempSelected.isNotEmpty) {
+                                  undoBackup = Set<String>.from(tempSelected);
+                                }
                                 tempSelected.clear();
                               });
                             },
                           ),
                         ),
+                        if (undoBackup != null && undoBackup!.isNotEmpty && tempSelected.isEmpty)
+                          TextButton.icon(
+                            onPressed: () {
+                              setModalState(() {
+                                tempSelected.addAll(undoBackup!);
+                                undoBackup = null;
+                              });
+                            },
+                            icon: const Icon(Icons.undo, size: 16),
+                            label: const Text('تراجع'),
+                            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                          ),
                         TextButton(
-                          onPressed: () =>
-                              setModalState(() => tempSelected.clear()),
+                          onPressed: () {
+                            setModalState(() {
+                              if (tempSelected.isNotEmpty) {
+                                undoBackup = Set<String>.from(tempSelected);
+                              }
+                              tempSelected.clear();
+                            });
+                          },
                           child: const Text('تفريغ'),
                         )
                       ],
@@ -2901,19 +2967,21 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         customer['primaryContact']?['mobile']?.toString() ??
         'غير متوفر';
 
-    // جلب activatedBy من current-user
-    String activatedBy = '';
-    try {
-      final resp = await AuthService.instance.authenticatedRequest(
-        'GET',
-        'https://api.ftth.iq/api/current-user',
-      );
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
-        activatedBy = data['model']?['self']?['displayValue']?.toString() ??
-            data['model']?['username']?.toString() ?? '';
-      }
-    } catch (_) {}
+    // جلب activatedBy من widget أو current-user
+    String activatedBy = widget.activatedBy ?? '';
+    if (activatedBy.isEmpty) {
+      try {
+        final resp = await AuthService.instance.authenticatedRequest(
+          'GET',
+          'https://api.ftth.iq/api/current-user',
+        );
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body);
+          activatedBy = data['model']?['self']?['displayValue']?.toString() ??
+              data['model']?['username']?.toString() ?? '';
+        }
+      } catch (_) {}
+    }
     if (activatedBy.isEmpty) activatedBy = 'المستخدم';
 
     if (!mounted) return;
@@ -2926,6 +2994,12 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           userPhone: phone,
           authToken: widget.authToken,
           activatedBy: activatedBy,
+          hasServerSavePermission: widget.hasServerSavePermission,
+          hasWhatsAppPermission: widget.hasWhatsAppPermission,
+          isAdminFlag: widget.isAdminFlag,
+          importantFtthApiPermissions: widget.importantFtthApiPermissions,
+          userRoleHeader: '0',
+          clientAppHeader: '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
         ),
       ),
     );
@@ -3538,69 +3612,150 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
 
     try {
       List<Map<String, dynamic>> allSubs = [];
-      int currentPage = 1;
-      int totalPages = 1;
       const int pageSize = 100;
 
-      do {
-        String url =
-            '${widget.getApiUrl()}&pageNumber=$currentPage&pageSize=$pageSize';
+      // تحديد المناطق المطلوبة
+      final List<String> zonesList = widget.selectedZoneIds.toList();
+      final bool hasMultipleZones = zonesList.length > 1;
+      final String singleZone = zonesList.length == 1
+          ? zonesList.first
+          : (widget.selectedZoneId.isNotEmpty && widget.selectedZoneId != 'all')
+              ? widget.selectedZoneId
+              : '';
 
-        // إضافة فلاتر
-        if (widget.selectedZoneIds.isNotEmpty) {
-          final zonesList = widget.selectedZoneIds.toList();
-          if (zonesList.length == 1) {
-            url += '&zoneId=${zonesList.first}';
-          } else {
-            url += '&zoneIds=${zonesList.join(',')}';
-          }
-        } else if (widget.selectedZoneId.isNotEmpty &&
-            widget.selectedZoneId != 'all') {
-          url += '&zoneId=${widget.selectedZoneId}';
-        }
-        if (widget.fromDate.isNotEmpty) {
-          url += '&fromExpirationDate=${widget.fromDate}';
-        }
-        if (widget.toDate.isNotEmpty) {
-          url += '&toExpirationDate=${widget.toDate}';
-        }
-        if (widget.customerName.isNotEmpty) {
-          url += '&customerName=${widget.customerName}';
-        }
+      if (hasMultipleZones) {
+        // ─── جلب لكل منطقة على حدة (API لا يدعم zoneIds) ───
+        int completedZones = 0;
+        const int batchSize = 5;
 
-        final response = await AuthService.instance.authenticatedRequest(
-          'GET',
-          url,
-        ).timeout(const Duration(seconds: 30));
+        for (int i = 0; i < zonesList.length; i += batchSize) {
+          if (!mounted) return;
+          final batch = zonesList.skip(i).take(batchSize).toList();
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          final items = (data['items'] ?? []) as List<dynamic>;
-          final totalCount = data['totalCount'] ?? items.length;
-          totalPages = (totalCount / pageSize).ceil();
-
-          for (final item in items) {
-            if (item is Map<String, dynamic>) {
-              allSubs.add(item);
-            }
-          }
-
-          setState(() {
-            _progress = currentPage / totalPages;
-            _loadingMessage =
-                'جاري تحميل الصفحة $currentPage من $totalPages...';
+          final futures = batch.map((zoneId) async {
+            List<Map<String, dynamic>> zoneSubs = [];
+            int page = 1;
+            int totalPages = 1;
+            do {
+              String url =
+                  '${widget.getApiUrl()}&pageNumber=$page&pageSize=$pageSize&zoneId=$zoneId';
+              if (widget.fromDate.isNotEmpty) {
+                url += '&fromExpirationDate=${widget.fromDate}';
+              }
+              if (widget.toDate.isNotEmpty) {
+                url += '&toExpirationDate=${widget.toDate}';
+              }
+              if (widget.customerName.isNotEmpty) {
+                url += '&customerName=${widget.customerName}';
+              }
+              try {
+                final response =
+                    await AuthService.instance.authenticatedRequest(
+                  'GET',
+                  url,
+                ).timeout(const Duration(seconds: 30));
+                if (response.statusCode == 200) {
+                  final data = jsonDecode(response.body);
+                  final items = (data['items'] ?? []) as List<dynamic>;
+                  final totalCount = data['totalCount'] ?? items.length;
+                  totalPages = (totalCount / pageSize).ceil();
+                  for (final item in items) {
+                    if (item is Map<String, dynamic>) {
+                      zoneSubs.add(item);
+                    }
+                  }
+                  page++;
+                } else {
+                  break;
+                }
+              } catch (_) {
+                break;
+              }
+              if (page <= totalPages) {
+                await Future.delayed(const Duration(milliseconds: 50));
+              }
+            } while (page <= totalPages);
+            return zoneSubs;
           });
 
-          currentPage++;
-        } else {
-          throw Exception('فشل في جلب البيانات: ${response.statusCode}');
+          final results = await Future.wait(futures);
+          for (final zoneSubs in results) {
+            allSubs.addAll(zoneSubs);
+          }
+          completedZones += batch.length;
+          if (mounted) {
+            setState(() {
+              _progress = completedZones / zonesList.length;
+              _loadingMessage =
+                  'جاري تحميل المنطقة $completedZones من ${zonesList.length}...';
+            });
+          }
+          if (i + batchSize < zonesList.length) {
+            await Future.delayed(const Duration(milliseconds: 100));
+          }
         }
 
-        // تأخير بسيط لتجنب الضغط على السيرفر
-        if (currentPage <= totalPages) {
-          await Future.delayed(const Duration(milliseconds: 100));
-        }
-      } while (currentPage <= totalPages);
+        // ترتيب حسب تاريخ الانتهاء
+        allSubs.sort((a, b) {
+          final ea = a['expires']?.toString() ?? '';
+          final eb = b['expires']?.toString() ?? '';
+          return ea.compareTo(eb);
+        });
+      } else {
+        // ─── جلب عادي (منطقة واحدة أو بدون فلتر منطقة) ───
+        int currentPage = 1;
+        int totalPages = 1;
+
+        do {
+          String url =
+              '${widget.getApiUrl()}&pageNumber=$currentPage&pageSize=$pageSize';
+
+          if (singleZone.isNotEmpty) {
+            url += '&zoneId=$singleZone';
+          }
+          if (widget.fromDate.isNotEmpty) {
+            url += '&fromExpirationDate=${widget.fromDate}';
+          }
+          if (widget.toDate.isNotEmpty) {
+            url += '&toExpirationDate=${widget.toDate}';
+          }
+          if (widget.customerName.isNotEmpty) {
+            url += '&customerName=${widget.customerName}';
+          }
+
+          final response = await AuthService.instance.authenticatedRequest(
+            'GET',
+            url,
+          ).timeout(const Duration(seconds: 30));
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final items = (data['items'] ?? []) as List<dynamic>;
+            final totalCount = data['totalCount'] ?? items.length;
+            totalPages = (totalCount / pageSize).ceil();
+
+            for (final item in items) {
+              if (item is Map<String, dynamic>) {
+                allSubs.add(item);
+              }
+            }
+
+            setState(() {
+              _progress = currentPage / totalPages;
+              _loadingMessage =
+                  'جاري تحميل الصفحة $currentPage من $totalPages...';
+            });
+
+            currentPage++;
+          } else {
+            throw Exception('فشل في جلب البيانات: ${response.statusCode}');
+          }
+
+          if (currentPage <= totalPages) {
+            await Future.delayed(const Duration(milliseconds: 100));
+          }
+        } while (currentPage <= totalPages);
+      }
 
       // جلب أرقام الهواتف من التخزين المحلي
       setState(() {
@@ -3615,7 +3770,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
         _loadingMessage = '';
       });
     } catch (e) {
-      debugPrint('خطأ في تحميل الاشتراكات');
+      debugPrint('خطأ في تحميل الاشتراكات: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -3623,7 +3778,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تحميل البيانات'),
+            content: Text('خطأ في تحميل البيانات: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -3977,7 +4132,13 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
         phoneNumberId: widget.phoneNumberId,
         accessToken: widget.accessToken,
         offerText: _selectedTemplate == 'sadara_expired'
-            ? _offerTextController.text.trim()
+            ? _offerTextController.text
+                .trim()
+                .replaceAll('\r\n', ' ')
+                .replaceAll('\n', ' ')
+                .replaceAll('\r', ' ')
+                .replaceAll('\t', ' ')
+                .replaceAll(RegExp(r' {4,}'), '   ')
             : null,
       );
 
