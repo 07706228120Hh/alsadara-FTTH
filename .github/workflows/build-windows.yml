@@ -1,0 +1,77 @@
+# GitHub Actions Workflow for Flutter Windows App
+# يقوم ببناء التطبيق تلقائياً عند رفع tag جديد ونشره كـ Release
+
+name: Build and Release Windows App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.32.0'
+  FLUTTER_APP_PATH: 'src/Apps/CompanyDesktop/alsadara-ftth'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: src/Apps/CompanyDesktop/alsadara-ftth
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Windows App
+        run: flutter build windows --release
+
+      - name: Create ZIP archive
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "..\..\..\..\..\..\Alsadara-Windows-${{ github.ref_name }}.zip"
+        shell: pwsh
+
+      - name: Build Installer with Inno Setup
+        run: |
+          choco install innosetup -y --no-progress
+          iscc installer.iss
+        shell: pwsh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: 'الصدارة ${{ github.ref_name }}'
+          body: |
+            ## تحديث جديد - الصدارة ${{ github.ref_name }}
+
+            ### التحميل:
+            - **المثبّت (مستحسن)**: `Alsadara-Setup-${{ github.ref_name }}.exe`
+            - **ملف مضغوط**: `Alsadara-Windows-${{ github.ref_name }}.zip`
+
+            ### التحديث التلقائي:
+            التطبيق يدعم التحديث التلقائي - سيتم تثبيت الإصدارات الجديدة تلقائياً.
+
+            ---
+            تم البناء تلقائياً بواسطة GitHub Actions
+          files: |
+            Alsadara-Windows-${{ github.ref_name }}.zip
+            src/Apps/CompanyDesktop/alsadara-ftth/build/installer/Alsadara-Setup-${{ github.ref_name }}.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
