@@ -5,6 +5,7 @@ library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../theme/energy_dashboard_theme.dart';
@@ -15,6 +16,7 @@ class PermissionsManagementV2Page extends StatefulWidget {
   final String companyName;
   final String? employeeId;
   final String? employeeName;
+  final bool embedded;
 
   const PermissionsManagementV2Page({
     super.key,
@@ -22,6 +24,7 @@ class PermissionsManagementV2Page extends StatefulWidget {
     required this.companyName,
     this.employeeId,
     this.employeeName,
+    this.embedded = false,
   });
 
   @override
@@ -38,6 +41,8 @@ class _PermissionsManagementV2PageState
   bool _isLoading = true;
   bool _isSaving = false;
   String? _error;
+  String? _selectedTemplate;
+  final Set<String> _expandedKeys = {};
 
   // صلاحيات النظام الأول V2
   Map<String, Map<String, bool>> _firstSystemPermissionsV2 = {};
@@ -64,6 +69,7 @@ class _PermissionsManagementV2PageState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    PermissionRegistry.loadCustomTemplates();
     _loadPermissions();
   }
 
@@ -319,6 +325,113 @@ class _PermissionsManagementV2PageState
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) return _buildEmbeddedBody();
+    return _buildFullPage();
+  }
+
+  /// الوضع المضمّن — بدون Scaffold، يُستخدم داخل تبويب
+  Widget _buildEmbeddedBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) return _buildErrorWidget();
+
+    return Column(
+      children: [
+        // شريط أدوات: تبويبات النظامين + أزرار
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: EnergyDashboardTheme.surfaceColor,
+            border: Border(
+                bottom: BorderSide(color: Colors.grey.shade200)),
+          ),
+          child: Row(
+            children: [
+              // تبويبات النظامين — SegmentedButton style
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.all(3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTabButton(
+                      index: 0,
+                      icon: Icons.home_work_rounded,
+                      label: 'النظام الرئيسي',
+                      color: const Color(0xFF9C27B0),
+                    ),
+                    const SizedBox(width: 4),
+                    _buildTabButton(
+                      index: 1,
+                      icon: Icons.wifi_rounded,
+                      label: 'نظام FTTH',
+                      color: const Color(0xFF2196F3),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // زر إجراءات جماعية
+              IconButton(
+                onPressed: () => _showBulkActionDialog(),
+                icon: const Icon(Icons.checklist_rounded, size: 20),
+                tooltip: 'إجراءات جماعية',
+                color: EnergyDashboardTheme.textMuted,
+              ),
+              const SizedBox(width: 4),
+              // زر الحفظ
+              ElevatedButton.icon(
+                onPressed: _isSaving ? null : _savePermissions,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save_rounded, size: 16),
+                label: Text('حفظ', style: GoogleFonts.cairo(fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // محتوى التبويبات
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildPermissionsTab(
+                _firstSystemFeatures,
+                _firstSystemPermissionsV2,
+                true,
+              ),
+              _buildPermissionsTab(
+                _secondSystemFeatures,
+                _secondSystemPermissionsV2,
+                false,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// الوضع الكامل — صفحة مستقلة مع Scaffold
+  Widget _buildFullPage() {
     final isEmployee = widget.employeeId != null;
     final title = isEmployee
         ? 'صلاحيات ${widget.employeeName ?? "الموظف"}'
@@ -372,7 +485,6 @@ class _PermissionsManagementV2PageState
           ],
         ),
         actions: [
-          // زر تحديد الكل
           IconButton(
             onPressed: () => _showBulkActionDialog(),
             icon: const Icon(Icons.checklist_rounded),
@@ -380,7 +492,6 @@ class _PermissionsManagementV2PageState
             color: EnergyDashboardTheme.textMuted,
           ),
           const SizedBox(width: 8),
-          // زر الحفظ
           Padding(
             padding: const EdgeInsets.only(left: 12),
             child: ElevatedButton.icon(
@@ -440,6 +551,58 @@ class _PermissionsManagementV2PageState
                     ),
                   ],
                 ),
+    );
+  }
+
+  /// زر تبويب مخصص (SegmentedButton style)
+  Widget _buildTabButton({
+    required int index,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    final isSelected = _tabController.index == index;
+    return GestureDetector(
+      onTap: () {
+        _tabController.animateTo(index);
+        setState(() {});
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? Colors.white : Colors.grey.shade600,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.cairo(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -515,9 +678,11 @@ class _PermissionsManagementV2PageState
                 ],
               ),
             ),
-          // شريط الإجراءات
-          _buildActionsHeader(),
-          const SizedBox(height: 12),
+          // القوالب الجاهزة (للموظفين فقط)
+          _buildTemplateBar(),
+          // شريط عناوين الأعمدة
+          _buildColumnsHeader(),
+          const SizedBox(height: 8),
           // قائمة الصلاحيات الهرمية
           Expanded(
             child: filteredGroups.isEmpty
@@ -540,127 +705,400 @@ class _PermissionsManagementV2PageState
                     itemBuilder: (context, index) {
                       final group = filteredGroups[index];
                       final parent = group.key;
-                      final children = group.value;
+                      final children = group.value
+                          .where((c) => _isFeatureEnabledForCompany(
+                              c.key, isFirstSystem))
+                          .toList();
+                      final hasChildren = children.isNotEmpty;
+                      final isExpanded = _expandedKeys.contains(parent.key);
+
+                      // حساب عدد الأبناء المفعّلين
+                      int enabledChildren = 0;
+                      for (final c in children) {
+                        if (permissions[c.key]?['view'] == true) {
+                          enabledChildren++;
+                        }
+                      }
+
+                      final parentPerms = permissions[parent.key] ??
+                          {for (var a in _actions) a: false};
+                      final allEnabled = (parent.allowedActions ?? _actions)
+                          .every((a) => parentPerms[a] == true);
+                      final someEnabled = (parent.allowedActions ?? _actions)
+                              .any((a) => parentPerms[a] == true) &&
+                          !allEnabled;
 
                       return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // بطاقة الأب
-                          _buildPermissionCard(
-                            key: parent.key,
-                            label: parent.labelAr,
-                            icon: parent.icon,
-                            description: parent.description,
-                            permissions: permissions[parent.key] ??
-                                {for (var a in _actions) a: false},
-                            isFirstSystem: isFirstSystem,
-                            allowedActions: parent.allowedActions,
-                            isParent: children.isNotEmpty,
-                            onChanged: (action, value) {
-                              if (value &&
-                                  !_isActionEnabledForCompany(
-                                      parent.key, action, isFirstSystem)) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content:
-                                        Text('هذا الإجراء غير مفعل للشركة'),
-                                    backgroundColor: Colors.orange,
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                                return;
-                              }
-                              setState(() {
-                                permissions[parent.key] ??= {};
-                                permissions[parent.key]![action] = value;
-                              });
-                            },
-                            onToggleAll: (value) {
-                              setState(() {
-                                // تبديل الأب
-                                if (value && widget.employeeId != null) {
-                                  permissions[parent.key] = {
-                                    for (var a in _actions)
-                                      a: _isActionEnabledForCompany(
-                                          parent.key, a, isFirstSystem)
-                                  };
-                                } else {
-                                  permissions[parent.key] = {
-                                    for (var a in _actions) a: value
-                                  };
-                                }
-                                // تبديل جميع الأبناء
-                                for (final child in children) {
-                                  if (value && widget.employeeId != null) {
-                                    permissions[child.key] = {
-                                      for (var a in _actions)
-                                        a: _isActionEnabledForCompany(
-                                            child.key, a, isFirstSystem)
-                                    };
-                                  } else {
-                                    permissions[child.key] = {
-                                      for (var a in _actions) a: value
-                                    };
-                                  }
-                                }
-                              });
-                            },
-                          ),
-                          // بطاقات الأبناء (بمسافة إزاحة)
-                          ...children
-                              .where((child) => _isFeatureEnabledForCompany(
-                                  child.key, isFirstSystem))
-                              .map((child) {
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.only(right: 24, bottom: 4),
-                              child: _buildPermissionCard(
-                                key: child.key,
-                                label: child.labelAr,
-                                icon: child.icon,
-                                description: child.description,
-                                permissions: permissions[child.key] ??
-                                    {for (var a in _actions) a: false},
-                                isFirstSystem: isFirstSystem,
-                                allowedActions: child.allowedActions,
-                                isParent: false,
-                                onChanged: (action, value) {
-                                  if (value &&
-                                      !_isActionEnabledForCompany(
-                                          child.key, action, isFirstSystem)) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('هذا الإجراء غير مفعل للشركة'),
-                                        backgroundColor: Colors.orange,
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  setState(() {
-                                    permissions[child.key] ??= {};
-                                    permissions[child.key]![action] = value;
-                                  });
-                                },
-                                onToggleAll: (value) {
-                                  setState(() {
-                                    if (value && widget.employeeId != null) {
-                                      permissions[child.key] = {
-                                        for (var a in _actions)
-                                          a: _isActionEnabledForCompany(
-                                              child.key, a, isFirstSystem)
-                                      };
-                                    } else {
-                                      permissions[child.key] = {
-                                        for (var a in _actions) a: value
-                                      };
-                                    }
-                                  });
-                                },
+                          // ═══ بطاقة الأب ═══
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: allEnabled
+                                    ? const Color(0xFF4CAF50).withOpacity(0.5)
+                                    : someEnabled
+                                        ? const Color(0xFFFF9800)
+                                            .withOpacity(0.5)
+                                        : Colors.grey.shade200,
                               ),
-                            );
-                          }),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: hasChildren
+                                  ? () {
+                                      setState(() {
+                                        if (isExpanded) {
+                                          _expandedKeys.remove(parent.key);
+                                        } else {
+                                          _expandedKeys.add(parent.key);
+                                        }
+                                      });
+                                    }
+                                  : null,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    // سهم التوسيع
+                                    if (hasChildren)
+                                      Icon(
+                                        isExpanded
+                                            ? Icons.expand_more_rounded
+                                            : Icons.chevron_left_rounded,
+                                        size: 20,
+                                        color: const Color(0xFF9C27B0),
+                                      )
+                                    else
+                                      const SizedBox(width: 20),
+                                    const SizedBox(width: 4),
+                                    // أيقونة
+                                    Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                        color: allEnabled
+                                            ? const Color(0xFF4CAF50)
+                                                .withOpacity(0.1)
+                                            : someEnabled
+                                                ? const Color(0xFFFF9800)
+                                                    .withOpacity(0.1)
+                                                : Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(
+                                        parent.icon,
+                                        size: 18,
+                                        color: allEnabled
+                                            ? const Color(0xFF4CAF50)
+                                            : someEnabled
+                                                ? const Color(0xFFFF9800)
+                                                : Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // اسم الصلاحية
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            parent.labelAr,
+                                            style: GoogleFonts.cairo(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (hasChildren)
+                                            Text(
+                                              '$enabledChildren/${children.length} فرعي',
+                                              style: GoogleFonts.cairo(
+                                                fontSize: 9,
+                                                color: enabledChildren > 0
+                                                    ? const Color(0xFF27AE60)
+                                                    : const Color(0xFF95A5A6),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    // مربعات الاختيار
+                                    ..._actions.map((action) {
+                                      final allowed =
+                                          parent.allowedActions ?? _actions;
+                                      if (!allowed.contains(action)) {
+                                        return const SizedBox(width: 44);
+                                      }
+                                      final isEnabled =
+                                          parentPerms[action] == true;
+                                      final isAllowedByCompany =
+                                          _isActionEnabledForCompany(
+                                              parent.key,
+                                              action,
+                                              isFirstSystem);
+                                      return SizedBox(
+                                        width: 44,
+                                        height: 36,
+                                        child: Checkbox(
+                                          value: isEnabled,
+                                          onChanged: isAllowedByCompany
+                                              ? (v) {
+                                                  setState(() {
+                                                    permissions[parent.key] ??=
+                                                        {};
+                                                    permissions[parent.key]![
+                                                        action] = v ?? false;
+                                                  });
+                                                }
+                                              : null,
+                                          activeColor: _getActionColor(action),
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(3),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                    // زر تبديل الكل
+                                    SizedBox(
+                                      width: 44,
+                                      child: IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        iconSize: 18,
+                                        onPressed: () {
+                                          setState(() {
+                                            final newVal = !allEnabled;
+                                            if (newVal &&
+                                                widget.employeeId != null) {
+                                              permissions[parent.key] = {
+                                                for (var a in _actions)
+                                                  a: _isActionEnabledForCompany(
+                                                      parent.key,
+                                                      a,
+                                                      isFirstSystem)
+                                              };
+                                            } else {
+                                              permissions[parent.key] = {
+                                                for (var a in _actions)
+                                                  a: newVal
+                                              };
+                                            }
+                                            for (final child in children) {
+                                              if (newVal &&
+                                                  widget.employeeId != null) {
+                                                permissions[child.key] = {
+                                                  for (var a in _actions)
+                                                    a: _isActionEnabledForCompany(
+                                                        child.key,
+                                                        a,
+                                                        isFirstSystem)
+                                                };
+                                              } else {
+                                                permissions[child.key] = {
+                                                  for (var a in _actions)
+                                                    a: newVal
+                                                };
+                                              }
+                                            }
+                                          });
+                                        },
+                                        icon: Icon(
+                                          allEnabled
+                                              ? Icons.check_box_rounded
+                                              : someEnabled
+                                                  ? Icons
+                                                      .indeterminate_check_box_rounded
+                                                  : Icons
+                                                      .check_box_outline_blank_rounded,
+                                          color: allEnabled
+                                              ? const Color(0xFF4CAF50)
+                                              : someEnabled
+                                                  ? const Color(0xFFFF9800)
+                                                  : Colors.grey,
+                                          size: 18,
+                                        ),
+                                        tooltip: allEnabled
+                                            ? 'إلغاء الكل'
+                                            : 'تحديد الكل',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          // ═══ الأبناء — يظهرون عند التوسيع ═══
+                          if (hasChildren && isExpanded)
+                            Container(
+                              margin: const EdgeInsets.only(
+                                  right: 24, bottom: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8F9FA),
+                                borderRadius: BorderRadius.circular(8),
+                                border:
+                                    Border.all(color: const Color(0xFFEEEEEE)),
+                              ),
+                              child: Column(
+                                children: children.map((child) {
+                                  final childPerms =
+                                      permissions[child.key] ??
+                                          {for (var a in _actions) a: false};
+                                  final childAllowed =
+                                      child.allowedActions ?? _actions;
+                                  final childAllEnabled = childAllowed
+                                      .every((a) => childPerms[a] == true);
+                                  final childSomeEnabled = childAllowed
+                                          .any((a) => childPerms[a] == true) &&
+                                      !childAllEnabled;
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                          bottom: BorderSide(
+                                              color: Color(0xFFEEEEEE))),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // مسافة فارغة بدل سهم التوسيع
+                                        const SizedBox(width: 24),
+                                        // أيقونة
+                                        Icon(child.icon,
+                                            size: 16,
+                                            color:
+                                                childPerms['view'] == true
+                                                    ? const Color(0xFF9C27B0)
+                                                    : Colors.grey.shade400),
+                                        const SizedBox(width: 8),
+                                        // اسم الصلاحية الفرعية
+                                        Expanded(
+                                          child: Text(
+                                            child.labelAr,
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 11,
+                                              color:
+                                                  childPerms['view'] == true
+                                                      ? Colors.black87
+                                                      : Colors.black45,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        // مربعات الاختيار
+                                        ..._actions.map((action) {
+                                          if (!childAllowed.contains(action)) {
+                                            return const SizedBox(width: 44);
+                                          }
+                                          final isEnabled =
+                                              childPerms[action] == true;
+                                          final isAllowedByCompany =
+                                              _isActionEnabledForCompany(
+                                                  child.key,
+                                                  action,
+                                                  isFirstSystem);
+                                          return SizedBox(
+                                            width: 44,
+                                            height: 36,
+                                            child: Checkbox(
+                                              value: isEnabled,
+                                              onChanged: isAllowedByCompany
+                                                  ? (v) {
+                                                      setState(() {
+                                                        permissions[
+                                                                child.key] ??=
+                                                            {};
+                                                        permissions[child.key]![
+                                                                action] =
+                                                            v ?? false;
+                                                      });
+                                                    }
+                                                  : null,
+                                              activeColor:
+                                                  _getActionColor(action),
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(3),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                        // زر تبديل الكل للابن
+                                        SizedBox(
+                                          width: 44,
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            constraints:
+                                                const BoxConstraints(),
+                                            iconSize: 16,
+                                            onPressed: () {
+                                              setState(() {
+                                                final newVal =
+                                                    !childAllEnabled;
+                                                if (newVal &&
+                                                    widget.employeeId !=
+                                                        null) {
+                                                  permissions[child.key] = {
+                                                    for (var a in _actions)
+                                                      a: _isActionEnabledForCompany(
+                                                          child.key,
+                                                          a,
+                                                          isFirstSystem)
+                                                  };
+                                                } else {
+                                                  permissions[child.key] = {
+                                                    for (var a in _actions)
+                                                      a: newVal
+                                                  };
+                                                }
+                                              });
+                                            },
+                                            icon: Icon(
+                                              childAllEnabled
+                                                  ? Icons.check_box_rounded
+                                                  : childSomeEnabled
+                                                      ? Icons
+                                                          .indeterminate_check_box_rounded
+                                                      : Icons
+                                                          .check_box_outline_blank_rounded,
+                                              color: childAllEnabled
+                                                  ? const Color(0xFF4CAF50)
+                                                  : childSomeEnabled
+                                                      ? const Color(0xFFFF9800)
+                                                      : Colors.grey,
+                                              size: 16,
+                                            ),
+                                            tooltip: childAllEnabled
+                                                ? 'إلغاء الكل'
+                                                : 'تحديد الكل',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                         ],
                       );
                     },
@@ -671,228 +1109,673 @@ class _PermissionsManagementV2PageState
     );
   }
 
-  /// بناء شريط رأس الإجراءات
-  Widget _buildActionsHeader() {
+  /// شريط عناوين الأعمدة — محاذي لمربعات الاختيار
+  Widget _buildColumnsHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF9C27B0).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF9C27B0).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          const SizedBox(width: 200), // مكان اسم الصلاحية
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: _actions.map((action) {
-                return SizedBox(
-                  width: 70,
-                  child: Column(
-                    children: [
-                      Icon(
-                        _getActionIcon(action),
-                        size: 18,
-                        color: _getActionColor(action),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _actionNames[action] ?? action,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: _getActionColor(action),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+          // مسافة سهم التوسيع + أيقونة + اسم
+          const Expanded(child: SizedBox()),
+          // عناوين الأعمدة
+          ..._actions.map((action) {
+            return SizedBox(
+              width: 44,
+              child: Text(
+                _actionNames[action] ?? action,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _getActionColor(action),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            );
+          }),
+          // عمود "الكل"
+          SizedBox(
+            width: 44,
+            child: Text(
+              'الكل',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(width: 50), // مكان زر الكل
         ],
       ),
     );
   }
 
-  /// بناء بطاقة صلاحية واحدة
-  Widget _buildPermissionCard({
-    required String key,
-    required String label,
-    required IconData icon,
-    required String description,
-    required Map<String, bool> permissions,
-    required bool isFirstSystem,
-    required Function(String action, bool value) onChanged,
-    required Function(bool value) onToggleAll,
-    List<String>? allowedActions,
-    bool isParent = false,
-  }) {
-    final effectiveActions = allowedActions ?? _actions;
-    final allEnabled = effectiveActions.every((a) => permissions[a] == true);
-    final someEnabled =
-        effectiveActions.any((a) => permissions[a] == true) && !allEnabled;
+  /// تطبيق قالب صلاحيات جاهز مع مراعاة فلترة صلاحيات الشركة
+  void _applyTemplate(String templateName) {
+    final template = PermissionRegistry.getTemplate(templateName);
+    setState(() {
+      _selectedTemplate = templateName;
+
+      // مسح الصلاحيات الحالية
+      for (var key in _firstSystemPermissionsV2.keys) {
+        _firstSystemPermissionsV2[key] = {for (var a in _actions) a: false};
+      }
+      for (var key in _secondSystemPermissionsV2.keys) {
+        _secondSystemPermissionsV2[key] = {for (var a in _actions) a: false};
+      }
+
+      // تطبيق القالب — على كلا النظامين (بعض المفاتيح مشتركة)
+      for (final entry in template.entries) {
+        final key = entry.key;
+        final actions = entry.value['actions'] as List? ?? [];
+
+        final inFirst =
+            PermissionRegistry.firstSystem.any((e) => e.key == key);
+        final inSecond =
+            PermissionRegistry.secondSystem.any((e) => e.key == key);
+
+        void applyTo(Map<String, Map<String, bool>> permsMap,
+            bool isFirstSystem) {
+          if (!permsMap.containsKey(key)) return;
+          for (final a in _actions) {
+            final wanted = actions.contains(a);
+            if (wanted &&
+                widget.employeeId != null &&
+                !_isActionEnabledForCompany(key, a, isFirstSystem)) {
+              permsMap[key]![a] = false;
+            } else {
+              permsMap[key]![a] = wanted;
+            }
+          }
+        }
+
+        if (inFirst) applyTo(_firstSystemPermissionsV2, true);
+        if (inSecond) applyTo(_secondSystemPermissionsV2, false);
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'تم تطبيق قالب: ${PermissionRegistry.templateNames[templateName]}'),
+        backgroundColor: const Color(0xFF4CAF50),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// شريط القوالب الجاهزة — يظهر فقط عند تعديل صلاحيات موظف
+  Widget _buildTemplateBar() {
+    if (widget.employeeId == null) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: allEnabled
-              ? const Color(0xFF4CAF50).withOpacity(0.5)
-              : someEnabled
-                  ? const Color(0xFFFF9800).withOpacity(0.5)
-                  : Colors.grey.shade200,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: const Color(0xFFF39C12).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border:
+            Border.all(color: const Color(0xFFF39C12).withOpacity(0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // أيقونة واسم الصلاحية
-          SizedBox(
-            width: 200,
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: allEnabled
-                        ? const Color(0xFF4CAF50).withOpacity(0.1)
-                        : someEnabled
-                            ? const Color(0xFFFF9800).withOpacity(0.1)
-                            : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 20,
-                    color: allEnabled
-                        ? const Color(0xFF4CAF50)
-                        : someEnabled
-                            ? const Color(0xFFFF9800)
-                            : Colors.grey,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            children: [
+              const Icon(Icons.flash_on_rounded,
+                  color: Color(0xFFF39C12), size: 18),
+              const SizedBox(width: 6),
+              Text('قوالب جاهزة — تطبيق سريع',
+                  style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: const Color(0xFFF39C12))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: PermissionRegistry.templateNames.entries.map((e) {
+              final selected = _selectedTemplate == e.key;
+              final isCustom = PermissionRegistry.isCustomized(e.key);
+              final icon = PermissionRegistry.templateIcons[e.key] ??
+                  Icons.person_outline;
+              return GestureDetector(
+                onLongPress: () => _showEditTemplateDialog(e.key),
+                child: ActionChip(
+                  avatar: Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      Icon(
+                        selected ? Icons.check_circle : icon,
+                        size: 16,
+                        color: selected
+                            ? Colors.white
+                            : const Color(0xFF9C27B0),
                       ),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade600,
+                      if (isCustom)
+                        Positioned(
+                          top: -3,
+                          right: -3,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF39C12),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
+                    ],
+                  ),
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(e.value,
+                          style: GoogleFonts.cairo(
+                            fontSize: 11,
+                            color:
+                                selected ? Colors.white : Colors.black87,
+                          )),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _showEditTemplateDialog(e.key),
+                        child: Icon(
+                          Icons.edit_rounded,
+                          size: 14,
+                          color: selected
+                              ? Colors.white70
+                              : Colors.grey.shade500,
+                        ),
                       ),
                     ],
                   ),
+                  backgroundColor:
+                      selected ? const Color(0xFF9C27B0) : Colors.white,
+                  side: BorderSide(
+                      color: selected
+                          ? const Color(0xFF9C27B0)
+                          : isCustom
+                              ? const Color(0xFFF39C12)
+                              : Colors.grey.shade300),
+                  onPressed: () => _applyTemplate(e.key),
                 ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
-          // مربعات الاختيار للإجراءات
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: _actions.map((action) {
-                final isAllowed = effectiveActions.contains(action);
-                if (!isAllowed) {
-                  // إجراء غير مسموح لهذه الميزة — مربع فارغ
-                  return const SizedBox(width: 70);
-                }
-                final isEnabled = permissions[action] ?? false;
-                final isAllowedByCompany =
-                    _isActionEnabledForCompany(key, action, isFirstSystem);
-                return SizedBox(
-                  width: 70,
-                  child: Transform.scale(
-                    scale: 0.9,
-                    child: Tooltip(
-                      message: !isAllowedByCompany ? 'غير مفعل للشركة' : '',
-                      child: Checkbox(
-                        value: isEnabled,
-                        onChanged: isAllowedByCompany
-                            ? (value) => onChanged(action, value ?? false)
-                            : null,
-                        activeColor: _getActionColor(action),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+        ],
+      ),
+    );
+  }
+
+  /// dialog تعديل القالب
+  void _showEditTemplateDialog(String templateKey) {
+    final templateName = PermissionRegistry.templateNames[templateKey] ?? '';
+    final template = PermissionRegistry.getTemplate(templateKey);
+    final isCustom = PermissionRegistry.isCustomized(templateKey);
+
+    // بناء نسخة قابلة للتعديل من القالب
+    final editPerms = <String, Map<String, bool>>{};
+
+    // تهيئة كل الميزات بـ false
+    for (final sys in [
+      PermissionRegistry.firstSystem,
+      PermissionRegistry.secondSystem
+    ]) {
+      for (final e in sys) {
+        editPerms[e.key] = {for (var a in _actions) a: false};
+      }
+    }
+
+    // تطبيق صلاحيات القالب الحالي
+    for (final entry in template.entries) {
+      final key = entry.key;
+      final actions = entry.value['actions'] as List? ?? [];
+      if (editPerms.containsKey(key)) {
+        for (final a in _actions) {
+          editPerms[key]![a] = actions.contains(a);
+        }
+      }
+    }
+
+    final expandedKeys = <String>{};
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            Widget buildSystemSection(
+                String title, List<PermissionEntry> system) {
+              final parents =
+                  system.where((e) => e.isTopLevel).toList();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9C27B0).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.folder_rounded,
+                            size: 16, color: Color(0xFF9C27B0)),
+                        const SizedBox(width: 6),
+                        Text(title,
+                            style: GoogleFonts.cairo(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: const Color(0xFF9C27B0))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ...parents.map((parent) {
+                    final children = system
+                        .where((e) => e.parent == parent.key)
+                        .toList();
+                    final isExpanded =
+                        expandedKeys.contains(parent.key);
+                    final allowedActions =
+                        parent.allowedActions ?? _actions;
+                    final enabledCount = _actions
+                        .where((a) =>
+                            editPerms[parent.key]?[a] == true)
+                        .length;
+
+                    return Column(
+                      children: [
+                        InkWell(
+                          onTap: children.isEmpty
+                              ? null
+                              : () {
+                                  setDialogState(() {
+                                    if (isExpanded) {
+                                      expandedKeys
+                                          .remove(parent.key);
+                                    } else {
+                                      expandedKeys.add(parent.key);
+                                    }
+                                  });
+                                },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 2),
+                            child: Row(
+                              children: [
+                                if (children.isNotEmpty)
+                                  Icon(
+                                    isExpanded
+                                        ? Icons
+                                            .keyboard_arrow_down_rounded
+                                        : Icons
+                                            .keyboard_arrow_left_rounded,
+                                    size: 18,
+                                    color: Colors.grey,
+                                  )
+                                else
+                                  const SizedBox(width: 18),
+                                Icon(parent.icon,
+                                    size: 16,
+                                    color: enabledCount > 0
+                                        ? const Color(0xFF9C27B0)
+                                        : Colors.grey),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    parent.labelAr,
+                                    style: GoogleFonts.cairo(
+                                        fontSize: 11,
+                                        fontWeight:
+                                            FontWeight.w600),
+                                  ),
+                                ),
+                                // أزرار الإجراءات — عرض كل الأعمدة
+                                ..._actions.map((a) {
+                                  if (!allowedActions.contains(a)) {
+                                    return const SizedBox(width: 32);
+                                  }
+                                  final enabled =
+                                      editPerms[parent.key]?[a] ==
+                                          true;
+                                  return SizedBox(
+                                    width: 32,
+                                    height: 28,
+                                    child: Checkbox(
+                                      value: enabled,
+                                      onChanged: (v) {
+                                        setDialogState(() {
+                                          editPerms[parent.key]![a] =
+                                              v ?? false;
+                                        });
+                                      },
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize
+                                              .shrinkWrap,
+                                      activeColor:
+                                          _getActionColor(a),
+                                    ),
+                                  );
+                                }),
+                                // زر تحديد/إلغاء الصف كامل
+                                SizedBox(
+                                  width: 32,
+                                  height: 28,
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    iconSize: 16,
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        final allOn = allowedActions
+                                            .every((a) =>
+                                                editPerms[parent
+                                                        .key]?[a] ==
+                                                    true);
+                                        for (final a
+                                            in allowedActions) {
+                                          editPerms[parent.key]![
+                                              a] = !allOn;
+                                        }
+                                      });
+                                    },
+                                    icon: Icon(
+                                      allowedActions.every((a) =>
+                                              editPerms[parent
+                                                      .key]?[a] ==
+                                                  true)
+                                          ? Icons
+                                              .check_box_rounded
+                                          : Icons
+                                              .check_box_outline_blank_rounded,
+                                      color: allowedActions.every(
+                                              (a) =>
+                                                  editPerms[parent
+                                                          .key]?[a] ==
+                                                      true)
+                                          ? const Color(0xFF9C27B0)
+                                          : Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (isExpanded)
+                          ...children.map((child) {
+                            final childAllowed =
+                                child.allowedActions ?? _actions;
+                            return Padding(
+                              padding: const EdgeInsetsDirectional
+                                  .only(start: 24),
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 18),
+                                  Icon(child.icon,
+                                      size: 14,
+                                      color: Colors.grey.shade600),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(child.labelAr,
+                                        style: GoogleFonts.cairo(
+                                            fontSize: 10,
+                                            color: Colors
+                                                .grey.shade700)),
+                                  ),
+                                  ..._actions.map((a) {
+                                    if (!childAllowed.contains(a)) {
+                                      return const SizedBox(
+                                          width: 32);
+                                    }
+                                    final enabled =
+                                        editPerms[child.key]?[a] ==
+                                            true;
+                                    return SizedBox(
+                                      width: 32,
+                                      height: 26,
+                                      child: Checkbox(
+                                        value: enabled,
+                                        onChanged: (v) {
+                                          setDialogState(() {
+                                            editPerms[child.key]![
+                                                a] = v ?? false;
+                                          });
+                                        },
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize
+                                                .shrinkWrap,
+                                        activeColor:
+                                            _getActionColor(a),
+                                      ),
+                                    );
+                                  }),
+                                  // زر تحديد/إلغاء الصف كامل
+                                  SizedBox(
+                                    width: 32,
+                                    height: 26,
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      iconSize: 14,
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          final allOn = childAllowed
+                                              .every((a) =>
+                                                  editPerms[child
+                                                          .key]?[a] ==
+                                                      true);
+                                          for (final a
+                                              in childAllowed) {
+                                            editPerms[child.key]![
+                                                a] = !allOn;
+                                          }
+                                        });
+                                      },
+                                      icon: Icon(
+                                        childAllowed.every((a) =>
+                                                editPerms[child
+                                                        .key]?[a] ==
+                                                    true)
+                                            ? Icons
+                                                .check_box_rounded
+                                            : Icons
+                                                .check_box_outline_blank_rounded,
+                                        color: childAllowed.every(
+                                                (a) =>
+                                                    editPerms[child
+                                                            .key]?[a] ==
+                                                        true)
+                                            ? const Color(
+                                                0xFF9C27B0)
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        const Divider(height: 1),
+                      ],
+                    );
+                  }),
+                ],
+              );
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(
+                    PermissionRegistry.templateIcons[templateKey] ??
+                        Icons.edit_rounded,
+                    color: const Color(0xFF9C27B0),
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'تعديل قالب: $templateName',
+                      style: GoogleFonts.cairo(
+                          fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (isCustom)
+                    Tooltip(
+                      message: 'القالب معدّل — اضغط لإعادة الافتراضي',
+                      child: InkWell(
+                        onTap: () async {
+                          await PermissionRegistry.resetTemplate(
+                              templateKey);
+                          Navigator.pop(ctx);
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'تم إعادة "$templateName" للافتراضي'),
+                              backgroundColor:
+                                  const Color(0xFF2196F3),
+                            ),
+                          );
+                        },
+                        child: const Icon(Icons.restore_rounded,
+                            size: 20, color: Color(0xFFF39C12)),
+                      ),
+                    ),
+                ],
+              ),
+              content: SizedBox(
+                width: 700,
+                height: 500,
+                child: Column(
+                  children: [
+                    // رأس الأعمدة
+                    Row(
+                      children: [
+                        const SizedBox(width: 56),
+                        Expanded(
+                          child: Text('الميزة',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey)),
+                        ),
+                        ..._actions.map((a) => SizedBox(
+                              width: 32,
+                              child: Text(
+                                _actionNames[a] ?? a,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.cairo(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: _getActionColor(a)),
+                              ),
+                            )),
+                        SizedBox(
+                          width: 32,
+                          child: Text('الكل',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.cairo(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade600)),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            buildSystemSection('النظام الرئيسي',
+                                PermissionRegistry.firstSystem),
+                            const SizedBox(height: 12),
+                            buildSystemSection('نظام FTTH',
+                                PermissionRegistry.secondSystem),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          // زر تحديد/إلغاء الكل
-          SizedBox(
-            width: 50,
-            child: IconButton(
-              onPressed: () => onToggleAll(!allEnabled),
-              icon: Icon(
-                allEnabled
-                    ? Icons.check_box_rounded
-                    : someEnabled
-                        ? Icons.indeterminate_check_box_rounded
-                        : Icons.check_box_outline_blank_rounded,
-                color: allEnabled
-                    ? const Color(0xFF4CAF50)
-                    : someEnabled
-                        ? const Color(0xFFFF9800)
-                        : Colors.grey,
+                  ],
+                ),
               ),
-              tooltip: allEnabled ? 'إلغاء الكل' : 'تحديد الكل',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child:
+                      Text('إلغاء', style: GoogleFonts.cairo()),
+                ),
+                if (isCustom)
+                  TextButton(
+                    onPressed: () async {
+                      await PermissionRegistry.resetTemplate(
+                          templateKey);
+                      Navigator.pop(ctx);
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'تم إعادة "$templateName" للافتراضي'),
+                          backgroundColor: const Color(0xFF2196F3),
+                        ),
+                      );
+                    },
+                    child: Text('إعادة للافتراضي',
+                        style: GoogleFonts.cairo(
+                            color: const Color(0xFFF39C12))),
+                  ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    // تحويل editPerms إلى صيغة القالب
+                    final newTemplate =
+                        <String, Map<String, List<String>>>{};
+                    for (final entry in editPerms.entries) {
+                      final enabledActions = entry.value.entries
+                          .where((e) => e.value)
+                          .map((e) => e.key)
+                          .toList();
+                      if (enabledActions.isNotEmpty) {
+                        newTemplate[entry.key] = {
+                          'actions': enabledActions
+                        };
+                      }
+                    }
 
-  /// الحصول على أيقونة الإجراء
-  IconData _getActionIcon(String action) {
-    switch (action) {
-      case 'view':
-        return Icons.visibility_rounded;
-      case 'add':
-        return Icons.add_circle_rounded;
-      case 'edit':
-        return Icons.edit_rounded;
-      case 'delete':
-        return Icons.delete_rounded;
-      case 'export':
-        return Icons.file_download_rounded;
-      case 'import':
-        return Icons.file_upload_rounded;
-      case 'print':
-        return Icons.print_rounded;
-      case 'send':
-        return Icons.send_rounded;
-      default:
-        return Icons.check_circle_rounded;
-    }
+                    await PermissionRegistry.saveCustomTemplate(
+                        templateKey, newTemplate);
+                    Navigator.pop(ctx);
+                    setState(() {});
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'تم حفظ التعديلات على "$templateName"'),
+                        backgroundColor: const Color(0xFF4CAF50),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.save_rounded, size: 16),
+                  label: Text('حفظ',
+                      style: GoogleFonts.cairo(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF50),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   /// الحصول على لون الإجراء
