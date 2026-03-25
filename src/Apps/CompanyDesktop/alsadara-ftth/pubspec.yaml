@@ -125,7 +125,6 @@ flutter:
   - assets/config.json
   - assets/fonts/
   - assets/animations/
-  - assets/maps/
   - assets/logo.png
   - .env
 
