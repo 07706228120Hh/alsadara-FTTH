@@ -49,7 +49,8 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
     // ============================================================
     private async Task LogAuditAsync(Guid userId, string userName, Guid? companyId, string actionType,
         bool isSuccess, string? rejectionReason, double? lat, double? lon, double? distance,
-        string? centerName, string? deviceFingerprint, string? registeredFingerprint)
+        string? centerName, string? deviceFingerprint, string? registeredFingerprint,
+        bool isVpnSuspected = false)
     {
         try
         {
@@ -67,7 +68,8 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
                 CenterName = centerName,
                 DeviceFingerprint = deviceFingerprint,
                 RegisteredDeviceFingerprint = registeredFingerprint,
-                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                IpAddress = GetClientIpAddress(),
+                IsVpnSuspected = isVpnSuspected,
                 AttemptTime = DateTime.UtcNow,
             };
             await _unitOfWork.AttendanceAuditLogs.AddAsync(audit);
@@ -79,7 +81,67 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         }
     }
 
-    /// <summary>تسجيل حضور - محمي بـ 4 طبقات أمنية</summary>
+    // ============================================================
+    // Rate Limiting: فحص عدد المحاولات الفاشلة خلال 15 دقيقة
+    // ============================================================
+    private async Task<(bool isLimited, int retryAfterSeconds)> IsRateLimitedAsync(Guid userId)
+    {
+        var threshold = DateTime.UtcNow.AddMinutes(-15);
+        var failedCount = await _unitOfWork.AttendanceAuditLogs.AsQueryable()
+            .CountAsync(a => a.UserId == userId && !a.IsSuccess && a.AttemptTime > threshold);
+
+        if (failedCount >= 5)
+        {
+            // أقدم محاولة فاشلة خلال الـ 15 دقيقة — إعادة المحاولة بعد انتهاءها
+            var oldest = await _unitOfWork.AttendanceAuditLogs.AsQueryable()
+                .Where(a => a.UserId == userId && !a.IsSuccess && a.AttemptTime > threshold)
+                .OrderBy(a => a.AttemptTime)
+                .Select(a => a.AttemptTime)
+                .FirstOrDefaultAsync();
+
+            var retryAfter = (int)(oldest.AddMinutes(15) - DateTime.UtcNow).TotalSeconds;
+            return (true, Math.Max(retryAfter, 60));
+        }
+        return (false, 0);
+    }
+
+    // ============================================================
+    // كشف VPN (soft — لا يمنع، تسجيل فقط)
+    // ============================================================
+    private bool DetectVpnSuspicion()
+    {
+        try
+        {
+            var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            var realIp = HttpContext.Request.Headers["X-Real-IP"].FirstOrDefault();
+            var connectionIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            // عدة IPs في X-Forwarded-For = proxy/VPN
+            if (!string.IsNullOrEmpty(forwardedFor) && forwardedFor.Contains(','))
+                return true;
+
+            // عدم تطابق Real-IP مع Connection IP
+            if (!string.IsNullOrEmpty(realIp) && !string.IsNullOrEmpty(connectionIp) && realIp != connectionIp)
+                return true;
+
+            return false;
+        }
+        catch { return false; }
+    }
+
+    // ============================================================
+    // استخراج عنوان IP الحقيقي
+    // ============================================================
+    private string? GetClientIpAddress()
+    {
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            return forwardedFor.Split(',')[0].Trim();
+
+        return HttpContext.Connection.RemoteIpAddress?.ToString();
+    }
+
+    /// <summary>تسجيل حضور - محمي بـ 6 طبقات أمنية</summary>
     [HttpPost("checkin")]
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
@@ -87,15 +149,13 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         // ── Layer 3: استخراج UserId من التوكن ──
         var tokenUserId = GetAuthenticatedUserId();
         Guid effectiveUserId;
-        
+
         if (tokenUserId.HasValue)
         {
-            // UserId من التوكن - الأكثر أماناً
             effectiveUserId = tokenUserId.Value;
         }
         else if (request.UserId != Guid.Empty)
         {
-            // fallback: UserId من الطلب (للتوافق مع النظام القديم)
             effectiveUserId = request.UserId;
             _logger.LogWarning("⚠️ تسجيل حضور بدون JWT UserId - استخدام UserId من الطلب: {UserId}", request.UserId);
         }
@@ -104,20 +164,71 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
             return BadRequest(new { message = "لا يمكن تحديد هوية المستخدم" });
         }
 
+        // ── Rate Limiting: فحص تجاوز المحاولات الفاشلة ──
+        var (isLimited, retryAfterSeconds) = await IsRateLimitedAsync(effectiveUserId);
+        if (isLimited)
+        {
+            return BadRequest(new {
+                message = $"تجاوزت الحد الأقصى للمحاولات. حاول بعد {retryAfterSeconds / 60} دقائق.",
+                code = "RATE_LIMITED",
+                retryAfterSeconds
+            });
+        }
+
         // جلب بيانات المستخدم
         var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == effectiveUserId);
         var userName = user?.FullName ?? request.UserName ?? "غير معروف";
         var companyId = user?.CompanyId ?? request.CompanyId;
 
-        // ── Layer 1: التحقق من بصمة الجهاز ──
+        // ── كشف VPN (soft — تسجيل فقط) ──
+        var vpnSuspected = DetectVpnSuspicion();
+        var clientIp = GetClientIpAddress();
+
+        // ── Layer 1: التحقق من بصمة الجهاز مع نظام موافقة المدير ──
         if (!string.IsNullOrEmpty(request.DeviceFingerprint) && user != null)
         {
             if (string.IsNullOrEmpty(user.RegisteredDeviceFingerprint))
             {
-                // أول تسجيل حضور: حفظ بصمة الجهاز تلقائياً
-                user.RegisteredDeviceFingerprint = request.DeviceFingerprint;
-                _unitOfWork.Users.Update(user);
-                _logger.LogInformation("🔐 تم تسجيل بصمة الجهاز للمستخدم {UserId}", effectiveUserId);
+                // لا يوجد جهاز مسجل — تحقق من حالة الموافقة
+                switch (user.DeviceApprovalStatus)
+                {
+                    case 0: // None — أول طلب: إنشاء طلب معلق
+                        user.PendingDeviceFingerprint = request.DeviceFingerprint;
+                        user.DeviceApprovalStatus = 1; // Pending
+                        _unitOfWork.Users.Update(user);
+                        await _unitOfWork.SaveChangesAsync();
+
+                        await LogAuditAsync(effectiveUserId, userName, companyId, "CheckIn", false,
+                            "طلب تسجيل جهاز جديد — بانتظار موافقة المدير",
+                            request.Latitude, request.Longitude, null, request.CenterName,
+                            request.DeviceFingerprint, null, vpnSuspected);
+
+                        _logger.LogInformation("📱 طلب تسجيل جهاز جديد للمستخدم {UserId} ({UserName})", effectiveUserId, userName);
+                        return BadRequest(new { message = "تم إرسال طلب تسجيل جهازك للمدير. يرجى الانتظار حتى الموافقة.", code = "DEVICE_PENDING" });
+
+                    case 1: // Pending — لا تزال بانتظار الموافقة
+                        // تحديث البصمة في حالة تغير الجهاز أثناء الانتظار
+                        if (user.PendingDeviceFingerprint != request.DeviceFingerprint)
+                        {
+                            user.PendingDeviceFingerprint = request.DeviceFingerprint;
+                            _unitOfWork.Users.Update(user);
+                            await _unitOfWork.SaveChangesAsync();
+                        }
+                        await LogAuditAsync(effectiveUserId, userName, companyId, "CheckIn", false,
+                            "بانتظار موافقة المدير على الجهاز",
+                            request.Latitude, request.Longitude, null, request.CenterName,
+                            request.DeviceFingerprint, null, vpnSuspected);
+                        return BadRequest(new { message = "جهازك لا يزال بانتظار موافقة المدير.", code = "DEVICE_PENDING" });
+
+                    case 3: // Rejected — تم الرفض
+                        await LogAuditAsync(effectiveUserId, userName, companyId, "CheckIn", false,
+                            "تم رفض تسجيل الجهاز",
+                            request.Latitude, request.Longitude, null, request.CenterName,
+                            request.DeviceFingerprint, null, vpnSuspected);
+                        return BadRequest(new { message = "تم رفض تسجيل جهازك. تواصل مع المدير.", code = "DEVICE_REJECTED" });
+
+                    // case 2: Approved — يجب ألا يحدث (لأن RegisteredDeviceFingerprint يُملأ عند الموافقة)
+                }
             }
             else if (user.RegisteredDeviceFingerprint != request.DeviceFingerprint)
             {
@@ -125,8 +236,8 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
                 await LogAuditAsync(effectiveUserId, userName, companyId, "CheckIn", false,
                     $"جهاز غير مسجل. المسجل: {user.RegisteredDeviceFingerprint?.Substring(0, Math.Min(8, user.RegisteredDeviceFingerprint.Length))}..., المرسل: {request.DeviceFingerprint?.Substring(0, Math.Min(8, request.DeviceFingerprint.Length))}...",
                     request.Latitude, request.Longitude, null, request.CenterName,
-                    request.DeviceFingerprint, user.RegisteredDeviceFingerprint);
-                
+                    request.DeviceFingerprint, user.RegisteredDeviceFingerprint, vpnSuspected);
+
                 return BadRequest(new { message = "لا يمكن تسجيل الحضور من هذا الجهاز. الجهاز غير مسجل لحسابك.", code = "DEVICE_MISMATCH" });
             }
         }
@@ -153,7 +264,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
                     await LogAuditAsync(effectiveUserId, userName, companyId, "CheckIn", false,
                         $"خارج النطاق: {distanceFromCenter:F0}م من المركز (الحد: {matchedCenter.RadiusMeters}م)",
                         request.Latitude, request.Longitude, distanceFromCenter, request.CenterName,
-                        request.DeviceFingerprint, user?.RegisteredDeviceFingerprint);
+                        request.DeviceFingerprint, user?.RegisteredDeviceFingerprint, vpnSuspected);
 
                     return BadRequest(new {
                         message = $"أنت خارج نطاق المركز المسموح. المسافة: {distanceFromCenter:F0} متر (الحد الأقصى: {matchedCenter.RadiusMeters} متر)",
@@ -189,6 +300,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         record.CheckInLongitude = request.Longitude;
         record.SecurityCode = request.SecurityCode;
         record.DeviceFingerprint = request.DeviceFingerprint;
+        record.IpAddress = clientIp;
 
         // ── حساب التأخير تلقائياً من جدول الدوام ──
         var schedule = await FindScheduleAsync(companyId, request.CenterName, today, user);
@@ -213,15 +325,15 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         // ── Layer 5: تسجيل نجاح العملية ──
         await LogAuditAsync(effectiveUserId, userName, companyId, "CheckIn", true, null,
             request.Latitude, request.Longitude, distanceFromCenter, request.CenterName,
-            request.DeviceFingerprint, user?.RegisteredDeviceFingerprint);
+            request.DeviceFingerprint, user?.RegisteredDeviceFingerprint, vpnSuspected);
 
         _logger.LogInformation("✅ تسجيل حضور: {UserName} في {Center} (مسافة: {Distance}م)",
             userName, request.CenterName, distanceFromCenter?.ToString("F0") ?? "N/A");
 
-        return Ok(new { message = "تم تسجيل الحضور بنجاح", record });
+        return Ok(new { message = "تم تسجيل الحضور بنجاح", record, vpnWarning = vpnSuspected });
     }
 
-    /// <summary>تسجيل انصراف - محمي بـ 4 طبقات أمنية</summary>
+    /// <summary>تسجيل انصراف - محمي بـ 6 طبقات أمنية</summary>
     [HttpPost("checkout")]
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> CheckOut([FromBody] CheckOutRequest request)
@@ -244,9 +356,22 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
             return BadRequest(new { message = "لا يمكن تحديد هوية المستخدم" });
         }
 
+        // ── Rate Limiting ──
+        var (isLimited, retryAfterSeconds) = await IsRateLimitedAsync(effectiveUserId);
+        if (isLimited)
+        {
+            return BadRequest(new {
+                message = $"تجاوزت الحد الأقصى للمحاولات. حاول بعد {retryAfterSeconds / 60} دقائق.",
+                code = "RATE_LIMITED",
+                retryAfterSeconds
+            });
+        }
+
         var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == effectiveUserId);
         var userName = user?.FullName ?? "غير معروف";
         var companyId = user?.CompanyId;
+        var vpnSuspected = DetectVpnSuspicion();
+        var clientIp = GetClientIpAddress();
 
         // ── Layer 1: التحقق من بصمة الجهاز ──
         if (!string.IsNullOrEmpty(request.DeviceFingerprint) && user != null &&
@@ -255,7 +380,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         {
             await LogAuditAsync(effectiveUserId, userName, companyId, "CheckOut", false,
                 "جهاز غير مسجل", request.Latitude, request.Longitude, null, null,
-                request.DeviceFingerprint, user.RegisteredDeviceFingerprint);
+                request.DeviceFingerprint, user.RegisteredDeviceFingerprint, vpnSuspected);
 
             return BadRequest(new { message = "لا يمكن تسجيل الانصراف من هذا الجهاز. الجهاز غير مسجل لحسابك.", code = "DEVICE_MISMATCH" });
         }
@@ -296,7 +421,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
                     await LogAuditAsync(effectiveUserId, userName, companyId, "CheckOut", false,
                         $"خارج النطاق: {distanceFromCenter:F0}م (الحد: {matchedCenter.RadiusMeters}م)",
                         request.Latitude, request.Longitude, distanceFromCenter, record.CenterName,
-                        request.DeviceFingerprint, user?.RegisteredDeviceFingerprint);
+                        request.DeviceFingerprint, user?.RegisteredDeviceFingerprint, vpnSuspected);
 
                     return BadRequest(new {
                         message = $"أنت خارج نطاق المركز المسموح. المسافة: {distanceFromCenter:F0} متر",
@@ -312,6 +437,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         record.CheckOutLatitude = request.Latitude;
         record.CheckOutLongitude = request.Longitude;
         record.Notes = request.Notes;
+        record.IpAddress ??= clientIp;
         record.UpdatedAt = DateTime.UtcNow;
 
         // ── حساب ساعات العمل والوقت الإضافي والانصراف المبكر ──
@@ -331,13 +457,11 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
                 record.OvertimeMinutes = overtimeMinutes;
                 record.EarlyDepartureMinutes = earlyDepartureMinutes;
 
-                // حالة الانصراف المبكر تأخذ أولوية على الحاضر فقط
                 if (statusOverride.HasValue && record.Status != AttendanceStatus.Late)
                     record.Status = statusOverride.Value;
             }
             else
             {
-                // بدون جدول: احسب ساعات العمل فقط
                 record.WorkedMinutes = (int)(record.CheckOutTime.Value - record.CheckInTime.Value).TotalMinutes;
             }
         }
@@ -348,9 +472,9 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
         // ── Layer 5: تسجيل نجاح العملية ──
         await LogAuditAsync(effectiveUserId, userName, companyId, "CheckOut", true, null,
             request.Latitude, request.Longitude, distanceFromCenter, record.CenterName,
-            request.DeviceFingerprint, user?.RegisteredDeviceFingerprint);
+            request.DeviceFingerprint, user?.RegisteredDeviceFingerprint, vpnSuspected);
 
-        return Ok(new { message = "تم تسجيل الانصراف بنجاح", record });
+        return Ok(new { message = "تم تسجيل الانصراف بنجاح", record, vpnWarning = vpnSuspected });
     }
 
     /// <summary>جلب سجل الحضور الشهري لموظف</summary>
@@ -894,13 +1018,172 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
 
         var oldFingerprint = user.RegisteredDeviceFingerprint;
         user.RegisteredDeviceFingerprint = null;
+        user.PendingDeviceFingerprint = null;
+        user.DeviceApprovalStatus = 0; // None
+        user.DeviceApprovedByUserId = null;
+        user.DeviceApprovedAt = null;
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync();
 
         _logger.LogInformation("🔓 تم إعادة تعيين بصمة الجهاز للمستخدم {UserId} ({UserName}). القديمة: {Old}",
             userId, user.FullName, oldFingerprint);
 
-        return Ok(new { message = $"تم إعادة تعيين بصمة الجهاز للموظف {user.FullName}. سيتم تسجيل الجهاز الجديد عند أول تسجيل حضور." });
+        return Ok(new { message = $"تم إعادة تعيين بصمة الجهاز للموظف {user.FullName}. سيحتاج موافقة المدير عند تسجيل جهاز جديد." });
+    }
+
+    // ============================================================
+    //  نظام موافقة المدير على الأجهزة
+    // ============================================================
+
+    /// <summary>جلب طلبات الأجهزة المعلقة</summary>
+    [HttpGet("pending-devices")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> GetPendingDevices([FromQuery] Guid? companyId)
+    {
+        var query = _unitOfWork.Users.AsQueryable()
+            .Where(u => u.DeviceApprovalStatus == 1); // Pending
+
+        if (companyId.HasValue)
+            query = query.Where(u => u.CompanyId == companyId.Value);
+
+        var pending = await query
+            .OrderByDescending(u => u.UpdatedAt)
+            .Select(u => new {
+                u.Id,
+                u.FullName,
+                u.PhoneNumber,
+                u.Center,
+                u.Department,
+                u.CompanyId,
+                pendingFingerprint = u.PendingDeviceFingerprint != null ? u.PendingDeviceFingerprint.Substring(0, Math.Min(16, u.PendingDeviceFingerprint.Length)) + "..." : null,
+                requestedAt = u.UpdatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { count = pending.Count, devices = pending });
+    }
+
+    /// <summary>الموافقة على جهاز موظف</summary>
+    [HttpPost("approve-device/{userId}")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> ApproveDevice(Guid userId)
+    {
+        var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return NotFound(new { message = "المستخدم غير موجود" });
+
+        if (user.DeviceApprovalStatus != 1)
+            return BadRequest(new { message = "لا يوجد طلب معلق لهذا الموظف" });
+
+        var adminUserId = GetAuthenticatedUserId();
+
+        // نقل البصمة المعلقة إلى المسجلة
+        user.RegisteredDeviceFingerprint = user.PendingDeviceFingerprint;
+        user.PendingDeviceFingerprint = null;
+        user.DeviceApprovalStatus = 2; // Approved
+        user.DeviceApprovedByUserId = adminUserId;
+        user.DeviceApprovedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("✅ تمت الموافقة على جهاز الموظف {UserName} ({UserId}) بواسطة المدير {AdminId}",
+            user.FullName, userId, adminUserId);
+
+        return Ok(new { message = $"تمت الموافقة على جهاز {user.FullName}" });
+    }
+
+    /// <summary>رفض جهاز موظف</summary>
+    [HttpPost("reject-device/{userId}")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> RejectDevice(Guid userId)
+    {
+        var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return NotFound(new { message = "المستخدم غير موجود" });
+
+        if (user.DeviceApprovalStatus != 1)
+            return BadRequest(new { message = "لا يوجد طلب معلق لهذا الموظف" });
+
+        user.PendingDeviceFingerprint = null;
+        user.DeviceApprovalStatus = 3; // Rejected
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("❌ تم رفض جهاز الموظف {UserName} ({UserId})", user.FullName, userId);
+
+        return Ok(new { message = $"تم رفض جهاز {user.FullName}" });
+    }
+
+    // ============================================================
+    //  صور السيلفي عند البصمة
+    // ============================================================
+
+    /// <summary>رفع صورة سيلفي للحضور/الانصراف</summary>
+    [HttpPost("upload-photo")]
+    [Authorize(Policy = "Admin")]
+    [RequestSizeLimit(5 * 1024 * 1024)] // 5MB max
+    public async Task<IActionResult> UploadAttendancePhoto(
+        [FromQuery] Guid userId, [FromQuery] string type, IFormFile photo)
+    {
+        if (photo == null || photo.Length == 0)
+            return BadRequest(new { message = "لم يتم إرسال صورة" });
+
+        if (type != "checkin" && type != "checkout")
+            return BadRequest(new { message = "نوع الصورة غير صالح. استخدم checkin أو checkout" });
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var record = await _unitOfWork.AttendanceRecords
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == today);
+
+        if (record == null)
+            return NotFound(new { message = "لا يوجد سجل حضور لهذا اليوم" });
+
+        // حفظ الصورة في مجلد على السيرفر
+        var photoDir = Path.Combine("/var/www/sadara-api/attendance-photos", userId.ToString());
+        Directory.CreateDirectory(photoDir);
+
+        var fileName = $"{today:yyyy-MM-dd}-{type}.jpg";
+        var filePath = Path.Combine(photoDir, fileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await photo.CopyToAsync(stream);
+        }
+
+        // تحديث السجل بمسار الصورة
+        if (type == "checkin")
+            record.CheckInPhotoPath = filePath;
+        else
+            record.CheckOutPhotoPath = filePath;
+
+        record.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.AttendanceRecords.Update(record);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("📸 تم رفع صورة {Type} للموظف {UserId} بتاريخ {Date}", type, userId, today);
+
+        return Ok(new { message = "تم رفع الصورة بنجاح", path = filePath });
+    }
+
+    /// <summary>جلب صورة سيلفي لسجل حضور</summary>
+    [HttpGet("photo/{recordId}/{type}")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> GetAttendancePhoto(long recordId, string type)
+    {
+        var record = await _unitOfWork.AttendanceRecords.FirstOrDefaultAsync(r => r.Id == recordId);
+        if (record == null)
+            return NotFound(new { message = "سجل الحضور غير موجود" });
+
+        var photoPath = type == "checkin" ? record.CheckInPhotoPath : record.CheckOutPhotoPath;
+        if (string.IsNullOrEmpty(photoPath) || !System.IO.File.Exists(photoPath))
+            return NotFound(new { message = "لا توجد صورة" });
+
+        var bytes = await System.IO.File.ReadAllBytesAsync(photoPath);
+        return File(bytes, "image/jpeg");
     }
 }
 

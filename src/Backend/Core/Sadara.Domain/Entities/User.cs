@@ -38,6 +38,9 @@ public class User : BaseEntity<Guid>
     /// <summary>الراتب (اختياري)</summary>
     public decimal? Salary { get; set; }
 
+    /// <summary>هل الموظف ضمن كادر الرواتب</summary>
+    public bool IsInSalaryRoster { get; set; } = false;
+
     // ============ بيانات HR ============
     
     /// <summary>رقم الهوية الوطنية</summary>
@@ -118,6 +121,18 @@ public class User : BaseEntity<Guid>
     
     /// <summary>بصمة الجهاز المسجلة للحضور (لا يمكن تسجيل حضور من جهاز مختلف)</summary>
     public string? RegisteredDeviceFingerprint { get; set; }
+
+    /// <summary>حالة موافقة الجهاز: 0=None, 1=Pending, 2=Approved, 3=Rejected</summary>
+    public int DeviceApprovalStatus { get; set; } = 0;
+
+    /// <summary>بصمة الجهاز المعلقة بانتظار الموافقة</summary>
+    public string? PendingDeviceFingerprint { get; set; }
+
+    /// <summary>معرف المدير الذي وافق على الجهاز</summary>
+    public Guid? DeviceApprovedByUserId { get; set; }
+
+    /// <summary>تاريخ الموافقة على الجهاز</summary>
+    public DateTime? DeviceApprovedAt { get; set; }
     
     // ============ جدول الدوام ============
     

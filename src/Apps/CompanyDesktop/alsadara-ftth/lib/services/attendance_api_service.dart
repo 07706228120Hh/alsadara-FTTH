@@ -12,7 +12,7 @@ class AttendanceApiService {
 
   final SadaraApiService _api = SadaraApiService.instance;
 
-  /// توليد بصمة الجهاز (Layer 1) - تجمع معلومات فريدة للجهاز
+  /// توليد بصمة الجهاز (Layer 1) - تجمع معلومات hardware فريدة للجهاز
   String _generateDeviceFingerprint() {
     try {
       final parts = <String>[];
@@ -32,6 +32,16 @@ class AttendanceApiService {
           Platform.environment['HOME'] ??
           '');
 
+      // ── Hardware IDs (Windows WMI) ──
+      if (Platform.isWindows) {
+        // سيريال القرص الصلب
+        parts.add(_runWmic('wmic diskdrive get SerialNumber'));
+        // سيريال BIOS
+        parts.add(_runWmic('wmic bios get SerialNumber'));
+        // MAC address
+        parts.add(_runWmic('getmac /fo csv /nh'));
+      }
+
       final raw = parts.join('|');
       // تحويل لـ SHA-256 hash لحماية الخصوصية
       final hash = sha256.convert(utf8.encode(raw)).toString();
@@ -39,6 +49,30 @@ class AttendanceApiService {
     } catch (e) {
       // fallback: استخدام اسم الجهاز فقط
       return sha256.convert(utf8.encode(Platform.localHostname)).toString();
+    }
+  }
+
+  /// تشغيل أمر WMI وإرجاع النتيجة (سطر واحد مقصوص)
+  String _runWmic(String command) {
+    try {
+      final result = Process.runSync(
+        'cmd',
+        ['/c', command],
+        stdoutEncoding: const SystemEncoding(),
+      );
+      if (result.exitCode == 0) {
+        final lines = (result.stdout as String)
+            .split('\n')
+            .map((l) => l.trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
+        // تجاوز سطر العنوان (أول سطر مثل "SerialNumber")
+        if (lines.length > 1) return lines.sublist(1).join(',');
+        return lines.isNotEmpty ? lines.first : '';
+      }
+      return '';
+    } catch (_) {
+      return '';
     }
   }
 
@@ -838,5 +872,47 @@ class AttendanceApiService {
   /// حذف سجل حضور
   Future<Map<String, dynamic>> deleteAttendanceRecord(int id) async {
     return await _api.delete('/attendance/records/$id');
+  }
+
+  // ============================================================
+  //  موافقة المدير على الأجهزة (Device Approval)
+  // ============================================================
+
+  /// جلب طلبات الأجهزة المعلقة
+  Future<Map<String, dynamic>> getPendingDevices({String? companyId}) async {
+    String url = '/attendance/pending-devices';
+    if (companyId != null) url += '?companyId=$companyId';
+    return await _api.get(url);
+  }
+
+  /// الموافقة على جهاز موظف
+  Future<Map<String, dynamic>> approveDevice(String userId) async {
+    return await _api.post('/attendance/approve-device/$userId', body: {});
+  }
+
+  /// رفض جهاز موظف
+  Future<Map<String, dynamic>> rejectDevice(String userId) async {
+    return await _api.post('/attendance/reject-device/$userId', body: {});
+  }
+
+  /// إعادة تعيين بصمة جهاز موظف
+  Future<Map<String, dynamic>> resetDevice(String userId) async {
+    return await _api.post('/attendance/reset-device/$userId', body: {});
+  }
+
+  // ============================================================
+  //  صور السيلفي (Attendance Photos)
+  // ============================================================
+
+  /// رفع صورة سيلفي للحضور/الانصراف
+  Future<Map<String, dynamic>> uploadAttendancePhoto({
+    required String userId,
+    required String type, // "checkin" or "checkout"
+    required File photoFile,
+  }) async {
+    return await _api.uploadFile(
+      '/attendance/upload-photo?userId=$userId&type=$type',
+      photoFile,
+    );
   }
 }

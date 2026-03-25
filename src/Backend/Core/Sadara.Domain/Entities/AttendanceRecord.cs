@@ -60,6 +60,15 @@ public class AttendanceRecord : BaseEntity<long>
     /// <summary>بصمة الجهاز المستخدم للتسجيل</summary>
     public string? DeviceFingerprint { get; set; }
 
+    /// <summary>عنوان IP المستخدم عند التسجيل</summary>
+    public string? IpAddress { get; set; }
+
+    /// <summary>مسار صورة سيلفي الحضور</summary>
+    public string? CheckInPhotoPath { get; set; }
+
+    /// <summary>مسار صورة سيلفي الانصراف</summary>
+    public string? CheckOutPhotoPath { get; set; }
+
     // ── حقول جدول الدوام والحالة (المرحلة 1) ──
 
     /// <summary>حالة الحضور (حاضر، متأخر، غائب...)</summary>
@@ -132,7 +141,10 @@ public class AttendanceAuditLog : BaseEntity<long>
     
     /// <summary>عنوان IP</summary>
     public string? IpAddress { get; set; }
-    
+
+    /// <summary>هل يُشتبه باستخدام VPN</summary>
+    public bool IsVpnSuspected { get; set; } = false;
+
     /// <summary>وقت المحاولة</summary>
     public DateTime AttemptTime { get; set; } = DateTime.UtcNow;
 }

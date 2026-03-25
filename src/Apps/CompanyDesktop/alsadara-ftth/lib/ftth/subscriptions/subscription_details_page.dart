@@ -59,6 +59,7 @@ class SubscriptionInfo {
   final String? gpsLongitude;
   final String? deviceModel;
   final String? subscriptionStartDate;
+  final String? expiresAt;
   final String? salesType;
   const SubscriptionInfo({
     required this.zoneId,
@@ -80,6 +81,7 @@ class SubscriptionInfo {
     this.gpsLongitude,
     this.deviceModel,
     this.subscriptionStartDate,
+    this.expiresAt,
     this.salesType,
   });
 
@@ -161,6 +163,11 @@ class SubscriptionInfo {
       subscriptionStartDate: stringOf(json['startedAt']).isEmpty
           ? null
           : stringOf(json['startedAt']),
+      expiresAt: (stringOf(json['endDate']).isNotEmpty
+              ? stringOf(json['endDate'])
+              : stringOf(json['expires']).isNotEmpty
+                  ? stringOf(json['expires'])
+                  : null),
       salesType: salesType.isEmpty ? null : salesType,
     );
   }
@@ -2478,11 +2485,24 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           final finalTotal = (effectiveTotal - manualDiscount).clamp(0, double.infinity);
           price = finalTotal.round().toString();
         }
-        final expiryDate = widget.expires?.split('T').first ?? DateTime.now().toIso8601String().split('T').first;
+        // استخدام تاريخ الانتهاء المحدث بعد التجديد (من subscriptionInfo) بدلاً من widget.expires القديم
+        final expiryDate = (subscriptionInfo?.expiresAt ?? widget.expires)?.split('T').first ?? DateTime.now().toIso8601String().split('T').first;
         const contactNumbers = '07705210210';
 
         final phoneNumberId = await WhatsAppBusinessService.getPhoneNumberId() ?? '';
         final accessToken = await WhatsAppBusinessService.getUserToken() ?? '';
+        final webhookUrl = await WhatsAppBulkSenderService.getWebhookUrl() ?? '';
+
+        if (phoneNumberId.isEmpty || accessToken.isEmpty || webhookUrl.isEmpty) {
+          if (mounted) {
+            ftthShowErrorNotification(
+              context,
+              '❌ إعدادات واتساب API غير مكتملة — تحقق من Phone Number ID و Access Token و Webhook URL في الإعدادات',
+            );
+          }
+          sent = false;
+          return;
+        }
 
         final result = await WhatsAppBulkSenderService.sendTemplateMessages(
           templateType: 'sadara_renewed',
@@ -5755,8 +5775,18 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   String _calculateEndDate() {
     try {
+      // أولاً: استخدام تاريخ الانتهاء الفعلي من subscriptionInfo (بعد التجديد)
+      final expiresStr = subscriptionInfo?.expiresAt ?? widget.expires;
+      if (expiresStr != null && expiresStr.isNotEmpty) {
+        final parsed = DateTime.tryParse(expiresStr);
+        if (parsed != null) {
+          return '${parsed.day}/${parsed.month}/${parsed.year}';
+        }
+      }
+      // fallback: now + (commitment period * 30 days)
       final now = DateTime.now();
-      final endDate = now.add(Duration(days: 30));
+      final period = selectedCommitmentPeriod ?? 1;
+      final endDate = now.add(Duration(days: 30 * (period > 0 ? period : 1)));
       return '${endDate.day}/${endDate.month}/${endDate.year}';
     } catch (e) {
       return 'غير محدد';

@@ -4,11 +4,13 @@
 /// تاريخ الإنشاء: 2024
 library;
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/responsive_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -170,6 +172,25 @@ class _AttendancePageState extends State<AttendancePage>
         // السماح بالمتابعة بدون موقع - السيرفر سيقرر
       }
 
+      // ── التقاط صورة سيلفي قبل تسجيل البصمة ──
+      File? selfieFile;
+      try {
+        final picker = ImagePicker();
+        final photo = await picker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.front,
+          maxWidth: 640,
+          maxHeight: 480,
+          imageQuality: 70,
+        );
+        if (photo != null) {
+          selfieFile = File(photo.path);
+        }
+      } catch (e) {
+        debugPrint('خطأ في التقاط الصورة: $e');
+        // السماح بالمتابعة بدون صورة على Windows Desktop
+      }
+
       Map<String, dynamic> result;
 
       if (attendanceType == 'خروج') {
@@ -189,6 +210,20 @@ class _AttendancePageState extends State<AttendancePage>
         );
       }
 
+      // ── رفع صورة السيلفي بعد نجاح البصمة ──
+      if (selfieFile != null && result['success'] != false) {
+        try {
+          final photoType = attendanceType == 'خروج' ? 'checkout' : 'checkin';
+          await _attendanceApi.uploadAttendancePhoto(
+            userId: realUserId,
+            type: photoType,
+            photoFile: selfieFile,
+          );
+        } catch (e) {
+          debugPrint('خطأ في رفع صورة السيلفي: $e');
+        }
+      }
+
       if (!mounted) return;
 
       // التحقق من استجابة السيرفر
@@ -205,6 +240,15 @@ class _AttendancePageState extends State<AttendancePage>
         } else if (code == 'OUT_OF_RANGE') {
           icon = Icons.location_off;
           color = Colors.orange;
+        } else if (code == 'DEVICE_PENDING') {
+          icon = Icons.hourglass_top;
+          color = Colors.blue;
+        } else if (code == 'DEVICE_REJECTED') {
+          icon = Icons.block;
+          color = Colors.red.shade800;
+        } else if (code == 'RATE_LIMITED') {
+          icon = Icons.timer_off;
+          color = Colors.deepOrange;
         } else {
           icon = Icons.error_outline;
           color = Colors.red;
@@ -248,6 +292,13 @@ class _AttendancePageState extends State<AttendancePage>
           final hours = (workedMins / 60).toStringAsFixed(1);
           successMsg += '\n⏱️ ساعات العمل: $hours ساعة';
         }
+      }
+
+      // تحذير VPN (إن وجد)
+      final vpnWarning = result['vpnWarning'] == true;
+      if (vpnWarning) {
+        successMsg += '\n\u26a0\ufe0f يُشتبه باستخدام VPN — تم تسجيل الملاحظة';
+        successColor = Colors.orange;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
