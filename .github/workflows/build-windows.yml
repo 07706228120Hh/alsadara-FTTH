@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.32.0'
+  FLUTTER_VERSION: '3.38.4'
   FLUTTER_APP_PATH: 'src/Apps/CompanyDesktop/alsadara-ftth'
 
 jobs:
