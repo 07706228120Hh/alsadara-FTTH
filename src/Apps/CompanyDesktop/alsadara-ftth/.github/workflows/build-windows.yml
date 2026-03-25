@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.29.0'
+  FLUTTER_VERSION: '3.32.0'
 
 jobs:
   build-windows:
@@ -61,12 +61,11 @@ jobs:
           Compress-Archive -Path Distribution/* -DestinationPath Alsadara-Windows-${{ github.ref_name }}.zip
         shell: pwsh
 
-      # 8. إنشاء المثبت باستخدام Inno Setup (اختياري)
+      # 8. إنشاء المثبت باستخدام Inno Setup
       - name: Build Installer with Inno Setup
-        if: false  # غيّر إلى true إذا كان لديك ملف .iss
         run: |
-          choco install innosetup -y
-          iscc alsadara_installer.iss
+          choco install innosetup -y --no-progress
+          iscc installer.iss
         shell: pwsh
 
       # 9. رفع الملفات كـ Artifacts
@@ -76,7 +75,7 @@ jobs:
           name: windows-build
           path: |
             Alsadara-Windows-${{ github.ref_name }}.zip
-            Distribution/
+            build/installer/
 
       # 10. إنشاء GitHub Release
       - name: Create GitHub Release
@@ -86,18 +85,19 @@ jobs:
           name: 'الصدارة ${{ github.ref_name }}'
           body: |
             ## 🎉 إصدار جديد من تطبيق الصدارة!
-            
+
             ### التحميل:
-            - **Windows**: قم بتحميل ملف `Alsadara-Windows-${{ github.ref_name }}.zip`
-            - فك الضغط وشغّل `alsadara.exe`
-            
-            ### ملاحظات الإصدار:
-            تحقق من ملف CHANGELOG.md للتفاصيل
-            
+            - **المثبّت (مستحسن)**: `Alsadara-Setup-${{ github.ref_name }}.exe`
+            - **ملف مضغوط**: `Alsadara-Windows-${{ github.ref_name }}.zip`
+
+            ### التحديث التلقائي:
+            التطبيق يدعم التحديث التلقائي - سيتم تثبيت الإصدارات الجديدة تلقائياً.
+
             ---
             *تم البناء تلقائياً بواسطة GitHub Actions*
           files: |
             Alsadara-Windows-${{ github.ref_name }}.zip
+            build/installer/Alsadara-Setup-${{ github.ref_name }}.exe
           draft: false
           prerelease: false
         env:

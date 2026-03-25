@@ -1,13 +1,11 @@
 # CI/CD - إصدار التطبيق
-# ينشئ Release تلقائياً مع الملفات
+# ينشئ Release تلقائياً مع الملفات (ZIP + Setup.exe)
 # تطبيق الصدارة - FTTH
 
 name: 🚀 Create Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 jobs:
   # ═══════════════════════════════════════
@@ -37,37 +35,40 @@ jobs:
       - name: 🏗️ Build Windows
         run: flutter build windows --release
 
-      - name: 📁 Create ZIP
-        run: |
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "Alsadara-FTTH-Windows-${{ github.ref_name }}.zip"
-
       - name: 📋 Extract version info
         id: version
         run: |
           $version = "${{ github.ref_name }}" -replace 'v', ''
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
 
+      - name: 📁 Create ZIP
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "Alsadara-${{ github.ref_name }}-windows.zip"
+
+      - name: 🔧 Build Inno Setup Installer
+        run: |
+          choco install innosetup -y --no-progress
+          iscc installer.iss
+
       - name: 🚀 Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: "الصدارة FTTH ${{ steps.version.outputs.VERSION }}"
           body: |
             ## 🆕 إصدار جديد - الصدارة FTTH ${{ steps.version.outputs.VERSION }}
 
             ### 📥 التحميل
-            - **Windows**: `Alsadara-FTTH-Windows-${{ github.ref_name }}.zip`
-
-            ### 📋 التثبيت
-            1. فك ضغط الملف
-            2. شغل `alsadara_ftth.exe`
+            - **المثبّت (مستحسن)**: `Alsadara-Setup-${{ github.ref_name }}.exe`
+            - **ملف مضغوط**: `Alsadara-${{ github.ref_name }}-windows.zip`
 
             ### 🔄 التحديث التلقائي
-            التطبيق يدعم التحديث التلقائي - سيتم إشعارك بالإصدارات الجديدة.
+            التطبيق يدعم التحديث التلقائي - سيتم تثبيت الإصدارات الجديدة تلقائياً.
 
             ---
             📅 تاريخ الإصدار: ${{ github.event.head_commit.timestamp }}
           files: |
-            Alsadara-FTTH-Windows-${{ github.ref_name }}.zip
+            Alsadara-${{ github.ref_name }}-windows.zip
+            build/installer/Alsadara-Setup-${{ github.ref_name }}.exe
           draft: false
           prerelease: false
         env:
