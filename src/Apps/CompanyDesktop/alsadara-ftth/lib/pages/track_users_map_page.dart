@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_mbtiles/flutter_map_mbtiles.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/api/api_client.dart';
+import 'employee_tracking_report_page.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_fonts/google_fonts.dart';
@@ -328,6 +329,12 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
             onPressed: _showAlerts,
             tooltip: "تنبيهات",
           ),
+        IconButton(
+          icon: const Icon(Icons.analytics_outlined, color: Colors.white),
+          onPressed: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const EmployeeTrackingReportPage())),
+          tooltip: "تقارير التتبع",
+        ),
         IconButton(
           icon: Icon(Icons.refresh_rounded, color: _accentColor),
           onPressed: _fetchAndUpdateMarkers,
