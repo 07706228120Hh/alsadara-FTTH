@@ -113,6 +113,8 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<WhatsAppConversation, long>? _whatsAppConversations;
     private IRepository<WhatsAppMessage, long>? _whatsAppMessages;
     private IRepository<WhatsAppBatchReport, long>? _whatsAppBatchReports;
+    private IRepository<EmployeeLocation, long>? _employeeLocations;
+    private IRepository<EmployeeLocationLog, long>? _employeeLocationLogs;
 
     public UnitOfWork(SadaraDbContext context)
     {
@@ -340,6 +342,13 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<WhatsAppBatchReport, long> WhatsAppBatchReports =>
         _whatsAppBatchReports ??= new Repository<WhatsAppBatchReport, long>(_context);
+
+    // Employee Location (تتبع الموظفين)
+    public IRepository<EmployeeLocation, long> EmployeeLocations =>
+        _employeeLocations ??= new Repository<EmployeeLocation, long>(_context);
+
+    public IRepository<EmployeeLocationLog, long> EmployeeLocationLogs =>
+        _employeeLocationLogs ??= new Repository<EmployeeLocationLog, long>(_context);
 
     #endregion
 

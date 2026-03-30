@@ -120,6 +120,10 @@ public class SadaraDbContext : DbContext
     public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
     public DbSet<WhatsAppBatchReport> WhatsAppBatchReports => Set<WhatsAppBatchReport>();
 
+    // ==================== Employee Location (تتبع الموظفين) ====================
+    public DbSet<EmployeeLocation> EmployeeLocations => Set<EmployeeLocation>();
+    public DbSet<EmployeeLocationLog> EmployeeLocationLogs => Set<EmployeeLocationLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -204,6 +208,16 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<WhatsAppBatchReport>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<WhatsAppBatchReport>()
             .HasIndex(x => x.BatchId).IsUnique();
+
+        // Employee Location
+        modelBuilder.Entity<EmployeeLocation>()
+            .HasIndex(x => x.UserId).IsUnique();
+        modelBuilder.Entity<EmployeeLocation>()
+            .HasIndex(x => x.IsActive);
+
+        // Employee Location Logs
+        modelBuilder.Entity<EmployeeLocationLog>()
+            .HasIndex(x => new { x.UserId, x.RecordedAt });
 
         // User
         modelBuilder.Entity<User>(entity =>

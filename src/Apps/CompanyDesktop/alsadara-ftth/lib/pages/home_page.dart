@@ -19,8 +19,6 @@ import '../ftth/core/home_page.dart' as ftth_home;
 import '../services/dual_auth_service.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http; // NEW
-import 'dart:convert'; // NEW
 import 'dart:math' as math; // NEW: for rotations
 import 'aria_page.dart';
 import '../utils/responsive_helper.dart';
@@ -80,9 +78,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isAdminUser = false;
   bool _isLoading = true;
 
-  // NEW: الموقع
+  // الموقع — تردد ذكي حسب الحركة + Offline queue
   bool _isLocationActive = false;
   Timer? _locationTimer;
+  double? _lastLat;
+  double? _lastLng;
+  int _currentInterval = 10;
+  final List<Map<String, dynamic>> _offlineQueue = [];
   // حالة تسجيل دخول FTTH (النظام الثاني)
   bool _isFtthConnected = false;
   String? _ftthConnectedUsername;
@@ -358,36 +360,86 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  // NEW: إرسال الموقع
+  // إرسال الموقع إلى Sadara API — تردد ذكي
   Future<void> _sendLiveLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition(
         locationSettings:
             const LocationSettings(accuracy: LocationAccuracy.high),
       );
-      await http.post(
-        Uri.parse(
-            'https://script.google.com/macros/s/AKfycbx0CoIlbxdl0Fn9QDNq_QPV3LcRhn2RUvpXhj5JV9XYBhbBLgaBwuFDK5juW8YODAFp/exec'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'اسم المستخدم': widget.username,
-          'lat': position.latitude,
-          'lng': position.longitude,
-        }),
+
+      // حساب المسافة من الموقع السابق
+      int newInterval = 60; // افتراضي: ثابت → كل 60 ثانية
+      if (_lastLat != null && _lastLng != null) {
+        final distance = Geolocator.distanceBetween(
+          _lastLat!, _lastLng!, position.latitude, position.longitude,
+        );
+        if (distance > 10) {
+          newInterval = 10; // يتحرك (>10 متر) → كل 10 ثوانٍ
+        } else {
+          newInterval = 60; // ثابت → كل 60 ثانية
+        }
+      } else {
+        newInterval = 10; // أول مرة → كل 10 ثوانٍ
+      }
+
+      _lastLat = position.latitude;
+      _lastLng = position.longitude;
+
+      // تغيير التايمر إذا تغيّر التردد
+      if (newInterval != _currentInterval && _isLocationActive) {
+        _currentInterval = newInterval;
+        _locationTimer?.cancel();
+        _locationTimer = Timer.periodic(
+          Duration(seconds: _currentInterval),
+          (_) => _sendLiveLocation(),
+        );
+      }
+
+      final payload = {
+        'userId': widget.username,
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+      };
+
+      // مزامنة المواقع المخزّنة أثناء عدم الاتصال
+      if (_offlineQueue.isNotEmpty) {
+        final queued = List<Map<String, dynamic>>.from(_offlineQueue);
+        _offlineQueue.clear();
+        for (final p in queued) {
+          await ApiClient.instance.post('/employee-location', p, (d) => d, useInternalKey: true);
+        }
+      }
+
+      final result = await ApiClient.instance.post(
+        '/employee-location', payload, (d) => d, useInternalKey: true,
       );
+
+      if (!result.isSuccess) {
+        // فشل الإرسال → تخزين محلي
+        _offlineQueue.add(payload);
+        debugPrint("Offline: queued location (${_offlineQueue.length})");
+      }
     } catch (e) {
-      debugPrint("مشكلة في إرسال الموقع: $e");
+      // لا إنترنت → تخزين محلي
+      if (_lastLat != null) {
+        _offlineQueue.add({
+          'userId': widget.username,
+          'latitude': _lastLat,
+          'longitude': _lastLng,
+        });
+        debugPrint("Offline: queued (${_offlineQueue.length})");
+      }
     }
   }
 
-  // NEW: إيقاف إرسال الموقع
+  // إيقاف إرسال الموقع
   Future<void> _stopLiveLocation() async {
     try {
-      await http.delete(
-        Uri.parse(
-            'https://script.google.com/macros/s/AKfycbx0CoIlbxdl0Fn9QDNq_QPV3LcRhn2RUvpXhj5JV9XYBhbBLgaBwuFDK5juW8YODAFp/exec'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'اسم المستخدم': widget.username}),
+      await ApiClient.instance.delete(
+        '/employee-location/${Uri.encodeComponent(widget.username)}',
+        (data) => data,
+        useInternalKey: true,
       );
     } catch (e) {
       debugPrint("مشكلة في إيقاف مشاركة الموقع: $e");
@@ -1085,8 +1137,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   );
                   return;
                 }
+                _sendLiveLocation(); // إرسال فوري
+                _currentInterval = 10;
                 _locationTimer =
-                    Timer.periodic(const Duration(seconds: 5), (timer) {
+                    Timer.periodic(Duration(seconds: _currentInterval), (timer) {
                   _sendLiveLocation();
                 });
               } else {

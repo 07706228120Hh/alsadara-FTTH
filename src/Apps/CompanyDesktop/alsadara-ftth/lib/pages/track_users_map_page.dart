@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_mbtiles/flutter_map_mbtiles.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
+import '../services/api/api_client.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_fonts/google_fonts.dart';
@@ -19,8 +18,7 @@ class TrackUsersMapPage extends StatefulWidget {
 
 class _TrackUsersMapPageState extends State<TrackUsersMapPage>
     with TickerProviderStateMixin {
-  final String apiUrl =
-      'https://script.google.com/macros/s/AKfycbwPlZrDSpjRRUQCAB1EfQwFsk8G4yaRLJvq6rL2I7pvrmnQHzTH3HqBTskW18M6TfWY/exec';
+  // يستخدم Sadara API بدل Google Sheets
 
   final MapController _mapController = MapController();
   final Map<String, List<LatLng>> _userPaths = {};
@@ -33,6 +31,11 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
   Timer? _timer;
   MbTilesTileProvider? _mbtilesProvider;
   bool _isPanelExpanded = true;
+
+  // تنبيهات
+  int _staleCount = 0;
+  int _stoppedCount = 0;
+  List<dynamic> _alerts = [];
 
   static const LatLng _defaultCenter = LatLng(33.3573338, 44.4414648);
 
@@ -88,15 +91,55 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
     if (!mounted) return;
     setState(() => _loading = true);
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
-        _rawData = data;
+      final response = await ApiClient.instance.get(
+        '/employee-location/active',
+        (data) => data,
+        useInternalKey: true,
+      );
+      if (response.isSuccess && response.data != null) {
+        final rawData = response.data;
+        final List<dynamic> data = rawData is List
+            ? rawData
+            : (rawData is Map ? (rawData['data'] as List?) ?? [] : []);
+        // تحويل من camelCase API إلى Arabic keys (للتوافق مع الكود الحالي)
+        final List<Map<String, dynamic>> mapped = [];
+        for (final item in data) {
+          if (item is! Map<String, dynamic>) continue;
+          mapped.add({
+            'اسم المستخدم': item['userId'] ?? '',
+            'القسم': item['department'] ?? '',
+            'المركز': item['center'] ?? '',
+            'رقم الهاتف': item['phone'] ?? '',
+            'lat': item['lat'],
+            'lng': item['lng'],
+            'active': item['active'] ?? false,
+            'last update': item['lastUpdate'] ?? '',
+          });
+        }
+        _rawData = mapped;
         _applyFilters();
       }
     } catch (e) {
       debugPrint("Error fetching positions: $e");
     }
+
+    // جلب التنبيهات
+    try {
+      final alertResponse = await ApiClient.instance.get(
+        '/employee-location/alerts?staleMinutes=5',
+        (data) => data,
+        useInternalKey: true,
+      );
+      if (alertResponse.isSuccess && alertResponse.data != null) {
+        final d = alertResponse.data;
+        if (d is Map) {
+          _staleCount = d['staleCount'] ?? 0;
+          _stoppedCount = d['stoppedCount'] ?? 0;
+          _alerts = (d['data'] as List?) ?? [];
+        }
+      }
+    } catch (_) {}
+
     if (mounted) setState(() => _loading = false);
   }
 
@@ -274,6 +317,17 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
             GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white),
       ),
       actions: [
+        // زر التنبيهات
+        if (_staleCount + _stoppedCount > 0)
+          IconButton(
+            icon: Badge(
+              label: Text('${_staleCount + _stoppedCount}'),
+              backgroundColor: Colors.red,
+              child: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            ),
+            onPressed: _showAlerts,
+            tooltip: "تنبيهات",
+          ),
         IconButton(
           icon: Icon(Icons.refresh_rounded, color: _accentColor),
           onPressed: _fetchAndUpdateMarkers,
@@ -282,6 +336,59 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
         const SizedBox(width: 8),
       ],
       iconTheme: const IconThemeData(color: Colors.white),
+    );
+  }
+
+  void _showAlerts() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              const SizedBox(width: 8),
+              Text('تنبيهات ($_staleCount متأخر، $_stoppedCount متوقف)'),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            height: 300,
+            child: _alerts.isEmpty
+                ? const Center(child: Text('لا توجد تنبيهات'))
+                : ListView.separated(
+                    itemCount: _alerts.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final a = _alerts[i] is Map ? _alerts[i] as Map : {};
+                      final type = a['alertType'] ?? '';
+                      final user = a['userId'] ?? '';
+                      final mins = a['minutesAgo'] ?? 0;
+                      return ListTile(
+                        leading: Icon(
+                          type == 'stale' ? Icons.timer_off : Icons.location_off,
+                          color: type == 'stale' ? Colors.orange : Colors.red,
+                        ),
+                        title: Text(user),
+                        subtitle: Text(
+                          type == 'stale'
+                              ? 'لم يحدّث منذ $mins دقيقة'
+                              : 'أوقف مشاركة الموقع',
+                        ),
+                        trailing: Text(a['department'] ?? ''),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إغلاق'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

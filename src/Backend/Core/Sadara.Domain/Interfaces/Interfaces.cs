@@ -124,6 +124,10 @@ public interface IUnitOfWork : IDisposable
     IRepository<WhatsAppMessage, long> WhatsAppMessages { get; }
     IRepository<WhatsAppBatchReport, long> WhatsAppBatchReports { get; }
 
+    // Employee Location (تتبع الموظفين)
+    IRepository<EmployeeLocation, long> EmployeeLocations { get; }
+    IRepository<EmployeeLocationLog, long> EmployeeLocationLogs { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);

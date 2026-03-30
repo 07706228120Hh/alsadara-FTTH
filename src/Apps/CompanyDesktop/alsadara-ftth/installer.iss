@@ -1,12 +1,12 @@
 [Setup]
 AppName=الصدارة - Alsadara
-AppVersion=1.6.41
+AppVersion=1.6.42
 AppPublisher=Alsadara Platform
 AppPublisherURL=https://github.com/07706228120Hh/alsadara-FTTH
 DefaultDirName={autopf}\Alsadara
 DefaultGroupName=الصدارة
 OutputDir=build\installer
-OutputBaseFilename=Alsadara-Setup-v1.6.41
+OutputBaseFilename=Alsadara-Setup-v1.6.42
 SetupIconFile=windows\runner\resources\app_icon.ico
 Compression=lzma2
 SolidCompression=yes
@@ -27,7 +27,7 @@ Name: "arabic"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create desktop shortcut"; GroupDescription: "Additional shortcuts:"
 
 [Files]
-Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.lib,*.exp,*.pdb"
 
 [Icons]
 Name: "{group}\الصدارة"; Filename: "{app}\Alsadara.exe"
