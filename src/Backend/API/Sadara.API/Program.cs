@@ -16,6 +16,8 @@ using Sadara.Infrastructure.Services.Firebase;
 using Sadara.Infrastructure.Services.Server;
 using Serilog;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,7 +51,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Identity Services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtService>(sp => new JwtService(
-    builder.Configuration["Jwt:Secret"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!",
+    builder.Configuration["Jwt:Secret"] ?? "DEV_ONLY_NOT_FOR_PRODUCTION_ChangeThisInProductionEnvironment2024!",
     builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
     builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
     int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60")
@@ -76,7 +78,7 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
 // JWT Authentication
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "DEV_ONLY_NOT_FOR_PRODUCTION_ChangeThisInProductionEnvironment2024!";
 var key = Encoding.ASCII.GetBytes(jwtSecret);
 
 builder.Services.AddAuthentication(options =>
@@ -86,7 +88,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -122,8 +124,8 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager", "TechnicalLeader"));
     
     // فني أو أعلى
-    options.AddPolicy("TechnicianOrAbove", policy => 
-        policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager", "TechnicalLeader", "Technician"));
+    options.AddPolicy("TechnicianOrAbove", policy =>
+        policy.RequireRole("SuperAdmin", "CompanyAdmin", "Manager", "TechnicalLeader", "Technician", "Employee"));
     
     // موظف شركة (أي موظف داخل شركة)
     options.AddPolicy("CompanyEmployee", policy => 
@@ -142,9 +144,34 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        // السماح لجميع الأصول (Flutter Web يعمل على منافذ مختلفة)
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
+});
+
+// Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 10
+            }));
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
+// Response Compression
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<GzipCompressionProvider>();
 });
 
 builder.Services.AddControllers()
@@ -208,15 +235,20 @@ app.Use(async (context, next) =>
     }
 });
 
-// Enable Swagger in all environments
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// Swagger - Development only
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sadara API v1");
-    c.RoutePrefix = "swagger";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sadara API v1");
+        c.RoutePrefix = "swagger";
+    });
+}
 
 app.UseHttpsRedirection();
+app.UseResponseCompression();
+app.UseRateLimiter();
 app.UseCors("AllowAll");
 
 // خدمة بوابة المواطن (Citizen Portal) كملفات ثابتة

@@ -1815,35 +1815,46 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             ],
           ),
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'الاشتراكات',
-              style: TextStyle(
-                color: smartTextColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Text(
-                'العدد: ${_formatNumber(totalSubscriptions)}',
-                style: TextStyle(
-                  color: smartTextColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final sw = MediaQuery.of(context).size.width;
+            final isMobile = sw < 600;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'الاشتراكات',
+                  style: TextStyle(
+                    color: smartTextColor,
+                    fontSize: isMobile ? 13 : 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-            ),
-          ],
+                SizedBox(width: isMobile ? 6 : 10),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 6 : 12,
+                    vertical: isMobile ? 3 : 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Text(
+                    isMobile
+                        ? _formatNumber(totalSubscriptions)
+                        : 'العدد: ${_formatNumber(totalSubscriptions)}',
+                    style: TextStyle(
+                      color: smartTextColor,
+                      fontSize: isMobile ? 11 : 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         backgroundColor: Colors.transparent,
         iconTheme: IconThemeData(color: smartIconColor, size: 26),
@@ -2204,10 +2215,19 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   Widget _buildFilterSection() {
     if (!isFiltering) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: _buildAdvancedFilters(),
     );
@@ -2341,30 +2361,44 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   }
 
   Widget _buildAdvancedFilters() {
-    // === نمط موحد لكل العناصر ===
-    const double h = 34.0;
-    final borderColor = Colors.grey.shade300;
+    const double h = 40.0;
+    const borderColor = Colors.black;
     const radius = BorderRadius.all(Radius.circular(8));
-    final fieldBorder = OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: borderColor));
-    final focusBorder = OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5));
-    const ts = TextStyle(fontSize: 12);
+    const fieldBorder = OutlineInputBorder(
+      borderRadius: radius,
+      borderSide: BorderSide(color: Colors.black),
+    );
+    final focusBorder = OutlineInputBorder(
+      borderRadius: radius,
+      borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5),
+    );
+    const ts = TextStyle(fontSize: 13);
     final hintTs = TextStyle(fontSize: 12, color: Colors.grey.shade400);
 
     // === حقل إدخال موحد ===
-    Widget field(TextEditingController ctrl, String hint, IconData icon, {int flex = 1, TextInputType? kb}) {
+    Widget field(TextEditingController ctrl, String hint, IconData icon,
+        {int flex = 1, TextInputType? kb}) {
       return Expanded(
         flex: flex,
         child: SizedBox(
           height: h,
           child: TextFormField(
-            controller: ctrl, style: ts, keyboardType: kb,
+            controller: ctrl,
+            style: ts,
+            keyboardType: kb,
             onFieldSubmitted: (_) => _triggerSearch(),
             decoration: InputDecoration(
-              hintText: hint, hintStyle: hintTs,
-              border: fieldBorder, enabledBorder: fieldBorder, focusedBorder: focusBorder,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-              prefixIcon: Icon(icon, size: 16, color: Colors.grey.shade500),
-              prefixIconConstraints: const BoxConstraints(minWidth: 34),
+              hintText: hint,
+              hintStyle: hintTs,
+              filled: true,
+              fillColor: Colors.white,
+              border: fieldBorder,
+              enabledBorder: fieldBorder,
+              focusedBorder: focusBorder,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 10),
+              prefixIcon: Icon(icon, size: 18, color: Colors.grey.shade500),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36),
               isDense: true,
             ),
           ),
@@ -2372,84 +2406,175 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       );
     }
 
-    // === زر جلسة موحد (نفس حدود وارتفاع الحقول) ===
-    Widget sessionChip(String label, Color activeColor) {
-      final sel = selectedSessionFilter == label;
-      return GestureDetector(
-        onTap: () => setState(() => selectedSessionFilter = label),
-        child: Container(
-          height: h,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: sel ? activeColor : Colors.white,
-            borderRadius: radius,
-            border: Border.all(color: sel ? activeColor : borderColor),
-          ),
-          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-            color: sel ? Colors.white : Colors.grey.shade600)),
+    // === زر جلسة متصل (SegmentedButton style) ===
+    Widget sessionSegment() {
+      final items = [
+        {'label': 'الكل', 'color': Colors.blueGrey},
+        {'label': 'نشطة', 'color': const Color(0xFF388E3C)},
+        {'label': 'غير نشطة', 'color': const Color(0xFFC62828)},
+      ];
+      return Container(
+        height: h,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(items.length, (i) {
+            final item = items[i];
+            final label = item['label'] as String;
+            final color = item['color'] as Color;
+            final sel = selectedSessionFilter == label;
+            return GestureDetector(
+              onTap: () => setState(() => selectedSessionFilter = label),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: sel ? color : Colors.white,
+                  border: i > 0
+                      ? Border(
+                          right: BorderSide(color: borderColor, width: 0.5))
+                      : null,
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: sel ? Colors.white : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        children: [
-          // === الجلسة ===
-          sessionChip('الكل', Colors.blueGrey),
-          const SizedBox(width: 4),
-          sessionChip('نشطة', const Color(0xFF388E3C)),
-          const SizedBox(width: 4),
-          sessionChip('غير نشطة', const Color(0xFFC62828)),
-          const SizedBox(width: 10),
-          // === البحث ===
-          field(customerNameController, 'اسم المشترك', Icons.person_search, flex: 3),
-          const SizedBox(width: 6),
-          field(customerPhoneController, 'رقم الهاتف', Icons.phone, flex: 2, kb: TextInputType.phone),
-          const SizedBox(width: 6),
-          // === التواريخ ===
-          SizedBox(width: 120, height: h, child: _buildMiniDateField(fromDateController, 'من تاريخ', fieldBorder, ts, hintTs, focusBorder: focusBorder)),
-          const SizedBox(width: 4),
-          SizedBox(width: 120, height: h, child: _buildMiniDateField(toDateController, 'إلى تاريخ', fieldBorder, ts, hintTs, focusBorder: focusBorder)),
-          const SizedBox(width: 8),
-          // === ترتيب ===
-          _buildSortButton(h),
-          const SizedBox(width: 6),
-          // === بحث ===
-          SizedBox(
-            height: h,
-            child: ElevatedButton.icon(
-              onPressed: (isLoading || isExporting) ? null : _triggerSearch,
-              icon: const Icon(Icons.search, size: 15),
-              label: const Text('بحث', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                elevation: 0,
+    return LayoutBuilder(builder: (context, constraints) {
+      final isMobileLayout = constraints.maxWidth < 520;
+      return Column(
+      children: [
+        // ── الصف الأول: حقول البحث والتواريخ ──
+        if (isMobileLayout) ...[
+          // موبايل: صف للاسم+الهاتف، وصف للتواريخ
+          Row(
+            children: [
+              field(customerNameController, 'اسم المشترك', Icons.person_search, flex: 3),
+              const SizedBox(width: 8),
+              field(customerPhoneController, 'رقم الهاتف', Icons.phone, flex: 2, kb: TextInputType.phone),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: h,
+                  child: _buildMiniDateField(fromDateController, 'من تاريخ', fieldBorder, ts, hintTs, focusBorder: focusBorder, fillColor: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: SizedBox(
+                  height: h,
+                  child: _buildMiniDateField(toDateController, 'إلى تاريخ', fieldBorder, ts, hintTs, focusBorder: focusBorder, fillColor: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ] else
+        Row(
+          children: [
+            field(customerNameController, 'اسم المشترك',
+                Icons.person_search,
+                flex: 3),
+            const SizedBox(width: 8),
+            field(customerPhoneController, 'رقم الهاتف', Icons.phone,
+                flex: 2, kb: TextInputType.phone),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 130,
+              height: h,
+              child: _buildMiniDateField(fromDateController, 'من تاريخ',
+                  fieldBorder, ts, hintTs,
+                  focusBorder: focusBorder, fillColor: Colors.white),
+            ),
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 130,
+              height: h,
+              child: _buildMiniDateField(toDateController, 'إلى تاريخ',
+                  fieldBorder, ts, hintTs,
+                  focusBorder: focusBorder, fillColor: Colors.white),
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Divider(height: 1, color: Colors.grey.shade200),
+        ),
+        // ── الصف الثاني: الجلسة + ترتيب + بحث/مسح ──
+        Row(
+          children: [
+            sessionSegment(),
+            const SizedBox(width: 10),
+            _buildSortButton(h),
+            const Spacer(),
+            // === بحث ===
+            SizedBox(
+              height: h,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade500, Colors.blue.shade700],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ElevatedButton.icon(
+                  onPressed:
+                      (isLoading || isExporting) ? null : _triggerSearch,
+                  icon: const Icon(Icons.search, size: 15),
+                  label: const Text('بحث',
+                      style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          // === مسح ===
-          GestureDetector(
-            onTap: resetFilters,
-            child: Container(
-              height: h, width: h,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: radius,
-                border: Border.all(color: borderColor),
+            const SizedBox(width: 6),
+            // === مسح ===
+            GestureDetector(
+              onTap: resetFilters,
+              child: Container(
+                height: h,
+                width: h,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child:
+                    Icon(Icons.close, size: 16, color: Colors.red.shade400),
               ),
-              child: Icon(Icons.close, size: 16, color: Colors.grey.shade500),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
+    }); // LayoutBuilder
   }
 
   Widget _buildSortButton(double h) {
@@ -3291,7 +3416,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         } else if (constraints.maxWidth > 420) {
           cols = 2;
         } else {
-          cols = 1;
+          cols = 2;
         }
         final itemWidth = (constraints.maxWidth / cols) - (6.0 * (cols - 1));
         return Wrap(

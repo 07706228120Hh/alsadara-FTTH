@@ -182,6 +182,12 @@ class _CitizenDashboardState extends State<CitizenDashboard>
                       '/citizen/requests',
                     ),
                     _buildAnimatedMenuItem(
+                      Icons.map_rounded,
+                      'خريطة الشبكة',
+                      false,
+                      '/citizen/kml-map',
+                    ),
+                    _buildAnimatedMenuItem(
                       Icons.location_on_rounded,
                       'التتبع',
                       false,
@@ -836,6 +842,14 @@ class _CitizenDashboardState extends State<CitizenDashboard>
               subtitle: 'راوترات • أجهزة',
               gradient: const [Color(0xFF4facfe), Color(0xFF00f2fe)],
               onTap: () => context.go('/citizen/store'),
+            ),
+            _buildLuxuryServiceCard(
+              context,
+              icon: Icons.map_rounded,
+              title: 'خريطة التغطية',
+              subtitle: 'مناطق الشبكة',
+              gradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
+              onTap: () => context.go('/citizen/kml-map'),
             ),
           ],
         ),

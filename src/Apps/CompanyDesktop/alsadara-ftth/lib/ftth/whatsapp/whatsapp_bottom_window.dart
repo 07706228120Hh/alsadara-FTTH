@@ -400,6 +400,10 @@ class WhatsAppBottomWindow {
                       child: FloatingActionButton(
                         onPressed: () {
                           try {
+                            if (conv_page.WhatsAppConversationsPage.isOpen) {
+                              debugPrint('📌 صفحة المحادثات مفتوحة بالفعل');
+                              return;
+                            }
                             debugPrint('🔘 ضغط زر المحادثات العائم');
                             Navigator.push(
                               context,

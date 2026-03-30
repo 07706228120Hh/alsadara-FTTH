@@ -149,7 +149,7 @@ public class ReviewsController : ControllerBase
         // Check if customer has purchased this product
         var hasPurchased = await _unitOfWork.OrderItems.AsQueryable()
             .AnyAsync(oi => oi.ProductId == request.ProductId && 
-                           oi.Order.CustomerId == customer.Id &&
+                           oi.Order!.CustomerId == customer.Id &&
                            oi.Order.Status == Sadara.Domain.Enums.OrderStatus.Delivered);
 
         if (!hasPurchased)

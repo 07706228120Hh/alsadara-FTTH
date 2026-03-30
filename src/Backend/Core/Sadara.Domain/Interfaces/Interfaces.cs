@@ -116,6 +116,14 @@ public interface IUnitOfWork : IDisposable
     IRepository<Department, int> Departments { get; }
     IRepository<DepartmentTask, int> DepartmentTasks { get; }
 
+    // Daily Settlement Reports (تقارير التسديدات اليومية)
+    IRepository<DailySettlementReport, long> DailySettlementReports { get; }
+
+    // WhatsApp Conversations (محادثات واتساب)
+    IRepository<WhatsAppConversation, long> WhatsAppConversations { get; }
+    IRepository<WhatsAppMessage, long> WhatsAppMessages { get; }
+    IRepository<WhatsAppBatchReport, long> WhatsAppBatchReports { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);

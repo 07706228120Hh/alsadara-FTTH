@@ -7,9 +7,6 @@ import 'add_task_api_dialog.dart';
 import '../ftth/tickets/tickets_login_page.dart';
 import 'reports_page.dart';
 import '../services/whatsapp_template_storage.dart';
-import '../pages/settings_page.dart';
-import '../pages/company_settings_page.dart';
-import '../services/vps_auth_service.dart';
 
 class HomePageTasks extends StatefulWidget {
   final String username;
@@ -286,49 +283,41 @@ class HomePageTasksState extends State<HomePageTasks> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── 4 بطاقات إحصائية ──
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'مفتوحة',
-                  openTasks,
-                  totalTasks,
-                  const Color(0xFF3B82F6),
-                  Icons.inbox_rounded,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _buildStatCard(
-                  'قيد التنفيذ',
-                  inProgressTasks,
-                  totalTasks,
-                  const Color(0xFFF59E0B),
-                  Icons.sync_rounded,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _buildStatCard(
-                  'مكتملة',
-                  completedTasks,
-                  totalTasks,
-                  const Color(0xFF10B981),
-                  Icons.check_circle_rounded,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _buildStatCard(
-                  'ملغية',
-                  canceledTasks,
-                  totalTasks,
-                  const Color(0xFFEF4444),
-                  Icons.cancel_rounded,
-                ),
-              ),
-            ],
-          ),
+          LayoutBuilder(builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            if (isMobile) {
+              return Column(
+                children: [
+                  IntrinsicHeight(
+                    child: Row(children: [
+                      Expanded(child: _buildStatCard('مفتوحة', openTasks, totalTasks, const Color(0xFF3B82F6), Icons.inbox_rounded, compact: true)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildStatCard('قيد التنفيذ', inProgressTasks, totalTasks, const Color(0xFFF59E0B), Icons.sync_rounded, compact: true)),
+                    ]),
+                  ),
+                  const SizedBox(height: 10),
+                  IntrinsicHeight(
+                    child: Row(children: [
+                      Expanded(child: _buildStatCard('مكتملة', completedTasks, totalTasks, const Color(0xFF10B981), Icons.check_circle_rounded, compact: true)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildStatCard('ملغية', canceledTasks, totalTasks, const Color(0xFFEF4444), Icons.cancel_rounded, compact: true)),
+                    ]),
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: _buildStatCard('مفتوحة', openTasks, totalTasks, const Color(0xFF3B82F6), Icons.inbox_rounded)),
+                const SizedBox(width: 14),
+                Expanded(child: _buildStatCard('قيد التنفيذ', inProgressTasks, totalTasks, const Color(0xFFF59E0B), Icons.sync_rounded)),
+                const SizedBox(width: 14),
+                Expanded(child: _buildStatCard('مكتملة', completedTasks, totalTasks, const Color(0xFF10B981), Icons.check_circle_rounded)),
+                const SizedBox(width: 14),
+                Expanded(child: _buildStatCard('ملغية', canceledTasks, totalTasks, const Color(0xFFEF4444), Icons.cancel_rounded)),
+              ],
+            );
+          }),
           const SizedBox(height: 20),
 
           // ── بطاقة توزيع المهام حسب الفني ──
@@ -377,14 +366,14 @@ class HomePageTasksState extends State<HomePageTasks> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A3E),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2D2D5E), width: 1.2),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -394,12 +383,12 @@ class HomePageTasksState extends State<HomePageTasks> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF252550),
+              color: const Color(0xFFEEF2F7),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(14),
                 topRight: Radius.circular(14),
               ),
-              border: Border.all(color: const Color(0xFF3D3D6E), width: 0.8),
+              border: Border.all(color: const Color(0xFFDDE3EA), width: 0.8),
             ),
             child: const Row(
               children: [
@@ -410,7 +399,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF8B8BAE))),
+                          color: Color(0xFF6B7280))),
                 ),
                 SizedBox(
                   width: 45,
@@ -454,7 +443,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF8B8BAE))),
+                          color: Color(0xFF6B7280))),
                 ),
                 Expanded(
                   child: Text('الفني',
@@ -462,7 +451,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF8B8BAE))),
+                          color: Color(0xFF6B7280))),
                 ),
               ],
             ),
@@ -485,13 +474,11 @@ class HomePageTasksState extends State<HomePageTasks> {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color:
-                    isEven ? const Color(0xFF1A1A3E) : const Color(0xFF1F1F45),
+                color: isEven ? Colors.white : const Color(0xFFF9FAFB),
                 border: Border(
-                  bottom:
-                      BorderSide(color: const Color(0xFF2D2D5E), width: 0.8),
-                  left: BorderSide(color: const Color(0xFF2D2D5E), width: 0.8),
-                  right: BorderSide(color: const Color(0xFF2D2D5E), width: 0.8),
+                  bottom: BorderSide(color: const Color(0xFFE5E7EB), width: 0.8),
+                  left: BorderSide(color: const Color(0xFFE5E7EB), width: 0.8),
+                  right: BorderSide(color: const Color(0xFFE5E7EB), width: 0.8),
                 ),
               ),
               child: Row(
@@ -528,7 +515,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontWeight: FontWeight.w800,
                         color: canceled > 0
                             ? const Color(0xFFE53935)
-                            : const Color(0xFF3D3D6E),
+                            : const Color(0xFFD1D5DB),
                       ),
                     ),
                   ),
@@ -543,7 +530,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontWeight: FontWeight.w800,
                         color: done > 0
                             ? const Color(0xFF4CAF50)
-                            : const Color(0xFF3D3D6E),
+                            : const Color(0xFFD1D5DB),
                       ),
                     ),
                   ),
@@ -558,7 +545,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontWeight: FontWeight.w800,
                         color: progress > 0
                             ? const Color(0xFFFF9800)
-                            : const Color(0xFF3D3D6E),
+                            : const Color(0xFFD1D5DB),
                       ),
                     ),
                   ),
@@ -573,7 +560,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontWeight: FontWeight.w800,
                         color: open > 0
                             ? const Color(0xFF2196F3)
-                            : const Color(0xFF3D3D6E),
+                            : const Color(0xFFD1D5DB),
                       ),
                     ),
                   ),
@@ -585,7 +572,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.5),
+                        color: const Color(0xFF9CA3AF),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -601,7 +588,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: Color(0xFF1F2937),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -621,12 +608,12 @@ class HomePageTasksState extends State<HomePageTasks> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF252550),
+              color: const Color(0xFFEEF2F7),
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(14),
                 bottomRight: Radius.circular(14),
               ),
-              border: Border.all(color: const Color(0xFF3D3D6E), width: 0.8),
+              border: Border.all(color: const Color(0xFFDDE3EA), width: 0.8),
             ),
             child: Row(
               children: [
@@ -706,7 +693,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: Color(0xFF1F2937),
                     ),
                   ),
                 ),
@@ -718,22 +705,31 @@ class HomePageTasksState extends State<HomePageTasks> {
     );
   }
 
-  /// عداد دائري لكل حالة
+  /// بطاقة إحصائية
   Widget _buildStatCard(
-      String label, int count, int total, Color color, IconData icon) {
+      String label, int count, int total, Color color, IconData icon, {bool compact = false}) {
     double pct = total > 0 ? (count / total) * 100 : 0;
+    final pad = compact ? 12.0 : 18.0;
+    final numSize = compact ? 32.0 : 42.0;
+    final lblSize = compact ? 13.0 : 16.0;
+    final iconSize = compact ? 20.0 : 24.0;
+    final iconPad = compact ? 8.0 : 10.0;
+    final gap1 = compact ? 10.0 : 14.0;
+    final gap2 = compact ? 6.0 : 8.0;
+    final gap3 = compact ? 8.0 : 10.0;
+    final pctSize = compact ? 12.0 : 14.0;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A3E),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2D2D5E), width: 1.2),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -745,53 +741,53 @@ class HomePageTasksState extends State<HomePageTasks> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(iconPad),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: color, size: 24),
+                child: Icon(icon, color: color, size: iconSize),
               ),
               Icon(
                 Icons.trending_up_rounded,
-                color: color.withValues(alpha: 0.5),
-                size: 26,
+                color: color.withValues(alpha: 0.4),
+                size: compact ? 20 : 26,
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: gap1),
           // الرقم الكبير
           Text(
             '$count',
-            style: const TextStyle(
-              fontSize: 42,
+            style: TextStyle(
+              fontSize: numSize,
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: const Color(0xFF1F2937),
               height: 1,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: gap2),
           // العنوان
           Text(
             label,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: lblSize,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: const Color(0xFF4B5563),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: gap3),
           // شارة النسبة
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               '${pct.toStringAsFixed(0)}%',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: pctSize,
                 fontWeight: FontWeight.w700,
                 color: color,
               ),
@@ -931,7 +927,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white70),
+                    color: Color(0xFF9CA3AF)),
               ),
             ),
           )
@@ -980,12 +976,12 @@ class HomePageTasksState extends State<HomePageTasks> {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A3E),
-                border: Border.all(color: const Color(0xFF2D2D5E), width: 1),
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -1075,12 +1071,12 @@ class HomePageTasksState extends State<HomePageTasks> {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A3E),
-                border: Border.all(color: const Color(0xFF2D2D5E), width: 1),
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -1194,10 +1190,10 @@ class HomePageTasksState extends State<HomePageTasks> {
             maxHeight: 56,
           ),
           decoration: BoxDecoration(
-            color: isSelected ? color : const Color(0xFF1A1A3E),
+            color: isSelected ? color : const Color(0xFFF3F4F6),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? color : const Color(0xFF2D2D5E),
+              color: isSelected ? color : const Color(0xFFE5E7EB),
               width: isSelected ? 2 : 1,
             ),
             boxShadow: isSelected
@@ -1237,7 +1233,7 @@ class HomePageTasksState extends State<HomePageTasks> {
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF8B8BAE),
+                  color: isSelected ? Colors.white : const Color(0xFF6B7280),
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   height: 1.0,
@@ -1288,11 +1284,63 @@ class HomePageTasksState extends State<HomePageTasks> {
     return '${duration.inHours} ساعة و ${duration.inMinutes.remainder(60)} دقيقة';
   }
 
+  Widget _buildDateFilterDropdown() {
+    const filters = [
+      {'label': 'اليوم', 'value': 'today', 'icon': Icons.today},
+      {'label': 'أمس', 'value': 'yesterday', 'icon': Icons.history},
+      {'label': 'الكل', 'value': 'all', 'icon': Icons.all_inclusive},
+    ];
+    final current = filters.firstWhere((f) => f['value'] == _dateFilter);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _dateFilter,
+          dropdownColor: const Color(0xFF1E3A5F),
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 20),
+          isDense: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          selectedItemBuilder: (ctx) => filters.map((f) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(f['icon'] as IconData, size: 15, color: const Color(0xFF4FC3F7)),
+              const SizedBox(width: 6),
+              Text(f['label'] as String, style: const TextStyle(color: Colors.white, fontSize: 13)),
+            ],
+          )).toList(),
+          items: filters.map((f) => DropdownMenuItem<String>(
+            value: f['value'] as String,
+            child: Row(
+              children: [
+                Icon(f['icon'] as IconData, size: 16, color: _dateFilter == f['value'] ? const Color(0xFF4FC3F7) : Colors.white54),
+                const SizedBox(width: 8),
+                Text(f['label'] as String),
+              ],
+            ),
+          )).toList(),
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() {
+              _dateFilter = v;
+              _applyPermissionFilter();
+              _filterTasksByStatus(_getStatusByIndex(currentIndex));
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   /// شريط تصفية التاريخ
   Widget _buildDateFilterBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      color: const Color(0xFF0F0F23),
+      color: const Color(0xFFF5F7FA),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -1306,7 +1354,7 @@ class HomePageTasksState extends State<HomePageTasks> {
     );
   }
 
-  Widget _buildDateFilterButton(String label, String value, IconData icon) {
+  Widget _buildDateFilterButton(String label, String value, IconData icon, {bool compact = false}) {
     final isSelected = _dateFilter == value;
     return Material(
       color: Colors.transparent,
@@ -1321,17 +1369,20 @@ class HomePageTasksState extends State<HomePageTasks> {
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 6 : 18,
+            vertical: compact ? 6 : 8,
+          ),
           decoration: BoxDecoration(
             gradient: isSelected
                 ? const LinearGradient(
                     colors: [Color(0xFF00B4D8), Color(0xFF4FC3F7)],
                   )
                 : null,
-            color: isSelected ? null : const Color(0xFF1A1A3E),
+            color: isSelected ? null : Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? Colors.transparent : const Color(0xFF2D2D5E),
+              color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.3),
               width: 1,
             ),
             boxShadow: isSelected
@@ -1345,20 +1396,21 @@ class HomePageTasksState extends State<HomePageTasks> {
                 : null,
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                size: 16,
-                color: isSelected ? Colors.white : const Color(0xFF8B8BAE),
+                size: compact ? 13 : 16,
+                color: Colors.white.withValues(alpha: isSelected ? 1.0 : 0.7),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: compact ? 4 : 6),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: compact ? 11 : 13,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? Colors.white : const Color(0xFF8B8BAE),
+                  color: Colors.white.withValues(alpha: isSelected ? 1.0 : 0.7),
                 ),
               ),
             ],
@@ -1377,10 +1429,10 @@ class HomePageTasksState extends State<HomePageTasks> {
         vertical: r.isMobile ? 10 : 15,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A3E),
+        color: const Color(0xFF1A237E),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -1400,7 +1452,7 @@ class HomePageTasksState extends State<HomePageTasks> {
               padding: const EdgeInsets.all(6),
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               style: IconButton.styleFrom(
-                backgroundColor: const Color(0xFF2D2D5E),
+                backgroundColor: Colors.white.withValues(alpha: 0.15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -1419,7 +1471,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 padding: const EdgeInsets.all(6),
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF2D2D5E),
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -1429,27 +1481,16 @@ class HomePageTasksState extends State<HomePageTasks> {
 
             const SizedBox(width: 8),
 
-            // أزرار تصفية التاريخ في الوسط
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildDateFilterButton('اليوم', 'today', Icons.today),
-                  const SizedBox(width: 8),
-                  _buildDateFilterButton('أمس', 'yesterday', Icons.history),
-                  const SizedBox(width: 8),
-                  _buildDateFilterButton('الكل', 'all', Icons.all_inclusive),
-                ],
-              ),
-            ),
+            // قائمة تصفية التاريخ
+            _buildDateFilterDropdown(),
 
-            const SizedBox(width: 8),
+            const Spacer(),
 
             // أيقونة الإشعارات الجديدة - إضافة جديدة
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF2D2D5E),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Stack(
@@ -1516,11 +1557,39 @@ class HomePageTasksState extends State<HomePageTasks> {
 
             const SizedBox(width: 6),
 
+            // زر إضافة مهمة جديدة (للمدير والليدر فقط)
+            if (widget.currentUserRole == 'مدير' ||
+                widget.currentUserRole == 'ليدر')
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.add_task,
+                      size: 26, color: Color(0xFF66BB6A)),
+                  tooltip: 'إضافة مهمة جديدة',
+                  onPressed: () => _showAddTaskDialog(),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+
+            const SizedBox(width: 6),
+
             // زر إضافة شراء اشتراك - يظهر للجميع
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF2D2D5E),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: IconButton(
@@ -1539,6 +1608,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 ),
               ),
             ),
+
           ],
         ),
       ),
@@ -1636,7 +1706,7 @@ class HomePageTasksState extends State<HomePageTasks> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFF0F0F23),
+      backgroundColor: const Color(0xFFF5F7FA),
       drawer: _shouldShowDrawer()
           ? _buildDrawer()
           : null, // إظهار القائمة الجانبية فقط للليدر والمدير
@@ -1696,17 +1766,17 @@ class HomePageTasksState extends State<HomePageTasks> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A3E),
+          color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
           ],
           border: const Border(
             top: BorderSide(
-              color: Color(0xFF2D2D5E),
+              color: Color(0xFFE5E7EB),
               width: 1,
             ),
           ),
@@ -1841,133 +1911,19 @@ class HomePageTasksState extends State<HomePageTasks> {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    // إضافة مهمة جديدة (للمدير والليدر فقط)
-                    if (widget.currentUserRole == 'مدير' ||
-                        widget.currentUserRole == 'ليدر')
-                      _buildDrawerItem(
-                        icon: Icons.add_task,
-                        title: 'إضافة مهمة جديدة',
-                        subtitle: 'إنشاء مهمة جديدة',
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showAddTaskDialog();
-                        },
-                        color: Colors.green,
-                      ),
-
-                    // إضافة شراء اشتراك (للجميع)
-                    _buildDrawerItem(
-                      icon: Icons.add_shopping_cart,
-                      title: 'إضافة شراء اشتراك',
-                      subtitle: 'طلب شراء اشتراك جديد',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showAddSubscriptionDialog();
-                      },
-                      color: Colors.purple,
-                    ),
-
                     // التقارير (للمدير والليدر فقط)
                     if (widget.currentUserRole == 'مدير' ||
                         widget.currentUserRole == 'ليدر')
                       _buildDrawerItem(
                         icon: Icons.analytics,
                         title: 'التقارير والإحصائيات',
-                        subtitle: 'عرض التقارير الت��صيلية',
+                        subtitle: 'عرض التقارير التفصيلية',
                         onTap: () {
                           Navigator.pop(context);
                           _showAllTasks();
                         },
                         color: Colors.blue,
                       ),
-
-                    // إعدادات المستخدم (للمدير فقط)
-                    if (widget.currentUserRole == 'مدير')
-                      _buildDrawerItem(
-                        icon: Icons.settings,
-                        title: 'الإعدادات',
-                        subtitle: 'إعدادات الحساب والتطبيق',
-                        onTap: () {
-                          Navigator.pop(context);
-                          // الانتقال إلى صفحة الإعدادات
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SettingsPage(
-                                currentUserRole: widget.currentUserRole,
-                                currentUsername: widget.username,
-                              ),
-                            ),
-                          );
-                        },
-                        color: Colors.orange,
-                      ),
-
-                    // تعديل رسالة الواتساب (للمدير والليدر فقط)
-                    if (widget.currentUserRole == 'مدير' ||
-                        widget.currentUserRole == 'ليدر')
-                      _buildDrawerItem(
-                        icon: Icons.message_outlined,
-                        title: 'تعديل رسالة الواتساب',
-                        subtitle: 'تخصيص قالب رسائل الواتساب',
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showWhatsAppTemplateEditor();
-                        },
-                        color: Colors.green,
-                      ),
-
-                    // إعدادات الشركة (للمدير فقط)
-                    if (widget.currentUserRole == 'مدير')
-                      _buildDrawerItem(
-                        icon: Icons.business_center,
-                        title: 'إعدادات الشركة',
-                        subtitle: 'عرض معلومات الشركة والاشتراك',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CompanySettingsPage(
-                                companyId:
-                                    VpsAuthService.instance.currentCompanyId,
-                                companyCode:
-                                    VpsAuthService.instance.currentCompanyCode,
-                                currentUserRole: widget.currentUserRole,
-                                currentUsername: widget.username,
-                              ),
-                            ),
-                          );
-                        },
-                        color: Colors.amber,
-                      ),
-
-                    // خط فاصل
-                    const Divider(),
-
-                    // معلومات حول التطبيق
-                    _buildDrawerItem(
-                      icon: Icons.info,
-                      title: 'حول التطبيق',
-                      subtitle: 'معلومات الإصدار والدعم',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showAboutDialog();
-                      },
-                      color: Colors.grey,
-                    ),
-
-                    // تسجيل الخروج
-                    _buildDrawerItem(
-                      icon: Icons.logout,
-                      title: 'تسجيل الخروج',
-                      subtitle: 'الخروج من الحساب',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showLogoutDialog();
-                      },
-                      color: Colors.red,
-                    ),
                   ],
                 ),
               ),

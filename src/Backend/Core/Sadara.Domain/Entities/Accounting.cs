@@ -581,6 +581,9 @@ public enum TechnicianTransactionCategory
     /// <summary>شراء اشتراك</summary>
     Subscription = 4,
 
+    /// <summary>خصم من الراتب</summary>
+    SalaryDeduction = 5,
+
     /// <summary>أخرى</summary>
     Other = 99
 }

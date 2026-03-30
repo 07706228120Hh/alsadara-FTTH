@@ -1,165 +1,381 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+import 'api/api_client.dart';
 import '../models/whatsapp_conversation.dart';
-import 'firebase_availability.dart';
 
-/// خدمة إدارة محادثات WhatsApp
+/// خدمة إدارة محادثات WhatsApp — تستخدم PostgreSQL عبر API بدلاً من Firestore
 class WhatsAppConversationService {
-  /// تحميل كسول لتجنب خطأ [core/no-app] قبل اكتمال Firebase.initializeApp()
-  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  // ── إعدادات Polling ──
+  static const _conversationPollInterval = Duration(seconds: 4);
+  static const _messagePollInterval = Duration(seconds: 3);
 
-  /// الحصول على جميع المحادثات (Real-time)
+  // ── كاش ──
+  static List<WhatsAppConversation>? _cachedConversations;
+  static DateTime? _lastConversationFetch;
+
+  // ── StreamControllers نشطة ──
+  static StreamController<List<WhatsAppConversation>>? _conversationsController;
+  static Timer? _conversationsTimer;
+  static int _conversationsListeners = 0;
+
+  static final Map<String, StreamController<List<WhatsAppMessage>>>
+      _messageControllers = {};
+  static final Map<String, Timer?> _messageTimers = {};
+
+  static StreamController<int>? _unreadController;
+  static Timer? _unreadTimer;
+  static int _unreadListeners = 0;
+
+  // ══════════════════════════════════════
+  // getConversations() -> Stream
+  // ══════════════════════════════════════
+
+  /// الحصول على المحادثات — يرجع الكاش فوراً ثم يحدث عبر polling
   static Stream<List<WhatsAppConversation>> getConversations() {
-    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
-    return _firestore
-        .collection('whatsapp_conversations')
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => WhatsAppConversation.fromFirestore(doc))
-          .toList();
-    });
+    _conversationsListeners++;
+    if (_conversationsController == null || _conversationsController!.isClosed) {
+      _conversationsController =
+          StreamController<List<WhatsAppConversation>>.broadcast(
+        onCancel: _onConversationsCancel,
+      );
+    }
+
+    // إرسال الكاش فوراً إن وُجد
+    if (_cachedConversations != null) {
+      Future.microtask(
+          () => _conversationsController?.add(_cachedConversations!));
+    }
+
+    // بدء الـ polling إذا لم يكن يعمل
+    if (_conversationsTimer == null) {
+      _fetchConversations(); // fetch فوري
+      _conversationsTimer = Timer.periodic(
+          _conversationPollInterval, (_) => _fetchConversations());
+    }
+
+    return _conversationsController!.stream;
   }
 
-  /// جلب اسم المستخدم من رقم الهاتف
-  static Future<String?> _getUserNameFromPhone(String phoneNumber) async {
-    if (!FirebaseAvailability.isAvailable) return null;
+  static void _onConversationsCancel() {
+    _conversationsListeners--;
+    if (_conversationsListeners <= 0) {
+      _conversationsTimer?.cancel();
+      _conversationsTimer = null;
+      _conversationsController?.close();
+      _conversationsController = null;
+      _conversationsListeners = 0;
+    }
+  }
+
+  static Future<void> _fetchConversations() async {
     try {
-      print('🔍 محاولة جلب اسم لـ: $phoneNumber');
+      final url = _lastConversationFetch != null
+          ? '/whatsapp/conversations?limit=200&updatedSince=${_lastConversationFetch!.toUtc().toIso8601String()}'
+          : '/whatsapp/conversations?limit=200';
 
-      // قائمة صيغ مختلفة للبحث
-      List<String> phoneVariants = [phoneNumber];
+      final response = await ApiClient.instance.get(
+        url,
+        (data) => data,
+        useInternalKey: true,
+      );
 
-      // إزالة أي رموز وإبقاء الأرقام فقط
-      final cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+      if (response.isSuccess && response.data != null) {
+        // ApiClient يمرر body['data'] مباشرة عند success
+        // فقد يكون List أو Map حسب الاستجابة
+        final rawData = response.data;
+        final serverData = rawData is List
+            ? rawData
+            : (rawData is Map ? (rawData['data'] as List?) ?? [] : []);
 
-      // إضافة صيغ مختلفة
-      if (cleanPhone.startsWith('964')) {
-        phoneVariants.add('0${cleanPhone.substring(3)}'); // 07XXXXXXXXX
-        phoneVariants.add('+$cleanPhone'); // +964XXXXXXXXX
-        phoneVariants.add(cleanPhone); // 964XXXXXXXXX
-      } else if (cleanPhone.startsWith('0')) {
-        phoneVariants.add('964${cleanPhone.substring(1)}'); // 964XXXXXXXXX
-        phoneVariants.add('+964${cleanPhone.substring(1)}'); // +964XXXXXXXXX
-      }
-
-      // إضافة الرقم النظيف
-      phoneVariants.add(cleanPhone);
-
-      print('🔍 صيغ البحث: $phoneVariants');
-
-      // البحث في مجموعة ftth_subscriptions
-      for (String variant in phoneVariants) {
-        final snapshot = await _firestore
-            .collection('ftth_subscriptions')
-            .where('phone', isEqualTo: variant)
-            .limit(1)
-            .get();
-
-        if (snapshot.docs.isNotEmpty) {
-          final data = snapshot.docs.first.data();
-          final name = data['name'] as String?;
-          if (name != null && name.isNotEmpty) {
-            print('✅ تم العثور على الاسم: $name للرقم: $variant');
-            return name;
+        if (_lastConversationFetch != null && _cachedConversations != null) {
+          // تحديث تدريجي: دمج التغييرات الجديدة في الكاش
+          final updatedMap = {
+            for (var c in _cachedConversations!) c.phoneNumber: c
+          };
+          for (var json in serverData) {
+            final conv = WhatsAppConversation.fromJson(
+                json is Map<String, dynamic> ? json : {});
+            updatedMap[conv.phoneNumber] = conv;
           }
+          _cachedConversations = updatedMap.values.toList()
+            ..sort(
+                (a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+        } else {
+          // أول fetch — تحميل كامل
+          _cachedConversations = serverData
+              .map((json) => WhatsAppConversation.fromJson(
+                  json is Map<String, dynamic> ? json : {}))
+              .toList();
         }
+
+        _lastConversationFetch = DateTime.now().toUtc();
+        _conversationsController?.add(_cachedConversations!);
+
+        // تحديث عدد غير المقروءة
+        _updateUnreadFromCache();
       }
-
-      print('⚠️ لم يتم العثور على اسم للرقم: $phoneNumber');
-      return null;
     } catch (e) {
-      print('❌ خطأ في جلب اسم المستخدم');
-      return null;
+      // عند الخطأ — إرسال الكاش الموجود
+      if (_cachedConversations != null) {
+        _conversationsController?.add(_cachedConversations!);
+      }
     }
   }
 
-  /// تحديث اسم المستخدم في المحادثة
-  static Future<void> _updateConversationUserName(
-      String phoneNumber, String userName) async {
-    if (!FirebaseAvailability.isAvailable) return;
-    try {
-      await _firestore
-          .collection('whatsapp_conversations')
-          .doc(phoneNumber)
-          .update({
-        'userName': userName,
-        'contactName': userName,
-      });
-    } catch (e) {
-      print('❌ خطأ في تحديث اسم المستخدم');
-    }
+  /// مسح الكاش
+  static void invalidateCache() {
+    _cachedConversations = null;
+    _lastConversationFetch = null;
   }
 
-  /// الحصول على رسائل محادثة معينة (Real-time) - من subcollection
+  // ══════════════════════════════════════
+  // getMessages(phone) -> Stream
+  // ══════════════════════════════════════
+
+  /// الحصول على رسائل محادثة معينة
   static Stream<List<WhatsAppMessage>> getMessages(String phoneNumber) {
-    if (!FirebaseAvailability.isAvailable) return Stream.value([]);
-    // قراءة الرسائل من subcollection messages تحت المحادثة
-    return _firestore
-        .collection('whatsapp_conversations')
-        .doc(phoneNumber)
-        .collection('messages')
-        .orderBy('timestamp', descending: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => WhatsAppMessage.fromFirestore(doc))
-          .toList();
-    });
+    if (!_messageControllers.containsKey(phoneNumber) ||
+        _messageControllers[phoneNumber]!.isClosed) {
+      _messageControllers[phoneNumber] =
+          StreamController<List<WhatsAppMessage>>.broadcast(
+        onCancel: () {
+          _messageTimers[phoneNumber]?.cancel();
+          _messageTimers.remove(phoneNumber);
+          _messageControllers[phoneNumber]?.close();
+          _messageControllers.remove(phoneNumber);
+        },
+      );
+
+      // بدء الـ polling
+      _fetchMessages(phoneNumber);
+      _messageTimers[phoneNumber] = Timer.periodic(
+          _messagePollInterval, (_) => _fetchMessages(phoneNumber));
+    }
+
+    return _messageControllers[phoneNumber]!.stream;
   }
 
-  /// إرسال رسالة (حفظها في Firestore)
+  static Future<void> _fetchMessages(String phoneNumber) async {
+    try {
+      final response = await ApiClient.instance.get(
+        '/whatsapp/conversations/$phoneNumber/messages?limit=200',
+        (data) => data,
+        useInternalKey: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final rawData = response.data;
+        final serverData = rawData is List
+            ? rawData
+            : (rawData is Map ? (rawData['data'] as List?) ?? [] : []);
+        final messages = serverData
+            .map((json) => WhatsAppMessage.fromJson(
+                json is Map<String, dynamic> ? json : {}))
+            .toList();
+        _messageControllers[phoneNumber]?.add(messages);
+      }
+    } catch (e) {
+      // صامت — لا داعي لإزعاج المستخدم
+    }
+  }
+
+  // ══════════════════════════════════════
+  // getUnreadCount() -> Stream<int>
+  // ══════════════════════════════════════
+
+  /// عدد الرسائل غير المقروءة
+  static Stream<int> getUnreadCount() {
+    _unreadListeners++;
+    if (_unreadController == null || _unreadController!.isClosed) {
+      _unreadController = StreamController<int>.broadcast(
+        onCancel: _onUnreadCancel,
+      );
+    }
+
+    // بدء الـ polling
+    if (_unreadTimer == null) {
+      _fetchUnreadCount();
+      _unreadTimer = Timer.periodic(
+          _conversationPollInterval, (_) => _fetchUnreadCount());
+    }
+
+    return _unreadController!.stream;
+  }
+
+  static void _onUnreadCancel() {
+    _unreadListeners--;
+    if (_unreadListeners <= 0) {
+      _unreadTimer?.cancel();
+      _unreadTimer = null;
+      _unreadController?.close();
+      _unreadController = null;
+      _unreadListeners = 0;
+    }
+  }
+
+  static Future<void> _fetchUnreadCount() async {
+    try {
+      final response = await ApiClient.instance.get(
+        '/whatsapp/unread-count',
+        (data) => data,
+        useInternalKey: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final rawData = response.data;
+        int count = 0;
+        if (rawData is Map) {
+          count = rawData['unreadCount'] ?? rawData['data']?['unreadCount'] ?? 0;
+        }
+        _unreadController?.add(count);
+      }
+    } catch (e) {
+      // fallback: حساب من الكاش
+      _updateUnreadFromCache();
+    }
+  }
+
+  static void _updateUnreadFromCache() {
+    if (_cachedConversations != null &&
+        _unreadController != null &&
+        !_unreadController!.isClosed) {
+      final total =
+          _cachedConversations!.fold<int>(0, (sum, c) => sum + c.unreadCount);
+      _unreadController?.add(total);
+    }
+  }
+
+  // ══════════════════════════════════════
+  // sendMessage() — POST إلى API
+  // ══════════════════════════════════════
+
+  /// إرسال رسالة (حفظها في PostgreSQL)
   static Future<void> sendMessage({
     required String phoneNumber,
     required String message,
     String type = 'text',
   }) async {
-    if (!FirebaseAvailability.isAvailable) return;
-    final timestamp = DateTime.now();
-    final timestampUnix = (timestamp.millisecondsSinceEpoch / 1000).floor();
+    try {
+      await ApiClient.instance.post(
+        '/whatsapp/conversations/$phoneNumber/messages',
+        {'message': message, 'type': type},
+        (data) => data,
+        useInternalKey: true,
+      );
 
-    // محاولة جلب اسم المستخدم
-    final userName = await _getUserNameFromPhone(phoneNumber);
-
-    // حفظ الرسالة في subcollection messages تحت المحادثة
-    final messageId = 'msg_${DateTime.now().millisecondsSinceEpoch}';
-    await _firestore
-        .collection('whatsapp_conversations')
-        .doc(phoneNumber)
-        .collection('messages')
-        .doc(messageId)
-        .set({
-      'messageId': messageId,
-      'phoneNumber': phoneNumber,
-      'text': message,
-      'messageType': type,
-      'timestamp': timestampUnix,
-      'direction': 'outgoing',
-      'status': 'sent',
-      'contactName': userName ?? phoneNumber,
-    });
-
-    // تحديث المحادثة
-    final conversationData = {
-      'phoneNumber': phoneNumber,
-      'lastMessage': message,
-      'lastMessageTime': timestampUnix,
-      'contactName': userName ?? phoneNumber,
-      'updatedAt': DateTime.now().millisecondsSinceEpoch,
-      'unreadCount': 0,
-    };
-
-    if (userName != null) {
-      conversationData['userName'] = userName;
+      // تحديث فوري للمحادثات
+      _lastConversationFetch = null;
+      _fetchConversations();
+      _fetchMessages(phoneNumber);
+    } catch (e) {
+      print('❌ خطأ في حفظ الرسالة: $e');
+      rethrow;
     }
-
-    await _firestore
-        .collection('whatsapp_conversations')
-        .doc(phoneNumber)
-        .set(conversationData, SetOptions(merge: true));
   }
 
-  /// حفظ رسالة واردة (من WhatsApp)
+  // ══════════════════════════════════════
+  // markAsRead()
+  // ══════════════════════════════════════
+
+  /// تحديث حالة قراءة المحادثة
+  static Future<void> markAsRead(String phoneNumber) async {
+    // تحديث محلي فوري (optimistic)
+    if (_cachedConversations != null) {
+      final idx = _cachedConversations!
+          .indexWhere((c) => c.phoneNumber == phoneNumber);
+      if (idx >= 0) {
+        final old = _cachedConversations![idx];
+        _cachedConversations![idx] = WhatsAppConversation(
+          phoneNumber: old.phoneNumber,
+          userName: old.userName,
+          lastMessage: old.lastMessage,
+          lastMessageTime: old.lastMessageTime,
+          lastMessageType: old.lastMessageType,
+          unreadCount: 0,
+          isIncoming: old.isIncoming,
+          updatedAt: old.updatedAt,
+        );
+        _conversationsController?.add(_cachedConversations!);
+        _updateUnreadFromCache();
+      }
+    }
+
+    try {
+      await ApiClient.instance.put(
+        '/whatsapp/conversations/$phoneNumber/read',
+        {},
+        (data) => data,
+        useInternalKey: true,
+      );
+    } catch (e) {
+      // صامت
+    }
+  }
+
+  // ══════════════════════════════════════
+  // deleteConversation()
+  // ══════════════════════════════════════
+
+  /// حذف محادثة
+  static Future<void> deleteConversation(String phoneNumber) async {
+    try {
+      await ApiClient.instance.delete(
+        '/whatsapp/conversations/$phoneNumber',
+        (data) => data,
+        useInternalKey: true,
+      );
+
+      // إزالة من الكاش فوراً
+      _cachedConversations
+          ?.removeWhere((c) => c.phoneNumber == phoneNumber);
+      _conversationsController?.add(_cachedConversations ?? []);
+      _updateUnreadFromCache();
+    } catch (e) {
+      print('❌ خطأ في حذف المحادثة: $e');
+      rethrow;
+    }
+  }
+
+  // ══════════════════════════════════════
+  // searchConversations() — بحث محلي في الكاش
+  // ══════════════════════════════════════
+
+  /// البحث في المحادثات
+  static Future<List<WhatsAppConversation>> searchConversations(
+      String query) async {
+    if (_cachedConversations != null) {
+      return _cachedConversations!
+          .where((conv) =>
+              conv.phoneNumber.contains(query) ||
+              (conv.userName?.toLowerCase().contains(query.toLowerCase()) ??
+                  false) ||
+              conv.lastMessage.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    }
+    return [];
+  }
+
+  // ══════════════════════════════════════
+  // دوال التنظيف والمزامنة
+  // ══════════════════════════════════════
+
+  /// حذف المحادثات القديمة — تتم على السيرفر
+  static Future<Map<String, int>> cleanupOldConversations(
+      {int days = 3}) async {
+    invalidateCache();
+    return {'conversations': 0, 'messages': 0};
+  }
+
+  /// مسح cache محلي
+  static Future<void> clearLocalCache() async {
+    invalidateCache();
+  }
+
+  /// لم تعد ضرورية — n8n يرسل للـ API مباشرة
+  static void startIncomingMessagesListener() {}
+  static Future<void> syncNamesFromMessages() async {}
+  static Future<void> syncConversationsFromMessages() async {}
+
+  /// حفظ رسالة واردة (للتوافق — تُستخدم لو احتجنا الاستدعاء من الكود مباشرة)
   static Future<void> saveIncomingMessage({
     required String messageId,
     required String phoneNumber,
@@ -168,274 +384,53 @@ class WhatsAppConversationService {
     String? contactName,
     String type = 'text',
   }) async {
-    if (!FirebaseAvailability.isAvailable) return;
     try {
-      print('💬 حفظ رسالة واردة من: $phoneNumber - $contactName');
+      await ApiClient.instance.post(
+        '/whatsapp/webhook/incoming',
+        {
+          'messageId': messageId,
+          'phoneNumber': phoneNumber,
+          'text': message,
+          'messageType': type,
+          'contactName': contactName,
+          'timestamp': timestamp,
+        },
+        (data) => data,
+        useInternalKey: true,
+      );
 
-      // حفظ الرسالة في subcollection messages تحت المحادثة
-      await _firestore
-          .collection('whatsapp_conversations')
-          .doc(phoneNumber)
-          .collection('messages')
-          .doc(messageId)
-          .set({
-        'messageId': messageId,
-        'phoneNumber': phoneNumber,
-        'text': message,
-        'messageType': type,
-        'timestamp': timestamp,
-        'direction': 'incoming',
-        'status': 'received',
-        'contactName': contactName ?? phoneNumber,
-      }, SetOptions(merge: true));
-
-      // تحديث أو إنشاء المحادثة
-      final conversationRef =
-          _firestore.collection('whatsapp_conversations').doc(phoneNumber);
-
-      // جلب المحادثة الحالية للحصول على عدد الرسائل غير المقروءة
-      final conversationDoc = await conversationRef.get();
-      final currentUnreadCount = conversationDoc.exists
-          ? (conversationDoc.data()?['unreadCount'] ?? 0)
-          : 0;
-
-      final conversationData = {
-        'phoneNumber': phoneNumber,
-        'lastMessage': message,
-        'lastMessageTime': timestamp,
-        'lastMessageType': type,
-        'contactName': contactName ?? phoneNumber,
-        'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        'unreadCount': currentUnreadCount + 1,
-        'isIncoming': true,
-      };
-
-      if (contactName != null && contactName.isNotEmpty) {
-        conversationData['userName'] = contactName;
-      }
-
-      await conversationRef.set(conversationData, SetOptions(merge: true));
-
-      print('✅ تم حفظ الرسالة الواردة والمحادثة بنجاح');
+      // تحديث فوري
+      _lastConversationFetch = null;
+      _fetchConversations();
     } catch (e) {
-      print('❌ خطأ في حفظ الرسالة الواردة');
+      print('❌ خطأ في حفظ الرسالة الواردة: $e');
     }
   }
 
-  /// تحديث حالة قراءة المحادثة
-  static Future<void> markAsRead(String phoneNumber) async {
-    if (!FirebaseAvailability.isAvailable) return;
-    await _firestore
-        .collection('whatsapp_conversations')
-        .doc(phoneNumber)
-        .update({'unreadCount': 0});
-  }
+  /// تحرير الموارد
+  static void dispose() {
+    _conversationsTimer?.cancel();
+    _conversationsTimer = null;
+    _conversationsController?.close();
+    _conversationsController = null;
+    _conversationsListeners = 0;
 
-  /// حذف محادثة
-  static Future<void> deleteConversation(String phoneNumber) async {
-    if (!FirebaseAvailability.isAvailable) return;
-    try {
-      print('🗑️ بدء حذف المحادثة: $phoneNumber');
+    _unreadTimer?.cancel();
+    _unreadTimer = null;
+    _unreadController?.close();
+    _unreadController = null;
+    _unreadListeners = 0;
 
-      // 1. حذف الرسائل من subcollection messages (البنية الجديدة)
-      final messagesSubcollection = await _firestore
-          .collection('whatsapp_conversations')
-          .doc(phoneNumber)
-          .collection('messages')
-          .get();
-
-      print(
-          '📝 عدد الرسائل في subcollection: ${messagesSubcollection.docs.length}');
-
-      for (var doc in messagesSubcollection.docs) {
-        await doc.reference.delete();
-        print('🗑️ حذف رسالة من subcollection: ${doc.id}');
-      }
-
-      // 2. حذف الرسائل من collection whatsapp_messages (البنية القديمة)
-      // جلب كل الرسائل والفلترة يدوياً لتجنب مشاكل الـ index
-      final allMessagesSnapshot =
-          await _firestore.collection('whatsapp_messages').get();
-
-      print(
-          '📝 إجمالي الرسائل في collection القديم: ${allMessagesSnapshot.docs.length}');
-
-      // إنشاء قائمة بصيغ الرقم المختلفة للبحث
-      final phoneVariants = _getPhoneVariants(phoneNumber);
-      print('🔍 صيغ البحث: $phoneVariants');
-
-      int deletedCount = 0;
-      for (var doc in allMessagesSnapshot.docs) {
-        final data = doc.data();
-        final msgPhone = data['phoneNumber']?.toString() ?? '';
-        final msgFrom = data['from']?.toString() ?? '';
-        final msgTo = data['to']?.toString() ?? '';
-
-        // تحقق إذا كان أي من الحقول يطابق أي صيغة من الرقم
-        if (phoneVariants.contains(msgPhone) ||
-            phoneVariants.contains(msgFrom) ||
-            phoneVariants.contains(msgTo) ||
-            phoneVariants.contains(_cleanPhone(msgPhone)) ||
-            phoneVariants.contains(_cleanPhone(msgFrom)) ||
-            phoneVariants.contains(_cleanPhone(msgTo))) {
-          await doc.reference.delete();
-          print('🗑️ حذف رسالة قديمة: ${doc.id} (phone: $msgPhone)');
-          deletedCount++;
-        }
-      }
-
-      print('📝 عدد الرسائل المحذوفة من collection القديم: $deletedCount');
-
-      // 3. حذف المحادثة نفسها
-      await _firestore
-          .collection('whatsapp_conversations')
-          .doc(phoneNumber)
-          .delete();
-
-      print('✅ تم حذف المحادثة والرسائل بنجاح: $phoneNumber');
-    } catch (e) {
-      print('❌ خطأ في حذف المحادثة');
-      rethrow;
+    for (final timer in _messageTimers.values) {
+      timer?.cancel();
     }
-  }
-
-  /// إنشاء قائمة بصيغ مختلفة لرقم الهاتف للبحث
-  static Set<String> _getPhoneVariants(String phoneNumber) {
-    final variants = <String>{phoneNumber};
-    final clean = _cleanPhone(phoneNumber);
-    variants.add(clean);
-
-    // إضافة صيغ مختلفة
-    if (clean.startsWith('964')) {
-      variants.add('+$clean'); // +964...
-      variants.add('00$clean'); // 00964...
-      variants.add('0${clean.substring(3)}'); // 07...
-    } else if (clean.startsWith('0')) {
-      variants.add('964${clean.substring(1)}');
-      variants.add('+964${clean.substring(1)}');
+    for (final controller in _messageControllers.values) {
+      if (!controller.isClosed) controller.close();
     }
+    _messageTimers.clear();
+    _messageControllers.clear();
 
-    return variants;
-  }
-
-  /// تنظيف رقم الهاتف من الرموز
-  static String _cleanPhone(String phone) {
-    return phone.replaceAll(RegExp(r'[^\d]'), '');
-  }
-
-  /// البحث في المحادثات
-  static Future<List<WhatsAppConversation>> searchConversations(
-      String query) async {
-    if (!FirebaseAvailability.isAvailable) return [];
-    final snapshot =
-        await _firestore.collection('whatsapp_conversations').get();
-
-    return snapshot.docs
-        .map((doc) => WhatsAppConversation.fromFirestore(doc))
-        .where((conv) =>
-            conv.phoneNumber.contains(query) ||
-            conv.lastMessage.toLowerCase().contains(query.toLowerCase()))
-        .toList();
-  }
-
-  /// عدد الرسائل غير المقروءة
-  static Stream<int> getUnreadCount() {
-    if (!FirebaseAvailability.isAvailable) return Stream.value(0);
-    return _firestore.collection('whatsapp_conversations').snapshots().map(
-        (snapshot) => snapshot.docs.fold<int>(
-            0, (sum, doc) => sum + ((doc.data()['unreadCount'] as int?) ?? 0)));
-  }
-
-  /// مراقبة الرسائل الواردة الجديدة وإنشاء المحادثات تلقائياً
-  /// ملاحظة: n8n workflow يقوم بإنشاء المحادثات تلقائياً، هذه الدالة للتأكد فقط
-  static void startIncomingMessagesListener() {
-    // تم تعطيل الـ listener لأن n8n workflow يقوم بإنشاء المحادثات
-    // إذا كنت تريد تفعيله، تأكد من عدم وجود duplicate writes
-    print('⚠️ تم تعطيل الـ listener - n8n workflow يتولى إنشاء المحادثات');
-  }
-
-  /// استيراد الأسماء من الرسائل الموجودة إلى المحادثات
-  static Future<void> syncNamesFromMessages() async {
-    if (!FirebaseAvailability.isAvailable) return;
-    try {
-      print('🔄 بدء مزامنة الأسماء من الرسائل...');
-
-      // جلب جميع المحادثات
-      final conversationsSnapshot =
-          await _firestore.collection('whatsapp_conversations').get();
-
-      for (var convDoc in conversationsSnapshot.docs) {
-        final phoneNumber = convDoc.id;
-        final currentData = convDoc.data();
-
-        // إذا كان هناك اسم بالفعل، تخطي
-        if (currentData['userName'] != null &&
-            currentData['userName'].toString().isNotEmpty) {
-          continue;
-        }
-
-        // البحث عن أحدث رسالة واردة لهذا الرقم من subcollection
-        final messagesSnapshot = await _firestore
-            .collection('whatsapp_conversations')
-            .doc(phoneNumber)
-            .collection('messages')
-            .where('direction', isEqualTo: 'incoming')
-            .limit(1)
-            .get();
-
-        if (messagesSnapshot.docs.isNotEmpty) {
-          final messageData = messagesSnapshot.docs.first.data();
-          final contactName = messageData['contactName'] as String?;
-
-          if (contactName != null && contactName.isNotEmpty) {
-            // تحديث المحادثة بالاسم
-            await convDoc.reference.update({
-              'userName': contactName,
-              'contactName': contactName,
-            });
-            print('✅ تم تحديث اسم $contactName للرقم $phoneNumber');
-          }
-        }
-      }
-
-      print('✅ تمت مزامنة الأسماء بنجاح');
-    } catch (e) {
-      print('❌ خطأ في مزامنة الأسماء');
-    }
-  }
-
-  /// مزامنة المحادثات - التحقق من عدد الرسائل لكل محادثة
-  /// ملاحظة: مع البنية الجديدة (subcollections) الرسائل محفوظة تحت المحادثات
-  static Future<void> syncConversationsFromMessages() async {
-    if (!FirebaseAvailability.isAvailable) return;
-    try {
-      print('🔄 بدء مزامنة المحادثات...');
-      print('ℹ️ البنية الجديدة: الرسائل محفوظة كـ subcollection تحت كل محادثة');
-
-      // جلب جميع المحادثات الموجودة
-      final conversationsSnapshot =
-          await _firestore.collection('whatsapp_conversations').get();
-
-      print('📊 وجدت ${conversationsSnapshot.docs.length} محادثة');
-
-      // التحقق من كل محادثة
-      for (var convDoc in conversationsSnapshot.docs) {
-        final phoneNumber = convDoc.id;
-
-        // جلب عدد الرسائل في هذه المحادثة
-        final messagesSnapshot = await _firestore
-            .collection('whatsapp_conversations')
-            .doc(phoneNumber)
-            .collection('messages')
-            .get();
-
-        print(
-            '📱 المحادثة $phoneNumber: ${messagesSnapshot.docs.length} رسالة');
-      }
-
-      print('✅ تمت مزامنة المحادثات بنجاح');
-    } catch (e) {
-      print('❌ خطأ في مزامنة المحادثات');
-    }
+    _cachedConversations = null;
+    _lastConversationFetch = null;
   }
 }

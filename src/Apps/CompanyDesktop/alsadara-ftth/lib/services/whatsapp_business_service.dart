@@ -431,6 +431,86 @@ class WhatsAppBusinessService {
     }
   }
 
+  /// إرسال قالب مع components كاملة (header location + body parameters)
+  static Future<Map<String, dynamic>?> sendTemplateWithComponents({
+    required String to,
+    required String templateName,
+    required List<Map<String, dynamic>> components,
+    String languageCode = 'ar',
+  }) async {
+    try {
+      if (!await isConfigured()) {
+        debugPrint('❌ WhatsApp Business API غير مُعد');
+        return null;
+      }
+
+      final userToken = await getUserToken();
+      final phoneNumberId = await getPhoneNumberId();
+
+      // تنظيف الرقم: أرقام فقط بدون + (كما يفعل n8n)
+      String cleanPhone = to.replaceAll(RegExp(r'[^\d]'), '');
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = '964${cleanPhone.substring(1)}';
+      } else if (!cleanPhone.startsWith('964')) {
+        cleanPhone = '964$cleanPhone';
+      }
+
+      debugPrint('📤 إرسال Template (with components) إلى: $cleanPhone');
+
+      final url = Uri.parse('$_baseUrl/$_apiVersion/$phoneNumberId/messages');
+
+      final body = {
+        'messaging_product': 'whatsapp',
+        'to': cleanPhone,
+        'type': 'template',
+        'template': {
+          'name': templateName,
+          'language': {'code': languageCode},
+          'components': components,
+        },
+      };
+
+      debugPrint('📦 Body: ${jsonEncode(body)}');
+
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $userToken',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      debugPrint('📥 استجابة Template: ${response.statusCode}');
+      debugPrint('📥 Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ تم إرسال Template بنجاح');
+        return data;
+      } else {
+        debugPrint('❌ فشل Template - ${response.statusCode}: ${response.body}');
+        // إرجاع تفاصيل الخطأ بدلاً من null
+        String errorMsg = 'HTTP ${response.statusCode}';
+        try {
+          final error = jsonDecode(response.body);
+          final metaMsg = error['error']?['message'] ?? '';
+          final metaCode = error['error']?['code'];
+          final subCode = error['error']?['error_subcode'];
+          if (metaMsg.isNotEmpty) {
+            errorMsg = '[$metaCode${subCode != null ? "/$subCode" : ""}] $metaMsg';
+          }
+        } catch (_) {}
+        return {'_error': true, '_errorMessage': errorMsg, '_statusCode': response.statusCode};
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في إرسال Template: $e');
+      return {'_error': true, '_errorMessage': 'Exception: $e'};
+    }
+  }
+
   /// التحقق من صحة Token - طريقة محسّنة تدعم التوكنات الدائمة
   static Future<bool> verifyToken() async {
     try {

@@ -38,21 +38,31 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Future<void> fetchData() async {
     setState(() {
       isLoading = true;
+      errorMessage = null;
     });
 
     try {
       await Future.wait([
         fetchStatistics(),
         fetchAgents(),
-      ]);
-      setState(() {
-        isLoading = false;
-      });
+      ]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('انتهت مهلة الاتصال بالسيرفر'),
+      );
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        errorMessage = 'حدث خطأ أثناء جلب البيانات';
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = e.toString().contains('انتهت مهلة')
+              ? 'انتهت مهلة الاتصال — تحقق من الاتصال بالإنترنت'
+              : 'حدث خطأ أثناء جلب البيانات';
+          isLoading = false;
+        });
+      }
     }
   }
 

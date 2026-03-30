@@ -475,10 +475,34 @@ class AuthService {
               break;
           }
         } else {
-          // فشل التجديد – زيادة عداد 401 غير المتوقعة
-          _unexpected401++;
-          await logout();
-          throw Exception('انتهت جلسة المستخدم');
+          // فشل التجديد — محاولة إعادة تسجيل الدخول تلقائياً
+          final reloginOk = await _tryAutoRelogin();
+          if (reloginOk) {
+            _handled401++;
+            final newAuthHeaders = await getAuthHeaders();
+            final newAllHeaders = {...newAuthHeaders, ...?headers};
+            switch (method.toUpperCase()) {
+              case 'GET':
+                response = await http.get(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
+                break;
+              case 'POST':
+                response = await http.post(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
+                break;
+              case 'PUT':
+                response = await http.put(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
+                break;
+              case 'DELETE':
+                response = await http.delete(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
+                break;
+              case 'PATCH':
+                response = await http.patch(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
+                break;
+            }
+          } else {
+            _unexpected401++;
+            await logout();
+            throw Exception('انتهت جلسة المستخدم');
+          }
         }
       }
 

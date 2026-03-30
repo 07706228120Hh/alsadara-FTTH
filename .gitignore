@@ -109,3 +109,42 @@ whatsapp_server_v*.js
 # Secrets folder - DO NOT COMMIT
 .secrets/
 *.credentials*
+
+# ═══════════════════════════════════════════
+# إضافات جديدة - 2026-03-29
+# ═══════════════════════════════════════════
+
+# Deploy artifacts (additional patterns)
+deploy_out/
+publish_deploy/
+publish_temp/
+**/deploy_out/
+**/publish_deploy/
+**/publish_temp/
+**/installers/*.exe
+**/installers/*.iss
+
+# Flutter tools
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.g.dart
+
+# Python
+.venv/
+venv/
+__pycache__/
+
+# NUL Windows artifact
+NUL
+
+# N8n workflows & temp files
+n8n_*.json
+wf_id.txt
+new_wf_id.txt
+
+# Inno Setup
+*.iss
+
+# Production secrets (never commit)
+appsettings.Production.json

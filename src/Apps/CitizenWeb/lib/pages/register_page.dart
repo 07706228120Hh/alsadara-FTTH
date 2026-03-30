@@ -70,7 +70,13 @@ class _RegisterPageState extends State<RegisterPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('إنشاء حساب جديد')),
+        appBar: AppBar(
+          title: const Text('إنشاء حساب جديد'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => GoRouter.of(context).go('/'),
+          ),
+        ),
         body: Consumer<AuthProvider>(
           builder: (context, auth, child) {
             return SingleChildScrollView(

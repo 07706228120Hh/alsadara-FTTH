@@ -6,6 +6,7 @@ import 'whatsapp_permissions_service.dart' as perms;
 import '../../services/custom_auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/whatsapp_business_service.dart';
+import '../../services/whatsapp_conversation_service.dart';
 import '../../ftth/whatsapp/whatsapp_bottom_window.dart';
 
 /// خدمة إرسال الواتساب الموحدة
@@ -219,6 +220,14 @@ class WhatsAppSenderService {
         tenantId: tenantId,
       );
 
+      // تسجيل الرسالة في PostgreSQL
+      if (success) {
+        WhatsAppConversationService.sendMessage(
+          phoneNumber: cleanPhone,
+          message: message,
+        ).catchError((_) {});
+      }
+
       return SendResult(
         success: success,
         message: success ? 'تم الإرسال بنجاح' : null,
@@ -251,13 +260,19 @@ class WhatsAppSenderService {
         );
       }
 
+      // Meta API تُرجع messages[] عند النجاح (لا يوجد حقل success)
+      final messageId = (result['messages'] as List?)?.firstOrNull?['id']?.toString();
+
+      // تسجيل الرسالة في PostgreSQL
+      WhatsAppConversationService.sendMessage(
+        phoneNumber: cleanPhone,
+        message: message,
+      ).catchError((_) {});
+
       return SendResult(
-        success: result['success'] == true,
-        message: result['success'] == true ? 'تم الإرسال بنجاح عبر API' : null,
-        error: result['success'] != true
-            ? (result['error']?.toString() ?? 'فشل الإرسال')
-            : null,
-        messageId: result['messageId']?.toString(),
+        success: true,
+        message: 'تم الإرسال بنجاح عبر API',
+        messageId: messageId,
         system: WhatsAppSystem.api,
       );
     } catch (e) {

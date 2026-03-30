@@ -159,6 +159,22 @@ class _SalariesPageState extends State<SalariesPage> {
             SizedBox(
               height: 28,
               child: OutlinedButton(
+                onPressed: _showSalaryRosterDialog,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AccountingTheme.info,
+                  side: const BorderSide(color: AccountingTheme.info),
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: Size(28, 28),
+                ),
+                child: Icon(Icons.group, size: 14),
+              ),
+            ),
+            if (PermissionManager.instance.canAdd('accounting.salaries'))
+            SizedBox(width: 4),
+            if (PermissionManager.instance.canAdd('accounting.salaries'))
+            SizedBox(
+              height: 28,
+              child: OutlinedButton(
                 onPressed: _generateSalaries,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AccountingTheme.neonPink,
@@ -186,6 +202,18 @@ class _SalariesPageState extends State<SalariesPage> {
               ),
             ),
           ] else ...[
+            if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
+            SizedBox(width: context.accR.spaceS),
+            OutlinedButton.icon(
+              onPressed: _showSalaryRosterDialog,
+              icon: Icon(Icons.group, size: context.accR.iconM),
+              label: const Text('كادر الرواتب'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AccountingTheme.info,
+                side: const BorderSide(color: AccountingTheme.info),
+              ),
+            ),
+            ],
             if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
             SizedBox(width: context.accR.spaceS),
             OutlinedButton.icon(
@@ -424,6 +452,13 @@ class _SalariesPageState extends State<SalariesPage> {
                           fontWeight: FontWeight.bold,
                           fontSize: context.accR.small))),
               DataColumn(
+                  numeric: true,
+                  label: Text('ذمم الفني',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: context.accR.small))),
+              DataColumn(
                   label: Text('الحالة',
                       style: TextStyle(
                           color: Colors.white,
@@ -471,6 +506,12 @@ class _SalariesPageState extends State<SalariesPage> {
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: context.accR.small))),
+              DataColumn(
+                  label: Text('إجراءات',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: context.accR.small))),
             ],
             rows: _salaries.map((s) {
               final status = s['Status'] ?? 'Pending';
@@ -514,6 +555,7 @@ class _SalariesPageState extends State<SalariesPage> {
                           color: AccountingTheme.textPrimary,
                           fontWeight: FontWeight.bold,
                           fontSize: context.accR.small))),
+                  DataCell(_buildTechDuesCell(s)),
                   DataCell(Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
@@ -554,12 +596,57 @@ class _SalariesPageState extends State<SalariesPage> {
                           color: Color(0xFF2196F3),
                           fontWeight: FontWeight.bold,
                           fontSize: context.accR.small))),
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (status == 'Pending' && PermissionManager.instance.canAdd('accounting.salaries'))
+                        InkWell(
+                          onTap: () => _paySalary(s),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.payment, size: 18, color: AccountingTheme.success),
+                          ),
+                        ),
+                      if (PermissionManager.instance.canEdit('accounting.salaries'))
+                        InkWell(
+                          onTap: () => _showEditDialog(s),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.edit, size: 18, color: AccountingTheme.info),
+                          ),
+                        ),
+                      if (PermissionManager.instance.canDelete('accounting.salaries'))
+                        InkWell(
+                          onTap: () => _confirmDeleteSalary(Map<String, dynamic>.from(s)),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.delete_outline, size: 18, color: AccountingTheme.danger),
+                          ),
+                        ),
+                    ],
+                  )),
                 ],
               );
             }).toList(),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTechDuesCell(dynamic s) {
+    final techBalance = ((s['TechNetBalance'] ?? 0) as num).toDouble();
+    if (techBalance == 0) {
+      return Text('0', style: TextStyle(color: AccountingTheme.textMuted, fontSize: context.accR.small));
+    }
+    // سالب = عليه مبلغ (أحمر)، موجب = له رصيد (أخضر)
+    final color = techBalance < 0 ? AccountingTheme.danger : AccountingTheme.success;
+    return Text(
+      _fmt(techBalance.abs()),
+      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: context.accR.small),
     );
   }
 
@@ -617,9 +704,161 @@ class _SalariesPageState extends State<SalariesPage> {
     );
   }
 
+  Future<void> _showSalaryRosterDialog() async {
+    final companyId = widget.companyId ?? '';
+    if (companyId.isEmpty) return;
+
+    // جلب كادر الرواتب
+    final result = await AccountingService.instance.getSalaryRoster(companyId);
+    if (result['success'] != true || !mounted) return;
+
+    final employees = (result['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    if (employees.isEmpty) {
+      _snack('لا يوجد موظفون', AccountingTheme.warning);
+      return;
+    }
+
+    // نسخة محلية من حالة الكادر
+    final selected = <String>{};
+    for (final emp in employees) {
+      if (emp['IsInSalaryRoster'] == true) {
+        selected.add(emp['Id'].toString());
+      }
+    }
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx2, setDialogState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                backgroundColor: AccountingTheme.bgCard,
+                title: Row(
+                  children: [
+                    Icon(Icons.group, color: AccountingTheme.info, size: 22),
+                    const SizedBox(width: 8),
+                    Text('كادر الرواتب',
+                        style: TextStyle(color: AccountingTheme.textPrimary, fontSize: 18)),
+                    const Spacer(),
+                    Text('${selected.length}/${employees.length}',
+                        style: TextStyle(color: AccountingTheme.textMuted, fontSize: 14)),
+                  ],
+                ),
+                content: SizedBox(
+                  width: 450,
+                  height: 400,
+                  child: ListView.builder(
+                    itemCount: employees.length,
+                    itemBuilder: (_, i) {
+                      final emp = employees[i];
+                      final id = emp['Id'].toString();
+                      final name = emp['FullName'] ?? '';
+                      final role = emp['Role'] ?? '';
+                      final salary = emp['Salary'];
+                      final isSelected = selected.contains(id);
+
+                      return CheckboxListTile(
+                        value: isSelected,
+                        activeColor: AccountingTheme.neonGreen,
+                        checkColor: Colors.white,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            if (val == true) {
+                              selected.add(id);
+                            } else {
+                              selected.remove(id);
+                            }
+                          });
+                        },
+                        title: Text(name,
+                            style: TextStyle(
+                                color: AccountingTheme.textPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14)),
+                        subtitle: Text(
+                          '${_roleLabel(role)}${salary != null ? ' • ${_fmt(salary)}' : ''}',
+                          style: TextStyle(
+                              color: AccountingTheme.textMuted, fontSize: 12),
+                        ),
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                      );
+                    },
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      setDialogState(() {
+                        selected.clear();
+                        for (final emp in employees) {
+                          selected.add(emp['Id'].toString());
+                        }
+                      });
+                    },
+                    child: Text('تحديد الكل', style: TextStyle(color: AccountingTheme.info)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setDialogState(() => selected.clear());
+                    },
+                    child: Text('إلغاء التحديد', style: TextStyle(color: AccountingTheme.textMuted)),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, null),
+                    child: Text('إلغاء', style: TextStyle(color: AccountingTheme.textMuted)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AccountingTheme.neonGreen,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('حفظ'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (saved != true || !mounted) return;
+
+    // حفظ التغييرات
+    final updateResult = await AccountingService.instance.updateSalaryRoster(
+      companyId: companyId,
+      userIds: selected.toList(),
+    );
+    if (updateResult['success'] == true) {
+      _snack(updateResult['message'] ?? 'تم تحديث الكادر', AccountingTheme.success);
+      _loadData();
+    } else {
+      _snack(updateResult['message'] ?? 'خطأ', AccountingTheme.danger);
+    }
+  }
+
+  String _roleLabel(String role) {
+    const labels = {
+      'Employee': 'موظف',
+      'Technician': 'فني',
+      'Manager': 'مدير',
+      'CompanyAdmin': 'مدير شركة',
+      'Agent': 'وكيل',
+    };
+    return labels[role] ?? role;
+  }
+
   Future<void> _generateSalaries() async {
+    final hasExisting = _salaries.isNotEmpty;
     final confirm = await _confirmAction('توليد الرواتب',
-        'سيتم توليد رواتب شهر ${_months[_selectedMonth - 1]} $_selectedYear لجميع الموظفين. متابعة؟');
+        hasExisting
+            ? 'سيتم حذف الرواتب المعلقة وإعادة حساب رواتب شهر ${_months[_selectedMonth - 1]} $_selectedYear من جديد. متابعة؟'
+            : 'سيتم توليد رواتب شهر ${_months[_selectedMonth - 1]} $_selectedYear لموظفي الكادر. متابعة؟');
     if (confirm != true) return;
 
     // فحص الفترة المحاسبية
@@ -719,19 +958,83 @@ class _SalariesPageState extends State<SalariesPage> {
     );
     if (!allowed) return;
 
+    final techBalance = ((salary['TechNetBalance'] ?? 0) as num).toDouble();
+    final netSalary = ((salary['NetSalary'] ?? 0) as num).toDouble();
+    final empName = salary['EmployeeName'] ?? salary['UserName'] ?? '';
+    bool deductDues = false;
+
+    // إذا كان فني وعليه ذمم (رصيد سالب)
+    if (techBalance < 0) {
+      final duesAmount = techBalance.abs();
+      final afterDeduction = netSalary - (duesAmount > netSalary ? netSalary : duesAmount);
+      final deducted = duesAmount > netSalary ? netSalary : duesAmount;
+
+      final choice = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: AccountingTheme.bgCard,
+            title: Text('صرف راتب: $empName',
+                style: const TextStyle(color: AccountingTheme.textPrimary)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _duesInfoRow('صافي الراتب', _fmt(netSalary), AccountingTheme.textPrimary),
+                const SizedBox(height: 8),
+                _duesInfoRow('ذمم الفني', _fmt(duesAmount), AccountingTheme.danger),
+                const Divider(color: AccountingTheme.borderColor, height: 20),
+                _duesInfoRow('المبلغ المخصوم', _fmt(deducted), const Color(0xFFF39C12)),
+                const SizedBox(height: 4),
+                _duesInfoRow('المبلغ المصروف نقداً', _fmt(afterDeduction), AccountingTheme.success),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: Text('إلغاء', style: TextStyle(color: AccountingTheme.textMuted)),
+              ),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AccountingTheme.info,
+                  side: const BorderSide(color: AccountingTheme.info),
+                ),
+                child: const Text('صرف بدون خصم'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AccountingTheme.neonGreen,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('صرف مع خصم الذمم'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (choice == null) return;
+      deductDues = choice;
+    }
+
     setState(() {
       _isLoading = true;
     });
     try {
-      final result =
-          await AccountingService.instance.paySalary(salary['Id'].toString());
+      final result = await AccountingService.instance.paySalary(
+        salary['Id'].toString(),
+        deductTechDues: deductDues,
+      );
       if (result['success'] == true) {
-        _snack('تم صرف الراتب', AccountingTheme.success);
+        _snack(result['message'] ?? 'تم صرف الراتب', AccountingTheme.success);
         AuditTrailService.instance.log(
           action: AuditAction.edit,
           entityType: AuditEntityType.salary,
           entityId: salary['Id']?.toString() ?? '',
-          entityDescription: 'صرف راتب: ${salary['EmployeeName'] ?? ''}',
+          entityDescription: 'صرف راتب: $empName${deductDues ? ' (مع خصم ذمم)' : ''}',
         );
         _loadData();
       } else {
@@ -746,6 +1049,16 @@ class _SalariesPageState extends State<SalariesPage> {
         _isLoading = false;
       });
     }
+  }
+
+  Widget _duesInfoRow(String label, String value, Color valueColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AccountingTheme.textSecondary)),
+        Text('$value د.ع', style: TextStyle(color: valueColor, fontWeight: FontWeight.bold)),
+      ],
+    );
   }
 
   void _showEditDialog(dynamic salary) {

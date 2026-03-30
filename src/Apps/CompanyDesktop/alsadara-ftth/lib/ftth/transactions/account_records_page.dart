@@ -1664,139 +1664,104 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             ),
           ),
           SizedBox(height: 12),
-          // بطاقة الإحصائيات والأزرار - تصميم بارز وموحد
-          Container(
-            padding: EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.white, Color(0xFFF8FAFF)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+          // ═══ شريط الإحصائيات الأفقي ═══
+          Builder(builder: (context) {
+            // حساب إحصائيات أنواع الدفع
+            int cashCount = 0;
+            double cashTotal = 0.0;
+            int creditCount = 0;
+            double creditTotal = 0.0;
+            int agentCount = 0;
+            double agentTotal = 0.0;
+            int masterCount = 0;
+            double masterTotal = 0.0;
+            for (final r in filteredRecords) {
+              final pay = _derivePaymentType(r);
+              final priceStr = r['سعر الباقة']?.toString() ?? '0';
+              final price =
+                  double.tryParse(priceStr.replaceAll(',', '')) ?? 0.0;
+              if (pay == 'نقد' || pay.contains('نقد')) {
+                cashCount++;
+                cashTotal += price;
+              } else if (pay == 'آجل' ||
+                  pay.contains('آجل') ||
+                  pay.contains('اجل') ||
+                  pay.contains('أجل')) {
+                creditCount++;
+                creditTotal += price;
+              } else if (pay.contains('وكيل') || pay.contains('agent')) {
+                agentCount++;
+                agentTotal += price;
+              } else if (pay.contains('ماستر') || pay.contains('master')) {
+                masterCount++;
+                masterTotal += price;
+              }
+            }
+            return Column(children: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // إجمالي العمليات
+                  Expanded(
+                    flex: 3,
+                    child: _statBarCard(
+                      'إجمالي العمليات',
+                      _formatAmountShort(_calculateTotalAmount()),
+                      '${filteredRecords.length} عملية',
+                      [Color(0xFF880E4F), Color(0xFFAD1457)],
+                      Icons.receipt_long,
+                    ),
+                  ),
+                  // نقد
+                  Expanded(
+                    flex: 2,
+                    child: _statBarCard(
+                      'نقد',
+                      _formatAmountShort(cashTotal),
+                      '$cashCount عملية',
+                      [Color(0xFF2E7D32), Color(0xFF43A047)],
+                      Icons.attach_money,
+                    ),
+                  ),
+                  // آجل
+                  Expanded(
+                    flex: 2,
+                    child: _statBarCard(
+                      'آجل',
+                      _formatAmountShort(creditTotal),
+                      '$creditCount عملية',
+                      [Color(0xFFE65100), Color(0xFFEF6C00)],
+                      Icons.schedule,
+                    ),
+                  ),
+                  // ماستر
+                  if (masterCount > 0 || true)
+                    Expanded(
+                      flex: 2,
+                      child: _statBarCard(
+                        'ماستر',
+                        _formatAmountShort(masterTotal),
+                        '$masterCount عملية',
+                        [Color(0xFF6A1B9A), Color(0xFF8E24AA)],
+                        Icons.credit_card,
+                      ),
+                    ),
+                  // وكيل
+                  Expanded(
+                    flex: 2,
+                    child: _statBarCard(
+                      'وكيل',
+                      _formatAmountShort(agentTotal),
+                      '$agentCount عملية',
+                      [Color(0xFF1565C0), Color(0xFF1E88E5)],
+                      Icons.store,
+                    ),
+                  ),
+                ],
               ),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.black, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withValues(alpha: 0.12),
-                  blurRadius: 15,
-                  offset: Offset(0, 6),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
             ),
-            child: Column(
-              children: [
-                // عرض عدد السجلات والمجموع المالي في صف واحد - تصميم فاخر
-                Row(
-                  children: [
-                    // بطاقة عدد السجلات
-                    Expanded(
-                      child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.black, width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blue.withValues(alpha: 0.25),
-                              blurRadius: 6,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.format_list_numbered,
-                                color: Colors.white, size: 22),
-                            SizedBox(height: 6),
-                            Text(
-                              '${filteredRecords.length}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                fontSize: 22,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            Text(
-                              'سجل معروض',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    // بطاقة المجموع المالي
-                    Expanded(
-                      child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.black, width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.green.withValues(alpha: 0.25),
-                              blurRadius: 6,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.payments_outlined,
-                                color: Colors.white, size: 22),
-                            SizedBox(height: 6),
-                            Text(
-                              _formatAmountShort(_calculateTotalAmount()),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                fontSize: 20,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            Text(
-                              'المجموع المالي',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10),
+            SizedBox(height: 8),
                 // صف الأزرار: عرض الإحصائيات + التكرار + إخفاء المكرر (أسفل البطاقات)
                 Row(
                   children: [
@@ -2004,8 +1969,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   ],
                 ),
               ],
-            ),
-          ),
+            );
+          }),
           // حذف الكونتينر القديم لعرض الإحصائيات - تم دمجه في الصف أعلاه
 
           // التصفيات المتقدمة (تظهر فقط عند الضغط على زر التصفية)
@@ -3422,6 +3387,67 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       return 'آجل';
     }
     return raw; // تركه كما هو إن لم يُطبع
+  }
+
+  /// بطاقة إحصائية أفقية (شريط الملخص)
+  Widget _statBarCard(String title, String amount, String subtitle,
+      List<Color> colors, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.black, width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.end,
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Text(
+                    '$amount د.ع',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 9,
+                  ),
+                  textAlign: TextAlign.end,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// دالة بديلة لاختيار التاريخ مع تشخيص مفصل

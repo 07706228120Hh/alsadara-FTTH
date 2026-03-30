@@ -164,14 +164,17 @@ public class SubscriptionLogsController : ControllerBase
                 var operatorName = log.ActivatedBy ?? "مشغل";
                 var planName = log.PlanName ?? "اشتراك";
                 var customerName = log.CustomerName ?? "عميل";
-                var isPurchase = log.OperationType?.ToUpper().Contains("PURCHASE") == true
-                    || log.OperationType?.ToUpper().Contains("SUBSCRIBE") == true;
+                var isPurchase = log.OperationType?.ToLower() == "purchase";
                 var opType = isPurchase ? "شراء" : "تجديد";
 
                 var revenueCode = isPurchase ? "4120" : "4110";
                 var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId)
                     ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
-                if (revenueAccount == null) goto noAccounting;
+                if (revenueAccount == null)
+                {
+                    _logger.LogWarning("⚠️ حساب الإيراد {Code} غير موجود للشركة {CompanyId} — السجل {LogId} بدون قيد", revenueCode, companyId, log.Id);
+                    goto noAccounting;
+                }
 
                 Account? debitAccount = null;
                 string description = "";
@@ -272,11 +275,19 @@ public class SubscriptionLogsController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "فشل إنشاء القيد المحاسبي للسجل {LogId}", log.Id);
+                _logger.LogWarning(ex, "⚠️ فشل إنشاء القيد المحاسبي للسجل {LogId} — السجل حُفظ بدون قيد", log.Id);
             }
         }
 
-        return CreatedAtAction(nameof(GetById), new { id = log.Id }, new { success = true, data = log });
+        return CreatedAtAction(nameof(GetById), new { id = log.Id }, new
+        {
+            success = true,
+            data = log,
+            hasAccounting = log.JournalEntryId.HasValue,
+            accountingWarning = !log.JournalEntryId.HasValue && log.PlanPrice > 0
+                ? "تم حفظ السجل بدون قيد محاسبي — تحقق من إعدادات الحسابات"
+                : null
+        });
     }
 
     /// <summary>
@@ -318,12 +329,57 @@ public class SubscriptionLogsController : ControllerBase
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
+        // عكس رصيد الفني إذا كان مرتبطاً
+        if (log.LinkedTechnicianId.HasValue && log.PlanPrice.HasValue)
+        {
+            var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+            if (tech != null)
+            {
+                tech.TechTotalCharges -= log.PlanPrice.Value;
+                tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
+                _unitOfWork.Users.Update(tech);
+
+                // حذف معاملة الفني المرتبطة
+                var techTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                    .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                if (techTx != null)
+                {
+                    techTx.IsDeleted = true;
+                    techTx.DeletedAt = DateTime.UtcNow;
+                    _unitOfWork.TechnicianTransactions.Update(techTx);
+                }
+            }
+        }
+
+        // عكس رصيد الوكيل إذا كان مرتبطاً
+        if (log.LinkedAgentId.HasValue && log.PlanPrice.HasValue)
+        {
+            var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+            if (agent != null)
+            {
+                agent.TotalCharges -= log.PlanPrice.Value;
+                agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                _unitOfWork.Agents.Update(agent);
+
+                // حذف معاملة الوكيل المرتبطة
+                var agentTx = await _unitOfWork.AgentTransactions.AsQueryable()
+                    .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                if (agentTx != null)
+                {
+                    agentTx.IsDeleted = true;
+                    agentTx.DeletedAt = DateTime.UtcNow;
+                    _unitOfWork.AgentTransactions.Update(agentTx);
+                }
+            }
+        }
+
         log.IsDeleted = true;
         log.DeletedAt = DateTime.UtcNow;
         _unitOfWork.SubscriptionLogs.Update(log);
         await _unitOfWork.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "تم حذف السجل بنجاح" });
+        _logger.LogInformation("تم حذف سجل الاشتراك {LogId} مع عكس الأرصدة", id);
+        return Ok(new { success = true, message = "تم حذف السجل وعكس الأرصدة بنجاح" });
     }
 
     /// <summary>

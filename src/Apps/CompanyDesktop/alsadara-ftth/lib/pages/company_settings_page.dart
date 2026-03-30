@@ -13,6 +13,10 @@ import '../services/departments_data_service.dart';
 import '../services/centers_data_service.dart';
 import '../services/company_settings_service.dart';
 import '../services/custom_auth_service.dart';
+import '../services/auto_renewal_reminder_service.dart';
+import '../services/whatsapp_business_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'printer_settings_page.dart';
 import 'settings_page.dart';
 import 'settings_text_scale_page.dart';
@@ -69,6 +73,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   final _fieldPasswordCtrl = TextEditingController();
   bool _showFieldPassword = false;
 
+  // إعدادات التذكير التلقائي
+  bool _autoReminderEnabled = false;
+  List<Map<String, dynamic>> _reminderBatches = [];
+  Map<String, dynamic> _reminderResults = {};
+  bool _isReminderLoading = false;
+  bool _isReminderSaving = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +88,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     _loadDepartments();
     _loadCenters();
     _loadReportSettings();
+    _loadReminderSettings();
   }
 
   @override
@@ -1199,6 +1211,1144 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     }
   }
 
+  // ── إعدادات التذكير التلقائي ──
+
+  Future<void> _loadReminderSettings() async {
+    if (!mounted) return;
+    setState(() => _isReminderLoading = true);
+    try {
+      final tid = _resolvedTenantId;
+      final settings =
+          await CompanySettingsService.getReminderSettings(tenantId: tid);
+      final results =
+          await CompanySettingsService.getReminderResults(tenantId: tid);
+      if (mounted) {
+        setState(() {
+          _autoReminderEnabled = settings['enabled'] == true;
+          final rawBatches = settings['batches'];
+          if (rawBatches is List) {
+            _reminderBatches = rawBatches
+                .map((b) => Map<String, dynamic>.from(b as Map))
+                .toList();
+          }
+          _reminderResults = results;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ خطأ تحميل إعدادات التذكير: $e');
+    } finally {
+      if (mounted) setState(() => _isReminderLoading = false);
+    }
+  }
+
+  Future<void> _saveReminderSettings() async {
+    final tid = _resolvedTenantId;
+    if (tid == null) {
+      _showSnack('لا يوجد معرّف شركة');
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _isReminderSaving = true);
+    try {
+      final ok = await CompanySettingsService.saveReminderSettings(
+        enabled: _autoReminderEnabled,
+        batches: _reminderBatches,
+        tenantId: tid,
+      );
+      // مزامنة tenantId + تفعيل/تعطيل workflow على n8n
+      _syncTenantToN8n(tid, activate: _autoReminderEnabled);
+      if (mounted) {
+        _showSnack(ok ? 'تم حفظ إعدادات التذكير التلقائي' : 'فشل في الحفظ');
+      }
+    } catch (e) {
+      if (mounted) _showSnack('فشل في حفظ إعدادات التذكير');
+    } finally {
+      if (mounted) setState(() => _isReminderSaving = false);
+    }
+  }
+
+  /// مزامنة tenantId مع n8n workflow (بشكل صامت في الخلفية)
+  Future<void> _syncTenantToN8n(String tenantId,
+      {bool activate = true}) async {
+    try {
+      final n8nToken = await WhatsAppBusinessService.getN8nApiToken();
+      if (n8nToken == null || n8nToken.isEmpty) return;
+
+      const n8nBase = 'https://n8n.srv991906.hstgr.cloud';
+      final headers = {
+        'X-N8N-API-KEY': n8nToken,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      // البحث عن workflow التذكير التلقائي
+      final listRes = await http
+          .get(Uri.parse('$n8nBase/api/v1/workflows?limit=50'),
+              headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (listRes.statusCode != 200) return;
+
+      final workflows = jsonDecode(listRes.body)['data'] as List? ?? [];
+      Map<String, dynamic>? reminderWorkflow;
+      for (final w in workflows) {
+        final name = w['name']?.toString() ?? '';
+        if (name.contains('Auto Reminder') || name.contains('تذكير تلقائي')) {
+          reminderWorkflow = Map<String, dynamic>.from(w as Map);
+          break;
+        }
+      }
+      if (reminderWorkflow == null) return;
+
+      final wfId = reminderWorkflow['id'];
+
+      // تحديث tenantId في Configuration node
+      final nodes = (reminderWorkflow['nodes'] as List?) ?? [];
+      bool configUpdated = false;
+      for (final node in nodes) {
+        if (node['name'] == 'Configuration') {
+          final assignments =
+              node['parameters']?['assignments']?['assignments'] as List?;
+          if (assignments != null) {
+            for (final a in assignments) {
+              if (a['name'] == 'tenantId' && a['value'] != tenantId) {
+                a['value'] = tenantId;
+                configUpdated = true;
+              }
+            }
+          }
+        }
+      }
+
+      // تحديث nodes إذا تغير tenantId
+      if (configUpdated) {
+        await http
+            .patch(
+              Uri.parse('$n8nBase/api/v1/workflows/$wfId'),
+              headers: headers,
+              body: jsonEncode({
+                'nodes': nodes,
+                'connections': reminderWorkflow['connections'],
+                'settings': reminderWorkflow['settings'],
+              }),
+            )
+            .timeout(const Duration(seconds: 10));
+        debugPrint('✅ n8n: tenantId → $tenantId');
+      }
+
+      // تفعيل أو تعطيل workflow
+      final isActive = reminderWorkflow['active'] == true;
+      if (activate && !isActive) {
+        await http
+            .post(Uri.parse('$n8nBase/api/v1/workflows/$wfId/activate'),
+                headers: headers)
+            .timeout(const Duration(seconds: 10));
+        debugPrint('✅ n8n workflow مُفعّل');
+      } else if (!activate && isActive) {
+        await http
+            .post(Uri.parse('$n8nBase/api/v1/workflows/$wfId/deactivate'),
+                headers: headers)
+            .timeout(const Duration(seconds: 10));
+        debugPrint('⛔ n8n workflow مُعطّل');
+      }
+    } catch (e) {
+      debugPrint('⚠️ n8n sync failed (non-critical): $e');
+    }
+  }
+
+  void _addReminderBatch() {
+    int selectedHour = 10;
+    int selectedMinute = 0;
+    int selectedDays = 0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setDialogState) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              backgroundColor: _bgCard,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.add_alarm,
+                        color: Colors.deepPurple, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('إضافة وجبة إرسال',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.bold, color: _textDark)),
+                ],
+              ),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // وقت الإرسال
+                    Text('وقت الإرسال',
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.w600, color: _textDark)),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime: TimeOfDay(
+                              hour: selectedHour, minute: selectedMinute),
+                        );
+                        if (picked != null) {
+                          setDialogState(() {
+                            selectedHour = picked.hour;
+                            selectedMinute = picked.minute;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: _dividerColor),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time,
+                                color: Colors.deepPurple),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: _textDark),
+                            ),
+                            const Spacer(),
+                            Text('اضغط لتغيير',
+                                style: GoogleFonts.cairo(
+                                    fontSize: 12, color: _textGray)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // فترة الاشتراك
+                    Text('المشتركين المستهدفين',
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.w600, color: _textDark)),
+                    const SizedBox(height: 8),
+                    ...List.generate(4, (i) {
+                      final labels = [
+                        'المنتهي اليوم',
+                        'المنتهي غداً',
+                        'المنتهي بعد غد',
+                        'المنتهي خلال 3 أيام'
+                      ];
+                      return RadioListTile<int>(
+                        title: Text(labels[i], style: GoogleFonts.cairo()),
+                        value: i,
+                        groupValue: selectedDays,
+                        onChanged: (v) =>
+                            setDialogState(() => selectedDays = v!),
+                        activeColor: Colors.deepPurple,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('إلغاء',
+                      style: GoogleFonts.cairo(color: _textGray)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _reminderBatches.add({
+                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                        'hour': selectedHour,
+                        'minute': selectedMinute,
+                        'days': selectedDays,
+                        'enabled': true,
+                      });
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: Text('إضافة', style: GoogleFonts.cairo()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  void _editReminderBatch(int index) {
+    final batch = _reminderBatches[index];
+    int selectedHour = batch['hour'] as int? ?? 10;
+    int selectedMinute = batch['minute'] as int? ?? 0;
+    int selectedDays = batch['days'] as int? ?? 0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setDialogState) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              backgroundColor: _bgCard,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.edit,
+                        color: Colors.deepPurple, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('تعديل وجبة الإرسال',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.bold, color: _textDark)),
+                ],
+              ),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('وقت الإرسال',
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.w600, color: _textDark)),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime: TimeOfDay(
+                              hour: selectedHour, minute: selectedMinute),
+                        );
+                        if (picked != null) {
+                          setDialogState(() {
+                            selectedHour = picked.hour;
+                            selectedMinute = picked.minute;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: _dividerColor),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time,
+                                color: Colors.deepPurple),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: _textDark),
+                            ),
+                            const Spacer(),
+                            Text('اضغط لتغيير',
+                                style: GoogleFonts.cairo(
+                                    fontSize: 12, color: _textGray)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('المشتركين المستهدفين',
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.w600, color: _textDark)),
+                    const SizedBox(height: 8),
+                    ...List.generate(4, (i) {
+                      final labels = [
+                        'المنتهي اليوم',
+                        'المنتهي غداً',
+                        'المنتهي بعد غد',
+                        'المنتهي خلال 3 أيام'
+                      ];
+                      return RadioListTile<int>(
+                        title: Text(labels[i], style: GoogleFonts.cairo()),
+                        value: i,
+                        groupValue: selectedDays,
+                        onChanged: (v) =>
+                            setDialogState(() => selectedDays = v!),
+                        activeColor: Colors.deepPurple,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('إلغاء',
+                      style: GoogleFonts.cairo(color: _textGray)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _reminderBatches[index] =
+                          Map<String, dynamic>.from(batch)
+                            ..['hour'] = selectedHour
+                            ..['minute'] = selectedMinute
+                            ..['days'] = selectedDays;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  icon: const Icon(Icons.save, size: 18),
+                  label: Text('حفظ التعديل', style: GoogleFonts.cairo()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  String _batchDaysLabel(int days) {
+    switch (days) {
+      case 0:
+        return 'المنتهي اليوم';
+      case 1:
+        return 'المنتهي غداً';
+      case 2:
+        return 'المنتهي بعد غد';
+      default:
+        return 'خلال $days أيام';
+    }
+  }
+
+  Widget _buildAutoReminderSection() {
+    if (_isReminderLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(color: Colors.deepPurple),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _dividerColor),
+        boxShadow: const [
+          BoxShadow(color: _shadowColor, blurRadius: 10, offset: Offset(0, 2))
+        ],
+      ),
+      child: Column(
+        children: [
+          // العنوان
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.withOpacity(0.05),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.notifications_active,
+                      color: Colors.deepPurple, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('التذكير التلقائي قبل انتهاء الاشتراك',
+                          style: GoogleFonts.cairo(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _textDark)),
+                      Text(
+                          'يُرسل تلقائياً عبر n8n + WhatsApp API حتى لو التطبيق مغلق',
+                          style: GoogleFonts.cairo(
+                              fontSize: 11, color: Colors.grey[600])),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // تفعيل/تعطيل
+          SwitchListTile(
+            title: Text('تفعيل التذكير التلقائي',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+            subtitle: Text(
+                _autoReminderEnabled
+                    ? 'مفعّل — n8n سيرسل حسب الجدول أدناه'
+                    : 'معطّل — لن يتم إرسال تذكيرات تلقائية',
+                style: GoogleFonts.cairo(fontSize: 12)),
+            value: _autoReminderEnabled,
+            onChanged: (v) => setState(() => _autoReminderEnabled = v),
+            activeColor: Colors.deepPurple,
+          ),
+          if (_autoReminderEnabled) ...[
+            const Divider(height: 1, color: _dividerColor),
+            // قائمة الوجبات
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Text('وجبات الإرسال',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: _textDark)),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: _addReminderBatch,
+                    icon: const Icon(Icons.add, size: 18),
+                    label:
+                        Text('إضافة وجبة', style: GoogleFonts.cairo(fontSize: 13)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.deepPurple,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_reminderBatches.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Icon(Icons.schedule, size: 40, color: Colors.grey[400]),
+                    const SizedBox(height: 8),
+                    Text('لا توجد وجبات إرسال',
+                        style: GoogleFonts.cairo(color: _textGray)),
+                    Text('اضغط "إضافة وجبة" لإنشاء جدول إرسال',
+                        style:
+                            GoogleFonts.cairo(fontSize: 12, color: _textGray)),
+                  ],
+                ),
+              )
+            else
+              ...List.generate(_reminderBatches.length, (i) {
+                final batch = _reminderBatches[i];
+                final batchId = batch['id']?.toString() ?? '';
+                final hour = batch['hour'] as int? ?? 10;
+                final minute = batch['minute'] as int? ?? 0;
+                final days = batch['days'] as int? ?? 0;
+                final enabled = batch['enabled'] == true;
+                final timeStr =
+                    '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
+                // النتائج
+                final result =
+                    _reminderResults[batchId] as Map<String, dynamic>?;
+
+                return Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: enabled
+                        ? Colors.deepPurple.withOpacity(0.03)
+                        : Colors.grey.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: enabled
+                          ? Colors.deepPurple.withOpacity(0.15)
+                          : Colors.grey.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          // حذف
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                size: 20, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                _reminderBatches.removeAt(i);
+                              });
+                            },
+                            tooltip: 'حذف الوجبة',
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.only(left: 4),
+                          ),
+                          // تفعيل/تعطيل
+                          Switch(
+                            value: enabled,
+                            onChanged: (v) {
+                              setState(() {
+                                _reminderBatches[i] =
+                                    Map<String, dynamic>.from(batch)
+                                      ..['enabled'] = v;
+                              });
+                            },
+                            activeColor: Colors.deepPurple,
+                          ),
+                          const Spacer(),
+                          // الفترة - قابلة للتعديل
+                          InkWell(
+                            onTap: () => _editReminderBatch(i),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(_batchDaysLabel(days),
+                                  style: GoogleFonts.cairo(
+                                      fontSize: 12,
+                                      color: Colors.blue[700],
+                                      fontWeight: FontWeight.w500)),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // أيقونة الوقت - قابلة للتعديل
+                          InkWell(
+                            onTap: () => _editReminderBatch(i),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: enabled
+                                    ? Colors.deepPurple.withOpacity(0.1)
+                                    : Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.access_time,
+                                      size: 16,
+                                      color: enabled
+                                          ? Colors.deepPurple
+                                          : Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(timeStr,
+                                      style: GoogleFonts.cairo(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: enabled
+                                              ? Colors.deepPurple
+                                              : Colors.grey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // نتائج آخر تنفيذ
+                      if (result != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_circle,
+                                  size: 14, color: Colors.green[600]),
+                              const SizedBox(width: 6),
+                              Text(
+                                'آخر تنفيذ: ${result['date'] ?? ''} ${result['time'] ?? ''}',
+                                style: GoogleFonts.cairo(
+                                    fontSize: 11, color: Colors.green[700]),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                '✅ ${result['sent'] ?? 0}',
+                                style: GoogleFonts.cairo(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green[700]),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '❌ ${result['failed'] ?? 0}',
+                                style: GoogleFonts.cairo(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red[600]),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            const SizedBox(height: 12),
+            // أزرار الحفظ + الاختبار
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  // زر الحفظ
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        onPressed:
+                            _isReminderSaving ? null : _saveReminderSettings,
+                        icon: _isReminderSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.save, size: 18),
+                        label: Text(
+                          _isReminderSaving
+                              ? 'جاري الحفظ...'
+                              : 'حفظ إعدادات التذكير',
+                          style:
+                              GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // زر الاختبار
+                  SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: _showTestReminderDialog,
+                      icon: const Icon(Icons.science_rounded, size: 18),
+                      label: Text('إرسال تجريبي',
+                          style:
+                              GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.deepPurple,
+                        side: const BorderSide(color: Colors.deepPurple),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // زر إرسال مباشر
+                  SizedBox(
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: _sendReminderNow,
+                      icon: const Icon(Icons.send_rounded, size: 18),
+                      label: Text('إرسال الآن',
+                          style:
+                              GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
+  // ═══ إرسال مباشر لكل الوجبات المفعّلة ═══
+  Future<void> _sendReminderNow() async {
+    if (_reminderBatches.isEmpty) {
+      _showSnack('لا توجد وجبات إرسال محفوظة');
+      return;
+    }
+
+    final activeBatches = _reminderBatches.where((b) => b['enabled'] == true).toList();
+    if (activeBatches.isEmpty) {
+      _showSnack('لا توجد وجبات مفعّلة');
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('إرسال مباشر', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        content: Text(
+          'سيتم إرسال تذكير لـ ${activeBatches.length} وجبة مفعّلة:\n\n${activeBatches.map((b) => '• ${b['label'] ?? 'وجبة'} (${b['days']} يوم)').join('\n')}\n\nهل تريد المتابعة؟',
+          style: GoogleFonts.cairo(),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: Text('إرسال', style: GoogleFonts.cairo(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    _showSnack('جاري الإرسال...');
+
+    int totalSent = 0;
+    int totalFailed = 0;
+
+    for (final batch in activeBatches) {
+      final days = batch['days'] as int? ?? 0;
+      try {
+        final result = await AutoRenewalReminderService.instance.sendManually(days);
+        totalSent += (result['sent'] as int? ?? 0);
+        totalFailed += (result['failed'] as int? ?? 0);
+      } catch (e) {
+        debugPrint('❌ خطأ في إرسال وجبة $days يوم: $e');
+        totalFailed++;
+      }
+    }
+
+    if (mounted) {
+      _showSnack('تم الإرسال — نجح: $totalSent | فشل: $totalFailed');
+    }
+  }
+
+  // ═══ إرسال تجريبي لقالب التذكير ═══
+  Future<void> _showTestReminderDialog() async {
+    final phoneController = TextEditingController();
+    final nameController = TextEditingController(text: 'مشترك تجريبي');
+    final contactController =
+        TextEditingController(text: '07705210210');
+    int testDays = 1;
+    bool isSending = false;
+
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.science_rounded,
+                      color: Colors.deepPurple, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('إرسال تجريبي',
+                          style: GoogleFonts.cairo(
+                              fontSize: 17, fontWeight: FontWeight.bold)),
+                      Text('اختبار قالب sadara_reminder',
+                          style: GoogleFonts.cairo(
+                              fontSize: 11, color: Colors.grey[600])),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // رقم الهاتف
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      textAlign: TextAlign.left,
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(
+                        labelText: 'رقم الهاتف (المستلم) *',
+                        hintText: '07xxxxxxxxx',
+                        prefixIcon:
+                            const Icon(Icons.phone, color: Colors.deepPurple),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        helperText: 'يجب أن يكون مسجلاً في WhatsApp',
+                        helperStyle: const TextStyle(fontSize: 11),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // اسم المشترك
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'اسم المشترك',
+                        prefixIcon: const Icon(Icons.person_outline,
+                            color: Colors.deepPurple),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // رقم التواصل
+                    TextField(
+                      controller: contactController,
+                      keyboardType: TextInputType.phone,
+                      textAlign: TextAlign.left,
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(
+                        labelText: 'رقم التواصل (يظهر في الرسالة)',
+                        prefixIcon: const Icon(Icons.contact_phone,
+                            color: Colors.deepPurple, size: 20),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // تاريخ الانتهاء
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text('تاريخ الانتهاء:',
+                          style: GoogleFonts.cairo(
+                              fontWeight: FontWeight.w600, fontSize: 13)),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: List.generate(4, (i) {
+                        final labels = ['اليوم', 'غداً', 'بعد غد', '3 أيام'];
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(left: i < 3 ? 6 : 0),
+                            child: ChoiceChip(
+                              label: Text(labels[i],
+                                  style: const TextStyle(fontSize: 12)),
+                              selected: testDays == i,
+                              onSelected: (_) =>
+                                  setDialogState(() => testDays = i),
+                              selectedColor:
+                                  Colors.deepPurple.withOpacity(0.15),
+                              labelStyle: TextStyle(
+                                  color: testDays == i
+                                      ? Colors.deepPurple
+                                      : Colors.grey[700]),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 14),
+                    // معاينة القالب
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border:
+                            Border.all(color: Colors.green.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.visibility,
+                                  size: 14, color: Colors.green),
+                              const SizedBox(width: 6),
+                              Text('معاينة الرسالة',
+                                  style: GoogleFonts.cairo(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green[700])),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'شركة الصدارة للانترنت\n\n'
+                            'عزيزي المشترك ${nameController.text}،\n'
+                            'نود إعلامك بأن اشتراكك\n'
+                            'سينتهي بتاريخ ${_calcTestEndDate(testDays)}\n'
+                            'جدد الآن لتجنب انقطاع الخدمة!\n\n'
+                            'الاتصال على\n'
+                            '${contactController.text}',
+                            style: GoogleFonts.cairo(
+                                fontSize: 12, color: Colors.grey[800]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إلغاء', style: GoogleFonts.cairo()),
+              ),
+              const SizedBox(width: 4),
+              FilledButton.icon(
+                onPressed: isSending
+                    ? null
+                    : () async {
+                        if (phoneController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(
+                              content: Text('يرجى إدخال رقم الهاتف',
+                                  style: GoogleFonts.cairo()),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
+                        setDialogState(() => isSending = true);
+                        final endDate = _calcTestEndDate(testDays);
+                        // إرسال بنفس بنية القالب المعتمد من Meta
+                        final result = await WhatsAppBusinessService
+                            .sendTemplateWithComponents(
+                          to: phoneController.text.trim(),
+                          templateName: 'sadara_reminder',
+                          languageCode: 'ar',
+                          components: [
+                            {
+                              'type': 'header',
+                              'parameters': [
+                                {
+                                  'type': 'location',
+                                  'location': {
+                                    'latitude': '33.3574242',
+                                    'longitude': '44.4413559',
+                                    'name': 'شركة الصدارة',
+                                    'address':
+                                        'المشغل الرسمي للمشروع الوطني',
+                                  },
+                                },
+                              ],
+                            },
+                            {
+                              'type': 'body',
+                              'parameters': [
+                                {
+                                  'type': 'text',
+                                  'text': nameController.text.trim()
+                                },
+                                {'type': 'text', 'text': endDate},
+                                {
+                                  'type': 'text',
+                                  'text': contactController.text.trim()
+                                },
+                              ],
+                            },
+                          ],
+                        );
+                        setDialogState(() => isSending = false);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          final success = result != null &&
+                              result['_error'] != true;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                success
+                                    ? '✅ تم إرسال الرسالة التجريبية بنجاح!'
+                                    : '❌ فشل الإرسال — ${result?['_errorMessage'] ?? 'تأكد من إعدادات WhatsApp API'}',
+                                style: GoogleFonts.cairo(),
+                              ),
+                              backgroundColor:
+                                  success ? Colors.green : Colors.red,
+                              duration: const Duration(seconds: 5),
+                            ),
+                          );
+                        }
+                      },
+                icon: isSending
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send, size: 16),
+                label: Text(isSending ? 'جاري الإرسال...' : 'إرسال تجريبي',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                style: FilledButton.styleFrom(
+                    backgroundColor: Colors.deepPurple),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _calcTestEndDate(int days) {
+    final d = DateTime.now().add(Duration(days: days));
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
   String _getSettingDescription(String key) {
     switch (key) {
       case 'manager_name':
@@ -1443,6 +2593,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             ],
           ),
         ),
+        const SizedBox(height: 20),
+        // بطاقة التذكير التلقائي
+        _buildAutoReminderSection(),
         const SizedBox(height: 24),
         // زر الحفظ
         SizedBox(

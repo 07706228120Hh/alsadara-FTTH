@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../services/firebase_availability.dart';
+import '../services/whatsapp_batch_report_service.dart';
 
 /// صفحة تقارير الإرسال الجماعي
 class WhatsAppBatchReportsPage extends StatefulWidget {
@@ -13,7 +12,6 @@ class WhatsAppBatchReportsPage extends StatefulWidget {
 }
 
 class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   bool _isLoading = true;
   List<Map<String, dynamic>> _reports = [];
   String? _error;
@@ -25,30 +23,13 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
   }
 
   Future<void> _loadReports() async {
-    if (!FirebaseAvailability.isAvailable) {
-      setState(() {
-        _isLoading = false;
-        _error = 'Firebase غير متاح';
-      });
-      return;
-    }
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final snapshot = await _firestore
-          .collection('whatsapp_batch_reports')
-          .orderBy('completedAt', descending: true)
-          .get();
-
-      _reports = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['docId'] = doc.id;
-        return data;
-      }).toList();
-
+      _reports = await WhatsAppBatchReportService.getBatchReports(limit: 50);
       setState(() {
         _isLoading = false;
       });
@@ -615,17 +596,17 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
 
     if (confirm == true) {
       try {
-        final docId = report['docId'] ?? report['batchId'];
-        await _firestore
-            .collection('whatsapp_batch_reports')
-            .doc(docId)
-            .delete();
+        final id = report['id'] ?? report['Id'];
+        if (id != null) {
+          await WhatsAppBatchReportService.deleteBatchReport(
+              id is int ? id : int.tryParse(id.toString()) ?? 0);
+        }
 
         if (mounted) {
           Navigator.pop(context); // Close bottom sheet
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ تم حذف التقرير'),
+              content: Text('تم حذف التقرير'),
               backgroundColor: Colors.green,
             ),
           );
@@ -634,8 +615,8 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ خطأ في الحذف'),
+            const SnackBar(
+              content: Text('خطأ في الحذف'),
               backgroundColor: Colors.red,
             ),
           );

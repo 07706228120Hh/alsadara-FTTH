@@ -61,9 +61,9 @@ class ReceiptBoxDecoration {
   const ReceiptBoxDecoration({
     this.borderWidth = 0.8,
     this.borderRadius = 3,
-    this.paddingH = 4,
-    this.paddingV = 3,
-    this.marginBottom = 3,
+    this.paddingH = 2,
+    this.paddingV = 1,
+    this.marginBottom = 1,
   });
 
   Map<String, dynamic> toJson() => {
@@ -395,9 +395,9 @@ class ReceiptTemplate {
     const bordered = ReceiptBoxDecoration(
       borderWidth: 0.8,
       borderRadius: 3,
-      paddingH: 4,
-      paddingV: 3,
-      marginBottom: 3,
+      paddingH: 2,
+      paddingV: 1,
+      marginBottom: 1,
     );
 
     return ReceiptTemplate(
@@ -669,13 +669,37 @@ class ReceiptTemplate {
             ),
           ],
         ),
-        // 9. معلومات الاتصال (فوتر)
+        // 9. الملاحظات (تظهر فقط إذا كانت موجودة)
         ReceiptRow(
           id: 'r9',
-          type: ReceiptRowType.centeredText,
+          type: ReceiptRowType.cells,
+          conditionVariable: 'hasNotes',
+          decoration: bordered,
           cells: [
             ReceiptCell(
               id: 'r9c1',
+              content: 'ملاحظات:',
+              flex: 3,
+              alignment: ReceiptCellAlignment.right,
+              isLabel: true,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+            ),
+            ReceiptCell(
+              id: 'r9c2',
+              content: '{{subscriptionNotes}}',
+              flex: 11,
+              alignment: ReceiptCellAlignment.right,
+              textStyle: const ReceiptTextStyle(fontSizeOffset: -0.5),
+            ),
+          ],
+        ),
+        // 10. معلومات الاتصال (فوتر)
+        ReceiptRow(
+          id: 'r10',
+          type: ReceiptRowType.centeredText,
+          cells: [
+            ReceiptCell(
+              id: 'r10c1',
               content: '{{contactInfo}}',
               alignment: ReceiptCellAlignment.center,
               textStyle: const ReceiptTextStyle(fontSizeOffset: -1),

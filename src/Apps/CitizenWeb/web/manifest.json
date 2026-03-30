@@ -1,11 +1,11 @@
 {
-    "name": "citizen_portal",
-    "short_name": "citizen_portal",
+    "name": "منصة الصدارة",
+    "short_name": "الصدارة",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0D1B2A",
+    "theme_color": "#0D1B2A",
+    "description": "منصة الصدارة للخدمات الإلكترونية - إنترنت FTTH",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

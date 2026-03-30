@@ -97,7 +97,7 @@ class WhatsAppBulkSenderService {
                 '   - عدد الفاشلة: ${resultMap['totalFailed'] ?? 'غير محدد'}');
             debugPrint(
                 '   - نسبة النجاح: ${resultMap['successRate'] ?? 'غير محدد'}');
-            debugPrint('   ℹ️ الرسائل يتم حفظها في Firebase عبر n8n workflow');
+            debugPrint('   ℹ️ الرسائل يتم حفظها في PostgreSQL عبر n8n workflow → API');
 
             return {
               'success': true,
@@ -176,12 +176,20 @@ class WhatsAppBulkSenderService {
         'send-whatsapp-template',
       );
 
+      // تنظيف النصوص من أحرف السطر الجديد والتاب (Meta API لا يقبلها في متغيرات القالب)
+      String sanitize(String text) => text
+          .replaceAll('\r\n', ' ')
+          .replaceAll('\n', ' ')
+          .replaceAll('\r', ' ')
+          .replaceAll('\t', ' ')
+          .replaceAll(RegExp(r' {4,}'), '   ');
+
       final data = {
         'templateType': templateType,
         'recipients': recipients,
         'phoneNumberId': phoneNumberId,
         'accessToken': accessToken,
-        'offerText': offerText ?? 'لدينا عروض مميزة لك!',
+        'offerText': sanitize(offerText ?? 'لدينا عروض مميزة لك!'),
         'contactNumbers': contactNumbers ?? '07705210210',
         'location': location ??
             'شركة الصدارة المشغل الرسمي للمشروع الوطني https://maps.app.goo.gl/LvgqPrKt2R4f3KFP6',

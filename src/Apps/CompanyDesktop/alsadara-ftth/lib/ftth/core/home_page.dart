@@ -40,11 +40,13 @@ import '../users/user_details_page.dart';
 import '../users/users_page.dart';
 import '../tickets/tktats_page.dart'; // تغيير الاستيراد إلى tktats_page
 import '../reports/zones_page.dart';
+import '../../pages/kml_zones_map_page.dart';
 import '../subscriptions/subscriptions_page.dart';
 import '../transactions/caounter_details_page.dart';
 import '../reports/export_page.dart';
 import '../users/quick_search_users_page.dart';
 import '../transactions/account_records_page.dart';
+import '../transactions/daily_settlement_page.dart';
 import '../../pages/local_storage_page.dart'; // صفحة التخزين الداخلي
 import '../../pages/ftth/fetch_server_data_page.dart'; // صفحة جلب بيانات الموقع
 import '../../pages/ftth/ftth_company_page.dart'; // صفحة الشركة
@@ -147,10 +149,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _earlyPrefetchStarted = false;
   bool _dashboardRequested = false;
   bool _walletRequested = false;
+  bool _dashboardFetchInProgress = false; // منع تداخل طلبات لوحة التحكم
+  DateTime? _lastDashboardFetch; // throttle: 10 ثوانٍ بين كل جلبين
 
   // Sidebar state (للشاشات العريضة)
   bool _sidebarExpanded = false;
   Timer? _autoCollapseTimer;
+
+  // Mobile Bottom Navigation
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // --- البحث السريع في الشاشة الرئيسية ---
   final TextEditingController _searchNameCtrl = TextEditingController();
@@ -714,6 +721,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> fetchDashboardData() async {
+    // منع التداخل: إذا كان جلب سابق جارٍ، تخطَّ
+    if (_dashboardFetchInProgress) return;
+    // throttle: تجاهل إذا مضى أقل من 10 ثوانٍ على آخر جلب ناجح
+    final now = DateTime.now();
+    if (_lastDashboardFetch != null &&
+        now.difference(_lastDashboardFetch!).inSeconds < 10) {
+      return;
+    }
+    _dashboardFetchInProgress = true;
+
     if (mounted) {
       setState(() {
         isLoadingDashboard =
@@ -735,6 +752,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             isLoadingDashboard = false;
           });
         }
+        _lastDashboardFetch = DateTime.now(); // تحديث وقت آخر جلب ناجح
         try {
           final c = model['customers'] ?? {};
           debugPrint(
@@ -746,7 +764,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           await FtthCacheService.saveDashboard(model);
         } catch (_) {}
       } else if (response.statusCode == 401) {
-        // معالجة خ��أ انتهاء صلاحية التوكن
+        // معالجة خطأ انتهاء صلاحية التوكن
         _handle401Error();
         return;
       } else {
@@ -778,6 +796,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           isLoadingDashboard = false;
         });
       }
+    } finally {
+      _dashboardFetchInProgress = false;
     }
   }
 
@@ -2214,9 +2234,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             );
           }),
           Scaffold(
+            key: _scaffoldKey,
             backgroundColor: Colors.transparent,
             appBar: _buildAppBar(isTablet, isSmallPhone, screenWidth),
             drawer: screenWidth <= 700 ? _buildDrawer(isTablet, isSmallPhone, screenWidth) : null,
+            bottomNavigationBar: null,
             body: Row(
               children: [
                 if (screenWidth > 700) _buildSidebar(isTablet, isSmallPhone),
@@ -2755,6 +2777,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     onTap: () =>
                         navigateToPage(ZonesPage(authToken: currentToken)),
                   ),
+                _sidebarBtn(
+                  icon: IconsaxPlusBold.map,
+                  label: 'خريطة الزونات',
+                  color: const Color(0xFF0EA5E9),
+                  onTap: () => navigateToPage(const KmlZonesMapPage()),
+                ),
                 if (_hasPermission('audit_logs'))
                   _sidebarBtn(
                     icon: IconsaxPlusBold.clock,
@@ -2951,6 +2979,64 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // شريط التنقل السفلي (للموبايل فقط — screenWidth <= 700)
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildBottomNav() {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: const Color(0xFF1A237E),
+      selectedItemColor: Colors.white,
+      unselectedItemColor: Colors.white54,
+      currentIndex: 0,
+      selectedFontSize: 11,
+      unselectedFontSize: 10,
+      elevation: 8,
+      onTap: (index) {
+        if (index == 0) return; // الرئيسية — نحن عليها بالفعل
+        if (index == 1 && _hasPermission('subscriptions')) {
+          navigateToPage(SubscriptionsPage(
+            authToken: currentToken,
+            activatedBy: widget.username,
+            hasServerSavePermission: hasServerSavePermission(),
+            hasWhatsAppPermission: hasWhatsAppPermission(),
+            isAdminFlag: isAdmin,
+            importantFtthApiPermissions: _getImportantPermissions(),
+          ));
+        } else if (index == 2 && _hasPermission('account_records')) {
+          navigateToPage(AccountRecordsPage(
+            authToken: currentToken,
+            activatedBy: widget.username,
+            permissions: getAllPermissions(),
+            firstSystemUsername: widget.firstSystemUsername,
+            firstSystemDepartment: widget.firstSystemDepartment,
+            firstSystemCenter: widget.firstSystemCenter,
+          ));
+        } else if (index == 3) {
+          _scaffoldKey.currentState?.openDrawer();
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_rounded),
+          label: 'الرئيسية',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.wifi_rounded),
+          label: 'الاشتراكات',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.receipt_long_rounded),
+          label: 'التسديدات',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.menu_rounded),
+          label: 'القائمة',
+        ),
+      ],
+    );
+  }
+
   Widget _buildDrawer(bool isTablet, bool isSmallPhone, double screenWidth) {
     return Drawer(
       child: Container(
@@ -3016,6 +3102,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       onTap: () =>
                           navigateToPage(ZonesPage(authToken: currentToken)),
                     ),
+
+                  // 2b خريطة الزونات
+                  _buildDrawerItem(
+                    icon: IconsaxPlusBold.map,
+                    title: 'خريطة الزونات',
+                    isTablet: isTablet,
+                    isSmallPhone: isSmallPhone,
+                    color: Colors.cyan,
+                    onTap: () => navigateToPage(const KmlZonesMapPage()),
+                  ),
 
                   // 3 سجل التدقيق
                   if (_hasPermission('audit_logs'))
@@ -3580,7 +3676,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           if (append) { _searchResults.addAll(items); } else { _searchResults..clear()..addAll(items); }
         });
       }
-    } catch (_) {
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString().contains('انتهت جلسة المستخدم')
+            ? 'انتهت الجلسة — يرجى إعادة تسجيل الدخول'
+            : 'خطأ في البحث — تحقق من الاتصال';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700, duration: const Duration(seconds: 3)),
+        );
+      }
     } finally {
       if (mounted) setState(() { _searchLoading = false; _searchLoadingMore = false; _searchWaiting = false; });
     }
@@ -3603,7 +3707,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       }
       _searchZoneFetching.remove(customerId);
-    }).catchError((_) => _searchZoneFetching.remove(customerId));
+    }).catchError((_) { _searchZoneFetching.remove(customerId); });
   }
 
   void _resetQuickSearch() {
@@ -3620,16 +3724,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildQuickSearchSection(bool isLargeScreen) {
     final r = context.responsive;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobileLayout = screenWidth < 600;
     final bdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: Colors.black, width: 1.5));
     final fbdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2));
     final lbl = TextStyle(fontSize: r.bodySize, fontWeight: FontWeight.w700, color: Colors.grey.shade700);
+    final searchPad = r.scaled(6, 8, 10);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // بطاقة البحث
         Container(
-          padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+          padding: EdgeInsets.fromLTRB(searchPad, searchPad + 2, searchPad, searchPad - 2),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
@@ -3638,180 +3745,257 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 3)),
             ],
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // المنطقة — حقل بحث مع تصفية
-              SizedBox(
-                width: r.scaled(140, 180, 220),
-                child: Autocomplete<Map<String, dynamic>>(
-                  optionsBuilder: (textEditingValue) {
-                    final query = textEditingValue.text.trim().toLowerCase();
-                    final typed = _searchZones.cast<Map<String, dynamic>>();
-                    if (query.isEmpty) return typed;
-                    return typed.where((z) {
-                      final name = (z['self']?['displayValue'] ?? '').toString().toLowerCase();
-                      return name.contains(query);
-                    });
-                  },
-                  displayStringForOption: (z) => z['self']?['displayValue'] ?? '',
-                  onSelected: (z) {
-                    setState(() => _searchZoneId = z['self']?['id']?.toString() ?? '');
-                    if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty) _onSearchQueryChanged();
-                  },
-                  fieldViewBuilder: (ctx, controller, focusNode, onSubmit) {
-                    return TextField(
-                      controller: controller,
-                      focusNode: focusNode,
+          child: isMobileLayout
+              // ═══ موبايل: حقلان عموديان (هاتف + اسم) ═══
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // رقم الهاتف
+                    TextField(
+                      controller: _searchPhoneCtrl,
+                      keyboardType: TextInputType.phone,
                       textAlign: TextAlign.right,
+                      onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
+                      onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
                       decoration: InputDecoration(
-                        labelText: 'المنطقة',
+                        labelText: 'رقم الهاتف',
                         labelStyle: lbl,
                         floatingLabelBehavior: FloatingLabelBehavior.always,
                         floatingLabelAlignment: FloatingLabelAlignment.center,
                         filled: true, fillColor: Colors.white, isDense: true,
                         contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                        prefixIcon: Icon(Icons.location_on, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                        prefixIcon: Icon(Icons.phone, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
                         suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                        suffixIcon: controller.text.isNotEmpty
-                            ? IconButton(
-                                tooltip: 'مسح المنطقة',
-                                icon: const Icon(Icons.clear, size: 16, color: Colors.red),
-                                onPressed: () {
-                                  controller.clear();
-                                  setState(() => _searchZoneId = '');
-                                  if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty) _onSearchQueryChanged();
-                                },
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              )
-                            : null,
+                        suffixIcon: _searchPhoneCtrl.text.isNotEmpty
+                            ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                            : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                if (data?.text != null && data!.text!.isNotEmpty && mounted) {
+                                  final cleaned = _toWestern(data.text!).replaceAll(RegExp(r'[^0-9+]'), '').trim();
+                                  if (cleaned.isEmpty) return;
+                                  _searchPhoneCtrl.text = cleaned;
+                                  _searchPhoneCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchPhoneCtrl.text.length));
+                                  setState(() {}); _onSearchQueryChanged();
+                                }
+                              }, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
                         enabledBorder: bdr,
                         focusedBorder: fbdr,
                       ),
                       style: TextStyle(fontSize: r.bodySize),
-                      onChanged: (v) {
-                        if (v.isEmpty) setState(() => _searchZoneId = '');
-                      },
-                    );
-                  },
-                  optionsViewBuilder: (ctx, onSelected, options) {
-                    return Align(
-                      alignment: Alignment.topRight,
-                      child: Material(
-                        elevation: 6,
-                        borderRadius: BorderRadius.circular(10),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: 250, maxWidth: r.scaled(140, 180, 220)),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            shrinkWrap: true,
-                            itemCount: options.length,
-                            itemBuilder: (ctx, i) {
-                              final z = options.elementAt(i);
-                              final name = z['self']?['displayValue'] ?? '';
-                              return InkWell(
-                                onTap: () => onSelected(z),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  child: Text(name, style: const TextStyle(fontSize: 13), textAlign: TextAlign.right),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    // اسم المشترك
+                    TextField(
+                      controller: _searchNameCtrl,
+                      textAlign: TextAlign.right,
+                      textInputAction: TextInputAction.search,
+                      onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
+                      onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
+                      decoration: InputDecoration(
+                        labelText: 'اسم المشترك',
+                        labelStyle: lbl,
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        floatingLabelAlignment: FloatingLabelAlignment.center,
+                        filled: true, fillColor: Colors.white, isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
+                        prefixIcon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: r.iconSizeMedium),
+                        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                        suffixIcon: (_searchLoading && _searchNameCtrl.text.isNotEmpty)
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : _searchWaiting
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
+                                : (_searchNameCtrl.text.isNotEmpty
+                                    ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                                    : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                                        final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                        if (data?.text != null && data!.text!.isNotEmpty && mounted) {
+                                          _searchNameCtrl.text = _toWestern(data.text!).trim();
+                                          _searchNameCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchNameCtrl.text.length));
+                                          setState(() {}); _onSearchQueryChanged();
+                                        }
+                                      }, padding: EdgeInsets.zero, constraints: const BoxConstraints())),
+                        enabledBorder: bdr,
+                        focusedBorder: fbdr,
                       ),
-                    );
-                  },
+                      style: TextStyle(fontSize: r.bodySize),
+                    ),
+                  ],
+                )
+              // ═══ ديسكتوب: صف أفقي (منطقة + اسم + هاتف) ═══
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // المنطقة — حقل بحث مع تصفية
+                    SizedBox(
+                      width: r.scaled(140, 180, 220),
+                      child: Autocomplete<Map<String, dynamic>>(
+                        optionsBuilder: (textEditingValue) {
+                          final query = textEditingValue.text.trim().toLowerCase();
+                          final typed = _searchZones.cast<Map<String, dynamic>>();
+                          if (query.isEmpty) return typed;
+                          return typed.where((z) {
+                            final name = (z['self']?['displayValue'] ?? '').toString().toLowerCase();
+                            return name.contains(query);
+                          });
+                        },
+                        displayStringForOption: (z) => z['self']?['displayValue'] ?? '',
+                        onSelected: (z) {
+                          setState(() => _searchZoneId = z['self']?['id']?.toString() ?? '');
+                          if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty) _onSearchQueryChanged();
+                        },
+                        fieldViewBuilder: (ctx, controller, focusNode, onSubmit) {
+                          return TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            textAlign: TextAlign.right,
+                            decoration: InputDecoration(
+                              labelText: 'المنطقة',
+                              labelStyle: lbl,
+                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              floatingLabelAlignment: FloatingLabelAlignment.center,
+                              filled: true, fillColor: Colors.white, isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
+                              prefixIcon: Icon(Icons.location_on, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                              suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                              suffixIcon: controller.text.isNotEmpty
+                                  ? IconButton(
+                                      tooltip: 'مسح المنطقة',
+                                      icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                                      onPressed: () {
+                                        controller.clear();
+                                        setState(() => _searchZoneId = '');
+                                        if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty) _onSearchQueryChanged();
+                                      },
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    )
+                                  : null,
+                              enabledBorder: bdr,
+                              focusedBorder: fbdr,
+                            ),
+                            style: TextStyle(fontSize: r.bodySize),
+                            onChanged: (v) {
+                              if (v.isEmpty) setState(() => _searchZoneId = '');
+                            },
+                          );
+                        },
+                        optionsViewBuilder: (ctx, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topRight,
+                            child: Material(
+                              elevation: 6,
+                              borderRadius: BorderRadius.circular(10),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(maxHeight: 250, maxWidth: r.scaled(140, 180, 220)),
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (ctx, i) {
+                                    final z = options.elementAt(i);
+                                    final name = z['self']?['displayValue'] ?? '';
+                                    return InkWell(
+                                      onTap: () => onSelected(z),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        child: Text(name, style: const TextStyle(fontSize: 13), textAlign: TextAlign.right),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // اسم المشترك
+                    Expanded(
+                      flex: 3,
+                      child: TextField(
+                        controller: _searchNameCtrl,
+                        textAlign: TextAlign.right,
+                        textInputAction: TextInputAction.search,
+                        onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
+                        onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
+                        decoration: InputDecoration(
+                          labelText: 'اسم المشترك',
+                          labelStyle: lbl,
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          floatingLabelAlignment: FloatingLabelAlignment.center,
+                          filled: true, fillColor: Colors.white, isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
+                          prefixIcon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: r.iconSizeMedium),
+                          suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                          suffixIcon: (_searchLoading && _searchNameCtrl.text.isNotEmpty)
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              : _searchWaiting
+                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
+                                  : (_searchNameCtrl.text.isNotEmpty
+                                      ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                                      : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                                          final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                          if (data?.text != null && data!.text!.isNotEmpty && mounted) {
+                                            _searchNameCtrl.text = _toWestern(data.text!).trim();
+                                            _searchNameCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchNameCtrl.text.length));
+                                            setState(() {}); _onSearchQueryChanged();
+                                          }
+                                        }, padding: EdgeInsets.zero, constraints: const BoxConstraints())),
+                          enabledBorder: bdr,
+                          focusedBorder: fbdr,
+                        ),
+                        style: TextStyle(fontSize: r.bodySize),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // رقم الهاتف
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _searchPhoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        textAlign: TextAlign.right,
+                        onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
+                        onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
+                        decoration: InputDecoration(
+                          labelText: 'رقم الهاتف',
+                          labelStyle: lbl,
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          floatingLabelAlignment: FloatingLabelAlignment.center,
+                          filled: true, fillColor: Colors.white, isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
+                          prefixIcon: Icon(Icons.phone, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                          suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                          suffixIcon: _searchPhoneCtrl.text.isNotEmpty
+                              ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                              : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                                  final data = await Clipboard.getData(Clipboard.kTextPlain);
+                                  if (data?.text != null && data!.text!.isNotEmpty && mounted) {
+                                    final cleaned = _toWestern(data.text!).replaceAll(RegExp(r'[^0-9+]'), '').trim();
+                                    if (cleaned.isEmpty) return;
+                                    _searchPhoneCtrl.text = cleaned;
+                                    _searchPhoneCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchPhoneCtrl.text.length));
+                                    setState(() {}); _onSearchQueryChanged();
+                                  }
+                                }, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                          enabledBorder: bdr,
+                          focusedBorder: fbdr,
+                        ),
+                        style: TextStyle(fontSize: r.bodySize),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty || _searchZoneId.isNotEmpty)
+                      IconButton(
+                        tooltip: 'مسح الكل',
+                        icon: Icon(Icons.clear_all, color: Colors.red, size: r.iconSizeMedium),
+                        onPressed: _resetQuickSearch,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                      ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              // اسم المشترك
-              Expanded(
-                flex: 3,
-                child: TextField(
-                  controller: _searchNameCtrl,
-                  textAlign: TextAlign.right,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
-                  onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
-                  decoration: InputDecoration(
-                    labelText: 'اسم المشترك',
-                    labelStyle: lbl,
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                        floatingLabelAlignment: FloatingLabelAlignment.center,
-                    filled: true, fillColor: Colors.white, isDense: true,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                    prefixIcon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: r.iconSizeMedium),
-                    suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                    suffixIcon: (_searchLoading && _searchNameCtrl.text.isNotEmpty)
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : _searchWaiting
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
-                            : (_searchNameCtrl.text.isNotEmpty
-                                ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
-                                : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
-                                    final data = await Clipboard.getData(Clipboard.kTextPlain);
-                                    if (data?.text != null && data!.text!.isNotEmpty && mounted) {
-                                      _searchNameCtrl.text = _toWestern(data.text!).trim();
-                                      _searchNameCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchNameCtrl.text.length));
-                                      setState(() {}); _onSearchQueryChanged();
-                                    }
-                                  }, padding: EdgeInsets.zero, constraints: const BoxConstraints())),
-                    enabledBorder: bdr,
-                    focusedBorder: fbdr,
-                  ),
-                  style: TextStyle(fontSize: r.bodySize),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // رقم الهاتف
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: _searchPhoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  textAlign: TextAlign.right,
-                  onChanged: (_) { setState(() {}); _onSearchQueryChanged(); },
-                  onSubmitted: (_) { setState(() { _searchPage = 1; _searchDone = true; }); _performQuickSearch(); },
-                  decoration: InputDecoration(
-                    labelText: 'رقم الهاتف',
-                    labelStyle: lbl,
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                        floatingLabelAlignment: FloatingLabelAlignment.center,
-                    filled: true, fillColor: Colors.white, isDense: true,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                    prefixIcon: Icon(Icons.phone, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
-                    suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                    suffixIcon: _searchPhoneCtrl.text.isNotEmpty
-                        ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
-                        : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
-                            final data = await Clipboard.getData(Clipboard.kTextPlain);
-                            if (data?.text != null && data!.text!.isNotEmpty && mounted) {
-                              final cleaned = _toWestern(data.text!).replaceAll(RegExp(r'[^0-9+]'), '').trim();
-                              if (cleaned.isEmpty) return;
-                              _searchPhoneCtrl.text = cleaned;
-                              _searchPhoneCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _searchPhoneCtrl.text.length));
-                              setState(() {}); _onSearchQueryChanged();
-                            }
-                          }, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                    enabledBorder: bdr,
-                    focusedBorder: fbdr,
-                  ),
-                  style: TextStyle(fontSize: r.bodySize),
-                ),
-              ),
-              const SizedBox(width: 6),
-              if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty || _searchZoneId.isNotEmpty)
-                IconButton(
-                  tooltip: 'مسح الكل',
-                  icon: Icon(Icons.clear_all, color: Colors.red, size: r.iconSizeMedium),
-                  onPressed: _resetQuickSearch,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                ),
-            ],
-          ),
         ),
 
         // نتائج البحث
@@ -4422,16 +4606,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final itemCount = items.length;
     if (itemCount == 0) return const SizedBox.shrink();
 
-    // صف واحد دائماً — FittedBox يتكفل بتصغير النص ليتسع
-    int crossAxisCount = itemCount;
+    int crossAxisCount;
     double childAspectRatio;
 
     if (screenWidth < 380) {
-      childAspectRatio = 3.2;
+      // هاتف صغير — عمودين
+      crossAxisCount = 2;
+      childAspectRatio = 3.0;
     } else if (screenWidth < 600) {
-      childAspectRatio = 3.5;
+      // هاتف — 3 أعمدة
+      crossAxisCount = 3;
+      childAspectRatio = 2.8;
+    } else if (screenWidth < 900) {
+      // تابلت — صف واحد
+      crossAxisCount = itemCount;
+      childAspectRatio = 3.2;
     } else {
-      childAspectRatio = 3.8;
+      // لابتوب/ديسكتوب — صف واحد مريح
+      crossAxisCount = itemCount;
+      childAspectRatio = 3.5;
     }
 
     return Column(
@@ -4440,8 +4633,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // فاصل فاخر مزخرف بأيقونة
         Container(
           margin: EdgeInsets.symmetric(
-            horizontal: screenWidth < 380 ? 16 : 32,
-            vertical: screenWidth < 380 ? 6 : 8,
+            horizontal: screenWidth < 380 ? 12 : screenWidth < 600 ? 16 : 32,
+            vertical: screenWidth < 380 ? 4 : screenWidth < 600 ? 6 : 8,
           ),
           child: Row(
             children: [
@@ -4500,14 +4693,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ],
           ),
         ),
-        SizedBox(height: screenWidth < 380 ? 6 : 8),
+        SizedBox(height: screenWidth < 380 ? 4 : screenWidth < 600 ? 6 : 8),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: crossAxisCount,
           childAspectRatio: childAspectRatio,
-          mainAxisSpacing: screenWidth < 380 ? 6 : 8,
-          crossAxisSpacing: screenWidth < 380 ? 6 : 8,
+          mainAxisSpacing: screenWidth < 380 ? 4 : screenWidth < 600 ? 6 : 8,
+          crossAxisSpacing: screenWidth < 380 ? 4 : screenWidth < 600 ? 6 : 8,
           children: items,
         ),
       ],
@@ -4526,7 +4719,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           'الاشتراكات',
           IconsaxPlusBold.wifi_square,
           Colors.blue,
-          () => navigateToPage(SubscriptionsPage(authToken: currentToken)),
+          () => navigateToPage(SubscriptionsPage(
+            authToken: currentToken,
+            activatedBy: widget.username,
+            hasServerSavePermission: hasServerSavePermission(),
+            hasWhatsAppPermission: hasWhatsAppPermission(),
+            isAdminFlag: isAdmin,
+            importantFtthApiPermissions: _getImportantPermissions(),
+          )),
         ),
       );
     }
@@ -4571,6 +4771,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               firstSystemUsername: widget.firstSystemUsername,
               firstSystemDepartment: widget.firstSystemDepartment,
               firstSystemCenter: widget.firstSystemCenter,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // التسديدات اليومية - أداة سريعة (نفس صلاحية account_records)
+    if (_hasPermission('account_records')) {
+      actions.add(
+        _buildQuickActionItem(
+          'التسديدات اليومية',
+          IconsaxPlusBold.money_send,
+          Colors.teal,
+          () => navigateToPage(
+            DailySettlementPage(
+              authToken: currentToken,
+              activatedBy: widget.username,
+              permissions: getAllPermissions(),
             ),
           ),
         ),
@@ -4634,11 +4852,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: Builder(
                 builder: (context) {
                   final r = context.responsive;
-                  final iconBoxSize = r.scaled(28, 32, 36);
-                  final iconSz = r.scaled(15, 18, 20);
-                  final textSz = r.scaled(15, 18, 21);
-                  final hPad = r.scaled(6, 8, 10);
-                  final vPad = r.scaled(8, 10, 12);
+                  final iconBoxSize = r.scaled(30, 34, 38);
+                  final iconSz = r.scaled(17, 20, 22);
+                  final textSz = r.scaled(13, 15, 16);
+                  final hPad = r.scaled(8, 10, 12);
+                  final vPad = r.scaled(10, 12, 14);
                   return Padding(
                     padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                     child: FittedBox(

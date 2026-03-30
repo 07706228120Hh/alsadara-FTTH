@@ -305,6 +305,28 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// جلب كادر الرواتب
+  Future<Map<String, dynamic>> getSalaryRoster(String companyId) async {
+    final response = await _client.get(
+      '/accounting/salary-roster?companyId=$companyId',
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// تحديث كادر الرواتب
+  Future<Map<String, dynamic>> updateSalaryRoster({
+    required String companyId,
+    required List<String> userIds,
+  }) async {
+    final response = await _client.post(
+      '/accounting/salary-roster',
+      {'CompanyId': companyId, 'UserIds': userIds},
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   /// توليد رواتب الشهر
   Future<Map<String, dynamic>> generateSalaries({
     required int month,
@@ -340,9 +362,11 @@ class AccountingService {
   }
 
   /// صرف راتب واحد
-  Future<Map<String, dynamic>> paySalary(String id) async {
+  Future<Map<String, dynamic>> paySalary(String id, {bool deductTechDues = false}) async {
     final response =
-        await _client.post('/accounting/salaries/$id/pay', {}, (json) => json);
+        await _client.post('/accounting/salaries/$id/pay', {
+          'DeductTechDues': deductTechDues,
+        }, (json) => json);
     return _toMap(response);
   }
 
@@ -1014,6 +1038,18 @@ class AccountingService {
   Future<Map<String, dynamic>> deleteFixedExpensePayment(int paymentId) async {
     final response = await _client.delete(
         '/accounting/fixed-expenses/payments/$paymentId', (json) => json);
+    return _toMap(response);
+  }
+
+  /// جلب المستحقات السابقة غير المسددة
+  Future<Map<String, dynamic>> getOverdueFixedExpenses({
+    String? companyId,
+    required int beforeMonth,
+    required int beforeYear,
+  }) async {
+    String query = '/accounting/fixed-expenses/overdue?beforeMonth=$beforeMonth&beforeYear=$beforeYear';
+    if (companyId != null) query += '&companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }
 }

@@ -257,6 +257,104 @@ class CompanySettingsService {
     }
   }
 
+  // ══════════════════════════════════════════════════════
+  //  إعدادات التذكير التلقائي (Auto Reminder)
+  //  تُحفظ في: tenants/{tenantId}/settings/auto_reminders
+  // ══════════════════════════════════════════════════════
+
+  static String _getRemindersPath(String tenantId) {
+    return 'tenants/$tenantId/settings/auto_reminders';
+  }
+
+  static String _getReminderResultsPath(String tenantId) {
+    return 'tenants/$tenantId/settings/auto_reminder_results';
+  }
+
+  /// حفظ إعدادات التذكير التلقائي
+  static Future<bool> saveReminderSettings({
+    required bool enabled,
+    required List<Map<String, dynamic>> batches,
+    String? tenantId,
+  }) async {
+    try {
+      final tid = tenantId ?? _currentTenantId;
+      if (tid == null) return false;
+
+      await _firestore.doc(_getRemindersPath(tid)).set({
+        'enabled': enabled,
+        'batches': batches,
+        'tenantId': tid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      debugPrint('✅ تم حفظ إعدادات التذكير التلقائي');
+      return true;
+    } catch (e) {
+      debugPrint('❌ خطأ في حفظ إعدادات التذكير: $e');
+      return false;
+    }
+  }
+
+  /// تحميل إعدادات التذكير التلقائي
+  static Future<Map<String, dynamic>> getReminderSettings({
+    String? tenantId,
+  }) async {
+    try {
+      final tid = tenantId ?? _currentTenantId;
+      if (tid == null) return {'enabled': false, 'batches': []};
+
+      final doc = await _firestore.doc(_getRemindersPath(tid)).get();
+      if (doc.exists && doc.data() != null) {
+        return doc.data()!;
+      }
+      return {'enabled': false, 'batches': []};
+    } catch (e) {
+      debugPrint('⚠️ خطأ في تحميل إعدادات التذكير: $e');
+      return {'enabled': false, 'batches': []};
+    }
+  }
+
+  /// حفظ نتائج آخر تنفيذ لوجبة
+  static Future<bool> saveReminderResult({
+    required String batchId,
+    required Map<String, dynamic> result,
+    String? tenantId,
+  }) async {
+    try {
+      final tid = tenantId ?? _currentTenantId;
+      if (tid == null) return false;
+
+      await _firestore.doc(_getReminderResultsPath(tid)).set({
+        batchId: result,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ خطأ في حفظ نتيجة التذكير: $e');
+      return false;
+    }
+  }
+
+  /// تحميل نتائج التذكير
+  static Future<Map<String, dynamic>> getReminderResults({
+    String? tenantId,
+  }) async {
+    try {
+      final tid = tenantId ?? _currentTenantId;
+      if (tid == null) return {};
+
+      final doc = await _firestore.doc(_getReminderResultsPath(tid)).get();
+      if (doc.exists && doc.data() != null) {
+        return doc.data()!;
+      }
+      return {};
+    } catch (e) {
+      debugPrint('⚠️ خطأ في تحميل نتائج التذكير: $e');
+      return {};
+    }
+  }
+
   /// تنسيق رقم الهاتف للواتساب
   static String formatPhoneForWhatsApp(String phone) {
     String cleaned = phone.replaceAll(RegExp(r'[^0-9]'), '');

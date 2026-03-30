@@ -442,7 +442,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
             var pendingAllowances = manualAllowances.Where(a => !a.IsApplied).Sum(a => a.Amount);
             var totalPendingMinus = pendingDeductions + pendingAdvances;
 
-            object salaryResponse;
+            object? salaryResponse;
             if (salary != null)
             {
                 // فصل السلف عن الخصومات - السلف المطبقة موجودة ضمن salary.Deductions أصلاً

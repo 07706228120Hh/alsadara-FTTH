@@ -120,18 +120,18 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     });
   }
 
-  // ═══════════════ ألوان التصميم الفخم ═══════════════
-  static const _dark1 = Color(0xFF1A1D2E); // خلفية داكنة رئيسية
-  static const _dark2 = Color(0xFF232740); // بطاقات
-  static const _dark3 = Color(0xFF2D3250); // بطاقات ثانوية
+  // ═══════════════ ألوان التصميم الفاتح ═══════════════
+  static const _dark1 = Color(0xFFF5F6FA); // خلفية فاتحة رئيسية
+  static const _dark2 = Color(0xFFFFFFFF); // بطاقات بيضاء
+  static const _dark3 = Color(0xFFF0F1F5); // بطاقات ثانوية
   static const _accent = Color(0xFF6C63FF); // أرجواني عصري
   static const _accentLight = Color(0xFF8B83FF);
   static const _gold = Color(0xFFD4AF37); // ذهبي فخم
   static const _goldLight = Color(0xFFE8D48B);
-  static const _textWhite = Color(0xFFF1F1F5);
-  static const _textGray = Color(0xFF8B8DA3);
-  static const _success = Color(0xFF00E676);
-  static const _danger = Color(0xFFFF5252);
+  static const _textWhite = Color(0xFF2D3250); // نص داكن على خلفية فاتحة
+  static const _textGray = Color(0xFF6B7280);
+  static const _success = Color(0xFF22C55E);
+  static const _danger = Color(0xFFEF4444);
 
   @override
   Widget build(BuildContext context) {
@@ -156,15 +156,18 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   Widget _buildPremiumHeader() {
     final r = context.responsive;
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1A1D2E), Color(0xFF2D3250), Color(0xFF1A1D2E)],
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-        ),
+      decoration: BoxDecoration(
+        color: Colors.white,
         border: Border(
-          bottom: BorderSide(color: Color(0xFF3A3F5C), width: 1),
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: SafeArea(
         bottom: false,
@@ -185,21 +188,21 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                 height: r.isMobile ? 36 : 44,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [_gold, Color(0xFFF5E6A3)],
+                    colors: [_accent, _accentLight],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: _gold.withOpacity(0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: _accent.withOpacity(0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: const Icon(Icons.groups_rounded,
-                    color: Color(0xFF1A1D2E), size: 24),
+                    color: Colors.white, size: 24),
               ),
               const SizedBox(width: 14),
               // العنوان
@@ -219,7 +222,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                     Text(
                       widget.companyName,
                       style: GoogleFonts.cairo(
-                        color: _goldLight,
+                        color: _textGray,
                         fontSize: r.captionSize,
                         fontWeight: FontWeight.w500,
                       ),
@@ -283,9 +286,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           width: size,
           height: size,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.07),
+            color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.grey.shade300),
           ),
           child: Icon(icon, color: _textGray, size: 18),
         ),
@@ -315,12 +318,12 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
       child: Container(
         decoration: BoxDecoration(
-          color: _dark2,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF3A3F5C)),
+          border: Border.all(color: Colors.grey.shade300),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -460,32 +463,19 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _dark2,
-                  _dark3.withOpacity(0.7),
-                ],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: employee.isActive
-                    ? roleColor.withOpacity(0.25)
-                    : const Color(0xFF3A3F5C),
+                    ? roleColor.withOpacity(0.2)
+                    : Colors.grey.shade300,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                if (employee.isActive)
-                  BoxShadow(
-                    color: roleColor.withOpacity(0.08),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
-                  ),
               ],
             ),
             child: Column(
@@ -502,9 +492,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                               roleColor.withOpacity(0.6)
                             ]
                           : [
-                              const Color(0xFF3A3F5C),
-                              const Color(0xFF4A4F6C),
-                              const Color(0xFF3A3F5C)
+                              Colors.grey.shade300,
+                              Colors.grey.shade400,
+                              Colors.grey.shade300,
                             ],
                     ),
                     borderRadius:

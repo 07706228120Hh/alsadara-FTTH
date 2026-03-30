@@ -74,10 +74,41 @@ class WhatsAppConversation {
     };
   }
 
+  /// إنشاء من JSON (API بديل Firestore)
+  /// يدعم PascalCase (من .NET) و camelCase
+  factory WhatsAppConversation.fromJson(Map<String, dynamic> json) {
+    DateTime lastMessageTime = DateTime.now();
+    final lmt = json['lastMessageTime'] ?? json['LastMessageTime'];
+    if (lmt is String) {
+      lastMessageTime = (DateTime.tryParse(lmt) ?? DateTime.now()).toLocal();
+    } else if (lmt is int) {
+      lastMessageTime = DateTime.fromMillisecondsSinceEpoch(lmt * 1000).toLocal();
+    }
+
+    DateTime? updatedAt;
+    final ua = json['updatedAt'] ?? json['UpdatedAt'];
+    if (ua is String) {
+      updatedAt = DateTime.tryParse(ua)?.toLocal();
+    } else if (ua is int) {
+      updatedAt = DateTime.fromMillisecondsSinceEpoch(ua);
+    }
+
+    return WhatsAppConversation(
+      phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'] ?? '',
+      userName: json['userName'] ?? json['UserName'] ?? json['contactName'] ?? json['ContactName'],
+      lastMessage: json['lastMessage'] ?? json['LastMessage'] ?? '',
+      lastMessageTime: lastMessageTime,
+      lastMessageType: json['lastMessageType'] ?? json['LastMessageType'] ?? 'text',
+      unreadCount: json['unreadCount'] ?? json['UnreadCount'] ?? 0,
+      isIncoming: json['isIncoming'] ?? json['IsIncoming'] ?? false,
+      updatedAt: updatedAt,
+    );
+  }
+
   String get formattedPhone {
-    // تنسيق الرقم للعرض
+    // تحويل 964XXXXXXXXXX إلى 0XXXXXXXXXX
     if (phoneNumber.startsWith('964')) {
-      return '+${phoneNumber.substring(0, 3)} ${phoneNumber.substring(3)}';
+      return '0${phoneNumber.substring(3)}';
     }
     return phoneNumber;
   }
@@ -128,6 +159,34 @@ class WhatsAppMessage {
 
   /// هل الرسالة مستند؟
   bool get isDocument => type == 'document';
+
+  /// إنشاء من JSON (API بديل Firestore)
+  /// يدعم PascalCase (من .NET) و camelCase
+  factory WhatsAppMessage.fromJson(Map<String, dynamic> json) {
+    DateTime timestamp = DateTime.now();
+    final ts = json['createdAt'] ?? json['CreatedAt'] ?? json['timestamp'];
+    if (ts is String) {
+      timestamp = (DateTime.tryParse(ts) ?? DateTime.now()).toLocal();
+    } else if (ts is int) {
+      timestamp = DateTime.fromMillisecondsSinceEpoch(ts * 1000).toLocal();
+    }
+
+    final direction = json['direction'] ?? json['Direction'] ?? '';
+
+    return WhatsAppMessage(
+      messageId: json['messageId'] ?? json['MessageId'] ?? json['externalMessageId'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'] ?? '',
+      text: json['text'] ?? json['Text'] ?? '',
+      type: json['messageType'] ?? json['MessageType'] ?? json['type'] ?? 'text',
+      timestamp: timestamp,
+      isIncoming: direction == 'incoming',
+      status: json['status'] ?? json['Status'] ?? 'received',
+      mediaId: json['mediaId'] ?? json['MediaId'],
+      mediaUrl: json['mediaUrl'] ?? json['MediaUrl'],
+      mimeType: json['mimeType'] ?? json['MimeType'],
+      mediaFileName: json['mediaFileName'] ?? json['MediaFileName'],
+    );
+  }
 
   factory WhatsAppMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;

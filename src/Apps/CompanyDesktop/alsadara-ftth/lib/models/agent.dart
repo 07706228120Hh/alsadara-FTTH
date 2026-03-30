@@ -240,6 +240,7 @@ class AgentModel {
   final AgentStatus status;
   final String? profileImageUrl;
   final String? notes;
+  final String? plainPassword;
   final DateTime? lastLoginAt;
   final double totalCharges;
   final double totalPayments;
@@ -265,6 +266,7 @@ class AgentModel {
     required this.status,
     this.profileImageUrl,
     this.notes,
+    this.plainPassword,
     this.lastLoginAt,
     this.totalCharges = 0,
     this.totalPayments = 0,
@@ -296,6 +298,7 @@ class AgentModel {
           : AgentStatus.fromString(json['status'] ?? 'active'),
       profileImageUrl: json['profileImageUrl'],
       notes: json['notes'],
+      plainPassword: json['plainPassword'],
       lastLoginAt: json['lastLoginAt'] != null
           ? DateTime.tryParse(json['lastLoginAt'])
           : null,
@@ -328,6 +331,7 @@ class AgentModel {
       'companyId': companyId,
       'status': status.intValue,
       'notes': notes,
+      'plainPassword': plainPassword,
       'profileImageUrl': profileImageUrl,
     };
   }
@@ -374,6 +378,7 @@ class AgentModel {
       status: status ?? this.status,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       notes: notes ?? this.notes,
+      plainPassword: plainPassword,
       lastLoginAt: lastLoginAt,
       totalCharges: totalCharges,
       totalPayments: totalPayments,

@@ -229,13 +229,18 @@ class AutoUpdateService {
 
       // تحقق إذا كان الملف محمّل مسبقاً بنفس الحجم
       final existingFile = File(filePath);
-      if (existingFile.existsSync() && updateInfo.downloadSize > 0) {
-        final existingSize = existingFile.lengthSync();
-        if (existingSize == updateInfo.downloadSize) {
-          debugPrint('✅ الملف محمّل مسبقاً: $filePath');
-          onProgress?.call(1.0);
-          return filePath;
+      if (existingFile.existsSync()) {
+        if (updateInfo.downloadSize > 0) {
+          final existingSize = existingFile.lengthSync();
+          if (existingSize == updateInfo.downloadSize) {
+            debugPrint('✅ الملف محمّل مسبقاً: $filePath');
+            onProgress?.call(1.0);
+            return filePath;
+          }
         }
+        // حذف الملف القديم إذا كان الحجم مختلف (ملف تالف أو إصدار قديم)
+        existingFile.deleteSync();
+        debugPrint('🗑️ حذف ملف قديم بحجم مختلف: $filePath');
       }
 
       final request = http.Request('GET', Uri.parse(updateInfo.downloadUrl));
@@ -287,13 +292,35 @@ class AutoUpdateService {
         if (versionMatch != null) {
           await markUpdateAttempted(versionMatch.group(1)!);
         }
+
+        // إزالة حظر SmartScreen (Zone Identifier) عن الملف المحمّل
+        try {
+          await Process.run('powershell', [
+            '-Command',
+            'Unblock-File',
+            '-Path',
+            '"$filePath"',
+          ]);
+          debugPrint('🔓 [AutoUpdate] تم إلغاء حظر SmartScreen');
+        } catch (_) {
+          debugPrint('⚠️ [AutoUpdate] تعذر إلغاء حظر SmartScreen');
+        }
+
+        // تحديد مسار التطبيق الحالي لتثبيت التحديث في نفس المكان
+        final currentExeDir = File(Platform.resolvedExecutable).parent.path;
+        debugPrint('📂 [AutoUpdate] مسار التثبيت: $currentExeDir');
+
         await Process.start(filePath, [
           '/SILENT',
-          '/CLOSEAPPLICATIONS',
+          '/FORCECLOSEAPPLICATIONS',
           '/RESTARTAPPLICATIONS',
           '/NOCANCEL',
           '/SP-',
+          '/DIR=$currentExeDir',
+          '/TASKS=desktopicon',
         ]);
+        // تأخير قصير للسماح للمثبّت بالبدء قبل إغلاق التطبيق
+        await Future.delayed(const Duration(seconds: 2));
         exit(0);
       } else if (filePath.endsWith('.msix')) {
         await Process.start('powershell', [

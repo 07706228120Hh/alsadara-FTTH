@@ -111,10 +111,15 @@ public class FtthAccountingController : ControllerBase
             return Ok(new
             {
                 success = true,
-                message = "تم حفظ السجل بنجاح",
+                message = journalEntryId.HasValue
+                    ? "تم حفظ السجل مع القيد المحاسبي بنجاح"
+                    : "تم حفظ السجل بدون قيد محاسبي — تحقق من إعدادات الحسابات",
                 logId = log.Id,
                 journalEntryId,
-                hasAccounting = journalEntryId.HasValue
+                hasAccounting = journalEntryId.HasValue,
+                accountingWarning = !journalEntryId.HasValue && dto.PlanPrice > 0
+                    ? "لم يُنشأ قيد محاسبي — تأكد من وجود الحسابات (4110/4120) ومعلومات الشركة"
+                    : null
             });
         }
         catch (Exception ex)
@@ -678,9 +683,9 @@ public class FtthAccountingController : ControllerBase
             var techUsers = techUserIds.Any()
                 ? await _unitOfWork.Users.AsQueryable()
                     .Where(u => techUserIds.Contains(u.Id))
-                    .Select(u => new { u.Id, u.FullName, u.Username })
+                    .Select(u => new { u.Id, u.FullName, Username = (string?)u.Username })
                     .ToListAsync()
-                : new List<dynamic>().Select(x => new { Id = Guid.Empty, FullName = "", Username = "" }).ToList();
+                : new List<object>().Select(x => new { Id = Guid.Empty, FullName = "", Username = (string?)null }).ToList();
 
             var technicianRows = techRows.Select(t =>
             {

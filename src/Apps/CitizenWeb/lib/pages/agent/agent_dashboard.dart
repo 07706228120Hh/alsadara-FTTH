@@ -210,8 +210,11 @@ class _AgentDashboardState extends State<AgentDashboard>
               ),
             ],
           ),
-          bottomNavigationBar: isWide ? null : _buildPremiumBottomNav(),
-          drawer: isWide ? null : Drawer(child: _buildPremiumSidebar()),
+          // bottomNavigationBar removed — الخدمات السريعة تكفي
+          drawer: isWide ? null : SizedBox(
+            width: MediaQuery.of(context).size.width * 0.65,
+            child: Drawer(child: _buildPremiumSidebar()),
+          ),
         ),
       ),
     );
@@ -222,9 +225,10 @@ class _AgentDashboardState extends State<AgentDashboard>
   // ═══════════════════════════════════════════════════════════════
 
   Widget _buildPremiumSidebar() {
+    final isDrawer = MediaQuery.of(context).size.width <= 900;
     final expandedWidth = 260.0;
     final collapsedWidth = 78.0;
-    final currentWidth = _isSidebarCollapsed ? collapsedWidth : expandedWidth;
+    final currentWidth = isDrawer ? double.infinity : (_isSidebarCollapsed ? collapsedWidth : expandedWidth);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -604,7 +608,10 @@ class _AgentDashboardState extends State<AgentDashboard>
             Builder(
               builder: (ctx) => IconButton(
                 icon: const Icon(Icons.menu_rounded, color: AppTheme.textDark),
-                onPressed: () => Scaffold.of(ctx).openDrawer(),
+                onPressed: () {
+                  setState(() => _isSidebarCollapsed = false);
+                  Scaffold.of(ctx).openDrawer();
+                },
               ),
             ),
           if (isWide)
@@ -798,14 +805,16 @@ class _AgentDashboardState extends State<AgentDashboard>
   /// إحصائيات الهاتف - شبكة 2x2
   Widget _buildMobileStatsGrid(bool isMedium) {
     final stats = _getStats();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 400;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: isMedium ? 4 : 2,
-        childAspectRatio: isMedium ? 1.6 : 1.4,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        childAspectRatio: isMedium ? 1.6 : (isSmall ? 3.2 : 3.0),
+        crossAxisSpacing: isSmall ? 8 : 10,
+        mainAxisSpacing: isSmall ? 8 : 10,
       ),
       itemCount: stats.length,
       itemBuilder: (context, i) =>
@@ -849,7 +858,7 @@ class _AgentDashboardState extends State<AgentDashboard>
   Widget _buildGradientStatCard(Map<String, dynamic> stat, List<Color> colors) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
@@ -857,9 +866,9 @@ class _AgentDashboardState extends State<AgentDashboard>
         ),
         boxShadow: [
           BoxShadow(
-            color: colors[0].withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: colors[0].withValues(alpha: 0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -873,12 +882,12 @@ class _AgentDashboardState extends State<AgentDashboard>
               bottom: -12,
               child: Icon(
                 stat['icon'] as IconData,
-                size: 70,
+                size: 50,
                 color: Colors.white.withValues(alpha: 0.1),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -886,14 +895,14 @@ class _AgentDashboardState extends State<AgentDashboard>
                   Icon(
                     stat['icon'] as IconData,
                     color: Colors.white.withValues(alpha: 0.9),
-                    size: 22,
+                    size: 16,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
                   Text(
                     stat['value'] as String,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Roboto',
                     ),
@@ -905,7 +914,7 @@ class _AgentDashboardState extends State<AgentDashboard>
                     stat['title'] as String,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1043,7 +1052,7 @@ class _AgentDashboardState extends State<AgentDashboard>
 
   Widget _buildServiceButton(_QuickService service) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
@@ -1052,7 +1061,7 @@ class _AgentDashboardState extends State<AgentDashboard>
           borderRadius: BorderRadius.circular(16),
           hoverColor: service.color.withValues(alpha: 0.08),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(
@@ -1075,7 +1084,7 @@ class _AgentDashboardState extends State<AgentDashboard>
                 ),
               ],
             ),
-            child: Row(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
@@ -1084,20 +1093,19 @@ class _AgentDashboardState extends State<AgentDashboard>
                     color: service.color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(service.icon, color: service.color, size: 22),
+                  child: Icon(service.icon, color: service.color, size: 20),
                 ),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    service.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: service.color,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 6),
+                Text(
+                  service.title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: service.color,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),

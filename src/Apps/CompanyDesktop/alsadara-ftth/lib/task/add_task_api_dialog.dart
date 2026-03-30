@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/task_api_service.dart';
 
 /// حوار إضافة مهمة جديدة عبر API
@@ -110,11 +111,30 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
 
     // عند شراء اشتراك: القسم = الحسابات تلقائياً + الفني = المستخدم الحالي
     if (_selectedTaskType == 'شراء اشتراك') {
+      _departments = ['الحسابات'];
       _selectedDepartment = 'الحسابات';
+      _technicians = [widget.currentUsername];
       _selectedTechnician = widget.currentUsername;
     }
 
     _loadDataFromApi();
+  }
+
+  Future<void> _fetchDeviceLocation() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        await Geolocator.requestPermission();
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      if (mounted) {
+        _locationController.text = '${pos.latitude}, ${pos.longitude}';
+      }
+    } catch (_) {
+      // تجاهل — المستخدم يدخل الموقع يدوياً
+    }
   }
 
   Future<void> _loadDataFromApi() async {
@@ -160,6 +180,13 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             _departments = deptNames;
             _departmentTasks = parsedDeptTasks;
             _fbgOptions = fbgList;
+            // ضبط القسم تلقائياً عند شراء اشتراك بعد تحميل القائمة
+            if (_selectedTaskType == 'شراء اشتراك') {
+              if (!deptNames.contains('الحسابات')) {
+                _departments.add('الحسابات');
+              }
+              _selectedDepartment = 'الحسابات';
+            }
           });
         }
       }
@@ -550,11 +577,13 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return Dialog(
+      insetPadding: isMobile ? const EdgeInsets.all(8) : const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.9,
-        padding: const EdgeInsets.all(20),
+        width: MediaQuery.of(context).size.width * (isMobile ? 1.0 : 0.9),
+        height: MediaQuery.of(context).size.height * (isMobile ? 0.95 : 0.9),
+        padding: EdgeInsets.all(isMobile ? 12 : 20),
         child: Column(
           children: [
             Row(
@@ -563,9 +592,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 Row(children: [
                   Icon(Icons.add_task, color: Colors.blue.shade700),
                   const SizedBox(width: 8),
-                  const Text('إضافة مهمة جديدة',
+                  Text('إضافة مهمة جديدة',
                       style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          TextStyle(fontSize: isMobile ? 16 : 24, fontWeight: FontWeight.bold)),
                   const SizedBox(width: 8),
                   Container(
                     padding:
@@ -607,11 +636,11 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                             children: [
                               const Icon(Icons.error_outline,
                                   size: 64, color: Colors.red),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 6),
                               Text(_errorMessage!,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(color: Colors.red)),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 6),
                               ElevatedButton(
                                 onPressed: () {
                                   setState(() => _errorMessage = null);
@@ -638,17 +667,17 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDepartmentSection(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 6),
             _buildCustomerSection(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 6),
             _buildTechnicalSection(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 6),
             if (_selectedTaskType == 'شراء اشتراك') ...[
               _buildSubscriptionSection(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 6),
             ],
             _buildAdditionalSection(),
-            const SizedBox(height: 30),
+            const SizedBox(height: 6),
             _buildActionButtons(),
           ],
         ),
@@ -657,20 +686,27 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildDepartmentSection() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black26),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('معلومات القسم والفريق',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<String>(
+                    key: ValueKey('dept_${_selectedDepartment}_${_departments.length}'),
                     decoration: const InputDecoration(
                         labelText: 'القسم *', border: OutlineInputBorder()),
                     value: _departments.contains(_selectedDepartment)
@@ -698,10 +734,16 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                     onChanged: (v) {
                       setState(() {
                         _selectedTaskType = v ?? '';
-                        if (_selectedTaskType == 'شراء اشتراك' &&
-                            widget.currentUserRole == 'فني') {
-                          _selectedTechnician = widget.currentUsername;
-                          _updateSelectedUserPhone();
+                        if (_selectedTaskType == 'شراء اشتراك') {
+                          // إضافة قسم الحسابات إذا لم يكن موجوداً
+                          if (!_departments.contains('الحسابات')) {
+                            _departments.add('الحسابات');
+                          }
+                          _selectedDepartment = 'الحسابات';
+                          if (widget.currentUserRole == 'فني') {
+                            _selectedTechnician = widget.currentUsername;
+                            _updateSelectedUserPhone();
+                          }
                         }
                       });
                     },
@@ -712,7 +754,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
@@ -731,6 +773,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    key: ValueKey('tech_${_selectedTechnician}_${_technicians.length}'),
                     decoration: const InputDecoration(
                         labelText: 'الفني', border: OutlineInputBorder()),
                     value: _technicians.contains(_selectedTechnician)
@@ -780,15 +823,21 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildCustomerSection() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black26),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('معلومات العميل',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
             Row(children: [
               Expanded(
                 child: TextFormField(
@@ -813,13 +862,30 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 ),
               ),
             ]),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                  labelText: 'الموقع *', border: OutlineInputBorder()),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'يجب إدخال الموقع' : null,
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _locationController,
+                    decoration: const InputDecoration(
+                        labelText: 'الموقع *', border: OutlineInputBorder()),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'يجب إدخال الموقع' : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _fetchDeviceLocation,
+                  icon: const Icon(Icons.my_location_rounded),
+                  tooltip: 'تحديد الموقع من الجهاز',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    foregroundColor: Colors.blue,
+                    padding: const EdgeInsets.all(12),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -828,15 +894,21 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildTechnicalSection() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black26),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('المعلومات الفنية',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
             Row(children: [
               Expanded(
                 child: _fbgOptions.isNotEmpty
@@ -883,9 +955,15 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildSubscriptionSection() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black26),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -894,9 +972,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                   color: Colors.purple.shade700, size: 20),
               const SizedBox(width: 8),
               const Text('معلومات الاشتراك',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
             Row(children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
@@ -953,7 +1031,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 ),
               ),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
             TextFormField(
               controller: _subscriptionAmountController,
               decoration: InputDecoration(
@@ -981,15 +1059,21 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildAdditionalSection() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black26),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('معلومات إضافية',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(
                   labelText: 'الأولوية *', border: OutlineInputBorder()),
@@ -1002,14 +1086,14 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'يجب اختيار الأولوية' : null,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
             TextFormField(
               controller: _notesController,
               decoration: const InputDecoration(
                   labelText: 'الملاحظات', border: OutlineInputBorder()),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
             TextFormField(
               controller: _summaryController,
               decoration: const InputDecoration(

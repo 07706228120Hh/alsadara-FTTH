@@ -114,11 +114,10 @@ class _LandingPageState extends State<LandingPage>
               child: Column(
                 children: [
                   _buildHeroSection(context, isWide),
-                  _buildStatsSection(context, isWide),
                   _buildServicesSection(context, isWide),
                   _buildFeaturesSection(context, isWide),
                   _buildTestimonialsSection(context, isWide),
-                  _buildCTASection(context, isWide),
+                  _buildStatsSection(context, isWide),
                   _buildFooter(context, isWide),
                 ],
               ),
@@ -211,21 +210,28 @@ class _LandingPageState extends State<LandingPage>
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-            ),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF667eea).withValues(alpha: 0.4),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
-          child: const Icon(Icons.wifi_rounded, color: Colors.white, size: 22),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/logo.png',
+              width: 42,
+              height: 42,
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
         const SizedBox(width: 10),
         const Text(
@@ -307,22 +313,6 @@ class _LandingPageState extends State<LandingPage>
             ),
             _buildMobileMenuBtn(
               ctx,
-              'إنشاء حساب',
-              Icons.person_add_rounded,
-              const Color(0xFF667eea),
-              '/citizen/register',
-            ),
-            const SizedBox(height: 10),
-            _buildMobileMenuBtn(
-              ctx,
-              'دخول مواطن',
-              Icons.login_rounded,
-              const Color(0xFF4CAF50),
-              '/citizen/login',
-            ),
-            const SizedBox(height: 10),
-            _buildMobileMenuBtn(
-              ctx,
               'دخول وكيل',
               Icons.support_agent_rounded,
               const Color(0xFFFF9800),
@@ -367,32 +357,31 @@ class _LandingPageState extends State<LandingPage>
   // Hero Section مع Particles + Typed Text
   // ═══════════════════════════════════════════════════════════════
   Widget _buildHeroSection(BuildContext context, bool isWide) {
-    return SizedBox(
-      height: isWide ? 700 : 650,
-      child: Stack(
-        children: [
-          // خلفية الجسيمات
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _particleController,
-              builder: (_, __) => CustomPaint(
-                painter: ParticleBackgroundPainter(
-                  progress: _particleController.value,
-                  particles: _particles,
+    if (isWide) {
+      // Desktop layout — fixed height with Stack
+      return SizedBox(
+        height: 700,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _particleController,
+                builder: (_, __) => CustomPaint(
+                  painter: ParticleBackgroundPainter(
+                    progress: _particleController.value,
+                    particles: _particles,
+                  ),
+                  size: Size.infinite,
                 ),
-                size: Size.infinite,
               ),
             ),
-          ),
-          // المحتوى
-          Positioned.fill(
-            child: SafeArea(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: isWide ? 80 : 24),
-                child: Column(
-                  children: [
-                    SizedBox(height: isWide ? 120 : 80),
-                    if (isWide)
+            Positioned.fill(
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 80),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 120),
                       Expanded(
                         child: Row(
                           children: [
@@ -401,123 +390,121 @@ class _LandingPageState extends State<LandingPage>
                             Expanded(child: _buildHeroVisual()),
                           ],
                         ),
-                      )
-                    else
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildHeroContent(),
-                            const SizedBox(height: 30),
-                            SizedBox(height: 200, child: _buildHeroVisual()),
-                          ],
-                        ),
                       ),
-                    // سهم التمرير المتحرك
-                    _buildScrollIndicator(),
-                    const SizedBox(height: 16),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
+          ],
+        ),
+      );
+    }
+
+    // Mobile layout — flows naturally with page scroll
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              const SizedBox(height: 80),
+              _buildHeroContent(),
+              const SizedBox(height: 50),
+              SizedBox(height: 250, child: _buildHeroVisual()),
+              const SizedBox(height: 40),
+              Text(
+                'إنترنت • ماستر كارد • متجر إلكتروني • شحن أرصدة\nاشترك، جدد، وادفع بكل سهولة وأمان',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  height: 1.8,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.go('/citizen/register'),
+                      icon: const Icon(Icons.person_add_rounded, size: 18),
+                      label: const Text('إنشاء حساب'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF667eea),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.go('/citizen/login'),
+                      icon: const Icon(Icons.login_rounded, size: 18),
+                      label: const Text('دخول مواطن'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildHeroContent() {
+    final isMobile = MediaQuery.of(context).size.width <= 800;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        FadeInOnScroll(
-          delay: const Duration(milliseconds: 200),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF667eea).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF667eea).withValues(alpha: 0.3),
-              ),
-            ),
-            child: const Text(
-              '✨ منصة الصدارة للخدمات الإلكترونية',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
         const SizedBox(height: 20),
         TypedTextWidget(
           text: 'خدماتك الرقمية\nفي مكان واحد',
-          style: const TextStyle(
-            fontSize: 44,
-            fontWeight: FontWeight.bold,
+          style: TextStyle(
+            fontSize: isMobile ? 32 : 52,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
-            height: 1.3,
-          ),
-          charDuration: const Duration(milliseconds: 50),
-        ),
-        const SizedBox(height: 18),
-        FadeInOnScroll(
-          delay: const Duration(milliseconds: 1800),
-          child: Text(
-            'إنترنت • ماستر كارد • متجر إلكتروني • شحن أرصدة\nاشترك، جدد، وادفع بكل سهولة وأمان',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white.withValues(alpha: 0.8),
-              height: 1.7,
-            ),
-          ),
-        ),
-        const SizedBox(height: 28),
-        FadeInOnScroll(
-          delay: const Duration(milliseconds: 2200),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 10,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => context.go('/citizen/register'),
-                icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-                label: const Text('ابدأ الآن'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF667eea),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 8,
-                  shadowColor: const Color(0xFF667eea).withValues(alpha: 0.5),
-                ),
+            height: 1.25,
+            letterSpacing: 1.5,
+            shadows: [
+              Shadow(
+                color: Colors.white.withValues(alpha: 0.3),
+                blurRadius: 20,
               ),
-              OutlinedButton.icon(
-                onPressed: () => context.go('/citizen/login'),
-                icon: const Icon(Icons.login_rounded, size: 18),
-                label: const Text('تسجيل الدخول'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
+              Shadow(
+                color: const Color(0xFF667eea).withValues(alpha: 0.4),
+                blurRadius: 40,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
+          charDuration: const Duration(milliseconds: 50),
         ),
       ],
     );
@@ -551,12 +538,14 @@ class _LandingPageState extends State<LandingPage>
       ),
     ];
 
+    final isMobile = MediaQuery.of(context).size.width <= 800;
+    final visualSize = isMobile ? 250.0 : 380.0;
     return FadeInOnScroll(
       delay: const Duration(milliseconds: 800),
       slideOffset: const Offset(40, 0),
       child: SizedBox(
-        width: 380,
-        height: 380,
+        width: visualSize,
+        height: visualSize,
         child: AnimatedBuilder(
           animation: _particleController,
           builder: (context, _) {
@@ -566,13 +555,13 @@ class _LandingPageState extends State<LandingPage>
               children: [
                 // الحلقات المدارية
                 CustomPaint(
-                  size: const Size(380, 380),
+                  size: Size(visualSize, visualSize),
                   painter: _HeroOrbitalPainter(progress: t),
                 ),
                 // اللوغو المركزي
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: isMobile ? 60 : 80,
+                  height: isMobile ? 60 : 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
@@ -611,7 +600,7 @@ class _LandingPageState extends State<LandingPage>
                   final angle =
                       (t * math.pi * 2 * 0.15) +
                       (i * math.pi * 2 / serviceIcons.length);
-                  final radius = 140.0;
+                  final radius = isMobile ? 90.0 : 140.0;
                   final dx = radius * math.cos(angle);
                   final dy = radius * math.sin(angle);
                   final svc = serviceIcons[i];
@@ -629,12 +618,13 @@ class _LandingPageState extends State<LandingPage>
   }
 
   Widget _buildFloatingServiceIcon(_HeroServiceIcon svc, double t, int index) {
+    final isMob = MediaQuery.of(context).size.width <= 800;
     final bob = math.sin(t * math.pi * 4 + index * 1.5) * 4;
     return Transform.translate(
       offset: Offset(0, bob),
       child: Container(
-        width: 72,
-        height: 72,
+        width: isMob ? 50 : 72,
+        height: isMob ? 50 : 72,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           gradient: LinearGradient(
@@ -657,13 +647,13 @@ class _LandingPageState extends State<LandingPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(svc.icon, color: Colors.white, size: 24),
-            const SizedBox(height: 3),
+            Icon(svc.icon, color: Colors.white, size: isMob ? 18 : 24),
+            const SizedBox(height: 2),
             Text(
               svc.label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 9,
+                fontSize: isMob ? 7 : 9,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -755,18 +745,18 @@ class _LandingPageState extends State<LandingPage>
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(vertical: 60, horizontal: isWide ? 80 : 20),
-      color: const Color(0xFFF8FAFC),
+      color: const Color(0xFF0D1B2A),
       child: Column(
         children: [
           FadeInOnScroll(
             child: Column(
               children: [
-                const Text(
+                Text(
                   'خدماتنا المميزة',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: isWide ? 32 : 22,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -783,7 +773,7 @@ class _LandingPageState extends State<LandingPage>
                 const SizedBox(height: 8),
                 Text(
                   'كل ما تحتاجه في مكان واحد',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 14, color: Colors.white54),
                 ),
               ],
             ),
@@ -860,18 +850,18 @@ class _LandingPageState extends State<LandingPage>
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: isWide ? 80 : 24, vertical: 70),
-      color: Colors.white,
+      color: const Color(0xFF111827),
       child: Column(
         children: [
           FadeInOnScroll(
             child: Column(
               children: [
-                const Text(
+                Text(
                   'لماذا منصة الصدارة؟',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: isWide ? 32 : 22,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -906,8 +896,9 @@ class _LandingPageState extends State<LandingPage>
   }
 
   Widget _buildFeatureCard(_FeatureInfo f) {
+    final isMobile = MediaQuery.of(context).size.width <= 800;
     return SizedBox(
-      width: 170,
+      width: isMobile ? (MediaQuery.of(context).size.width - 80) / 2 : 170,
       child: Column(
         children: [
           Container(
@@ -934,14 +925,14 @@ class _LandingPageState extends State<LandingPage>
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 15,
-              color: Color(0xFF1E293B),
+              color: Colors.white,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
             f.desc,
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            style: const TextStyle(fontSize: 13, color: Colors.white54),
             textAlign: TextAlign.center,
           ),
         ],
@@ -956,18 +947,18 @@ class _LandingPageState extends State<LandingPage>
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: isWide ? 40 : 16, vertical: 60),
-      color: const Color(0xFFF1F5F9),
+      color: const Color(0xFF0D2137),
       child: Column(
         children: [
           FadeInOnScroll(
             child: Column(
               children: [
-                const Text(
+                Text(
                   'ماذا يقول عملاؤنا؟',
                   style: TextStyle(
-                    fontSize: 30,
+                    fontSize: isWide ? 30 : 22,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1129,9 +1120,9 @@ class _LandingPageState extends State<LandingPage>
                   'الدعم الفني',
                 ]),
                 _buildFooterCol('تواصل معنا', [
-                  '📞 920012345',
-                  '📧 info@sadara.iq',
-                  '📍 العراق',
+                  '📞 07717727720',
+                  '📧 info@ramzalsadara.tech',
+                  '📍 بغداد / الكرادة',
                 ]),
                 _buildFooterCol('تابعنا', [
                   '📘 Facebook',
@@ -1142,9 +1133,9 @@ class _LandingPageState extends State<LandingPage>
             )
           else
             _buildFooterCol('تواصل معنا', [
-              '📞 920012345',
-              '📧 info@sadara.iq',
-              '📍 العراق',
+              '📞 07717727720',
+              '📧 info@ramzalsadara.tech',
+              '📍 بغداد / الكرادة',
             ]),
           const SizedBox(height: 30),
           Container(

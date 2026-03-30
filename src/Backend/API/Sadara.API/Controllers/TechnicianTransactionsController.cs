@@ -179,7 +179,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 {
                     totalCharges,
                     totalPayments,
-                    netBalance = user.TechNetBalance,
+                    netBalance = totalPayments - totalCharges, // محسوب من المعاملات مباشرة
                     technicianName = user.FullName
                 }
             });
@@ -347,7 +347,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 {
                     totalCharges,
                     totalPayments,
-                    netBalance = technician.TechNetBalance,
+                    netBalance = totalPayments - totalCharges, // محسوب من المعاملات مباشرة
                     technicianName = technician.FullName
                 }
             });
@@ -373,73 +373,81 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
             var userCompanyId = currentUser?.CompanyId;
 
-            // جلب جميع الفنيين الذين لديهم معاملات أو رصيد — مع فلتر الشركة
-            var technicians = await _unitOfWork.Users.AsQueryable()
-                .Where(u => (u.TechTotalCharges > 0 || u.TechTotalPayments > 0 || u.TechNetBalance != 0)
-                    && (userCompanyId == null || u.CompanyId == userCompanyId))
-                .Select(u => new
+            // === المصدر الموحّد: حساب الأرصدة من جدول المعاملات مباشرة ===
+            var techSummaries = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => !t.IsDeleted)
+                .GroupBy(t => t.TechnicianId)
+                .Select(g => new
                 {
-                    u.Id,
-                    u.FullName,
-                    u.PhoneNumber,
-                    u.TechTotalCharges,
-                    u.TechTotalPayments,
-                    u.TechNetBalance
+                    TechnicianId = g.Key,
+                    TotalCharges = g.Where(t => t.Type == TechnicianTransactionType.Charge).Sum(t => (decimal?)t.Amount) ?? 0,
+                    TotalPayments = g.Where(t => t.Type == TechnicianTransactionType.Payment).Sum(t => (decimal?)t.Amount) ?? 0,
+                    TransactionCount = g.Count(),
+                    LastDate = g.Max(t => t.CreatedAt)
                 })
-                .OrderBy(u => u.TechNetBalance) // الأكثر مديونية أولاً
                 .ToListAsync();
 
-            // جلب آخر معاملة لكل فني
-            var techIds = technicians.Select(t => t.Id).ToList();
-            var lastTxDict = new Dictionary<Guid, (DateTime LastDate, int TransactionCount)>();
-            
-            if (techIds.Any())
-            {
-                var lastTransactions = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                    .Where(t => techIds.Contains(t.TechnicianId))
-                    .GroupBy(t => t.TechnicianId)
-                    .Select(g => new
-                    {
-                        TechnicianId = g.Key,
-                        LastDate = g.Max(t => t.CreatedAt),
-                        TransactionCount = g.Count()
-                    })
-                    .ToListAsync();
-                    
-                foreach (var lt in lastTransactions)
+            // جلب بيانات الفنيين (الاسم، الهاتف) مع فلتر الشركة
+            var techIds = techSummaries.Select(s => s.TechnicianId).ToList();
+            var techUsers = await _unitOfWork.Users.AsQueryable()
+                .Where(u => techIds.Contains(u.Id)
+                    && (userCompanyId == null || u.CompanyId == userCompanyId))
+                .Select(u => new { u.Id, u.FullName, u.PhoneNumber })
+                .ToListAsync();
+
+            var techUserDict = techUsers.ToDictionary(u => u.Id);
+
+            // دمج البيانات — فقط الفنيين التابعين للشركة
+            var technicians = techSummaries
+                .Where(s => techUserDict.ContainsKey(s.TechnicianId))
+                .Select(s =>
                 {
-                    lastTxDict[lt.TechnicianId] = (lt.LastDate, lt.TransactionCount);
+                    var user = techUserDict[s.TechnicianId];
+                    var netBalance = s.TotalPayments - s.TotalCharges;
+                    return new
+                    {
+                        id = user.Id,
+                        name = user.FullName,
+                        phone = user.PhoneNumber,
+                        totalCharges = s.TotalCharges,
+                        totalPayments = s.TotalPayments,
+                        netBalance,
+                        transactionCount = s.TransactionCount,
+                        lastTransactionDate = (DateTime?)s.LastDate
+                    };
+                })
+                .OrderBy(t => t.netBalance) // الأكثر مديونية أولاً
+                .ToList();
+
+            // مزامنة حقول User المخزّنة مع القيم المحسوبة (لمنع التضارب مستقبلاً)
+            foreach (var t in technicians)
+            {
+                var dbUser = await _unitOfWork.Users.GetByIdAsync(t.id);
+                if (dbUser != null && (dbUser.TechTotalCharges != t.totalCharges
+                    || dbUser.TechTotalPayments != t.totalPayments))
+                {
+                    dbUser.TechTotalCharges = t.totalCharges;
+                    dbUser.TechTotalPayments = t.totalPayments;
+                    dbUser.TechNetBalance = t.netBalance;
+                    _unitOfWork.Users.Update(dbUser);
                 }
             }
+            await _unitOfWork.SaveChangesAsync();
 
-            var totalAllCharges = technicians.Sum(t => t.TechTotalCharges);
-            var totalAllPayments = technicians.Sum(t => t.TechTotalPayments);
-            var totalNetBalance = technicians.Sum(t => t.TechNetBalance);
+            var totalAllCharges = technicians.Sum(t => t.totalCharges);
+            var totalAllPayments = technicians.Sum(t => t.totalPayments);
+            var totalNetBalance = technicians.Sum(t => t.netBalance);
 
             return Ok(new
             {
-                technicians = technicians.Select(t =>
-                {
-                    var hasTx = lastTxDict.TryGetValue(t.Id, out var txInfo);
-                    return new
-                    {
-                        id = t.Id,
-                        name = t.FullName,
-                        phone = t.PhoneNumber,
-                        totalCharges = t.TechTotalCharges,
-                        totalPayments = t.TechTotalPayments,
-                        netBalance = t.TechNetBalance,
-                        transactionCount = hasTx ? txInfo!.TransactionCount : 0,
-                        lastTransactionDate = hasTx ? txInfo!.LastDate : (DateTime?)null
-                    };
-                }),
+                technicians,
                 summary = new
                 {
                     technicianCount = technicians.Count,
                     totalCharges = totalAllCharges,
                     totalPayments = totalAllPayments,
                     totalNetBalance = totalNetBalance,
-                    debtorCount = technicians.Count(t => t.TechNetBalance < 0)
+                    debtorCount = technicians.Count(t => t.netBalance < 0)
                 }
             });
         }
@@ -651,6 +659,77 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في حذف المعاملة {TxId}", id);
+            return StatusCode(500, new { success = false, message = "خطأ داخلي في الخادم" });
+        }
+    }
+
+    /// <summary>
+    /// إعادة مزامنة أرصدة جميع الفنيين من جدول المعاملات
+    /// يُستخدم لإصلاح أي تضارب بين حقول User والمعاملات الفعلية
+    /// </summary>
+    [HttpPost("recalculate-balances")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> RecalculateAllBalances()
+    {
+        try
+        {
+            // حساب الأرصدة الحقيقية من جدول المعاملات
+            var actualBalances = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => !t.IsDeleted)
+                .GroupBy(t => t.TechnicianId)
+                .Select(g => new
+                {
+                    TechnicianId = g.Key,
+                    TotalCharges = g.Where(t => t.Type == TechnicianTransactionType.Charge).Sum(t => (decimal?)t.Amount) ?? 0,
+                    TotalPayments = g.Where(t => t.Type == TechnicianTransactionType.Payment).Sum(t => (decimal?)t.Amount) ?? 0,
+                })
+                .ToListAsync();
+
+            int fixedCount = 0;
+            var details = new List<object>();
+
+            foreach (var balance in actualBalances)
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(balance.TechnicianId);
+                if (user == null) continue;
+
+                var actualNet = balance.TotalPayments - balance.TotalCharges;
+                var wasDifferent = user.TechTotalCharges != balance.TotalCharges
+                    || user.TechTotalPayments != balance.TotalPayments;
+
+                if (wasDifferent)
+                {
+                    details.Add(new
+                    {
+                        name = user.FullName,
+                        before = new { charges = user.TechTotalCharges, payments = user.TechTotalPayments, net = user.TechNetBalance },
+                        after = new { charges = balance.TotalCharges, payments = balance.TotalPayments, net = actualNet }
+                    });
+
+                    user.TechTotalCharges = balance.TotalCharges;
+                    user.TechTotalPayments = balance.TotalPayments;
+                    user.TechNetBalance = actualNet;
+                    _unitOfWork.Users.Update(user);
+                    fixedCount++;
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("تم إعادة مزامنة أرصدة {Count} فني", fixedCount);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم إعادة حساب أرصدة {fixedCount} فني من أصل {actualBalances.Count}",
+                fixedCount,
+                totalTechnicians = actualBalances.Count,
+                corrections = details
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إعادة حساب أرصدة الفنيين");
             return StatusCode(500, new { success = false, message = "خطأ داخلي في الخادم" });
         }
     }

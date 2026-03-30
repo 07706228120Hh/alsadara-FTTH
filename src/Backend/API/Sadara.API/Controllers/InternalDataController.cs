@@ -37,6 +37,13 @@ public class InternalDataController : ControllerBase
     /// <summary>
     /// التحقق من API Key - يقرأ من الإعدادات أو Environment Variable
     /// </summary>
+    private static decimal _safeDecimal(System.Text.Json.JsonElement el, string prop)
+    {
+        if (!el.TryGetProperty(prop, out var val)) return 0;
+        try { return val.GetDecimal(); }
+        catch { return decimal.TryParse(val.GetRawText(), out var d) ? d : 0; }
+    }
+
     private bool ValidateApiKey()
     {
         var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
@@ -577,6 +584,8 @@ public class InternalDataController : ControllerBase
                 // FTTH Integration
                 employee.FtthUsername,
                 employee.FtthPasswordEncrypted,
+                // كلمة المرور (للإدارة الداخلية فقط)
+                employee.PlainPassword,
             }
         });
     }
@@ -671,7 +680,10 @@ public class InternalDataController : ControllerBase
 
         // Password fields
         if (!string.IsNullOrEmpty(request.NewPassword) && request.NewPassword.Length >= 4)
+        {
             employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            employee.PlainPassword = request.NewPassword;
+        }
         if (request.FtthPassword != null)
             employee.FtthPasswordEncrypted = request.FtthPassword;
 
@@ -703,6 +715,7 @@ public class InternalDataController : ControllerBase
             return BadRequest(new { success = false, message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
 
         employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        employee.PlainPassword = request.NewPassword;
         employee.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Users.Update(employee);
@@ -2294,6 +2307,461 @@ public class InternalDataController : ControllerBase
             message = $"تم إصلاح {techFixed} سجل فني و {agentFixed} سجل وكيل",
             techFixed,
             agentFixed
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // تقارير التسديدات اليومية - Daily Settlement Reports
+    // ═══════════════════════════════════════════════════════
+
+    /// <summary>
+    /// جلب تقارير التسديدات اليومية
+    /// </summary>
+    [HttpGet("settlement-reports")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetSettlementReports(
+        [FromQuery] string? operatorName,
+        [FromQuery] string? companyId,
+        [FromQuery] DateTime? fromDate,
+        [FromQuery] DateTime? toDate,
+        [FromQuery] int pageSize = 500)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var query = _unitOfWork.DailySettlementReports.AsQueryable()
+            .Where(r => !r.IsDeleted);
+
+        if (!string.IsNullOrEmpty(operatorName))
+            query = query.Where(r => r.OperatorName == operatorName);
+
+        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
+            query = query.Where(r => r.CompanyId == cId);
+
+        if (fromDate.HasValue)
+        {
+            var from = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
+            query = query.Where(r => r.ReportDate >= from);
+        }
+
+        if (toDate.HasValue)
+        {
+            var to = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(r => r.ReportDate < to);
+        }
+
+        var effectivePageSize = Math.Min(pageSize < 1 ? 500 : pageSize, 2000);
+
+        var reports = await query
+            .OrderByDescending(r => r.ReportDate)
+            .ThenBy(r => r.OperatorName)
+            .Take(effectivePageSize)
+            .Select(r => new
+            {
+                r.Id,
+                r.ReportDate,
+                r.OperatorName,
+                r.OperatorId,
+                r.CompanyId,
+                r.Notes,
+                r.ItemsJson,
+                r.TotalAmount,
+                r.CreatedAt,
+                r.UpdatedAt,
+                r.DeliveredToId,
+                r.DeliveredToName,
+                r.JournalEntryId,
+                r.SystemTotal,
+                r.SystemCashTotal,
+                r.SystemCreditTotal,
+                r.SystemMasterTotal,
+                r.SystemTechTotal,
+                r.SystemAgentTotal,
+                r.TotalExpenses,
+                r.NetCashAmount,
+                r.ReceivedAmount,
+            })
+            .ToListAsync();
+
+        return Ok(reports);
+    }
+
+    /// <summary>
+    /// إنشاء أو تحديث تقرير تسديد يومي (upsert: تقرير واحد لكل مشغل لكل يوم)
+    /// </summary>
+    [HttpPost("settlement-reports")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CreateSettlementReport([FromBody] JsonElement request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        try
+        {
+            var operatorName = request.GetProperty("operatorName").GetString() ?? "";
+            var reportDateStr = request.TryGetProperty("reportDate", out var rdProp) ? rdProp.GetString() : null;
+            var reportDate = !string.IsNullOrEmpty(reportDateStr)
+                ? DateTime.SpecifyKind(DateTime.Parse(reportDateStr).Date, DateTimeKind.Utc)
+                : DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+
+            var operatorId = request.TryGetProperty("operatorId", out var oiProp) ? oiProp.GetString() : null;
+            var notes = request.TryGetProperty("notes", out var nProp) ? nProp.GetString() : null;
+            Guid? companyId = request.TryGetProperty("companyId", out var ciProp) && Guid.TryParse(ciProp.GetString(), out var parsedCid)
+                ? parsedCid : null;
+
+            // بيانات المستلم
+            var deliveredToId = request.TryGetProperty("deliveredToId", out var dtiProp) ? dtiProp.GetString() : null;
+            var deliveredToName = request.TryGetProperty("deliveredToName", out var dtnProp) ? dtnProp.GetString() : null;
+
+            // Parse items
+            var itemsJson = "[]";
+            decimal totalAmount = 0;
+            if (request.TryGetProperty("items", out var itemsProp))
+            {
+                itemsJson = itemsProp.GetRawText();
+                foreach (var item in itemsProp.EnumerateArray())
+                {
+                    if (item.TryGetProperty("amount", out var amtProp))
+                        totalAmount += amtProp.GetDecimal();
+                }
+            }
+
+            // Upsert: check if report exists for this operator + date
+            var existing = await _unitOfWork.DailySettlementReports.AsQueryable()
+                .FirstOrDefaultAsync(r => !r.IsDeleted && r.OperatorName == operatorName && r.ReportDate == reportDate);
+
+            bool isUpdate = existing != null;
+            DailySettlementReport report;
+
+            if (existing != null)
+            {
+                report = existing;
+                report.Notes = notes;
+                report.ItemsJson = itemsJson;
+                report.TotalAmount = totalAmount;
+                report.OperatorId = operatorId;
+                report.CompanyId = companyId;
+                report.DeliveredToId = deliveredToId;
+                report.DeliveredToName = deliveredToName;
+                report.UpdatedAt = DateTime.UtcNow;
+
+                // تحديث تفاصيل النظام
+                report.SystemTotal = _safeDecimal(request, "systemTotal");
+                report.SystemCashTotal = _safeDecimal(request, "systemCashTotal");
+                report.SystemCreditTotal = _safeDecimal(request, "systemCreditTotal");
+                report.SystemMasterTotal = _safeDecimal(request, "systemMasterTotal");
+                report.SystemTechTotal = _safeDecimal(request, "systemTechTotal");
+                report.SystemAgentTotal = _safeDecimal(request, "systemAgentTotal");
+                report.TotalExpenses = _safeDecimal(request, "totalExpenses");
+                report.NetCashAmount = _safeDecimal(request, "netCashAmount");
+
+                // إلغاء القيد المحاسبي السابق (Void) إذا موجود
+                if (report.JournalEntryId.HasValue)
+                {
+                    var oldEntry = await _unitOfWork.JournalEntries.GetByIdAsync(report.JournalEntryId.Value);
+                    if (oldEntry != null && oldEntry.Status == JournalEntryStatus.Posted)
+                    {
+                        // عكس تأثير القيد على الأرصدة
+                        var oldLines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                            .Where(l => l.JournalEntryId == oldEntry.Id)
+                            .ToListAsync();
+                        foreach (var line in oldLines)
+                        {
+                            var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                            if (account != null)
+                            {
+                                if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                                {
+                                    account.CurrentBalance -= line.DebitAmount;
+                                    account.CurrentBalance += line.CreditAmount;
+                                }
+                                else
+                                {
+                                    account.CurrentBalance += line.DebitAmount;
+                                    account.CurrentBalance -= line.CreditAmount;
+                                }
+                                _unitOfWork.Accounts.Update(account);
+                            }
+                        }
+                        oldEntry.Status = JournalEntryStatus.Voided;
+                        _unitOfWork.JournalEntries.Update(oldEntry);
+                    }
+                    report.JournalEntryId = null;
+                }
+
+                _unitOfWork.DailySettlementReports.Update(report);
+            }
+            else
+            {
+                report = new DailySettlementReport
+                {
+                    ReportDate = reportDate,
+                    OperatorName = operatorName,
+                    OperatorId = operatorId,
+                    CompanyId = companyId,
+                    Notes = notes,
+                    ItemsJson = itemsJson,
+                    TotalAmount = totalAmount,
+                    DeliveredToId = deliveredToId,
+                    DeliveredToName = deliveredToName,
+                    // تفاصيل النظام (داخل المُهيئ لضمان الحفظ)
+                    SystemTotal = _safeDecimal(request, "systemTotal"),
+                    SystemCashTotal = _safeDecimal(request, "systemCashTotal"),
+                    SystemCreditTotal = _safeDecimal(request, "systemCreditTotal"),
+                    SystemMasterTotal = _safeDecimal(request, "systemMasterTotal"),
+                    SystemTechTotal = _safeDecimal(request, "systemTechTotal"),
+                    SystemAgentTotal = _safeDecimal(request, "systemAgentTotal"),
+                    TotalExpenses = _safeDecimal(request, "totalExpenses"),
+                    NetCashAmount = _safeDecimal(request, "netCashAmount"),
+                };
+                await _unitOfWork.DailySettlementReports.AddAsync(report);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            _logger.LogInformation("✅ Settlement report saved: SystemTotal={ST}, CashTotal={CT}, NetCash={NC}",
+                report.SystemTotal, report.SystemCashTotal, report.NetCashAmount);
+
+            // الترحيل المحاسبي يتم يدوياً من صفحة المحاسب (accountant-post endpoint)
+            Guid? journalEntryId = report.JournalEntryId;
+
+            var msg = isUpdate ? "تم تحديث التقرير" : "تم إنشاء التقرير";
+            if (journalEntryId.HasValue) msg += " مع قيد محاسبي";
+            return Ok(new { success = true, message = msg, id = report.Id, updated = isUpdate, journalEntryId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating settlement report");
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// ترحيل محاسبي يدوي من المحاسب — ينقل المبلغ المستلم من صندوق المشغل إلى صندوق الشركة
+    /// </summary>
+    [HttpPost("settlement-reports/{id}/accountant-post")]
+    [AllowAnonymous]
+    public async Task<IActionResult> AccountantPostSettlementReport(long id, [FromBody] JsonElement request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        try
+        {
+            var report = await _unitOfWork.DailySettlementReports.GetByIdAsync(id);
+            if (report == null)
+                return NotFound(new { success = false, message = "التقرير غير موجود" });
+
+            decimal receivedAmount = _safeDecimal(request, "receivedAmount");
+            if (receivedAmount <= 0)
+                return BadRequest(new { success = false, message = "المبلغ المستلم يجب أن يكون أكبر من صفر" });
+
+            // حفظ المبلغ المستلم
+            report.ReceivedAmount = receivedAmount;
+
+            // ═══ استكمال البيانات الناقصة تلقائياً ═══
+            Guid opGuid;
+
+            // 1) محاولة إيجاد المشغل في جدول المستخدمين بالاسم
+            if (!report.CompanyId.HasValue || string.IsNullOrEmpty(report.OperatorId) || !Guid.TryParse(report.OperatorId, out opGuid))
+            {
+                var operatorUser = await _unitOfWork.Users.AsQueryable()
+                    .Where(u => !u.IsDeleted && u.FullName == report.OperatorName)
+                    .Select(u => new { u.Id, u.CompanyId })
+                    .FirstOrDefaultAsync();
+
+                if (operatorUser != null)
+                {
+                    if (!report.CompanyId.HasValue && operatorUser.CompanyId.HasValue)
+                        report.CompanyId = operatorUser.CompanyId;
+                    if (string.IsNullOrEmpty(report.OperatorId))
+                        report.OperatorId = operatorUser.Id.ToString();
+                }
+            }
+
+            // 2) إذا CompanyId لا تزال فارغة → أول شركة موجودة
+            if (!report.CompanyId.HasValue)
+            {
+                var firstCompanyId = await _unitOfWork.Companies.AsQueryable()
+                    .Where(c => !c.IsDeleted)
+                    .Select(c => c.Id)
+                    .FirstOrDefaultAsync();
+                if (firstCompanyId != default)
+                    report.CompanyId = firstCompanyId;
+            }
+
+            if (!report.CompanyId.HasValue)
+                return BadRequest(new { success = false, message = "لم يتم العثور على شركة — يرجى التواصل مع المسؤول" });
+
+            // 3) إذا OperatorId لا يزال فارغاً → GUID ثابت من اسم المشغل
+            if (string.IsNullOrEmpty(report.OperatorId) || !Guid.TryParse(report.OperatorId, out opGuid))
+            {
+                using var md5 = System.Security.Cryptography.MD5.Create();
+                var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"operator:{report.OperatorName}"));
+                opGuid = new Guid(hash);
+                report.OperatorId = opGuid.ToString();
+            }
+
+            var companyId = report.CompanyId.Value;
+
+            // ═══ إلغاء القيد القديم إذا موجود ═══
+            if (report.JournalEntryId.HasValue)
+            {
+                var oldEntry = await _unitOfWork.JournalEntries.GetByIdAsync(report.JournalEntryId.Value);
+                if (oldEntry != null && oldEntry.Status == JournalEntryStatus.Posted)
+                {
+                    var oldLines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                        .Where(l => l.JournalEntryId == oldEntry.Id).ToListAsync();
+                    foreach (var line in oldLines)
+                    {
+                        var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                        if (account != null)
+                        {
+                            if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                            {
+                                account.CurrentBalance -= line.DebitAmount;
+                                account.CurrentBalance += line.CreditAmount;
+                            }
+                            else
+                            {
+                                account.CurrentBalance += line.DebitAmount;
+                                account.CurrentBalance -= line.CreditAmount;
+                            }
+                            _unitOfWork.Accounts.Update(account);
+                        }
+                    }
+                    oldEntry.Status = JournalEntryStatus.Voided;
+                    _unitOfWork.JournalEntries.Update(oldEntry);
+                }
+                report.JournalEntryId = null;
+            }
+
+            // ═══ إنشاء القيد المحاسبي الجديد ═══
+            // حساب صندوق المشغل (Credit — المبلغ يخرج)
+            var operatorAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                _unitOfWork, "1110", opGuid, $"صندوق {report.OperatorName}", companyId);
+            await _unitOfWork.SaveChangesAsync();
+
+            // حساب صندوق الشركة (Debit — المبلغ يدخل)
+            var companyAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                _unitOfWork, "1110", companyId, "صندوق الشركة", companyId);
+            await _unitOfWork.SaveChangesAsync();
+
+            var description = $"استلام نقدي {receivedAmount:N0} من صندوق {report.OperatorName} — {report.ReportDate:yyyy-MM-dd}";
+            var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+            {
+                (companyAccount.Id, receivedAmount, 0, $"استلام نقدي من صندوق {report.OperatorName}"),
+                (operatorAccount.Id, 0, receivedAmount, $"تسليم نقدي إلى صندوق الشركة")
+            };
+
+            // جلب أول مستخدم فعلي في الشركة لاستخدامه كـ CreatedBy/ApprovedBy
+            var systemUserId = await _unitOfWork.Users.AsQueryable()
+                .Where(u => !u.IsDeleted && u.CompanyId == companyId)
+                .Select(u => u.Id)
+                .FirstOrDefaultAsync();
+            var createdByGuid = systemUserId != default ? systemUserId : companyId;
+
+            var journalEntryId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                _unitOfWork, companyId, createdByGuid, description,
+                JournalReferenceType.OperatorCashDelivery, report.Id.ToString(), lines);
+
+            report.JournalEntryId = journalEntryId;
+            _unitOfWork.DailySettlementReports.Update(report);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("✅ Accountant posted settlement #{Id}: {Amount} from {Op} to company",
+                report.Id, receivedAmount, report.OperatorName);
+
+            return Ok(new { success = true, message = "تم الترحيل بنجاح", journalEntryId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in accountant-post for settlement {Id}", id);
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// تحديث تقرير تسديد موجود
+    /// </summary>
+    [HttpPut("settlement-reports/{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateSettlementReport(long id, [FromBody] JsonElement request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var report = await _unitOfWork.DailySettlementReports.GetByIdAsync(id);
+        if (report == null)
+            return NotFound(new { success = false, message = "التقرير غير موجود" });
+
+        if (request.TryGetProperty("notes", out var nProp))
+            report.Notes = nProp.GetString();
+
+        if (request.TryGetProperty("items", out var itemsProp))
+        {
+            report.ItemsJson = itemsProp.GetRawText();
+            decimal totalAmount = 0;
+            foreach (var item in itemsProp.EnumerateArray())
+            {
+                if (item.TryGetProperty("amount", out var amtProp))
+                    totalAmount += amtProp.GetDecimal();
+            }
+            report.TotalAmount = totalAmount;
+        }
+
+        report.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.DailySettlementReports.Update(report);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم تحديث التقرير" });
+    }
+
+    /// <summary>
+    /// حذف تقرير تسديد (soft delete)
+    /// </summary>
+    [HttpDelete("settlement-reports/{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DeleteSettlementReport(long id)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var report = await _unitOfWork.DailySettlementReports.GetByIdAsync(id);
+        if (report == null)
+            return NotFound(new { success = false, message = "التقرير غير موجود" });
+
+        report.IsDeleted = true;
+        report.DeletedAt = DateTime.UtcNow;
+        _unitOfWork.DailySettlementReports.Update(report);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم حذف التقرير" });
+    }
+
+    /// <summary>
+    /// فحص هل المشغل أرسل تقرير اليوم
+    /// </summary>
+    [HttpGet("settlement-reports/check")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CheckSettlementReport(
+        [FromQuery] string operatorName,
+        [FromQuery] string? date)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var checkDate = !string.IsNullOrEmpty(date)
+            ? DateTime.SpecifyKind(DateTime.Parse(date).Date, DateTimeKind.Utc)
+            : DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+
+        var report = await _unitOfWork.DailySettlementReports.AsQueryable()
+            .FirstOrDefaultAsync(r => !r.IsDeleted && r.OperatorName == operatorName && r.ReportDate == checkDate);
+
+        return Ok(new
+        {
+            submitted = report != null,
+            reportId = report?.Id,
+            totalAmount = report?.TotalAmount ?? 0,
         });
     }
 }

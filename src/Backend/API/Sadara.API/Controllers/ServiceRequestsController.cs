@@ -314,44 +314,12 @@ public class ServiceRequestsController : ControllerBase
         {
             bool hasFinancialChanges = false;
 
-            if (newStatus == ServiceRequestStatus.Completed && request.AgentId.HasValue && request.EstimatedCost > 0)
-            {
-                var agent = await _unitOfWork.Agents.GetByIdAsync(request.AgentId.Value);
-                if (agent != null)
-                {
-                    var existingTx = await _unitOfWork.AgentTransactions.AsQueryable()
-                        .AnyAsync(t => t.ServiceRequestId == id && t.Type == TransactionType.Charge && !t.IsDeleted);
+            // ═══ ملاحظة: تم إزالة التسجيل المالي على الوكيل عند إكمال الطلب ═══
+            // التسجيل يتم فقط عند تفعيل الاشتراك واختيار طريقة الدفع "وكيل"
+            // في SubscriptionLogsController أو FtthAccountingController
+            // هذا يمنع التسجيل المزدوج للمبلغ على الوكيل
 
-                    if (!existingTx)
-                    {
-                        var cost = request.FinalCost ?? request.EstimatedCost ?? 0;
-                        if (cost > 0)
-                        {
-                            agent.TotalCharges += cost;
-                            agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
-                            _unitOfWork.Agents.Update(agent);
-
-                            var transaction = new AgentTransaction
-                            {
-                                AgentId = agent.Id,
-                                Type = TransactionType.Charge,
-                                Category = TransactionCategory.NewSubscription,
-                                Amount = cost,
-                                BalanceAfter = agent.NetBalance,
-                                Description = $"طلب خدمة مكتمل: {request.RequestNumber}",
-                                ReferenceNumber = request.RequestNumber,
-                                ServiceRequestId = id,
-                                CreatedById = GetCurrentUserId(),
-                                CreatedAt = DateTime.UtcNow
-                            };
-                            await _unitOfWork.AgentTransactions.AddAsync(transaction);
-                            hasFinancialChanges = true;
-                            _logger.LogInformation("تم خصم {Cost} من رصيد الوكيل {AgentId} للطلب {RequestNumber}", cost, agent.Id, request.RequestNumber);
-                        }
-                    }
-                }
-            }
-            else if ((newStatus == ServiceRequestStatus.Cancelled || newStatus == ServiceRequestStatus.Rejected)
+            if ((newStatus == ServiceRequestStatus.Cancelled || newStatus == ServiceRequestStatus.Rejected)
                      && request.AgentId.HasValue)
             {
                 var existingCharge = await _unitOfWork.AgentTransactions.AsQueryable()
@@ -454,89 +422,20 @@ public class ServiceRequestsController : ControllerBase
                 chargeTargetId = request.TechnicianId.Value;
             }
 
-            var shouldChargeTechnician = chargeTargetId.HasValue;
+            // ═══ ملاحظة: تم إزالة التسجيل المالي على الفني عند إكمال الطلب ═══
+            // التسجيل يتم فقط عند تفعيل الاشتراك واختيار طريقة الدفع "فني"
+            // في SubscriptionLogsController أو FtthAccountingController
 
-            if (shouldChargeTechnician)
+            var shouldHandleTechCancellation = chargeTargetId.HasValue;
+
+            if (shouldHandleTechCancellation)
             {
                 bool hasTechFinancialChanges = false;
-                var txCategory = TechnicianTransactionCategory.Maintenance; // الافتراضي
-                var txDescription = string.IsNullOrEmpty(taskTypeStr) ? "مهمة مكتملة" : taskTypeStr;
-                if (taskTypeStr.Contains("اشتراك", StringComparison.OrdinalIgnoreCase))
-                    txCategory = TechnicianTransactionCategory.Subscription;
 
+                // لا خصم عند Completed — الخصم يتم عند التفعيل فقط
                 if (newStatus == ServiceRequestStatus.Completed)
                 {
-                    var cost = request.FinalCost ?? request.EstimatedCost ?? 0;
-                    if (cost > 0)
-                    {
-                        // تحقق من عدم وجود معاملة مكررة
-                        var existingTechTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                            .AnyAsync(t => t.ServiceRequestId == id && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted);
-
-                        if (!existingTechTx)
-                        {
-                            var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId!.Value);
-                            if (technician != null)
-                            {
-                                technician.TechTotalCharges += cost;
-                                technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
-                                _unitOfWork.Users.Update(technician);
-
-                                var techTx = new TechnicianTransaction
-                                {
-                                    TechnicianId = technician.Id,
-                                    Type = TechnicianTransactionType.Charge,
-                                    Category = txCategory,
-                                    Amount = cost,
-                                    BalanceAfter = technician.TechNetBalance,
-                                    Description = $"{txDescription}: {request.RequestNumber}",
-                                    ReferenceNumber = request.RequestNumber,
-                                    ServiceRequestId = id,
-                                    CreatedById = GetCurrentUserId(),
-                                    CompanyId = request.CompanyId ?? technician.CompanyId ?? Guid.Empty,
-                                    CreatedAt = DateTime.UtcNow
-                                };
-                                await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
-                                hasTechFinancialChanges = true;
-
-                                // ═══ توحيد: إنشاء قيد محاسبي Dr 1140 / Cr 4100 ═══
-                                var techCompanyId = request.CompanyId ?? technician.CompanyId ?? Guid.Empty;
-                                if (techCompanyId != Guid.Empty)
-                                {
-                                    try
-                                    {
-                                        var techSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                                            _unitOfWork, "1140", technician.Id, technician.FullName, techCompanyId);
-                                        var techRevenueAcct = await ServiceRequestAccountingHelper.FindAccountByCode(
-                                            _unitOfWork, "4100", techCompanyId);
-
-                                        if (techRevenueAcct != null)
-                                        {
-                                            var techJournalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
-                                            {
-                                                (techSubAcct.Id, cost, 0, $"ذمم فني {technician.FullName} - طلب {request.RequestNumber}"),
-                                                (techRevenueAcct.Id, 0, cost, $"إيراد خدمة عبر فني {technician.FullName}")
-                                            };
-                                            var jeId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
-                                                _unitOfWork, techCompanyId, GetCurrentUserId(),
-                                                $"إكمال طلب خدمة {request.RequestNumber} - فني {technician.FullName}",
-                                                JournalReferenceType.ServiceRequest, request.Id.ToString(),
-                                                techJournalLines);
-                                            techTx.JournalEntryId = jeId;
-                                            _unitOfWork.TechnicianTransactions.Update(techTx);
-                                        }
-                                    }
-                                    catch (Exception jeEx)
-                                    {
-                                        _logger.LogWarning(jeEx, "فشل إنشاء قيد فني للطلب {RequestNumber}", request.RequestNumber);
-                                    }
-                                }
-
-                                _logger.LogInformation("تم خصم {Cost} على الفني {TechName} للمهمة {RequestNumber} ({Category})",
-                                    cost, technician.FullName, request.RequestNumber, txCategory);
-                            }
-                        }
-                    }
+                    _logger.LogInformation("طلب {RequestNumber} مكتمل — التسجيل المالي على الفني سيتم عند تفعيل الاشتراك", request.RequestNumber);
                 }
                 else if (newStatus == ServiceRequestStatus.Cancelled || newStatus == ServiceRequestStatus.Rejected)
                 {
@@ -641,44 +540,9 @@ public class ServiceRequestsController : ControllerBase
             _logger.LogWarning(techFinEx, "فشلت المعالجة المالية للفني في الطلب {RequestNumber} - تم تحديث الحالة بنجاح", request.RequestNumber);
         }
 
-        // ═══════ القيود المحاسبية (حفظ منفصل ثالث) ═══════
-        try
-        {
-            if (newStatus == ServiceRequestStatus.Completed && request.AgentId.HasValue && request.CompanyId.HasValue && request.EstimatedCost > 0)
-            {
-                var agent = await _unitOfWork.Agents.GetByIdAsync(request.AgentId.Value);
-                if (agent != null)
-                {
-                    var cost = request.FinalCost ?? request.EstimatedCost ?? 0;
-                    if (cost > 0)
-                    {
-                        var agentSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                            _unitOfWork, "1150", agent.Id, agent.Name, request.CompanyId.Value);
-                        var revenueAcct = await ServiceRequestAccountingHelper.FindAccountByCode(
-                            _unitOfWork, "4100", request.CompanyId.Value);
-
-                        if (revenueAcct != null)
-                        {
-                            var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
-                            {
-                                (agentSubAcct.Id, cost, 0, $"ذمم وكيل {agent.Name} - طلب {request.RequestNumber}"),
-                                (revenueAcct.Id, 0, cost, $"إيراد خدمة عبر وكيل {agent.Name}")
-                            };
-                            await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
-                                _unitOfWork, request.CompanyId.Value, GetCurrentUserId(),
-                                $"إكمال طلب خدمة {request.RequestNumber} - وكيل {agent.Name}",
-                                JournalReferenceType.ServiceRequest, request.Id.ToString(),
-                                journalLines);
-                            await _unitOfWork.SaveChangesAsync();
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception acctEx)
-        {
-            _logger.LogWarning(acctEx, "فشل إنشاء القيد المحاسبي للطلب {RequestNumber} - تم تحديث الحالة والمعالجة المالية بنجاح", request.RequestNumber);
-        }
+        // ═══════ القيود المحاسبية — معطّلة هنا ═══════
+        // القيود تُنشأ عند تفعيل الاشتراك في SubscriptionLogs/FtthAccounting
+        // لمنع التسجيل المزدوج
 
         return Ok(new { success = true, message = "تم تحديث الحالة بنجاح" });
     }

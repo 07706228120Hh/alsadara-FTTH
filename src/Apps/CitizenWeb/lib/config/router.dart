@@ -44,6 +44,7 @@ import '../pages/citizen/profile/profile_page.dart';
 import '../pages/citizen/support/support_page.dart';
 import '../pages/citizen/notifications/notifications_page.dart';
 import '../pages/citizen/orders/orders_page.dart';
+import '../pages/citizen/kml_map_page.dart';
 
 // ═══════════════════════════════════════════════════════════════
 // صفحات الوكيل
@@ -331,6 +332,12 @@ GoRouter createRouter({
       GoRoute(
         path: '/citizen/orders',
         builder: (context, state) => const OrdersPage(),
+      ),
+
+      /// خريطة تغطية الشبكة
+      GoRoute(
+        path: '/citizen/kml-map',
+        builder: (context, state) => const KmlMapPage(),
       ),
 
       /// طلباتي (للتوافقية)

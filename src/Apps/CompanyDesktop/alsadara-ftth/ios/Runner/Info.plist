@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>زونات الوطني</string>
+	<string>الصدارة</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -45,5 +45,35 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- صلاحيات الموقع الجغرافي -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>يستخدم التطبيق موقعك لتسجيل حضور الموظفين</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>يستخدم التطبيق موقعك لتسجيل الحضور</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>يستخدم التطبيق موقعك لتسجيل الحضور</string>
+
+	<!-- صلاحيات الكاميرا والصور -->
+	<key>NSCameraUsageDescription</key>
+	<string>يستخدم التطبيق الكاميرا لالتقاط صور البصمة</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يستخدم التطبيق معرض الصور لاختيار صورة</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>يستخدم التطبيق معرض الصور لحفظ الصور</string>
+
+	<!-- صلاحيات البلوتوث -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>يستخدم التطبيق البلوتوث للطباعة اللاسلكية</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>يستخدم التطبيق البلوتوث للطباعة اللاسلكية</string>
+
+	<!-- Face ID -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>يستخدم التطبيق Face ID لتأمين الدخول</string>
+
+	<!-- الميكروفون -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>يستخدم التطبيق الميكروفون لمكالمات الصوت</string>
 </dict>
 </plist>

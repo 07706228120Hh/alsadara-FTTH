@@ -145,6 +145,41 @@ public class AgentsController : ControllerBase
                     agent.Company = company;
             }
 
+            // === مزامنة أرصدة الوكلاء من جدول المعاملات (المصدر الموحّد) ===
+            var agentIds = agents.Select(a => a.Id).ToList();
+            if (agentIds.Any())
+            {
+                var balances = await _unitOfWork.AgentTransactions.AsQueryable()
+                    .Where(t => agentIds.Contains(t.AgentId) && !t.IsDeleted)
+                    .GroupBy(t => t.AgentId)
+                    .Select(g => new
+                    {
+                        AgentId = g.Key,
+                        Charges = g.Where(t => t.Type == TransactionType.Charge).Sum(t => (decimal?)t.Amount) ?? 0,
+                        Payments = g.Where(t => t.Type == TransactionType.Payment).Sum(t => (decimal?)t.Amount) ?? 0,
+                    })
+                    .ToListAsync();
+
+                var balanceDict = balances.ToDictionary(b => b.AgentId);
+                bool needsSave = false;
+
+                foreach (var agent in agents)
+                {
+                    if (balanceDict.TryGetValue(agent.Id, out var bal))
+                    {
+                        if (agent.TotalCharges != bal.Charges || agent.TotalPayments != bal.Payments)
+                        {
+                            agent.TotalCharges = bal.Charges;
+                            agent.TotalPayments = bal.Payments;
+                            agent.NetBalance = bal.Payments - bal.Charges;
+                            _unitOfWork.Agents.Update(agent);
+                            needsSave = true;
+                        }
+                    }
+                }
+                if (needsSave) await _unitOfWork.SaveChangesAsync();
+            }
+
             return Ok(new
             {
                 success = true,
@@ -215,6 +250,7 @@ public class AgentsController : ControllerBase
                 Type = request.Type,
                 PhoneNumber = request.PhoneNumber,
                 PasswordHash = HashPassword(request.Password),
+                PlainPassword = request.Password,
                 Email = request.Email,
                 City = request.City,
                 Area = request.Area,
@@ -278,7 +314,10 @@ public class AgentsController : ControllerBase
 
             // تغيير كلمة المرور
             if (!string.IsNullOrWhiteSpace(request.NewPassword))
+            {
                 agent.PasswordHash = HashPassword(request.NewPassword);
+                agent.PlainPassword = request.NewPassword;
+            }
 
             // تغيير رقم الهاتف (مع التحقق من عدم التكرار)
             if (!string.IsNullOrWhiteSpace(request.PhoneNumber) && request.PhoneNumber != agent.PhoneNumber)
@@ -1805,6 +1844,7 @@ public class AgentsController : ControllerBase
             totalCharges = agent.TotalCharges,
             totalPayments = agent.TotalPayments,
             netBalance = agent.NetBalance,
+            plainPassword = agent.PlainPassword,
             createdAt = agent.CreatedAt,
             updatedAt = agent.UpdatedAt
         };

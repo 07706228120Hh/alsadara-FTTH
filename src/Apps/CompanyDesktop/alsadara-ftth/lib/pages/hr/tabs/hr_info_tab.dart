@@ -256,8 +256,6 @@ class _HrInfoTabState extends State<HrInfoTab> {
         if (_dateOfBirth != null)
           'dateOfBirth': _dateOfBirth!.toIso8601String(),
         if (_hireDate != null) 'hireDate': _hireDate!.toIso8601String(),
-        if (_newPasswordCtrl.text.isNotEmpty)
-          'newPassword': _newPasswordCtrl.text,
         if (_ftthPasswordCtrl.text.isNotEmpty)
           'ftthPassword': _ftthPasswordCtrl.text,
         // Schedule fields
@@ -272,6 +270,27 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
       final ok = await EmployeeProfileService.instance
           .updateEmployee(widget.companyId, empId, data);
+
+      // تغيير كلمة المرور عبر endpoint مخصص (منفصل عن تحديث البيانات)
+      bool pwOk = true;
+      if (_newPasswordCtrl.text.isNotEmpty) {
+        if (_newPasswordCtrl.text.length < 6) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+                    style: GoogleFonts.cairo()),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          setState(() => _saving = false);
+          return;
+        }
+        pwOk = await EmployeeProfileService.instance
+            .changePassword(widget.companyId, empId, _newPasswordCtrl.text);
+      }
+
       if (ok && mounted) {
         setState(() => _editing = false);
         _newPasswordCtrl.clear();
@@ -279,8 +298,12 @@ class _HrInfoTabState extends State<HrInfoTab> {
         widget.onSaved();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم الحفظ بنجاح', style: GoogleFonts.cairo()),
-            backgroundColor: _success,
+            content: Text(
+                pwOk
+                    ? 'تم الحفظ بنجاح'
+                    : 'تم حفظ البيانات لكن فشل تغيير كلمة المرور',
+                style: GoogleFonts.cairo()),
+            backgroundColor: pwOk ? _success : _warning,
           ),
         );
       } else if (mounted) {
@@ -323,7 +346,11 @@ class _HrInfoTabState extends State<HrInfoTab> {
       (widget.employee['role'] ?? widget.employee['Role'] ?? '').toString();
 
   String get _password =>
-      (widget.employee['password'] ?? widget.employee['Password'] ?? '')
+      (widget.employee['plainPassword'] ??
+              widget.employee['PlainPassword'] ??
+              widget.employee['password'] ??
+              widget.employee['Password'] ??
+              '')
           .toString();
 
   // ═══════════════ البناء ═══════════════
@@ -1105,22 +1132,22 @@ class _HrInfoTabState extends State<HrInfoTab> {
                             ),
                     ),
                   ),
-                  if (_password.isNotEmpty) ...[
-                    InkWell(
-                      onTap: () =>
-                          setState(() => _showPassword = !_showPassword),
-                      borderRadius: BorderRadius.circular(4),
-                      child: Padding(
-                        padding: const EdgeInsets.all(2),
-                        child: Icon(
-                          _showPassword
-                              ? Icons.visibility_off_rounded
-                              : Icons.visibility_rounded,
-                          size: 16,
-                          color: _warning.withOpacity(0.7),
-                        ),
+                  InkWell(
+                    onTap: () =>
+                        setState(() => _showPassword = !_showPassword),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        _showPassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        size: 16,
+                        color: _warning.withOpacity(0.7),
                       ),
                     ),
+                  ),
+                  if (_password.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     InkWell(
                       onTap: () {

@@ -327,7 +327,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             children: [
               // Filters
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: AppTheme.cardShadow,
@@ -359,7 +359,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     // Date Range
                     OutlinedButton.icon(
                       onPressed: () async {
@@ -387,8 +387,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
               // Stats Summary
               Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -476,7 +476,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
@@ -494,8 +494,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final isActivation = op.category == 'activation';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -504,14 +504,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: op.color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(op.icon, color: op.color),
+            child: Icon(op.icon, color: op.color, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

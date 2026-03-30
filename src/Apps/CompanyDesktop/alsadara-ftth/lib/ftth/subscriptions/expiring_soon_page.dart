@@ -15,7 +15,8 @@ import '../auth/login_page.dart';
 import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import '../users/user_details_page.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
+import '../../services/auto_renewal_reminder_service.dart';
 
 class ExpiringSoonPage extends StatefulWidget {
   final String activatedBy;
@@ -893,6 +894,334 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
     _fetchExpiringSoonData();
   }
 
+  // ═══ إرسال يدوي + معاينة (الإعدادات التلقائية في صفحة إعدادات الشركة) ═══
+  Future<void> _showAutoReminderSettings() async {
+    int selectedDays = 0;
+    bool isSending = false;
+
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEC4899).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.notifications_active_rounded,
+                      color: Color(0xFFEC4899), size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('تذكير المشتركين',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ملاحظة
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            color: Colors.blue, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'الإرسال التلقائي يُدار من إعدادات الشركة.\nهنا يمكنك المعاينة والإرسال اليدوي.',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // اختيار الفترة
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Text('إرسال تذكير لـ:',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(height: 8),
+                  ...List.generate(3, (i) {
+                    final labels = [
+                      'المنتهي اليوم',
+                      'المنتهي غداً',
+                      'المنتهي بعد غد',
+                    ];
+                    return RadioListTile<int>(
+                      value: i,
+                      groupValue: selectedDays,
+                      onChanged: (v) =>
+                          setDialogState(() => selectedDays = v!),
+                      title:
+                          Text(labels[i], style: const TextStyle(fontSize: 14)),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: const Color(0xFFEC4899),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            actions: [
+              // معاينة
+              OutlinedButton.icon(
+                onPressed: isSending
+                    ? null
+                    : () => _showPreviewDialog(selectedDays),
+                icon: const Icon(Icons.visibility, size: 16),
+                label: const Text('معاينة'),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إغلاق'),
+              ),
+              const SizedBox(width: 4),
+              // إرسال الآن
+              FilledButton.icon(
+                onPressed: isSending
+                    ? null
+                    : () async {
+                        setDialogState(() => isSending = true);
+                        final daysLabel = [
+                          'المنتهي اليوم',
+                          'المنتهي غداً',
+                          'المنتهي بعد غد'
+                        ][selectedDays];
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ftthShowSnackBar(
+                            context,
+                            SnackBar(
+                              content:
+                                  Text('جاري إرسال تذكير "$daysLabel"...'),
+                              backgroundColor: Colors.blue,
+                            ),
+                          );
+                        }
+                        final result = await AutoRenewalReminderService
+                            .instance
+                            .sendManually(selectedDays);
+                        if (mounted) {
+                          ftthShowSnackBar(
+                            context,
+                            SnackBar(
+                              content: Text(
+                                  'تم — أُرسل: ${result['sent']} / فشل: ${result['failed']}'),
+                              backgroundColor:
+                                  (result['failed'] ?? 0) == 0
+                                      ? Colors.green
+                                      : Colors.orange,
+                            ),
+                          );
+                        }
+                      },
+                icon: isSending
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send, size: 16),
+                label: Text(isSending ? 'جاري الإرسال...' : 'إرسال الآن'),
+                style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFEC4899)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _miniChip(String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(value,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+    );
+  }
+
+  /// dialog معاينة الأسماء قبل الإرسال
+  Future<void> _showPreviewDialog(int days) async {
+    if (!mounted) return;
+    final daysLabel = ['المنتهي اليوم', 'المنتهي غداً', 'المنتهي بعد غد'][days];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              const Icon(Icons.people, color: Color(0xFFEC4899)),
+              const SizedBox(width: 8),
+              Text('جلب $daysLabel...',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: const SizedBox(
+            width: 100,
+            height: 80,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+      ),
+    );
+
+    // جلب البيانات
+    final subs = await AutoRenewalReminderService.instance.previewBatch(days);
+
+    if (!mounted) return;
+    Navigator.pop(context); // إغلاق dialog التحميل
+
+    // فلترة من لديهم رقم
+    final valid = subs.where((s) {
+      final p = s['customerPhone']?.toString() ?? '';
+      return p.isNotEmpty && p != 'غير متوفر';
+    }).toList();
+    final noPhone = subs.length - valid.length;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              const Icon(Icons.people, color: Color(0xFFEC4899)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                    '$daysLabel — ${valid.length} مشترك',
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 420,
+            height: 400,
+            child: Column(
+              children: [
+                // إحصائيات
+                Row(
+                  children: [
+                    _miniChip('${subs.length} إجمالي', Colors.blue),
+                    const SizedBox(width: 6),
+                    _miniChip('${valid.length} بهاتف', Colors.green),
+                    if (noPhone > 0) ...[
+                      const SizedBox(width: 6),
+                      _miniChip('$noPhone بدون', Colors.red),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                // القائمة
+                Expanded(
+                  child: valid.isEmpty
+                      ? const Center(
+                          child: Text('لا يوجد مشتركين بأرقام هواتف'))
+                      : ListView.builder(
+                          itemCount: valid.length,
+                          itemBuilder: (_, i) {
+                            final sub = valid[i];
+                            final name = sub['customer']
+                                    ?['displayValue']
+                                    ?.toString() ??
+                                '—';
+                            final phone =
+                                sub['customerPhone']?.toString() ?? '';
+                            final expires =
+                                sub['expires']?.toString() ?? '';
+                            final plan = sub['bundle']
+                                    ?['displayValue']
+                                    ?.toString() ??
+                                '';
+                            return ListTile(
+                              dense: true,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              leading: CircleAvatar(
+                                radius: 14,
+                                backgroundColor: const Color(0xFFEC4899)
+                                    .withValues(alpha: 0.1),
+                                child: Text('${i + 1}',
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFFEC4899))),
+                              ),
+                              title: Text(name,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: Text('$phone — $plan',
+                                  style: const TextStyle(fontSize: 11)),
+                              trailing: Text(
+                                _shortDate(expires),
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade600),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إغلاق'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _shortDate(String iso) {
+    try {
+      final dt = DateTime.parse(iso);
+      return '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1021,6 +1350,25 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+          // زر إعدادات التذكير التلقائي (للمدير فقط)
+          if (!showTrialSubscriptions && widget.isAdminFlag == true)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.notifications_active_rounded,
+                      color: Colors.white, size: 22),
+                  tooltip: 'إعدادات التذكير التلقائي',
+                  onPressed: _showAutoReminderSettings,
                 ),
               ),
             ),

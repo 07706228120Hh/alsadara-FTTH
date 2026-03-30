@@ -2,7 +2,7 @@ name: alsadara
 description: "Alsadara Flutter application - تطبيق الصدارة لإدارة شبكات FTTH"
 publish_to: 'none'
 
-version: 1.6.37+197
+version: 1.6.39+199
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -38,6 +38,7 @@ dependencies:
   flutter_map: ^7.0.2
   flutter_map_mbtiles: ^1.0.4
   latlong2: ^0.9.1
+  xml: ^6.5.0
 
   # مكتبات الأمان والمصادقة
   crypto: ^3.0.3  # ✅ للتشفير SHA-256
@@ -126,6 +127,7 @@ flutter:
   - assets/fonts/
   - assets/animations/
   - assets/logo.png
+  - assets/maps/
   - .env
 
 # ⚠️ SECURITY WARNING

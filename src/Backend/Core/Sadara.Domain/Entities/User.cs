@@ -10,6 +10,9 @@ public class User : BaseEntity<Guid>
     public string FullName { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
+
+    /// <summary>كلمة المرور النصية (للعرض في لوحة الإدارة الداخلية فقط)</summary>
+    public string? PlainPassword { get; set; }
     public string? Email { get; set; }
     public UserRole Role { get; set; } = UserRole.Citizen;
     public string? ProfileImageUrl { get; set; }

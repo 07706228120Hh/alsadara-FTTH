@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/ticket_updates_service.dart';
 import '../../services/vps_sync_service.dart';
@@ -282,9 +283,10 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
 
         if (buttons.isEmpty) return const SizedBox.shrink();
 
-        // الموضع الافتراضي: يسار الأسفل
+        // الموضع الافتراضي: يسار الأسفل (مع مراعاة BottomNav على الموبايل)
+        final isMobile = Platform.isAndroid || Platform.isIOS;
         final dx = _dx ?? 16.0;
-        final dy = _dy ?? (mq.height - 70);
+        final dy = _dy ?? (mq.height - (isMobile ? 140 : 70));
 
         return Positioned(
           left: dx,
@@ -294,9 +296,9 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
               setState(() {
                 _dx = (_dx ?? dx) + d.delta.dx;
                 _dy = (_dy ?? dy) + d.delta.dy;
-                // حدود الشاشة
+                // حدود الشاشة (مع مراعاة BottomNav على الموبايل)
                 _dx = _dx!.clamp(0.0, mq.width - 200);
-                _dy = _dy!.clamp(40.0, mq.height - 60);
+                _dy = _dy!.clamp(40.0, mq.height - (isMobile ? 120 : 60));
               });
             },
             child: Material(
@@ -378,6 +380,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
                     child: InkWell(
                       customBorder: const CircleBorder(),
                       onTap: () {
+                        if (conv_page.WhatsAppConversationsPage.isOpen) return;
                         Navigator.push(
                           context,
                           MaterialPageRoute(

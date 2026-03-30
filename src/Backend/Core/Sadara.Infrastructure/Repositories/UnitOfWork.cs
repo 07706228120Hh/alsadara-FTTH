@@ -106,6 +106,14 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<Department, int>? _departments;
     private IRepository<DepartmentTask, int>? _departmentTasks;
 
+    // Daily Settlement Reports (تقارير التسديدات اليومية)
+    private IRepository<DailySettlementReport, long>? _dailySettlementReports;
+
+    // WhatsApp Conversations (محادثات واتساب)
+    private IRepository<WhatsAppConversation, long>? _whatsAppConversations;
+    private IRepository<WhatsAppMessage, long>? _whatsAppMessages;
+    private IRepository<WhatsAppBatchReport, long>? _whatsAppBatchReports;
+
     public UnitOfWork(SadaraDbContext context)
     {
         _context = context;
@@ -318,6 +326,20 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<DepartmentTask, int> DepartmentTasks =>
         _departmentTasks ??= new Repository<DepartmentTask, int>(_context);
+
+    // Daily Settlement Reports (تقارير التسديدات اليومية)
+    public IRepository<DailySettlementReport, long> DailySettlementReports =>
+        _dailySettlementReports ??= new Repository<DailySettlementReport, long>(_context);
+
+    // WhatsApp Conversations (محادثات واتساب)
+    public IRepository<WhatsAppConversation, long> WhatsAppConversations =>
+        _whatsAppConversations ??= new Repository<WhatsAppConversation, long>(_context);
+
+    public IRepository<WhatsAppMessage, long> WhatsAppMessages =>
+        _whatsAppMessages ??= new Repository<WhatsAppMessage, long>(_context);
+
+    public IRepository<WhatsAppBatchReport, long> WhatsAppBatchReports =>
+        _whatsAppBatchReports ??= new Repository<WhatsAppBatchReport, long>(_context);
 
     #endregion
 

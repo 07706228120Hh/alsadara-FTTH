@@ -1516,6 +1516,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             runSpacing: 8,
             children: [
               _buildDetailItem(Icons.phone, 'الهاتف', agent.phoneNumber),
+              _buildPasswordItem(agent.plainPassword),
               if (agent.email != null)
                 _buildDetailItem(Icons.email, 'البريد', agent.email!),
               if (agent.city != null)
@@ -1574,6 +1575,51 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 color: AccountingTheme.textPrimary,
                 fontWeight: FontWeight.w500)),
       ],
+    );
+  }
+
+  Widget _buildPasswordItem(String? password) {
+    if (password == null || password.isEmpty) return const SizedBox.shrink();
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        bool obscured = true;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock_outline, size: 14, color: AccountingTheme.textMuted),
+            const SizedBox(width: 4),
+            const Text('كلمة المرور: ',
+                style: TextStyle(fontSize: 12, color: AccountingTheme.textMuted)),
+            StatefulBuilder(
+              builder: (ctx, setState2) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      obscured ? '••••••••' : password,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: obscured ? AccountingTheme.textMuted : AccountingTheme.textPrimary,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: obscured ? null : 'monospace',
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => setState2(() => obscured = !obscured),
+                      child: Icon(
+                        obscured ? Icons.visibility_off : Icons.visibility,
+                        size: 16,
+                        color: AccountingTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

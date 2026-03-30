@@ -794,4 +794,225 @@ public class DatabaseAdminController : ControllerBase
             return StatusCode(500, new { success = false, message = "حدث خطأ في النظام" });
         }
     }
+
+    /// <summary>
+    /// عرض ملخص كامل للبيانات المحاسبية الموجودة
+    /// </summary>
+    [HttpGet("accounting-summary")]
+    public async Task<IActionResult> GetAccountingSummary()
+    {
+        try
+        {
+            var subscriptionLogs = await _context.SubscriptionLogs.IgnoreQueryFilters().CountAsync();
+            var techTransactions = await _context.TechnicianTransactions.IgnoreQueryFilters().CountAsync();
+            var agentTransactions = await _context.AgentTransactions.IgnoreQueryFilters().CountAsync();
+            var journalEntries = await _context.JournalEntries.IgnoreQueryFilters().CountAsync();
+            var journalLines = await _context.JournalEntryLines.IgnoreQueryFilters().CountAsync();
+            var cashBoxes = await _context.CashBoxes.CountAsync();
+            var cashTransactions = await _context.CashTransactions.IgnoreQueryFilters().CountAsync();
+            var accounts = await _context.Accounts.CountAsync();
+            var agents = await _context.Agents.IgnoreQueryFilters().CountAsync();
+            var techCollections = await _context.TechnicianCollections.IgnoreQueryFilters().CountAsync();
+
+            // تفاصيل أرصدة الفنيين
+            var techUsers = await _context.Users.IgnoreQueryFilters()
+                .Where(u => u.Role == Sadara.Domain.Enums.UserRole.Technician)
+                .Select(u => new { u.Id, u.FullName, u.TechTotalCharges, u.TechTotalPayments, u.TechNetBalance })
+                .ToListAsync();
+
+            // تفاصيل أرصدة الوكلاء
+            var agentsList = await _context.Agents.IgnoreQueryFilters()
+                .Select(a => new { a.Id, a.Name, a.TotalCharges, a.TotalPayments, a.NetBalance })
+                .ToListAsync();
+
+            // تفاصيل الصناديق
+            var cashBoxesList = await _context.CashBoxes
+                .Select(c => new { c.Id, c.Name, c.CurrentBalance })
+                .ToListAsync();
+
+            // تفاصيل الحسابات المحاسبية
+            var accountsList = await _context.Accounts
+                .Select(a => new { a.Id, a.Name, a.Code, a.AccountType, a.CurrentBalance })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    counts = new
+                    {
+                        subscriptionLogs,
+                        technicianTransactions = techTransactions,
+                        agentTransactions,
+                        journalEntries,
+                        journalEntryLines = journalLines,
+                        cashBoxes,
+                        cashTransactions,
+                        accounts,
+                        agents,
+                        technicianCollections = techCollections
+                    },
+                    technicians = techUsers,
+                    agentBalances = agentsList,
+                    cashBoxBalances = cashBoxesList,
+                    accountBalances = accountsList
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب ملخص البيانات المحاسبية");
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// تنظيف جميع البيانات المحاسبية وتصفير الأرصدة
+    /// يمسح: SubscriptionLogs, TechnicianTransactions, AgentTransactions,
+    /// JournalEntries, JournalEntryLines, CashTransactions, TechnicianCollections
+    /// ويصفّر أرصدة: Users (Tech*), Agents, CashBoxes, Accounts
+    /// </summary>
+    [HttpPost("cleanup-accounting")]
+    public async Task<IActionResult> CleanupAccounting()
+    {
+        try
+        {
+            var report = new Dictionary<string, int>();
+
+            // 1. مسح JournalEntryLines أولاً (FK)
+            var jelCount = await _context.JournalEntryLines.IgnoreQueryFilters().CountAsync();
+            if (jelCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"JournalEntryLines\"");
+                report["JournalEntryLines"] = jelCount;
+            }
+
+            // 2. مسح JournalEntries
+            var jeCount = await _context.JournalEntries.IgnoreQueryFilters().CountAsync();
+            if (jeCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"JournalEntries\"");
+                report["JournalEntries"] = jeCount;
+            }
+
+            // 3. مسح TechnicianTransactions
+            var ttCount = await _context.TechnicianTransactions.IgnoreQueryFilters().CountAsync();
+            if (ttCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"TechnicianTransactions\"");
+                report["TechnicianTransactions"] = ttCount;
+            }
+
+            // 4. مسح TechnicianCollections
+            var tcCount = await _context.TechnicianCollections.IgnoreQueryFilters().CountAsync();
+            if (tcCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"TechnicianCollections\"");
+                report["TechnicianCollections"] = tcCount;
+            }
+
+            // 5. مسح AgentTransactions
+            var atCount = await _context.AgentTransactions.IgnoreQueryFilters().CountAsync();
+            if (atCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"AgentTransactions\"");
+                report["AgentTransactions"] = atCount;
+            }
+
+            // 6. مسح CashTransactions
+            var ctCount = await _context.CashTransactions.IgnoreQueryFilters().CountAsync();
+            if (ctCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"CashTransactions\"");
+                report["CashTransactions"] = ctCount;
+            }
+
+            // 7. مسح SubscriptionLogs
+            var slCount = await _context.SubscriptionLogs.IgnoreQueryFilters().CountAsync();
+            if (slCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"SubscriptionLogs\"");
+                report["SubscriptionLogs"] = slCount;
+            }
+
+            // 8. تصفير أرصدة الفنيين
+            var techUsers = await _context.Users.IgnoreQueryFilters()
+                .Where(u => u.Role == Sadara.Domain.Enums.UserRole.Technician)
+                .ToListAsync();
+            int techReset = 0;
+            foreach (var tech in techUsers)
+            {
+                if (tech.TechTotalCharges != 0 || tech.TechTotalPayments != 0 || tech.TechNetBalance != 0)
+                {
+                    tech.TechTotalCharges = 0;
+                    tech.TechTotalPayments = 0;
+                    tech.TechNetBalance = 0;
+                    _context.Users.Update(tech);
+                    techReset++;
+                }
+            }
+            report["TechniciansBalanceReset"] = techReset;
+
+            // 9. تصفير أرصدة الوكلاء
+            var agentsList = await _context.Agents.IgnoreQueryFilters().ToListAsync();
+            int agentReset = 0;
+            foreach (var agent in agentsList)
+            {
+                if (agent.TotalCharges != 0 || agent.TotalPayments != 0 || agent.NetBalance != 0)
+                {
+                    agent.TotalCharges = 0;
+                    agent.TotalPayments = 0;
+                    agent.NetBalance = 0;
+                    _context.Agents.Update(agent);
+                    agentReset++;
+                }
+            }
+            report["AgentsBalanceReset"] = agentReset;
+
+            // 10. تصفير أرصدة الصناديق
+            var boxes = await _context.CashBoxes.ToListAsync();
+            int boxReset = 0;
+            foreach (var box in boxes)
+            {
+                if (box.CurrentBalance != 0)
+                {
+                    box.CurrentBalance = 0;
+                    _context.CashBoxes.Update(box);
+                    boxReset++;
+                }
+            }
+            report["CashBoxesReset"] = boxReset;
+
+            // 11. تصفير أرصدة الحسابات المحاسبية
+            var accountsList = await _context.Accounts.ToListAsync();
+            int accReset = 0;
+            foreach (var acc in accountsList)
+            {
+                if (acc.CurrentBalance != 0)
+                {
+                    acc.CurrentBalance = 0;
+                    _context.Accounts.Update(acc);
+                    accReset++;
+                }
+            }
+            report["AccountsBalanceReset"] = accReset;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogWarning("تم تنظيف جميع البيانات المحاسبية: {@Report}", report);
+
+            return Ok(new
+            {
+                success = true,
+                message = "تم تنظيف جميع البيانات المحاسبية بنجاح",
+                report
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تنظيف البيانات المحاسبية");
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
 }

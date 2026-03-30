@@ -111,42 +111,34 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://firestore.googleapis.com/v1/projects/web-app-sadara/databases/(default)/documents/whatsapp_conversations/{{ $json.phoneNumber }}/messages?documentId={{ $json.messageId }}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"messageId\": { \"stringValue\": \"{{ $json.messageId }}\" },\n    \"phoneNumber\": { \"stringValue\": \"{{ $json.phoneNumber }}\" },\n    \"contactName\": { \"stringValue\": \"{{ $json.contactName }}\" },\n    \"text\": { \"stringValue\": \"{{ $json.text }}\" },\n    \"timestamp\": { \"integerValue\": \"{{ $json.timestamp }}\" },\n    \"direction\": { \"stringValue\": \"incoming\" },\n    \"status\": { \"stringValue\": \"received\" },\n    \"messageType\": { \"stringValue\": \"{{ $json.messageType }}\" },\n    \"mediaId\": { \"stringValue\": \"{{ $json.mediaId || '' }}\" },\n    \"mimeType\": { \"stringValue\": \"{{ $json.mimeType || '' }}\" },\n    \"mediaFileName\": { \"stringValue\": \"{{ $json.mediaFileName || '' }}\" }\n  }\n}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
+        "jsCode": "// تجهيز body للحفظ في API — يمنع تشوّه العربي\nconst d = $input.first().json;\nreturn [{ json: {\n  ...d,\n  apiBody: {\n    messageId: d.messageId || '',\n    phoneNumber: d.phoneNumber || '',\n    text: d.text || '',\n    messageType: d.messageType || 'text',\n    contactName: d.contactName || '',\n    timestamp: d.timestamp || 0,\n    mediaId: d.mediaId || '',\n    mediaUrl: '',\n    mimeType: d.mimeType || '',\n    mediaFileName: d.mediaFileName || ''\n  }\n} }];"
       },
-      "id": "save-message",
-      "name": "SaveMessage",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1120, 360],
-      "credentials": {
-        "googleApi": {
-          "id": "119RrljqOvjVZbDE",
-          "name": "Google Service Account account"
-        }
-      }
+      "id": "prepare-api-body",
+      "name": "PrepareAPIBody",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 360]
     },
     {
       "parameters": {
-        "method": "PATCH",
-        "url": "=https://firestore.googleapis.com/v1/projects/web-app-sadara/databases/(default)/documents/whatsapp_conversations/{{ $('ParseData').item.json.phoneNumber }}?updateMask.fieldPaths=phoneNumber&updateMask.fieldPaths=contactName&updateMask.fieldPaths=lastMessage&updateMask.fieldPaths=lastMessageTime&updateMask.fieldPaths=lastMessageType&updateMask.fieldPaths=unreadCount&updateMask.fieldPaths=updatedAt",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
+        "method": "POST",
+        "url": "https://api.ramzalsadara.tech/api/whatsapp/webhook/incoming",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "sadara-whatsapp-webhook-secret-2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"phoneNumber\": { \"stringValue\": \"{{ $('ParseData').item.json.phoneNumber }}\" },\n    \"contactName\": { \"stringValue\": \"{{ $('ParseData').item.json.contactName }}\" },\n    \"lastMessage\": { \"stringValue\": \"{{ $('ParseData').item.json.text }}\" },\n    \"lastMessageTime\": { \"integerValue\": \"{{ $('ParseData').item.json.timestamp }}\" },\n    \"lastMessageType\": { \"stringValue\": \"{{ $('ParseData').item.json.messageType }}\" },\n    \"unreadCount\": { \"integerValue\": \"1\" },\n    \"updatedAt\": { \"integerValue\": \"{{ $('ParseData').item.json.timestampMs }}\" }\n  }\n}",
+        "jsonBody": "={{ JSON.stringify($json.apiBody) }}",
         "options": {
           "response": {
             "response": {
@@ -155,17 +147,11 @@
           }
         }
       },
-      "id": "update-conversation",
-      "name": "UpdateConversation",
+      "id": "save-to-api",
+      "name": "SaveToAPI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 520],
-      "credentials": {
-        "googleApi": {
-          "id": "119RrljqOvjVZbDE",
-          "name": "Google Service Account account"
-        }
-      }
+      "position": [1200, 360]
     },
     {
       "parameters": {
@@ -252,7 +238,7 @@
       "main": [
         [
           {
-            "node": "SaveMessage",
+            "node": "PrepareAPIBody",
             "type": "main",
             "index": 0
           }
@@ -266,18 +252,18 @@
         ]
       ]
     },
-    "SaveMessage": {
+    "PrepareAPIBody": {
       "main": [
         [
           {
-            "node": "UpdateConversation",
+            "node": "SaveToAPI",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "UpdateConversation": {
+    "SaveToAPI": {
       "main": [
         [
           {

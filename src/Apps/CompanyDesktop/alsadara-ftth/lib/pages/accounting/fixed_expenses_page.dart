@@ -22,7 +22,6 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
   List<dynamic> _fixedExpenses = [];
   List<dynamic> _payments = [];
   Map<String, dynamic>? _paymentSummary;
-
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
 
@@ -135,23 +134,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
     return n != null ? _numFmt.format(n) : v.toString();
   }
 
-  String _arabicMonth(int m) {
-    const months = [
-      'يناير',
-      'فبراير',
-      'مارس',
-      'أبريل',
-      'مايو',
-      'يونيو',
-      'يوليو',
-      'أغسطس',
-      'سبتمبر',
-      'أكتوبر',
-      'نوفمبر',
-      'ديسمبر',
-    ];
-    return months[m - 1];
-  }
+  String _arabicMonth(int m) => '$m';
 
   @override
   Widget build(BuildContext context) {
@@ -170,26 +153,17 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
           foregroundColor: Colors.white,
           actions: [
             IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: _showAddDialog,
+              tooltip: 'إضافة مصروف ثابت',
+            ),
+            IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: _loadData,
               tooltip: 'تحديث',
             ),
           ],
         ),
-        floatingActionButton: context.accR.isMobile
-            ? FloatingActionButton(
-                onPressed: _showAddDialog,
-                backgroundColor: const Color(0xFF1A237E),
-                foregroundColor: Colors.white,
-                child: const Icon(Icons.add),
-              )
-            : FloatingActionButton.extended(
-                onPressed: _showAddDialog,
-                icon: const Icon(Icons.add),
-                label: const Text('إضافة مصروف ثابت'),
-                backgroundColor: const Color(0xFF1A237E),
-                foregroundColor: Colors.white,
-              ),
         body: SafeArea(
           child: _loading
               ? const Center(child: CircularProgressIndicator())

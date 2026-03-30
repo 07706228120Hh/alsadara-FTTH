@@ -56,6 +56,23 @@ class EmployeeProfileService {
     }
   }
 
+  /// تغيير كلمة مرور الموظف عبر endpoint مخصص
+  Future<bool> changePassword(
+      String companyId, String empId, String newPassword) async {
+    try {
+      final response = await _api.patch(
+        ApiConfig.internalEmployeePassword(companyId, empId),
+        {'NewPassword': newPassword},
+        (json) => json,
+        useInternalKey: true,
+      );
+      return response.isSuccess;
+    } catch (e) {
+      debugPrint('❌ خطأ في تغيير كلمة المرور');
+      return false;
+    }
+  }
+
   // ═══════════════════════════════════════
   // سجل الحضور
   // ═══════════════════════════════════════

@@ -2171,21 +2171,73 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         ),
       ),
     );
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
 
+    // عرض مؤشر تقدم الحذف
     int ok = 0, fail = 0;
-    for (final id in ids) {
-      final r = await AccountingService.instance.deleteJournalEntry(id);
-      if (r['success'] == true) {
-        ok++;
-      } else {
-        fail++;
+    final total = ids.length;
+    final progressNotifier = ValueNotifier<int>(0);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: AccountingTheme.bgCard,
+            title: Text('جاري الحذف...', style: TextStyle(color: AccountingTheme.danger)),
+            content: ValueListenableBuilder<int>(
+              valueListenable: progressNotifier,
+              builder: (_, done, __) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(
+                    value: done / total,
+                    backgroundColor: AccountingTheme.bgCard,
+                    valueColor: AlwaysStoppedAnimation(AccountingTheme.danger),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('$done / $total',
+                      style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 16)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // حذف بدفعات متوازية (10 طلبات في نفس الوقت)
+    const batchSize = 10;
+    for (int i = 0; i < ids.length; i += batchSize) {
+      final batch = ids.skip(i).take(batchSize).toList();
+      final results = await Future.wait(
+        batch.map((id) => AccountingService.instance.deleteJournalEntry(id)),
+      );
+      for (final r in results) {
+        if (r['success'] == true) {
+          ok++;
+        } else {
+          fail++;
+        }
       }
+      progressNotifier.value = ok + fail;
     }
-    _snack('تم حذف $ok قيد${fail > 0 ? ' (فشل: $fail)' : ''}',
-        fail > 0 ? AccountingTheme.warning : AccountingTheme.success);
-    _selectedIds.clear();
-    _loadData();
+
+    progressNotifier.dispose();
+    if (mounted) Navigator.of(context).pop(); // إغلاق مؤشر التقدم
+
+    if (mounted) {
+      _snack('تم حذف $ok قيد${fail > 0 ? ' (فشل: $fail)' : ''}',
+          fail > 0 ? AccountingTheme.warning : AccountingTheme.success);
+      setState(() {
+        _selectedIds.clear();
+        _isSelectionMode = false;
+      });
+      _loadData();
+    }
   }
 
   void _snack(String msg, Color color) {

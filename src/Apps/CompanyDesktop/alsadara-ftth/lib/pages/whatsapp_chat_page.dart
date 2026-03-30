@@ -111,7 +111,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         );
       }
     } finally {
-      setState(() => _isSending = false);
+      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -816,6 +816,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
     // محاولة التحميل من القرص أولاً
     if (await _loadFromDiskCache(mediaId, mimeType)) return;
 
+    if (!mounted) return;
     setState(() => _loadingMedia.add(mediaId));
 
     try {

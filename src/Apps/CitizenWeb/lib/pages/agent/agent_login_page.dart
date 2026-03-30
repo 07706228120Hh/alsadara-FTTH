@@ -304,7 +304,7 @@ class _AgentLoginPageState extends State<AgentLoginPage>
         borderRadius: BorderRadius.circular(12),
       ),
       child: IconButton(
-        onPressed: () => context.go('/login-selector'),
+        onPressed: () => context.go('/'),
         icon: const Icon(Icons.arrow_back, color: Color(0xFF64748B), size: 20),
       ),
     );

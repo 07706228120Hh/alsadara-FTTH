@@ -7,10 +7,10 @@ class PrintTemplateStorage {
 
   // القالب الافتراضي
   static PrintTemplate get defaultTemplate => PrintTemplate(
-    companyName: 'شركة رمز الاتصالات',
+    companyName: 'شركة الصدارة',
     companySubtitle: 'المشغل الرسمي للمشروع الوطني',
-    footerMessage: 'شكراً لاختياركم شركة رمز الاتصالات',
-    contactInfo: 'للاستفسار: 0123456789',
+    footerMessage: 'شكراً لاختياركم شركة الصدارة',
+    contactInfo: 'للاستفسار: 07744077077',
     showCustomerInfo: true,
     showServiceDetails: true,
     showPaymentDetails: true,

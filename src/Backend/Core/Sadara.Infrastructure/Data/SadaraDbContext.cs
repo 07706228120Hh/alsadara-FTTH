@@ -112,6 +112,14 @@ public class SadaraDbContext : DbContext
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<DepartmentTask> DepartmentTasks => Set<DepartmentTask>();
 
+    // ==================== Daily Settlement Reports (تقارير التسديدات اليومية) ====================
+    public DbSet<DailySettlementReport> DailySettlementReports => Set<DailySettlementReport>();
+
+    // ==================== WhatsApp Conversations (محادثات واتساب) ====================
+    public DbSet<WhatsAppConversation> WhatsAppConversations => Set<WhatsAppConversation>();
+    public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
+    public DbSet<WhatsAppBatchReport> WhatsAppBatchReports => Set<WhatsAppBatchReport>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -168,6 +176,34 @@ public class SadaraDbContext : DbContext
         // Department entities query filters
         modelBuilder.Entity<Department>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<DepartmentTask>().HasQueryFilter(x => !x.IsDeleted);
+
+        // Daily Settlement Reports
+        modelBuilder.Entity<DailySettlementReport>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<DailySettlementReport>()
+            .Property(e => e.ItemsJson).HasColumnType("jsonb");
+
+        // WhatsApp Conversations
+        modelBuilder.Entity<WhatsAppConversation>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<WhatsAppConversation>()
+            .HasIndex(x => x.PhoneNumber).IsUnique();
+        modelBuilder.Entity<WhatsAppConversation>()
+            .HasIndex(x => x.LastMessageTime);
+
+        modelBuilder.Entity<WhatsAppMessage>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<WhatsAppMessage>()
+            .HasOne(m => m.Conversation)
+            .WithMany(c => c.Messages)
+            .HasForeignKey(m => m.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<WhatsAppMessage>()
+            .HasIndex(x => x.ExternalMessageId);
+        modelBuilder.Entity<WhatsAppMessage>()
+            .HasIndex(x => new { x.ConversationId, x.CreatedAt });
+
+        // WhatsApp Batch Reports
+        modelBuilder.Entity<WhatsAppBatchReport>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<WhatsAppBatchReport>()
+            .HasIndex(x => x.BatchId).IsUnique();
 
         // User
         modelBuilder.Entity<User>(entity =>

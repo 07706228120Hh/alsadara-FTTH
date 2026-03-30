@@ -364,15 +364,18 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final double sc = (screenH / 900).clamp(0.75, 1.0);
     final color = accent ?? Colors.blueGrey;
     final bool isMobile = _isMobile(context);
-    final double lblSize = labelFontSize ?? ((isMobile ? 15 : 18) * sc);
-    final double valSize = valueFontSize ?? ((isMobile ? 16 : 18) * sc);
+    final double lblSize = labelFontSize ?? (isMobile ? 11.0 : 18 * sc);
+    final double valSize = valueFontSize ?? (isMobile ? 12.0 : 18 * sc);
+    final double iconSize = isMobile ? 14.0 : 20 * sc;
+    final double vPad = isMobile ? 6.0 : 16 * sc;
+    final double hPad = isMobile ? 6.0 : 10 * sc;
     return InputDecorator(
       decoration: InputDecoration(
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20 * sc, color: color),
-            SizedBox(width: 4 * sc),
+            Icon(icon, size: iconSize, color: color),
+            SizedBox(width: isMobile ? 3.0 : 4 * sc),
             Text(label,
                 style: TextStyle(
                     fontSize: lblSize,
@@ -389,8 +392,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         ),
         filled: highlightBg,
         fillColor: highlightBg ? color.withValues(alpha: 0.08) : null,
-        contentPadding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 16 * sc),
-        isDense: false,
+        contentPadding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+        isDense: isMobile,
       ),
       child: Text(value,
           maxLines: valueMaxLines,
@@ -408,11 +411,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final double width = MediaQuery.of(context).size.width;
     final screenH = MediaQuery.of(context).size.height;
     final double sc = (screenH / 900).clamp(0.75, 1.0);
-    final double spacing = 12 * sc;
+    final bool isMobile = _isMobile(context);
+    final double spacing = isMobile ? 6.0 : 12 * sc;
 
     // عدد الأعمدة حسب عرض الشاشة
     final int cols;
-    if (width < 380) {
+    if (width < 320) {
       cols = 1;
     } else if (width < 900) {
       cols = 2;
@@ -1814,8 +1818,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   Widget _userInfoRow() {
     final screenH = MediaQuery.of(context).size.height;
     final double sc = (screenH / 900).clamp(0.75, 1.0);
-    final double lblSize = 18 * sc;
-    final double valSize = 18 * sc;
+    final bool isMobile = _isMobile(context);
+    final double lblSize = isMobile ? 11.0 : 18 * sc;
+    final double valSize = isMobile ? 12.0 : 18 * sc;
+    final double iconSize = isMobile ? 14.0 : 20 * sc;
+    final double vPad = isMobile ? 6.0 : 16 * sc;
+    final double hPad = isMobile ? 6.0 : 10 * sc;
 
     Widget tile(IconData icon, String label, String value, Color accent, {Widget? trailing}) {
       return Expanded(
@@ -1824,8 +1832,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             label: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 20 * sc, color: accent),
-                SizedBox(width: 5 * sc),
+                Icon(icon, size: iconSize, color: accent),
+                SizedBox(width: isMobile ? 3.0 : 5 * sc),
                 Text(label, style: TextStyle(fontSize: lblSize, color: accent, fontWeight: FontWeight.w900)),
               ],
             ),
@@ -1836,8 +1844,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Colors.black87, width: 1.5),
             ),
-            contentPadding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 16 * sc),
-            isDense: false,
+            contentPadding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+            isDense: isMobile,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2242,10 +2250,11 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final screenH = MediaQuery.of(context).size.height;
     final double sc = (screenH / 900).clamp(0.75, 1.0);
     final double s = sc;
-    final pad = 10.0 * sc;
-    final gap = 10.0 * sc;
-    final cardGap = 8.0 * sc;
-    final titleSize = 15.0 * sc;
+    final bool isMobileLayout = _isMobile(context);
+    final pad = isMobileLayout ? 8.0 : 10.0 * sc;
+    final gap = isMobileLayout ? 6.0 : 10.0 * sc;
+    final cardGap = isMobileLayout ? 6.0 : 8.0 * sc;
+    final titleSize = isMobileLayout ? 13.0 : 15.0 * sc;
     final coords = _extractCoordinates(_customerDataMain);
     final deviceDetails = subscriptionDetails == null
         ? null

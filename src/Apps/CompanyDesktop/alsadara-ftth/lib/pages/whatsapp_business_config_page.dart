@@ -80,15 +80,29 @@ class _WhatsAppBusinessConfigPageState
       final configData = jsonDecode(configString);
 
       // تحميل القيم من config.json كقيم افتراضية (تظهر دائماً)
-      _appTokenController.text = configData['whatsapp']?['app_token'] ?? '';
-      _phoneNumberIdController.text =
-          configData['whatsapp']?['phone_number_id'] ?? '';
-      _businessAccountIdController.text =
-          configData['whatsapp']?['waba_id'] ?? '';
+      final appToken = configData['whatsapp']?['app_token'] ?? '';
+      final phoneNumberId = configData['whatsapp']?['phone_number_id'] ?? '';
+      final wabaId = configData['whatsapp']?['waba_id'] ?? '';
+
+      _appTokenController.text = appToken;
+      _phoneNumberIdController.text = phoneNumberId;
+      _businessAccountIdController.text = wabaId;
+
+      // حفظ القيم في SharedPreferences تلقائياً لتكون متاحة لـ isConfigured()
+      // فقط القيم الموجودة في config.json (بدون مسح user_token المحفوظ سابقاً)
+      if (phoneNumberId.isNotEmpty) {
+        await WhatsAppBusinessService.savePhoneNumberId(phoneNumberId);
+      }
+      if (appToken.isNotEmpty) {
+        await WhatsAppBusinessService.saveAppToken(appToken);
+      }
+      if (wabaId.isNotEmpty) {
+        await WhatsAppBusinessService.saveBusinessAccountId(wabaId);
+      }
 
       debugPrint('✅ تم تحميل الإعدادات من config.json');
-      debugPrint('   Phone Number ID: ${_phoneNumberIdController.text}');
-      debugPrint('   WABA ID: ${_businessAccountIdController.text}');
+      debugPrint('   Phone Number ID: $phoneNumberId');
+      debugPrint('   WABA ID: $wabaId');
     } catch (e) {
       debugPrint('⚠️ لم يتم العثور على config.json');
     }

@@ -129,7 +129,7 @@ public class SuperAdminController : ControllerBase
                 data = new SuperAdminLoginResponse
                 {
                     Id = user.Id,
-                    Username = user.PhoneNumber ?? user.Email,
+                    Username = user.PhoneNumber ?? user.Email ?? "",
                     FullName = user.FullName,
                     Email = user.Email,
                     Token = token,

@@ -264,6 +264,8 @@ class _TaskCardState extends State<TaskCard> {
 
   /// المعلومات الأساسية في تخطيط شبكي أنيق
   Widget _buildCompactBasicInfo() {
+    final compact = MediaQuery.of(context).size.width < 500;
+    final gap = compact ? 6.0 : 8.0;
     return Column(
       children: [
         // الصف الأول: العميل | الفني | FBG
@@ -275,15 +277,17 @@ class _TaskCardState extends State<TaskCard> {
                 'العميل',
                 widget.task.username,
                 const Color(0xFF3498DB),
+                compact: compact,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: gap),
             Expanded(
               child: _buildInfoTile(
                 Icons.engineering_outlined,
                 'الفني',
                 widget.task.technician,
                 const Color(0xFF009688),
+                compact: compact,
                 trailing: widget.task.technician.isNotEmpty &&
                         widget.task.technician != 'غير متوفر'
                     ? _buildMiniIconButton(
@@ -293,18 +297,19 @@ class _TaskCardState extends State<TaskCard> {
                     : null,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: gap),
             Expanded(
               child: _buildInfoTile(
                 Icons.hub_outlined,
                 'FBG',
                 widget.task.fbg,
                 const Color(0xFF27AE60),
+                compact: compact,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: compact ? 5 : 6),
         // الصف الثاني: الهاتف | الوكيل | المبلغ
         Row(
           children: [
@@ -314,6 +319,7 @@ class _TaskCardState extends State<TaskCard> {
                 'الهاتف',
                 widget.task.phone,
                 const Color(0xFF8E44AD),
+                compact: compact,
                 trailing: widget.task.phone.isNotEmpty
                     ? _buildMiniIconButton(
                         Icons.copy_rounded,
@@ -323,13 +329,14 @@ class _TaskCardState extends State<TaskCard> {
               ),
             ),
             if (widget.task.agentName.isNotEmpty) ...[
-              const SizedBox(width: 8),
+              SizedBox(width: gap),
               Expanded(
                 child: _buildInfoTile(
                   Icons.storefront_outlined,
                   'الوكيل',
                   '${widget.task.agentName}${widget.task.pageId.isNotEmpty ? ' - ${widget.task.pageId}' : ''}',
                   const Color(0xFF6C3483),
+                  compact: compact,
                   trailing: widget.task.pageId.isNotEmpty
                       ? _buildMiniIconButton(
                           Icons.copy_rounded, const Color(0xFF6C3483), () {
@@ -347,13 +354,14 @@ class _TaskCardState extends State<TaskCard> {
               ),
             ],
             if (widget.task.amount.isNotEmpty) ...[
-              const SizedBox(width: 8),
+              SizedBox(width: gap),
               Expanded(
                 child: _buildInfoTile(
                   Icons.payments_outlined,
                   'المبلغ',
                   '${widget.task.amount} د.ع',
                   const Color(0xFFE74C3C),
+                  compact: compact,
                 ),
               ),
             ],
@@ -365,9 +373,12 @@ class _TaskCardState extends State<TaskCard> {
 
   /// خلية معلومات أنيقة مع عنوان وقيمة
   Widget _buildInfoTile(IconData icon, String label, String value, Color color,
-      {Widget? trailing}) {
+      {Widget? trailing, bool compact = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 6 : 10,
+        vertical: compact ? 5 : 7,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
@@ -379,14 +390,14 @@ class _TaskCardState extends State<TaskCard> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.all(compact ? 3 : 4),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Icon(icon, size: 14, color: color),
+            child: Icon(icon, size: compact ? 11 : 14, color: color),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: compact ? 4 : 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,18 +405,18 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: compact ? 8 : 9,
                     color: color.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
                   ),
                 ),
-                const SizedBox(height: 1),
+                SizedBox(height: compact ? 0 : 1),
                 Text(
                   value.isNotEmpty ? value : '-',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF2C3E50),
+                  style: TextStyle(
+                    fontSize: compact ? 10 : 12,
+                    color: const Color(0xFF2C3E50),
                     fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,

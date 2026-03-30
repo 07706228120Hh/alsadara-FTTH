@@ -33,7 +33,9 @@ class _FtthCompanyPageState extends State<FtthCompanyPage> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (_isInitialized) {
+      _controller.dispose();
+    }
     super.dispose();
   }
 

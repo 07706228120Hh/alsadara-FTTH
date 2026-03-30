@@ -27,8 +27,8 @@ public class ProductsController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchTerm = search!; // search is not null here due to the check above
-            query = query.Where(p => p.Name.Contains(searchTerm) || p.NameAr.Contains(searchTerm));
+            var term = search!;
+            query = query.Where(p => p.Name.Contains(term) || p.NameAr.Contains(term));
         }
 
         var total = await query.CountAsync();

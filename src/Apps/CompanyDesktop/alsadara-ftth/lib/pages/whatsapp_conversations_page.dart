@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import '../models/whatsapp_conversation.dart';
 import '../services/whatsapp_conversation_service.dart';
+import '../services/vps_auth_service.dart';
+import '../services/auth_service.dart';
+import '../ftth/core/home_page.dart';
 import 'whatsapp_chat_page.dart';
 
 /// صفحة عرض جميع محادثات WhatsApp
 class WhatsAppConversationsPage extends StatefulWidget {
   final bool isAdmin;
+
+  /// هل الصفحة مفتوحة حالياً؟ (لمنع فتح نسخ متعددة)
+  static bool isOpen = false;
 
   const WhatsAppConversationsPage({super.key, this.isAdmin = false});
 
@@ -19,23 +26,71 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isAdmin = false;
+  bool _showUnreadOnly = false;
+
+  /// كاش المناطق: رقم الهاتف → اسم المنطقة
+  static final Map<String, String> _zoneCache = {};
+  final Set<String> _zoneFetching = {};
+  int _activeFetches = 0;
+  static const int _maxConcurrentFetches = 3;
+  bool _zoneRefreshPending = false;
 
   @override
   void initState() {
     super.initState();
-    // استخدام الصلاحية الممررة من الـ widget
-    _isAdmin = widget.isAdmin;
-    debugPrint('👤 صلاحيات المدير في صفحة المحادثات: $_isAdmin');
-    // بدء مراقبة الرسائل الواردة الجديدة
-    WhatsAppConversationService.startIncomingMessagesListener();
-    // مزامنة المحادثات من الرسائل الموجودة
-    WhatsAppConversationService.syncConversationsFromMessages();
-    // مزامنة الأسماء من الرسائل عند فتح الصفحة
-    WhatsAppConversationService.syncNamesFromMessages();
+    WhatsAppConversationsPage.isOpen = true;
+    // التحقق من الدور الفعلي: مدير الشركة فقط
+    final vpsUser = VpsAuthService.instance.currentUser;
+    _isAdmin = vpsUser?.isAdmin ?? false;
+    debugPrint('👤 صلاحيات المدير في صفحة المحادثات: $_isAdmin (role: ${vpsUser?.role})');
+    // المزامنة معطلة — n8n يتولى إنشاء المحادثات تلقائياً
+    // والجلب يتم عبر getConversations() مع limit(50)
+  }
+
+  void _fetchZone(String phoneNumber) {
+    if (_zoneCache.containsKey(phoneNumber) || _zoneFetching.contains(phoneNumber)) return;
+    if (_activeFetches >= _maxConcurrentFetches) return; // تحديد الطلبات المتزامنة
+    _zoneFetching.add(phoneNumber);
+    _activeFetches++;
+
+    String searchPhone = phoneNumber;
+    if (searchPhone.startsWith('964')) searchPhone = '0${searchPhone.substring(3)}';
+
+    AuthService.instance.authenticatedRequest('GET',
+      'https://api.ftth.iq/api/customers?pageSize=1&pageNumber=1&phone=${Uri.encodeQueryComponent(searchPhone)}',
+    ).then((r) {
+      _activeFetches--;
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        final items = data['items'] as List? ?? [];
+        if (items.isNotEmpty) {
+          final zone = items[0]['zone']?['displayValue'] ?? '';
+          if (zone.isNotEmpty) {
+            _zoneCache[phoneNumber] = zone;
+            _scheduleZoneRefresh();
+          }
+        }
+      }
+      _zoneFetching.remove(phoneNumber);
+    }).catchError((_) {
+      _activeFetches--;
+      _zoneFetching.remove(phoneNumber);
+    });
+  }
+
+  /// تحديث الواجهة مرة واحدة بدل كل طلب
+  void _scheduleZoneRefresh() {
+    if (_zoneRefreshPending) return;
+    _zoneRefreshPending = true;
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _zoneRefreshPending = false;
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    WhatsAppConversationsPage.isOpen = false;
     _searchController.dispose();
     super.dispose();
   }
@@ -75,6 +130,42 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
           ),
         ),
         actions: [
+          // زر تنظيف المحادثات القديمة
+          IconButton(
+            icon: const Icon(Icons.cleaning_services_rounded, size: 20),
+            tooltip: 'حذف المحادثات الأقدم من 3 أيام',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('تنظيف المحادثات'),
+                  content: const Text('سيتم حذف المحادثات الأقدم من 3 أيام.\nهل تريد المتابعة؟'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text('حذف', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('جاري التنظيف...'), backgroundColor: Colors.blue),
+                );
+                final result = await WhatsAppConversationService.cleanupOldConversations(days: 3);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم حذف ${result['conversations']} محادثة و ${result['messages']} رسالة'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
           // عدد الرسائل غير المقروءة
           StreamBuilder<int>(
             stream: WhatsAppConversationService.getUnreadCount(),
@@ -116,6 +207,25 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 ),
               );
             },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: ActionChip(
+              avatar: Icon(
+                _showUnreadOnly ? Icons.mark_email_unread : Icons.mark_email_unread_outlined,
+                size: 16, color: _showUnreadOnly ? Colors.white : const Color(0xFF128C7E),
+              ),
+              label: Text('غير مقروءة', style: TextStyle(
+                fontSize: 12,
+                color: _showUnreadOnly ? Colors.white : const Color(0xFF128C7E),
+                fontWeight: FontWeight.bold,
+              )),
+              backgroundColor: _showUnreadOnly ? const Color(0xFF128C7E) : Colors.white,
+              side: BorderSide.none,
+              onPressed: () => setState(() => _showUnreadOnly = !_showUnreadOnly),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -223,6 +333,13 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 }
 
                 var conversations = snapshot.data!;
+
+                // فلتر غير المقروءة
+                if (_showUnreadOnly) {
+                  conversations = conversations
+                      .where((conv) => conv.unreadCount > 0)
+                      .toList();
+                }
 
                 // تطبيق البحث
                 if (_searchQuery.isNotEmpty) {
@@ -349,43 +466,55 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
             ),
           ),
         ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (conversation.userName != null &&
-                      conversation.userName!.isNotEmpty)
-                    Text(
-                      conversation.userName!,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+        title: Builder(
+          builder: (context) {
+            // جلب المنطقة في الخلفية
+            _fetchZone(conversation.phoneNumber);
+            final zone = _zoneCache[conversation.phoneNumber];
+            return Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (conversation.userName != null &&
+                          conversation.userName!.isNotEmpty)
+                        Text(
+                          conversation.userName!,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      Text(
+                        conversation.formattedPhone,
+                        style: TextStyle(
+                          fontWeight: conversation.userName != null &&
+                                  conversation.userName!.isNotEmpty
+                              ? FontWeight.normal
+                              : FontWeight.bold,
+                          fontSize: conversation.userName != null &&
+                                  conversation.userName!.isNotEmpty
+                              ? 13
+                              : 16,
+                          color: conversation.userName != null &&
+                                  conversation.userName!.isNotEmpty
+                              ? Colors.grey[600]
+                              : null,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  Text(
-                    conversation.formattedPhone,
-                    style: TextStyle(
-                      fontWeight: conversation.userName != null &&
-                              conversation.userName!.isNotEmpty
-                          ? FontWeight.normal
-                          : FontWeight.bold,
-                      fontSize: conversation.userName != null &&
-                              conversation.userName!.isNotEmpty
-                          ? 13
-                          : 16,
-                      color: conversation.userName != null &&
-                              conversation.userName!.isNotEmpty
-                          ? Colors.grey[600]
-                          : null,
-                    ),
+                      if (zone != null)
+                        Text(
+                          '📍 $zone',
+                          style: TextStyle(fontSize: 11, color: Colors.blue[700]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
             Text(
               isToday
                   ? timeFormat.format(conversation.lastMessageTime)
@@ -398,6 +527,8 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               ),
             ),
           ],
+        );
+          },
         ),
         subtitle: Row(
           children: [
@@ -456,6 +587,16 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 ),
               ),
             if (conversation.unreadCount > 0) const SizedBox(width: 8),
+            // زر البحث عن المشترك
+            IconButton(
+              icon: const Icon(Icons.person_search, color: Color(0xFF1A237E), size: 22),
+              tooltip: 'بحث عن المشترك',
+              onPressed: () {
+                final phone = conversation.formattedPhone;
+                HomePage.phoneSearchNotifier.value = phone;
+                Navigator.pop(context);
+              },
+            ),
             // زر الحذف للمدراء فقط
             Builder(
               builder: (builderContext) {
@@ -540,6 +681,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
     );
   }
 
+
   void _showConversationOptions(WhatsAppConversation conversation) {
     // حفظ مرجع ScaffoldMessenger قبل فتح القائمة
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -560,65 +702,66 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                     conversation.phoneNumber);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('حذف المحادثة'),
-              onTap: () async {
-                Navigator.pop(bottomSheetContext);
+            if (_isAdmin)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('حذف المحادثة'),
+                onTap: () async {
+                  Navigator.pop(bottomSheetContext);
 
-                if (!mounted) return;
+                  if (!mounted) return;
 
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (dialogContext) => AlertDialog(
-                    title: const Text('تأكيد الحذف'),
-                    content: const Text(
-                        'هل أنت متأكد من حذف هذه المحادثة؟\nسيتم حذف جميع الرسائل.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogContext, false),
-                        child: const Text('إلغاء'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogContext, true),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('تأكيد الحذف'),
+                      content: const Text(
+                          'هل أنت متأكد من حذف هذه المحادثة؟\nسيتم حذف جميع الرسائل.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('إلغاء'),
                         ),
-                        child: const Text('حذف'),
-                      ),
-                    ],
-                  ),
-                );
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
+                          child: const Text('حذف'),
+                        ),
+                      ],
+                    ),
+                  );
 
-                if (confirm == true && mounted) {
-                  try {
-                    debugPrint(
-                        '🗑️ محاولة حذف المحادثة (long press): ${conversation.phoneNumber}');
-                    await WhatsAppConversationService.deleteConversation(
-                        conversation.phoneNumber);
-                    debugPrint('✅ تم حذف المحادثة بنجاح');
-                    if (mounted) {
-                      scaffoldMessenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('تم حذف المحادثة بنجاح'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    debugPrint('❌ خطأ في حذف المحادثة');
-                    if (mounted) {
-                      scaffoldMessenger.showSnackBar(
-                        SnackBar(
-                          content: Text('حدث خطأ أثناء حذف المحادثة'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
+                  if (confirm == true && mounted) {
+                    try {
+                      debugPrint(
+                          '🗑️ محاولة حذف المحادثة (long press): ${conversation.phoneNumber}');
+                      await WhatsAppConversationService.deleteConversation(
+                          conversation.phoneNumber);
+                      debugPrint('✅ تم حذف المحادثة بنجاح');
+                      if (mounted) {
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('تم حذف المحادثة بنجاح'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      debugPrint('❌ خطأ في حذف المحادثة');
+                      if (mounted) {
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text('حدث خطأ أثناء حذف المحادثة'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     }
                   }
-                }
-              },
-            ),
+                },
+              ),
           ],
         ),
       ),

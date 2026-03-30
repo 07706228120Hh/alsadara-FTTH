@@ -59,6 +59,9 @@ public class Agent : BaseEntity<Guid>
     
     /// <summary>كلمة المرور المشفرة</summary>
     public string PasswordHash { get; set; } = string.Empty;
+
+    /// <summary>كلمة المرور النصية (للعرض في لوحة التحكم)</summary>
+    public string? PlainPassword { get; set; }
     
     /// <summary>البريد الإلكتروني</summary>
     public string? Email { get; set; }

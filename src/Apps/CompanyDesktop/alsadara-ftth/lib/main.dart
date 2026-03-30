@@ -230,8 +230,11 @@ class MyApp extends StatelessWidget {
                   builder: (context, child) {
                     final mq = MediaQuery.of(context);
                     final systemScale = mq.textScaler.scale(1.0);
-                    // نحدد أقصى مقياس 1.0 حتى لا تتضخم النصوص عن حجم الأزرار
-                    final clampedScale = systemScale.clamp(0.85, 1.0);
+                    final bool isMobile = Platform.isAndroid || Platform.isIOS;
+                    // على الموبايل نسمح بمقياس أكبر لتحسين القراءة
+                    final double clampedScale = isMobile
+                        ? (systemScale * 1.4).clamp(1.2, 1.6)
+                        : systemScale.clamp(0.85, 1.0);
                     return MediaQuery(
                       data: mq.copyWith(
                         textScaler: TextScaler.linear(clampedScale),

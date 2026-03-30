@@ -35,6 +35,7 @@ import 'audit_trail_page.dart';
 import 'financial_ratios_page.dart';
 import 'year_comparison_page.dart';
 import 'budget_page.dart';
+import 'settlement_reports_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -458,6 +459,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             onTap: () =>
                 _navigateTo(AuditTrailPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.receipt_long,
+            label: 'تقارير التسديدات',
+            color: const Color(0xFF16A085),
+            onTap: () =>
+                _navigateTo(SettlementReportsPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
         ]))),
       ],
     );
@@ -472,7 +480,23 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     final expanded = _sidebarExpanded;
     final width = expanded ? 200.0 : 56.0;
 
-    return Container(
+    return MouseRegion(
+      onEnter: (_) {
+        // إيقاف المؤقت عند دخول الماوس للقائمة
+        _autoCollapseTimer?.cancel();
+      },
+      onExit: (_) {
+        // إعادة تشغيل المؤقت عند خروج الماوس
+        if (_sidebarExpanded) {
+          _autoCollapseTimer?.cancel();
+          _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
+            if (mounted && _sidebarExpanded) {
+              setState(() => _sidebarExpanded = false);
+            }
+          });
+        }
+      },
+      child: Container(
       width: width,
       decoration: BoxDecoration(
         color: _bgCard,
@@ -686,6 +710,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1404,6 +1429,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           onTap: () =>
               _navigateTo(WithdrawalRequestsPage(companyId: widget.companyId)),
         ),
+      _SectionItem(
+        title: 'تقارير التسديدات',
+        subtitle: 'عرض تقارير التسديدات اليومية',
+        icon: Icons.receipt_long,
+        color: const Color(0xFF16A085),
+        onTap: () =>
+            _navigateTo(SettlementReportsPage(companyId: widget.companyId)),
+      ),
     ];
 
     return LayoutBuilder(
