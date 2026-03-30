@@ -2485,8 +2485,21 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           final finalTotal = (effectiveTotal - manualDiscount).clamp(0, double.infinity);
           price = finalTotal.round().toString();
         }
-        // استخدام تاريخ الانتهاء المحدث بعد التجديد (من subscriptionInfo) بدلاً من widget.expires القديم
-        final expiryDate = (subscriptionInfo?.expiresAt ?? widget.expires)?.split('T').first ?? DateTime.now().toIso8601String().split('T').first;
+        // حساب تاريخ الانتهاء الجديد = التاريخ القديم + فترة الالتزام
+        String expiryDate;
+        try {
+          final oldExpiry = DateTime.tryParse(subscriptionInfo?.expiresAt ?? widget.expires ?? '');
+          final period = selectedCommitmentPeriod ?? 1;
+          if (oldExpiry != null) {
+            final newExpiry = oldExpiry.add(Duration(days: 30 * period));
+            expiryDate = '${newExpiry.year}-${newExpiry.month.toString().padLeft(2, '0')}-${newExpiry.day.toString().padLeft(2, '0')}';
+          } else {
+            final newExpiry = DateTime.now().add(Duration(days: 30 * period));
+            expiryDate = '${newExpiry.year}-${newExpiry.month.toString().padLeft(2, '0')}-${newExpiry.day.toString().padLeft(2, '0')}';
+          }
+        } catch (_) {
+          expiryDate = DateTime.now().toIso8601String().split('T').first;
+        }
         const contactNumbers = '07705210210';
 
         final phoneNumberId = await WhatsAppBusinessService.getPhoneNumberId() ?? '';
