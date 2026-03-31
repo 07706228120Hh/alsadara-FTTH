@@ -22,8 +22,8 @@ android {
         applicationId = "com.alsadara.ftth_project"
         minSdkVersion flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 18
-        versionName = "1.4.2"
+        versionCode = 205
+        versionName = "1.6.45"
 
         // تمكين دعم الأذونات في وقت التشغيل (الإعداد الافتراضي يدعم ذلك، لكن يتم تأكيده هنا)
         multiDexEnabled true

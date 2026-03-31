@@ -1184,24 +1184,34 @@ class _TaskCardState extends State<TaskCard> {
   /// حذف المهمة عبر API
   Future<void> _deleteTask() async {
     try {
-      await TaskApiService.instance.deleteRequest(
+      final result = await TaskApiService.instance.deleteRequest(
           widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم حذف المهمة بنجاح'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        Navigator.of(context).pop();
+        if (result['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم حذف المهمة بنجاح'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        } else {
+          final msg = result['message']?.toString() ?? 'فشل حذف المهمة';
+          final code = result['statusCode'];
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(code == 403 ? 'لا تملك صلاحية حذف المهمة' : msg),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error deleting task');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('خطأ في حذف المهمة'),
             backgroundColor: Colors.red,
           ),

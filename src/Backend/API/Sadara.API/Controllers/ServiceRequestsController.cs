@@ -927,7 +927,7 @@ public class ServiceRequestsController : ControllerBase
     /// حذف طلب خدمة - مدير النظام فقط
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> DeleteRequest(Guid id)
     {
         try
