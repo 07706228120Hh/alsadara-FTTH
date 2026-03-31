@@ -62,6 +62,7 @@ builder.Services.AddScoped<ISmsService, MockSmsService>();
 
 // Firebase Admin Service
 builder.Services.AddHttpClient<IFirebaseAdminService, FirebaseAdminService>();
+builder.Services.AddHttpClient();
 
 // VPS Control Service
 builder.Services.AddScoped<IVpsControlService, VpsControlService>();

@@ -348,6 +348,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   String? trialExpiredAt; // لحفظ تاريخ انتهاء الاشتراك التجريبي
   String? customerAddress; // عنوان المشترك (إن وُجد)
   double manualDiscount = 0.0; // خصم يدوي اختياري يطبّق على الإجمالي
+  final TextEditingController _manualDiscountController = TextEditingController();
   String subscriptionNotes = ''; // ملاحظات الاشتراك
   bool isNotesEnabled = true; // حالة زر تشغيل/إيقاف الملاحظات (افتراضي: مفعل)
   bool isDataSavedToServer =
@@ -1102,7 +1103,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     _bgAnim.dispose();
     _autoPriceTimer?.cancel();
     _contentScrollController.dispose();
-    _notesController.dispose(); // إضافة dispose للـ controller
+    _notesController.dispose();
+    _manualDiscountController.dispose();
     super.dispose();
   }
 
@@ -7953,6 +7955,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                               const SizedBox(width: 8),
                               Expanded(
                                 child: TextField(
+                                  controller: _manualDiscountController,
                                   expands: true,
                                   maxLines: null,
                                   minLines: null,
@@ -8109,6 +8112,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: TextField(
+                                    controller: _manualDiscountController,
                                     expands: true,
                                     maxLines: null,
                                     minLines: null,
@@ -8385,6 +8389,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               Container(width: 1, height: 24, color: Colors.orange.shade300, margin: const EdgeInsets.symmetric(horizontal: 8)),
               Expanded(
                 child: TextField(
+                  controller: _manualDiscountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),

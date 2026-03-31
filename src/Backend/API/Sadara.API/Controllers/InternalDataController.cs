@@ -1890,6 +1890,20 @@ public class InternalDataController : ControllerBase
                 if (agent != null) log.TechnicianName = agent.Name;
             }
 
+            // حماية من التكرار — إذا وصل نفس الطلب مرتين (ضغط مزدوج أو خطأ شبكة)
+            if (!string.IsNullOrEmpty(log.SessionId))
+            {
+                var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .AnyAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                if (duplicate)
+                {
+                    _logger.LogWarning("طلب مكرر — SessionId {SessionId} موجود مسبقاً", log.SessionId);
+                    var existing = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                        .FirstOrDefaultAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                    return Ok(new { success = true, id = existing?.Id, message = "السجل موجود مسبقاً", duplicate = true });
+                }
+            }
+
             await _unitOfWork.SubscriptionLogs.AddAsync(log);
             await _unitOfWork.SaveChangesAsync();
 

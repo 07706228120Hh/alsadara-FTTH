@@ -273,6 +273,25 @@ class AgentApiService {
     return value == 'true';
   }
 
+  /// حفظ بيانات الدخول محلياً
+  Future<void> saveCredentials(String code, String password) async {
+    await _storage.write(key: 'agent_saved_code', value: code);
+    await _storage.write(key: 'agent_saved_pass', value: password);
+  }
+
+  /// جلب بيانات الدخول المحفوظة
+  Future<({String? code, String? password})> getSavedCredentials() async {
+    final code = await _storage.read(key: 'agent_saved_code');
+    final pass = await _storage.read(key: 'agent_saved_pass');
+    return (code: code, password: pass);
+  }
+
+  /// مسح بيانات الدخول المحفوظة
+  Future<void> clearCredentials() async {
+    await _storage.delete(key: 'agent_saved_code');
+    await _storage.delete(key: 'agent_saved_pass');
+  }
+
   /// تسجيل دخول الوكيل
   Future<Map<String, dynamic>> login({
     required String agentCode,

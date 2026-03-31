@@ -124,6 +124,10 @@ public class SadaraDbContext : DbContext
     public DbSet<EmployeeLocation> EmployeeLocations => Set<EmployeeLocation>();
     public DbSet<EmployeeLocationLog> EmployeeLocationLogs => Set<EmployeeLocationLog>();
 
+    // ==================== Reminder Settings (تذكير تلقائي) ====================
+    public DbSet<ReminderSettings> ReminderSettings => Set<ReminderSettings>();
+    public DbSet<ReminderExecutionLog> ReminderExecutionLogs => Set<ReminderExecutionLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -218,6 +222,14 @@ public class SadaraDbContext : DbContext
         // Employee Location Logs
         modelBuilder.Entity<EmployeeLocationLog>()
             .HasIndex(x => new { x.UserId, x.RecordedAt });
+
+        // Reminder Settings
+        modelBuilder.Entity<ReminderSettings>()
+            .HasIndex(x => x.TenantId).IsUnique();
+        modelBuilder.Entity<ReminderSettings>()
+            .Property(x => x.BatchesJson).HasColumnType("jsonb");
+        modelBuilder.Entity<ReminderExecutionLog>()
+            .HasIndex(x => new { x.TenantId, x.ExecutedAt });
 
         // User
         modelBuilder.Entity<User>(entity =>

@@ -148,6 +148,19 @@ public class SubscriptionLogsController : ControllerBase
             LinkedTechnicianId = request.LinkedTechnicianId
         };
 
+        // حماية من التكرار
+        if (!string.IsNullOrEmpty(log.SessionId))
+        {
+            var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .AnyAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+            if (duplicate)
+            {
+                var existing = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .FirstOrDefaultAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                return Ok(new { success = true, id = existing?.Id, duplicate = true });
+            }
+        }
+
         await _unitOfWork.SubscriptionLogs.AddAsync(log);
         await _unitOfWork.SaveChangesAsync();
 

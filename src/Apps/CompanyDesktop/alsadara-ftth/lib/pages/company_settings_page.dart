@@ -15,8 +15,9 @@ import '../services/company_settings_service.dart';
 import '../services/custom_auth_service.dart';
 import '../services/auto_renewal_reminder_service.dart';
 import '../services/whatsapp_business_service.dart';
+import '../services/api/api_client.dart';
+import 'reminder_reports_page.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'printer_settings_page.dart';
 import 'settings_page.dart';
 import 'settings_text_scale_page.dart';
@@ -1217,142 +1218,102 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     if (!mounted) return;
     setState(() => _isReminderLoading = true);
     try {
-      final tid = _resolvedTenantId;
-      final settings =
-          await CompanySettingsService.getReminderSettings(tenantId: tid);
-      final results =
-          await CompanySettingsService.getReminderResults(tenantId: tid);
+      final tid = _resolvedTenantId ?? 'default';
+
+      // جلب الإعدادات من PostgreSQL
+      final settingsResult = await ApiClient.instance.get(
+        '/reminders/settings?tenantId=$tid',
+        (data) => data,
+        useInternalKey: true,
+      );
+
+      // جلب آخر التنفيذات
+      final logsResult = await ApiClient.instance.get(
+        '/reminders/logs?limit=10',
+        (data) => data,
+        useInternalKey: true,
+      );
+
       if (mounted) {
         setState(() {
-          _autoReminderEnabled = settings['enabled'] == true;
-          final rawBatches = settings['batches'];
-          if (rawBatches is List) {
-            _reminderBatches = rawBatches
-                .map((b) => Map<String, dynamic>.from(b as Map))
-                .toList();
+          if (settingsResult.isSuccess && settingsResult.data != null) {
+            final d = settingsResult.data is Map ? settingsResult.data : {};
+            _autoReminderEnabled = d['isEnabled'] == true;
+            final bJson = d['batchesJson']?.toString() ?? '[]';
+            try {
+              final decoded = jsonDecode(bJson);
+              if (decoded is List) {
+                _reminderBatches = decoded
+                    .map((b) => Map<String, dynamic>.from(b as Map))
+                    .toList();
+              }
+            } catch (_) {}
           }
-          _reminderResults = results;
+
+          if (logsResult.isSuccess && logsResult.data != null) {
+            final logs = logsResult.data is List
+                ? logsResult.data as List
+                : (logsResult.data is Map ? (logsResult.data['data'] as List?) ?? [] : []);
+            // تحويل logs لصيغة results {batchId: {sent, failed, date, time}}
+            final Map<String, dynamic> results = {};
+            for (final log in logs) {
+              if (log is Map) {
+                final bid = log['batchId']?.toString() ?? '';
+                if (bid.isNotEmpty && !results.containsKey(bid)) {
+                  results[bid] = {
+                    'sent': log['sent'] ?? 0,
+                    'failed': log['failed'] ?? 0,
+                    'date': log['executedAt']?.toString().split('T').first ?? '',
+                    'time': _extractTime(log['executedAt']?.toString()),
+                  };
+                }
+              }
+            }
+            _reminderResults = results;
+          }
         });
       }
     } catch (e) {
-      debugPrint('⚠️ خطأ تحميل إعدادات التذكير: $e');
+      debugPrint('خطأ تحميل إعدادات التذكير: $e');
     } finally {
       if (mounted) setState(() => _isReminderLoading = false);
     }
   }
 
-  Future<void> _saveReminderSettings() async {
-    final tid = _resolvedTenantId;
-    if (tid == null) {
-      _showSnack('لا يوجد معرّف شركة');
-      return;
+  String _extractTime(String? isoDate) {
+    if (isoDate == null) return '';
+    try {
+      final dt = DateTime.tryParse(isoDate)?.toLocal();
+      if (dt == null) return '';
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
     }
+  }
+
+  Future<void> _saveReminderSettings() async {
     if (!mounted) return;
     setState(() => _isReminderSaving = true);
     try {
-      final ok = await CompanySettingsService.saveReminderSettings(
-        enabled: _autoReminderEnabled,
-        batches: _reminderBatches,
-        tenantId: tid,
+      // حفظ في PostgreSQL + تحديث cron في n8n (Backend يتولى كل شيء)
+      final batchesJson = jsonEncode(_reminderBatches);
+      final result = await ApiClient.instance.post(
+        '/reminders/settings',
+        {
+          'tenantId': _resolvedTenantId ?? 'default',
+          'isEnabled': _autoReminderEnabled,
+          'batchesJson': batchesJson,
+        },
+        (data) => data,
+        useInternalKey: true,
       );
-      // مزامنة tenantId + تفعيل/تعطيل workflow على n8n
-      _syncTenantToN8n(tid, activate: _autoReminderEnabled);
       if (mounted) {
-        _showSnack(ok ? 'تم حفظ إعدادات التذكير التلقائي' : 'فشل في الحفظ');
+        _showSnack(result.isSuccess ? 'تم حفظ إعدادات التذكير + تحديث n8n' : 'فشل في الحفظ');
       }
     } catch (e) {
       if (mounted) _showSnack('فشل في حفظ إعدادات التذكير');
     } finally {
       if (mounted) setState(() => _isReminderSaving = false);
-    }
-  }
-
-  /// مزامنة tenantId مع n8n workflow (بشكل صامت في الخلفية)
-  Future<void> _syncTenantToN8n(String tenantId,
-      {bool activate = true}) async {
-    try {
-      final n8nToken = await WhatsAppBusinessService.getN8nApiToken();
-      if (n8nToken == null || n8nToken.isEmpty) return;
-
-      const n8nBase = 'https://n8n.srv991906.hstgr.cloud';
-      final headers = {
-        'X-N8N-API-KEY': n8nToken,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-
-      // البحث عن workflow التذكير التلقائي
-      final listRes = await http
-          .get(Uri.parse('$n8nBase/api/v1/workflows?limit=50'),
-              headers: headers)
-          .timeout(const Duration(seconds: 10));
-
-      if (listRes.statusCode != 200) return;
-
-      final workflows = jsonDecode(listRes.body)['data'] as List? ?? [];
-      Map<String, dynamic>? reminderWorkflow;
-      for (final w in workflows) {
-        final name = w['name']?.toString() ?? '';
-        if (name.contains('Auto Reminder') || name.contains('تذكير تلقائي')) {
-          reminderWorkflow = Map<String, dynamic>.from(w as Map);
-          break;
-        }
-      }
-      if (reminderWorkflow == null) return;
-
-      final wfId = reminderWorkflow['id'];
-
-      // تحديث tenantId في Configuration node
-      final nodes = (reminderWorkflow['nodes'] as List?) ?? [];
-      bool configUpdated = false;
-      for (final node in nodes) {
-        if (node['name'] == 'Configuration') {
-          final assignments =
-              node['parameters']?['assignments']?['assignments'] as List?;
-          if (assignments != null) {
-            for (final a in assignments) {
-              if (a['name'] == 'tenantId' && a['value'] != tenantId) {
-                a['value'] = tenantId;
-                configUpdated = true;
-              }
-            }
-          }
-        }
-      }
-
-      // تحديث nodes إذا تغير tenantId
-      if (configUpdated) {
-        await http
-            .patch(
-              Uri.parse('$n8nBase/api/v1/workflows/$wfId'),
-              headers: headers,
-              body: jsonEncode({
-                'nodes': nodes,
-                'connections': reminderWorkflow['connections'],
-                'settings': reminderWorkflow['settings'],
-              }),
-            )
-            .timeout(const Duration(seconds: 10));
-        debugPrint('✅ n8n: tenantId → $tenantId');
-      }
-
-      // تفعيل أو تعطيل workflow
-      final isActive = reminderWorkflow['active'] == true;
-      if (activate && !isActive) {
-        await http
-            .post(Uri.parse('$n8nBase/api/v1/workflows/$wfId/activate'),
-                headers: headers)
-            .timeout(const Duration(seconds: 10));
-        debugPrint('✅ n8n workflow مُفعّل');
-      } else if (!activate && isActive) {
-        await http
-            .post(Uri.parse('$n8nBase/api/v1/workflows/$wfId/deactivate'),
-                headers: headers)
-            .timeout(const Duration(seconds: 10));
-        debugPrint('⛔ n8n workflow مُعطّل');
-      }
-    } catch (e) {
-      debugPrint('⚠️ n8n sync failed (non-critical): $e');
     }
   }
 
@@ -1998,6 +1959,24 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // زر التقارير
+                  SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const ReminderReportsPage())),
+                      icon: const Icon(Icons.analytics_outlined, size: 18),
+                      label: Text('التقارير',
+                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.indigo,
+                        side: const BorderSide(color: Colors.indigo),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                       ),

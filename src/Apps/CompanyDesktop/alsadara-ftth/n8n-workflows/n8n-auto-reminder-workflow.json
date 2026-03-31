@@ -1,98 +1,46 @@
 {
-  "name": "Auto Reminder - تذكير تلقائي قبل انتهاء الاشتراك",
+  "name": "Auto Reminder - Simple Cron",
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "0 * * * *"
-            }
-          ]
+          "interval": [{ "field": "cronExpression", "expression": "0 3 * * *" }]
         }
       },
-      "id": "ar-trigger-001",
-      "name": "Every Hour",
+      "id": "ar-trigger",
+      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [304, 400],
-      "notes": "يفحص كل ساعة إذا حان وقت أي وجبة إرسال"
+      "position": [240, 400]
+    },
+    {
+      "parameters": {},
+      "id": "ar-manual",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 560]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "cfg-tenant", "name": "tenantId", "value": "3ebc4eb3-3511-487d-94d4-1812376491eb", "type": "string" },
-            { "id": "cfg-project", "name": "firebaseProject", "value": "web-app-sadara", "type": "string" },
+            { "id": "cfg-days", "name": "days", "value": "0", "type": "number" },
             { "id": "cfg-ftth-user", "name": "ftthUsername", "value": "lysalan1980@gmail.com", "type": "string" },
-            { "id": "cfg-ftth-pass", "name": "ftthPassword", "value": "MOVE_TO_N8N_CREDENTIALS", "type": "string" },
+            { "id": "cfg-ftth-pass", "name": "ftthPassword", "value": "MOVE_TO_CREDENTIALS", "type": "string" },
             { "id": "cfg-manager", "name": "managerPhone", "value": "9647727787789", "type": "string" },
             { "id": "cfg-phone-id", "name": "phoneNumberId", "value": "879614651900630", "type": "string" },
-            { "id": "cfg-template", "name": "templateName", "value": "sadara_reminder", "type": "string" },
-            { "id": "cfg-contact", "name": "contactNumbers", "value": "07705210210", "type": "string" }
+            { "id": "cfg-contact", "name": "contactNumbers", "value": "07705210210", "type": "string" },
+            { "id": "cfg-api-key", "name": "apiKey", "value": "sadara-internal-2024-secure-key", "type": "string" }
           ]
         },
         "options": {}
       },
-      "id": "ar-config-001",
+      "id": "ar-config",
       "name": "Configuration",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [528, 400],
-      "notes": "⚙️ غيّر tenantId إلى معرف شركتك من Firebase"
-    },
-    {
-      "parameters": {
-        "url": "=https://firestore.googleapis.com/v1/projects/{{ $json.firebaseProject }}/databases/(default)/documents/tenants/{{ $json.tenantId }}/settings/auto_reminders",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
-        "options": {}
-      },
-      "id": "ar-read-settings-001",
-      "name": "Read Reminder Settings",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [752, 400],
-      "credentials": { "googleApi": { "id": "119RrljqOvjVZbDE", "name": "Google Service Account account" } },
-      "continueOnFail": true,
-      "notes": "قراءة إعدادات التذكير من Firestore"
-    },
-    {
-      "parameters": {
-        "jsCode": "// ═══ فحص الإعدادات وتحديد الوجبات التي حان وقتها ═══\nconst config = $('Configuration').first().json;\nconst raw = $input.first().json;\n\n// هل التشغيل يدوي؟\nlet isManual = false;\ntry { $('Manual Trigger').first(); isManual = true; } catch(e) {}\n\nif (isManual) console.log('🔧 تشغيل يدوي — تجاوز فحص الساعة');\n\n// تحويل Firestore format إلى JSON عادي\nconst fields = raw.fields || {};\nconst enabled = fields.enabled?.booleanValue === true;\n\nif (!enabled) {\n  console.log('⏸️ التذكير التلقائي معطّل');\n  return [];\n}\n\n// استخراج الوجبات\nconst batchesArray = fields.batches?.arrayValue?.values || [];\nif (batchesArray.length === 0) {\n  console.log('⚠️ لا توجد وجبات مجدولة');\n  return [];\n}\n\n// حساب الوقت الحالي بتوقيت بغداد (UTC+3)\nconst now = new Date();\nconst baghdadOffset = 3 * 60;\nconst baghdadNow = new Date(now.getTime() + (baghdadOffset + now.getTimezoneOffset()) * 60000);\nconst currentHour = baghdadNow.getHours();\nconst currentMinute = baghdadNow.getMinutes();\nconst todayKey = `${baghdadNow.getFullYear()}-${String(baghdadNow.getMonth()+1).padStart(2,'0')}-${String(baghdadNow.getDate()).padStart(2,'0')}`;\n\nconsole.log(`🕐 الوقت الحالي (بغداد): ${currentHour}:${String(currentMinute).padStart(2,'0')}`);\nconsole.log(`📅 التاريخ: ${todayKey}`);\n\n// فحص كل وجبة\nconst dueBatches = [];\nfor (const bv of batchesArray) {\n  const batchFields = bv.mapValue?.fields || {};\n  const id = batchFields.id?.stringValue || '';\n  const hour = Number(batchFields.hour?.integerValue || 0);\n  const minute = Number(batchFields.minute?.integerValue || 0);\n  const days = Number(batchFields.days?.integerValue || 0);\n  const batchEnabled = batchFields.enabled?.booleanValue !== false;\n\n  if (!batchEnabled) continue;\n\n  // فحص الساعة فقط في التشغيل التلقائي\n  if (!isManual && currentHour !== hour) continue;\n\n  dueBatches.push({\n    id,\n    hour,\n    minute,\n    days,\n    todayKey,\n    tenantId: config.tenantId,\n    firebaseProject: config.firebaseProject,\n    ftthUsername: config.ftthUsername,\n    ftthPassword: config.ftthPassword,\n    managerPhone: config.managerPhone,\n    templateName: config.templateName\n  });\n}\n\nif (dueBatches.length === 0) {\n  console.log('⏳ لم يحن وقت أي وجبة');\n  return [];\n}\n\nconsole.log(`🔔 ${dueBatches.length} وجبة/وجبات حان وقتها!`);\nreturn dueBatches.map(b => ({ json: b }));"
-      },
-      "id": "ar-check-schedule-001",
-      "name": "Check Schedule",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [960, 400],
-      "notes": "فحص هل حان وقت أي وجبة"
-    },
-    {
-      "parameters": {
-        "url": "=https://firestore.googleapis.com/v1/projects/{{ $json.firebaseProject }}/databases/(default)/documents/tenants/{{ $json.tenantId }}/settings/auto_reminder_sent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
-        "options": {}
-      },
-      "id": "ar-check-sent-001",
-      "name": "Check Already Sent",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1184, 400],
-      "credentials": { "googleApi": { "id": "119RrljqOvjVZbDE", "name": "Google Service Account account" } },
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// ═══ تمرير مباشر — نافذة الوقت في Check Schedule تمنع التكرار ═══\nconst batch = $('Check Schedule').first().json;\nreturn [{ json: batch }];"
-      },
-      "id": "ar-filter-sent-001",
-      "name": "Filter Already Sent",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1408, 400]
+      "position": [460, 400]
     },
     {
       "parameters": {
@@ -116,63 +64,41 @@
         },
         "options": {}
       },
-      "id": "ar-ftth-login-001",
+      "id": "ar-login",
       "name": "FTTH Login",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1632, 400],
+      "position": [680, 400],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 600000,
-      "continueOnFail": true,
-      "notes": "تسجيل الدخول لـ FTTH API — 3 محاولات كل 10 دقائق"
+      "waitBetweenTries": 300000,
+      "continueOnFail": true
     },
     {
       "parameters": {
         "conditions": {
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
-          "conditions": [{ "id": "ftth-ok", "leftValue": "={{ $json.access_token }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } }],
+          "conditions": [{ "id": "has-token", "leftValue": "={{ $json.access_token }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } }],
           "combinator": "and"
         },
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "ar-check-ftth-001",
-      "name": "Check FTTH",
+      "id": "ar-check-login",
+      "name": "Login OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1632, 560],
-      "notes": "هل نجح الاتصال بـ FTTH؟"
+      "position": [680, 560]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://graph.facebook.com/v21.0/{{ $('Configuration').first().json.phoneNumberId || '' }}/messages",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "whatsAppApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Configuration').first().json.managerPhone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"⚠️ *تنبيه: موقع FTTH متوقف*\\n\\nفشل الاتصال بـ admin.ftth.iq بعد 3 محاولات (30 دقيقة).\\n\\nتم تأجيل إرسال التذكيرات.\\nسيتم المحاولة تلقائياً في الساعة القادمة.\\n\\n🏢 _نظام شركة الصدارة_\"\n  }\n}",
-        "options": { "timeout": 15000 }
+        "jsCode": "const config = $('Configuration').first().json;\nconst token = $json.access_token;\nconst days = Number(config.days || 0);\nconst now = new Date();\nconst baghdadOffset = 3 * 60;\nconst baghdadNow = new Date(now.getTime() + (baghdadOffset + now.getTimezoneOffset()) * 60000);\nconst target = new Date(baghdadNow);\ntarget.setDate(target.getDate() + days);\nconst fromBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 0, 0, 0);\nconst toBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 23, 59, 59);\nconst fromUTC = new Date(fromBaghdad.getTime() - baghdadOffset * 60000).toISOString();\nconst toUTC = new Date(toBaghdad.getTime() - baghdadOffset * 60000).toISOString();\nreturn [{ json: { access_token: token, fromExpirationDate: fromUTC, toExpirationDate: toUTC, pageNumber: 1, pageSize: 150, config: config } }];"
       },
-      "id": "ar-notify-ftth-down-001",
-      "name": "Notify FTTH Down",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1840, 640],
-      "credentials": { "whatsAppApi": { "id": "EzucHolIyaZJI1AD", "name": "WhatsApp account" } },
-      "continueOnFail": true,
-      "notes": "إبلاغ المدير أن FTTH متوقف"
-    },
-    {
-      "parameters": {
-        "jsCode": "// ═══ حساب نطاق التاريخ حسب الوجبة (بتوقيت بغداد) ═══\nconst batch = $('Filter Already Sent').first().json;\nconst token = $json.access_token;\nconst days = batch.days;\n\n// حساب بتوقيت بغداد UTC+3\nconst now = new Date();\nconst baghdadOffset = 3 * 60;\nconst baghdadNow = new Date(now.getTime() + (baghdadOffset + now.getTimezoneOffset()) * 60000);\n\n// بداية اليوم المستهدف\nconst targetDate = new Date(baghdadNow);\ntargetDate.setDate(targetDate.getDate() + days);\n\nconst fromBaghdad = new Date(\n  targetDate.getFullYear(),\n  targetDate.getMonth(),\n  targetDate.getDate(),\n  0, 0, 0\n);\nconst toBaghdad = new Date(\n  targetDate.getFullYear(),\n  targetDate.getMonth(),\n  targetDate.getDate(),\n  23, 59, 59\n);\n\n// تحويل لـ UTC\nconst fromUTC = new Date(fromBaghdad.getTime() - baghdadOffset * 60000).toISOString();\nconst toUTC = new Date(toBaghdad.getTime() - baghdadOffset * 60000).toISOString();\n\nconsole.log(`📅 جلب المنتهيين: ${fromUTC} → ${toUTC}`);\n\nreturn [{\n  json: {\n    access_token: token,\n    fromExpirationDate: fromUTC,\n    toExpirationDate: toUTC,\n    pageNumber: 1,\n    pageSize: 150,\n    batch: batch\n  }\n}];"
-      },
-      "id": "ar-calc-dates-001",
-      "name": "Calculate Date Range",
+      "id": "ar-dates",
+      "name": "Calculate Dates",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1840, 400]
+      "position": [900, 400]
     },
     {
       "parameters": {
@@ -201,49 +127,31 @@
         },
         "options": {}
       },
-      "id": "ar-get-subs-001",
-      "name": "Get Expiring Subscriptions",
+      "id": "ar-get-subs",
+      "name": "Get Subscriptions",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [2064, 400],
+      "position": [1120, 400],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "// ═══ استخراج بيانات المشتركين + Pagination ═══\nconst store = $getWorkflowStaticData('global');\nconst data = $input.first().json;\nconst items = data.items || [];\nconst batch = $('Calculate Date Range').first().json.batch;\nconst token = $('Calculate Date Range').first().json.access_token;\nconst pageSize = 150;\n\n// تتبع رقم الصفحة\nif (!store.currentPage) store.currentPage = 1;\nif (!store.subscribers) store.subscribers = [];\n\nconsole.log(`📄 صفحة ${store.currentPage}: ${items.length} عنصر`);\n\n// تخزين المشتركين\nfor (const row of items) {\n  store.subscribers.push({\n    customer_id: row.customer?.id,\n    customer_name: row.customer?.displayValue,\n    service_name: row.services?.[0]?.displayValue || row.bundle?.displayValue,\n    zone_name: row.zone?.displayValue,\n    expires: row.expires\n  });\n}\n\n// إذا عدد العناصر = حجم الصفحة → قد توجد صفحة أخرى\nif (items.length >= pageSize) {\n  store.currentPage++;\n  return [{\n    json: {\n      hasMore: true,\n      access_token: token,\n      fromExpirationDate: $('Calculate Date Range').first().json.fromExpirationDate,\n      toExpirationDate: $('Calculate Date Range').first().json.toExpirationDate,\n      pageNumber: store.currentPage,\n      pageSize: pageSize,\n      batch: batch\n    }\n  }];\n}\n\n// انتهت الصفحات — إخراج كل المشتركين\nconsole.log(`📊 إجمالي المشتركين: ${store.subscribers.length}`);\nconst allSubs = store.subscribers.map(s => ({ json: { ...s, batch, access_token: token } }));\nstore.subscribers = [];\nstore.currentPage = null;\nreturn allSubs.length > 0 ? allSubs : [];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.items || [];\nconst config = $('Calculate Dates').first().json.config;\nconst token = $('Calculate Dates').first().json.access_token;\nif (items.length === 0) return [];\nreturn items.map(row => ({ json: { customer_id: row.customer?.id, customer_name: row.customer?.displayValue, service_name: row.services?.[0]?.displayValue || row.bundle?.displayValue, zone_name: row.zone?.displayValue, expires: row.expires, access_token: token, config: config } }));"
       },
-      "id": "ar-extract-subs-001",
-      "name": "Extract & Paginate",
+      "id": "ar-extract",
+      "name": "Extract Subscribers",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2288, 400],
+      "position": [1340, 400],
       "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
-          "conditions": [
-            { "id": "has-more-pages", "leftValue": "={{ $json.hasMore }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
-          ],
-          "combinator": "and"
-        },
-        "looseTypeValidation": true,
-        "options": {}
-      },
-      "id": "ar-if-more-001",
-      "name": "More Pages?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [2512, 400]
     },
     {
       "parameters": { "batchSize": 1, "options": {} },
-      "id": "ar-split-phones-001",
-      "name": "Split For Phone Lookup",
+      "id": "ar-split-phones",
+      "name": "Split For Phones",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
-      "position": [2784, 400]
+      "position": [1560, 400]
     },
     {
       "parameters": {
@@ -259,11 +167,11 @@
         },
         "options": { "timeout": 5000 }
       },
-      "id": "ar-get-phone-001",
-      "name": "Get Customer Phone",
+      "id": "ar-get-phone",
+      "name": "Get Phone",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3024, 400],
+      "position": [1780, 400],
       "retryOnFail": true,
       "waitBetweenTries": 2000,
       "maxTries": 2,
@@ -271,42 +179,42 @@
     },
     {
       "parameters": {
-        "jsCode": "// ═══ استخراج رقم الهاتف وتخزينه ═══\nconst store = $getWorkflowStaticData('global');\nif (!store.readyToSend) store.readyToSend = [];\nif (!store.stats) store.stats = { total: 0, withPhone: 0, noPhone: 0, sent: 0, failed: 0 };\n\nconst prevData = $('Split For Phone Lookup').first().json;\nconst phoneData = $input.first().json;\n\nconst phone = phoneData.model?.primaryContact?.mobile || '';\nconst customerName = prevData.customer_name || '';\nconst serviceName = prevData.service_name || '';\nconst zoneName = prevData.zone_name || '';\nconst expires = prevData.expires || '';\nconst batch = prevData.batch;\n\nstore.stats.total++;\n\n// تنظيف وتنسيق الرقم\nlet cleanPhone = phone.replace(/[^\\d]/g, '');\nif (cleanPhone.startsWith('0')) {\n  cleanPhone = '964' + cleanPhone.substring(1);\n} else if (!cleanPhone.startsWith('964')) {\n  cleanPhone = '964' + cleanPhone;\n}\n\nconst valid = /^964\\d{9,12}$/.test(cleanPhone) && cleanPhone.length >= 12;\n\nif (valid) {\n  store.stats.withPhone++;\n  store.readyToSend.push({\n    phone: cleanPhone,\n    name: customerName,\n    service: serviceName,\n    zone: zoneName,\n    expires: expires,\n    batch: batch\n  });\n} else {\n  store.stats.noPhone++;\n}\n\nreturn [{ json: { processed: store.stats.total } }];"
+        "jsCode": "const store = $getWorkflowStaticData('global');\nif (!store.ready) store.ready = [];\nif (!store.stats) store.stats = { total: 0, withPhone: 0, noPhone: 0, sent: 0, failed: 0 };\nconst prev = $('Split For Phones').first().json;\nconst phoneData = $input.first().json;\nconst phone = phoneData.model?.primaryContact?.mobile || '';\nstore.stats.total++;\nlet clean = phone.replace(/[^\\d]/g, '');\nif (clean.startsWith('0')) clean = '964' + clean.substring(1);\nelse if (!clean.startsWith('964')) clean = '964' + clean;\nconst valid = /^964\\d{9,12}$/.test(clean) && clean.length >= 12;\nif (valid) { store.stats.withPhone++; store.ready.push({ phone: clean, name: prev.customer_name || '', expires: prev.expires || '', config: prev.config }); }\nelse { store.stats.noPhone++; }\nreturn [{ json: { processed: store.stats.total } }];"
       },
-      "id": "ar-store-phone-001",
-      "name": "Store Phone Data",
+      "id": "ar-store-phone",
+      "name": "Store Phone",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3248, 384]
+      "position": [2000, 400]
     },
     {
       "parameters": {
-        "jsCode": "// ═══ إخراج المشتركين الجاهزين للإرسال ═══\nconst store = $getWorkflowStaticData('global');\nconst readyToSend = store.readyToSend || [];\nconst stats = store.stats || {};\n\nconsole.log(`📊 الإحصائيات:`);\nconsole.log(`   الكل: ${stats.total}`);\nconsole.log(`   لديهم رقم: ${stats.withPhone}`);\nconsole.log(`   بدون رقم: ${stats.noPhone}`);\n\nif (readyToSend.length === 0) {\n  console.log('⚠️ لا يوجد مشتركين للإرسال');\n  // تنظيف\n  store.readyToSend = [];\n  return [];\n}\n\nconst result = readyToSend.map(r => ({ json: r }));\nstore.readyToSend = []; // تنظيف\nreturn result;"
+        "jsCode": "const store = $getWorkflowStaticData('global');\nconst ready = store.ready || [];\nconst stats = store.stats || {};\nif (ready.length === 0) return [];\nconst result = ready.map(r => ({ json: r }));\nstore.ready = [];\nreturn result;"
       },
-      "id": "ar-output-ready-001",
-      "name": "Output Ready Subscribers",
+      "id": "ar-output",
+      "name": "Output Ready",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3024, 624],
+      "position": [1780, 600],
       "alwaysOutputData": true
     },
     {
       "parameters": { "batchSize": 1, "options": {} },
-      "id": "ar-split-send-001",
-      "name": "Split For Sending",
+      "id": "ar-split-send",
+      "name": "Split For Send",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
-      "position": [3232, 624]
+      "position": [2000, 600]
     },
     {
       "parameters": {
-        "jsCode": "// ═══ حساب تاريخ الانتهاء وتجهيز البيانات ═══\nconst item = $json;\nconst expires = item.expires || '';\nconst config = $('Configuration').first().json;\n\nlet endDate = '';\n\ntry {\n  const expDate = new Date(expires);\n  endDate = `${expDate.getFullYear()}-${String(expDate.getMonth()+1).padStart(2,'0')}-${String(expDate.getDate()).padStart(2,'0')}`;\n} catch(e) {\n  endDate = expires;\n}\n\nreturn [{\n  json: {\n    phone: item.phone,\n    name: item.name,\n    endDate: endDate,\n    contactNumbers: config.contactNumbers || '07705210210',\n    batch: item.batch\n  }\n}];"
+        "jsCode": "const item = $json;\nconst config = item.config || $('Configuration').first().json;\nlet endDate = '';\ntry { const d = new Date(item.expires); endDate = d.toISOString().split('T')[0]; } catch(e) { endDate = item.expires || ''; }\nreturn [{ json: { phone: item.phone, name: item.name, endDate: endDate, contactNumbers: config.contactNumbers || '07705210210' } }];"
       },
-      "id": "ar-prepare-msg-001",
-      "name": "Prepare Message Data",
+      "id": "ar-prepare-msg",
+      "name": "Prepare Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3552, 608]
+      "position": [2220, 600]
     },
     {
       "parameters": {
@@ -316,181 +224,137 @@
         "nodeCredentialType": "whatsAppApi",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.phone }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"{{ $('Configuration').first().json.templateName }}\",\n    \"language\": { \"code\": \"ar\" },\n    \"components\": [\n      {\n        \"type\": \"header\",\n        \"parameters\": [\n          {\n            \"type\": \"location\",\n            \"location\": {\n              \"latitude\": \"33.3574242\",\n              \"longitude\": \"44.4413559\",\n              \"name\": \"شركة الصدارة\",\n              \"address\": \"المشغل الرسمي للمشروع الوطني\"\n            }\n          }\n        ]\n      },\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": \"{{ $json.name }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.endDate }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.contactNumbers }}\" }\n        ]\n      }\n    ]\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.phone }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"sadara_reminder\",\n    \"language\": { \"code\": \"ar\" },\n    \"components\": [\n      {\n        \"type\": \"header\",\n        \"parameters\": [{ \"type\": \"location\", \"location\": { \"latitude\": \"33.3574242\", \"longitude\": \"44.4413559\", \"name\": \"\\u0634\\u0631\\u0643\\u0629 \\u0627\\u0644\\u0635\\u062f\\u0627\\u0631\\u0629\", \"address\": \"\\u0627\\u0644\\u0645\\u0634\\u063a\\u0644 \\u0627\\u0644\\u0631\\u0633\\u0645\\u064a\" } }]\n      },\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": \"{{ $json.name }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.endDate }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.contactNumbers }}\" }\n        ]\n      }\n    ]\n  }\n}",
         "options": { "timeout": 15000 }
       },
-      "id": "ar-send-whatsapp-001",
-      "name": "Send WhatsApp Template",
+      "id": "ar-send",
+      "name": "Send WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3744, 608],
+      "position": [2440, 600],
       "retryOnFail": true,
       "waitBetweenTries": 3000,
       "maxTries": 2,
       "credentials": { "whatsAppApi": { "id": "EzucHolIyaZJI1AD", "name": "WhatsApp account" } },
-      "continueOnFail": true,
-      "notes": "إرسال قالب sadara_reminder عبر Meta WhatsApp API"
+      "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "// ═══ تتبع النتائج ═══\nconst store = $getWorkflowStaticData('global');\nif (!store.stats) store.stats = { total: 0, withPhone: 0, noPhone: 0, sent: 0, failed: 0 };\n\nconst response = $json;\nconst prevData = $('Prepare Message Data').first().json;\nconst sent = !!(response.messages && response.messages.length > 0);\n\nif (sent) {\n  store.stats.sent++;\n  console.log(`✅ ${prevData.name}: تم الإرسال`);\n} else {\n  store.stats.failed++;\n  console.log(`❌ ${prevData.name}: فشل - ${response.error?.message || 'خطأ'}`);\n}\n\nreturn [{ json: { status: sent ? 'sent' : 'failed', sent: sent, phone: prevData.phone, name: prevData.name } }];"
+        "jsCode": "const store = $getWorkflowStaticData('global');\nif (!store.stats) store.stats = { total: 0, withPhone: 0, noPhone: 0, sent: 0, failed: 0 };\nconst r = $json;\nconst prev = $('Prepare Message').first().json;\nif (r.messages && r.messages.length > 0) { store.stats.sent++; } else { store.stats.failed++; }\nreturn [{ json: { sent: !!(r.messages && r.messages.length > 0), phone: prev.phone, name: prev.name } }];"
       },
-      "id": "ar-track-result-001",
+      "id": "ar-track",
       "name": "Track Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3904, 608]
+      "position": [2660, 600]
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json;\nconst prevData = $('Prepare Message Data').first().json;\nconst name = prevData.name || '';\nconst endDate = prevData.endDate || '';\nconst contact = prevData.contactNumbers || '07705210210';\n\nconst msg = '\\u0639\\u0632\\u064a\\u0632\\u064a \\u0627\\u0644\\u0645\\u0634\\u062a\\u0631\\u0643 ' + name + '\\n\\u0627\\u0634\\u062a\\u0631\\u0627\\u0643\\u0643 \\u0633\\u064a\\u0646\\u062a\\u0647\\u064a \\u0628\\u062a\\u0627\\u0631\\u064a\\u062e ' + endDate + '\\n\\u062c\\u062f\\u062f \\u0627\\u0644\\u0622\\u0646!\\n\\n\\u0644\\u0644\\u0627\\u062a\\u0635\\u0627\\u0644:\\n' + contact;\n\nreturn [{ json: {\n  phone: prevData.phone,\n  sent: d.sent,\n  apiBody: { message: msg, type: 'template' }\n} }];"
+        "jsCode": "const d = $input.first().json;\nconst prev = $('Prepare Message').first().json;\nconst msg = '\\u0639\\u0632\\u064a\\u0632\\u064a \\u0627\\u0644\\u0645\\u0634\\u062a\\u0631\\u0643 ' + prev.name + '\\n\\u0627\\u0634\\u062a\\u0631\\u0627\\u0643\\u0643 \\u0633\\u064a\\u0646\\u062a\\u0647\\u064a \\u0628\\u062a\\u0627\\u0631\\u064a\\u062e ' + prev.endDate;\nreturn [{ json: { phone: prev.phone, apiBody: { message: msg, type: 'template' } } }];"
       },
-      "id": "ar-prepare-api-body",
+      "id": "ar-prepare-api",
       "name": "Prepare API Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3960, 480]
+      "position": [2780, 500]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://api.ramzalsadara.tech/api/whatsapp/conversations/{{ $json.phone }}/messages",
         "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "X-Api-Key", "value": "sadara-internal-2024-secure-key" },
-            { "name": "Content-Type", "value": "application/json" }
-          ]
-        },
+        "headerParameters": { "parameters": [{ "name": "X-Api-Key", "value": "={{ $('Configuration').first().json.apiKey }}" }, { "name": "Content-Type", "value": "application/json" }] },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.apiBody) }}",
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "ar-save-to-api-001",
+      "id": "ar-save-api",
       "name": "Save To API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4060, 480]
+      "position": [2900, 500]
     },
     {
       "parameters": { "amount": 1.5, "unit": "seconds" },
-      "id": "ar-delay-001",
-      "name": "Delay Between Messages",
+      "id": "ar-delay",
+      "name": "Delay",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [4112, 608],
-      "webhookId": "ar-delay-webhook"
+      "position": [2900, 600],
+      "webhookId": "ar-delay"
     },
     {
       "parameters": {
-        "jsCode": "// ═══ تقرير نهائي + حفظ في Firestore ═══\nconst store = $getWorkflowStaticData('global');\nconst stats = store.stats || { total: 0, withPhone: 0, noPhone: 0, sent: 0, failed: 0 };\nconst batch = $('Filter Already Sent').first().json;\n\n// حساب الوقت بتوقيت بغداد\nconst now = new Date();\nconst baghdadOffset = 3 * 60;\nconst baghdadNow = new Date(now.getTime() + (baghdadOffset + now.getTimezoneOffset()) * 60000);\nconst timeStr = `${String(baghdadNow.getHours()).padStart(2,'0')}:${String(baghdadNow.getMinutes()).padStart(2,'0')}`;\nconst dateStr = `${baghdadNow.getFullYear()}-${String(baghdadNow.getMonth()+1).padStart(2,'0')}-${String(baghdadNow.getDate()).padStart(2,'0')}`;\n\nconst report = {\n  batchId: batch.id,\n  total: stats.total,\n  withPhone: stats.withPhone,\n  noPhone: stats.noPhone,\n  sent: stats.sent,\n  failed: stats.failed,\n  time: timeStr,\n  date: dateStr,\n  days: batch.days\n};\n\nconsole.log('📊 التقرير النهائي:');\nconsole.log(`   المشتركين: ${stats.total}`);\nconsole.log(`   أرسل: ${stats.sent}`);\nconsole.log(`   فشل: ${stats.failed}`);\n\n// تنظيف\nstore.stats = null;\n\nreturn [{\n  json: {\n    report,\n    batch,\n    message: `📊 *تقرير التذكير التلقائي*\\n\\n📅 ${dateStr} - ${timeStr}\\n🔔 وجبة: ${batch.days === 0 ? 'المنتهي اليوم' : batch.days === 1 ? 'المنتهي غداً' : 'المنتهي خلال ' + batch.days + ' أيام'}\\n\\n🔢 المشتركين: *${stats.total}*\\n📱 لديهم رقم: *${stats.withPhone}*\\n✅ أرسل بنجاح: *${stats.sent}*\\n❌ فشل: *${stats.failed}*\\n\\n🏢 _نظام شركة الصدارة_`\n  }\n}];"
+        "jsCode": "const store = $getWorkflowStaticData('global');\nconst stats = store.stats || { total: 0, withPhone: 0, noPhone: 0, sent: 0, failed: 0 };\nconst config = $('Configuration').first().json;\nconst now = new Date();\nconst bNow = new Date(now.getTime() + 180 * 60000);\nconst time = String(bNow.getHours()).padStart(2,'0') + ':' + String(bNow.getMinutes()).padStart(2,'0');\nconst date = bNow.toISOString().split('T')[0];\nstore.stats = null;\nreturn [{ json: { total: stats.total, sent: stats.sent, failed: stats.failed, withPhone: stats.withPhone, noPhone: stats.noPhone, time: time, date: date, days: Number(config.days || 0), apiKey: config.apiKey, managerPhone: config.managerPhone, phoneNumberId: config.phoneNumberId, message: '\\ud83d\\udcca *' + '\\u062a\\u0642\\u0631\\u064a\\u0631 \\u0627\\u0644\\u062a\\u0630\\u0643\\u064a\\u0631' + '*\\n\\n' + date + ' - ' + time + '\\n\\n\\u0627\\u0644\\u0645\\u0634\\u062a\\u0631\\u0643\\u064a\\u0646: *' + stats.total + '*\\n\\u0623\\u0631\\u0633\\u0644: *' + stats.sent + '*\\n\\u0641\\u0634\\u0644: *' + stats.failed + '*' } }];"
       },
-      "id": "ar-final-report-001",
-      "name": "Build Final Report",
+      "id": "ar-report",
+      "name": "Build Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3520, 800]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "=https://firestore.googleapis.com/v1/projects/{{ $json.batch.firebaseProject }}/databases/(default)/documents/tenants/{{ $json.batch.tenantId }}/settings/auto_reminder_results",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"{{ $json.report.batchId }}\": {\n      \"mapValue\": {\n        \"fields\": {\n          \"sent\": { \"integerValue\": \"{{ $json.report.sent }}\" },\n          \"failed\": { \"integerValue\": \"{{ $json.report.failed }}\" },\n          \"total\": { \"integerValue\": \"{{ $json.report.total }}\" },\n          \"time\": { \"stringValue\": \"{{ $json.report.time }}\" },\n          \"date\": { \"stringValue\": \"{{ $json.report.date }}\" }\n        }\n      }\n    }\n  }\n}",
-        "options": {}
-      },
-      "id": "ar-save-results-001",
-      "name": "Save Results to Firestore",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [3744, 800],
-      "credentials": { "googleApi": { "id": "119RrljqOvjVZbDE", "name": "Google Service Account account" } },
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "=https://firestore.googleapis.com/v1/projects/{{ $('Build Final Report').first().json.batch.firebaseProject }}/databases/(default)/documents/tenants/{{ $('Build Final Report').first().json.batch.tenantId }}/settings/auto_reminder_sent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"batch_{{ $('Build Final Report').first().json.report.batchId }}_{{ $('Build Final Report').first().json.report.date }}\": {\n      \"booleanValue\": true\n    }\n  }\n}",
-        "options": {}
-      },
-      "id": "ar-mark-sent-001",
-      "name": "Mark as Sent Today",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [3968, 800],
-      "credentials": { "googleApi": { "id": "119RrljqOvjVZbDE", "name": "Google Service Account account" } },
-      "continueOnFail": true
+      "position": [2220, 800]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.facebook.com/v21.0/{{ $('Configuration').first().json.phoneNumberId || '' }}/messages",
+        "url": "https://api.ramzalsadara.tech/api/reminders/logs",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "X-Api-Key", "value": "={{ $json.apiKey }}" }, { "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ days: $json.days, total: $json.total, sent: $json.sent, failed: $json.failed, isManual: false }) }}",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "ar-save-log",
+      "name": "Save Execution Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Build Report').first().json.phoneNumberId }}/messages",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "whatsAppApi",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Build Final Report').first().json.batch.managerPhone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": {{ JSON.stringify($('Build Final Report').first().json.message) }}\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Build Report').first().json.managerPhone }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": {{ JSON.stringify($('Build Report').first().json.message) }} }\n}",
         "options": { "timeout": 15000 }
       },
-      "id": "ar-notify-manager-001",
+      "id": "ar-notify",
       "name": "Notify Manager",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4240, 800],
+      "position": [2660, 800],
       "credentials": { "whatsAppApi": { "id": "EzucHolIyaZJI1AD", "name": "WhatsApp account" } },
-      "continueOnFail": true,
-      "notes": "إرسال تقرير للمدير عبر واتساب"
-    },
-    {
-      "parameters": {},
-      "id": "ar-manual-trigger-001",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [304, 560],
-      "notes": "تشغيل يدوي — اضغط Test Workflow"
+      "continueOnFail": true
     }
   ],
   "connections": {
-    "Every Hour": { "main": [[{ "node": "Configuration", "type": "main", "index": 0 }]] },
+    "Schedule Trigger": { "main": [[{ "node": "Configuration", "type": "main", "index": 0 }]] },
     "Manual Trigger": { "main": [[{ "node": "Configuration", "type": "main", "index": 0 }]] },
-    "Configuration": { "main": [[{ "node": "Read Reminder Settings", "type": "main", "index": 0 }]] },
-    "Read Reminder Settings": { "main": [[{ "node": "Check Schedule", "type": "main", "index": 0 }]] },
-    "Check Schedule": { "main": [[{ "node": "Check Already Sent", "type": "main", "index": 0 }]] },
-    "Check Already Sent": { "main": [[{ "node": "Filter Already Sent", "type": "main", "index": 0 }]] },
-    "Filter Already Sent": { "main": [[{ "node": "FTTH Login", "type": "main", "index": 0 }]] },
-    "FTTH Login": { "main": [[{ "node": "Check FTTH", "type": "main", "index": 0 }]] },
-    "Check FTTH": { "main": [[{ "node": "Calculate Date Range", "type": "main", "index": 0 }], [{ "node": "Notify FTTH Down", "type": "main", "index": 0 }]] },
-    "Calculate Date Range": { "main": [[{ "node": "Get Expiring Subscriptions", "type": "main", "index": 0 }]] },
-    "Get Expiring Subscriptions": { "main": [[{ "node": "Extract & Paginate", "type": "main", "index": 0 }]] },
-    "Extract & Paginate": { "main": [[{ "node": "More Pages?", "type": "main", "index": 0 }]] },
-    "More Pages?": { "main": [[{ "node": "Get Expiring Subscriptions", "type": "main", "index": 0 }], [{ "node": "Split For Phone Lookup", "type": "main", "index": 0 }]] },
-    "Split For Phone Lookup": { "main": [[{ "node": "Get Customer Phone", "type": "main", "index": 0 }], [{ "node": "Output Ready Subscribers", "type": "main", "index": 0 }]] },
-    "Get Customer Phone": { "main": [[{ "node": "Store Phone Data", "type": "main", "index": 0 }]] },
-    "Store Phone Data": { "main": [[{ "node": "Split For Phone Lookup", "type": "main", "index": 0 }]] },
-    "Output Ready Subscribers": { "main": [[{ "node": "Split For Sending", "type": "main", "index": 0 }]] },
-    "Split For Sending": { "main": [[{ "node": "Prepare Message Data", "type": "main", "index": 0 }], [{ "node": "Build Final Report", "type": "main", "index": 0 }]] },
-    "Prepare Message Data": { "main": [[{ "node": "Send WhatsApp Template", "type": "main", "index": 0 }]] },
-    "Send WhatsApp Template": { "main": [[{ "node": "Track Result", "type": "main", "index": 0 }]] },
+    "Configuration": { "main": [[{ "node": "FTTH Login", "type": "main", "index": 0 }]] },
+    "FTTH Login": { "main": [[{ "node": "Login OK?", "type": "main", "index": 0 }]] },
+    "Login OK?": { "main": [[{ "node": "Calculate Dates", "type": "main", "index": 0 }], []] },
+    "Calculate Dates": { "main": [[{ "node": "Get Subscriptions", "type": "main", "index": 0 }]] },
+    "Get Subscriptions": { "main": [[{ "node": "Extract Subscribers", "type": "main", "index": 0 }]] },
+    "Extract Subscribers": { "main": [[{ "node": "Split For Phones", "type": "main", "index": 0 }]] },
+    "Split For Phones": { "main": [[{ "node": "Get Phone", "type": "main", "index": 0 }], [{ "node": "Output Ready", "type": "main", "index": 0 }]] },
+    "Get Phone": { "main": [[{ "node": "Store Phone", "type": "main", "index": 0 }]] },
+    "Store Phone": { "main": [[{ "node": "Split For Phones", "type": "main", "index": 0 }]] },
+    "Output Ready": { "main": [[{ "node": "Split For Send", "type": "main", "index": 0 }]] },
+    "Split For Send": { "main": [[{ "node": "Prepare Message", "type": "main", "index": 0 }], [{ "node": "Build Report", "type": "main", "index": 0 }]] },
+    "Prepare Message": { "main": [[{ "node": "Send WhatsApp", "type": "main", "index": 0 }]] },
+    "Send WhatsApp": { "main": [[{ "node": "Track Result", "type": "main", "index": 0 }]] },
     "Track Result": { "main": [[{ "node": "Prepare API Body", "type": "main", "index": 0 }]] },
     "Prepare API Body": { "main": [[{ "node": "Save To API", "type": "main", "index": 0 }]] },
-    "Save To API": { "main": [[{ "node": "Delay Between Messages", "type": "main", "index": 0 }]] },
-    "Delay Between Messages": { "main": [[{ "node": "Split For Sending", "type": "main", "index": 0 }]] },
-    "Build Final Report": { "main": [[{ "node": "Save Results to Firestore", "type": "main", "index": 0 }]] },
-    "Save Results to Firestore": { "main": [[{ "node": "Mark as Sent Today", "type": "main", "index": 0 }]] },
-    "Mark as Sent Today": { "main": [[{ "node": "Notify Manager", "type": "main", "index": 0 }]] }
+    "Save To API": { "main": [[{ "node": "Delay", "type": "main", "index": 0 }]] },
+    "Delay": { "main": [[{ "node": "Split For Send", "type": "main", "index": 0 }]] },
+    "Build Report": { "main": [[{ "node": "Save Execution Log", "type": "main", "index": 0 }]] },
+    "Save Execution Log": { "main": [[{ "node": "Notify Manager", "type": "main", "index": 0 }]] }
   },
   "pinData": {},
-  "meta": {
-    "instanceId": "06e414625359ae9234572c0c20c923c3afa2c5626d773de32d3a6c9e76ed8209"
-  }
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "06e414625359ae9234572c0c20c923c3afa2c5626d773de32d3a6c9e76ed8209" }
 }

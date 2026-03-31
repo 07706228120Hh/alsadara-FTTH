@@ -128,6 +128,10 @@ public interface IUnitOfWork : IDisposable
     IRepository<EmployeeLocation, long> EmployeeLocations { get; }
     IRepository<EmployeeLocationLog, long> EmployeeLocationLogs { get; }
 
+    // Reminder (تذكير تلقائي)
+    IRepository<ReminderSettings, long> ReminderSettings { get; }
+    IRepository<ReminderExecutionLog, long> ReminderExecutionLogs { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);

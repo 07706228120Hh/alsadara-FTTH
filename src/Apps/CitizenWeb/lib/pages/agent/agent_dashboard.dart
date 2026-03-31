@@ -1358,56 +1358,74 @@ class _AgentDashboardState extends State<AgentDashboard>
         ? const Color(0xFF43A047)
         : const Color(0xFFE53935);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isIncoming ? Icons.south_west_rounded : Icons.north_east_rounded,
-              color: color,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tx.description ?? tx.typeName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${tx.createdAt.day}/${tx.createdAt.month} - ${tx.createdAt.hour}:${tx.createdAt.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(
-                    color: AppTheme.textGrey,
-                    fontSize: 11,
-                  ),
+                child: Icon(
+                  isIncoming ? Icons.south_west_rounded : Icons.north_east_rounded,
+                  color: color,
+                  size: 16,
                 ),
-              ],
-            ),
-          ),
-          Text(
-            '${isIncoming ? "+" : "-"} ${_formatNumber(tx.amount)}',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              fontFamily: 'Roboto',
-            ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tx.description ?? tx.typeName,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          tx.categoryName,
+                          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${tx.createdAt.day}/${tx.createdAt.month} - ${tx.createdAt.hour}:${tx.createdAt.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(color: AppTheme.textGrey, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${isIncoming ? "+" : "-"} ${_formatNumber(tx.amount)} د.ع',
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Roboto'),
+                  ),
+                  Text(
+                    'الرصيد: ${_formatNumber(tx.balanceAfter)}',
+                    style: const TextStyle(color: AppTheme.textGrey, fontSize: 10),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

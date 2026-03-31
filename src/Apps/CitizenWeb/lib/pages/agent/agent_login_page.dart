@@ -53,6 +53,24 @@ class _AgentLoginPageState extends State<AgentLoginPage>
     )..repeat(reverse: true);
 
     _entranceCtrl.forward();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final agentAuth = context.read<AgentAuthProvider>();
+      final rememberMe = await agentAuth.agentApi.getRememberMe();
+      if (rememberMe) {
+        final saved = await agentAuth.agentApi.getSavedCredentials();
+        if (mounted && saved.code != null) {
+          setState(() {
+            _rememberMe = true;
+            _codeController.text = saved.code!;
+            if (saved.password != null) _passwordController.text = saved.password!;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -76,6 +94,16 @@ class _AgentLoginPageState extends State<AgentLoginPage>
         _passwordController.text,
         rememberMe: _rememberMe,
       );
+
+      // حفظ بيانات الدخول محلياً إذا "ذكرني" مفعّل
+      if (success && _rememberMe) {
+        await agentAuth.agentApi.saveCredentials(
+          _codeController.text.trim(),
+          _passwordController.text,
+        );
+      } else if (!_rememberMe) {
+        await agentAuth.agentApi.clearCredentials();
+      }
 
       if (mounted) {
         setState(() => _isLoading = false);

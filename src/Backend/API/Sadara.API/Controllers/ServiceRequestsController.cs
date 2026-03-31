@@ -422,9 +422,26 @@ public class ServiceRequestsController : ControllerBase
                 chargeTargetId = request.TechnicianId.Value;
             }
 
-            // ═══ ملاحظة: تم إزالة التسجيل المالي على الفني عند إكمال الطلب ═══
-            // التسجيل يتم فقط عند تفعيل الاشتراك واختيار طريقة الدفع "فني"
-            // في SubscriptionLogsController أو FtthAccountingController
+            // ═══ التسجيل المالي على الفني عند إكمال مهام الصيانة ═══
+            // مهام الصيانة/الفنيين/الاتصالات/اللحام: تُسجَّل على الفني عند الإكمال
+            // مهام الحسابات (شراء/تجديد): تُسجَّل من شاشة التجديد فقط
+
+            // استخراج القسم من Details
+            string departmentStr = "";
+            try
+            {
+                if (!string.IsNullOrEmpty(request.Details))
+                {
+                    var dJson = System.Text.Json.JsonDocument.Parse(request.Details);
+                    if (dJson.RootElement.TryGetProperty("department", out var deptProp))
+                        departmentStr = deptProp.GetString() ?? "";
+                }
+            }
+            catch { }
+
+            // أقسام الحسابات — لا تُسجَّل هنا (تُسجَّل من شاشة التجديد)
+            bool isAccountingDept = departmentStr == "الحسابات" || departmentStr == "الوكلاء" ||
+                                    taskTypeStr == "شراء اشتراك" || taskTypeStr == "تجديد اشتراك";
 
             var shouldHandleTechCancellation = chargeTargetId.HasValue;
 
@@ -432,10 +449,50 @@ public class ServiceRequestsController : ControllerBase
             {
                 bool hasTechFinancialChanges = false;
 
-                // لا خصم عند Completed — الخصم يتم عند التفعيل فقط
-                if (newStatus == ServiceRequestStatus.Completed)
+                if (newStatus == ServiceRequestStatus.Completed && !isAccountingDept)
                 {
-                    _logger.LogInformation("طلب {RequestNumber} مكتمل — التسجيل المالي على الفني سيتم عند تفعيل الاشتراك", request.RequestNumber);
+                    // مهمة صيانة/فني مكتملة مع مبلغ → سجّل على الفني
+                    var chargeAmount = request.FinalCost ?? request.EstimatedCost ?? 0;
+                    if (chargeAmount > 0 && chargeTargetId.HasValue)
+                    {
+                        var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId.Value);
+                        if (technician != null)
+                        {
+                            // تحقق من عدم وجود معاملة سابقة لنفس الطلب
+                            var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                                .AnyAsync(t => t.ServiceRequestId == id && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted);
+
+                            if (!existingTx)
+                            {
+                                technician.TechTotalCharges += chargeAmount;
+                                technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
+                                _unitOfWork.Users.Update(technician);
+
+                                var techTx = new TechnicianTransaction
+                                {
+                                    TechnicianId = technician.Id,
+                                    Type = TechnicianTransactionType.Charge,
+                                    Category = TechnicianTransactionCategory.Maintenance,
+                                    Amount = chargeAmount,
+                                    BalanceAfter = technician.TechNetBalance,
+                                    Description = $"{taskTypeStr} - {request.RequestNumber}",
+                                    ServiceRequestId = id,
+                                    CreatedById = request.CompanyId ?? Guid.Empty,
+                                    CompanyId = request.CompanyId ?? Guid.Empty,
+                                    CreatedAt = DateTime.UtcNow,
+                                };
+                                await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
+                                hasTechFinancialChanges = true;
+
+                                _logger.LogInformation("تم تسجيل {Amount} على الفني {TechId} — مهمة {RequestNumber} ({TaskType})",
+                                    chargeAmount, technician.Id, request.RequestNumber, taskTypeStr);
+                            }
+                        }
+                    }
+                }
+                else if (newStatus == ServiceRequestStatus.Completed && isAccountingDept)
+                {
+                    _logger.LogInformation("طلب {RequestNumber} (حسابات) مكتمل — التسجيل المالي يتم عند تفعيل الاشتراك", request.RequestNumber);
                 }
                 else if (newStatus == ServiceRequestStatus.Cancelled || newStatus == ServiceRequestStatus.Rejected)
                 {
