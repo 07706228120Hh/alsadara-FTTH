@@ -17,6 +17,7 @@ import '../services/auto_renewal_reminder_service.dart';
 import '../services/whatsapp_business_service.dart';
 import '../services/api/api_client.dart';
 import 'reminder_reports_page.dart';
+import 'whatsapp_excel_sender_page.dart';
 import 'dart:convert';
 import 'printer_settings_page.dart';
 import 'settings_page.dart';
@@ -84,7 +85,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadCompanyData();
     _loadDepartments();
     _loadCenters();
@@ -295,6 +296,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   text: 'الأقسام والمهام'),
               Tab(icon: Icon(Icons.location_on, size: 20), text: 'المراكز'),
               Tab(icon: Icon(Icons.message, size: 20), text: 'واتساب والتقارير'),
+              Tab(icon: Icon(Icons.table_chart, size: 20), text: 'إرسال من Excel'),
             ],
           ),
         ),
@@ -335,6 +337,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 padding: const EdgeInsets.all(20),
                 child: _buildReportSettingsSection(),
               ),
+              // Tab 5: إرسال من Excel
+              const WhatsAppExcelSenderPage(embedded: true),
             ],
           ),
         ),

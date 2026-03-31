@@ -617,8 +617,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             children: [
               // أيقونة Lottie جميلة
               Container(
-                width: 200,
-                height: 200,
+                width: MediaQuery.of(context).size.width < 400 ? 140 : 200,
+                height: MediaQuery.of(context).size.width < 400 ? 140 : 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
@@ -666,7 +666,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
               const SizedBox(height: 36),
               // شريط تحميل متدرج
               SizedBox(
-                width: 260,
+                width: MediaQuery.of(context).size.width < 400 ? 200 : 260,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
@@ -799,7 +799,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   /// تخطيط التابلت
   Widget _buildTabletLayout(BoxConstraints constraints) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 500),
+      constraints: BoxConstraints(maxWidth: constraints.maxWidth < 500 ? constraints.maxWidth - 16 : 500),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -830,7 +830,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   /// قسم الترحيب للسطح المكتب
   Widget _buildWelcomeSection({required bool isDesktop}) {
     return Container(
-      padding: const EdgeInsets.all(48),
+      padding: EdgeInsets.all(isDesktop ? 48 : 20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -929,7 +929,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         Text(
           'منصة صدارة',
           style: GoogleFonts.cairo(
-            fontSize: 32,
+            fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 32,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),

@@ -631,47 +631,41 @@ class _TaskCardState extends State<TaskCard> {
 
   /// شريط الإجراءات الفخم
   Widget _buildCompactActionBar() {
-    return Row(
-      children: [
-        // واتساب
-        if (widget.task.phone.isNotEmpty)
-          _buildCompactActionButton(
-            Icons.message_rounded,
-            'واتساب',
-            const Color(0xFF25D366),
-            () => _launchWhatsApp(widget.task.phone),
-          ),
+    final buttons = <Widget>[];
 
-        // وكيل
-        if (widget.currentUserRole == 'ليدر' ||
-            widget.currentUserRole == 'مدير')
-          _buildCompactActionButton(
-            Icons.group_rounded,
-            'وكيل',
-            const Color(0xFF8E44AD),
-            _showAgentsDialog,
-          ),
+    if (widget.task.phone.isNotEmpty)
+      buttons.add(_buildCompactActionButton(
+        Icons.message_rounded, 'واتساب', const Color(0xFF25D366),
+        () => _launchWhatsApp(widget.task.phone),
+      ));
+    if (widget.currentUserRole == 'ليدر' || widget.currentUserRole == 'مدير')
+      buttons.add(_buildCompactActionButton(
+        Icons.group_rounded, 'وكيل', const Color(0xFF8E44AD), _showAgentsDialog,
+      ));
+    if (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر')
+      buttons.add(_buildCompactActionButton(
+        Icons.edit_rounded, 'تعديل', const Color(0xFF3498DB), _showEditTaskDialog,
+      ));
+    if (widget.currentUserRole == 'مدير')
+      buttons.add(_buildCompactActionButton(
+        Icons.delete_outline_rounded, 'حذف', const Color(0xFFE74C3C), _confirmDeleteTask,
+      ));
 
-        // تعديل
-        if (widget.currentUserRole == 'مدير' ||
-            widget.currentUserRole == 'ليدر')
-          _buildCompactActionButton(
-            Icons.edit_rounded,
-            'تعديل',
-            const Color(0xFF3498DB),
-            _showEditTaskDialog,
-          ),
+    if (buttons.isEmpty) return const SizedBox.shrink();
 
-        // حذف
-        if (widget.currentUserRole == 'مدير')
-          _buildCompactActionButton(
-            Icons.delete_outline_rounded,
-            'حذف',
-            const Color(0xFFE74C3C),
-            _confirmDeleteTask,
-          ),
-      ],
-    );
+    final isMobile = MediaQuery.of(context).size.width < 500;
+    if (isMobile && buttons.length > 2) {
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: buttons.map((b) => SizedBox(
+          width: (MediaQuery.of(context).size.width - 40) / 2,
+          child: b,
+        )).toList(),
+      );
+    }
+
+    return Row(children: buttons);
   }
 
   Widget _buildCompactActionButton(

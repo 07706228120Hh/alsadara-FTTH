@@ -9,7 +9,8 @@ import '../services/whatsapp_business_service.dart';
 
 /// صفحة إرسال جماعي من ملف Excel
 class WhatsAppExcelSenderPage extends StatefulWidget {
-  const WhatsAppExcelSenderPage({super.key});
+  final bool embedded;
+  const WhatsAppExcelSenderPage({super.key, this.embedded = false});
 
   @override
   State<WhatsAppExcelSenderPage> createState() =>
@@ -209,18 +210,46 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
         offerText: _selectedTemplate == 'sadara_expired' ? _offerController.text : null,
       );
 
-      setState(() {
-        _isSending = false;
-        _result = result['success'] == true
-            ? 'تم إرسال الطلب بنجاح — ${result['data']?['totalRecipients'] ?? _selectedRows.length} مستلم'
-            : 'فشل: ${result['message'] ?? 'خطأ غير معروف'}';
-      });
+      setState(() => _isSending = false);
+
+      if (mounted) {
+        final success = result['success'] == true;
+        final count = result['data']?['totalRecipients'] ?? _selectedRows.length;
+        _showResultDialog(success, success
+            ? 'تم إرسال $count رسالة بنجاح!\n\nسيتم الإرسال في الخلفية عبر n8n.\nيمكنك متابعة النتائج في تقارير الإرسال.'
+            : 'فشل الإرسال: ${result['message'] ?? 'خطأ غير معروف'}');
+      }
     } catch (e) {
-      setState(() {
-        _isSending = false;
-        _result = 'خطأ: $e';
-      });
+      setState(() => _isSending = false);
+      if (mounted) {
+        _showResultDialog(false, 'خطأ: $e');
+      }
     }
+  }
+
+  void _showResultDialog(bool success, String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(
+          success ? Icons.check_circle : Icons.error,
+          size: 64,
+          color: success ? Colors.green : Colors.red,
+        ),
+        title: Text(success ? 'تم الإرسال' : 'فشل الإرسال'),
+        content: Text(message, textAlign: TextAlign.center),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: success ? Colors.green : Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('حسناً'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ═══════════════════════════════════════
@@ -229,6 +258,12 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
 
   @override
   Widget build(BuildContext context) {
+    final content = _rows.isEmpty ? _buildEmptyState() : _buildDataView();
+
+    if (widget.embedded) {
+      return content;
+    }
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -249,7 +284,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
             ),
           ],
         ),
-        body: _rows.isEmpty ? _buildEmptyState() : _buildDataView(),
+        body: content,
       ),
     );
   }
@@ -316,13 +351,17 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
               if (_selectedTemplate == 'sadara_expired') ...[
                 const SizedBox(width: 16),
                 SizedBox(
-                  width: 200,
+                  width: 350,
                   child: TextField(
                     controller: _offerController,
-                    decoration: const InputDecoration(
+                    maxLines: 2,
+                    decoration: InputDecoration(
                       isDense: true,
-                      labelText: 'نص العرض',
-                      border: OutlineInputBorder(),
+                      labelText: 'نص العرض الخاص',
+                      hintText: 'مثال: باقة FIBER 35 بسعر 30,000 فقط!',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      filled: true,
+                      fillColor: Colors.orange.shade50,
                     ),
                   ),
                 ),
@@ -368,19 +407,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
             ],
           ),
         ),
-        // نتيجة الإرسال
-        if (_result != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            color: _result!.contains('نجاح') ? Colors.green.shade50 : Colors.red.shade50,
-            child: Text(_result!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _result!.contains('نجاح') ? Colors.green.shade800 : Colors.red.shade800,
-                  fontWeight: FontWeight.bold,
-                )),
-          ),
+        // (النتيجة تظهر كـ dialog)
         // الجدول
         Expanded(
           child: SingleChildScrollView(

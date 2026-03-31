@@ -577,13 +577,14 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final screenW = MediaQuery.of(context).size.width;
+    final isMobile = screenW < 600;
     return Dialog(
-      insetPadding: isMobile ? const EdgeInsets.all(8) : const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 40, vertical: isMobile ? 10 : 24),
       child: Container(
-        width: MediaQuery.of(context).size.width * (isMobile ? 1.0 : 0.9),
-        height: MediaQuery.of(context).size.height * (isMobile ? 0.95 : 0.9),
-        padding: EdgeInsets.all(isMobile ? 12 : 20),
+        width: isMobile ? screenW - 12 : screenW * 0.9,
+        height: MediaQuery.of(context).size.height * (isMobile ? 0.93 : 0.9),
+        padding: EdgeInsets.all(isMobile ? 8 : 20),
         child: Column(
           children: [
             Row(
@@ -722,7 +723,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                         (v == null || v.isEmpty) ? 'يجب اختيار القسم' : null,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<String>(
@@ -770,7 +771,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                     onChanged: (v) => setState(() => _selectedLeader = v ?? ''),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     key: ValueKey('tech_${_selectedTechnician}_${_technicians.length}'),
@@ -849,7 +850,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                       : null,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
               Expanded(
                 child: TextFormField(
                   controller: _phoneController,
@@ -937,7 +938,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                             : null,
                       ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
               Expanded(
                 child: TextFormField(
                   controller: _fatController,
@@ -1007,7 +1008,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                       : null,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
               Expanded(
                 child: DropdownButtonFormField<String>(
                   decoration: InputDecoration(
@@ -1114,7 +1115,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('إلغاء'),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
         ElevatedButton.icon(
           onPressed: _isLoading ? null : _createTask,
           icon: _isLoading
