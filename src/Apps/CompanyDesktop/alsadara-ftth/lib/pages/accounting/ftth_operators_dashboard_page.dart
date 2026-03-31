@@ -8984,25 +8984,27 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: TextField(
                 controller: _searchCtrl,
-                style: GoogleFonts.cairo(color: Colors.white),
+                style: GoogleFonts.cairo(color: Colors.black87),
                 decoration: InputDecoration(
                   hintText: 'بحث في كل الحقول...',
-                  hintStyle: GoogleFonts.cairo(color: Colors.white70),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                  hintStyle: GoogleFonts.cairo(color: Colors.grey.shade500),
+                  prefixIcon: Icon(Icons.search, color: Colors.teal.shade400),
                   suffixIcon: _searchCtrl.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white70),
+                          icon: Icon(Icons.clear, color: Colors.grey.shade500),
                           onPressed: () => _searchCtrl.clear())
                       : null,
+                  filled: true,
+                  fillColor: Colors.teal.shade50,
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white54)),
+                      borderSide: BorderSide(color: Colors.teal.shade200)),
                   enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white54)),
+                      borderSide: BorderSide(color: Colors.teal.shade200)),
                   focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white)),
+                      borderSide: BorderSide(color: Colors.teal.shade400)),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),

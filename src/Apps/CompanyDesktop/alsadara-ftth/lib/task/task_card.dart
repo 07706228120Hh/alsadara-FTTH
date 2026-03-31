@@ -1195,7 +1195,8 @@ class _TaskCardState extends State<TaskCard> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.of(context).pop();
+          // تحديث القائمة بدل الرجوع للصفحة السابقة
+          widget.onStatusChanged(widget.task);
         } else {
           final msg = result['message']?.toString() ?? 'فشل حذف المهمة';
           final code = result['statusCode'];

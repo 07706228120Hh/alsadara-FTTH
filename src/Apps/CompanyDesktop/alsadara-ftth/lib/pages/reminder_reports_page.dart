@@ -48,6 +48,8 @@ class _ReminderReportsPageState extends State<ReminderReportsPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
+          backgroundColor: const Color(0xFF6A1B9A),
+          foregroundColor: Colors.white,
           title: const Text('تقارير التذكير التلقائي'),
           centerTitle: true,
           actions: [

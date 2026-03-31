@@ -90,37 +90,22 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
         if (closeOption == 'clear_and_close') {
           debugPrint('✅ المستخدم اختار: مسح البيانات والإغلاق');
 
-          // إظهار مؤشر التحميل أثناء المسح
-          if (context.mounted) {
-            _showClearingDataDialog(context);
-          }
-
-          // تنفيذ مسح البيانات قبل الإغلاق
-          await AppCloseHandler.clearSavedLoginCredentials();
-          debugPrint('🗑️ تم مسح بيانات تسجيل الدخول المحفوظة فقط');
-
-          // مسح توكنات FTTH دائماً عند الإغلاق
-          await AppCloseHandler.clearFtthSessionTokens();
-
-          // إزالة الحماية للسماح بالإغلاق
+          // إزالة الحماية فوراً للسماح بالإغلاق السريع
           await windowManager.setPreventClose(false);
-          debugPrint('🔓 تم إلغاء حماية النافذة');
 
-          // إغلاق dialog التحميل إذا كان مفتوحاً
-          if (context.mounted && Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
+          // مسح البيانات بدون انتظار — التطبيق سيُغلق فوراً
+          AppCloseHandler.clearSavedLoginCredentials();
+          AppCloseHandler.clearFtthSessionTokens();
 
           return true;
         } else if (closeOption == 'close_only') {
-          debugPrint('✅ المستخدم اختار: الإغلاق فقط بدون مسح البيانات');
+          debugPrint('✅ المستخدم اختار: الإغلاق فقط');
 
-          // مسح توكنات FTTH دائماً عند الإغلاق (للأمان)
-          await AppCloseHandler.clearFtthSessionTokens();
-
-          // إزالة الحماية للسماح بالإغلاق بدون مسح البيانات
+          // إزالة الحماية فوراً
           await windowManager.setPreventClose(false);
-          debugPrint('🔓 تم إلغاء حماية النافذة للإغلاق المباشر');
+
+          // مسح التوكنات بدون انتظار
+          AppCloseHandler.clearFtthSessionTokens();
 
           return true;
         } else {
