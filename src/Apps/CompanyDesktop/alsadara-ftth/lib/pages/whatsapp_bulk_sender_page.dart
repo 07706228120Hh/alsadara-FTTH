@@ -6,6 +6,7 @@ import '../services/custom_auth_service.dart';
 import '../whatsapp/services/whatsapp_system_settings_service.dart';
 import 'whatsapp_batch_reports_page.dart';
 import 'whatsapp_business_config_page.dart';
+import 'whatsapp_excel_sender_page.dart';
 
 /// صفحة إرسال رسائل WhatsApp جماعية
 class WhatsAppBulkSenderPage extends StatefulWidget {
@@ -581,6 +582,13 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                 ),
               ).then((_) => _checkConfiguration()); // تحديث الحالة بعد العودة
             },
+          ),
+          // زر إرسال من Excel
+          IconButton(
+            icon: const Icon(Icons.table_chart),
+            tooltip: 'إرسال من Excel',
+            onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const WhatsAppExcelSenderPage())),
           ),
           // زر تقارير الإرسال
           IconButton(
