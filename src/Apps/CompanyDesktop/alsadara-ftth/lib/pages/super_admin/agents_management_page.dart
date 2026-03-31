@@ -3,6 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/accounting_theme.dart';
@@ -1252,14 +1254,47 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                         fontWeight: FontWeight.w500,
                       )),
                   const SizedBox(width: 8),
-                  const Icon(Icons.phone,
-                      size: 11, color: AccountingTheme.textMuted),
-                  const SizedBox(width: 3),
-                  Text(agent.phoneNumber,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AccountingTheme.textSecondary,
-                      )),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: agent.phoneNumber));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تم نسخ ${agent.phoneNumber}'), duration: const Duration(seconds: 1)),
+                      );
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.phone, size: 11, color: AccountingTheme.textMuted),
+                        const SizedBox(width: 3),
+                        Text(agent.phoneNumber,
+                            style: const TextStyle(fontSize: 11, color: AccountingTheme.textSecondary)),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.copy, size: 10, color: AccountingTheme.textMuted),
+                      ],
+                    ),
+                  ),
+                  if (agent.plainPassword != null && agent.plainPassword!.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: agent.plainPassword!));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('تم نسخ كلمة المرور'), duration: Duration(seconds: 1)),
+                        );
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lock, size: 11, color: AccountingTheme.textMuted),
+                          const SizedBox(width: 3),
+                          Text(agent.plainPassword!,
+                              style: const TextStyle(fontSize: 11, color: AccountingTheme.textSecondary)),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.copy, size: 10, color: AccountingTheme.textMuted),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (agent.city != null) ...[
                     const SizedBox(width: 8),
                     const Icon(Icons.location_on,
@@ -1272,6 +1307,26 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                           color: AccountingTheme.textSecondary,
                         )),
                   ],
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => _sendAgentInfoViaWhatsApp(agent),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF25D366).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.send, size: 10, color: Color(0xFF25D366)),
+                          SizedBox(width: 3),
+                          Text('إرسال البيانات', style: TextStyle(fontSize: 10, color: Color(0xFF25D366), fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -1334,6 +1389,29 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         _buildAgentPopupMenu(agent, isActive),
       ],
     );
+  }
+
+  Future<void> _sendAgentInfoViaWhatsApp(AgentModel agent) async {
+    final phone = agent.phoneNumber.startsWith('0')
+        ? '964${agent.phoneNumber.substring(1)}'
+        : agent.phoneNumber;
+    final msg = 'مرحباً ${agent.name}\n\n'
+        'بيانات حسابك في منصة الصدارة:\n\n'
+        'كود الوكيل: ${agent.agentCode}\n'
+        'كلمة المرور: ${agent.plainPassword ?? "---"}\n\n'
+        'رابط الدخول:\nhttps://ramzbot.com\n\n'
+        'شركة الصدارة - المشغل الرسمي للمشروع الوطني';
+    final encoded = Uri.encodeComponent(msg);
+    final url = 'whatsapp://send?phone=$phone&text=$encoded';
+    try {
+      await launchUrl(Uri.parse(url));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر فتح واتساب'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildAgentPopupMenu(AgentModel agent, bool isActive) {
