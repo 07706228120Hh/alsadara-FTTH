@@ -9,6 +9,8 @@ import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
+import 'edit_company_page.dart';
+import '../../models/tenant.dart';
 import '../home_page.dart';
 import '../../permissions/permissions.dart';
 
@@ -585,7 +587,11 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
               subtitle: const Text('تعديل بيانات الشركة والاشتراك'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: تعديل الشركة
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => EditCompanyPage(
+                    tenant: Tenant.fromCompany(company),
+                  ),
+                )).then((_) => _loadCompanies());
               },
             ),
 

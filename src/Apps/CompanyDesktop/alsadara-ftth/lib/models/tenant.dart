@@ -63,6 +63,29 @@ class Tenant {
     this.adminFullName,
   });
 
+  /// إنشاء Tenant من Company (VPS API)
+  factory Tenant.fromCompany(dynamic company) {
+    return Tenant(
+      id: company.id,
+      name: company.name,
+      code: company.code,
+      email: company.email,
+      phone: company.phone,
+      address: company.address,
+      city: company.city,
+      logo: company.logoUrl,
+      isActive: company.isActive,
+      subscriptionStart: company.subscriptionStartDate,
+      subscriptionEnd: company.subscriptionEndDate,
+      subscriptionPlan: 'standard',
+      maxUsers: company.maxUsers,
+      createdAt: company.createdAt,
+      createdBy: 'system',
+      enabledFirstSystemFeatures: Map<String, bool>.from(company.enabledFirstSystemFeatures ?? {}),
+      enabledSecondSystemFeatures: Map<String, bool>.from(company.enabledSecondSystemFeatures ?? {}),
+    );
+  }
+
   /// الأيام المتبقية من الاشتراك
   int get daysRemaining => subscriptionEnd.difference(DateTime.now()).inDays;
 

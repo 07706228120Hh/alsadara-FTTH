@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
+import '../../config/app_secrets.dart';
 
 class VpsDataManagerPage extends StatefulWidget {
   const VpsDataManagerPage({super.key});
@@ -23,8 +24,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   // يمكنك تغيير هذا الرابط حسب بيئة العمل
   static const String baseUrl = 'https://api.ramzalsadara.tech/api/internal';
 
-  // API Key للوصول الداخلي
-  static const String apiKey = 'sadara-internal-2024-secure-key';
+  // API Key من AppSecrets
+  static String get apiKey => AppSecrets.instance.internalApiKey;
 
   // رابط بديل للتطوير المحلي
   // static const String baseUrl = 'http://localhost:5000/api/internal';
@@ -83,8 +84,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     });
 
     try {
-      final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
+      final client = HttpClient();
 
       final request = await client.getUrl(Uri.parse('$baseUrl/$endpoint'));
       request.headers.set('Content-Type', 'application/json');
@@ -153,8 +153,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
 
   Future<void> _deleteItem(String endpoint, String id) async {
     try {
-      final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
+      final client = HttpClient();
 
       final request =
           await client.deleteUrl(Uri.parse('$baseUrl/$endpoint/$id'));
@@ -186,8 +185,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   Future<void> _updateItem(
       String endpoint, String id, Map<String, dynamic> data) async {
     try {
-      final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
+      final client = HttpClient();
 
       final request = await client.putUrl(Uri.parse('$baseUrl/$endpoint/$id'));
       request.headers.set('Content-Type', 'application/json; charset=utf-8');
@@ -223,8 +221,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
 
   Future<void> _createItem(String endpoint, Map<String, dynamic> data) async {
     try {
-      final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
+      final client = HttpClient();
 
       final request = await client.postUrl(Uri.parse('$baseUrl/$endpoint'));
       request.headers.set('Content-Type', 'application/json; charset=utf-8');
