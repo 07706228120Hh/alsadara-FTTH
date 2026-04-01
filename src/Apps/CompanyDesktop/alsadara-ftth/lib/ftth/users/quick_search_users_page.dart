@@ -94,7 +94,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
         nameController.text = query;
       }
       // بحث تلقائي بعد بناء الإطار
-      WidgetsBinding.instance.addPostFrameCallback((_) => _performSearch());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() { currentPage = 1; _hasSearched = true; });
+        _performSearch();
+      });
     }
     _nameFocus = FocusNode();
     // طلب التركيز بعد بناء الإطار الأول
@@ -586,12 +589,12 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                     ),
                   ],
                 ),
-                child: Row(
+                child: isLargeScreen ? Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // المنطقة
-                    SizedBox(
-                      width: isLargeScreen ? 180 : 140,
+                    // المنطقة — مخفية على الهاتف
+                    if (isLargeScreen) SizedBox(
+                      width: 180,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -634,7 +637,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    if (isLargeScreen) const SizedBox(width: 8),
                     // حقل اسم المشترك
                     Expanded(
                       flex: 3,
@@ -776,6 +779,58 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                         ),
                       ),
+                  ],
+                )
+                // ══ Mobile: عمودي ══
+                : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // اسم المشترك
+                    TextField(
+                      controller: nameController,
+                      textDirection: TextDirection.rtl,
+                      textAlign: TextAlign.right,
+                      textInputAction: TextInputAction.search,
+                      focusNode: _nameFocus,
+                      onChanged: (_) { setState(() {}); _onQueryChanged(); },
+                      onSubmitted: (_) { setState(() { currentPage = 1; _hasSearched = true; }); _performSearch(); },
+                      decoration: InputDecoration(
+                        labelText: 'اسم المشترك',
+                        filled: true, fillColor: Colors.white, isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        prefixIcon: const Icon(Icons.person_search, color: Color(0xFF1A237E), size: 18),
+                        suffixIcon: nameController.text.isNotEmpty
+                            ? IconButton(icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                            : null,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.blue.shade300)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2)),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    // رقم الهاتف
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      textDirection: TextDirection.ltr,
+                      textAlign: TextAlign.left,
+                      onChanged: (_) { setState(() {}); _onQueryChanged(); },
+                      onSubmitted: (_) { setState(() { currentPage = 1; _hasSearched = true; }); _performSearch(); },
+                      decoration: InputDecoration(
+                        labelText: 'رقم الهاتف',
+                        filled: true, fillColor: Colors.white, isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        prefixIcon: const Icon(Icons.phone, color: Color(0xFF1A237E), size: 18),
+                        suffixIcon: phoneController.text.isNotEmpty
+                            ? IconButton(icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                            : null,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.blue.shade300)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2)),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ],
                 ),
               ),
