@@ -579,24 +579,25 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
     final isMobile = screenW < 600;
+    final isSmall = screenW < 420;
     return Dialog(
-      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 40, vertical: isMobile ? 10 : 24),
+      insetPadding: EdgeInsets.symmetric(horizontal: isSmall ? 4 : (isMobile ? 6 : 40), vertical: isSmall ? 6 : (isMobile ? 10 : 24)),
       child: Container(
-        width: isMobile ? screenW - 12 : screenW * 0.9,
-        height: MediaQuery.of(context).size.height * (isMobile ? 0.93 : 0.9),
-        padding: EdgeInsets.all(isMobile ? 8 : 20),
+        width: isSmall ? screenW - 8 : (isMobile ? screenW - 12 : screenW * 0.9),
+        height: MediaQuery.of(context).size.height * (isSmall ? 0.95 : (isMobile ? 0.93 : 0.9)),
+        padding: EdgeInsets.all(isSmall ? 6 : (isMobile ? 8 : 20)),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(children: [
-                  Icon(Icons.add_task, color: Colors.blue.shade700),
-                  const SizedBox(width: 8),
+                  Icon(Icons.add_task, color: Colors.blue.shade700, size: isSmall ? 18 : 24),
+                  SizedBox(width: isSmall ? 4 : 8),
                   Text('إضافة مهمة جديدة',
                       style:
-                          TextStyle(fontSize: isMobile ? 16 : 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
+                          TextStyle(fontSize: isSmall ? 13 : (isMobile ? 16 : 24), fontWeight: FontWeight.bold)),
+                  SizedBox(width: isSmall ? 4 : 8),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -637,11 +638,11 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                             children: [
                               const Icon(Icons.error_outline,
                                   size: 64, color: Colors.red),
-                              const SizedBox(height: 6),
+                              SizedBox(height: _isNarrow ? 3 : 6),
                               Text(_errorMessage!,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(color: Colors.red)),
-                              const SizedBox(height: 6),
+                              SizedBox(height: _isNarrow ? 3 : 6),
                               ElevatedButton(
                                 onPressed: () {
                                   setState(() => _errorMessage = null);
@@ -668,17 +669,17 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDepartmentSection(),
-            const SizedBox(height: 6),
+            SizedBox(height: _isNarrow ? 4 : 6),
             _buildCustomerSection(),
-            const SizedBox(height: 6),
+            SizedBox(height: _isNarrow ? 4 : 6),
             _buildTechnicalSection(),
-            const SizedBox(height: 6),
+            SizedBox(height: _isNarrow ? 4 : 6),
             if (_selectedTaskType == 'شراء اشتراك') ...[
               _buildSubscriptionSection(),
-              const SizedBox(height: 6),
+              SizedBox(height: _isNarrow ? 4 : 6),
             ],
             _buildAdditionalSection(),
-            const SizedBox(height: 6),
+            SizedBox(height: _isNarrow ? 4 : 6),
             _buildActionButtons(),
           ],
         ),
@@ -689,116 +690,81 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Widget _buildDepartmentSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black26),
+        color: Colors.blue.shade50.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade200, width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
       child: Padding(
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('معلومات القسم والفريق',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey('dept_${_selectedDepartment}_${_departments.length}'),
-                    decoration: const InputDecoration(
-                        labelText: 'القسم *', border: OutlineInputBorder()),
-                    value: _departments.contains(_selectedDepartment)
-                        ? _selectedDepartment
-                        : null,
-                    items: _departments
-                        .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) _onDepartmentChanged(v);
-                    },
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'يجب اختيار القسم' : null,
-                  ),
-                ),
-                SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                        labelText: 'نوع المهمة *',
-                        border: OutlineInputBorder()),
-                    value: _selectedTaskType.isEmpty ? null : _selectedTaskType,
-                    items: _getTaskTypeItems(),
-                    onChanged: (v) {
-                      setState(() {
-                        _selectedTaskType = v ?? '';
-                        if (_selectedTaskType == 'شراء اشتراك') {
-                          // إضافة قسم الحسابات إذا لم يكن موجوداً
-                          if (!_departments.contains('الحسابات')) {
-                            _departments.add('الحسابات');
-                          }
-                          _selectedDepartment = 'الحسابات';
-                          if (widget.currentUserRole == 'فني') {
-                            _selectedTechnician = widget.currentUsername;
-                            _updateSelectedUserPhone();
-                          }
-                        }
-                      });
-                    },
-                    validator: (v) => (v == null || v.isEmpty)
-                        ? 'يجب اختيار نوع المهمة'
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                        labelText: 'القائد', border: OutlineInputBorder()),
-                    value: _leaders.contains(_selectedLeader)
-                        ? _selectedLeader
-                        : null,
-                    items: _leaders
-                        .map((l) => DropdownMenuItem(value: l, child: Text(l)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedLeader = v ?? ''),
-                  ),
-                ),
-                SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey('tech_${_selectedTechnician}_${_technicians.length}'),
-                    decoration: const InputDecoration(
-                        labelText: 'الفني', border: OutlineInputBorder()),
-                    value: _technicians.contains(_selectedTechnician)
-                        ? _selectedTechnician
-                        : null,
-                    items: _technicians
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (v) {
-                      setState(() {
-                        _selectedTechnician = v ?? '';
-                        _updateSelectedUserPhone();
-                      });
-                    },
-                    validator: (v) {
-                      if (_selectedTaskType != 'شراء اشتراك' &&
-                          (v == null || v.isEmpty)) {
-                        return 'يجب اختيار فني';
+            Text('معلومات القسم والفريق',
+                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
+            SizedBox(height: _isNarrow ? 3 : 6),
+            _adaptiveRow(
+              DropdownButtonFormField<String>(
+                key: ValueKey('dept_${_selectedDepartment}_${_departments.length}'),
+                decoration: InputDecoration(
+                    labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                value: _departments.contains(_selectedDepartment)
+                    ? _selectedDepartment
+                    : null,
+                items: _departments
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) _onDepartmentChanged(v);
+                },
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'يجب اختيار القسم' : null,
+              ),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                    labelText: 'نوع المهمة *',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                value: _selectedTaskType.isEmpty ? null : _selectedTaskType,
+                items: _getTaskTypeItems(),
+                onChanged: (v) {
+                  setState(() {
+                    _selectedTaskType = v ?? '';
+                    if (_selectedTaskType == 'شراء اشتراك') {
+                      if (!_departments.contains('الحسابات')) {
+                        _departments.add('الحسابات');
                       }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
+                      _selectedDepartment = 'الحسابات';
+                      if (widget.currentUserRole == 'فني') {
+                        _selectedTechnician = widget.currentUsername;
+                        _updateSelectedUserPhone();
+                      }
+                    }
+                  });
+                },
+                validator: (v) => (v == null || v.isEmpty)
+                    ? 'يجب اختيار نوع المهمة'
+                    : null,
+              ),
+            ),
+            SizedBox(height: _isNarrow ? 3 : 6),
+            _adaptiveRow(
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                    labelText: 'القائد', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                value: _leaders.contains(_selectedLeader) ? _selectedLeader : null,
+                items: _leaders.map((l) => DropdownMenuItem(value: l, child: Text(l, style: const TextStyle(fontSize: 13)))).toList(),
+                onChanged: (v) => setState(() => _selectedLeader = v ?? ''),
+              ),
+              DropdownButtonFormField<String>(
+                key: ValueKey('tech_${_selectedTechnician}_${_technicians.length}'),
+                decoration: InputDecoration(
+                    labelText: 'الفني', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                value: _technicians.contains(_selectedTechnician) ? _selectedTechnician : null,
+                items: _technicians.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
+                onChanged: (v) { setState(() { _selectedTechnician = v ?? ''; _updateSelectedUserPhone(); }); },
+                validator: (v) { if (_selectedTaskType != 'شراء اشتراك' && (v == null || v.isEmpty)) return 'يجب اختيار فني'; return null; },
+              ),
             ),
             if (_currentSelectedPhone.isNotEmpty)
               Container(
@@ -826,50 +792,42 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Widget _buildCustomerSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black26),
+        color: Colors.blue.shade50.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade200, width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
       child: Padding(
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('معلومات العميل',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Row(children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(
-                      labelText: 'اسم العميل *', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'يجب إدخال اسم العميل'
-                      : null,
-                ),
+            Text('معلومات العميل',
+                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
+            SizedBox(height: _isNarrow ? 3 : 6),
+            _adaptiveRow(
+              TextFormField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                    labelText: 'اسم العميل *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال اسم العميل' : null,
               ),
-              SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
-              Expanded(
-                child: TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                      labelText: 'رقم الهاتف *', border: OutlineInputBorder()),
-                  keyboardType: TextInputType.phone,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'يجب إدخال رقم الهاتف'
-                      : null,
-                ),
+              TextFormField(
+                controller: _phoneController,
+                decoration: InputDecoration(
+                    labelText: 'رقم الهاتف *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                keyboardType: TextInputType.phone,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال رقم الهاتف' : null,
               ),
-            ]),
-            const SizedBox(height: 6),
+            ),
+            SizedBox(height: _isNarrow ? 3 : 6),
             Row(
               children: [
                 Expanded(
                   child: TextFormField(
                     controller: _locationController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                         labelText: 'الموقع *', border: OutlineInputBorder()),
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'يجب إدخال الموقع' : null,
@@ -897,58 +855,41 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Widget _buildTechnicalSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black26),
+        color: Colors.blue.shade50.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade200, width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
       child: Padding(
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('المعلومات الفنية',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Row(children: [
-              Expanded(
-                child: _fbgOptions.isNotEmpty
-                    ? DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                            labelText: 'FBG *', border: OutlineInputBorder()),
-                        value: _fbgOptions.contains(_fbgController.text.trim())
-                            ? _fbgController.text.trim()
-                            : null,
-                        items: _fbgOptions
-                            .toSet()
-                            .map((f) =>
-                                DropdownMenuItem(value: f, child: Text(f)))
-                            .toList(),
-                        onChanged: (v) =>
-                            setState(() => _fbgController.text = v ?? ''),
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'يجب اختيار FBG' : null,
-                      )
-                    : TextFormField(
-                        controller: _fbgController,
-                        decoration: const InputDecoration(
-                            labelText: 'FBG *', border: OutlineInputBorder()),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'يجب إدخال FBG'
-                            : null,
-                      ),
+            Text('المعلومات الفنية',
+                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
+            SizedBox(height: _isNarrow ? 3 : 6),
+            _adaptiveRow(
+              _fbgOptions.isNotEmpty
+                  ? DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                          labelText: 'FBG *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                      value: _fbgOptions.contains(_fbgController.text.trim()) ? _fbgController.text.trim() : null,
+                      items: _fbgOptions.toSet().map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
+                      onChanged: (v) => setState(() => _fbgController.text = v ?? ''),
+                      validator: (v) => (v == null || v.isEmpty) ? 'يجب اختيار FBG' : null,
+                    )
+                  : TextFormField(
+                      controller: _fbgController,
+                      decoration: InputDecoration(labelText: 'FBG *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال FBG' : null,
+                    ),
+              TextFormField(
+                controller: _fatController,
+                decoration: InputDecoration(labelText: 'FAT *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال FAT' : null,
               ),
-              SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
-              Expanded(
-                child: TextFormField(
-                  controller: _fatController,
-                  decoration: const InputDecoration(
-                      labelText: 'FAT *', border: OutlineInputBorder()),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'يجب إدخال FAT' : null,
-                ),
-              ),
-            ]),
+            ),
           ],
         ),
       ),
@@ -958,11 +899,12 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Widget _buildSubscriptionSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black26),
+        color: Colors.blue.shade50.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade200, width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
       child: Padding(
         padding: EdgeInsets.zero,
         child: Column(
@@ -972,67 +914,33 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               Icon(Icons.subscriptions,
                   color: Colors.purple.shade700, size: 20),
               const SizedBox(width: 8),
-              const Text('معلومات الاشتراك',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              Text('معلومات الاشتراك',
+                  style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
             ]),
-            const SizedBox(height: 6),
-            Row(children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    labelText: 'نوع الخدمة *',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.speed, color: Colors.green.shade600),
-                  ),
-                  value: _selectedServiceType.isEmpty
-                      ? null
-                      : _selectedServiceType,
-                  items: _serviceTypes
-                      .map((s) => DropdownMenuItem(
-                          value: s,
-                          child: Row(children: [
-                            Text(s,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 8),
-                            Text('FIBER',
-                                style: TextStyle(
-                                    color: Colors.grey.shade600, fontSize: 12)),
-                          ])))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedServiceType = v ?? ''),
-                  validator: (v) => (_selectedTaskType == 'شراء اشتراك' &&
-                          (v == null || v.isEmpty))
-                      ? 'يجب اختيار نوع الخدمة'
-                      : null,
+            SizedBox(height: _isNarrow ? 3 : 6),
+            _adaptiveRow(
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'نوع الخدمة *', border: const OutlineInputBorder(), isDense: true,
+                  prefixIcon: Icon(Icons.speed, color: Colors.green.shade600, size: 18),
                 ),
+                value: _selectedServiceType.isEmpty ? null : _selectedServiceType,
+                items: _serviceTypes.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)))).toList(),
+                onChanged: (v) => setState(() => _selectedServiceType = v ?? ''),
+                validator: (v) => (_selectedTaskType == 'شراء اشتراك' && (v == null || v.isEmpty)) ? 'يجب اختيار نوع الخدمة' : null,
               ),
-              SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    labelText: 'مدة الالتزام *',
-                    border: const OutlineInputBorder(),
-                    prefixIcon:
-                        Icon(Icons.schedule, color: Colors.blue.shade600),
-                  ),
-                  value: _selectedSubscriptionDuration.isEmpty
-                      ? null
-                      : _selectedSubscriptionDuration,
-                  items: _subscriptionDurations
-                      .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedSubscriptionDuration = v ?? ''),
-                  validator: (v) => (_selectedTaskType == 'شراء اشتراك' &&
-                          (v == null || v.isEmpty))
-                      ? 'يجب اختيار مدة الالتزام'
-                      : null,
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'مدة الالتزام *', border: const OutlineInputBorder(), isDense: true,
+                  prefixIcon: Icon(Icons.schedule, color: Colors.blue.shade600, size: 18),
                 ),
+                value: _selectedSubscriptionDuration.isEmpty ? null : _selectedSubscriptionDuration,
+                items: _subscriptionDurations.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13)))).toList(),
+                onChanged: (v) => setState(() => _selectedSubscriptionDuration = v ?? ''),
+                validator: (v) => (_selectedTaskType == 'شراء اشتراك' && (v == null || v.isEmpty)) ? 'يجب اختيار مدة الالتزام' : null,
               ),
-            ]),
-            const SizedBox(height: 6),
+            ),
+            SizedBox(height: _isNarrow ? 3 : 6),
             TextFormField(
               controller: _subscriptionAmountController,
               decoration: InputDecoration(
@@ -1062,21 +970,22 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Widget _buildAdditionalSection() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black26),
+        color: Colors.blue.shade50.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.shade200, width: 1.2),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
       child: Padding(
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('معلومات إضافية',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
+            Text('معلومات إضافية',
+                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
+            SizedBox(height: _isNarrow ? 3 : 6),
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                   labelText: 'الأولوية *', border: OutlineInputBorder()),
               value: _selectedPriority.isEmpty ? null : _selectedPriority,
               items: _priorities
@@ -1087,17 +996,17 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'يجب اختيار الأولوية' : null,
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: _isNarrow ? 3 : 6),
             TextFormField(
               controller: _notesController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                   labelText: 'الملاحظات', border: OutlineInputBorder()),
               maxLines: 3,
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: _isNarrow ? 3 : 6),
             TextFormField(
               controller: _summaryController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                   labelText: 'ملخص المهمة', border: OutlineInputBorder()),
               maxLines: 2,
             ),
@@ -1113,20 +1022,43 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       children: [
         OutlinedButton(
           onPressed: () => Navigator.pop(context),
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: _isNarrow ? 12 : 16, vertical: _isNarrow ? 6 : 10),
+            textStyle: TextStyle(fontSize: _isNarrow ? 12 : 14),
+          ),
           child: const Text('إلغاء'),
         ),
-        SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6 : 16),
+        SizedBox(width: _isNarrow ? 6 : 16),
         ElevatedButton.icon(
           onPressed: _isLoading ? null : _createTask,
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: _isNarrow ? 12 : 16, vertical: _isNarrow ? 6 : 10),
+            textStyle: TextStyle(fontSize: _isNarrow ? 12 : 14),
+          ),
           icon: _isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.save),
+              ? SizedBox(
+                  width: _isNarrow ? 14 : 18,
+                  height: _isNarrow ? 14 : 18,
+                  child: const CircularProgressIndicator(strokeWidth: 2))
+              : Icon(Icons.save, size: _isNarrow ? 16 : 20),
           label: const Text('حفظ المهمة'),
         ),
       ],
     );
+  }
+
+  /// Row على Desktop، Column على الهاتف — لمنع التداخل
+  bool get _isNarrow => MediaQuery.of(context).size.width < 500;
+
+  Widget _adaptiveRow(Widget child1, Widget child2, {double? gap}) {
+    final g = gap ?? (_isNarrow ? 4 : 8);
+    if (_isNarrow) {
+      return Column(children: [child1, SizedBox(height: g), child2]);
+    }
+    return Row(children: [
+      Expanded(child: child1),
+      SizedBox(width: g),
+      Expanded(child: child2),
+    ]);
   }
 }

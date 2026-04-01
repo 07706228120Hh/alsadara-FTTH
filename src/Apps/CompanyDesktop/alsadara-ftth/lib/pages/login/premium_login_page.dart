@@ -815,13 +815,17 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   /// تخطيط الهاتف
   Widget _buildMobileLayout(BoxConstraints constraints) {
+    final isSmall = constraints.maxWidth < 420;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildCompactHeader(),
-        const SizedBox(height: 16),
-        _buildGlassCard(
-          child: _buildLoginForm(isCompact: true),
+        SizedBox(height: isSmall ? 8 : 16),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: isSmall ? 4 : 12),
+          child: _buildGlassCard(
+            child: _buildLoginForm(isCompact: true),
+          ),
         ),
       ],
     );
@@ -922,14 +926,16 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   /// رأس مضغوط للتابلت والهاتف
   Widget _buildCompactHeader() {
+    final w = MediaQuery.of(context).size.width;
+    final isSmall = w < 420;
     return Column(
       children: [
-        _buildAnimatedLogo(size: 60),
-        const SizedBox(height: 16),
+        _buildAnimatedLogo(size: isSmall ? 40 : 60),
+        SizedBox(height: isSmall ? 6 : 16),
         Text(
           'منصة صدارة',
           style: GoogleFonts.cairo(
-            fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 32,
+            fontSize: isSmall ? 18 : 32,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -976,12 +982,13 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   /// بطاقة زجاجية
   Widget _buildGlassCard({required Widget child}) {
+    final r = MediaQuery.of(context).size.width < 500 ? 16.0 : 24.0;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(r),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -997,8 +1004,12 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   /// نموذج تسجيل الدخول
   Widget _buildLoginForm({required bool isCompact}) {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+    final pad = isMobile ? 14.0 : (isCompact ? 24.0 : 40.0);
+    final gap = isMobile ? 10.0 : 16.0;
+
     return SingleChildScrollView(
-      padding: EdgeInsets.all(isCompact ? 24 : 40),
+      padding: EdgeInsets.all(pad),
       child: Form(
         key: _formKey,
         child: Column(
@@ -1009,61 +1020,45 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
               Text(
                 'تسجيل الدخول',
                 style: GoogleFonts.cairo(
-                  fontSize: 28,
+                  fontSize: isMobile ? 20 : 28,
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF1a1a2e),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: isMobile ? 4 : 8),
               Text(
                 'أدخل بياناتك للوصول إلى حسابك',
                 style: GoogleFonts.cairo(
-                  fontSize: 14,
+                  fontSize: isMobile ? 12 : 14,
                   color: Colors.grey[600],
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: isMobile ? 2 : 6),
               Text(
                 'v$_appVersion',
-                style: GoogleFonts.cairo(
-                  fontSize: 11,
-                  color: Colors.grey[400],
-                ),
+                style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[400]),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: isMobile ? 12 : 24),
             ],
 
-            // شارة VPS API
             _buildApiStatusBadge(),
-            const SizedBox(height: 20),
+            SizedBox(height: isMobile ? 10 : 20),
 
-            // رسالة الخطأ
             if (_errorMessage != null) ...[
               _buildErrorMessage(),
-              const SizedBox(height: 16),
+              SizedBox(height: gap),
             ],
 
-            // قائمة الشركات
             _buildCompanySelector(),
-            const SizedBox(height: 16),
-
-            // اسم المستخدم
+            SizedBox(height: gap),
             _buildUsernameField(),
-            const SizedBox(height: 16),
-
-            // كلمة المرور
+            SizedBox(height: gap),
             _buildPasswordField(),
-            const SizedBox(height: 16),
-
-            // تذكرني
+            SizedBox(height: gap),
             _buildRememberMeCheckbox(),
-            const SizedBox(height: 16),
-
-            // الحسابات المحفوظة (قائمة منسدلة)
+            SizedBox(height: gap),
             if (_savedCredentials.isNotEmpty) _buildSavedCredentialsDropdown(),
-            const SizedBox(height: 24),
-
-            // زر الدخول
+            SizedBox(height: isMobile ? 14 : 24),
             _buildLoginButton(),
           ],
         ),
@@ -1409,11 +1404,12 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   Widget _buildLoginButton() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Container(
-      height: 56,
+      height: isSmall ? 44 : 56,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: _primaryGradient),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
         boxShadow: [
           BoxShadow(
             color: _primaryGradient[0].withOpacity(0.4),
@@ -1448,7 +1444,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                   Text(
                     'تسجيل الدخول',
                     style: GoogleFonts.cairo(
-                      fontSize: 18,
+                      fontSize: MediaQuery.of(context).size.width < 420 ? 14 : 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -1465,32 +1461,38 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     required IconData icon,
     Widget? suffixIcon,
   }) {
+    final isSmall = MediaQuery.of(context).size.width < 420;
+    final radius = isSmall ? 8.0 : 12.0;
+    final vPad = isSmall ? 10.0 : 16.0;
+    final hPad = isSmall ? 10.0 : 16.0;
+
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      labelStyle: GoogleFonts.cairo(color: Colors.grey[600]),
-      hintStyle: GoogleFonts.cairo(color: Colors.grey[400], fontSize: 13),
-      prefixIcon: Icon(icon, color: _primaryGradient[0]),
+      isDense: isSmall,
+      labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: isSmall ? 12 : 14),
+      hintStyle: GoogleFonts.cairo(color: Colors.grey[400], fontSize: isSmall ? 11 : 13),
+      prefixIcon: Icon(icon, color: _primaryGradient[0], size: isSmall ? 18 : 24),
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: Colors.grey[50],
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: Colors.grey[200]!),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: Colors.grey[200]!),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: _primaryGradient[0], width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: const BorderSide(color: Colors.red),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
     );
   }
 }

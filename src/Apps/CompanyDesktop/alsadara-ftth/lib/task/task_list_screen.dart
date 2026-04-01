@@ -114,11 +114,14 @@ class _TaskListScreenState extends State<TaskListScreen>
       _lastRefresh = DateTime.now();
 
       // فلترة من السيرفر حسب دور المستخدم
-      // الفني ← مهامه فقط، الليدر ← قسمه فقط، المدير ← الكل
+      // المدير ← الكل، الليدر ← قسمه، الفني/موظف ← مهامه فقط
+      final role = widget.permissions;
+      final bool isMgr = role == 'مدير';
+      final bool isLeader = role == 'ليدر';
       final String? techFilter =
-          widget.permissions == 'فني' ? widget.username : null;
+          (!isMgr && !isLeader) ? widget.username : null;
       final String? deptFilter =
-          widget.permissions == 'ليدر' ? widget.department : null;
+          isLeader ? widget.department : null;
 
       final response = await TaskApiService.instance.getRequests(
         pageSize: 200,

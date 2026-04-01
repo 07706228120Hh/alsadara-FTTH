@@ -123,23 +123,27 @@ class HomePageTasksState extends State<HomePageTasks> {
         // المدير يرى جميع المهام
         _filteredTasks = _currentTasks;
       } else if (role == 'ليدر') {
-        // الليدر يرى: المهام المعينة له + المهام التي أنشأها شخصياً
+        // الليدر يرى: مهام قسمه + المعيّنة له + التي أنشأها
+        final dept = widget.department;
         _filteredTasks = _currentTasks
             .where((task) =>
                 task.technician == widget.username ||
-                task.createdBy == widget.username)
+                task.createdBy == widget.username ||
+                (dept.isNotEmpty && task.department == dept))
             .toList();
       } else if (role == 'فني') {
-        // الفني يرى: المهام المخصصة له + المهام التي أنشأها شخصياً
+        // الفني يرى: المهام المعيّنة له + التي أنشأها
         _filteredTasks = _currentTasks
             .where((task) =>
                 task.technician == widget.username ||
                 task.createdBy == widget.username)
             .toList();
       } else {
-        // أي دور آخر يرى فقط المهام التي أنشأها
+        // موظف عادي: يرى المهام المعيّنة له + التي أنشأها
         _filteredTasks = _currentTasks
-            .where((task) => task.createdBy == widget.username)
+            .where((task) =>
+                task.technician == widget.username ||
+                task.createdBy == widget.username)
             .toList();
       }
 
