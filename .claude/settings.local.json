@@ -4,7 +4,8 @@
       "Bash(ssh root@72.61.183.61 \"journalctl -u sadara-api -n 3 --no-pager && date -u\")",
       "Bash(ssh root@72.61.183.61 \"journalctl -u sadara-api -n 5 --no-pager && date -u\")",
       "Bash(dotnet publish -c Release -o ./publish)",
-      "Bash(ssh -o ConnectTimeout=15 root@72.61.183.61 \"unzip -o /tmp/sadara-api.zip -d /var/www/sadara-api/ 2>&1 | tail -1\")"
+      "Bash(ssh -o ConnectTimeout=15 root@72.61.183.61 \"unzip -o /tmp/sadara-api.zip -d /var/www/sadara-api/ 2>&1 | tail -1\")",
+      "Bash(\"D:/flutter/flutter/bin/flutter.bat\" analyze:*)"
     ]
   }
 }

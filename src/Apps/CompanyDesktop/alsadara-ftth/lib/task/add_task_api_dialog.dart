@@ -360,8 +360,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       );
 
       if (result['success'] == true) {
-        // إرسال إشعار WhatsApp
-        await _sendWhatsAppNotification();
+        // إرسال إشعار WhatsApp — معطّل مؤقتاً
+        // await _sendWhatsAppNotification();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

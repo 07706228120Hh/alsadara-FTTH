@@ -85,9 +85,16 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
     _fetchZones();
     // مستمع للتمرير للتحميل اللامتناهي
     _scrollController.addListener(_onScroll);
-    if (widget.initialSearchQuery != null) {
-      nameController.text = widget.initialSearchQuery!;
-      // لا يتم البحث تلقائيًا؛ سيتم البحث عند الضغط على زر "بحث"
+    if (widget.initialSearchQuery != null && widget.initialSearchQuery!.isNotEmpty) {
+      final query = widget.initialSearchQuery!;
+      // إذا القيمة أرقام → ضعها في حقل الهاتف، وإلا في حقل الاسم
+      if (RegExp(r'^\d+$').hasMatch(query.replaceAll('+', ''))) {
+        phoneController.text = query;
+      } else {
+        nameController.text = query;
+      }
+      // بحث تلقائي بعد بناء الإطار
+      WidgetsBinding.instance.addPostFrameCallback((_) => _performSearch());
     }
     _nameFocus = FocusNode();
     // طلب التركيز بعد بناء الإطار الأول

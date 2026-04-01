@@ -7,6 +7,8 @@ import '../services/whatsapp_template_storage.dart';
 import '../services/task_api_service.dart';
 import '../widgets/maintenance_messages_dialog.dart';
 import '../widgets/edit_task_dialog.dart';
+import '../ftth/users/quick_search_users_page.dart';
+import '../services/auth_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 /// TaskCard محسن مع عرض جميل لعنوان المهم�� وحل لجميع ����لأخطاء
@@ -59,14 +61,15 @@ class _TaskCardState extends State<TaskCard> {
     }
 
     final statusColor = _getStatusColor(widget.task.status);
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+      margin: EdgeInsets.symmetric(vertical: isSmall ? 3 : 5, horizontal: isSmall ? 4 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
         border: Border.all(
-          color: Colors.black,
-          width: 1.5,
+          color: statusColor.withValues(alpha: 0.4),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
@@ -82,7 +85,7 @@ class _TaskCardState extends State<TaskCard> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
         child: InkWell(
           onTap: () {
             setState(() {
@@ -97,24 +100,21 @@ class _TaskCardState extends State<TaskCard> {
 
               // المعلومات الأساسية
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, isSmall ? 6 : 10, isSmall ? 8 : 14, isSmall ? 3 : 6),
                 child: _buildCompactBasicInfo(),
               ),
 
-              // التفاصيل المتقدمة
               if (showDetails) ...[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 14),
                   child: _buildCompactDetailedInfo(),
                 ),
               ],
 
-              // فاصل خفيف
               Divider(height: 1, color: Colors.grey.shade200),
 
-              // شريط الإجراءات السفلي
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+                padding: EdgeInsets.fromLTRB(isSmall ? 4 : 8, isSmall ? 2 : 4, isSmall ? 4 : 8, isSmall ? 3 : 6),
                 child: _buildCompactActionBar(),
               ),
             ],
@@ -126,8 +126,9 @@ class _TaskCardState extends State<TaskCard> {
 
   /// عنوان فخم مع شريط ملون
   Widget _buildPremiumHeader(Color statusColor) {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 14, vertical: isSmall ? 6 : 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -148,11 +149,11 @@ class _TaskCardState extends State<TaskCard> {
         children: [
           // أيقونة الأولوية في دائرة
           Container(
-            width: 32,
-            height: 32,
+            width: isSmall ? 24 : 32,
+            height: isSmall ? 24 : 32,
             decoration: BoxDecoration(
               color: statusColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(isSmall ? 6 : 8),
               boxShadow: [
                 BoxShadow(
                   color: statusColor.withValues(alpha: 0.3),
@@ -167,9 +168,8 @@ class _TaskCardState extends State<TaskCard> {
               size: 16,
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: isSmall ? 6 : 10),
 
-          // العنوان
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,10 +178,10 @@ class _TaskCardState extends State<TaskCard> {
                   widget.task.title.isNotEmpty
                       ? widget.task.title
                       : 'مهمة غير محددة',
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: isSmall ? 12 : 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
+                    color: const Color(0xFF1A1A2E),
                     letterSpacing: 0.3,
                   ),
                   maxLines: 1,
@@ -191,7 +191,7 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   '${widget.task.department} • #${widget.task.id}',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: isSmall ? 9 : 11,
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
                   ),
@@ -264,120 +264,66 @@ class _TaskCardState extends State<TaskCard> {
 
   /// المعلومات الأساسية في تخطيط شبكي أنيق
   Widget _buildCompactBasicInfo() {
-    final compact = MediaQuery.of(context).size.width < 500;
-    final gap = compact ? 6.0 : 8.0;
-    return Column(
-      children: [
-        // الصف الأول: العميل | الفني | FBG
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoTile(
-                Icons.person_outline_rounded,
-                'العميل',
-                widget.task.username,
-                const Color(0xFF3498DB),
-                compact: compact,
-              ),
-            ),
-            SizedBox(width: gap),
-            Expanded(
-              child: _buildInfoTile(
-                Icons.engineering_outlined,
-                'الفني',
-                widget.task.technician,
-                const Color(0xFF009688),
-                compact: compact,
-                trailing: widget.task.technician.isNotEmpty &&
-                        widget.task.technician != 'غير متوفر'
-                    ? _buildMiniIconButton(
-                        Icons.send_rounded,
-                        const Color(0xFF009688),
-                        () => _sendTaskToTechnician(widget.task.technician))
-                    : null,
-              ),
-            ),
-            SizedBox(width: gap),
-            Expanded(
-              child: _buildInfoTile(
-                Icons.hub_outlined,
-                'FBG',
-                widget.task.fbg,
-                const Color(0xFF27AE60),
-                compact: compact,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: compact ? 5 : 6),
-        // الصف الثاني: الهاتف | الوكيل | المبلغ
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoTile(
-                Icons.phone_outlined,
-                'الهاتف',
-                widget.task.phone,
-                const Color(0xFF8E44AD),
-                compact: compact,
-                trailing: widget.task.phone.isNotEmpty
-                    ? _buildMiniIconButton(
-                        Icons.copy_rounded,
-                        const Color(0xFF8E44AD),
-                        () => _copyPhoneNumber(widget.task.phone))
-                    : null,
-              ),
-            ),
-            if (widget.task.agentName.isNotEmpty) ...[
-              SizedBox(width: gap),
-              Expanded(
-                child: _buildInfoTile(
-                  Icons.storefront_outlined,
-                  'الوكيل',
-                  '${widget.task.agentName}${widget.task.pageId.isNotEmpty ? ' - ${widget.task.pageId}' : ''}',
-                  const Color(0xFF6C3483),
-                  compact: compact,
-                  trailing: widget.task.pageId.isNotEmpty
-                      ? _buildMiniIconButton(
-                          Icons.copy_rounded, const Color(0xFF6C3483), () {
-                          Clipboard.setData(
-                              ClipboardData(text: widget.task.pageId));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('تم نسخ: ${widget.task.pageId}'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        })
-                      : null,
-                ),
-              ),
-            ],
-            if (widget.task.amount.isNotEmpty) ...[
-              SizedBox(width: gap),
-              Expanded(
-                child: _buildInfoTile(
-                  Icons.payments_outlined,
-                  'المبلغ',
-                  '${widget.task.amount} د.ع',
-                  const Color(0xFFE74C3C),
-                  compact: compact,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
+    final w = MediaQuery.of(context).size.width;
+    final compact = w < 500;
+    final isMobile = w < 420;
+    final gap = isMobile ? 3.0 : (compact ? 6.0 : 8.0);
+    final vGap = isMobile ? 3.0 : (compact ? 5.0 : 6.0);
+    final cols = isMobile ? 2 : 3; // حقلين على الهاتف، 3 على الديسكتوب
+
+    final tiles = <Widget>[
+      _buildInfoTile(Icons.person_outline_rounded, 'العميل', widget.task.username, const Color(0xFF3498DB), compact: compact),
+      _buildInfoTile(Icons.engineering_outlined, 'الفني', widget.task.technician, const Color(0xFF009688), compact: compact,
+        trailing: widget.task.technician.isNotEmpty && widget.task.technician != 'غير متوفر'
+            ? _buildMiniIconButton(Icons.send_rounded, const Color(0xFF009688), () => _sendTaskToTechnician(widget.task.technician))
+            : null),
+      _buildInfoTile(Icons.hub_outlined, 'FBG', widget.task.fbg, const Color(0xFF27AE60), compact: compact),
+      _buildInfoTile(Icons.phone_outlined, 'الهاتف', widget.task.phone, const Color(0xFF8E44AD), compact: compact,
+        trailing: widget.task.phone.isNotEmpty
+            ? _buildMiniIconButton(Icons.copy_rounded, const Color(0xFF8E44AD), () => _copyPhoneNumber(widget.task.phone))
+            : null),
+      if (widget.task.agentName.isNotEmpty)
+        _buildInfoTile(Icons.storefront_outlined, 'الوكيل',
+          '${widget.task.agentName}${widget.task.pageId.isNotEmpty ? ' - ${widget.task.pageId}' : ''}',
+          const Color(0xFF6C3483), compact: compact,
+          trailing: widget.task.pageId.isNotEmpty
+              ? _buildMiniIconButton(Icons.copy_rounded, const Color(0xFF6C3483), () {
+                  Clipboard.setData(ClipboardData(text: widget.task.pageId));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ: ${widget.task.pageId}'), duration: const Duration(seconds: 2)));
+                })
+              : null),
+      if (widget.task.amount.isNotEmpty)
+        _buildInfoTile(Icons.payments_outlined, 'المبلغ', '${widget.task.amount} د.ع', const Color(0xFFE74C3C), compact: compact),
+    ];
+
+    // بناء الصفوف ديناميكياً حسب عدد الأعمدة
+    final rows = <Widget>[];
+    for (int i = 0; i < tiles.length; i += cols) {
+      final rowChildren = <Widget>[];
+      for (int j = i; j < i + cols && j < tiles.length; j++) {
+        if (rowChildren.isNotEmpty) rowChildren.add(SizedBox(width: gap));
+        rowChildren.add(Expanded(child: tiles[j]));
+      }
+      // إذا الصف ناقص عمود — أضف فراغ
+      if (rowChildren.length < cols * 2 - 1) {
+        rowChildren.add(SizedBox(width: gap));
+        rowChildren.add(const Expanded(child: SizedBox.shrink()));
+      }
+      if (rows.isNotEmpty) rows.add(SizedBox(height: vGap));
+      rows.add(Row(children: rowChildren));
+    }
+
+    return Column(children: rows);
   }
 
   /// خلية معلومات أنيقة مع عنوان وقيمة
   Widget _buildInfoTile(IconData icon, String label, String value, Color color,
       {Widget? trailing, bool compact = false}) {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 6 : 10,
-        vertical: compact ? 5 : 7,
+        horizontal: isSmall ? 4 : (compact ? 6 : 10),
+        vertical: isSmall ? 3 : (compact ? 5 : 7),
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
@@ -633,6 +579,12 @@ class _TaskCardState extends State<TaskCard> {
   Widget _buildCompactActionBar() {
     final buttons = <Widget>[];
 
+    // زر تفاصيل الاشتراك — يبحث عن المشترك ويفتح تفاصيله
+    if (widget.task.phone.isNotEmpty || widget.task.username.isNotEmpty)
+      buttons.add(_buildCompactActionButton(
+        Icons.open_in_new_rounded, 'تفاصيل', const Color(0xFF1565C0),
+        _openSubscriptionDetails,
+      ));
     if (widget.task.phone.isNotEmpty)
       buttons.add(_buildCompactActionButton(
         Icons.message_rounded, 'واتساب', const Color(0xFF25D366),
@@ -1239,6 +1191,52 @@ class _TaskCardState extends State<TaskCard> {
           ],
         );
       },
+    );
+  }
+
+  /// فتح صفحة البحث عن المشترك مع تمرير بيانات المهمة
+  Future<void> _openSubscriptionDetails() async {
+    // البحث بالهاتف أولاً — أدق
+    String searchQuery = '';
+    if (widget.task.phone.isNotEmpty) {
+      searchQuery = widget.task.phone.replaceAll(RegExp(r'[^\d]'), '');
+      if (searchQuery.startsWith('964')) searchQuery = '0${searchQuery.substring(3)}';
+    } else {
+      searchQuery = widget.task.username;
+    }
+
+    final token = await AuthService.instance.getAccessToken() ?? '';
+    if (token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يجب تسجيل الدخول لنظام FTTH أولاً'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    // بناء ملاحظات المهمة لتمريرها
+    final taskInfo = StringBuffer();
+    if (widget.task.agentName.isNotEmpty) taskInfo.writeln('الوكيل: ${widget.task.agentName}');
+    if (widget.task.pageId.isNotEmpty) taskInfo.writeln('كود الوكيل: ${widget.task.pageId}');
+    if (widget.task.notes.isNotEmpty) taskInfo.writeln('ملاحظات: ${widget.task.notes}');
+    if (widget.task.amount.isNotEmpty) taskInfo.writeln('المبلغ: ${widget.task.amount}');
+
+    // نسخ معلومات المهمة للحافظة ليستخدمها الفني
+    if (taskInfo.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: taskInfo.toString()));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم نسخ معلومات المهمة — الصقها في الملاحظات عند التجديد'), duration: Duration(seconds: 3)),
+      );
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuickSearchUsersPage(
+          authToken: token,
+          activatedBy: widget.currentUserName,
+          initialSearchQuery: searchQuery,
+        ),
+      ),
     );
   }
 

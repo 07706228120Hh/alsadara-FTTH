@@ -282,29 +282,31 @@ class HomePageTasksState extends State<HomePageTasks> {
     int totalTasks = _filteredTasks.length;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 20, vertical: MediaQuery.of(context).size.width < 420 ? 8 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── 4 بطاقات إحصائية ──
           LayoutBuilder(builder: (context, constraints) {
             final isMobile = constraints.maxWidth < 600;
+            final isSmall = constraints.maxWidth < 420;
+            final cardGap = isSmall ? 6.0 : 10.0;
             if (isMobile) {
               return Column(
                 children: [
                   IntrinsicHeight(
                     child: Row(children: [
-                      Expanded(child: _buildStatCard('مفتوحة', openTasks, totalTasks, const Color(0xFF3B82F6), Icons.inbox_rounded, compact: true)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildStatCard('قيد التنفيذ', inProgressTasks, totalTasks, const Color(0xFFF59E0B), Icons.sync_rounded, compact: true)),
+                      Expanded(child: _buildStatCard('مفتوحة', openTasks, totalTasks, const Color(0xFF3B82F6), Icons.inbox_rounded, compact: true, tiny: isSmall)),
+                      SizedBox(width: cardGap),
+                      Expanded(child: _buildStatCard('قيد التنفيذ', inProgressTasks, totalTasks, const Color(0xFFF59E0B), Icons.sync_rounded, compact: true, tiny: isSmall)),
                     ]),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: cardGap),
                   IntrinsicHeight(
                     child: Row(children: [
-                      Expanded(child: _buildStatCard('مكتملة', completedTasks, totalTasks, const Color(0xFF10B981), Icons.check_circle_rounded, compact: true)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildStatCard('ملغية', canceledTasks, totalTasks, const Color(0xFFEF4444), Icons.cancel_rounded, compact: true)),
+                      Expanded(child: _buildStatCard('مكتملة', completedTasks, totalTasks, const Color(0xFF10B981), Icons.check_circle_rounded, compact: true, tiny: isSmall)),
+                      SizedBox(width: cardGap),
+                      Expanded(child: _buildStatCard('ملغية', canceledTasks, totalTasks, const Color(0xFFEF4444), Icons.cancel_rounded, compact: true, tiny: isSmall)),
                     ]),
                   ),
                 ],
@@ -368,10 +370,16 @@ class HomePageTasksState extends State<HomePageTasks> {
 
     if (sorted.isEmpty) return const SizedBox.shrink();
 
+    final isSmall = MediaQuery.of(context).size.width < 420;
+    final fs = isSmall ? 8.0 : 11.0;
+    final colW = isSmall ? 28.0 : 45.0;
+    final totalW = isSmall ? 32.0 : 50.0;
+    final hPad = isSmall ? 6.0 : 16.0;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isSmall ? 10 : 16),
         border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
         boxShadow: [
           BoxShadow(
@@ -383,80 +391,35 @@ class HomePageTasksState extends State<HomePageTasks> {
       ),
       child: Column(
         children: [
-          // رأس الجدول
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isSmall ? 6 : 10),
             decoration: BoxDecoration(
               color: const Color(0xFFEEF2F7),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(14),
-                topRight: Radius.circular(14),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(isSmall ? 9 : 14),
+                topRight: Radius.circular(isSmall ? 9 : 14),
               ),
               border: Border.all(color: const Color(0xFFDDE3EA), width: 0.8),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                SizedBox(
-                  width: 50,
-                  child: Text('الإجمالي',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6B7280))),
-                ),
-                SizedBox(
-                  width: 45,
-                  child: Text('ملغية',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFE53935))),
-                ),
-                SizedBox(
-                  width: 45,
-                  child: Text('مكتملة',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF4CAF50))),
-                ),
-                SizedBox(
-                  width: 45,
-                  child: Text('تنفيذ',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFFF9800))),
-                ),
-                SizedBox(
-                  width: 50,
-                  child: Text('مفتوحة',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF2196F3))),
-                ),
-                Expanded(
-                  child: Text('القسم',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6B7280))),
-                ),
-                Expanded(
-                  child: Text('الفني',
-                      textAlign: TextAlign.end,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6B7280))),
-                ),
+                SizedBox(width: totalW, child: isSmall
+                    ? const Icon(Icons.tag, size: 12, color: Color(0xFF6B7280))
+                    : Text('الإجمالي', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)))),
+                SizedBox(width: colW, child: isSmall
+                    ? const Icon(Icons.cancel, size: 12, color: Color(0xFFE53935))
+                    : Text('ملغية', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFFE53935)))),
+                SizedBox(width: colW, child: isSmall
+                    ? const Icon(Icons.check_circle, size: 12, color: Color(0xFF4CAF50))
+                    : Text('مكتملة', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF4CAF50)))),
+                SizedBox(width: colW, child: isSmall
+                    ? const Icon(Icons.sync, size: 12, color: Color(0xFFFF9800))
+                    : Text('تنفيذ', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFFFF9800)))),
+                SizedBox(width: totalW, child: isSmall
+                    ? const Icon(Icons.inbox, size: 12, color: Color(0xFF2196F3))
+                    : Text('مفتوحة', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF2196F3)))),
+                Expanded(child: Text('القسم', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)))),
+                Expanded(child: Text('الفني', textAlign: TextAlign.end, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)))),
               ],
             ),
           ),
@@ -474,9 +437,11 @@ class HomePageTasksState extends State<HomePageTasks> {
             final canceled = stats['canceled'] as int;
             final dept = stats['department'] as String;
             final isEven = idx % 2 == 0;
+            final numFs = isSmall ? 10.0 : 14.0;
+            final txtFs = isSmall ? 9.0 : 12.0;
 
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isSmall ? 6 : 12),
               decoration: BoxDecoration(
                 color: isEven ? Colors.white : const Color(0xFFF9FAFB),
                 border: Border(
@@ -489,10 +454,10 @@ class HomePageTasksState extends State<HomePageTasks> {
                 children: [
                   // الإجمالي
                   SizedBox(
-                    width: 50,
+                    width: totalW,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: isSmall ? 4 : 8, vertical: isSmall ? 2 : 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFF3B82F6),
                         borderRadius: BorderRadius.circular(8),
@@ -500,8 +465,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                       child: Text(
                         '$total',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: numFs,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                         ),
@@ -510,12 +475,12 @@ class HomePageTasksState extends State<HomePageTasks> {
                   ),
                   // ملغية
                   SizedBox(
-                    width: 45,
+                    width: colW,
                     child: Text(
                       '$canceled',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: canceled > 0
                             ? const Color(0xFFE53935)
@@ -525,12 +490,12 @@ class HomePageTasksState extends State<HomePageTasks> {
                   ),
                   // مكتملة
                   SizedBox(
-                    width: 45,
+                    width: colW,
                     child: Text(
                       '$done',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: done > 0
                             ? const Color(0xFF4CAF50)
@@ -540,12 +505,12 @@ class HomePageTasksState extends State<HomePageTasks> {
                   ),
                   // تنفيذ
                   SizedBox(
-                    width: 45,
+                    width: colW,
                     child: Text(
                       '$progress',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: progress > 0
                             ? const Color(0xFFFF9800)
@@ -555,12 +520,12 @@ class HomePageTasksState extends State<HomePageTasks> {
                   ),
                   // مفتوحة
                   SizedBox(
-                    width: 50,
+                    width: totalW,
                     child: Text(
                       '$open',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: open > 0
                             ? const Color(0xFF2196F3)
@@ -574,7 +539,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       dept.isNotEmpty ? dept : '—',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: txtFs,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF9CA3AF),
                       ),
@@ -589,17 +554,17 @@ class HomePageTasksState extends State<HomePageTasks> {
                         Flexible(
                           child: Text(
                             name,
-                            style: const TextStyle(
-                              fontSize: 13,
+                            style: TextStyle(
+                              fontSize: isSmall ? 9 : 13,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF1F2937),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: isSmall ? 2 : 6),
                         Icon(Icons.person_rounded,
-                            size: 16, color: const Color(0xFF4FC3F7)),
+                            size: isSmall ? 12 : 16, color: const Color(0xFF4FC3F7)),
                       ],
                     ),
                   ),
@@ -610,7 +575,7 @@ class HomePageTasksState extends State<HomePageTasks> {
 
           // صف الإجمالي
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isSmall ? 6 : 12),
             decoration: BoxDecoration(
               color: const Color(0xFFEEF2F7),
               borderRadius: const BorderRadius.only(
@@ -622,10 +587,10 @@ class HomePageTasksState extends State<HomePageTasks> {
             child: Row(
               children: [
                 SizedBox(
-                  width: 50,
+                  width: totalW,
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        EdgeInsets.symmetric(horizontal: isSmall ? 4 : 8, vertical: isSmall ? 2 : 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF4FC3F7),
                       borderRadius: BorderRadius.circular(8),
@@ -633,8 +598,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                     child: Text(
                       '${_filteredTasks.length}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: isSmall ? 10.0 : 14.0,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
@@ -642,47 +607,47 @@ class HomePageTasksState extends State<HomePageTasks> {
                   ),
                 ),
                 SizedBox(
-                  width: 45,
+                  width: colW,
                   child: Text(
                     '${_filteredTasks.where((t) => t.status == 'ملغية').length}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: isSmall ? 10.0 : 14.0,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFFE53935),
                     ),
                   ),
                 ),
                 SizedBox(
-                  width: 45,
+                  width: colW,
                   child: Text(
                     '${_filteredTasks.where((t) => t.status == 'مكتملة').length}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: isSmall ? 10.0 : 14.0,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF4CAF50),
                     ),
                   ),
                 ),
                 SizedBox(
-                  width: 45,
+                  width: colW,
                   child: Text(
                     '${_filteredTasks.where((t) => t.status == 'قيد التنفيذ').length}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: isSmall ? 10.0 : 14.0,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFFFF9800),
                     ),
                   ),
                 ),
                 SizedBox(
-                  width: 50,
+                  width: totalW,
                   child: Text(
                     '${_filteredTasks.where((t) => t.status == 'مفتوحة').length}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF2196F3),
@@ -711,23 +676,24 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   /// بطاقة إحصائية
   Widget _buildStatCard(
-      String label, int count, int total, Color color, IconData icon, {bool compact = false}) {
+      String label, int count, int total, Color color, IconData icon, {bool compact = false, bool tiny = false}) {
     double pct = total > 0 ? (count / total) * 100 : 0;
-    final pad = compact ? 12.0 : 18.0;
-    final numSize = compact ? 32.0 : 42.0;
-    final lblSize = compact ? 13.0 : 16.0;
-    final iconSize = compact ? 20.0 : 24.0;
-    final iconPad = compact ? 8.0 : 10.0;
-    final gap1 = compact ? 10.0 : 14.0;
-    final gap2 = compact ? 6.0 : 8.0;
-    final gap3 = compact ? 8.0 : 10.0;
-    final pctSize = compact ? 12.0 : 14.0;
+    final pad = tiny ? 8.0 : (compact ? 12.0 : 18.0);
+    final numSize = tiny ? 22.0 : (compact ? 32.0 : 42.0);
+    final lblSize = tiny ? 10.0 : (compact ? 13.0 : 16.0);
+    final iconSize = tiny ? 16.0 : (compact ? 20.0 : 24.0);
+    final iconPad = tiny ? 5.0 : (compact ? 8.0 : 10.0);
+    final gap1 = tiny ? 6.0 : (compact ? 10.0 : 14.0);
+    final gap2 = tiny ? 3.0 : (compact ? 6.0 : 8.0);
+    final gap3 = tiny ? 4.0 : (compact ? 8.0 : 10.0);
+    final pctSize = tiny ? 9.0 : (compact ? 12.0 : 14.0);
+    final radius = tiny ? 10.0 : 16.0;
 
     return Container(
       padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
         boxShadow: [
           BoxShadow(
@@ -755,7 +721,7 @@ class HomePageTasksState extends State<HomePageTasks> {
               Icon(
                 Icons.trending_up_rounded,
                 color: color.withValues(alpha: 0.4),
-                size: compact ? 20 : 26,
+                size: tiny ? 14 : (compact ? 20 : 26),
               ),
             ],
           ),
