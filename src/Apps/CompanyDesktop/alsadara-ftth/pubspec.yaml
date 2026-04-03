@@ -2,7 +2,7 @@ name: alsadara
 description: "Alsadara Flutter application - تطبيق الصدارة لإدارة شبكات FTTH"
 publish_to: 'none'
 
-version: 1.6.52+212
+version: 1.6.66+226
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -11,6 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # كاميرا مباشرة (لضمان فتح الكاميرا الأمامية)
+  camera: ^0.11.0+2
+
   # إدارة متغيرات البيئة بشكل آمن
   flutter_dotenv: ^5.2.1
 
@@ -25,7 +28,6 @@ dependencies:
   url_launcher: ^6.3.1
 
   # مكتبات الملفات والتخزين
-  open_file: ^3.5.8
   file_picker: ^8.1.7
   path_provider: ^2.1.5
   flutter_secure_storage: ^9.2.2
@@ -90,6 +92,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   iconsax_plus: ^1.0.0
+  flutter_foreground_task: ^9.2.2
+  open_filex: ^4.7.0
+  signalr_netcore: ^1.4.4
 
 dev_dependencies:
   flutter_test:
