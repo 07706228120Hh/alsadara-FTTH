@@ -105,13 +105,28 @@ class _UpdateDialogState extends State<UpdateDialog>
       setState(() {
         _phase = _UpdatePhase.error;
         _errorMessage = Platform.isAndroid
-            ? 'فشل في فتح ملف التحديث. تأكد من تفعيل "التثبيت من مصادر غير معروفة".'
+            ? 'فشل في التثبيت. قد تحتاج حذف النسخة القديمة أولاً.'
             : 'فشل في تثبيت التحديث.';
+        _downloadedFilePath = filePath;
       });
     } else if (Platform.isAndroid && mounted) {
       // على Android، المثبّت يفتح كنافذة خارجية - نغلق الحوار
       Navigator.pop(context);
     }
+  }
+
+  String? _downloadedFilePath;
+
+  /// حذف التطبيق القديم ثم إعادة التثبيت
+  Future<void> _uninstallAndReinstall() async {
+    if (_downloadedFilePath == null) return;
+    setState(() {
+      _phase = _UpdatePhase.installing;
+      _errorMessage = '';
+    });
+    await AutoUpdateService.instance.requestUninstall();
+    // بعد الحذف، المستخدم يحتاج يثبت APK يدوياً من الملف المحمّل
+    // لأن التطبيق سيُحذف مع الكود
   }
 
   String _formatSize(int bytes) {
@@ -162,11 +177,18 @@ class _UpdateDialogState extends State<UpdateDialog>
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.of(context).size.width;
+    final mobile = screenW < 500;
     return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: mobile ? 20 : 40,
+        vertical: mobile ? 24 : 40,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
-        width: 420,
-        padding: const EdgeInsets.all(28),
+        width: mobile ? double.infinity : 420,
+        constraints: BoxConstraints(maxWidth: mobile ? screenW - 40 : 420),
+        padding: EdgeInsets.all(mobile ? 20 : 28),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           gradient: const LinearGradient(
@@ -183,8 +205,8 @@ class _UpdateDialogState extends State<UpdateDialog>
               animation: _animationController,
               builder: (context, child) {
                 return Container(
-                  width: 72,
-                  height: 72,
+                  width: mobile ? 56 : 72,
+                  height: mobile ? 56 : 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -202,20 +224,21 @@ class _UpdateDialogState extends State<UpdateDialog>
                       ),
                     ],
                   ),
-                  child: Icon(_phaseIcon, color: _phaseColor, size: 36),
+                  child: Icon(_phaseIcon, color: _phaseColor, size: mobile ? 28 : 36),
                 );
               },
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: mobile ? 14 : 20),
 
             // العنوان
             Text(
               _phaseTitle,
               style: GoogleFonts.cairo(
-                fontSize: 20,
+                fontSize: mobile ? 17 : 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
 
@@ -387,6 +410,27 @@ class _UpdateDialogState extends State<UpdateDialog>
                   ),
                 ],
               ),
+              // زر حذف وإعادة تثبيت — يظهر فقط على Android
+              if (Platform.isAndroid && _downloadedFilePath != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _uninstallAndReinstall,
+                    icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+                    label: Text('حذف النسخة القديمة وإعادة التثبيت',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -400,9 +444,8 @@ enum _UpdatePhase { preparing, downloading, installing, error }
 /// مدير التحديثات - يُفحص ويُحدّث تلقائياً عند بدء التطبيق
 class UpdateManager {
   static Future<void> checkAndShowUpdateDialog(BuildContext context) async {
-    // التحديث التلقائي يعمل على Windows فقط
-    // Android: التحديث يكون يدوياً عبر APK — تجنب حظر الواجهة
-    if (!Platform.isWindows) return;
+    // التحديث التلقائي يعمل على Windows و Android
+    if (!Platform.isWindows && !Platform.isAndroid) return;
     try {
       final updateInfo = await AutoUpdateService.instance.checkForUpdate();
 

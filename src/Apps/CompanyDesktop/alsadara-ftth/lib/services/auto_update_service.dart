@@ -6,10 +6,11 @@ library;
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// معلومات التحديث
@@ -278,12 +279,31 @@ class AutoUpdateService {
   Future<bool> installUpdate(String filePath) async {
     try {
       if (filePath.endsWith('.apk')) {
-        // === Android: فتح APK بمثبّت النظام ===
+        // === Android: تثبيت APK عبر Native Intent ===
         debugPrint('📱 تثبيت APK: $filePath');
-        final result = await OpenFile.open(filePath);
-        debugPrint('📱 نتيجة فتح APK: ${result.type} - ${result.message}');
-        // ResultType.done = تم فتح الملف بنجاح (يظهر مثبّت Android)
-        return result.type == ResultType.done;
+
+        // حفظ مسار APK لإعادة التثبيت بعد الحذف
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('pending_apk_path', filePath);
+
+        // الطريقة 1: Native MethodChannel (FileProvider + Intent)
+        try {
+          const channel = MethodChannel('com.alsadara/installer');
+          final result = await channel.invokeMethod('installApk', {'filePath': filePath});
+          if (result == true) return true;
+        } catch (e) {
+          debugPrint('📱 Native installer failed: $e');
+        }
+
+        // الطريقة 2: Fallback — OpenFilex
+        try {
+          final result = await OpenFilex.open(filePath, type: 'application/vnd.android.package-archive');
+          debugPrint('📱 OpenFilex: ${result.type} - ${result.message}');
+          return result.type == ResultType.done;
+        } catch (e) {
+          debugPrint('📱 OpenFilex failed: $e');
+        }
+        return false;
       } else if (filePath.endsWith('.exe')) {
         // === Windows: تشغيل المثبّت بالوضع الصامت ===
         // استخراج الإصدار من اسم الملف (مثل: Alsadara_v1.6.5_Setup.exe → 1.6.5)
@@ -336,6 +356,19 @@ class AutoUpdateService {
       debugPrint('❌ خطأ في تثبيت التحديث');
     }
     return false;
+  }
+
+  /// فتح شاشة حذف التطبيق — عند فشل التحديث بسبب اختلاف التوقيع
+  Future<bool> requestUninstall() async {
+    try {
+      if (!Platform.isAndroid) return false;
+      const channel = MethodChannel('com.alsadara/installer');
+      final result = await channel.invokeMethod('uninstallApp');
+      return result == true;
+    } catch (e) {
+      debugPrint('📱 Uninstall request failed: $e');
+      return false;
+    }
   }
 
   /// الحصول على الإصدار الحالي
