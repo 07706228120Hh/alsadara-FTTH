@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -375,7 +376,7 @@ class _LocationTaskHandler extends TaskHandler {
         final fakeReasonsJson = reasons.isNotEmpty
             ? '"${reasons.join(',')}"'
             : 'null';
-        request.write(
+        final jsonBody =
           '{"userId":"$userId"'
           ',"latitude":${position.latitude}'
           ',"longitude":${position.longitude}'
@@ -387,8 +388,8 @@ class _LocationTaskHandler extends TaskHandler {
           ',"fakeReasons":$fakeReasonsJson'
           ',"teleportCount":$_teleportCount'
           ',"fakeFlagCount":$_fakeFlagCount'
-          '}',
-        );
+          '}';
+        request.add(utf8.encode(jsonBody));
         final response = await request.close();
         statusCode = response.statusCode;
         await response.drain();
