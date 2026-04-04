@@ -163,18 +163,36 @@ class _LocationTaskHandler extends TaskHandler {
     _sendLocation(timestamp);
   }
 
+  int _gpsFailCount = 0; // عداد فشل GPS
+
   Future<void> _sendLocation(DateTime timestamp) async {
     try {
       // استخدام دقة أقل في وضع البطارية
       final accuracy = _isInLowPowerMode
           ? LocationAccuracy.medium
           : LocationAccuracy.high;
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(
-          accuracy: accuracy,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
+
+      Position position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: LocationSettings(
+            accuracy: accuracy,
+            timeLimit: Duration(seconds: 30), // 30 ثانية بدل 10 — بعض الأجهزة بطيئة
+          ),
+        );
+        _gpsFailCount = 0; // نجح — نعيد العداد
+      } catch (gpsError) {
+        _gpsFailCount++;
+        FlutterForegroundTask.updateService(
+          notificationTitle: 'الصدارة — تتبع الموقع',
+          notificationText:
+              '❌ فشل GPS ($_gpsFailCount) — $gpsError',
+        );
+        // محاولة آخر موقع معروف
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown == null) return;
+        position = lastKnown;
+      }
 
       // ══════════════════════════════════════
       // 🛡️ كشف الموقع الوهمي — متعدد الطبقات
@@ -395,6 +413,10 @@ class _LocationTaskHandler extends TaskHandler {
       }
     } catch (e) {
       debugPrint('📍 [BG-Location] Error: $e');
+      FlutterForegroundTask.updateService(
+        notificationTitle: 'الصدارة — تتبع الموقع',
+        notificationText: '❌ خطأ: $e',
+      );
     }
   }
 
