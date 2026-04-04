@@ -361,11 +361,14 @@ class _LocationTaskHandler extends TaskHandler {
       };
 
       bool sent = false;
+      String? httpError;
+      int? statusCode;
       try {
         final url =
             Uri.parse('https://api.ramzalsadara.tech/api/employee-location');
         final client = HttpClient()
           ..badCertificateCallback = (_, __, ___) => true;
+        client.connectionTimeout = const Duration(seconds: 15);
         final request = await client.postUrl(url);
         request.headers.set('Content-Type', 'application/json');
         request.headers.set('X-Api-Key', 'sadara-internal-2024-secure-key');
@@ -387,20 +390,24 @@ class _LocationTaskHandler extends TaskHandler {
           '}',
         );
         final response = await request.close();
+        statusCode = response.statusCode;
         await response.drain();
         client.close();
-        sent = response.statusCode >= 200 && response.statusCode < 300;
-      } catch (_) {
+        sent = statusCode >= 200 && statusCode < 300;
+        if (!sent) httpError = 'HTTP $statusCode';
+      } catch (e) {
         sent = false;
+        httpError = e.toString().length > 80
+            ? e.toString().substring(0, 80)
+            : e.toString();
       }
 
       if (!sent) {
-        // ❌ لا يوجد إنترنت — حفظ في الطابور المحلي
         await LocationOfflineQueue.enqueue(payload);
         FlutterForegroundTask.updateService(
           notificationTitle: 'الصدارة — تتبع الموقع',
           notificationText:
-              '📦 بدون إنترنت — $_totalSent نقطة محفوظة محلياً',
+              '❌ فشل الإرسال #$_totalSent: ${httpError ?? "unknown"}',
         );
       } else {
         // ✅ نجح — حاول إرسال النقاط المعلقة أيضاً
