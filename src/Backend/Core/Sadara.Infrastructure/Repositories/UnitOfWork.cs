@@ -118,6 +118,24 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<ReminderSettings, long>? _reminderSettings;
     private IRepository<ReminderExecutionLog, long>? _reminderExecutionLogs;
 
+    // Chat System (نظام المحادثة الداخلي)
+    private IRepository<ChatRoom, Guid>? _chatRooms;
+    private IRepository<ChatRoomMember, long>? _chatRoomMembers;
+    private IRepository<ChatMessage, Guid>? _chatMessages;
+    private IRepository<ChatAttachment, long>? _chatAttachments;
+    private IRepository<ChatMention, long>? _chatMentions;
+    private IRepository<ChatMessageRead, long>? _chatMessageReads;
+
+    // Announcements (الإعلانات والتبليغات)
+    private IRepository<Announcement, long>? _announcements;
+    private IRepository<AnnouncementTarget, long>? _announcementTargets;
+    private IRepository<AnnouncementRead, long>? _announcementReads;
+
+    // FTTH Sync (مزامنة FTTH)
+    private IRepository<CompanyFtthSettings, Guid>? _companyFtthSettings;
+    private IRepository<FtthSubscriberCache, long>? _ftthSubscriberCaches;
+    private IRepository<FtthSyncLog, long>? _ftthSyncLogs;
+
     public UnitOfWork(SadaraDbContext context)
     {
         _context = context;
@@ -331,6 +349,15 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<DepartmentTask, int> DepartmentTasks =>
         _departmentTasks ??= new Repository<DepartmentTask, int>(_context);
 
+    private IRepository<UserDepartment, int>? _userDepartments;
+    public IRepository<UserDepartment, int> UserDepartments =>
+        _userDepartments ??= new Repository<UserDepartment, int>(_context);
+
+    // FCM Tokens (رموز الإشعارات)
+    private IRepository<UserFcmToken, long>? _userFcmTokens;
+    public IRepository<UserFcmToken, long> UserFcmTokens =>
+        _userFcmTokens ??= new Repository<UserFcmToken, long>(_context);
+
     // Daily Settlement Reports (تقارير التسديدات اليومية)
     public IRepository<DailySettlementReport, long> DailySettlementReports =>
         _dailySettlementReports ??= new Repository<DailySettlementReport, long>(_context);
@@ -357,6 +384,40 @@ public class UnitOfWork : IUnitOfWork
         _reminderSettings ??= new Repository<ReminderSettings, long>(_context);
     public IRepository<ReminderExecutionLog, long> ReminderExecutionLogs =>
         _reminderExecutionLogs ??= new Repository<ReminderExecutionLog, long>(_context);
+
+    // Chat System (نظام المحادثة الداخلي)
+    public IRepository<ChatRoom, Guid> ChatRooms =>
+        _chatRooms ??= new Repository<ChatRoom, Guid>(_context);
+    public IRepository<ChatRoomMember, long> ChatRoomMembers =>
+        _chatRoomMembers ??= new Repository<ChatRoomMember, long>(_context);
+    public IRepository<ChatMessage, Guid> ChatMessages =>
+        _chatMessages ??= new Repository<ChatMessage, Guid>(_context);
+    public IRepository<ChatAttachment, long> ChatAttachments =>
+        _chatAttachments ??= new Repository<ChatAttachment, long>(_context);
+    public IRepository<ChatMention, long> ChatMentions =>
+        _chatMentions ??= new Repository<ChatMention, long>(_context);
+    public IRepository<ChatMessageRead, long> ChatMessageReads =>
+        _chatMessageReads ??= new Repository<ChatMessageRead, long>(_context);
+
+    private IRepository<ChatReaction, long>? _chatReactions;
+    public IRepository<ChatReaction, long> ChatReactions =>
+        _chatReactions ??= new Repository<ChatReaction, long>(_context);
+
+    // Announcements (الإعلانات والتبليغات)
+    public IRepository<Announcement, long> Announcements =>
+        _announcements ??= new Repository<Announcement, long>(_context);
+    public IRepository<AnnouncementTarget, long> AnnouncementTargets =>
+        _announcementTargets ??= new Repository<AnnouncementTarget, long>(_context);
+    public IRepository<AnnouncementRead, long> AnnouncementReads =>
+        _announcementReads ??= new Repository<AnnouncementRead, long>(_context);
+
+    // FTTH Sync (مزامنة FTTH)
+    public IRepository<CompanyFtthSettings, Guid> CompanyFtthSettings =>
+        _companyFtthSettings ??= new Repository<CompanyFtthSettings, Guid>(_context);
+    public IRepository<FtthSubscriberCache, long> FtthSubscriberCaches =>
+        _ftthSubscriberCaches ??= new Repository<FtthSubscriberCache, long>(_context);
+    public IRepository<FtthSyncLog, long> FtthSyncLogs =>
+        _ftthSyncLogs ??= new Repository<FtthSyncLog, long>(_context);
 
     #endregion
 

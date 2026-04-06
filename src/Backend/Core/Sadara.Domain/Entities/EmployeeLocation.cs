@@ -42,4 +42,14 @@ public class EmployeeLocationLog : BaseEntity<long>
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
+
+    // ═══ حقول كشف الموقع الوهمي ═══
+    public double? Accuracy { get; set; }
+    public double? Altitude { get; set; }
+    public double? Speed { get; set; }
+    public bool IsMocked { get; set; }
+    public bool IsFakeDetected { get; set; }
+    public string? FakeReasons { get; set; }
+    public int TeleportCount { get; set; }
+    public int FakeFlagCount { get; set; }
 }

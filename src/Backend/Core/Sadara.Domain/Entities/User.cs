@@ -137,6 +137,11 @@ public class User : BaseEntity<Guid>
     /// <summary>تاريخ الموافقة على الجهاز</summary>
     public DateTime? DeviceApprovedAt { get; set; }
     
+    // ============ كود أمان البصمة ============
+
+    /// <summary>كود الأمان للبصمة — يُعيّنه المدير ويُطابقه السيرفر عند تسجيل الحضور</summary>
+    public string? AttendanceSecurityCode { get; set; }
+
     // ============ جدول الدوام ============
     
     /// <summary>معرف جدول الدوام المربوط بالموظف (null = يستخدم جدول المركز/الشركة الافتراضي)</summary>
@@ -162,6 +167,7 @@ public class User : BaseEntity<Guid>
     public virtual Company? Company { get; set; }
     public virtual WorkSchedule? WorkSchedule { get; set; }
     public virtual ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
+    public virtual ICollection<UserDepartment> UserDepartments { get; set; } = new List<UserDepartment>();
     
     // ============ خصائص مساعدة ============
     

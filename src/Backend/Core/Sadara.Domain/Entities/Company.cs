@@ -89,6 +89,14 @@ public class Company : BaseEntity<Guid>
     /// </summary>
     public string? EnabledSecondSystemFeaturesV2 { get; set; }
     
+    // ============ قوالب الصلاحيات المخصصة ============
+
+    /// <summary>
+    /// قوالب الصلاحيات المخصصة للشركة (JSON)
+    /// يحفظ التعديلات التي أجراها مدير الشركة على القوالب الافتراضية
+    /// </summary>
+    public string? CustomPermissionTemplates { get; set; }
+
     // ============ معرف المدير ============
     
     /// <summary>معرف مدير الشركة (المستخدم الأول)</summary>

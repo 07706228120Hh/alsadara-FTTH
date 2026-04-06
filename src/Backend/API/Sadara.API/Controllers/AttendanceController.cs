@@ -276,6 +276,24 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
             }
         }
 
+        // ── Layer 6: التحقق من كود الأمان ──
+        if (user != null && !string.IsNullOrEmpty(user.AttendanceSecurityCode))
+        {
+            if (string.IsNullOrEmpty(request.SecurityCode) ||
+                request.SecurityCode.Trim() != user.AttendanceSecurityCode.Trim())
+            {
+                await LogAuditAsync(effectiveUserId, userName, companyId, "CheckIn", false,
+                    $"كود أمان خاطئ. المرسل: {request.SecurityCode ?? "(فارغ)"}",
+                    request.Latitude, request.Longitude, distanceFromCenter, request.CenterName,
+                    request.DeviceFingerprint, user.RegisteredDeviceFingerprint, vpnSuspected);
+
+                return BadRequest(new {
+                    message = "كود الأمان غير صحيح. تواصل مع المدير للحصول على الكود الصحيح.",
+                    code = "INVALID_SECURITY_CODE"
+                });
+            }
+        }
+
         // ── التحقق من عدم وجود حضور مسجل لنفس اليوم ──
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var existing = await _unitOfWork.AttendanceRecords

@@ -115,6 +115,10 @@ public interface IUnitOfWork : IDisposable
     // Departments (الأقسام ومهامها)
     IRepository<Department, int> Departments { get; }
     IRepository<DepartmentTask, int> DepartmentTasks { get; }
+    IRepository<UserDepartment, int> UserDepartments { get; }
+
+    // FCM Tokens (رموز الإشعارات)
+    IRepository<UserFcmToken, long> UserFcmTokens { get; }
 
     // Daily Settlement Reports (تقارير التسديدات اليومية)
     IRepository<DailySettlementReport, long> DailySettlementReports { get; }
@@ -131,6 +135,25 @@ public interface IUnitOfWork : IDisposable
     // Reminder (تذكير تلقائي)
     IRepository<ReminderSettings, long> ReminderSettings { get; }
     IRepository<ReminderExecutionLog, long> ReminderExecutionLogs { get; }
+
+    // Chat System (نظام المحادثة الداخلي)
+    IRepository<ChatRoom, Guid> ChatRooms { get; }
+    IRepository<ChatRoomMember, long> ChatRoomMembers { get; }
+    IRepository<ChatMessage, Guid> ChatMessages { get; }
+    IRepository<ChatAttachment, long> ChatAttachments { get; }
+    IRepository<ChatMention, long> ChatMentions { get; }
+    IRepository<ChatMessageRead, long> ChatMessageReads { get; }
+    IRepository<ChatReaction, long> ChatReactions { get; }
+
+    // Announcements (الإعلانات والتبليغات)
+    IRepository<Announcement, long> Announcements { get; }
+    IRepository<AnnouncementTarget, long> AnnouncementTargets { get; }
+    IRepository<AnnouncementRead, long> AnnouncementReads { get; }
+
+    // FTTH Sync (مزامنة FTTH)
+    IRepository<CompanyFtthSettings, Guid> CompanyFtthSettings { get; }
+    IRepository<FtthSubscriberCache, long> FtthSubscriberCaches { get; }
+    IRepository<FtthSyncLog, long> FtthSyncLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);

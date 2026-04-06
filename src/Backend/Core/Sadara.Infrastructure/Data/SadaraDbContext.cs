@@ -111,6 +111,10 @@ public class SadaraDbContext : DbContext
     // ==================== Departments (أقسام الشركة ومهامها) ====================
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<DepartmentTask> DepartmentTasks => Set<DepartmentTask>();
+    public DbSet<UserDepartment> UserDepartments => Set<UserDepartment>();
+
+    // ==================== FCM Tokens (رموز الإشعارات) ====================
+    public DbSet<UserFcmToken> UserFcmTokens => Set<UserFcmToken>();
 
     // ==================== Daily Settlement Reports (تقارير التسديدات اليومية) ====================
     public DbSet<DailySettlementReport> DailySettlementReports => Set<DailySettlementReport>();
@@ -127,6 +131,25 @@ public class SadaraDbContext : DbContext
     // ==================== Reminder Settings (تذكير تلقائي) ====================
     public DbSet<ReminderSettings> ReminderSettings => Set<ReminderSettings>();
     public DbSet<ReminderExecutionLog> ReminderExecutionLogs => Set<ReminderExecutionLog>();
+
+    // ==================== Chat System (نظام المحادثة الداخلي) ====================
+    public DbSet<ChatRoom> ChatRooms => Set<ChatRoom>();
+    public DbSet<ChatRoomMember> ChatRoomMembers => Set<ChatRoomMember>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ChatAttachment> ChatAttachments => Set<ChatAttachment>();
+    public DbSet<ChatMention> ChatMentions => Set<ChatMention>();
+    public DbSet<ChatMessageRead> ChatMessageReads => Set<ChatMessageRead>();
+    public DbSet<ChatReaction> ChatReactions => Set<ChatReaction>();
+
+    // ==================== Announcements (الإعلانات والتبليغات) ====================
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<AnnouncementTarget> AnnouncementTargets => Set<AnnouncementTarget>();
+    public DbSet<AnnouncementRead> AnnouncementReads => Set<AnnouncementRead>();
+
+    // ==================== FTTH Sync (مزامنة FTTH) ====================
+    public DbSet<CompanyFtthSettings> CompanyFtthSettings => Set<CompanyFtthSettings>();
+    public DbSet<FtthSubscriberCache> FtthSubscriberCaches => Set<FtthSubscriberCache>();
+    public DbSet<FtthSyncLog> FtthSyncLogs => Set<FtthSyncLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -185,6 +208,24 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<Department>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<DepartmentTask>().HasQueryFilter(x => !x.IsDeleted);
 
+        // UserDepartment (Many-to-Many: User ↔ Department)
+        modelBuilder.Entity<UserDepartment>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<UserDepartment>()
+            .HasIndex(x => new { x.UserId, x.DepartmentId }).IsUnique();
+        modelBuilder.Entity<UserDepartment>()
+            .HasOne(ud => ud.User).WithMany(u => u.UserDepartments).HasForeignKey(ud => ud.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<UserDepartment>()
+            .HasOne(ud => ud.Department).WithMany(d => d.UserDepartments).HasForeignKey(ud => ud.DepartmentId).OnDelete(DeleteBehavior.Cascade);
+
+        // UserFcmToken (FCM Push Notification Tokens)
+        modelBuilder.Entity<UserFcmToken>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<UserFcmToken>()
+            .HasIndex(x => x.Token).IsUnique();
+        modelBuilder.Entity<UserFcmToken>()
+            .HasIndex(x => x.UserId);
+        modelBuilder.Entity<UserFcmToken>()
+            .HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+
         // Daily Settlement Reports
         modelBuilder.Entity<DailySettlementReport>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<DailySettlementReport>()
@@ -222,6 +263,113 @@ public class SadaraDbContext : DbContext
         // Employee Location Logs
         modelBuilder.Entity<EmployeeLocationLog>()
             .HasIndex(x => new { x.UserId, x.RecordedAt });
+
+        // ═══ Chat System ═══
+        modelBuilder.Entity<ChatRoom>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ChatRoom>()
+            .HasIndex(x => new { x.CompanyId, x.LastMessageAt });
+        modelBuilder.Entity<ChatRoom>()
+            .HasIndex(x => x.DepartmentId);
+        modelBuilder.Entity<ChatRoom>()
+            .Property(x => x.Type).HasConversion<int>();
+
+        modelBuilder.Entity<ChatRoomMember>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ChatRoomMember>()
+            .HasIndex(x => new { x.ChatRoomId, x.UserId }).IsUnique();
+        modelBuilder.Entity<ChatRoomMember>()
+            .HasOne(m => m.ChatRoom).WithMany(r => r.Members).HasForeignKey(m => m.ChatRoomId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChatRoomMember>()
+            .HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChatMessage>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ChatMessage>()
+            .HasIndex(x => new { x.ChatRoomId, x.CreatedAt });
+        modelBuilder.Entity<ChatMessage>()
+            .Property(x => x.MessageType).HasConversion<int>();
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(m => m.ChatRoom).WithMany(r => r.Messages).HasForeignKey(m => m.ChatRoomId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(m => m.ReplyToMessage).WithMany().HasForeignKey(m => m.ReplyToMessageId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<ChatAttachment>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ChatAttachment>()
+            .HasOne(a => a.ChatMessage).WithMany(m => m.Attachments).HasForeignKey(a => a.ChatMessageId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChatMention>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ChatMention>()
+            .HasOne(m => m.ChatMessage).WithMany(msg => msg.Mentions).HasForeignKey(m => m.ChatMessageId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChatMention>()
+            .HasOne(m => m.MentionedUser).WithMany().HasForeignKey(m => m.MentionedUserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChatMessageRead>().HasQueryFilter(x => !x.IsDeleted);
+
+        modelBuilder.Entity<ChatReaction>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ChatReaction>()
+            .HasIndex(x => new { x.ChatMessageId, x.UserId, x.Emoji }).IsUnique();
+        modelBuilder.Entity<ChatReaction>()
+            .HasOne(r => r.ChatMessage).WithMany(m => m.Reactions).HasForeignKey(r => r.ChatMessageId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChatMessageRead>()
+            .HasIndex(x => new { x.ChatMessageId, x.UserId }).IsUnique();
+        modelBuilder.Entity<ChatMessageRead>()
+            .HasOne(r => r.ChatMessage).WithMany(m => m.ReadReceipts).HasForeignKey(r => r.ChatMessageId).OnDelete(DeleteBehavior.Cascade);
+
+        // ═══ Announcements (الإعلانات والتبليغات) ═══
+        modelBuilder.Entity<Announcement>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<Announcement>()
+            .HasIndex(x => new { x.CompanyId, x.IsPublished, x.CreatedAt });
+        modelBuilder.Entity<Announcement>()
+            .Property(x => x.TargetType).HasConversion<int>();
+        modelBuilder.Entity<Announcement>()
+            .HasOne(a => a.Company).WithMany().HasForeignKey(a => a.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Announcement>()
+            .HasOne(a => a.CreatedByUser).WithMany().HasForeignKey(a => a.CreatedByUserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AnnouncementTarget>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<AnnouncementTarget>()
+            .HasIndex(x => new { x.AnnouncementId, x.UserId }).IsUnique();
+        modelBuilder.Entity<AnnouncementTarget>()
+            .HasOne(t => t.Announcement).WithMany(a => a.Targets).HasForeignKey(t => t.AnnouncementId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AnnouncementTarget>()
+            .HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AnnouncementRead>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<AnnouncementRead>()
+            .HasIndex(x => new { x.AnnouncementId, x.UserId }).IsUnique();
+        modelBuilder.Entity<AnnouncementRead>()
+            .HasOne(r => r.Announcement).WithMany(a => a.Reads).HasForeignKey(r => r.AnnouncementId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AnnouncementRead>()
+            .HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        // ==================== FTTH Sync ====================
+        modelBuilder.Entity<CompanyFtthSettings>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<CompanyFtthSettings>()
+            .HasIndex(x => x.CompanyId).IsUnique();
+        modelBuilder.Entity<CompanyFtthSettings>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FtthSubscriberCache>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FtthSubscriberCache>()
+            .HasIndex(x => new { x.CompanyId, x.SubscriptionId }).IsUnique();
+        modelBuilder.Entity<FtthSubscriberCache>()
+            .HasIndex(x => new { x.CompanyId, x.CustomerId });
+        modelBuilder.Entity<FtthSubscriberCache>()
+            .HasIndex(x => new { x.CompanyId, x.UpdatedAt });
+        modelBuilder.Entity<FtthSubscriberCache>()
+            .HasIndex(x => new { x.CompanyId, x.ZoneName });
+        modelBuilder.Entity<FtthSubscriberCache>()
+            .HasIndex(x => new { x.CompanyId, x.Status });
+        modelBuilder.Entity<FtthSubscriberCache>()
+            .Property(x => x.ServicesJson).HasColumnType("jsonb");
+        modelBuilder.Entity<FtthSubscriberCache>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FtthSyncLog>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FtthSyncLog>()
+            .HasIndex(x => new { x.CompanyId, x.StartedAt });
+        modelBuilder.Entity<FtthSyncLog>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 
         // Reminder Settings
         modelBuilder.Entity<ReminderSettings>()

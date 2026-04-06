@@ -64,6 +64,9 @@ builder.Services.AddScoped<ISmsService, MockSmsService>();
 builder.Services.AddHttpClient<IFirebaseAdminService, FirebaseAdminService>();
 builder.Services.AddHttpClient();
 
+// FCM Push Notification Service
+builder.Services.AddSingleton<IFcmNotificationService, FcmNotificationService>();
+
 // VPS Control Service
 builder.Services.AddScoped<IVpsControlService, VpsControlService>();
 
@@ -71,6 +74,9 @@ builder.Services.AddScoped<IVpsControlService, VpsControlService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+
+// FTTH Sync Background Service (مزامنة FTTH تلقائية)
+builder.Services.AddHostedService<Sadara.API.Services.FtthSyncBackgroundService>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
@@ -101,6 +107,21 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
+    };
+
+    // ═══ SignalR: قراءة JWT من query string لاتصالات WebSocket ═══
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -160,10 +181,10 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = 600,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 10
+                QueueLimit = 50
             }));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
@@ -219,6 +240,13 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddHealthChecks();
 
+// SignalR — بث مباشر لمواقع الموظفين
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
+
 var app = builder.Build();
 
 // Global Exception Handler
@@ -273,6 +301,8 @@ app.UseAuthorization();
 app.UseSerilogRequestLogging();
 
 app.MapControllers();
+app.MapHub<Sadara.API.Hubs.LocationHub>("/hubs/location");
+app.MapHub<Sadara.API.Hubs.ChatHub>("/hubs/chat");
 app.MapHealthChecks("/health");
 
 // Apply migrations and seed data

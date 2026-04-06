@@ -349,6 +349,94 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     }
 
     #endregion
+
+    #region User Departments (أقسام الموظف)
+
+    /// <summary>
+    /// جلب أقسام موظف معين
+    /// </summary>
+    [HttpGet("~/api/companies/{companyId:guid}/users/{userId:guid}/departments")]
+    public async Task<IActionResult> GetUserDepartments(Guid companyId, Guid userId)
+    {
+        var userDepts = await _unitOfWork.UserDepartments.AsQueryable()
+            .Where(ud => ud.UserId == userId && ud.Department.CompanyId == companyId)
+            .Include(ud => ud.Department)
+            .OrderByDescending(ud => ud.IsPrimary)
+            .ThenBy(ud => ud.Department.SortOrder)
+            .Select(ud => new UserDepartmentResponse
+            {
+                Id = ud.Id,
+                DepartmentId = ud.DepartmentId,
+                DepartmentNameAr = ud.Department.NameAr,
+                DepartmentName = ud.Department.Name,
+                IsPrimary = ud.IsPrimary,
+                CreatedAt = ud.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new { success = true, data = userDepts });
+    }
+
+    /// <summary>
+    /// تعيين أقسام للموظف (استبدال كامل)
+    /// </summary>
+    [HttpPut("~/api/companies/{companyId:guid}/users/{userId:guid}/departments")]
+    public async Task<IActionResult> SetUserDepartments(Guid companyId, Guid userId, [FromBody] SetUserDepartmentsRequest request)
+    {
+        var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId && u.CompanyId == companyId);
+        if (user == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        // حذف الأقسام الحالية
+        var existing = await _unitOfWork.UserDepartments.FindAsync(ud => ud.UserId == userId);
+        foreach (var ud in existing)
+        {
+            ud.IsDeleted = true;
+            ud.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.UserDepartments.Update(ud);
+        }
+
+        // إضافة الأقسام الجديدة
+        if (request.DepartmentIds != null && request.DepartmentIds.Any())
+        {
+            bool primarySet = false;
+            foreach (var deptId in request.DepartmentIds.Distinct())
+            {
+                var dept = await _unitOfWork.Departments.FirstOrDefaultAsync(d => d.Id == deptId && d.CompanyId == companyId);
+                if (dept == null) continue;
+
+                var isPrimary = request.PrimaryDepartmentId.HasValue
+                    ? deptId == request.PrimaryDepartmentId.Value
+                    : !primarySet;
+
+                await _unitOfWork.UserDepartments.AddAsync(new UserDepartment
+                {
+                    UserId = userId,
+                    DepartmentId = deptId,
+                    IsPrimary = isPrimary
+                });
+
+                if (isPrimary) primarySet = true;
+            }
+
+            // تحديث حقل Department النصي القديم بالقسم الرئيسي (للتوافق)
+            if (primarySet)
+            {
+                var primaryDeptId = request.PrimaryDepartmentId ?? request.DepartmentIds.First();
+                var primaryDept = await _unitOfWork.Departments.GetByIdAsync(primaryDeptId);
+                if (primaryDept != null)
+                {
+                    user.Department = primaryDept.NameAr;
+                    _unitOfWork.Users.Update(user);
+                }
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return Ok(new { success = true, message = "تم تحديث أقسام الموظف بنجاح" });
+    }
+
+    #endregion
 }
 
 #region DTOs
@@ -402,6 +490,22 @@ public class UpdateDepartmentTaskRequest
     public string? Name { get; set; }
     public int? SortOrder { get; set; }
     public bool? IsActive { get; set; }
+}
+
+public class UserDepartmentResponse
+{
+    public int Id { get; set; }
+    public int DepartmentId { get; set; }
+    public string DepartmentNameAr { get; set; } = string.Empty;
+    public string? DepartmentName { get; set; }
+    public bool IsPrimary { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class SetUserDepartmentsRequest
+{
+    public List<int> DepartmentIds { get; set; } = new();
+    public int? PrimaryDepartmentId { get; set; }
 }
 
 #endregion

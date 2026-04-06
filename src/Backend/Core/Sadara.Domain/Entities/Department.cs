@@ -23,6 +23,7 @@ public class Department : BaseEntity<int>
     // Navigation
     public Company Company { get; set; } = null!;
     public ICollection<DepartmentTask> Tasks { get; set; } = new List<DepartmentTask>();
+    public ICollection<UserDepartment> UserDepartments { get; set; } = new List<UserDepartment>();
 }
 
 /// <summary>

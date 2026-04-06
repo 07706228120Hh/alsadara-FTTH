@@ -581,6 +581,8 @@ public class InternalDataController : ControllerBase
                 employee.WorkScheduleId,
                 CustomWorkStartTime = employee.CustomWorkStartTime?.ToString("HH:mm"),
                 CustomWorkEndTime = employee.CustomWorkEndTime?.ToString("HH:mm"),
+                // Attendance security code
+                employee.AttendanceSecurityCode,
                 // FTTH Integration
                 employee.FtthUsername,
                 employee.FtthPasswordEncrypted,
@@ -686,6 +688,22 @@ public class InternalDataController : ControllerBase
         }
         if (request.FtthPassword != null)
             employee.FtthPasswordEncrypted = request.FtthPassword;
+
+        // Attendance security code — with uniqueness check
+        if (request.AttendanceSecurityCode != null)
+        {
+            var newCode = request.AttendanceSecurityCode.Trim();
+            if (!string.IsNullOrEmpty(newCode))
+            {
+                var duplicate = await _unitOfWork.Users.AsQueryable()
+                    .AnyAsync(u => u.CompanyId == id && !u.IsDeleted
+                        && u.Id != employeeId
+                        && u.AttendanceSecurityCode == newCode);
+                if (duplicate)
+                    return BadRequest(new { success = false, message = $"كود الأمان '{newCode}' مستخدم بالفعل لموظف آخر" });
+            }
+            employee.AttendanceSecurityCode = string.IsNullOrEmpty(newCode) ? null : newCode;
+        }
 
         employee.UpdatedAt = DateTime.UtcNow;
 
@@ -896,6 +914,50 @@ public class InternalDataController : ControllerBase
         return Ok(new { success = true, message = "تم حذف الموظف بنجاح" });
     }
 
+    // ══════════════════════════════════════
+    // قوالب الصلاحيات المخصصة للشركة
+    // ══════════════════════════════════════
+
+    /// <summary>جلب قوالب الصلاحيات المخصصة للشركة</summary>
+    [HttpGet("companies/{id}/permission-templates")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPermissionTemplates(Guid id)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        return Ok(new
+        {
+            success = true,
+            data = company.CustomPermissionTemplates
+        });
+    }
+
+    /// <summary>حفظ قوالب الصلاحيات المخصصة للشركة (مدير الشركة فقط)</summary>
+    [HttpPut("companies/{id}/permission-templates")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SavePermissionTemplates(Guid id, [FromBody] SaveTemplatesRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var company = await _unitOfWork.Companies.GetByIdAsync(id);
+        if (company == null || company.IsDeleted)
+            return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        company.CustomPermissionTemplates = request.Templates;
+        company.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Companies.Update(company);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = "تم حفظ القوالب بنجاح" });
+    }
+
     /// <summary>
     /// إضافة موظف جديد للشركة
     /// </summary>
@@ -929,6 +991,9 @@ public class InternalDataController : ControllerBase
                 return BadRequest(new { success = false, message = "البريد الإلكتروني مستخدم بالفعل" });
         }
 
+        // توليد كود أمان بصمة فريد تلقائياً
+        var securityCode = await GenerateUniqueSecurityCodeAsync(id);
+
         var employee = new Sadara.Domain.Entities.User
         {
             Id = Guid.NewGuid(),
@@ -943,6 +1008,7 @@ public class InternalDataController : ControllerBase
             EmployeeCode = request.EmployeeCode ?? GenerateEmployeeCode(),
             Center = request.Center,
             Salary = request.Salary,
+            AttendanceSecurityCode = securityCode,
             IsActive = true,
             IsPhoneVerified = true,
             CreatedAt = DateTime.UtcNow
@@ -966,6 +1032,7 @@ public class InternalDataController : ControllerBase
                 employee.EmployeeCode,
                 employee.Center,
                 employee.Salary,
+                employee.AttendanceSecurityCode,
                 employee.IsActive,
                 employee.CreatedAt
             }
@@ -988,6 +1055,24 @@ public class InternalDataController : ControllerBase
     private string GenerateEmployeeCode()
     {
         return $"EMP-{DateTime.UtcNow:yyMMdd}-{new Random().Next(1000, 9999)}";
+    }
+
+    /// <summary>توليد كود أمان بصمة فريد (4 أرقام)</summary>
+    private async Task<string> GenerateUniqueSecurityCodeAsync(Guid companyId)
+    {
+        var existingCodes = await _unitOfWork.Users.AsQueryable()
+            .Where(u => u.CompanyId == companyId && !u.IsDeleted && u.AttendanceSecurityCode != null)
+            .Select(u => u.AttendanceSecurityCode!)
+            .ToListAsync();
+
+        var rng = new Random();
+        string code;
+        do
+        {
+            code = rng.Next(1000, 9999).ToString();
+        } while (existingCodes.Contains(code));
+
+        return code;
     }
 
 
@@ -2920,6 +3005,8 @@ public class InternalUpdateEmployeeRequest
     // Password fields
     public string? NewPassword { get; set; }
     public string? FtthPassword { get; set; }
+    // Attendance security code
+    public string? AttendanceSecurityCode { get; set; }
 }
 
 /// <summary>
@@ -2975,4 +3062,11 @@ public class InternalUpdateEmployeePermissionsV2Request
     /// صلاحيات النظام الثاني V2
     /// </summary>
     public Dictionary<string, Dictionary<string, bool>>? SecondSystemPermissionsV2 { get; set; }
+}
+
+/// <summary>طلب حفظ قوالب الصلاحيات المخصصة</summary>
+public class SaveTemplatesRequest
+{
+    /// <summary>JSON string يحتوي القوالب المخصصة</summary>
+    public string? Templates { get; set; }
 }

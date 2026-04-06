@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -18,11 +19,13 @@ public class ServiceRequestsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ServiceRequestsController> _logger;
+    private readonly IFcmNotificationService _fcmService;
 
-    public ServiceRequestsController(IUnitOfWork unitOfWork, ILogger<ServiceRequestsController> logger)
+    public ServiceRequestsController(IUnitOfWork unitOfWork, ILogger<ServiceRequestsController> logger, IFcmNotificationService fcmService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _fcmService = fcmService;
     }
 
     #region Service Requests CRUD
@@ -1333,13 +1336,12 @@ public class ServiceRequestsController : ControllerBase
                 new { value = "Rejected", label = "مرفوضة" },
                 new { value = "OnHold", label = "معلقة" }
             },
-            fbgOptions = new[]
-            {
-                "FBG-01", "FBG-02", "FBG-03", "FBG-04", "FBG-05",
-                "FBG-06", "FBG-07", "FBG-08", "FBG-09", "FBG-10",
-                "FBG-11", "FBG-12", "FBG-13", "FBG-14", "FBG-15",
-                "FBG-16", "FBG-17", "FBG-18", "FBG-19", "FBG-20"
-            }
+            fbgOptions = await _unitOfWork.ZoneStatistics.AsQueryable()
+                .Where(z => !string.IsNullOrEmpty(z.ZoneName))
+                .OrderBy(z => z.ZoneName)
+                .Select(z => z.ZoneName)
+                .Distinct()
+                .ToListAsync()
         };
 
         return Ok(new { success = true, data });
@@ -1503,6 +1505,21 @@ public class ServiceRequestsController : ControllerBase
         {
             await _unitOfWork.Notifications.AddAsync(n);
         }
+
+        // Send FCM push notifications for status changes
+        if (notifications.Count > 0)
+        {
+            var fcmData = new Dictionary<string, string>
+            {
+                ["type"] = "status_changed",
+                ["requestId"] = request.Id.ToString(),
+                ["requestNumber"] = request.RequestNumber ?? "",
+                ["newStatus"] = newStatus.ToString()
+            };
+
+            var userIds = notifications.Select(n => n.UserId).Distinct().ToList();
+            _ = _fcmService.SendToUsersAsync(userIds, $"تحديث طلب {request.RequestNumber}", $"تم تغيير حالة الطلب إلى: {statusAr}", fcmData);
+        }
     }
 
     /// <summary>
@@ -1539,17 +1556,28 @@ public class ServiceRequestsController : ControllerBase
     /// </summary>
     private async Task NotifyTechnicianOfAssignment(ServiceRequest request, Guid technicianUserId, string? technicianName)
     {
+        var title = "تم تعيينك لمهمة جديدة";
+        var body = $"تم تعيينك للعمل على الطلب {request.RequestNumber} - {request.ContactPhone}";
+
         await _unitOfWork.Notifications.AddAsync(new Notification
         {
             UserId = technicianUserId,
-            Title = "تم تعيينك لمهمة جديدة",
-            TitleAr = "تم تعيينك لمهمة جديدة",
-            Body = $"تم تعيينك للعمل على الطلب {request.RequestNumber} - {request.ContactPhone}",
-            BodyAr = $"تم تعيينك للعمل على الطلب {request.RequestNumber} - {request.ContactPhone}",
+            Title = title,
+            TitleAr = title,
+            Body = body,
+            BodyAr = body,
             Type = NotificationType.RequestAssigned,
             ReferenceId = request.Id,
             ReferenceType = "ServiceRequest",
             CreatedAt = DateTime.UtcNow
+        });
+
+        // Send FCM push notification
+        _ = _fcmService.SendToUserAsync(technicianUserId, title, body, new Dictionary<string, string>
+        {
+            ["type"] = "task_assigned",
+            ["requestId"] = request.Id.ToString(),
+            ["requestNumber"] = request.RequestNumber ?? ""
         });
     }
 
