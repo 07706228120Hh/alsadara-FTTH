@@ -15,6 +15,7 @@ import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
 import '../../services/dual_auth_service.dart';
+import '../../services/fcm_token_service.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
 
@@ -425,10 +426,14 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   void _navigateAfterLogin() async {
+    try {
     // مسح بيانات FTTH القديمة قبل الانتقال لمنع رؤية home_page لبيانات المستخدم السابق
     await DualAuthService.instance.clearFtthData();
     // 🔄 تسجيل دخول FTTH الصامت في الخلفية (لا ينتظر)
     _performSilentFtthLogin();
+    // 🔔 تسجيل FCM token في الخلفية (لا ينتظر)
+    FcmTokenService.instance.registerToken();
+    FcmTokenService.instance.listenForTokenRefresh();
 
     if (_authService.isSuperAdmin) {
       if (!mounted) return;
@@ -449,9 +454,13 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       final company = _authService.currentCompany!;
 
       // V2: تحميل الصلاحيات من PermissionManager
-      final pm = PermissionManager.instance;
-      if (!pm.isLoaded) {
-        await pm.loadPermissions();
+      try {
+        final pm = PermissionManager.instance;
+        if (!pm.isLoaded) {
+          await pm.loadPermissions();
+        }
+      } catch (e) {
+        debugPrint('⚠️ فشل تحميل الصلاحيات: $e');
       }
 
       if (!mounted) return;
@@ -474,6 +483,16 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       );
       // فحص التحديثات بعد الانتقال (بدون حظر)
       _checkForUpdatesAfterLogin();
+    }
+    } catch (e) {
+      debugPrint('❌ خطأ في التنقل بعد الدخول: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isNavigating = false;
+          _errorMessage = 'حدث خطأ أثناء تحميل الصفحة الرئيسية';
+        });
+      }
     }
   }
 

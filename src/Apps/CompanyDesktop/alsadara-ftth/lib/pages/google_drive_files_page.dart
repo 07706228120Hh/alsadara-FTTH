@@ -9,7 +9,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import '../config/app_secrets.dart';
 
 class GoogleDriveFilesPage extends StatefulWidget {
@@ -113,7 +113,7 @@ class _GoogleDriveFilesPageState extends State<GoogleDriveFilesPage> {
       }
 
       // فتح الملف باستخدام مكتبة OpenFile
-      final result = await OpenFile.open(file.path);
+      final result = await OpenFilex.open(file.path);
       if (result.type != ResultType.done) {
         _showErrorDialog('تعذر فتح الملف. تحقق من تثبيت Google Earth.');
       }

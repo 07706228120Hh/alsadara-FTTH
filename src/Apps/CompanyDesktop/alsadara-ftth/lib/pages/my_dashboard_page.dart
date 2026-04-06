@@ -73,6 +73,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
 
   // ── حالة طلبات سحب الأموال ──
   bool _isLoadingWithdrawals = true;
+  List<dynamic> _leaveRequests = [];
+  bool _isLoadingLeaves = false;
   List<dynamic> _withdrawalRequests = [];
   int _withdrawalTotal = 0;
 
@@ -98,6 +100,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       _loadTransactions(),
       _loadEmployeeReport(),
       _loadWithdrawalRequests(),
+      _loadLeaveRequests(),
     ]);
   }
 
@@ -201,6 +204,23 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     }
   }
 
+  Future<void> _loadLeaveRequests() async {
+    if (mounted) setState(() => _isLoadingLeaves = true);
+    try {
+      final authUser = VpsAuthService.instance.currentUser;
+      final userId = authUser?.id ?? widget.username;
+      final data = await _attendanceApi.getLeaveRequests(userId: userId);
+      if (!mounted) return;
+      setState(() {
+        _leaveRequests = List<dynamic>.from(data['data'] ?? data['requests'] ?? []);
+        _isLoadingLeaves = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading leave requests');
+      if (mounted) setState(() => _isLoadingLeaves = false);
+    }
+  }
+
   String _formatAmount(dynamic amount) {
     if (amount == null) return '0';
     final num val =
@@ -243,20 +263,17 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                       children: [
                         // ═══ 1. أزرار سريعة (بصمة + إجازة + سحب أموال) ═══
                         _buildQuickActions(),
-                        const SizedBox(height: 20),
-                        // ═══ 2. ملخص مالي ═══
+                        SizedBox(height: r.isMobile ? 12 : 20),
                         _buildFinancialSummary(),
-                        const SizedBox(height: 20),
-                        // ═══ 3. الراتب والخصومات ═══
+                        SizedBox(height: r.isMobile ? 12 : 20),
                         _buildSalarySection(),
-                        const SizedBox(height: 20),
-                        // ═══ 4. طلبات سحب الأموال ═══
+                        SizedBox(height: r.isMobile ? 12 : 20),
+                        _buildLeaveRequestsSection(),
+                        SizedBox(height: r.isMobile ? 12 : 20),
                         _buildWithdrawalSection(),
-                        const SizedBox(height: 20),
-                        // ═══ 5. سجل الحضور اليومي ═══
+                        SizedBox(height: r.isMobile ? 12 : 20),
                         _buildDailyAttendanceSection(),
-                        const SizedBox(height: 20),
-                        // ═══ 5. المعاملات ═══
+                        SizedBox(height: r.isMobile ? 12 : 20),
                         _buildTransactionsSection(),
                       ],
                     ),
@@ -370,9 +387,10 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   //  1. أزرار سريعة (بصمة + إجازة + سحب أموال)
   // ═══════════════════════════════════════════════════════
   Widget _buildQuickActions() {
+    final mobile = MediaQuery.of(context).size.width < 500;
+    final double gap = mobile ? 6 : 12;
     return Row(
       children: [
-        // زر البصمة
         Expanded(
           child: _quickActionCard(
             title: 'البصمة',
@@ -393,8 +411,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             },
           ),
         ),
-        const SizedBox(width: 12),
-        // زر طلب إجازة
+        SizedBox(width: gap),
         Expanded(
           child: _quickActionCard(
             title: 'طلب إجازة',
@@ -404,8 +421,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             onTap: _showLeaveRequestDialog,
           ),
         ),
-        const SizedBox(width: 12),
-        // زر طلب سحب أموال
+        SizedBox(width: gap),
         Expanded(
           child: _quickActionCard(
             title: 'سحب أموال',
@@ -426,24 +442,33 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     required List<Color> gradient,
     required VoidCallback onTap,
   }) {
+    final w = MediaQuery.of(context).size.width;
+    final mobile = w < 500;
+    final double iconBox = mobile ? 34 : 44;
+    final double iconSize = mobile ? 18 : 24;
+    final double titleSize = mobile ? 12 : 14;
+    final double subSize = mobile ? 9 : 10;
+    final double vPad = mobile ? 10 : 16;
+    final double hPad = mobile ? 8 : 14;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(mobile ? 12 : 16),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+          padding: EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: gradient,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(mobile ? 12 : 16),
             boxShadow: [
               BoxShadow(
-                color: gradient[0].withOpacity(0.3),
-                blurRadius: 12,
+                color: gradient[0].withValues(alpha: 0.3),
+                blurRadius: mobile ? 6 : 12,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -451,23 +476,27 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           child: Column(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: iconBox,
+                height: iconBox,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(mobile ? 8 : 12),
                 ),
-                child: Icon(icon, color: Colors.white, size: 24),
+                child: Icon(icon, color: Colors.white, size: iconSize),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: mobile ? 6 : 10),
               Text(title,
                   style: GoogleFonts.cairo(
-                      fontSize: 14,
+                      fontSize: titleSize,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white)),
+                      color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
               Text(subtitle,
                   style: GoogleFonts.cairo(
-                      fontSize: 10, color: Colors.white.withOpacity(0.8))),
+                      fontSize: subSize, color: Colors.white.withValues(alpha: 0.8)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ],
           ),
         ),
@@ -1061,8 +1090,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = constraints.maxWidth > 700 ? 6 : 3;
-        final spacing = 10.0;
+        final cols = constraints.maxWidth > 700 ? 6 : (constraints.maxWidth > 400 ? 3 : 2);
+        final spacing = constraints.maxWidth > 400 ? 10.0 : 6.0;
         final cardW = (constraints.maxWidth - spacing * (cols - 1)) / cols;
 
         return Wrap(
@@ -1186,25 +1215,31 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     String? badge,
     Color? badgeColor,
   }) {
+    final w = MediaQuery.of(context).size.width;
+    final mobile = w < 500;
+    final double circleSize = mobile ? 28 : 36;
+    final double iconSz = mobile ? 14 : 18;
+    final double hPad = mobile ? 6 : 12;
+
     final card = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: mobile ? 8 : 10),
       decoration: BoxDecoration(
         color: _bgCard,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.15)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: circleSize,
+            height: circleSize,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
+            child: Icon(icon, color: Colors.white, size: iconSz),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: mobile ? 6 : 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1452,7 +1487,177 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     4: {'label': 'تم الصرف', 'color': Color(0xFF3498DB), 'icon': Icons.paid},
   };
 
+  // ═══════════════════════════════════════════════════════
+  //  طلبات الإجازة
+  // ═══════════════════════════════════════════════════════
+
+  static const Map<int, Map<String, dynamic>> _leaveStatusInfo = {
+    0: {'label': 'بانتظار الموافقة', 'color': Color(0xFFF39C12), 'icon': Icons.hourglass_empty},
+    1: {'label': 'موافق عليه', 'color': Color(0xFF27AE60), 'icon': Icons.check_circle},
+    2: {'label': 'مرفوض', 'color': Color(0xFFE74C3C), 'icon': Icons.cancel},
+    3: {'label': 'ملغي', 'color': Color(0xFF95A5A6), 'icon': Icons.block},
+  };
+
+  int _parseLeaveStatus(Map<String, dynamic> r) {
+    // statusValue is the int from API
+    final sv = r['statusValue'] ?? r['StatusValue'];
+    if (sv is int) return sv;
+    // fallback: parse status string
+    final s = (r['status'] ?? r['Status'] ?? '').toString().toLowerCase();
+    switch (s) {
+      case 'pending': return 0;
+      case 'approved': return 1;
+      case 'rejected': return 2;
+      case 'cancelled': return 3;
+      default:
+        return int.tryParse(s) ?? 0;
+    }
+  }
+
+  String _leaveTypeName(dynamic type) {
+    final t = type is int ? type : int.tryParse('$type') ?? -1;
+    switch (t) {
+      case 0: return 'سنوية';
+      case 1: return 'مرضية';
+      case 2: return 'بدون راتب';
+      case 3: return 'طارئة';
+      case 4: return 'رسمية';
+      case 5: return 'زواج';
+      case 6: return 'أبوة/أمومة';
+      case 7: return 'وفاة';
+      default: return '$type';
+    }
+  }
+
+  final Set<dynamic> _expandedLeaveIds = {};
+
+  Widget _buildLeaveRequestsSection() {
+    final mobile = MediaQuery.of(context).size.width < 500;
+    return _sectionCard(
+      title: 'طلبات الإجازة (${_leaveRequests.length})',
+      icon: Icons.beach_access_rounded,
+      iconGradient: const [Color(0xFFF2994A), Color(0xFFF2C94C)],
+      trailing: IconButton(
+        onPressed: _showLeaveRequestDialog,
+        icon: const Icon(Icons.add_circle_outline, color: Color(0xFFF2994A)),
+        tooltip: 'طلب إجازة جديد',
+      ),
+      child: _isLoadingLeaves
+          ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2)))
+          : _leaveRequests.isEmpty
+              ? _buildEmptyState(Icons.beach_access_outlined, 'لا توجد طلبات إجازة')
+              : Column(
+                  children: _leaveRequests.map((req) {
+                    final r = req as Map<String, dynamic>;
+                    final statusInt = _parseLeaveStatus(r);
+                    final info = _leaveStatusInfo[statusInt] ?? _leaveStatusInfo[0]!;
+                    final leaveType = r['leaveTypeValue'] ?? r['LeaveTypeValue'] ?? r['leaveType'] ?? r['LeaveType'] ?? 0;
+                    final startDate = r['startDate'] ?? r['StartDate'];
+                    final endDate = r['endDate'] ?? r['EndDate'];
+                    final reason = r['reason'] ?? r['Reason'];
+                    final reviewNotes = r['reviewNotes'] ?? r['ReviewNotes'];
+                    final reviewedBy = r['reviewedByUserName'] ?? r['ReviewedByUserName'];
+                    final reviewedAt = r['reviewedAt'] ?? r['ReviewedAt'];
+                    final totalDays = r['totalDays'] ?? r['TotalDays'];
+                    final createdAt = r['createdAt'] ?? r['CreatedAt'];
+                    final id = r['id'] ?? r['Id'];
+                    final cardColor = info['color'] as Color;
+                    final isExpanded = _expandedLeaveIds.contains(id);
+
+                    return GestureDetector(
+                      onTap: () => setState(() {
+                        isExpanded ? _expandedLeaveIds.remove(id) : _expandedLeaveIds.add(id);
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.all(mobile ? 10 : 14),
+                        decoration: BoxDecoration(
+                          color: isExpanded ? cardColor.withOpacity(0.06) : cardColor.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: cardColor.withOpacity(isExpanded ? 0.3 : 0.12)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── الصف الرئيسي ──
+                            Row(
+                              children: [
+                                Icon(info['icon'] as IconData, color: cardColor, size: mobile ? 16 : 20),
+                                SizedBox(width: mobile ? 6 : 8),
+                                _chip(info['label'] as String, cardColor),
+                                SizedBox(width: mobile ? 4 : 8),
+                                _chip(_leaveTypeName(leaveType), _accentBlue),
+                                const Spacer(),
+                                if (totalDays != null)
+                                  Text('$totalDays يوم', style: GoogleFonts.cairo(
+                                    fontSize: mobile ? 13 : 15, fontWeight: FontWeight.bold, color: _textDark)),
+                                SizedBox(width: mobile ? 4 : 6),
+                                Icon(isExpanded ? Icons.expand_less : Icons.expand_more,
+                                    color: _textGray, size: mobile ? 18 : 20),
+                              ],
+                            ),
+                            SizedBox(height: mobile ? 4 : 6),
+                            // تواريخ مختصرة
+                            Wrap(
+                              spacing: mobile ? 6 : 12,
+                              runSpacing: 4,
+                              children: [
+                                _iconText(Icons.date_range, 'من $startDate', mobile),
+                                _iconText(Icons.date_range, 'إلى $endDate', mobile),
+                                _iconText(Icons.access_time, _formatDate('$createdAt'), mobile),
+                              ],
+                            ),
+                            // ── التفاصيل الموسعة ──
+                            if (isExpanded) ...[
+                              Divider(height: 16, color: cardColor.withOpacity(0.15)),
+                              _detailRow(Icons.note_outlined, 'السبب', '$reason', mobile),
+                              if (reviewedBy != null)
+                                _detailRow(Icons.person_outline, 'المراجع', '$reviewedBy', mobile),
+                              if (reviewedAt != null && '$reviewedAt'.isNotEmpty)
+                                _detailRow(Icons.schedule, 'تاريخ المراجعة', _formatDate('$reviewedAt'), mobile),
+                              if (reviewNotes != null && '$reviewNotes'.isNotEmpty)
+                                _detailRow(Icons.comment_outlined, 'ملاحظات المراجع', '$reviewNotes', mobile, color: _accentBlue),
+                              if (statusInt == 0 && id != null)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: Text('إلغاء طلب الإجازة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                                          content: Text('هل أنت متأكد من إلغاء هذا الطلب؟', style: GoogleFonts.cairo()),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('لا', style: GoogleFonts.cairo())),
+                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('نعم، إلغاء', style: GoogleFonts.cairo(color: _accentRed))),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await _attendanceApi.cancelLeaveRequest(id is int ? id : int.parse('$id'));
+                                        _loadLeaveRequests();
+                                      }
+                                    },
+                                    icon: const Icon(Icons.close, size: 14, color: Color(0xFFE74C3C)),
+                                    label: Text('إلغاء الطلب', style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFFE74C3C))),
+                                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+    );
+  }
+
+  final Set<dynamic> _expandedWithdrawalIds = {};
+
   Widget _buildWithdrawalSection() {
+    final mobile = MediaQuery.of(context).size.width < 500;
     return _sectionCard(
       title: 'طلبات سحب الأموال ($_withdrawalTotal)',
       icon: Icons.account_balance_wallet_rounded,
@@ -1463,164 +1668,83 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         tooltip: 'طلب سحب جديد',
       ),
       child: _isLoadingWithdrawals
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
+          ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2)))
           : _withdrawalRequests.isEmpty
-              ? Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 30),
-                  child: Column(
-                    children: [
-                      Icon(Icons.account_balance_wallet_outlined,
-                          size: 48, color: _textGray.withOpacity(0.3)),
-                      const SizedBox(height: 8),
-                      Text('لا توجد طلبات سحب',
-                          style: GoogleFonts.cairo(
-                              color: _textGray, fontSize: 14)),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: _showWithdrawalRequestDialog,
-                        icon: const Icon(Icons.add, size: 18),
-                        label: Text('تقديم طلب سحب',
-                            style: GoogleFonts.cairo(fontSize: 13)),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF11998e),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
+              ? _buildEmptyState(Icons.account_balance_wallet_outlined, 'لا توجد طلبات سحب')
               : Column(
                   children: _withdrawalRequests.map((req) {
                     final r = req as Map<String, dynamic>;
                     final status = r['status'] ?? r['Status'] ?? 0;
-                    final statusInt =
-                        status is int ? status : int.tryParse('$status') ?? 0;
-                    final info = _withdrawalStatusInfo[statusInt] ??
-                        _withdrawalStatusInfo[0]!;
+                    final statusInt = status is int ? status : int.tryParse('$status') ?? 0;
+                    final info = _withdrawalStatusInfo[statusInt] ?? _withdrawalStatusInfo[0]!;
                     final amount = r['amount'] ?? r['Amount'] ?? 0;
                     final reason = r['reason'] ?? r['Reason'];
                     final createdAt = r['createdAt'] ?? r['CreatedAt'];
                     final reviewNotes = r['reviewNotes'] ?? r['ReviewNotes'];
-                    final reviewedBy =
-                        r['reviewedByUserName'] ?? r['ReviewedByUserName'];
+                    final reviewedBy = r['reviewedByUserName'] ?? r['ReviewedByUserName'];
+                    final reviewedAt = r['reviewedAt'] ?? r['ReviewedAt'];
+                    final id = r['id'] ?? r['Id'];
+                    final cardColor = info['color'] as Color;
+                    final isExpanded = _expandedWithdrawalIds.contains(id);
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: (info['color'] as Color).withOpacity(0.04),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: (info['color'] as Color).withOpacity(0.15)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(info['icon'] as IconData,
-                                  color: info['color'] as Color, size: 20),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: (info['color'] as Color)
-                                      .withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(info['label'] as String,
-                                    style: GoogleFonts.cairo(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: info['color'] as Color)),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${_formatAmount(amount)} د.ع',
-                                style: GoogleFonts.cairo(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: _textDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (reason != null && '$reason'.isNotEmpty) ...[
-                            const SizedBox(height: 8),
+                    return GestureDetector(
+                      onTap: () => setState(() {
+                        isExpanded ? _expandedWithdrawalIds.remove(id) : _expandedWithdrawalIds.add(id);
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.all(mobile ? 10 : 14),
+                        decoration: BoxDecoration(
+                          color: isExpanded ? cardColor.withOpacity(0.06) : cardColor.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: cardColor.withOpacity(isExpanded ? 0.3 : 0.12)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── الصف الرئيسي ──
                             Row(
                               children: [
-                                Icon(Icons.note_outlined,
-                                    size: 14, color: _textGray),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text('$reason',
-                                      style: GoogleFonts.cairo(
-                                          fontSize: 12, color: _textSubtle)),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (reviewNotes != null &&
-                              '$reviewNotes'.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.comment_outlined,
-                                    size: 14, color: _accentBlue),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text('ملاحظات المراجع: $reviewNotes',
-                                      style: GoogleFonts.cairo(
-                                          fontSize: 11, color: _accentBlue)),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(Icons.access_time,
-                                  size: 13, color: _textGray),
-                              const SizedBox(width: 4),
-                              Text(_formatDate('$createdAt'),
-                                  style: GoogleFonts.cairo(
-                                      fontSize: 11, color: _textGray)),
-                              if (reviewedBy != null) ...[
-                                const SizedBox(width: 12),
-                                Icon(Icons.person_outline,
-                                    size: 13, color: _textGray),
-                                const SizedBox(width: 4),
-                                Text('$reviewedBy',
+                                Icon(info['icon'] as IconData, color: cardColor, size: mobile ? 16 : 20),
+                                SizedBox(width: mobile ? 6 : 8),
+                                _chip(info['label'] as String, cardColor),
+                                const Spacer(),
+                                Text('${_formatAmount(amount)} د.ع',
                                     style: GoogleFonts.cairo(
-                                        fontSize: 11, color: _textGray)),
+                                        fontSize: mobile ? 14 : 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: _textDark)),
+                                SizedBox(width: mobile ? 4 : 6),
+                                Icon(isExpanded ? Icons.expand_less : Icons.expand_more,
+                                    color: _textGray, size: mobile ? 18 : 20),
                               ],
-                              const Spacer(),
-                              if (statusInt == 0)
-                                TextButton.icon(
-                                  onPressed: () => _cancelWithdrawal(r),
-                                  icon: const Icon(Icons.close,
-                                      size: 14, color: Color(0xFFE74C3C)),
-                                  label: Text('إلغاء',
-                                      style: GoogleFonts.cairo(
-                                          fontSize: 11,
-                                          color: const Color(0xFFE74C3C))),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            SizedBox(height: mobile ? 4 : 6),
+                            _iconText(Icons.access_time, _formatDate('$createdAt'), mobile),
+                            // ── التفاصيل الموسعة ──
+                            if (isExpanded) ...[
+                              Divider(height: 16, color: cardColor.withOpacity(0.15)),
+                              _detailRow(Icons.note_outlined, 'السبب', '$reason', mobile),
+                              if (reviewedBy != null)
+                                _detailRow(Icons.person_outline, 'المراجع', '$reviewedBy', mobile),
+                              if (reviewedAt != null && '$reviewedAt'.isNotEmpty)
+                                _detailRow(Icons.schedule, 'تاريخ المراجعة', _formatDate('$reviewedAt'), mobile),
+                              if (reviewNotes != null && '$reviewNotes'.isNotEmpty)
+                                _detailRow(Icons.comment_outlined, 'ملاحظات المراجع', '$reviewNotes', mobile, color: _accentBlue),
+                              if (statusInt == 0 && id != null)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: () => _cancelWithdrawal(r),
+                                    icon: const Icon(Icons.close, size: 14, color: Color(0xFFE74C3C)),
+                                    label: Text('إلغاء الطلب', style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFFE74C3C))),
+                                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                   ),
                                 ),
                             ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
@@ -1726,6 +1850,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     );
   }
 
+  /// IDs of currently expanded transaction cards
+  final Set<dynamic> _expandedTxIds = {};
+
   Widget _buildTxCard(dynamic tx) {
     final type = tx['type']?.toString();
     final category = tx['category']?.toString();
@@ -1733,80 +1860,281 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     final createdAt = tx['createdAt']?.toString();
     final typeColor = _getTypeColor(type);
     final customerName = tx['customerName']?.toString();
+    final txId = tx['id'];
+    final isExpanded = _expandedTxIds.contains(txId);
+    final mobile = MediaQuery.of(context).size.width < 500;
 
     String title = _getCategoryName(category);
     final taskType = tx['taskType']?.toString();
     if (taskType != null && taskType.isNotEmpty) title = taskType;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _bgCard,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFECF0F1)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: typeColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(_getTypeIcon(type), color: Colors.white, size: 18),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isExpanded) {
+            _expandedTxIds.remove(txId);
+          } else {
+            _expandedTxIds.add(txId);
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.all(mobile ? 10 : 12),
+        decoration: BoxDecoration(
+          color: isExpanded ? typeColor.withOpacity(0.03) : _bgCard,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isExpanded ? typeColor.withOpacity(0.3) : const Color(0xFFECF0F1),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        child: Column(
+          children: [
+            // ── الصف الرئيسي ──
+            Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: typeColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(4),
+                Container(
+                  width: mobile ? 34 : 40,
+                  height: mobile ? 34 : 40,
+                  decoration: BoxDecoration(
+                    color: typeColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(_getTypeIcon(type), color: Colors.white, size: mobile ? 15 : 18),
+                ),
+                SizedBox(width: mobile ? 8 : 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: mobile ? 5 : 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: typeColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(_getTypeName(type),
+                                style: GoogleFonts.cairo(
+                                    color: typeColor,
+                                    fontSize: mobile ? 9 : 10,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(title,
+                                style: GoogleFonts.cairo(
+                                    color: _textDark,
+                                    fontSize: mobile ? 11 : 12,
+                                    fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
                       ),
-                      child: Text(_getTypeName(type),
-                          style: GoogleFonts.cairo(
-                              color: typeColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 10,
+                        children: [
+                          if (customerName != null && customerName.isNotEmpty)
+                            _txInfo(Icons.person_outline, customerName),
+                          _txInfo(Icons.access_time, _formatDate(createdAt)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${type == 'Charge' ? '-' : '+'}${_formatAmount(amount)}',
+                      style: GoogleFonts.cairo(
+                        color: typeColor,
+                        fontSize: mobile ? 14 : 17,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(title,
-                          style: GoogleFonts.cairo(
-                              color: _textDark,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis),
-                    ),
+                    Text('د.ع',
+                        style: GoogleFonts.cairo(
+                            color: _textGray, fontSize: mobile ? 9 : 10)),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 10,
-                  children: [
-                    if (customerName != null && customerName.isNotEmpty)
-                      _txInfo(Icons.person_outline, customerName),
-                    _txInfo(Icons.access_time, _formatDate(createdAt)),
-                  ],
+                const SizedBox(width: 4),
+                Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: _textGray,
+                  size: mobile ? 18 : 22,
                 ),
               ],
             ),
-          ),
-          Text(
-            '${type == 'Charge' ? '-' : '+'}${_formatAmount(amount)}',
-            style: GoogleFonts.cairo(
-              color: typeColor,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
+            // ── التفاصيل الموسعة ──
+            if (isExpanded) _buildTxDetails(tx, typeColor, mobile),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTxDetails(dynamic tx, Color typeColor, bool mobile) {
+    final description = tx['description']?.toString();
+    final notes = tx['notes']?.toString();
+    final referenceNumber = tx['referenceNumber']?.toString();
+    final balanceAfter = tx['balanceAfter'];
+    final area = tx['area']?.toString();
+    final address = tx['address']?.toString();
+    final contactPhone = tx['contactPhone']?.toString();
+    final city = tx['city']?.toString();
+    final finalCost = tx['finalCost'];
+    final receivedBy = tx['receivedBy']?.toString();
+    final journalEntryNumber = tx['journalEntryNumber']?.toString();
+
+    final details = <MapEntry<IconData, String>>[];
+
+    if (description != null && description.isNotEmpty)
+      details.add(MapEntry(Icons.description_outlined, 'الوصف: $description'));
+    if (referenceNumber != null && referenceNumber.isNotEmpty)
+      details.add(MapEntry(Icons.tag, 'رقم المرجع: $referenceNumber'));
+    if (balanceAfter != null)
+      details.add(MapEntry(Icons.account_balance_wallet_outlined,
+          'الرصيد بعد المعاملة: ${_formatAmount(balanceAfter)} د.ع'));
+    if (city != null && city.isNotEmpty)
+      details.add(MapEntry(Icons.location_city, 'المدينة: $city'));
+    if (area != null && area.isNotEmpty)
+      details.add(MapEntry(Icons.map_outlined, 'المنطقة: $area'));
+    if (address != null && address.isNotEmpty)
+      details.add(MapEntry(Icons.home_outlined, 'العنوان: $address'));
+    if (contactPhone != null && contactPhone.isNotEmpty)
+      details.add(MapEntry(Icons.phone_outlined, 'هاتف التواصل: $contactPhone'));
+    if (finalCost != null)
+      details.add(MapEntry(Icons.payments_outlined,
+          'التكلفة النهائية: ${_formatAmount(finalCost)} د.ع'));
+    if (receivedBy != null && receivedBy.isNotEmpty)
+      details.add(MapEntry(Icons.person_pin_outlined, 'المستلم: $receivedBy'));
+    if (journalEntryNumber != null && journalEntryNumber.isNotEmpty)
+      details.add(MapEntry(Icons.book_outlined, 'رقم القيد: $journalEntryNumber'));
+    if (notes != null && notes.isNotEmpty)
+      details.add(MapEntry(Icons.sticky_note_2_outlined, 'ملاحظات: $notes'));
+
+    if (details.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Text('لا توجد تفاصيل إضافية',
+            style: GoogleFonts.cairo(color: _textGray, fontSize: 12)),
+      );
+    }
+
+    return Column(
+      children: [
+        Divider(height: 16, color: typeColor.withOpacity(0.15)),
+        Wrap(
+          spacing: mobile ? 6 : 12,
+          runSpacing: mobile ? 4 : 8,
+          children: details.map((e) {
+            return Container(
+              constraints: BoxConstraints(
+                minWidth: mobile ? double.infinity : 220,
+                maxWidth: mobile ? double.infinity : 340,
+              ),
+              padding: EdgeInsets.symmetric(
+                  horizontal: mobile ? 8 : 10, vertical: mobile ? 5 : 6),
+              decoration: BoxDecoration(
+                color: typeColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: mobile ? MainAxisSize.max : MainAxisSize.min,
+                children: [
+                  Icon(e.key, size: mobile ? 14 : 16, color: typeColor),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      e.value,
+                      style: GoogleFonts.cairo(
+                        color: _textDark,
+                        fontSize: mobile ? 11 : 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  SHARED CARD HELPERS
+  // ═══════════════════════════════════════════════════════
+
+  Widget _buildEmptyState(IconData icon, String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 30),
+      child: Column(
+        children: [
+          Icon(icon, size: 48, color: _textGray.withOpacity(0.3)),
+          const SizedBox(height: 8),
+          Text(text, style: GoogleFonts.cairo(color: _textGray, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(label,
+          style: GoogleFonts.cairo(
+              fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  Widget _iconText(IconData icon, String text, bool mobile) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: mobile ? 11 : 13, color: _textGray),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(text,
+              style: GoogleFonts.cairo(
+                  fontSize: mobile ? 10 : 11, color: _textSubtle),
+              overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value, bool mobile,
+      {Color? color}) {
+    if (value.isEmpty || value == 'null') return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: mobile ? 14 : 16, color: color ?? _textGray),
+          const SizedBox(width: 6),
+          Text('$label: ',
+              style: GoogleFonts.cairo(
+                  fontSize: mobile ? 11 : 12,
+                  color: color ?? _textGray,
+                  fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(value,
+                style: GoogleFonts.cairo(
+                    fontSize: mobile ? 11 : 12, color: color ?? _textDark)),
           ),
         ],
       ),
@@ -1871,12 +2199,13 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     required Widget child,
     Widget? trailing,
   }) {
+    final mobile = MediaQuery.of(context).size.width < 500;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(mobile ? 10 : 16),
       decoration: BoxDecoration(
         color: _bgCard,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(mobile ? 10 : 14),
         boxShadow: const [
           BoxShadow(color: _shadowColor, blurRadius: 12, offset: Offset(0, 3)),
         ],
@@ -1887,28 +2216,30 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(mobile ? 4 : 6),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: iconGradient),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(mobile ? 6 : 8),
                 ),
-                child: Icon(icon, color: Colors.white, size: 18),
+                child: Icon(icon, color: Colors.white, size: mobile ? 14 : 18),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: mobile ? 6 : 10),
               Expanded(
                 child: Text(
                   title,
                   style: GoogleFonts.cairo(
                     color: _textDark,
-                    fontSize: 16,
+                    fontSize: mobile ? 13 : 16,
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (trailing != null) trailing,
             ],
           ),
-          const Divider(height: 20),
+          Divider(height: mobile ? 14 : 20),
           child,
         ],
       ),
@@ -1917,25 +2248,27 @@ class _MyDashboardPageState extends State<MyDashboardPage>
 
   Widget _miniStatCard(String title, String value, IconData icon, Color color,
       {String? subtitle}) {
+    final w = MediaQuery.of(context).size.width;
+    final mobile = w < 500;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: mobile ? 8 : 14, vertical: mobile ? 8 : 12),
       decoration: BoxDecoration(
         color: _bgCard,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.15)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: mobile ? 30 : 40,
+            height: mobile ? 30 : 40,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: Icon(icon, color: Colors.white, size: mobile ? 16 : 20),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: mobile ? 6 : 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2380,32 +2713,37 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     );
   }
 
+  final Set<int> _expandedAttendanceIdx = {};
+
   Widget _buildDailyRecordsTable() {
     final records = _dailyRecords!;
+    final mobile = MediaQuery.of(context).size.width < 500;
+
     return Column(
       children: [
-        // header row
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2C3E50).withOpacity(0.06),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        // ── ملخص ──
+        if (_attendanceReport != null)
+          Container(
+            padding: EdgeInsets.all(mobile ? 10 : 12),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: _accentBlue.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _accentBlue.withOpacity(0.1)),
+            ),
+            child: Wrap(
+              spacing: mobile ? 10 : 16,
+              runSpacing: 6,
+              children: [
+                _summaryChip('حضور', '${_attendanceReport!['PresentDays'] ?? 0}', _accentGreen),
+                _summaryChip('تأخير', '${_attendanceReport!['LateDays'] ?? 0}', _accentOrange),
+                _summaryChip('غياب', '${_attendanceReport!['AbsentDays'] ?? 0}', _accentRed),
+                _summaryChip('إجمالي ساعات',
+                    '${((_attendanceReport!['TotalWorkedMinutes'] ?? 0) / 60).toStringAsFixed(1)}', _accentBlue),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              _headerCell('التاريخ', flex: 2),
-              _headerCell('اليوم', flex: 2),
-              _headerCell('الحالة', flex: 2),
-              _headerCell('الدخول', flex: 2),
-              _headerCell('الخروج', flex: 2),
-              _headerCell('ساعات العمل', flex: 2),
-              _headerCell('تأخير', flex: 1),
-              _headerCell('إضافي', flex: 1),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-        // data rows
+        // ── بطاقات الأيام ──
         ...records.asMap().entries.map((entry) {
           final i = entry.key;
           final r = entry.value as Map<String, dynamic>;
@@ -2423,119 +2761,130 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           try {
             date = DateTime.parse(dateStr);
             dayName = _arabicDay(date.weekday);
-            formattedDate = '${date.month}/${date.day}';
+            formattedDate = '${date.day}/${date.month}';
           } catch (_) {}
 
           final isFriday = date?.weekday == 5;
           final isWeekend = status == 'Weekend' || isFriday;
-          final rowColor = isWeekend
-              ? const Color(0xFFF0F0F0)
-              : i.isEven
-                  ? Colors.white
-                  : const Color(0xFFFAFAFA);
+          final sColor = _statusColor(status);
+          final isExpanded = _expandedAttendanceIdx.contains(i);
 
-          final workedHours = workedMins is num
+          final workedHours = workedMins is num && workedMins > 0
               ? '${(workedMins / 60).floor()}:${(workedMins % 60).toString().padLeft(2, '0')}'
               : '-';
 
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: rowColor,
-              border: Border(
-                  bottom: BorderSide(color: Colors.grey.withOpacity(0.1))),
-            ),
-            child: Row(
-              children: [
-                _dataCell(formattedDate, flex: 2),
-                _dataCell(dayName,
-                    flex: 2, color: isFriday ? _accentRed : null),
-                Expanded(
-                  flex: 2,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _statusColor(status).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _statusArabic(status),
-                        style: GoogleFonts.cairo(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: _statusColor(status),
+          final validCheckIn = checkIn != 'null' && checkIn.isNotEmpty ? checkIn : null;
+          final validCheckOut = checkOut != 'null' && checkOut.isNotEmpty ? checkOut : null;
+
+          return GestureDetector(
+            onTap: () => setState(() {
+              isExpanded ? _expandedAttendanceIdx.remove(i) : _expandedAttendanceIdx.add(i);
+            }),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: EdgeInsets.all(mobile ? 10 : 12),
+              decoration: BoxDecoration(
+                color: isExpanded
+                    ? sColor.withOpacity(0.06)
+                    : isWeekend
+                        ? const Color(0xFFF5F5F5)
+                        : _bgCard,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isExpanded ? sColor.withOpacity(0.25) : const Color(0xFFEEEEEE),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // ── الصف الرئيسي ──
+                  Row(
+                    children: [
+                      // التاريخ + اليوم
+                      SizedBox(
+                        width: mobile ? 55 : 70,
+                        child: Column(
+                          children: [
+                            Text(formattedDate,
+                                style: GoogleFonts.cairo(
+                                    fontSize: mobile ? 12 : 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: _textDark)),
+                            Text(dayName,
+                                style: GoogleFonts.cairo(
+                                    fontSize: mobile ? 9 : 10,
+                                    color: isFriday ? _accentRed : _textGray)),
+                          ],
                         ),
                       ),
-                    ),
+                      SizedBox(width: mobile ? 8 : 12),
+                      // الحالة
+                      _chip(_statusArabic(status), sColor),
+                      const Spacer(),
+                      // الدخول والخروج مختصر
+                      if (validCheckIn != null) ...[
+                        Icon(Icons.login, size: mobile ? 12 : 14, color: _accentGreen),
+                        const SizedBox(width: 3),
+                        Text(validCheckIn,
+                            style: GoogleFonts.cairo(
+                                fontSize: mobile ? 10 : 12, color: _accentGreen, fontWeight: FontWeight.w600)),
+                        SizedBox(width: mobile ? 8 : 12),
+                      ],
+                      if (validCheckOut != null) ...[
+                        Icon(Icons.logout, size: mobile ? 12 : 14, color: _accentRed),
+                        const SizedBox(width: 3),
+                        Text(validCheckOut,
+                            style: GoogleFonts.cairo(
+                                fontSize: mobile ? 10 : 12, color: _accentRed, fontWeight: FontWeight.w600)),
+                      ],
+                      SizedBox(width: mobile ? 4 : 8),
+                      Icon(isExpanded ? Icons.expand_less : Icons.expand_more,
+                          color: _textGray, size: mobile ? 16 : 20),
+                    ],
                   ),
-                ),
-                _dataCell(checkIn == 'null' || checkIn.isEmpty ? '-' : checkIn,
-                    flex: 2, color: _accentGreen),
-                _dataCell(
-                    checkOut == 'null' || checkOut.isEmpty ? '-' : checkOut,
-                    flex: 2,
-                    color: _accentRed),
-                _dataCell(workedHours, flex: 2),
-                _dataCell(
-                  lateMins is num && lateMins > 0 ? '$lateMins د' : '-',
-                  flex: 1,
-                  color: lateMins is num && lateMins > 0 ? _accentOrange : null,
-                ),
-                _dataCell(
-                  overtimeMins is num && overtimeMins > 0
-                      ? '$overtimeMins د'
-                      : '-',
-                  flex: 1,
-                  color: overtimeMins is num && overtimeMins > 0
-                      ? _accentGreen
-                      : null,
-                ),
-              ],
+                  // ── التفاصيل الموسعة ──
+                  if (isExpanded) ...[
+                    Divider(height: 14, color: sColor.withOpacity(0.15)),
+                    Wrap(
+                      spacing: mobile ? 8 : 16,
+                      runSpacing: 6,
+                      children: [
+                        if (validCheckIn != null)
+                          _attDetail('الدخول', validCheckIn, _accentGreen, mobile),
+                        if (validCheckOut != null)
+                          _attDetail('الخروج', validCheckOut, _accentRed, mobile),
+                        if (workedHours != '-')
+                          _attDetail('ساعات العمل', workedHours, _accentBlue, mobile),
+                        if (lateMins is num && lateMins > 0)
+                          _attDetail('تأخير', '$lateMins دقيقة', _accentOrange, mobile),
+                        if (overtimeMins is num && overtimeMins > 0)
+                          _attDetail('إضافي', '$overtimeMins دقيقة', _accentGreen, mobile),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           );
         }),
-        // summary row
-        if (_attendanceReport != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: _accentBlue.withOpacity(0.06),
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(8)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 14,
-                    runSpacing: 6,
-                    children: [
-                      _summaryChip(
-                          'حضور',
-                          '${_attendanceReport!['PresentDays'] ?? 0}',
-                          _accentGreen),
-                      _summaryChip(
-                          'تأخير',
-                          '${_attendanceReport!['LateDays'] ?? 0}',
-                          _accentOrange),
-                      _summaryChip(
-                          'غياب',
-                          '${_attendanceReport!['AbsentDays'] ?? 0}',
-                          _accentRed),
-                      _summaryChip(
-                        'إجمالي ساعات',
-                        '${((_attendanceReport!['TotalWorkedMinutes'] ?? 0) / 60).toStringAsFixed(1)}',
-                        _accentBlue,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
       ],
+    );
+  }
+
+  Widget _attDetail(String label, String value, Color color, bool mobile) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: mobile ? 8 : 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label: ', style: GoogleFonts.cairo(fontSize: mobile ? 10 : 11, color: _textGray)),
+          Text(value, style: GoogleFonts.cairo(fontSize: mobile ? 11 : 12, fontWeight: FontWeight.w700, color: color)),
+        ],
+      ),
     );
   }
 

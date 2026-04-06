@@ -46,6 +46,9 @@ class UserDetailsPage extends StatefulWidget {
   final String? clientAppHeader; // معرف التطبيق الثابت
   // قائمة الصلاحيات المهمة (مفلترة) القادمة من الصفحة الرئيسية
   final List<String>? importantFtthApiPermissions;
+  // بيانات الوكيل من المهمة (لتعبئة تلقائية في صفحة التجديد)
+  final String? taskAgentName;
+  final String? taskAgentCode;
   const UserDetailsPage(
       {super.key,
       required this.userId,
@@ -62,7 +65,9 @@ class UserDetailsPage extends StatefulWidget {
       this.ftthPermissions,
       this.userRoleHeader,
       this.clientAppHeader,
-      this.importantFtthApiPermissions});
+      this.importantFtthApiPermissions,
+      this.taskAgentName,
+      this.taskAgentCode});
   @override
   UserDetailsPageState createState() => UserDetailsPageState();
 }
@@ -1881,31 +1886,47 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     }
 
     final phone = _resolvedPhone.isNotEmpty ? _fmtPhoneLocal(_resolvedPhone) : 'غير متوفر';
+    final screenW = MediaQuery.of(context).size.width;
+    final bool useColumn = screenW < 500;
+
+    final nameTile = tile(Icons.person, 'الاسم', widget.userName, Colors.blue.shade700,
+        trailing: copyBtn(widget.userName, 'تم نسخ الاسم', Colors.blue));
+    final phoneTile = tile(Icons.phone, 'رقم الهاتف', phone, Colors.green.shade700,
+        trailing: _resolvedPhone.isNotEmpty
+            ? copyBtn(_fmtPhoneLocal(_resolvedPhone), 'تم نسخ الرقم', Colors.green)
+            : (_isFetchingPhone
+                ? SizedBox(width: 16 * sc, height: 16 * sc, child: const CircularProgressIndicator(strokeWidth: 2))
+                : Tooltip(
+                    message: 'جلب الرقم',
+                    child: InkWell(
+                      onTap: _fetchPhoneManually,
+                      child: Padding(
+                        padding: EdgeInsets.all(4 * sc),
+                        child: Icon(Icons.search, size: 16 * sc, color: Colors.blue.shade700),
+                      ),
+                    ),
+                  )));
+    final idTile = tile(Icons.badge, 'المعرف', widget.userId, Colors.indigo,
+        trailing: copyBtn(widget.userId, 'تم نسخ المعرف', Colors.indigo));
+
+    if (useColumn) {
+      return Column(
+        children: [
+          Row(children: [nameTile]),
+          const SizedBox(height: 8),
+          Row(children: [phoneTile, const SizedBox(width: 8), idTile]),
+        ],
+      );
+    }
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        tile(Icons.person, 'الاسم', widget.userName, Colors.blue.shade700,
-            trailing: copyBtn(widget.userName, 'تم نسخ الاسم', Colors.blue)),
+        nameTile,
         SizedBox(width: 12 * sc),
-        tile(Icons.phone, 'رقم الهاتف', phone, Colors.green.shade700,
-            trailing: _resolvedPhone.isNotEmpty
-                ? copyBtn(_fmtPhoneLocal(_resolvedPhone), 'تم نسخ الرقم', Colors.green)
-                : (_isFetchingPhone
-                    ? SizedBox(width: 16 * sc, height: 16 * sc, child: const CircularProgressIndicator(strokeWidth: 2))
-                    : Tooltip(
-                        message: 'جلب الرقم',
-                        child: InkWell(
-                          onTap: _fetchPhoneManually,
-                          child: Padding(
-                            padding: EdgeInsets.all(4 * sc),
-                            child: Icon(Icons.search, size: 16 * sc, color: Colors.blue.shade700),
-                          ),
-                        ),
-                      ))),
+        phoneTile,
         SizedBox(width: 12 * sc),
-        tile(Icons.badge, 'المعرف', widget.userId, Colors.indigo,
-            trailing: copyBtn(widget.userId, 'تم نسخ المعرف', Colors.indigo)),
+        idTile,
       ],
     );
   }
@@ -2222,6 +2243,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   ftthPermissions: widget.ftthPermissions,
                   userRoleHeader: widget.userRoleHeader,
                   clientAppHeader: widget.clientAppHeader,
+                  taskAgentName: widget.taskAgentName,
+                  taskAgentCode: widget.taskAgentCode,
                 ))).then((_) {
       // تحديث بعد العودة
       fetchUserDetailsAndSubscription();

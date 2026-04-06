@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:excel/excel.dart' as ex;
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import '../users/user_details_page.dart';
 import '../auth/login_page.dart';
 import 'dart:io';
@@ -504,7 +504,7 @@ class _UsersPageState extends State<UsersPage> {
       });
 
       Future.delayed(const Duration(milliseconds: 500), () {
-        OpenFile.open(file.path);
+        OpenFilex.open(file.path);
       });
     } catch (e, st) {
       // في حالة الفشل: جرّب أولاً توليد ملف مبسط أو CSV مرة واحدة
@@ -682,7 +682,7 @@ class _UsersPageState extends State<UsersPage> {
       excelExportMessage = 'تم إنشاء نسخة مبسطة: $path';
     });
     Future.delayed(
-        const Duration(milliseconds: 500), () => OpenFile.open(path));
+        const Duration(milliseconds: 500), () => OpenFilex.open(path));
   }
 
   // تصدير CSV أساسي (أخف)
@@ -807,7 +807,7 @@ class _UsersPageState extends State<UsersPage> {
       excelExportMessage = 'تم إنشاء CSV بديل: $path';
     });
     Future.delayed(
-        const Duration(milliseconds: 400), () => OpenFile.open(path));
+        const Duration(milliseconds: 400), () => OpenFilex.open(path));
   }
 
   // حقل لإدخال كلمة المرور inline

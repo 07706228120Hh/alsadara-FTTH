@@ -143,6 +143,35 @@ class _FtthCompanyPageState extends State<FtthCompanyPage> {
     }
   }
 
+  /// فتح صفحة الشركة في نافذة مستقلة (Edge --app mode)
+  Future<void> _openInSeparateWindow() async {
+    final url = _currentUrl.isNotEmpty ? _currentUrl : 'https://admin.ftth.iq/';
+    try {
+      final browsers = [
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      ];
+      String? browserPath;
+      for (final path in browsers) {
+        if (await File(path).exists()) { browserPath = path; break; }
+      }
+      if (browserPath != null) {
+        await Process.start(browserPath, ['--app=$url', '--window-size=1200,800']);
+        if (mounted) Navigator.of(context).pop();
+      } else {
+        await Process.start('cmd', ['/c', 'start', url]);
+        if (mounted) Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('❌ فشل فتح نافذة مستقلة: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح نافذة مستقلة')));
+      }
+    }
+  }
+
   /// تنظيف النص لحقنه في JavaScript بأمان
   String _escapeJs(String s) {
     return s
@@ -166,6 +195,13 @@ class _FtthCompanyPageState extends State<FtthCompanyPage> {
           title: const Text('صفحة الشركة',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           actions: [
+            // فصل في نافذة مستقلة (Windows فقط)
+            if (Platform.isWindows)
+              IconButton(
+                icon: const Icon(Icons.open_in_new, size: 20),
+                tooltip: 'فتح في نافذة مستقلة',
+                onPressed: _openInSeparateWindow,
+              ),
             IconButton(
               icon: const Icon(Icons.refresh, size: 20),
               tooltip: 'تحديث',

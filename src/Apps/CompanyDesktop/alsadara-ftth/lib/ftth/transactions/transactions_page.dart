@@ -11,7 +11,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
@@ -4413,7 +4413,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           action: SnackBarAction(
             label: 'فتح',
             textColor: Colors.white,
-            onPressed: () => OpenFile.open(filePath),
+            onPressed: () => OpenFilex.open(filePath),
           ),
         ),
       );

@@ -12,7 +12,7 @@ import 'dart:math' as math;
 import 'dart:io';
 import 'package:excel/excel.dart' as ex;
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../permissions/permissions.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
@@ -522,7 +522,7 @@ class _ExportPageState extends State<ExportPage>
       final fileBytes = excel.save();
       if (fileBytes != null) {
         await File(filePath).writeAsBytes(fileBytes);
-        await OpenFile.open(filePath);
+        await OpenFilex.open(filePath);
       }
 
       setState(() {
@@ -724,7 +724,7 @@ class _ExportPageState extends State<ExportPage>
       final fileBytes = excel.save();
       if (fileBytes != null) {
         await File(filePath).writeAsBytes(fileBytes);
-        await OpenFile.open(filePath);
+        await OpenFilex.open(filePath);
       }
 
       setState(() {

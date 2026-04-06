@@ -24,10 +24,7 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for ios - '
@@ -59,5 +56,13 @@ class DefaultFirebaseOptions {
     projectId: 'web-app-sadara',
     authDomain: 'web-app-sadara.firebaseapp.com',
     storageBucket: 'web-app-sadara.appspot.com',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDkKmChRgKoZ8LvgUe6lHx1vUiSwsyCraY',
+    appId: '1:160455585662:android:1b6522c6216a14f4e6cd2f',
+    messagingSenderId: '160455585662',
+    projectId: 'web-app-sadara',
+    storageBucket: 'web-app-sadara.firebasestorage.app',
   );
 }

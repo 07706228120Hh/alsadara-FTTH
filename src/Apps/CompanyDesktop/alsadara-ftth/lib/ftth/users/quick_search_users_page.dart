@@ -22,6 +22,9 @@ class QuickSearchUsersPage extends StatefulWidget {
   final bool? isAdminFlag; // علم إداري صريح
   // قائمة الصلاحيات المهمة من نظام FTTH (مفلترة مسبقاً في الصفحة الرئيسية)
   final List<String>? importantFtthApiPermissions;
+  // بيانات الوكيل من المهمة (لتعبئة تلقائية في صفحة التجديد)
+  final String? taskAgentName;
+  final String? taskAgentCode;
 
   const QuickSearchUsersPage({
     super.key,
@@ -32,6 +35,8 @@ class QuickSearchUsersPage extends StatefulWidget {
     this.hasWhatsAppPermission = false,
     this.isAdminFlag,
     this.importantFtthApiPermissions,
+    this.taskAgentName,
+    this.taskAgentCode,
   });
 
   @override
@@ -1072,6 +1077,8 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                           userRoleHeader: '0',
                                           clientAppHeader: '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
                                           importantFtthApiPermissions: widget.importantFtthApiPermissions,
+                                          taskAgentName: widget.taskAgentName,
+                                          taskAgentCode: widget.taskAgentCode,
                                         ),
                                       ),
                                     );

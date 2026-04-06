@@ -9,6 +9,7 @@ import '../../../services/employee_profile_service.dart';
 import '../../../services/departments_data_service.dart';
 import '../../../services/centers_data_service.dart';
 import '../../../services/attendance_api_service.dart';
+import '../../../permissions/permission_manager.dart';
 
 class HrInfoTab extends StatefulWidget {
   final Map<String, dynamic> employee;
@@ -29,6 +30,7 @@ class HrInfoTab extends StatefulWidget {
 }
 
 class _HrInfoTabState extends State<HrInfoTab> {
+  final _pm = PermissionManager.instance;
   bool _editing = false;
   bool _saving = false;
   bool _showPassword = false;
@@ -62,6 +64,9 @@ class _HrInfoTabState extends State<HrInfoTab> {
   // المراكز
   List<String> _centersList = [];
   bool _isCentersLoading = true;
+
+  // Attendance security code
+  late TextEditingController _securityCodeCtrl;
 
   // Password controllers
   late TextEditingController _newPasswordCtrl;
@@ -163,6 +168,9 @@ class _HrInfoTabState extends State<HrInfoTab> {
     _hrNotesCtrl =
         TextEditingController(text: e['hrNotes'] ?? e['HrNotes'] ?? '');
 
+    _securityCodeCtrl = TextEditingController(
+        text: e['attendanceSecurityCode'] ?? e['AttendanceSecurityCode'] ?? '');
+
     _newPasswordCtrl = TextEditingController();
     _ftthPasswordCtrl = TextEditingController();
 
@@ -228,6 +236,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
     _emergNameCtrl.dispose();
     _emergPhoneCtrl.dispose();
     _hrNotesCtrl.dispose();
+    _securityCodeCtrl.dispose();
     _newPasswordCtrl.dispose();
     _ftthPasswordCtrl.dispose();
     super.dispose();
@@ -256,6 +265,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
         if (_dateOfBirth != null)
           'dateOfBirth': _dateOfBirth!.toIso8601String(),
         if (_hireDate != null) 'hireDate': _hireDate!.toIso8601String(),
+        'attendanceSecurityCode': _securityCodeCtrl.text,
         if (_ftthPasswordCtrl.text.isNotEmpty)
           'ftthPassword': _ftthPasswordCtrl.text,
         // Schedule fields
@@ -458,12 +468,21 @@ class _HrInfoTabState extends State<HrInfoTab> {
                   ),
                 ],
               ),
+              // ═══ كود أمان البصمة (يحتاج صلاحية hr.security_code صريحة) ═══
+              if (_pm.hasExplicit('hr.security_code', 'view')) ...[
+                const SizedBox(height: 16),
+                _securityCodeCard(),
+              ],
               const SizedBox(height: 16),
               // ═══ صف رابع: FTTH + ملاحظات ═══
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _ftthCard()),
+                  // FTTH (يحتاج صلاحية hr.ftth_info صريحة)
+                  if (_pm.hasExplicit('hr.ftth_info', 'view'))
+                    Expanded(child: _ftthCard())
+                  else
+                    const Spacer(),
                   const SizedBox(width: 16),
                   Expanded(
                     child: _sectionCard(
@@ -1411,6 +1430,101 @@ class _HrInfoTabState extends State<HrInfoTab> {
           ),
         ],
       ),
+    );
+  }
+
+  // ═══════════════ بطاقة كود أمان البصمة ═══════════════
+
+  Widget _securityCodeCard() {
+    const cyanColor = Color(0xFF06B6D4);
+    final hasCode = _securityCodeCtrl.text.trim().isNotEmpty;
+
+    return _sectionCard(
+      'كود أمان البصمة',
+      Icons.shield_rounded,
+      cyanColor,
+      [
+        if (_editing) ...[
+          Row(
+            children: [
+              SizedBox(
+                width: 150,
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_outline, size: 15, color: _labelColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text('كود الأمان',
+                          style: GoogleFonts.cairo(
+                              color: _labelColor, fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _securityCodeCtrl,
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.cairo(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 4,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    hintText: 'مثال: 1234',
+                    hintStyle: GoogleFonts.cairo(
+                        color: _labelColor.withOpacity(0.4), fontSize: 13),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: cyanColor, width: 1.5),
+                    ),
+                    suffixIcon: IconButton(
+                      tooltip: 'توليد كود عشوائي',
+                      icon: const Icon(Icons.casino_rounded,
+                          color: cyanColor, size: 20),
+                      onPressed: () {
+                        final rng = DateTime.now().millisecondsSinceEpoch;
+                        final code = (1000 + (rng % 9000)).toString();
+                        _securityCodeCtrl.text = code;
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'يجب أن يكون الكود فريداً لكل موظف. السيرفر سيرفض الأكواد المكررة.',
+              style: GoogleFonts.cairo(color: _labelColor, fontSize: 11),
+            ),
+          ),
+        ] else ...[
+          _field('كود الأمان', _securityCodeCtrl, Icons.lock_outline),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              hasCode
+                  ? 'عند البصمة سيُطابق السيرفر هذا الكود مع الكود المحفوظ في جهاز الموظف'
+                  : 'لم يتم تعيين كود — البصمة لا تحتاج كود',
+              style: GoogleFonts.cairo(color: _labelColor, fontSize: 11),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

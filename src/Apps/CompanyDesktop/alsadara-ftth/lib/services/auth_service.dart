@@ -56,6 +56,14 @@ class AuthService {
       };
     }
 
+    // مسح التوكن والجلسة القديمة قبل تسجيل دخول جديد
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
+    await prefs.remove(_tokenExpiryKey);
+    await prefs.remove(_refreshExpiryKey);
+    _tokenRefreshTimer?.cancel();
+
     // ترميز آمن (يعالج الرموز الخاصة مثل & و = والتي كانت قد تكسر الطلب)
     final encodedBody =
         'username=${Uri.encodeQueryComponent(username.trim())}&password=${Uri.encodeQueryComponent(password)}&grant_type=password&scope=openid%20profile';
@@ -438,7 +446,41 @@ class AuthService {
           throw Exception('طريقة HTTP غير مدعومة: $method');
       }
 
-      // إذا كان الرد 401 (غير مخول)، حاول تحديث التوكن
+      // 403: نحاول تجديد التوكن مرة واحدة فقط (بعض سيرفرات FTTH ترسل 403 بدل 401)
+      // لكن إذا بقي 403 بعد التجديد = مشكلة صلاحيات حقيقية → نُعيده بدون logout
+      if (response.statusCode == 403) {
+        final refreshed = await _singleFlightRefresh();
+        if (refreshed) {
+          final newAuthHeaders = await getAuthHeaders();
+          final newAllHeaders = {...newAuthHeaders, ...?headers};
+          http.Response retryResp;
+          switch (method.toUpperCase()) {
+            case 'GET':
+              retryResp = await http.get(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
+              break;
+            case 'POST':
+              retryResp = await http.post(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
+              break;
+            case 'PUT':
+              retryResp = await http.put(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
+              break;
+            case 'DELETE':
+              retryResp = await http.delete(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
+              break;
+            case 'PATCH':
+              retryResp = await http.patch(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
+              break;
+            default:
+              retryResp = response;
+          }
+          // إذا نجح بعد تجديد التوكن — كان فعلاً توكن منتهي
+          // إذا بقي 403 — صلاحيات حقيقية، نُعيده كما هو بدون logout
+          return retryResp;
+        }
+        // فشل التجديد — نُعيد الـ 403 الأصلي بدون logout (ليس مشكلة جلسة بالضرورة)
+        return response;
+      }
+
       if (response.statusCode == 401) {
         final refreshed = await _singleFlightRefresh();
         if (refreshed) {

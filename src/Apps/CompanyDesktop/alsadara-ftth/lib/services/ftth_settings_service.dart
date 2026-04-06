@@ -164,6 +164,33 @@ class FtthSettingsService {
     return null;
   }
 
+  /// إحصائيات تفصيلية مع نسب الاكتمال
+  static Future<Map<String, dynamic>?> getDetailedStats(String companyId) async {
+    try {
+      final res = await _client.get(
+        ApiConfig.companyFtthDetailedStats(companyId),
+        (json) => json as Map<String, dynamic>,
+        useInternalKey: true,
+      );
+      if (res.success && res.data != null) return res.data;
+    } catch (_) {}
+    return null;
+  }
+
+  /// مسح بيانات محددة (all, phones, details, subscriptions)
+  static Future<Map<String, dynamic>?> clearData(String companyId, String type) async {
+    try {
+      final res = await _client.post(
+        ApiConfig.companyFtthClearData(companyId),
+        {'type': type},
+        (json) => json as Map<String, dynamic>,
+        useInternalKey: true,
+      );
+      if (res.success && res.data != null) return res.data;
+    } catch (_) {}
+    return null;
+  }
+
   /// حذف كل سجلات المزامنة
   static Future<bool> deleteAllSyncLogs(String companyId) async {
     try {

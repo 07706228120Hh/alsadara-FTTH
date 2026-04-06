@@ -2,10 +2,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/task.dart';
 import 'firebase_availability.dart';
+import '../pages/chat/chat_conversation_page.dart';
+import '../widgets/window_close_handler_fixed.dart' show navigatorKey;
+import 'chat_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -20,6 +22,15 @@ class NotificationService {
     'tasks_channel',
     'إشعارات المهام',
     description: 'إشعارات خاصة بالمهام والتحديثات',
+    importance: Importance.high,
+    showBadge: true,
+  );
+
+  static const AndroidNotificationChannel _chatChannel =
+      AndroidNotificationChannel(
+    'chat_channel',
+    'المحادثات',
+    description: 'إشعارات الرسائل والمحادثات الداخلية',
     importance: Importance.high,
     showBadge: true,
   );
@@ -76,12 +87,14 @@ class NotificationService {
       settings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
+    _localNotificationsReady = true;
 
     // إنشاء القناة (أندرويد فقط)
     final androidImpl = _notifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     if (androidImpl != null) {
       await androidImpl.createNotificationChannel(_mainChannel);
+      await androidImpl.createNotificationChannel(_chatChannel);
       await androidImpl.requestNotificationsPermission();
     }
 
@@ -138,6 +151,8 @@ class NotificationService {
     });
   }
 
+  static bool _localNotificationsReady = false;
+
   /// عرض إشعار محلي عام
   static Future<void> showLocalNotification({
     required String title,
@@ -145,38 +160,135 @@ class NotificationService {
     String? payload,
     int? id,
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'tasks_channel',
-      'إشعارات المهام',
-      channelDescription: 'إشعارات خاصة بالمهام والتحديثات',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-      enableVibration: true,
-      playSound: true,
-      icon: '@mipmap/ic_launcher',
-      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-    );
+    // Windows لا يدعم flutter_local_notifications — تجاهل
+    if (!_localNotificationsReady) {
+      debugPrint('⚠️ [Notification] Local notifications not initialized, skipping');
+      return;
+    }
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
+    try {
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'tasks_channel',
+        'إشعارات المهام',
+        channelDescription: 'إشعارات خاصة بالمهام والتحديثات',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+        icon: '@mipmap/ic_launcher',
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      );
 
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
-    await _notifications.show(
-      id ?? DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title,
-      body,
-      details,
-      payload: payload,
-    );
+      const NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _notifications.show(
+        id ?? DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        details,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [Notification] Error showing local notification: $e');
+    }
+  }
+
+  /// إشعار محادثة داخلية مع إمكانية الرد المباشر (Android)
+  static Future<void> showChatNotification({
+    required String title,
+    required String body,
+    required String roomId,
+    String? messageId,
+  }) async {
+    if (!_localNotificationsReady) return;
+
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        'chat_channel',
+        'المحادثات',
+        channelDescription: 'إشعارات الرسائل والمحادثات الداخلية',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+        icon: '@mipmap/ic_launcher',
+        category: AndroidNotificationCategory.message,
+        styleInformation: const BigTextStyleInformation(''),
+        actions: <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            'reply_$roomId',
+            'رد',
+            inputs: <AndroidNotificationActionInput>[
+              const AndroidNotificationActionInput(label: 'اكتب رداً...'),
+            ],
+            showsUserInterface: false,
+          ),
+          AndroidNotificationAction(
+            'open_$roomId',
+            'فتح',
+            showsUserInterface: true,
+          ),
+        ],
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _notifications.show(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title,
+        body,
+        details,
+        payload: jsonEncode({
+          'type': 'chat_message',
+          'roomId': roomId,
+          if (messageId != null) 'messageId': messageId,
+        }),
+      );
+    } catch (e) {
+      debugPrint('⚠️ [Notification] Chat notification error: $e');
+    }
+  }
+
+  /// معالجة الرد من الإشعار
+  static Future<void> handleNotificationReply(String actionId, String? inputText) async {
+    if (inputText == null || inputText.isEmpty) return;
+
+    if (actionId.startsWith('reply_')) {
+      final roomId = actionId.substring(6);
+      if (roomId.isEmpty) return;
+
+      try {
+        await ChatService.instance.sendMessage(
+          roomId: roomId,
+          content: inputText,
+          messageType: 0,
+        );
+        debugPrint('✅ تم إرسال الرد من الإشعار: $inputText');
+      } catch (e) {
+        debugPrint('❌ فشل إرسال الرد من الإشعار: $e');
+      }
+    }
   }
 
   /// إشعار عند إضافة مهمة جديدة
@@ -204,22 +316,7 @@ class NotificationService {
       }),
     );
 
-    // إرسال إشعارات مدفوعة للمستخدمين المحددين
-    for (String userId in notifyUsers) {
-      await _sendPushNotificationToUser(
-        userId: userId,
-        title: '🆕 مهمة جديدة',
-        body: notificationBody,
-        data: {
-          'type': 'new_task',
-          'taskId': task.id,
-          'assignedTo': assignedTo,
-          'department': task.department,
-          'priority': task.priority,
-          'technicianPhone': task.technicianPhone,
-        },
-      );
-    }
+    // Push notifications تُرسل من السيرفر عبر FcmNotificationService
   }
 
   /// إشعار عند تحديث حالة المهمة
@@ -250,21 +347,6 @@ class NotificationService {
       }),
     );
 
-    // إرسال إشعارات مدفوعة
-    for (String userId in notifyUsers) {
-      await _sendPushNotificationToUser(
-        userId: userId,
-        title: '$statusEmoji تحديث حالة المهمة',
-        body: notificationBody,
-        data: {
-          'type': 'status_update',
-          'taskId': task.id,
-          'oldStatus': oldStatus,
-          'newStatus': newStatus,
-          'technicianPhone': task.technicianPhone,
-        },
-      );
-    }
   }
 
   /// إشعار للمهام المتأخرة
@@ -284,83 +366,10 @@ class NotificationService {
       }),
     );
 
-    // إرسال إشعارات مدفوعة
-    for (String userId in notifyUsers) {
-      await _sendPushNotificationToUser(
-        userId: userId,
-        title: '⚠️ مهام متأخرة',
-        body: 'يوجد ${overdueTasks.length} مهام متأخرة تحتاج متابعة',
-        data: {
-          'type': 'overdue_tasks',
-          'count': overdueTasks.length.toString(),
-        },
-      );
-    }
   }
 
-  /// إرسال إشعار مدفوع لمستخدم محدد
-  static Future<void> _sendPushNotificationToUser({
-    required String userId,
-    required String title,
-    required String body,
-    Map<String, dynamic>? data,
-  }) async {
-    try {
-      // هنا يجب استبدال الـ SERVER_KEY بالمفتاح الحقيقي من Firebase
-      const String serverKey = 'YOUR_FIREBASE_SERVER_KEY';
-
-      // الحصول على FCM Token للمستخدم من قاعدة البيانات
-      String? userToken = await _getUserFCMToken(userId);
-
-      if (userToken == null) return;
-
-      final response = await http.post(
-        Uri.parse('https://fcm.googleapis.com/fcm/send'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'key=$serverKey',
-        },
-        body: jsonEncode({
-          'to': userToken,
-          'notification': {
-            'title': title,
-            'body': body,
-            'sound': 'default',
-            'badge': 1,
-          },
-          'data': data ?? {},
-          'priority': 'high',
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        print('Push notification sent successfully to $userId');
-      } else {
-        print('Failed to send push notification: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error sending push notification');
-    }
-  }
-
-  /// الحصول على FCM Token للمستخدم
-  static Future<String?> _getUserFCMToken(String userId) async {
-    // هذه الدالة يجب أن تجلب الـ token من قاعدة البيانات
-    // يمكن تنفيذها باستخدام VPS API أو قاعدة بيانات أخرى
-
-    // مثال مؤقت - يجب استبداله بالتنفيذ الحقيقي
-    return null;
-  }
-
-  /// حفظ FCM Token للمستخدم الحالي
-  static Future<void> saveFCMTokenForUser(String userId) async {
-    if (_fcmToken != null) {
-      // هنا يجب حفظ الـ token في قاعدة البيانات مع معرف المستخدم
-      print('Saving FCM Token for user $userId: $_fcmToken');
-
-      // يمكن إضافة الكود لحفظ الـ token في قاعدة البيانات
-    }
-  }
+  // ملاحظة: إرسال Push Notifications يتم من السيرفر (Backend) عبر FcmNotificationService
+  // تسجيل FCM Token يتم عبر FcmTokenService في Flutter
 
   /// الحصول على emoji حسب حالة المهمة
   static String _getStatusEmoji(String status) {
@@ -382,6 +391,14 @@ class NotificationService {
 
   /// معالجة النق�� على الإشعار
   static void _onNotificationTapped(NotificationResponse response) {
+    // معالجة الرد من الإشعار (Android inline reply)
+    final actionId = response.actionId;
+    if (actionId != null && actionId.startsWith('reply_')) {
+      final inputText = response.input;
+      handleNotificationReply(actionId, inputText);
+      return;
+    }
+
     if (response.payload != null) {
       try {
         Map<String, dynamic> data = jsonDecode(response.payload!);
@@ -392,11 +409,30 @@ class NotificationService {
     }
   }
 
-  /// معالجة بيانات الإشعار (تنقل أو منطق) - قابلة للتوسعة لاحقاً
+  /// معالجة بيانات الإشعار — فتح الصفحة المناسبة
   static void _handleNotificationNavigation(Map<String, dynamic> data) {
-    final type = data['type'];
+    final type = data['type']?.toString();
     debugPrint('🔗 فتح إشعار نوعه: $type => data=$data');
-    // TODO: دمج مع Navigator عبر GlobalKey<NavigatorState> إذا توفر.
+
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+
+    switch (type) {
+      case 'chat_message':
+      case 'chat_mention':
+        final roomId = data['roomId']?.toString();
+        if (roomId == null || roomId.isEmpty) return;
+        nav.push(MaterialPageRoute(
+          builder: (_) => ChatConversationPage(
+            roomId: roomId,
+            roomName: data['roomName']?.toString() ?? 'محادثة',
+            roomType: int.tryParse(data['roomType']?.toString() ?? '0') ?? 0,
+          ),
+        ));
+        break;
+      default:
+        debugPrint('📌 نوع إشعار غير معروف: $type');
+    }
   }
 
   /// تحويل رسالة FCM إلى إشعار محلي

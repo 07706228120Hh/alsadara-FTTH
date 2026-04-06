@@ -6,6 +6,7 @@ import 'task_card.dart';
 import 'add_task_api_dialog.dart';
 import '../ftth/tickets/tickets_login_page.dart';
 import 'reports_page.dart';
+import 'technician_performance_page.dart';
 import '../services/whatsapp_template_storage.dart';
 
 class HomePageTasks extends StatefulWidget {
@@ -19,6 +20,8 @@ class HomePageTasks extends StatefulWidget {
   final VoidCallback? onShowMenu;
   final VoidCallback? onShowFilter;
   final VoidCallback? onRefresh;
+  final VoidCallback? onLoadMore;
+  final bool hasMorePages;
 
   const HomePageTasks({
     super.key,
@@ -32,6 +35,8 @@ class HomePageTasks extends StatefulWidget {
     this.onShowMenu,
     this.onShowFilter,
     this.onRefresh,
+    this.onLoadMore,
+    this.hasMorePages = true,
   });
 
   @override
@@ -46,6 +51,15 @@ class HomePageTasksState extends State<HomePageTasks> {
   bool isLoading = false;
   String? errorMessage;
   int currentIndex = 0;
+
+  // البحث
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  // فلاتر متقدمة
+  String? _filterDepartment;
+  String? _filterTechnician;
+  String? _filterPriority;
 
   // متغيرات الإشعارات الجديدة
   int newTasksCount = 0; // عدد المهام الجديدة
@@ -82,6 +96,12 @@ class HomePageTasksState extends State<HomePageTasks> {
     }
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void openDrawer() {
     _scaffoldKey.currentState?.openDrawer();
   }
@@ -109,43 +129,32 @@ class HomePageTasksState extends State<HomePageTasks> {
     }
   }
 
-  void _applyPermissionFilter() {
-    print(
-        '🔍 [FILTER] Role: "${widget.currentUserRole}", Username: "${widget.username}", Department: "${widget.department}"');
-    print('🔍 [FILTER] Total tasks: ${_currentTasks.length}');
-    for (var task in _currentTasks) {
-      print(
-          '🔍 [FILTER] Task ${task.id}: technician="${task.technician}", createdBy="${task.createdBy}", dept="${task.department}"');
-    }
+  /// تطبيق فلتر الصلاحيات على قائمة مهام — منطق موحّد لكل الأدوار
+  List<Task> _applyRoleFilter(List<Task> tasks) {
     final role = _normalizeRole(widget.currentUserRole);
+    if (role == 'مدير') {
+      return tasks;
+    } else if (role == 'ليدر') {
+      final dept = widget.department;
+      return tasks
+          .where((task) =>
+              task.technician == widget.username ||
+              task.createdBy == widget.username ||
+              (dept.isNotEmpty && task.department == dept))
+          .toList();
+    } else {
+      // فني أو موظف عادي: المعيّنة له + التي أنشأها
+      return tasks
+          .where((task) =>
+              task.technician == widget.username ||
+              task.createdBy == widget.username)
+          .toList();
+    }
+  }
+
+  void _applyPermissionFilter() {
     setState(() {
-      if (role == 'مدير') {
-        // المدير يرى جميع المهام
-        _filteredTasks = _currentTasks;
-      } else if (role == 'ليدر') {
-        // الليدر يرى: مهام قسمه + المعيّنة له + التي أنشأها
-        final dept = widget.department;
-        _filteredTasks = _currentTasks
-            .where((task) =>
-                task.technician == widget.username ||
-                task.createdBy == widget.username ||
-                (dept.isNotEmpty && task.department == dept))
-            .toList();
-      } else if (role == 'فني') {
-        // الفني يرى: المهام المعيّنة له + التي أنشأها
-        _filteredTasks = _currentTasks
-            .where((task) =>
-                task.technician == widget.username ||
-                task.createdBy == widget.username)
-            .toList();
-      } else {
-        // موظف عادي: يرى المهام المعيّنة له + التي أنشأها
-        _filteredTasks = _currentTasks
-            .where((task) =>
-                task.technician == widget.username ||
-                task.createdBy == widget.username)
-            .toList();
-      }
+      _filteredTasks = _applyRoleFilter(_currentTasks);
 
       _filteredTasks.sort((a, b) {
         final da = a.closedAt ?? a.createdAt;
@@ -153,7 +162,6 @@ class HomePageTasksState extends State<HomePageTasks> {
         return db.compareTo(da);
       });
 
-      // تطبيق فلتر التاريخ
       _filteredTasks = _applyDateFilter(_filteredTasks);
     });
   }
@@ -163,34 +171,10 @@ class HomePageTasksState extends State<HomePageTasks> {
       if (status == 'اللوحة') {
         _applyPermissionFilter();
       } else {
-        List<Task> statusFilteredTasks =
+        // فلتر الحالة ثم فلتر الصلاحيات (منطق موحّد)
+        final statusFilteredTasks =
             _currentTasks.where((task) => task.status == status).toList();
-
-        // تطبيق فلتر الصلاحيات على المهام المفلترة حسب الحالة
-        final role2 = _normalizeRole(widget.currentUserRole);
-        if (role2 == 'مدير') {
-          // المدير يرى جميع المهام
-          _filteredTasks = statusFilteredTasks;
-        } else if (role2 == 'ليدر') {
-          // الليدر يرى: المهام المعينة له + المهام التي أنشأها شخصياً
-          _filteredTasks = statusFilteredTasks
-              .where((task) =>
-                  task.technician == widget.username ||
-                  task.createdBy == widget.username)
-              .toList();
-        } else if (role2 == 'فني') {
-          // الفني يرى: المهام المخصصة له + المهام التي أنشأها شخصياً
-          _filteredTasks = statusFilteredTasks
-              .where((task) =>
-                  task.technician == widget.username ||
-                  task.createdBy == widget.username)
-              .toList();
-        } else {
-          // أي دور آخر يرى فقط المهام التي أنشأها
-          _filteredTasks = statusFilteredTasks
-              .where((task) => task.createdBy == widget.username)
-              .toList();
-        }
+        _filteredTasks = _applyRoleFilter(statusFilteredTasks);
 
         _filteredTasks.sort((a, b) {
           final da = a.closedAt ?? a.createdAt;
@@ -198,7 +182,7 @@ class HomePageTasksState extends State<HomePageTasks> {
           return db.compareTo(da);
         });
 
-        // إذا كنا في تبويب المكتملة ونشط زر اليوم فقط، نرشح حسب تاريخ اليوم (حسب closedAt ثم createdAt)
+        // فلتر اليوم فقط للمكتملة والملغية
         if (status == 'مكتملة' && _completedTodayOnly) {
           final now = DateTime.now();
           _filteredTasks = _filteredTasks.where((t) {
@@ -208,7 +192,6 @@ class HomePageTasksState extends State<HomePageTasks> {
                 d.day == now.day;
           }).toList();
         }
-        // إذا كنا في تبويب الملغية ونشط زر اليوم فقط
         if (status == 'ملغية' && _cancelledTodayOnly) {
           final now = DateTime.now();
           _filteredTasks = _filteredTasks.where((t) {
@@ -219,7 +202,6 @@ class HomePageTasksState extends State<HomePageTasks> {
           }).toList();
         }
 
-        // تطبيق فلتر التاريخ
         _filteredTasks = _applyDateFilter(_filteredTasks);
       }
     });
@@ -227,20 +209,56 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   /// تطبيق فلتر التاريخ على قائمة المهام
   List<Task> _applyDateFilter(List<Task> tasks) {
-    if (_dateFilter == 'all') return tasks;
-    final now = DateTime.now();
-    final DateTime targetDate;
-    if (_dateFilter == 'yesterday') {
-      targetDate = now.subtract(const Duration(days: 1));
-    } else {
-      targetDate = now; // today
+    List<Task> result = tasks;
+    if (_dateFilter != 'all') {
+      final now = DateTime.now();
+      final DateTime targetDate;
+      if (_dateFilter == 'yesterday') {
+        targetDate = now.subtract(const Duration(days: 1));
+      } else {
+        targetDate = now; // today
+      }
+      result = result.where((t) {
+        final d = t.createdAt;
+        return d.year == targetDate.year &&
+            d.month == targetDate.month &&
+            d.day == targetDate.day;
+      }).toList();
     }
-    return tasks.where((t) {
-      final d = t.createdAt;
-      return d.year == targetDate.year &&
-          d.month == targetDate.month &&
-          d.day == targetDate.day;
-    }).toList();
+    // تطبيق البحث النصي
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result.where((t) {
+        return t.title.toLowerCase().contains(q) ||
+            t.username.toLowerCase().contains(q) ||
+            t.phone.contains(q) ||
+            t.technician.toLowerCase().contains(q) ||
+            t.id.contains(q) ||
+            t.fbg.toLowerCase().contains(q) ||
+            t.notes.toLowerCase().contains(q) ||
+            t.agentName.toLowerCase().contains(q);
+      }).toList();
+    }
+    // تطبيق الفلاتر المتقدمة
+    if (_filterDepartment != null && _filterDepartment!.isNotEmpty) {
+      result = result.where((t) => t.department == _filterDepartment).toList();
+    }
+    if (_filterTechnician != null && _filterTechnician!.isNotEmpty) {
+      result = result.where((t) => t.technician == _filterTechnician).toList();
+    }
+    if (_filterPriority != null && _filterPriority!.isNotEmpty) {
+      result = result.where((t) => t.priority == _filterPriority).toList();
+    }
+    return result;
+  }
+
+  /// الحصول على القيم الفريدة من المهام لقوائم الفلتر
+  List<String> _getUniqueDepartments() {
+    return _currentTasks.map((t) => t.department).where((d) => d.isNotEmpty).toSet().toList()..sort();
+  }
+
+  List<String> _getUniqueTechnicians() {
+    return _currentTasks.map((t) => t.technician).where((t) => t.isNotEmpty).toSet().toList()..sort();
   }
 
   double _calculateTotalAmount(List<Task> tasks) {
@@ -371,15 +389,21 @@ class HomePageTasksState extends State<HomePageTasks> {
     if (sorted.isEmpty) return const SizedBox.shrink();
 
     final isSmall = MediaQuery.of(context).size.width < 420;
-    final fs = isSmall ? 8.0 : 11.0;
-    final colW = isSmall ? 28.0 : 45.0;
-    final totalW = isSmall ? 32.0 : 50.0;
-    final hPad = isSmall ? 6.0 : 16.0;
+
+    // على الشاشات الصغيرة: عرض بطاقات بدلاً من جدول
+    if (isSmall) {
+      return _buildTechnicianCards(sorted);
+    }
+
+    final fs = 11.0;
+    final colW = 45.0;
+    final totalW = 50.0;
+    final hPad = 16.0;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(isSmall ? 10 : 16),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
         boxShadow: [
           BoxShadow(
@@ -392,32 +416,22 @@ class HomePageTasksState extends State<HomePageTasks> {
       child: Column(
         children: [
           Container(
-            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isSmall ? 6 : 10),
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 10),
             decoration: BoxDecoration(
               color: const Color(0xFFEEF2F7),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(isSmall ? 9 : 14),
-                topRight: Radius.circular(isSmall ? 9 : 14),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(14),
+                topRight: Radius.circular(14),
               ),
               border: Border.all(color: const Color(0xFFDDE3EA), width: 0.8),
             ),
             child: Row(
               children: [
-                SizedBox(width: totalW, child: isSmall
-                    ? const Icon(Icons.tag, size: 12, color: Color(0xFF6B7280))
-                    : Text('الإجمالي', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)))),
-                SizedBox(width: colW, child: isSmall
-                    ? const Icon(Icons.cancel, size: 12, color: Color(0xFFE53935))
-                    : Text('ملغية', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFFE53935)))),
-                SizedBox(width: colW, child: isSmall
-                    ? const Icon(Icons.check_circle, size: 12, color: Color(0xFF4CAF50))
-                    : Text('مكتملة', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF4CAF50)))),
-                SizedBox(width: colW, child: isSmall
-                    ? const Icon(Icons.sync, size: 12, color: Color(0xFFFF9800))
-                    : Text('تنفيذ', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFFFF9800)))),
-                SizedBox(width: totalW, child: isSmall
-                    ? const Icon(Icons.inbox, size: 12, color: Color(0xFF2196F3))
-                    : Text('مفتوحة', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF2196F3)))),
+                SizedBox(width: totalW, child: Text('الإجمالي', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)))),
+                SizedBox(width: colW, child: Text('ملغية', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFFE53935)))),
+                SizedBox(width: colW, child: Text('مكتملة', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF4CAF50)))),
+                SizedBox(width: colW, child: Text('تنفيذ', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFFFF9800)))),
+                SizedBox(width: totalW, child: Text('مفتوحة', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF2196F3)))),
                 Expanded(child: Text('القسم', textAlign: TextAlign.center, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)))),
                 Expanded(child: Text('الفني', textAlign: TextAlign.end, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)))),
               ],
@@ -437,11 +451,11 @@ class HomePageTasksState extends State<HomePageTasks> {
             final canceled = stats['canceled'] as int;
             final dept = stats['department'] as String;
             final isEven = idx % 2 == 0;
-            final numFs = isSmall ? 10.0 : 14.0;
-            final txtFs = isSmall ? 9.0 : 12.0;
+            const numFs = 14.0;
+            const txtFs = 12.0;
 
             return Container(
-              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isSmall ? 6 : 12),
+              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
               decoration: BoxDecoration(
                 color: isEven ? Colors.white : const Color(0xFFF9FAFB),
                 border: Border(
@@ -456,8 +470,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                   SizedBox(
                     width: totalW,
                     child: Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: isSmall ? 4 : 8, vertical: isSmall ? 2 : 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFF3B82F6),
                         borderRadius: BorderRadius.circular(8),
@@ -554,17 +568,17 @@ class HomePageTasksState extends State<HomePageTasks> {
                         Flexible(
                           child: Text(
                             name,
-                            style: TextStyle(
-                              fontSize: isSmall ? 9 : 13,
+                            style: const TextStyle(
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF1F2937),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        SizedBox(width: isSmall ? 2 : 6),
-                        Icon(Icons.person_rounded,
-                            size: isSmall ? 12 : 16, color: const Color(0xFF4FC3F7)),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.person_rounded,
+                            size: 16, color: Color(0xFF4FC3F7)),
                       ],
                     ),
                   ),
@@ -575,7 +589,7 @@ class HomePageTasksState extends State<HomePageTasks> {
 
           // صف الإجمالي
           Container(
-            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isSmall ? 6 : 12),
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFFEEF2F7),
               borderRadius: const BorderRadius.only(
@@ -590,7 +604,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                   width: totalW,
                   child: Container(
                     padding:
-                        EdgeInsets.symmetric(horizontal: isSmall ? 4 : 8, vertical: isSmall ? 2 : 4),
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF4FC3F7),
                       borderRadius: BorderRadius.circular(8),
@@ -598,8 +612,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                     child: Text(
                       '${_filteredTasks.length}',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: isSmall ? 10.0 : 14.0,
+                      style: const TextStyle(
+                        fontSize: 14.0,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
@@ -612,7 +626,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                     '${_filteredTasks.where((t) => t.status == 'ملغية').length}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: isSmall ? 10.0 : 14.0,
+                      fontSize: 14.0,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFFE53935),
                     ),
@@ -624,7 +638,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                     '${_filteredTasks.where((t) => t.status == 'مكتملة').length}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: isSmall ? 10.0 : 14.0,
+                      fontSize: 14.0,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF4CAF50),
                     ),
@@ -636,7 +650,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                     '${_filteredTasks.where((t) => t.status == 'قيد التنفيذ').length}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: isSmall ? 10.0 : 14.0,
+                      fontSize: 14.0,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFFFF9800),
                     ),
@@ -670,6 +684,110 @@ class HomePageTasksState extends State<HomePageTasks> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// بطاقات الفنيين للشاشات الصغيرة (بديل الجدول)
+  Widget _buildTechnicianCards(List<MapEntry<String, Map<String, dynamic>>> sorted) {
+    return Column(
+      children: sorted.map((entry) {
+        final name = entry.key;
+        final stats = entry.value;
+        final total = stats['total'] as int;
+        final open = stats['open'] as int;
+        final progress = stats['progress'] as int;
+        final done = stats['done'] as int;
+        final canceled = stats['canceled'] as int;
+        final dept = stats['department'] as String;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // اسم الفني والقسم
+              Row(
+                children: [
+                  Icon(Icons.person_rounded, size: 16, color: const Color(0xFF4FC3F7)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (dept.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(dept, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // إحصائيات الحالات
+              Row(
+                children: [
+                  _buildMiniStatChip('مفتوحة', open, const Color(0xFF2196F3)),
+                  const SizedBox(width: 6),
+                  _buildMiniStatChip('تنفيذ', progress, const Color(0xFFFF9800)),
+                  const SizedBox(width: 6),
+                  _buildMiniStatChip('مكتملة', done, const Color(0xFF4CAF50)),
+                  const SizedBox(width: 6),
+                  _buildMiniStatChip('ملغية', canceled, const Color(0xFFE53935)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$total',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// شريحة إحصائية صغيرة للبطاقات
+  Widget _buildMiniStatChip(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: count > 0 ? color.withValues(alpha: 0.1) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: count > 0 ? color : const Color(0xFFD1D5DB),
+        ),
       ),
     );
   }
@@ -887,6 +1005,59 @@ class HomePageTasksState extends State<HomePageTasks> {
     );
   }
 
+  /// شريط البحث
+  Widget _buildSearchBar() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(isSmall ? 8 : 12, 8, isSmall ? 8 : 12, 4),
+      child: TextField(
+        controller: _searchController,
+        textDirection: TextDirection.rtl,
+        style: TextStyle(fontSize: isSmall ? 13 : 14),
+        decoration: InputDecoration(
+          hintText: 'بحث بالاسم، الهاتف، الفني، FBG...',
+          hintStyle: TextStyle(fontSize: isSmall ? 12 : 13, color: Colors.grey.shade400),
+          prefixIcon: Icon(Icons.search, size: isSmall ? 20 : 22, color: Colors.grey.shade500),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear, size: 18, color: Colors.grey.shade500),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                      _applyPermissionFilter();
+                      _filterTasksByStatus(_getStatusByIndex(currentIndex));
+                    });
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: isSmall ? 10 : 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF1A237E), width: 1.5),
+          ),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value.trim();
+            _applyPermissionFilter();
+            _filterTasksByStatus(_getStatusByIndex(currentIndex));
+          });
+        },
+      ),
+    );
+  }
+
   /// بناء قائمة المهام
   Widget _buildTaskListView() {
     final listContent = _filteredTasks.isEmpty
@@ -902,14 +1073,27 @@ class HomePageTasksState extends State<HomePageTasks> {
             ),
           )
         : Expanded(
-            child: ListView.builder(
-              itemCount: _filteredTasks.length,
-              itemBuilder: (context, index) {
-                final task = _filteredTasks[index];
-                return Card(
-                  margin: const EdgeInsets.all(8.0),
-                  elevation: 4,
-                  child: TaskCard(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (scrollInfo) {
+                // تحميل المزيد عند الوصول لـ 80% من القائمة
+                if (scrollInfo.metrics.pixels > scrollInfo.metrics.maxScrollExtent * 0.8 &&
+                    widget.hasMorePages) {
+                  widget.onLoadMore?.call();
+                }
+                return false;
+              },
+              child: ListView.builder(
+                itemCount: _filteredTasks.length + (widget.hasMorePages ? 1 : 0),
+                itemBuilder: (context, index) {
+                  // مؤشر تحميل المزيد
+                  if (index >= _filteredTasks.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                    );
+                  }
+                  final task = _filteredTasks[index];
+                  return TaskCard(
                     task: task,
                     currentUserRole: widget.currentUserRole,
                     currentUserName: widget.username,
@@ -919,7 +1103,6 @@ class HomePageTasksState extends State<HomePageTasks> {
                             .indexWhere((t) => t.id == updatedTask.id);
                         if (taskIndex != -1) {
                           _currentTasks[taskIndex] = updatedTask;
-                          // إعادة الفرز بعد التحديث
                           _currentTasks.sort((a, b) {
                             final da = a.closedAt ?? a.createdAt;
                             final db = b.closedAt ?? b.createdAt;
@@ -931,9 +1114,9 @@ class HomePageTasksState extends State<HomePageTasks> {
                       });
                       widget.onTaskStatusChanged(updatedTask);
                     },
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           );
 
@@ -1185,7 +1368,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       label: Text(
                         badgeCount.toString(),
                         style:
-                            const TextStyle(fontSize: 9, color: Colors.white),
+                            const TextStyle(fontSize: 11, color: Colors.white),
                       ),
                       backgroundColor: Colors.red,
                       child: Icon(
@@ -1204,7 +1387,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 label,
                 style: TextStyle(
                   color: isSelected ? Colors.white : const Color(0xFF6B7280),
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   height: 1.0,
                 ),
@@ -1390,198 +1573,265 @@ class HomePageTasksState extends State<HomePageTasks> {
     );
   }
 
-  /// شريط الأدوات العلوي مع زر إضافة المهام
+  /// شريط الأدوات العلوي — مبسّط للموبايل
   Widget _buildTopActionBar() {
     final r = context.responsive;
+    final isMobile = MediaQuery.of(context).size.width < 500;
+
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: r.contentPaddingH,
-        vertical: r.isMobile ? 10 : 15,
-      ),
       decoration: BoxDecoration(
         color: const Color(0xFF1A237E),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: SafeArea(
-        minimum: const EdgeInsets.only(top: 0),
-        child: Row(
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // زر العودة
-            IconButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              icon: Icon(Icons.arrow_back,
-                  size: r.appBarIconSize, color: Colors.white),
-              padding: const EdgeInsets.all(6),
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.white.withValues(alpha: 0.15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-
-            const SizedBox(width: 6),
-
-            // زر القائمة الجانبية
-            if (_shouldShowDrawer())
-              IconButton(
-                onPressed: openDrawer,
-                icon: Icon(Icons.menu,
-                    size: r.appBarIconSize, color: Colors.white),
-                padding: const EdgeInsets.all(6),
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-
-            const SizedBox(width: 8),
-
-            // قائمة تصفية التاريخ
-            _buildDateFilterDropdown(),
-
-            const Spacer(),
-
-            // أيقونة الإشعارات الجديدة - إضافة جديدة
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Stack(
+            // ─── الصف الأول: رجوع + عنوان + إشعارات + قائمة ───
+            Padding(
+              padding: EdgeInsets.fromLTRB(r.contentPaddingH, 8, r.contentPaddingH, 4),
+              child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications,
-                        size: 30, color: Color(0xFF4FC3F7)),
-                    tooltip: 'الإشعارات',
-                    onPressed: () {
-                      // الانتقال مباشرة لنافذة تسجيل الدخول للتذاكر
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TicketsLoginPage(),
-                        ),
-                      );
-                    },
-                    padding: const EdgeInsets.all(6),
-                    constraints:
-                        const BoxConstraints(minWidth: 36, minHeight: 36),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                  // رجوع
+                  _buildBarIcon(Icons.arrow_back, () => Navigator.of(context).pop()),
+                  const SizedBox(width: 8),
+
+                  // عنوان الصفحة
+                  Expanded(
+                    child: Text(
+                      'إدارة المهام',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isMobile ? 16 : 20,
+                        fontWeight: FontWeight.w700,
                       ),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
-                  if (showNotificationBadge && newTasksCount > 0)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: Colors.red[600],
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.5),
-                              blurRadius: 3,
-                              offset: const Offset(0, 1),
+
+                  // إشعارات
+                  Stack(
+                    children: [
+                      _buildBarIcon(Icons.notifications_outlined, () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => TicketsLoginPage()));
+                      }),
+                      if (showNotificationBadge && newTasksCount > 0)
+                        Positioned(
+                          right: 2, top: 2,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.red[600],
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                          ],
-                        ),
-                        constraints: BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Text(
-                          newTasksCount > 99 ? '99+' : newTasksCount.toString(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            child: Text(
+                              newTasksCount > 99 ? '99+' : newTasksCount.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    ),
+                    ],
+                  ),
+                  const SizedBox(width: 4),
+
+                  // قائمة خيارات (بدل أزرار متفرقة)
+                  _buildBarIcon(Icons.more_vert, () => _showMoreMenu()),
                 ],
               ),
             ),
 
-            const SizedBox(width: 6),
+            // ─── الصف الثاني: فلاتر (تاريخ + متقدم) ───
+            Padding(
+              padding: EdgeInsets.fromLTRB(r.contentPaddingH, 0, r.contentPaddingH, 8),
+              child: Row(
+                children: [
+                  // فلتر التاريخ — chips مدمجة
+                  _buildDateFilterChip('اليوم', 'today'),
+                  const SizedBox(width: 6),
+                  _buildDateFilterChip('أمس', 'yesterday'),
+                  const SizedBox(width: 6),
+                  _buildDateFilterChip('الكل', 'all'),
 
-            // زر إضافة مهمة جديدة (للمدير والليدر فقط)
-            if (widget.currentUserRole == 'مدير' ||
-                widget.currentUserRole == 'ليدر')
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.add_task,
-                      size: 26, color: Color(0xFF66BB6A)),
-                  tooltip: 'إضافة مهمة جديدة',
-                  onPressed: () => _showAddTaskDialog(),
-                  padding: const EdgeInsets.all(6),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
+                  const Spacer(),
+
+                  // فلتر متقدم
+                  GestureDetector(
+                    onTap: () => _showFilterPopup(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (_filterDepartment != null || _filterTechnician != null || _filterPriority != null)
+                            ? Colors.orangeAccent.withValues(alpha: 0.3)
+                            : Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: (_filterDepartment != null || _filterTechnician != null || _filterPriority != null)
+                            ? Border.all(color: Colors.orangeAccent, width: 1)
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.tune_rounded, size: 14,
+                            color: (_filterDepartment != null || _filterTechnician != null || _filterPriority != null)
+                                ? Colors.orangeAccent : Colors.white70),
+                          const SizedBox(width: 4),
+                          Text('فلتر', style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600,
+                            color: (_filterDepartment != null || _filterTechnician != null || _filterPriority != null)
+                                ? Colors.orangeAccent : Colors.white70,
+                          )),
+                        ],
+                      ),
                     ),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                ),
-              ),
-
-            const SizedBox(width: 6),
-
-            // زر إضافة شراء اشتراك - يظهر للجميع
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.add_shopping_cart,
-                    size: 26, color: Color(0xFF4FC3F7)),
-                tooltip: 'إضافة شراء اشتراك',
-                onPressed: () => _showAddSubscriptionDialog(),
-                padding: const EdgeInsets.all(6),
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+                ],
               ),
             ),
-
           ],
         ),
       ),
+    );
+  }
+
+  /// أيقونة شريط أدوات موحّدة
+  Widget _buildBarIcon(IconData icon, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 22, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  /// chip فلتر تاريخ صغير
+  Widget _buildDateFilterChip(String label, String value) {
+    final isActive = _dateFilter == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _dateFilter = value;
+          _applyPermissionFilter();
+          _filterTasksByStatus(_getStatusByIndex(currentIndex));
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white.withValues(alpha: 0.25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive ? Colors.white54 : Colors.white.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+            color: isActive ? Colors.white : Colors.white60,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// قائمة "المزيد" — تحتوي الأزرار المنقولة من الشريط
+  /// خيارات الزر العائم — مهمة جديدة + شراء اشتراك (حسب الصلاحيات)
+  void _showFabOptions() {
+    final isMgr = widget.currentUserRole == 'مدير';
+    final isLeader = widget.currentUserRole == 'ليدر';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36, height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+
+              if (isMgr || isLeader)
+                _buildMenuTile(Icons.add_task, 'إضافة مهمة جديدة', Colors.green, () {
+                  Navigator.pop(ctx);
+                  _showAddTaskDialog();
+                }),
+
+              _buildMenuTile(Icons.add_shopping_cart, 'شراء اشتراك', Colors.blue, () {
+                Navigator.pop(ctx);
+                _showAddSubscriptionDialog();
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMoreMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36, height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+
+              if (_shouldShowDrawer())
+                _buildMenuTile(Icons.menu_open, 'القائمة الجانبية', Colors.indigo, () {
+                  Navigator.pop(ctx);
+                  openDrawer();
+                }),
+
+              _buildMenuTile(Icons.info_outline, 'حول التطبيق', Colors.grey, () {
+                Navigator.pop(ctx);
+                _showAboutDialog();
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuTile(IconData icon, String title, Color color, VoidCallback onTap) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color, size: 22),
+      ),
+      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      onTap: onTap,
     );
   }
 
@@ -1657,19 +1907,149 @@ class HomePageTasksState extends State<HomePageTasks> {
   }
 
   void _showFilterPopup(BuildContext context) {
+    String? tempDept = _filterDepartment;
+    String? tempTech = _filterTechnician;
+    String? tempPriority = _filterPriority;
+
+    final departments = _getUniqueDepartments();
+    final technicians = _getUniqueTechnicians();
+    const priorities = ['عاجل', 'عالي', 'متوسط', 'منخفض'];
+
+    final hasActiveFilters = _filterDepartment != null || _filterTechnician != null || _filterPriority != null;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('التصفية'),
-        content: const Text('سيتم تطوير نظام التصفية قريباً'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.filter_list_rounded, color: Color(0xFF1A237E), size: 22),
+                  const SizedBox(width: 8),
+                  const Text('فلترة متقدمة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  if (hasActiveFilters || tempDept != null || tempTech != null || tempPriority != null)
+                    TextButton(
+                      onPressed: () {
+                        setDialogState(() {
+                          tempDept = null;
+                          tempTech = null;
+                          tempPriority = null;
+                        });
+                      },
+                      child: const Text('مسح الكل', style: TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // فلتر القسم
+                    const Text('القسم', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: tempDept,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        hintText: 'جميع الأقسام',
+                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(value: null, child: Text('جميع الأقسام')),
+                        ...departments.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13)))),
+                      ],
+                      onChanged: (v) => setDialogState(() => tempDept = v),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // فلتر الفني
+                    const Text('الفني', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: tempTech,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        hintText: 'جميع الفنيين',
+                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(value: null, child: Text('جميع الفنيين')),
+                        ...technicians.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))),
+                      ],
+                      onChanged: (v) => setDialogState(() => tempTech = v),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // فلتر الأولوية
+                    const Text('الأولوية', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('الكل', style: TextStyle(fontSize: 12)),
+                          selected: tempPriority == null,
+                          onSelected: (_) => setDialogState(() => tempPriority = null),
+                        ),
+                        ...priorities.map((p) => ChoiceChip(
+                          label: Text(p, style: const TextStyle(fontSize: 12)),
+                          selected: tempPriority == p,
+                          selectedColor: _getPriorityChipColor(p),
+                          onSelected: (_) => setDialogState(() => tempPriority = tempPriority == p ? null : p),
+                        )),
+                      ],
+                    ),
+                  ],
+                ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _filterDepartment = tempDept;
+                      _filterTechnician = tempTech;
+                      _filterPriority = tempPriority;
+                      _applyPermissionFilter();
+                      _filterTasksByStatus(_getStatusByIndex(currentIndex));
+                    });
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A237E),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('تطبيق'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  Color _getPriorityChipColor(String priority) {
+    switch (priority) {
+      case 'عاجل': return Colors.red.shade100;
+      case 'عالي': return Colors.orange.shade100;
+      case 'متوسط': return Colors.yellow.shade100;
+      case 'منخفض': return Colors.green.shade100;
+      default: return Colors.grey.shade100;
+    }
   }
 
   @override
@@ -1679,11 +2059,20 @@ class HomePageTasksState extends State<HomePageTasks> {
       backgroundColor: const Color(0xFFF5F7FA),
       drawer: _shouldShowDrawer()
           ? _buildDrawer()
-          : null, // إظهار القائمة الجانبية فقط للليدر والمدير
+          : null,
+      // زر عائم — يفتح خيارات الإضافة
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showFabOptions(),
+        backgroundColor: const Color(0xFF1A237E),
+        elevation: 6,
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
+      ),
       body: Column(
         children: [
           // شريط الأدوات العلوي مع زر إضافة المهام
           _buildTopActionBar(),
+          // شريط البحث — يظهر في تبويبات القوائم فقط (ليس اللوحة)
+          if (currentIndex != 0) _buildSearchBar(),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -1894,6 +2283,21 @@ class HomePageTasksState extends State<HomePageTasks> {
                         },
                         color: Colors.blue,
                       ),
+                    // لوحة أداء الفنيين (للمدير والليدر فقط)
+                    if (widget.currentUserRole == 'مدير' ||
+                        widget.currentUserRole == 'ليدر')
+                      _buildDrawerItem(
+                        icon: Icons.leaderboard,
+                        title: 'أداء الفنيين',
+                        subtitle: 'إحصائيات ومقارنة الأداء',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => TechnicianPerformancePage(tasks: _currentTasks),
+                          ));
+                        },
+                        color: Colors.deepPurple,
+                      ),
                   ],
                 ),
               ),
@@ -2069,9 +2473,11 @@ class _WhatsAppTemplateEditorDialogState
       ),
       content: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : SizedBox(
-              width: double.maxFinite,
-              height: 400,
+          : ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: double.maxFinite,
+                maxHeight: MediaQuery.of(context).size.height * 0.6,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

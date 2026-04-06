@@ -249,6 +249,13 @@ class PermissionManager {
   // اختصارات للإجراءات الشائعة
   // ══════════════════════════════════════════
 
+  /// هل المفتاح الفرعي مُعيّن بشكل صريح (ليس موروث من الأب)؟
+  /// يُستخدم للصلاحيات الجديدة التي يجب تفعيلها يدوياً
+  bool hasExplicit(String feature, String action) {
+    if (!_hasKey(feature)) return false;
+    return _checkDirect(feature, action);
+  }
+
   /// هل يمكن عرض هذه الميزة؟
   bool canView(String feature) => hasAction(feature, 'view');
 

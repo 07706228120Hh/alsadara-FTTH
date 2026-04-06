@@ -10,6 +10,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:alsadara/pages/track_users_map_page.dart';
 import '../task/task_list_screen.dart';
+import '../services/fcm_token_service.dart';
+import '../services/location_foreground_service.dart';
+import 'dart:io' show Platform;
 import 'hr_hub_page.dart';
 import 'search_users_page.dart';
 import 'users_page.dart';
@@ -36,16 +39,21 @@ import 'settings/ftth_sync_settings_page.dart'; // إعدادات مزامنة F
 import 'super_admin/sadara_portal_page.dart'; // منصة الصدارة
 import 'accounting/accounting_dashboard_page.dart'; // نظام المحاسبة
 import '../task/follow_up_page.dart'; // صفحة المتابعة
-import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق
+// import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق — مخفي حالياً
 // شاشتي - معاملات الفني
 import 'my_dashboard_page.dart'; // شاشتي - لوحة الموظف الشخصية
 import '../permissions/permissions.dart';
+import 'chat/chat_rooms_page.dart';
+import '../services/chat_service.dart';
 import '../services/task_api_service.dart';
 import '../services/attendance_api_service.dart';
 import '../widgets/update_dialog.dart'; // فحص التحديث التلقائي
 import '../services/message_log_service.dart'; // التقرير اليومي
 import 'iptv/iptv_subscribers_page.dart'; // صفحة مشتركي IPTV
 import 'kml_zones_map_page.dart'; // خريطة الزونات
+import 'announcements/announcements_page.dart'; // صفحة الإعلانات والتبليغات
+import '../services/announcement_service.dart'; // خدمة الإعلانات
+import '../services/api/api_config.dart'; // إعدادات API
 // تم نقل زر جلب بيانات الموقع إلى النظام الثاني
 
 class HomePage extends StatefulWidget {
@@ -93,8 +101,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _pendingAgentRequests = 0;
   int _openTasksCount = 0;
   int _pendingEmployeeRequests = 0; // إجازات + سلف
+  int _unreadChatCount = 0;
+  int _unreadAnnouncementsCount = 0;
+  List<Map<String, dynamic>> _myAnnouncements = []; // كل الإعلانات الموجهة
+  int _currentAnnouncementIndex = 0;
+  Timer? _announcementRotateTimer;
+  StreamSubscription? _chatUnreadSub;
   bool _countersLoading = true;
   bool _counterRetried = false; // لمحاولة إعادة جلب العدادات مرة واحدة
+  Timer? _countersRefreshTimer; // تحديث تلقائي للعدادات
   late final AnimationController _counterAnimController;
 
   // Unified fiber optic color
@@ -118,6 +133,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 1800),
     );
     _initializeApp();
+    _initChat();
+  }
+
+  /// تهيئة نظام المحادثة
+  Timer? _chatPollTimer;
+  void _initChat() {
+    if (PermissionManager.instance.canView('chat')) {
+      ChatService.instance.connect();
+      _chatUnreadSub = ChatService.instance.onUnreadCount.listen((count) {
+        if (mounted) setState(() => _unreadChatCount = count);
+      });
+      // تحديث العداد فوراً + كل 30 ثانية
+      ChatService.instance.refreshUnreadCount();
+      _chatPollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) ChatService.instance.refreshUnreadCount();
+      });
+    }
   }
 
   @override
@@ -155,14 +187,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       });
 
-      // جلب العدادات
+      // جلب العدادات + تحديث تلقائي كل 30 ثانية
       _fetchCounters();
+      _countersRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) _fetchCounters();
+      });
+
+      // تدوير الإعلانات كل 5 ثوانٍ
+      _announcementRotateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (mounted && _myAnnouncements.length > 1) {
+          setState(() {
+            _currentAnnouncementIndex = (_currentAnnouncementIndex + 1) % _myAnnouncements.length;
+          });
+        }
+      });
 
       // فحص التحديث التلقائي بعد 5 ثوانٍ
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
           UpdateManager.checkAndShowUpdateDialog(context);
         }
+      });
+
+      // نافذة الإعلانات غير المقروءة بعد 8 ثوانٍ (بعد فحص التحديث)
+      Future.delayed(const Duration(seconds: 8), () {
+        if (mounted) _showAutoAnnouncementPopup();
       });
 
       // إرسال التقرير اليومي (تقرير الأمس) بعد 10 ثوانٍ
@@ -303,11 +352,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       debugPrint(
           '📊 agent=$pendingAgent, tasks=$openTasks, emp=$employeeRequests');
 
+      // جلب عداد الإعلانات غير المقروءة + كل الإعلانات
+      final announcementsCount = await AnnouncementService.instance.getUnreadCount().catchError((_) => 0);
+      List<Map<String, dynamic>> myAnns = [];
+      try {
+        final annResponse = await AnnouncementService.instance.getMyAnnouncements(page: 1, pageSize: 10);
+        if (annResponse['success'] == true) {
+          final annData = annResponse['data'] as List?;
+          if (annData != null && annData.isNotEmpty) {
+            myAnns = annData.map((a) => Map<String, dynamic>.from(a)).toList();
+          }
+        }
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _pendingAgentRequests = pendingAgent;
           _openTasksCount = openTasks;
           _pendingEmployeeRequests = employeeRequests;
+          _unreadAnnouncementsCount = announcementsCount;
+          _myAnnouncements = myAnns;
+          if (_currentAnnouncementIndex >= myAnns.length) _currentAnnouncementIndex = 0;
           _countersLoading = false;
         });
         _counterAnimController.forward(from: 0.0);
@@ -360,7 +425,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  // إرسال الموقع إلى Sadara API — تردد ذكي
+  DateTime? _lastLocationTime; // لكشف السرعة المستحيلة
+
+  // إرسال الموقع إلى Sadara API — تردد ذكي + حماية من Fake Location
   Future<void> _sendLiveLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition(
@@ -368,23 +435,52 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             const LocationSettings(accuracy: LocationAccuracy.high),
       );
 
+      // ═══════ طبقة 1: كشف Mock Location ═══════
+      if (position.isMocked) {
+        debugPrint('🚨 [SECURITY] Mock location detected! Rejecting.');
+        return; // رفض الموقع المزيف
+      }
+
+      // ═══════ طبقة 2: فحص دقة الموقع ═══════
+      // المواقع المزيفة غالباً تكون بدقة 0 أو دقة مثالية جداً (< 1 متر)
+      if (position.accuracy < 1.0 || position.accuracy > 500) {
+        debugPrint('🚨 [SECURITY] Suspicious accuracy: ${position.accuracy}m');
+        return;
+      }
+
+      // ═══════ طبقة 3: كشف السرعة المستحيلة ═══════
+      if (_lastLat != null && _lastLng != null && _lastLocationTime != null) {
+        final distance = Geolocator.distanceBetween(
+          _lastLat!, _lastLng!, position.latitude, position.longitude,
+        );
+        final timeDiff = DateTime.now().difference(_lastLocationTime!).inSeconds;
+        if (timeDiff > 0) {
+          final speed = distance / timeDiff; // متر/ثانية
+          if (speed > 80) { // > 288 كم/ساعة = مستحيل
+            debugPrint('🚨 [SECURITY] Impossible speed: ${(speed * 3.6).round()} km/h');
+            return;
+          }
+        }
+      }
+
       // حساب المسافة من الموقع السابق
-      int newInterval = 60; // افتراضي: ثابت → كل 60 ثانية
+      int newInterval = 60;
       if (_lastLat != null && _lastLng != null) {
         final distance = Geolocator.distanceBetween(
           _lastLat!, _lastLng!, position.latitude, position.longitude,
         );
         if (distance > 10) {
-          newInterval = 10; // يتحرك (>10 متر) → كل 10 ثوانٍ
+          newInterval = 10;
         } else {
-          newInterval = 60; // ثابت → كل 60 ثانية
+          newInterval = 60;
         }
       } else {
-        newInterval = 10; // أول مرة → كل 10 ثوانٍ
+        newInterval = 10;
       }
 
       _lastLat = position.latitude;
       _lastLng = position.longitude;
+      _lastLocationTime = DateTime.now();
 
       // تغيير التايمر إذا تغيّر التردد
       if (newInterval != _currentInterval && _isLocationActive) {
@@ -400,6 +496,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         'userId': widget.username,
         'latitude': position.latitude,
         'longitude': position.longitude,
+        'accuracy': position.accuracy,
+        'isMocked': position.isMocked,
       };
 
       // مزامنة المواقع المخزّنة أثناء عدم الاتصال
@@ -462,6 +560,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _logout() async {
+    // إلغاء تسجيل FCM token (منع إشعارات المستخدم السابق)
+    try {
+      await FcmTokenService.instance.unregisterToken();
+    } catch (e) {
+      debugPrint('⚠️ خطأ في إلغاء FCM token');
+    }
     // تسجيل الخروج من كلا النظامين (VPS + FTTH)
     try {
       await DualAuthService.instance.logoutAll();
@@ -695,8 +799,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _chatUnreadSub?.cancel();
+    _chatPollTimer?.cancel();
     _ftthStateSubscription?.cancel();
-    _locationTimer?.cancel(); // NEW
+    _countersRefreshTimer?.cancel();
+    _announcementRotateTimer?.cancel();
+    if (_isLocationActive) {
+      if (Platform.isAndroid || Platform.isIOS) {
+        LocationForegroundService.instance.stop();
+      } else {
+        _stopLiveLocation();
+      }
+    }
+    _locationTimer?.cancel();
     _autoCollapseTimer?.cancel();
     _counterAnimController.dispose();
     WhatsAppBottomWindow.hideBottomWindow(
@@ -1121,7 +1236,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 _isLocationActive ? Colors.greenAccent : Colors.redAccent,
             onPressed: () async {
               if (!_isLocationActive) {
-                setState(() => _isLocationActive = true);
                 final scaffoldMessenger = ScaffoldMessenger.of(context);
                 LocationPermission permission =
                     await Geolocator.requestPermission();
@@ -1130,28 +1244,62 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                 if (permission == LocationPermission.denied ||
                     permission == LocationPermission.deniedForever) {
-                  setState(() => _isLocationActive = false);
                   scaffoldMessenger.showSnackBar(
                     const SnackBar(
                         content: Text('يرجى السماح بالوصول إلى الموقع')),
                   );
                   return;
                 }
-                _sendLiveLocation(); // إرسال فوري
-                _currentInterval = 10;
-                _locationTimer =
-                    Timer.periodic(Duration(seconds: _currentInterval), (timer) {
+
+                // تشغيل الخدمة في الخلفية (Android/iOS)
+                if (Platform.isAndroid || Platform.isIOS) {
+                  // 🛡️ فحص الجهاز — كشف تطبيقات الفيك (تحذير فقط، لا يمنع التشغيل)
+                  final warning = await LocationForegroundService.instance.checkDeviceIntegrity();
+                  if (warning != null && mounted) {
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text('⚠️ $warning\nسيتم تسجيل أي موقع وهمي'),
+                        backgroundColor: Colors.orange.shade700,
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+                    // لا نرجع — نسمح بالتشغيل مع التحذير
+                  }
+
+                  final started = await LocationForegroundService.instance.start(widget.username);
+                  if (started) {
+                    setState(() => _isLocationActive = true);
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ مشاركة الموقع تعمل في الخلفية'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } else {
+                  // Windows: استخدام Timer العادي
+                  setState(() => _isLocationActive = true);
                   _sendLiveLocation();
-                });
+                  _currentInterval = 10;
+                  _locationTimer =
+                      Timer.periodic(Duration(seconds: _currentInterval), (timer) {
+                    _sendLiveLocation();
+                  });
+                }
               } else {
                 setState(() => _isLocationActive = false);
-                _locationTimer?.cancel();
-                await _stopLiveLocation();
+                if (Platform.isAndroid || Platform.isIOS) {
+                  await LocationForegroundService.instance.stop();
+                } else {
+                  _locationTimer?.cancel();
+                  await _stopLiveLocation();
+                }
               }
             },
           ),
           const SizedBox(width: 6),
-          if (_isAdminUser)
+          if (_isAdminUser || PermissionManager.instance.canView('tracking'))
             _buildAnimatedActionButton(
               icon: Icon(
                 Icons.location_searching,
@@ -1302,6 +1450,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     MaterialPageRoute(
                       builder: (context) => const FtthSyncSettingsPage(),
                     ));
+              },
+            ),
+          if (PermissionManager.instance.canView('chat'))
+            _drawerBtn(
+              icon: Icons.forum_rounded,
+              label: 'المحادثة',
+              color: const Color(0xFF1976D2),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ChatRoomsPage(),
+                  ),
+                );
               },
             ),
           _drawerBtn(
@@ -1643,134 +1806,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: Column(
                       children: [
                         const SizedBox(height: 4),
-                        // بطاقة ترحيب بتصميم فاتح
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: EdgeInsets.symmetric(
-                              horizontal: r.isMobile ? 10 : 16,
-                              vertical: r.isMobile ? 8 : 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: const Color(0xFFD5D5D5),
-                              width: 2.0,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.06),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              // صورة مستخدم
-                              Container(
-                                width: r.userAvatarSize,
-                                height: r.userAvatarSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF3498DB),
-                                      Color(0xFF2980B9)
-                                    ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF3498DB)
-                                          .withOpacity(0.3),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                padding: const EdgeInsets.all(2),
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                  ),
-                                  padding: const EdgeInsets.all(2),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(25),
-                                    child: Image.asset(
-                                      'assets/splash_background.jpg',
-                                      width: r.userAvatarSize - 8,
-                                      height: r.userAvatarSize - 8,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: r.isMobile ? 8 : 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '✨ مرحبا بكم في شركة الصدارة',
-                                      style: TextStyle(
-                                        color: const Color(0xFF000000),
-                                        fontSize: r.captionSize + 1,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'مرحباً ${widget.username}',
-                                      style: TextStyle(
-                                        color: const Color(0xFF000000),
-                                        fontSize: r.subtitleSize + 1,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    if (_isAdminUser) ...[
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 2),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              // شخصية ترحيبية ثابتة
-                              Text('🧔',
-                                  style:
-                                      TextStyle(fontSize: r.statValueSize)),
-                              const SizedBox(width: 6),
-                              // زر معلومات
-                              InkWell(
-                                onTap: () => _showUserInfo(context),
-                                borderRadius: BorderRadius.circular(14),
-                                child: Container(
-                                  width: r.infoButtonSize,
-                                  height: r.infoButtonSize,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF3498DB)
-                                        .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: const Color(0xFF3498DB)
-                                          .withOpacity(0.3),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.info_outline,
-                                    color: const Color(0xFF3498DB),
-                                    size: r.iconSizeSmall - 2,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // بطاقة الإعلانات أو الترحيب
+                        _buildWelcomeOrAnnouncementCard(r),
                       ],
                     ),
                   ), // Enhanced menu section
@@ -2056,6 +2093,346 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return buffer.toString().split('').reversed.join('');
   }
 
+  /// بطاقة الترحيب أو الإعلانات (دوري)
+  Widget _buildWelcomeOrAnnouncementCard(dynamic r) {
+    final hasAnnouncements = _myAnnouncements.isNotEmpty;
+    final ann = hasAnnouncements ? _myAnnouncements[_currentAnnouncementIndex] : null;
+
+    return GestureDetector(
+      onTap: hasAnnouncements ? () => _showAnnouncementPopup(ann!) : null,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        child: Container(
+          key: ValueKey(hasAnnouncements ? 'ann_$_currentAnnouncementIndex' : 'welcome'),
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.symmetric(
+              horizontal: r.isMobile ? 10 : 16,
+              vertical: r.isMobile ? 8 : 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasAnnouncements ? const Color(0xFFE65100).withOpacity(0.4) : const Color(0xFFD5D5D5),
+              width: 2.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // أيقونة
+              Container(
+                width: r.userAvatarSize,
+                height: r.userAvatarSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: hasAnnouncements
+                        ? [const Color(0xFFE65100), const Color(0xFFFF6D00)]
+                        : [const Color(0xFF3498DB), const Color(0xFF2980B9)],
+                  ),
+                ),
+                child: Icon(
+                  hasAnnouncements ? Icons.campaign_rounded : Icons.person,
+                  color: Colors.white,
+                  size: r.userAvatarSize * 0.5,
+                ),
+              ),
+              SizedBox(width: r.isMobile ? 8 : 12),
+              Expanded(
+                child: hasAnnouncements
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ann!['title']?.toString() ?? '',
+                            style: TextStyle(
+                              color: const Color(0xFFE65100),
+                              fontSize: r.captionSize + 1,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            ann['body']?.toString() ?? '',
+                            style: TextStyle(
+                              color: const Color(0xFF333333),
+                              fontSize: r.subtitleSize,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (_myAnnouncements.length > 1) ...[
+                            const SizedBox(height: 4),
+                            // مؤشر النقاط
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(_myAnnouncements.length.clamp(0, 6), (i) {
+                                return Container(
+                                  width: i == _currentAnnouncementIndex ? 12 : 5,
+                                  height: 5,
+                                  margin: const EdgeInsets.only(left: 3),
+                                  decoration: BoxDecoration(
+                                    color: i == _currentAnnouncementIndex
+                                        ? const Color(0xFFE65100)
+                                        : Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ],
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'مرحبا بكم في شركة الصدارة',
+                            style: TextStyle(
+                              color: const Color(0xFF000000),
+                              fontSize: r.captionSize + 1,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'مرحباً ${widget.username}',
+                            style: TextStyle(
+                              color: const Color(0xFF000000),
+                              fontSize: r.subtitleSize + 1,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              if (hasAnnouncements && _unreadAnnouncementsCount > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE65100),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$_unreadAnnouncementsCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+              if (!hasAnnouncements) ...[
+                Text('🧔', style: TextStyle(fontSize: r.statValueSize)),
+                const SizedBox(width: 6),
+              ],
+              // زر معلومات
+              InkWell(
+                onTap: () => _showUserInfo(context),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: r.infoButtonSize,
+                  height: r.infoButtonSize,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3498DB).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFF3498DB).withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.info_outline,
+                    color: const Color(0xFF3498DB),
+                    size: r.iconSizeSmall - 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// نافذة منبثقة لتفاصيل الإعلان
+  /// عرض نافذة تفاصيل إعلان (مشتركة — من البطاقة أو تلقائياً)
+  void _showAnnouncementPopup(Map<String, dynamic> ann, {bool isAutoPopup = false}) {
+    final isUrgent = ann['isUrgent'] == true;
+    final blockDismiss = isUrgent && isAutoPopup;
+
+    // تسجيل القراءة (إلا إذا عاجل تلقائي — ينتظر "قرأت وفهمت")
+    if (!blockDismiss) {
+      final annId = ann['id'];
+      if (annId != null && ann['isRead'] != true) {
+        AnnouncementService.instance.markAsRead(annId is int ? annId : int.tryParse(annId.toString()) ?? 0);
+      }
+    }
+
+    final imageUrl = ann['imageUrl']?.toString();
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final screenW = MediaQuery.of(context).size.width;
+    final screenH = MediaQuery.of(context).size.height;
+    final isMobile = screenW < 600;
+
+    showDialog(
+      context: context,
+      barrierDismissible: !blockDismiss,
+      useSafeArea: true,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: PopScope(
+          canPop: !blockDismiss,
+          child: Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isMobile ? 12 : 16)),
+            clipBehavior: Clip.antiAlias,
+            insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 40, vertical: isMobile ? 24 : 40),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: isMobile ? screenW : 450,
+                maxHeight: isMobile ? screenH * 0.75 : 550,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: isMobile ? 10 : 14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isUrgent
+                            ? [const Color(0xFFC62828), const Color(0xFFE53935)]
+                            : [const Color(0xFFE65100), const Color(0xFFFF6D00)],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(isUrgent ? Icons.warning_rounded : Icons.campaign_rounded, color: Colors.white, size: isMobile ? 20 : 22),
+                        SizedBox(width: isMobile ? 8 : 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (isUrgent)
+                                Text('تبليغ عاجل', style: TextStyle(color: Colors.white70, fontSize: isMobile ? 10 : 11, fontWeight: FontWeight.bold)),
+                              Text(
+                                ann['title']?.toString() ?? '',
+                                style: TextStyle(color: Colors.white, fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.bold),
+                                maxLines: 2, overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!blockDismiss)
+                          InkWell(
+                            onTap: () => Navigator.pop(ctx),
+                            child: const Icon(Icons.close, color: Colors.white70, size: 22),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Image
+                  if (hasImage)
+                    Container(
+                      width: double.infinity,
+                      constraints: BoxConstraints(maxHeight: isMobile ? 120 : 180),
+                      child: Image.network(
+                        imageUrl.startsWith('http') ? imageUrl : '${ApiConfig.baseUrl.replaceFirst('/api', '')}$imageUrl',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  // Body
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(isMobile ? 12 : 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          ann['body']?.toString() ?? '',
+                          style: TextStyle(fontSize: isMobile ? 14 : 15, color: const Color(0xFF333333), height: 1.7),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Footer
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 8 : 10),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
+                    child: Row(
+                      children: [
+                        Icon(Icons.person_outline, size: 13, color: Colors.grey.shade500),
+                        const SizedBox(width: 4),
+                        Flexible(child: Text(ann['createdBy']?.toString() ?? '', style: TextStyle(fontSize: isMobile ? 11 : 12, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis)),
+                        const Spacer(),
+                        if (blockDismiss)
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              final annId = ann['id'];
+                              if (annId != null) {
+                                AnnouncementService.instance.markAsRead(annId is int ? annId : int.tryParse(annId.toString()) ?? 0);
+                              }
+                              Navigator.pop(ctx);
+                              _fetchCounters();
+                            },
+                            icon: Icon(Icons.check_circle, size: isMobile ? 16 : 18),
+                            label: Text('قرأت وفهمت', style: TextStyle(fontSize: isMobile ? 12 : 14)),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC62828), foregroundColor: Colors.white),
+                          )
+                        else ...[
+                          if (ann['createdAt'] != null) ...[
+                            Icon(Icons.access_time, size: 13, color: Colors.grey.shade500),
+                            const SizedBox(width: 3),
+                            Text(_formatAnnDate(ann['createdAt'].toString()), style: TextStyle(fontSize: isMobile ? 10 : 12, color: Colors.grey.shade600)),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatAnnDate(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  /// نافذة إعلانات تلقائية بعد تسجيل الدخول
+  void _showAutoAnnouncementPopup() {
+    if (_myAnnouncements.isEmpty) return;
+    final unread = _myAnnouncements.where((a) => a['isRead'] != true).toList();
+    if (unread.isEmpty) return;
+
+    // الأولوية: عاجل أولاً، ثم مثبت، ثم الأحدث
+    final ann = unread.firstWhere(
+      (a) => a['isUrgent'] == true,
+      orElse: () => unread.firstWhere(
+        (a) => a['isPinned'] == true,
+        orElse: () => unread.first,
+      ),
+    );
+
+    _showAnnouncementPopup(ann, isAutoPopup: true);
+  }
+
   // شبكة عناصر القائمة - تخطيط شبكي فاخر
   Widget _buildMenuGrid() {
     final r = context.responsive;
@@ -2223,25 +2600,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-          // 9) داشبورد التدقيق
-          _buildEnhancedMenuItem(
-            title: 'داشبورد التدقيق',
-            subtitle: 'إحصائيات وتحليلات شاملة',
-            icon: Icons.dashboard_rounded,
-            gradient: [const Color(0xFF1A237E), const Color(0xFF283593)],
-            permissionKey: 'audit_dashboard',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AuditDashboardPage(
-                  username: widget.username,
-                  permissions: widget.permissions,
-                  department: widget.department,
-                  center: widget.center,
-                ),
-              ),
-            ),
-          ),
+          // 9) داشبورد التدقيق — مخفي حالياً
+          // _buildEnhancedMenuItem(
+          //   title: 'داشبورد التدقيق',
+          //   subtitle: 'إحصائيات وتحليلات شاملة',
+          //   icon: Icons.dashboard_rounded,
+          //   gradient: [const Color(0xFF1A237E), const Color(0xFF283593)],
+          //   permissionKey: 'audit_dashboard',
+          //   onTap: () => Navigator.push(
+          //     context,
+          //     MaterialPageRoute(
+          //       builder: (context) => AuditDashboardPage(
+          //         username: widget.username,
+          //         permissions: widget.permissions,
+          //         department: widget.department,
+          //         center: widget.center,
+          //       ),
+          //     ),
+          //   ),
+          // ),
           // 10) شاشتي - لوحة الموظف الشخصية
           _buildEnhancedMenuItem(
             title: 'شاشتي',
@@ -2274,7 +2651,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-          // 12) صفحة الشركة - لوحة تحكم FTTH في WebView
+          // 12) المحادثة الداخلية
+          _buildEnhancedMenuItem(
+            title: 'المحادثة',
+            subtitle: 'محادثات الموظفين الداخلية',
+            icon: Icons.forum_rounded,
+            gradient: [const Color(0xFF1976D2), const Color(0xFF0D47A1)],
+            permissionKey: 'chat',
+            badgeCount: _unreadChatCount,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ChatRoomsPage(),
+              ),
+            ),
+          ),
+          // 12b) الإعلانات والتبليغات
+          _buildEnhancedMenuItem(
+            title: 'التبليغات',
+            subtitle: 'الإعلانات والتبليغات',
+            icon: Icons.campaign_rounded,
+            gradient: [const Color(0xFFE65100), const Color(0xFFFF6D00)],
+            permissionKey: 'announcements',
+            badgeCount: _unreadAnnouncementsCount,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AnnouncementsPage(),
+              ),
+            ),
+          ),
+          // 13) صفحة الشركة - لوحة تحكم FTTH في WebView
           _buildEnhancedMenuItem(
             title: 'صفحة الشركة',
             subtitle: 'لوحة تحكم الشركة',

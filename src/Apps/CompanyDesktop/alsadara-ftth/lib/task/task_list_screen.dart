@@ -4,6 +4,7 @@ import 'home_page_tasks.dart';
 import 'add_task_api_dialog.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/maintenance_messages_dialog.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -29,14 +30,24 @@ class _TaskListScreenState extends State<TaskListScreen>
   List<Task> _tasks = []; // قائمة المهام
   bool _isLoading = true; // حالة التحميل
   bool _isRefreshing = false; // حالة التحديث
-  Timer? _refreshTimer; // ����ؤقت التحديث التلقائي
+  Timer? _refreshTimer; // مؤقت التحديث التلقائي
   DateTime? _lastRefresh; // آخر وقت تحديث
   final GlobalKey<HomePageTasksState> _homePageTasksKey =
       GlobalKey<HomePageTasksState>();
 
+  // تتبع المهام الجديدة للإشعارات
+  Set<String> _knownTaskIds = {};
+  bool _isFirstLoad = true;
+
+  // Pagination
+  int _currentPage = 1;
+  static const int _pageSize = 50;
+  bool _hasMorePages = true;
+  bool _isLoadingMore = false;
+
   // إعدادات التحديث
   static const Duration _refreshInterval =
-      Duration(seconds: 60); // تحديث كل 60 ثانية
+      Duration(seconds: 20); // تحديث كل 20 ثانية
   static const Duration _minimumRefreshGap =
       Duration(seconds: 5); // حد أدنى بين التحديثات
   @override
@@ -65,27 +76,33 @@ class _TaskListScreenState extends State<TaskListScreen>
   @override
   void activate() {
     super.activate();
-    // إعادة تشغيل المؤقت عند العودة للصفحة
-    _startAutoRefresh();
-    _fetchTasks(showLoadingIndicator: false);
+    // إعادة تشغيل المؤقت عند العودة للصفحة + جلب فوري (مرة واحدة فقط)
+    _startAutoRefresh(fetchImmediately: true);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    // عند العودة للتطبيق من ��لخلفية، قم بتحديث المهام
     if (state == AppLifecycleState.resumed) {
-      print('🔄 التطبيق عاد للمقدمة - تحديث المهام...');
-      _fetchTasks(showLoadingIndicator: false);
+      // عند العودة من الخلفية: إعادة تشغيل المؤقت + جلب فوري
+      _startAutoRefresh(fetchImmediately: true);
+    } else if (state == AppLifecycleState.paused) {
+      // إيقاف المؤقت عند الذهاب للخلفية لتوفير الموارد
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
     }
   }
 
-  /// بدء التحديث التلقائي
-  void _startAutoRefresh() {
+  /// بدء التحديث التلقائي — يلغي أي مؤقت سابق أولاً
+  void _startAutoRefresh({bool fetchImmediately = false}) {
+    _refreshTimer?.cancel();
+    if (fetchImmediately) {
+      _fetchTasks(showLoadingIndicator: false);
+    }
     _refreshTimer = Timer.periodic(_refreshInterval, (timer) {
       if (mounted) {
-        _fetchTasks(showLoadingIndicator: false); // تحديث بدون مؤشر تحميل
+        _fetchTasks(showLoadingIndicator: false);
       }
     });
   }
@@ -96,37 +113,32 @@ class _TaskListScreenState extends State<TaskListScreen>
     _startAutoRefresh();
   }
 
-  /// جلب المهام من الخادم
+  /// فلاتر السيرفر حسب دور المستخدم
+  String? get _techFilter {
+    final role = widget.permissions;
+    return (role != 'مدير' && role != 'ليدر') ? widget.username : null;
+  }
+
+  String? get _deptFilter {
+    return widget.permissions == 'ليدر' ? widget.department : null;
+  }
+
+  /// جلب المهام من الخادم (الصفحة الأولى أو تحديث)
   Future<void> _fetchTasks({bool showLoadingIndicator = true}) async {
     try {
-      // تحديث حالة التحميل إذا كان مطلوباً
       if (showLoadingIndicator && mounted) {
-        setState(() {
-          _isLoading = true;
-        });
+        setState(() => _isLoading = true);
       } else if (mounted) {
-        setState(() {
-          _isRefreshing = true;
-        });
+        setState(() => _isRefreshing = true);
       }
 
-      // تحديث آخر وقت تحديث
       _lastRefresh = DateTime.now();
 
-      // فلترة من السيرفر حسب دور المستخدم
-      // المدير ← الكل، الليدر ← قسمه، الفني/موظف ← مهامه فقط
-      final role = widget.permissions;
-      final bool isMgr = role == 'مدير';
-      final bool isLeader = role == 'ليدر';
-      final String? techFilter =
-          (!isMgr && !isLeader) ? widget.username : null;
-      final String? deptFilter =
-          isLeader ? widget.department : null;
-
       final response = await TaskApiService.instance.getRequests(
-        pageSize: 200,
-        technician: techFilter,
-        department: deptFilter,
+        page: 1,
+        pageSize: _pageSize,
+        technician: _techFilter,
+        department: _deptFilter,
       );
       final List<dynamic> items =
           response['data'] ?? response['Items'] ?? response['items'] ?? [];
@@ -136,37 +148,83 @@ class _TaskListScreenState extends State<TaskListScreen>
 
       if (!mounted) return;
 
+      // كشف المهام الجديدة وإرسال إشعار محلي مفصّل
+      if (!_isFirstLoad) {
+        final newTasks = tasks.where((t) => !_knownTaskIds.contains(t.guid)).toList();
+        for (final task in newTasks) {
+          NotificationService.notifyNewTask(
+            task: task,
+            assignedTo: task.technician.isNotEmpty ? task.technician : 'غير محدد',
+            notifyUsers: [widget.username],
+          );
+        }
+      }
+      _knownTaskIds = tasks.map((t) => t.guid).toSet();
+      _isFirstLoad = false;
+
       setState(() {
         _tasks = tasks;
-        // فرز المهام: الأحدث (حسب closedAt إن وجدت وإلا createdAt) في الأعلى
+        _currentPage = 1;
+        _hasMorePages = tasks.length >= _pageSize;
         _tasks.sort((a, b) {
           final da = a.closedAt ?? a.createdAt;
           final db = b.closedAt ?? b.createdAt;
-          return db.compareTo(da); // تنازلي
+          return db.compareTo(da);
         });
         _isLoading = false;
         _isRefreshing = false;
       });
-
-      print('✅ تم تحديث ${tasks.length} مهمة في ${DateTime.now()}');
     } catch (e) {
-      print('❌ خطأ في جلب المهام');
+      debugPrint('خطأ في جلب المهام');
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _isRefreshing = false;
-      });
-
-      // إظهار رسالة خطأ فقط في التحديث اليدوي
+      setState(() { _isLoading = false; _isRefreshing = false; });
       if (showLoadingIndicator) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('حدث خطأ أثناء جلب المهام'),
-            backgroundColor: Colors.red,
-          ),
+          const SnackBar(content: Text('حدث خطأ أثناء جلب المهام'), backgroundColor: Colors.red),
         );
       }
     }
+  }
+
+  /// تحميل المزيد من المهام (الصفحة التالية)
+  Future<void> loadMoreTasks() async {
+    if (_isLoadingMore || !_hasMorePages) return;
+    _isLoadingMore = true;
+
+    try {
+      final nextPage = _currentPage + 1;
+      final response = await TaskApiService.instance.getRequests(
+        page: nextPage,
+        pageSize: _pageSize,
+        technician: _techFilter,
+        department: _deptFilter,
+      );
+      final List<dynamic> items =
+          response['data'] ?? response['Items'] ?? response['items'] ?? [];
+      final newTasks = items
+          .map((item) => Task.fromApiResponse(item as Map<String, dynamic>))
+          .toList();
+
+      if (!mounted) return;
+
+      // إضافة المهام الجديدة (بدون تكرار)
+      final existingIds = _tasks.map((t) => t.guid).toSet();
+      final uniqueNew = newTasks.where((t) => !existingIds.contains(t.guid)).toList();
+
+      setState(() {
+        _tasks.addAll(uniqueNew);
+        _currentPage = nextPage;
+        _hasMorePages = newTasks.length >= _pageSize;
+        _tasks.sort((a, b) {
+          final da = a.closedAt ?? a.createdAt;
+          final db = b.closedAt ?? b.createdAt;
+          return db.compareTo(da);
+        });
+      });
+
+      _knownTaskIds.addAll(uniqueNew.map((t) => t.guid));
+    } catch (_) {}
+    _isLoadingMore = false;
   }
 
   /// تحديث فوري للمهام
@@ -174,7 +232,7 @@ class _TaskListScreenState extends State<TaskListScreen>
     // تحقق من الحد الأدنى بين التحديثات
     if (_lastRefresh != null &&
         DateTime.now().difference(_lastRefresh!) < _minimumRefreshGap) {
-      print('⏰ تم تجاهل التحديث - الحد الأدنى للوقت لم يمر بعد');
+      debugPrint('⏰ تم تجاهل التحديث - الحد الأدنى للوقت لم يمر بعد');
       return;
     }
 
@@ -212,7 +270,7 @@ class _TaskListScreenState extends State<TaskListScreen>
           : RefreshIndicator(
               onRefresh: () async {
                 await _fetchTasks(showLoadingIndicator: false);
-                print('🔄 تم التحديث اليدوي للمهام');
+                debugPrint('🔄 تم التحديث اليدوي للمهام');
               },
               child: HomePageTasks(
                 key: _homePageTasksKey,
@@ -227,6 +285,8 @@ class _TaskListScreenState extends State<TaskListScreen>
                 onShowMenu: _showMenu,
                 onShowFilter: _showFilter,
                 onRefresh: () => _fetchTasks(showLoadingIndicator: false),
+                onLoadMore: loadMoreTasks,
+                hasMorePages: _hasMorePages,
               ),
             ),
     );

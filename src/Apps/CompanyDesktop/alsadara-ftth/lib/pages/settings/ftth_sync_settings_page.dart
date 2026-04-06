@@ -41,8 +41,19 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
   Map<String, dynamic>? _missingStats;
   bool _refetching = false;
 
+  // إحصائيات تفصيلية
+  Map<String, dynamic>? _detailedStats;
+  bool _clearing = false;
+
   // حماية من إعادة عرض "قيد التنفيذ" بعد الإلغاء مباشرة
   DateTime? _cancelledAt;
+
+  // تقدم المزامنة الحية
+  String? _syncStage;
+  int _syncProgress = 0;
+  String? _syncMessage;
+  int _syncFetchedCount = 0;
+  int _syncTotalCount = 0;
 
   String? get _companyId =>
       CustomAuthService().currentTenantId ??
@@ -102,6 +113,12 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               _cancelledAt = null; // انتهت فترة الحماية
           }
           _consecutiveFailures = status['consecutiveFailures'] ?? 0;
+          // تقدم المزامنة
+          _syncStage = status['syncStage'];
+          _syncProgress = status['syncProgress'] ?? 0;
+          _syncMessage = status['syncMessage'];
+          _syncFetchedCount = status['syncFetchedCount'] ?? 0;
+          _syncTotalCount = status['syncTotalCount'] ?? 0;
         }
         _loading = false;
       });
@@ -110,12 +127,66 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
     }
     _loadLogs();
     _loadMissingStats();
+    _loadDetailedStats();
+    // إذا المزامنة قيد التنفيذ — نبدأ polling كل 4 ثواني
+    if (_isSyncInProgress) _startProgressPolling();
+  }
+
+  void _startProgressPolling() {
+    Future.delayed(const Duration(seconds: 30), () {
+      if (!mounted) return;
+      if (!_isSyncInProgress) return; // توقف إذا انتهت
+      _loadSettings(); // سيعيد استدعاء _startProgressPolling إذا لا زالت تعمل
+    });
   }
 
   Future<void> _loadMissingStats() async {
     if (_companyId == null) return;
     final stats = await FtthSettingsService.getMissingStats(_companyId!);
     if (mounted) setState(() => _missingStats = stats);
+  }
+
+  Future<void> _loadDetailedStats() async {
+    if (_companyId == null) return;
+    final stats = await FtthSettingsService.getDetailedStats(_companyId!);
+    if (mounted) setState(() => _detailedStats = stats);
+  }
+
+  Future<void> _clearData(String type, String label) async {
+    if (_companyId == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('مسح $label', style: const TextStyle(fontSize: 14)),
+          content: Text('هل أنت متأكد من مسح $label من السيرفر؟',
+              style: const TextStyle(fontSize: 13)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('مسح')),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _clearing = true);
+    final result = await FtthSettingsService.clearData(_companyId!, type);
+    if (!mounted) return;
+    setState(() => _clearing = false);
+    if (result != null) {
+      _showSnack(result['message'] ?? 'تم المسح');
+      _loadSettings();
+      _loadDetailedStats();
+      _loadMissingStats();
+    } else {
+      _showSnack('فشل المسح', isError: true);
+    }
   }
 
   Future<void> _loadLogs() async {
@@ -341,6 +412,10 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         ),
         const SizedBox(height: 10),
         _buildMissingDataCard(),
+        const SizedBox(height: 10),
+        _buildCompletionProgressCard(),
+        const SizedBox(height: 10),
+        _buildDataManagementCard(),
         const SizedBox(height: 10),
         _buildSaveButton(),
         const SizedBox(height: 8),
@@ -577,7 +652,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             const Text('حالة المزامنة',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
-            if (_isSyncInProgress) _badge('قيد التنفيذ', Colors.orange),
+            if (_isSyncInProgress)
+              _badge('قيد التنفيذ $_syncProgress%', Colors.orange),
           ]),
           const Divider(height: 16),
           _statusRow(
@@ -622,6 +698,60 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   border: Border.all(color: Colors.red.shade200)),
               child: Text(_lastSyncError!,
                   style: TextStyle(fontSize: 11, color: Colors.red.shade700)),
+            ),
+          ],
+          // ═══ شريط التقدم الحي ═══
+          if (_isSyncInProgress && _syncMessage != null && _syncMessage!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      value: _syncProgress > 0 ? _syncProgress / 100.0 : null,
+                      color: Colors.blue.shade600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _syncMessage!,
+                      style: TextStyle(fontSize: 11, color: Colors.blue.shade800, fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    '$_syncProgress%',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: _syncProgress / 100.0,
+                    minHeight: 6,
+                    backgroundColor: Colors.blue.shade100,
+                    valueColor: AlwaysStoppedAnimation(Colors.blue.shade600),
+                  ),
+                ),
+                if (_syncFetchedCount > 0 || _syncTotalCount > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${NumberFormat('#,###').format(_syncFetchedCount)} / ${NumberFormat('#,###').format(_syncTotalCount)}',
+                    style: TextStyle(fontSize: 10, color: Colors.blue.shade600),
+                  ),
+                ],
+              ]),
             ),
           ],
           const SizedBox(height: 10),
@@ -1001,6 +1131,211 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
           style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     ]);
+  }
+
+  Widget _buildCompletionProgressCard() {
+    final s = _detailedStats;
+    if (s == null || (s['total'] ?? 0) == 0) {
+      return Card(
+        color: Colors.white,
+        elevation: 0.3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            Icon(Icons.analytics_rounded, color: Colors.grey.shade400, size: 20),
+            const SizedBox(width: 8),
+            Text('لا توجد بيانات — قم بتشغيل المزامنة أولاً',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 18),
+              onPressed: _loadDetailedStats,
+              tooltip: 'تحديث',
+            ),
+          ]),
+        ),
+      );
+    }
+
+    final total = s['total'] ?? 0;
+    final overallPct = (s['overallPct'] ?? 0).toDouble();
+    final withPhone = s['withPhone'] ?? 0;
+    final withDetails = s['withDetails'] ?? 0;
+    final withUsername = s['withUsername'] ?? 0;
+    final phonePct = (s['phonePct'] ?? 0).toDouble();
+    final detailsPct = (s['detailsPct'] ?? 0).toDouble();
+    final usernamePct = (s['usernamePct'] ?? 0).toDouble();
+    final active = s['active'] ?? 0;
+    final expired = s['expired'] ?? 0;
+
+    return Card(
+      color: Colors.white,
+      elevation: 0.3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.analytics_rounded, color: Colors.deepPurple, size: 18),
+            const SizedBox(width: 6),
+            const Text('نسبة اكتمال البيانات',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: overallPct >= 90
+                    ? Colors.green.shade50
+                    : overallPct >= 60
+                        ? Colors.orange.shade50
+                        : Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${overallPct.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: overallPct >= 90
+                      ? Colors.green.shade700
+                      : overallPct >= 60
+                          ? Colors.orange.shade700
+                          : Colors.red.shade700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 18),
+              onPressed: _loadDetailedStats,
+              tooltip: 'تحديث',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          // شريط الاكتمال الإجمالي
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: overallPct / 100,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation(
+                overallPct >= 90 ? Colors.green : overallPct >= 60 ? Colors.orange : Colors.red,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // تفاصيل كل قسم
+          _progressRow('الاشتراكات', total, total, 100, Colors.blue),
+          const SizedBox(height: 6),
+          _progressRow('التفاصيل (FDT/FAT/GPS)', withDetails, total, detailsPct, Colors.teal),
+          const SizedBox(height: 6),
+          _progressRow('اسم المستخدم', withUsername, total, usernamePct, Colors.indigo),
+          const SizedBox(height: 6),
+          _progressRow('أرقام الهواتف', withPhone, total, phonePct, Colors.deepOrange),
+          const SizedBox(height: 10),
+          // الحالات
+          Row(children: [
+            _statusChip('فعال', active, Colors.green),
+            const SizedBox(width: 8),
+            _statusChip('منتهي', expired, Colors.red),
+            const SizedBox(width: 8),
+            _statusChip('الإجمالي', total, Colors.blue),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _progressRow(String label, int current, int total, double pct, Color color) {
+    return Row(children: [
+      SizedBox(
+        width: 140,
+        child: Text(label, style: const TextStyle(fontSize: 11)),
+      ),
+      Expanded(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: total > 0 ? current / total : 0,
+            minHeight: 6,
+            backgroundColor: Colors.grey.shade100,
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      SizedBox(
+        width: 90,
+        child: Text(
+          '$current/$total (${pct.toStringAsFixed(0)}%)',
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+          textAlign: TextAlign.left,
+        ),
+      ),
+    ]);
+  }
+
+  Widget _statusChip(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$label: ${NumberFormat('#,###').format(count)}',
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+
+  Widget _buildDataManagementCard() {
+    return Card(
+      color: Colors.white,
+      elevation: 0.3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.delete_sweep_rounded, color: Colors.red.shade400, size: 18),
+            const SizedBox(width: 6),
+            const Text('إدارة بيانات السيرفر',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ]),
+          const SizedBox(height: 10),
+          if (_clearing)
+            const Center(child: Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ))
+          else
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _clearButton('أرقام الهواتف', 'phones', Icons.phone_disabled, Colors.orange),
+              _clearButton('تفاصيل الاشتراكات', 'details', Icons.info_outline, Colors.teal),
+              _clearButton('كل الاشتراكات', 'subscriptions', Icons.people_outline, Colors.red),
+              _clearButton('مسح الكل', 'all', Icons.delete_forever, Colors.red.shade800),
+            ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _clearButton(String label, String type, IconData icon, Color color) {
+    return OutlinedButton.icon(
+      onPressed: () => _clearData(type, label),
+      icon: Icon(icon, size: 15, color: color),
+      label: Text(label, style: TextStyle(fontSize: 11, color: color)),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: color.withValues(alpha: 0.3)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   Widget _buildSaveButton() {

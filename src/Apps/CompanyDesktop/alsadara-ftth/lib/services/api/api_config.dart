@@ -109,6 +109,10 @@ class ApiConfig {
       '/company-ftth-settings/$companyId/missing-stats';
   static String companyFtthRefetchMissing(String companyId) =>
       '/company-ftth-settings/$companyId/refetch-missing';
+  static String companyFtthDetailedStats(String companyId) =>
+      '/company-ftth-settings/$companyId/detailed-stats';
+  static String companyFtthClearData(String companyId) =>
+      '/company-ftth-settings/$companyId/clear-data';
 
   // ============================================
   // Endpoints - IPTV Subscribers (مشتركي IPTV)

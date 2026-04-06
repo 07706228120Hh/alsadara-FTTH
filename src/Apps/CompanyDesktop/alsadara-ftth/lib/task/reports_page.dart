@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/smart_text_color.dart';
 import '../models/task.dart';
+import '../services/task_export_service.dart';
 
 class ReportsPage extends StatefulWidget {
   final List<Task> tasks;
@@ -259,6 +260,33 @@ class _ReportsPageState extends State<ReportsPage> {
         iconTheme: IconThemeData(color: smartIconColor),
         elevation: 4,
         actions: [
+          // أزرار التصدير
+          PopupMenuButton<String>(
+            icon: Icon(Icons.file_download_outlined, color: smartIconColor),
+            tooltip: 'تصدير',
+            onSelected: (value) async {
+              try {
+                String path;
+                if (value == 'excel') {
+                  path = await TaskExportService.exportToExcel(tasks: currentFilteredTasks);
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تصدير Excel'), backgroundColor: Colors.green));
+                } else {
+                  path = await TaskExportService.exportToPdf(tasks: currentFilteredTasks);
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تصدير PDF'), backgroundColor: Colors.green));
+                }
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ في التصدير'), backgroundColor: Colors.red));
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'excel', child: Row(children: [
+                Icon(Icons.table_chart, color: Colors.green, size: 20), SizedBox(width: 8), Text('تصدير Excel'),
+              ])),
+              PopupMenuItem(value: 'pdf', child: Row(children: [
+                Icon(Icons.picture_as_pdf, color: Colors.red, size: 20), SizedBox(width: 8), Text('تصدير PDF'),
+              ])),
+            ],
+          ),
           IconButton(
             icon: Icon(Icons.filter_list, color: smartIconColor),
             onPressed: _showCustomFilterPopup,
@@ -574,7 +602,7 @@ class _ReportsPageState extends State<ReportsPage> {
             size: isSmallScreen ? 24 : 32,
             color: color,
           ),
-          SizedBox(height: isSmallScreen ? 4 : 8),
+          SizedBox(height: isSmallScreen ? 6 : 8),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -639,6 +667,8 @@ class _ReportsPageState extends State<ReportsPage> {
                         fontWeight: FontWeight.bold,
                         color: Colors.blueAccent,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Container(

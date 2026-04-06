@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/task.dart';
 import '../services/notification_service.dart';
@@ -34,13 +35,13 @@ class TaskManagementService {
         // 4. إشعار إضافي للإدارة حسب القسم
         await _notifyDepartmentManagers(task: task);
 
-        print('✅ تم إضافة المهمة وإرسال الإشعارات بنجاح');
+        debugPrint('✅ تم إضافة المهمة وإرسال الإشعارات بنجاح');
         return true;
       }
 
       return false;
     } catch (e) {
-      print('❌ خطأ في إضافة المهمة');
+      debugPrint('❌ خطأ في إضافة المهمة');
       return false;
     }
   }
@@ -103,13 +104,13 @@ class TaskManagementService {
         await _handleSpecialStatusNotifications(
             updatedTask, oldStatus, newStatus);
 
-        print('✅ تم تحديث المهمة وإرسال الإشعارات بنجاح');
+        debugPrint('✅ تم تحديث المهمة وإرسال الإشعارات بنجاح');
         return true;
       }
 
       return false;
     } catch (e) {
-      print('❌ خطأ في تحديث المهمة');
+      debugPrint('❌ خطأ في تحديث المهمة');
       return false;
     }
   }
@@ -148,7 +149,7 @@ class TaskManagementService {
         );
       }
     } catch (e) {
-      print('❌ خطأ في فحص المهام المتأخرة');
+      debugPrint('❌ خطأ في فحص المهام المتأخرة');
     }
   }
 
@@ -176,7 +177,7 @@ class TaskManagementService {
 
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('خطأ في حفظ المهمة');
+      debugPrint('خطأ في حفظ المهمة');
       return false;
     }
   }
@@ -192,7 +193,7 @@ class TaskManagementService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('خطأ في تحديث المهمة');
+      debugPrint('خطأ في تحديث المهمة');
       return false;
     }
   }
@@ -212,7 +213,7 @@ class TaskManagementService {
 
       return null;
     } catch (e) {
-      print('خطأ في جلب المهمة');
+      debugPrint('خطأ في جلب المهمة');
       return null;
     }
   }
@@ -232,7 +233,7 @@ class TaskManagementService {
 
       return [];
     } catch (e) {
-      print('خطأ في جلب المهام المتأخرة');
+      debugPrint('خطأ في جلب المهام المتأخرة');
       return [];
     }
   }
@@ -400,7 +401,8 @@ class TaskManagementService {
   }
 
   /// حفظ FCM Token للمستخدم عند تسجيل الدخول
+  /// يتم الآن عبر FcmTokenService.instance.registerToken() بعد تسجيل الدخول
   static Future<void> registerUserForNotifications(String userId) async {
-    await NotificationService.saveFCMTokenForUser(userId);
+    // تم نقل التسجيل إلى FcmTokenService — يُستدعى تلقائياً بعد الدخول
   }
 }

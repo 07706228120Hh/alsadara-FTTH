@@ -120,23 +120,23 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       ));
     }
 
-    // 6. FTTH — يحتاج accounting.view + الموظف مشغل FTTH
-    final ftthUser = _employee['ftthUsername'] ??
-        _employee['FtthUsername'] ??
-        _employee['fTthUsername'];
-    final role = _employee['role'] ?? _employee['Role'] ?? '';
-    final isTechOrOp =
-        role == 'Technician' || role == 'TechnicalLeader' || ftthUser != null;
-    if (isTechOrOp &&
-        (_pm.canView('accounting.ftth_operators') ||
-            _pm.canView('accounts') ||
-            _pm.canView('accounting'))) {
-      _visibleTabs.add(_TabInfo(
-        key: 'ftth',
-        label: 'FTTH',
-        icon: Icons.router,
-      ));
-    }
+    // 6. FTTH — مخفي حالياً (بيانات FTTH موجودة في بطاقة بيانات HR)
+    // final ftthUser = _employee['ftthUsername'] ??
+    //     _employee['FtthUsername'] ??
+    //     _employee['fTthUsername'];
+    // final role = _employee['role'] ?? _employee['Role'] ?? '';
+    // final isTechOrOp =
+    //     role == 'Technician' || role == 'TechnicalLeader' || ftthUser != null;
+    // if (isTechOrOp &&
+    //     (_pm.canView('accounting.ftth_operators') ||
+    //         _pm.canView('accounts') ||
+    //         _pm.canView('accounting'))) {
+    //   _visibleTabs.add(_TabInfo(
+    //     key: 'ftth',
+    //     label: 'FTTH',
+    //     icon: Icons.router,
+    //   ));
+    // }
 
     // 7. المعاملات المالية — يحتاج transactions.view أو technicians.view
     if (_pm.canView('transactions') || _pm.canView('technicians')) {
@@ -167,15 +167,16 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
   }
 
   Future<void> _loadFullProfile() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final data =
           await _service.getEmployee(widget.companyId, widget.employeeId);
+      if (!mounted) return;
       if (data != null) {
         setState(() {
           _employee = data;
           _isLoading = false;
-          // إعادة بناء التبويبات بعد تحميل البيانات الكاملة (تحتوي FTTH)
           _visibleTabs.clear();
           _buildVisibleTabs();
           _tabController.dispose();
@@ -188,6 +189,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         setState(() => _isLoading = false);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'حدث خطأ';
         _isLoading = false;

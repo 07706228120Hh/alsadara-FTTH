@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "160455585662",
+    "project_id": "web-app-sadara",
+    "storage_bucket": "web-app-sadara.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:160455585662:android:1b6522c6216a14f4e6cd2f",
+        "android_client_info": {
+          "package_name": "com.alsadara.ftth_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkKmChRgKoZ8LvgUe6lHx1vUiSwsyCraY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

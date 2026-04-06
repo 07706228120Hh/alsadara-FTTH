@@ -60,6 +60,22 @@ class DualAuthService {
   String? _ftthToken;
   String? get ftthToken => _ftthToken;
 
+  // ============ صلاحيات FTTH المركزية ============
+  /// هل المستخدم مدير في نظام FTTH؟
+  bool _ftthIsAdmin = false;
+  bool get ftthIsAdmin => _ftthIsAdmin;
+
+  /// صلاحيات FTTH المهمة (مفلترة ومترجمة)
+  List<String> _ftthImportantPermissions = [];
+  List<String> get ftthImportantPermissions => _ftthImportantPermissions;
+
+  /// تحديث صلاحيات FTTH (يُستدعى من ftth/core/home_page بعد جلب بيانات المستخدم)
+  void updateFtthPermissions({required bool isAdmin, required List<String> importantPermissions}) {
+    _ftthIsAdmin = isAdmin;
+    _ftthImportantPermissions = importantPermissions;
+    print('🔐 [DualAuth] تحديث صلاحيات FTTH: isAdmin=$isAdmin, permissions=${importantPermissions.length}');
+  }
+
   /// SharedPreferences keys لحفظ حالة الربط
   static const String _ftthLinkedKey = 'dual_auth_ftth_linked';
   static const String _ftthUsernameKey = 'dual_auth_ftth_username';
@@ -264,5 +280,7 @@ class DualAuthService {
     _isFtthLoggedIn = false;
     _ftthUsername = null;
     _ftthToken = null;
+    _ftthIsAdmin = false;
+    _ftthImportantPermissions = [];
   }
 }

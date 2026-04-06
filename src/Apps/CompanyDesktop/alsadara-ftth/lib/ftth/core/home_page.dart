@@ -57,6 +57,7 @@ import '../../services/badge_service.dart';
 import '../../services/auth/session_manager.dart';
 import '../../services/vps_sync_service.dart';
 import '../../services/auth/auth_context.dart';
+import '../../services/dual_auth_service.dart';
 import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
 
@@ -103,6 +104,9 @@ class HomePage extends StatefulWidget {
   /// رقم هاتف معلّق للبحث (يُملأ من صفحة المحادثات)
   static String? pendingPhoneSearch;
   static final ValueNotifier<String?> phoneSearchNotifier = ValueNotifier(null);
+
+  /// اسم معلّق للبحث (يُملأ من صفحة المحادثات)
+  static final ValueNotifier<String?> nameSearchNotifier = ValueNotifier(null);
 
   // دالة عامة للحصول على إعداد الإرسال التلقائي
   static Future<bool> getWhatsAppAutoSendSetting() async {
@@ -187,6 +191,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // مراقبة بحث الهاتف من صفحة المحادثات
     HomePage.phoneSearchNotifier.addListener(_onPhoneSearchRequested);
+    HomePage.nameSearchNotifier.addListener(_onNameSearchRequested);
 
     // تحديث التوكن في خدمة تحديثات التذاكر
     TicketUpdatesService.instance.updateAuthToken(widget.authToken);
@@ -288,6 +293,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  void _onNameSearchRequested() {
+    final name = HomePage.nameSearchNotifier.value;
+    if (name != null && name.isNotEmpty && mounted) {
+      HomePage.nameSearchNotifier.value = null;
+      _searchNameCtrl.text = name;
+      _searchPhoneCtrl.clear();
+      _searchZoneId = '';
+      setState(() { _searchPage = 1; _searchDone = true; });
+      _performQuickSearch();
+    }
+  }
+
   // فحص صلاحيات المدير من النظام الأول فقط
   bool _isAdminByUsername() {
     // V2: فحص صلاحية المستخدمين من PermissionManager
@@ -373,6 +390,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               cachedUser['roles'] ?? [],
             );
             isAdmin = _checkAdminPermissions();
+            _syncFtthPermissions();
             isLoadingDashboard = false;
           }
         });
@@ -437,6 +455,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     HomePage.phoneSearchNotifier.removeListener(_onPhoneSearchRequested);
+    HomePage.nameSearchNotifier.removeListener(_onNameSearchRequested);
 
     // إلغاء اشتراك EventBus أولاً لمنع أي callbacks بعد dispose
     _ftthEventBusSub?.cancel();
@@ -523,6 +542,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             cachedUser['roles'] ?? [],
           );
           isAdmin = _checkAdminPermissions();
+          _syncFtthPermissions();
         });
 
         if (!_dashboardRequested) {
@@ -569,6 +589,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               userZones = List<Map<String, dynamic>>.from(model['zones'] ?? []);
               userRoles = List<Map<String, dynamic>>.from(model['roles'] ?? []);
               isAdmin = _checkAdminPermissions();
+              _syncFtthPermissions();
             });
           }
         }
@@ -617,6 +638,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               userZones = List<Map<String, dynamic>>.from(model['zones'] ?? []);
               userRoles = List<Map<String, dynamic>>.from(model['roles'] ?? []);
               isAdmin = _checkAdminPermissions();
+              _syncFtthPermissions();
             });
 
             partnerId = model['self']['id']?.toString();
@@ -691,6 +713,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
   } // نظام محدود لتحديد الصلاحيات الإدارية - النظام الأول فقط
+
+  /// مزامنة صلاحيات FTTH مع DualAuthService ليمكن الوصول لها من أي مكان
+  void _syncFtthPermissions() {
+    DualAuthService.instance.updateFtthPermissions(
+      isAdmin: isAdmin,
+      importantPermissions: _getImportantPermissions(),
+    );
+  }
 
   bool _checkAdminPermissions() {
     // V2: فحص صلاحية المستخدمين من PermissionManager
@@ -1425,6 +1455,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     setState(() {
       hierarchyLevel = level;
       isAdmin = _checkAdminPermissions();
+      _syncFtthPermissions();
     });
     fetchDashboardData();
     _loadUserPermissions(); // إعادة تحميل الصلاحيا�� عند تغيير المستوى

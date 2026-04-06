@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import '../models/whatsapp_conversation.dart';
 import '../services/whatsapp_conversation_service.dart';
 import '../services/whatsapp_business_service.dart';
@@ -881,7 +881,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         if (bytes == null) return;
         await file.writeAsBytes(bytes);
       }
-      await OpenFile.open(path);
+      await OpenFilex.open(path);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

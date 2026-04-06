@@ -69,7 +69,8 @@ class _PermissionsManagementV2PageState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    PermissionRegistry.loadCustomTemplates();
+    PermissionRegistry.setApiClientGetter(() => _apiClient);
+    PermissionRegistry.loadCustomTemplates(companyId: widget.companyId);
     _loadPermissions();
   }
 

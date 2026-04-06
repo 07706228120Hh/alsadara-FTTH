@@ -198,6 +198,24 @@ class PermissionRegistry {
       allowedActions: ['view', 'edit'],
     ),
     PermissionEntry(
+      key: 'hr.security_code',
+      labelAr: 'كود أمان البصمة',
+      description: 'عرض وتعديل كود أمان البصمة للموظفين',
+      icon: Icons.shield_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'hr.ftth_info',
+      labelAr: 'معلومات FTTH',
+      description: 'عرض وتعديل بيانات ربط نظام FTTH للموظفين',
+      icon: Icons.router_rounded,
+      category: 'الموارد البشرية',
+      parent: 'hr',
+      allowedActions: ['view', 'edit'],
+    ),
+    PermissionEntry(
       key: 'hr.reports',
       labelAr: 'تقارير HR',
       description: 'عرض وتصدير تقارير الموارد البشرية',
@@ -249,6 +267,15 @@ class PermissionRegistry {
       labelAr: 'الزونات',
       description: 'تحديد مناطق العمل والتغطية',
       icon: Icons.map_rounded,
+      category: 'التشغيل',
+    ),
+
+    // ─── تتبع المواقع ───
+    PermissionEntry(
+      key: 'tracking',
+      labelAr: 'تتبع المواقع',
+      description: 'عرض مواقع الفنيين على الخريطة والتقارير',
+      icon: Icons.location_searching_rounded,
       category: 'التشغيل',
     ),
 
@@ -531,6 +558,168 @@ class PermissionRegistry {
       category: 'النظام',
     ),
 
+    // ─── المحادثة الداخلية (Sadara Chat) ───
+    PermissionEntry(
+      key: 'chat',
+      labelAr: 'المحادثة الداخلية',
+      description: 'نظام المحادثة الداخلي بين الموظفين',
+      icon: Icons.forum_rounded,
+      category: 'التواصل',
+    ),
+    PermissionEntry(
+      key: 'chat.send_text',
+      labelAr: 'إرسال نص',
+      description: 'إرسال رسائل نصية',
+      icon: Icons.message_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'chat.send_image',
+      labelAr: 'إرسال صور',
+      description: 'إرسال صور ومرفقات صورية',
+      icon: Icons.image_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'chat.send_audio',
+      labelAr: 'إرسال صوت',
+      description: 'إرسال رسائل صوتية',
+      icon: Icons.mic_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'chat.send_location',
+      labelAr: 'إرسال موقع',
+      description: 'مشاركة الموقع الجغرافي',
+      icon: Icons.location_on_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'chat.send_contact',
+      labelAr: 'إرسال جهة اتصال',
+      description: 'مشاركة أرقام الموظفين',
+      icon: Icons.contact_phone_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'chat.send_file',
+      labelAr: 'إرسال ملفات',
+      description: 'إرسال مستندات وملفات',
+      icon: Icons.attach_file_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view', 'send'],
+    ),
+    PermissionEntry(
+      key: 'chat.create_group',
+      labelAr: 'إنشاء مجموعة',
+      description: 'إنشاء مجموعات محادثة مخصصة',
+      icon: Icons.group_add_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['add'],
+    ),
+    PermissionEntry(
+      key: 'chat.create_broadcast',
+      labelAr: 'بث للجميع',
+      description: 'إرسال رسالة بث لجميع الموظفين',
+      icon: Icons.campaign_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['add', 'send'],
+    ),
+    PermissionEntry(
+      key: 'chat.create_department',
+      labelAr: 'محادثة قسم',
+      description: 'إنشاء محادثة قسم',
+      icon: Icons.groups_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['add'],
+    ),
+    PermissionEntry(
+      key: 'chat.delete_messages',
+      labelAr: 'حذف الرسائل',
+      description: 'حذف رسائل الآخرين (مدير)',
+      icon: Icons.delete_sweep_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['delete'],
+    ),
+    PermissionEntry(
+      key: 'chat.manage_members',
+      labelAr: 'إدارة الأعضاء',
+      description: 'إضافة وإزالة أعضاء من المجموعات',
+      icon: Icons.manage_accounts_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['add', 'edit', 'delete'],
+    ),
+    PermissionEntry(
+      key: 'chat.mention',
+      labelAr: 'تاق الموظفين',
+      description: 'ذكر (@) موظفين في المحادثة',
+      icon: Icons.alternate_email_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['send'],
+    ),
+    PermissionEntry(
+      key: 'chat.view_profile',
+      labelAr: 'بطاقة الموظف',
+      description: 'عرض تفاصيل الموظف عند الضغط على الاسم',
+      icon: Icons.badge_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'chat.search',
+      labelAr: 'بحث في المحادثات',
+      description: 'البحث في الرسائل والمحادثات',
+      icon: Icons.search_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'chat.export',
+      labelAr: 'تصدير المحادثات',
+      description: 'تصدير سجل المحادثات',
+      icon: Icons.download_rounded,
+      category: 'التواصل',
+      parent: 'chat',
+      allowedActions: ['export'],
+    ),
+
+    // ─── الإعلانات والتبليغات ───
+    PermissionEntry(
+      key: 'announcements',
+      labelAr: 'الإعلانات والتبليغات',
+      description: 'عرض وإدارة الإعلانات والتبليغات',
+      icon: Icons.campaign_rounded,
+      category: 'الإدارة',
+    ),
+    PermissionEntry(
+      key: 'announcements.manage',
+      labelAr: 'إدارة الإعلانات',
+      description: 'إضافة وتعديل وحذف الإعلانات',
+      icon: Icons.edit_notifications_rounded,
+      category: 'الإدارة',
+      parent: 'announcements',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+
     // ─── واتساب (النظام الأول) ───
     PermissionEntry(
       key: 'whatsapp',
@@ -569,6 +758,24 @@ class PermissionRegistry {
       description: 'إدارة باقات الاشتراك',
       icon: Icons.card_membership_rounded,
       category: 'المشتركين',
+    ),
+    PermissionEntry(
+      key: 'subscriptions.activate',
+      labelAr: 'تفعيل الاشتراكات',
+      description: 'تفعيل عادي للاشتراكات يدوياً',
+      icon: Icons.touch_app_rounded,
+      category: 'المشتركين',
+      parent: 'subscriptions',
+      allowedActions: ['view', 'add'],
+    ),
+    PermissionEntry(
+      key: 'subscriptions.print_receipt',
+      labelAr: 'طباعة وصل التجديد',
+      description: 'طباعة وصل عند تجديد اشتراك',
+      icon: Icons.print_rounded,
+      category: 'المشتركين',
+      parent: 'subscriptions',
+      allowedActions: ['view', 'print'],
     ),
 
     // ─── التشغيل ───
@@ -846,23 +1053,56 @@ class PermissionRegistry {
   /// قالب: مشاهد — عرض فقط بدون أي إجراء
   static const String templateViewer = 'viewer';
 
-  // ═══ القوالب المخصصة (محفوظة محلياً) ═══
+  // ═══ القوالب المخصصة (محفوظة في السيرفر + كاش محلي) ═══
   static const String _customTemplatesKey = 'custom_permission_templates';
   static Map<String, Map<String, Map<String, List<String>>>> _customTemplates =
       {};
+  static String? _companyId;
 
-  /// تحميل القوالب المخصصة من SharedPreferences
-  static Future<void> loadCustomTemplates() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString(_customTemplatesKey);
-    if (jsonStr == null) return;
+  /// تحميل القوالب المخصصة من السيرفر (مع كاش محلي)
+  static Future<void> loadCustomTemplates({String? companyId}) async {
+    _companyId = companyId;
+
+    // كاش محلي أولاً (للسرعة)
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_customTemplatesKey);
+      if (cached != null) _parseTemplatesJson(cached);
+    } catch (_) {}
+
+    // جلب من السيرفر
+    if (companyId != null && companyId.isNotEmpty) {
+      try {
+        final api = _getApiClient();
+        if (api != null) {
+          final response = await api.get(
+            '/internal/companies/$companyId/permission-templates',
+            (data) => data,
+            useInternalKey: true,
+          );
+          if (response.isSuccess && response.data != null) {
+            final serverData = response.data is Map ? response.data['data'] : response.data;
+            if (serverData is String && serverData.isNotEmpty) {
+              _parseTemplatesJson(serverData);
+              // حفظ الكاش المحلي
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(_customTemplatesKey, serverData);
+            }
+          }
+        }
+      } catch (_) {
+        // فشل الجلب من السيرفر — نستخدم الكاش المحلي
+      }
+    }
+  }
+
+  static void _parseTemplatesJson(String jsonStr) {
     try {
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
       _customTemplates = decoded.map((key, value) {
         final templateMap = (value as Map<String, dynamic>).map((fKey, fVal) {
           final actions = (fVal as Map<String, dynamic>)['actions'] as List;
-          return MapEntry(
-              fKey, {'actions': actions.cast<String>().toList()});
+          return MapEntry(fKey, {'actions': actions.cast<String>().toList()});
         });
         return MapEntry(key, templateMap);
       });
@@ -871,7 +1111,16 @@ class PermissionRegistry {
     }
   }
 
-  /// حفظ قالب مخصص
+  /// الحصول على ApiClient (lazy — لتجنب circular dependency)
+  static dynamic Function()? _apiClientGetter;
+  static void setApiClientGetter(dynamic Function() getter) {
+    _apiClientGetter = getter;
+  }
+  static dynamic _getApiClient() {
+    return _apiClientGetter?.call();
+  }
+
+  /// حفظ قالب مخصص (في السيرفر + كاش محلي)
   static Future<void> saveCustomTemplate(
       String key, Map<String, Map<String, List<String>>> template) async {
     _customTemplates[key] = template;
@@ -894,9 +1143,27 @@ class PermissionRegistry {
   }
 
   static Future<void> _persistCustomTemplates() async {
+    // حفظ كاش محلي
     final prefs = await SharedPreferences.getInstance();
     final encoded = jsonEncode(_customTemplates);
     await prefs.setString(_customTemplatesKey, encoded);
+
+    // حفظ في السيرفر
+    if (_companyId != null && _companyId!.isNotEmpty) {
+      try {
+        final api = _getApiClient();
+        if (api != null) {
+          await api.put(
+            '/internal/companies/$_companyId/permission-templates',
+            {'templates': encoded},
+            (data) => data,
+            useInternalKey: true,
+          );
+        }
+      } catch (_) {
+        // فشل الحفظ في السيرفر — محفوظ محلياً على الأقل
+      }
+    }
   }
 
   /// تعريف القوالب — يتحقق أولاً من المخصصة ثم الافتراضية
@@ -910,22 +1177,44 @@ class PermissionRegistry {
   static Map<String, Map<String, List<String>>> _getBuiltInTemplate(
       String name) {
     switch (name) {
+      // ═══ عام ═══
       case 'manager':
-        return _buildTemplateAll(true);
-      case 'accountant':
-        return _buildAccountantTemplate();
-      case 'technician':
-        return _buildTechnicianTemplate();
+        return _buildTemplateAll();
       case 'employee':
         return _buildEmployeeTemplate();
       case 'viewer':
         return _buildViewerTemplate();
+      // ═══ قسم الفنيين ═══
+      case 'tech_manager':
+        return _buildTechManagerTemplate();
+      case 'tech_leader':
+        return _buildTechLeaderTemplate();
+      case 'technician':
+        return _buildTechnicianTemplate();
+      case 'tech_viewer':
+        return _buildTechViewerTemplate();
+      // ═══ قسم الحسابات ═══
+      case 'acc_manager':
+        return _buildAccManagerTemplate();
+      case 'acc_leader':
+        return _buildAccLeaderTemplate();
+      case 'accountant':
+        return _buildAccountantTemplate();
+      case 'acc_viewer':
+        return _buildAccViewerTemplate();
+      // ═══ قسم HR ═══
+      case 'hr_manager':
+        return _buildHrManagerTemplate();
+      case 'hr_leader':
+        return _buildHrLeaderTemplate();
+      case 'hr_viewer':
+        return _buildHrViewerTemplate();
       default:
         return {};
     }
   }
 
-  static Map<String, Map<String, List<String>>> _buildTemplateAll(bool all) {
+  static Map<String, Map<String, List<String>>> _buildTemplateAll() {
     final result = <String, Map<String, List<String>>>{};
     for (final sys in [firstSystem, secondSystem]) {
       for (final e in sys) {
@@ -938,58 +1227,26 @@ class PermissionRegistry {
   }
 
   static const List<String> _allActions = [
-    'view',
-    'add',
-    'edit',
-    'delete',
-    'export',
-    'import',
-    'print',
-    'send'
+    'view', 'add', 'edit', 'delete', 'export', 'import', 'print', 'send'
   ];
 
-  static Map<String, Map<String, List<String>>> _buildAccountantTemplate() {
-    return {
-      'accounting': {'actions': _allActions},
-      for (final e in firstSystem.where((e) => e.parent == 'accounting'))
-        e.key: {'actions': e.allowedActions ?? _allActions},
-      'attendance': {
-        'actions': ['view']
-      },
-      'hr.salaries': {
-        'actions': ['view', 'export', 'print']
-      },
-    };
-  }
+  // ═══ صلاحيات أساسية مشتركة (بصمة + شاشتي + إعلانات عرض) ═══
+  static Map<String, Map<String, List<String>>> _basePermissions() => {
+    'attendance': {'actions': ['view', 'add']},
+    'attendance.checkin': {'actions': ['view', 'add']},
+    'my_dashboard': {'actions': ['view']},
+    'announcements': {'actions': ['view']},
+  };
 
-  static Map<String, Map<String, List<String>>> _buildTechnicianTemplate() {
-    return {
-      'attendance': {
-        'actions': ['view', 'add']
-      },
-      'attendance.checkin': {
-        'actions': ['view', 'add']
-      },
-      'tasks': {
-        'actions': ['view', 'add', 'edit']
-      },
-    };
-  }
+  // ═══════════════════════════════════════
+  //  عام
+  // ═══════════════════════════════════════
 
   static Map<String, Map<String, List<String>>> _buildEmployeeTemplate() {
     return {
-      'attendance': {
-        'actions': ['view', 'add']
-      },
-      'attendance.checkin': {
-        'actions': ['view', 'add']
-      },
-      'tasks': {
-        'actions': ['view']
-      },
-      'hr': {
-        'actions': ['view']
-      },
+      ..._basePermissions(),
+      'tasks': {'actions': ['view']},
+      'hr': {'actions': ['view']},
     };
   }
 
@@ -998,31 +1255,308 @@ class PermissionRegistry {
     for (final sys in [firstSystem, secondSystem]) {
       for (final e in sys) {
         if (e.isTopLevel) {
-          result[e.key] = {
-            'actions': ['view'],
-          };
+          result[e.key] = {'actions': ['view']};
         }
       }
     }
     return result;
   }
 
-  /// أسماء القوالب بالعربي
+  // ═══════════════════════════════════════
+  //  قسم الفنيين
+  // ═══════════════════════════════════════
+
+  static Map<String, Map<String, List<String>>> _buildTechManagerTemplate() {
+    return {
+      ..._basePermissions(),
+      // إعلانات — إدارة كاملة
+      'announcements': {'actions': ['view', 'add', 'edit', 'delete']},
+      'announcements.manage': {'actions': ['view', 'add', 'edit', 'delete']},
+      // حضور كامل
+      'attendance': {'actions': _allActions},
+      'attendance.dashboard': {'actions': ['view']},
+      'attendance.records': {'actions': ['view', 'add', 'edit', 'delete', 'export']},
+      'attendance.reports': {'actions': ['view', 'export', 'print']},
+      // مهام كاملة
+      'tasks': {'actions': _allActions},
+      'tasks.assign': {'actions': ['view', 'add', 'edit']},
+      'tasks.audit': {'actions': ['view', 'edit']},
+      // HR — إدارة موظفي القسم
+      'hr': {'actions': ['view', 'edit']},
+      'hr.employees': {'actions': ['view', 'add', 'edit', 'delete']},
+      'hr.leaves': {'actions': ['view', 'add', 'edit', 'delete']},
+      'hr.permissions': {'actions': ['view', 'edit']},
+      'hr.security_code': {'actions': ['view', 'edit']},
+      'hr.ftth_info': {'actions': ['view', 'edit']},
+      'hr.reports': {'actions': ['view', 'export', 'print']},
+      // تتبع + متابعة
+      'tracking': {'actions': ['view']},
+      'follow_up': {'actions': ['view', 'add', 'edit']},
+      // اشتراكات
+      'subscriptions': {'actions': ['view']},
+      'subscriptions.activate': {'actions': ['view', 'add']},
+      'subscriptions.print_receipt': {'actions': ['view', 'print']},
+      // FTTH
+      'users': {'actions': ['view']},
+      'zones': {'actions': ['view']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildTechLeaderTemplate() {
+    return {
+      ..._basePermissions(),
+      // حضور
+      'attendance.dashboard': {'actions': ['view']},
+      'attendance.records': {'actions': ['view']},
+      'attendance.reports': {'actions': ['view', 'export']},
+      // مهام كاملة + توزيع + تدقيق
+      'tasks': {'actions': ['view', 'add', 'edit', 'delete']},
+      'tasks.assign': {'actions': ['view', 'add', 'edit']},
+      'tasks.audit': {'actions': ['view', 'edit']},
+      // HR — عرض + تعديل موظفين
+      'hr': {'actions': ['view']},
+      'hr.employees': {'actions': ['view', 'edit']},
+      'hr.leaves': {'actions': ['view']},
+      'hr.security_code': {'actions': ['view', 'edit']},
+      // تتبع + متابعة
+      'tracking': {'actions': ['view']},
+      'follow_up': {'actions': ['view', 'add', 'edit']},
+      // اشتراكات
+      'subscriptions': {'actions': ['view']},
+      'subscriptions.activate': {'actions': ['view', 'add']},
+      'subscriptions.print_receipt': {'actions': ['view', 'print']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildTechnicianTemplate() {
+    return {
+      ..._basePermissions(),
+      'tasks': {'actions': ['view', 'add', 'edit']},
+      'subscriptions': {'actions': ['view']},
+      'subscriptions.print_receipt': {'actions': ['view', 'print']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildTechViewerTemplate() {
+    return {
+      ..._basePermissions(),
+      'tasks': {'actions': ['view']},
+      'tracking': {'actions': ['view']},
+      'follow_up': {'actions': ['view']},
+      'subscriptions': {'actions': ['view']},
+      'users': {'actions': ['view']},
+    };
+  }
+
+  // ═══════════════════════════════════════
+  //  قسم الحسابات
+  // ═══════════════════════════════════════
+
+  static Map<String, Map<String, List<String>>> _buildAccManagerTemplate() {
+    return {
+      ..._basePermissions(),
+      // إعلانات — إدارة كاملة
+      'announcements': {'actions': ['view', 'add', 'edit', 'delete']},
+      'announcements.manage': {'actions': ['view', 'add', 'edit', 'delete']},
+      // محاسبة كاملة
+      'accounting': {'actions': _allActions},
+      for (final e in firstSystem.where((e) => e.parent == 'accounting'))
+        e.key: {'actions': e.allowedActions ?? _allActions},
+      // HR — رواتب + خصومات
+      'hr': {'actions': ['view']},
+      'hr.salaries': {'actions': ['view', 'add', 'edit', 'export', 'print']},
+      'hr.deductions': {'actions': ['view', 'add', 'edit', 'delete']},
+      'hr.advances': {'actions': ['view', 'add', 'edit', 'delete']},
+      'hr.employees': {'actions': ['view']},
+      'hr.reports': {'actions': ['view', 'export', 'print']},
+      // حضور — عرض
+      'attendance': {'actions': ['view']},
+      'attendance.reports': {'actions': ['view', 'export']},
+      // FTTH مالي
+      'transactions': {'actions': _allActions},
+      'accounts': {'actions': _allActions},
+      'account_records': {'actions': _allActions},
+      'wallet_balance': {'actions': ['view']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildAccLeaderTemplate() {
+    return {
+      ..._basePermissions(),
+      // محاسبة — بدون حذف وإعدادات
+      'accounting': {'actions': ['view', 'add', 'edit', 'export', 'print']},
+      'accounting.dashboard': {'actions': ['view']},
+      'accounting.journals': {'actions': ['view', 'add', 'edit', 'print']},
+      'accounting.compound_journals': {'actions': ['view', 'add', 'edit']},
+      'accounting.expenses': {'actions': ['view', 'add', 'edit', 'export']},
+      'accounting.revenue': {'actions': ['view', 'add', 'edit', 'export']},
+      'accounting.collections': {'actions': ['view', 'add', 'edit', 'export']},
+      'accounting.cashbox': {'actions': ['view', 'add', 'edit']},
+      'accounting.client_accounts': {'actions': ['view', 'export']},
+      'accounting.statistics': {'actions': ['view', 'export']},
+      'accounting.ftth_operators': {'actions': ['view']},
+      'accounting.audit_trail': {'actions': ['view']},
+      // HR — رواتب عرض
+      'hr.salaries': {'actions': ['view', 'export', 'print']},
+      'attendance': {'actions': ['view']},
+      // FTTH مالي
+      'transactions': {'actions': ['view', 'add', 'edit']},
+      'accounts': {'actions': ['view']},
+      'wallet_balance': {'actions': ['view']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildAccountantTemplate() {
+    return {
+      ..._basePermissions(),
+      // محاسبة — إدخال فقط
+      'accounting': {'actions': ['view', 'add', 'edit']},
+      'accounting.dashboard': {'actions': ['view']},
+      'accounting.journals': {'actions': ['view', 'add', 'edit']},
+      'accounting.expenses': {'actions': ['view', 'add', 'edit']},
+      'accounting.revenue': {'actions': ['view', 'add']},
+      'accounting.collections': {'actions': ['view', 'add', 'edit']},
+      'accounting.cashbox': {'actions': ['view', 'add']},
+      'accounting.client_accounts': {'actions': ['view']},
+      'accounting.statistics': {'actions': ['view']},
+      // FTTH مالي
+      'transactions': {'actions': ['view', 'add']},
+      'accounts': {'actions': ['view']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildAccViewerTemplate() {
+    return {
+      ..._basePermissions(),
+      'accounting': {'actions': ['view']},
+      'accounting.dashboard': {'actions': ['view']},
+      'accounting.statistics': {'actions': ['view']},
+      'accounting.funds_overview': {'actions': ['view']},
+      'accounting.balance_verification': {'actions': ['view']},
+      'transactions': {'actions': ['view']},
+      'accounts': {'actions': ['view']},
+      'wallet_balance': {'actions': ['view']},
+    };
+  }
+
+  // ═══════════════════════════════════════
+  //  قسم HR
+  // ═══════════════════════════════════════
+
+  static Map<String, Map<String, List<String>>> _buildHrManagerTemplate() {
+    return {
+      ..._basePermissions(),
+      // إعلانات — إدارة كاملة
+      'announcements': {'actions': ['view', 'add', 'edit', 'delete']},
+      'announcements.manage': {'actions': ['view', 'add', 'edit', 'delete']},
+      // HR كامل
+      'hr': {'actions': _allActions},
+      for (final e in firstSystem.where((e) => e.parent == 'hr'))
+        e.key: {'actions': e.allowedActions ?? _allActions},
+      // حضور كامل
+      'attendance': {'actions': _allActions},
+      for (final e in firstSystem.where((e) => e.parent == 'attendance'))
+        e.key: {'actions': e.allowedActions ?? _allActions},
+      // تتبع
+      'tracking': {'actions': ['view']},
+      // مهام — عرض
+      'tasks': {'actions': ['view']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildHrLeaderTemplate() {
+    return {
+      ..._basePermissions(),
+      // HR — بدون صلاحيات وحذف
+      'hr': {'actions': ['view', 'add', 'edit']},
+      'hr.employees': {'actions': ['view', 'add', 'edit']},
+      'hr.salaries': {'actions': ['view', 'export', 'print']},
+      'hr.leaves': {'actions': ['view', 'add', 'edit']},
+      'hr.deductions': {'actions': ['view', 'add', 'edit']},
+      'hr.advances': {'actions': ['view', 'add', 'edit']},
+      'hr.schedules': {'actions': ['view', 'edit']},
+      'hr.departments': {'actions': ['view']},
+      'hr.security_code': {'actions': ['view', 'edit']},
+      'hr.reports': {'actions': ['view', 'export', 'print']},
+      // حضور
+      'attendance': {'actions': ['view', 'add']},
+      'attendance.dashboard': {'actions': ['view']},
+      'attendance.records': {'actions': ['view', 'export']},
+      'attendance.reports': {'actions': ['view', 'export', 'print']},
+      // تتبع
+      'tracking': {'actions': ['view']},
+    };
+  }
+
+  static Map<String, Map<String, List<String>>> _buildHrViewerTemplate() {
+    return {
+      ..._basePermissions(),
+      'hr': {'actions': ['view']},
+      'hr.employees': {'actions': ['view']},
+      'hr.salaries': {'actions': ['view']},
+      'hr.leaves': {'actions': ['view']},
+      'hr.reports': {'actions': ['view']},
+      'attendance': {'actions': ['view']},
+      'attendance.dashboard': {'actions': ['view']},
+      'attendance.records': {'actions': ['view']},
+      'attendance.reports': {'actions': ['view']},
+    };
+  }
+
+  // ═══════════════════════════════════════
+  //  أسماء وأيقونات القوالب
+  // ═══════════════════════════════════════
+
+  /// أسماء القوالب بالعربي — مُنظمة حسب القسم
   static const Map<String, String> templateNames = {
-    'manager': 'مدير — صلاحيات كاملة',
-    'accountant': 'محاسب — المالية والتقارير',
-    'technician': 'فني — المهام والحضور',
-    'employee': 'موظف — أساسية',
-    'viewer': 'مشاهد — عرض فقط',
+    // عام
+    'manager': 'مدير عام',
+    'employee': 'موظف عام',
+    'viewer': 'مشاهد عام',
+    // قسم الفنيين
+    'tech_manager': 'مدير الفنيين',
+    'tech_leader': 'ليدر الفنيين',
+    'technician': 'فني',
+    'tech_viewer': 'مشاهد الفنيين',
+    // قسم الحسابات
+    'acc_manager': 'مدير الحسابات',
+    'acc_leader': 'ليدر الحسابات',
+    'accountant': 'محاسب',
+    'acc_viewer': 'مشاهد الحسابات',
+    // قسم HR
+    'hr_manager': 'مدير HR',
+    'hr_leader': 'ليدر HR',
+    'hr_viewer': 'مشاهد HR',
   };
 
   /// أيقونة كل قالب
   static const Map<String, IconData> templateIcons = {
+    // عام
     'manager': Icons.admin_panel_settings_rounded,
-    'accountant': Icons.account_balance_rounded,
-    'technician': Icons.engineering_rounded,
     'employee': Icons.person_rounded,
     'viewer': Icons.visibility_rounded,
+    // قسم الفنيين
+    'tech_manager': Icons.manage_accounts_rounded,
+    'tech_leader': Icons.military_tech_rounded,
+    'technician': Icons.engineering_rounded,
+    'tech_viewer': Icons.preview_rounded,
+    // قسم الحسابات
+    'acc_manager': Icons.account_balance_rounded,
+    'acc_leader': Icons.leaderboard_rounded,
+    'accountant': Icons.calculate_rounded,
+    'acc_viewer': Icons.analytics_rounded,
+    // قسم HR
+    'hr_manager': Icons.supervisor_account_rounded,
+    'hr_leader': Icons.groups_rounded,
+    'hr_viewer': Icons.person_search_rounded,
+  };
+
+  /// تصنيف القوالب حسب القسم (للعرض المُنظم في الواجهة)
+  static const Map<String, List<String>> templateCategories = {
+    'عام': ['manager', 'employee', 'viewer'],
+    'الفنيين': ['tech_manager', 'tech_leader', 'technician', 'tech_viewer'],
+    'الحسابات': ['acc_manager', 'acc_leader', 'accountant', 'acc_viewer'],
+    'HR': ['hr_manager', 'hr_leader', 'hr_viewer'],
   };
 
   // ═══════════════════════════════════════

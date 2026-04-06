@@ -46,6 +46,16 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   String? _error;
   String _searchQuery = '';
 
+  // فلاتر التصفية
+  String? _filterDepartment;
+  String? _filterRole;
+  String? _filterCenter;
+
+  // وضع التحديد الجماعي
+  bool _selectionMode = false;
+  final Set<String> _selectedIds = {};
+  bool _isBulkApplying = false;
+
   @override
   void initState() {
     super.initState();
@@ -102,23 +112,46 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     }
   }
 
-  /// فلترة الموظفين حسب البحث
+  /// فلترة الموظفين حسب البحث + الفلاتر
   void _filterEmployees(String query) {
     setState(() {
       _searchQuery = query;
-      if (query.isEmpty) {
-        _filteredEmployees = _employees;
-      } else {
-        _filteredEmployees = _employees.where((emp) {
-          return emp.fullName.toLowerCase().contains(query.toLowerCase()) ||
-              emp.phoneNumber.contains(query) ||
-              (emp.email?.toLowerCase().contains(query.toLowerCase()) ??
-                  false) ||
-              (emp.role?.toLowerCase().contains(query.toLowerCase()) ?? false);
-        }).toList();
-      }
+      _filteredEmployees = _employees.where((emp) {
+        // فلتر البحث النصي
+        if (query.isNotEmpty) {
+          final q = query.toLowerCase();
+          final matchesSearch = emp.fullName.toLowerCase().contains(q) ||
+              emp.phoneNumber.contains(q) ||
+              (emp.email?.toLowerCase().contains(q) ?? false) ||
+              (emp.role?.toLowerCase().contains(q) ?? false) ||
+              (_getRoleNameAr(emp.role).toLowerCase().contains(q));
+          if (!matchesSearch) return false;
+        }
+        // فلتر القسم
+        if (_filterDepartment != null && emp.department != _filterDepartment) return false;
+        // فلتر الدور
+        if (_filterRole != null && emp.role != _filterRole) return false;
+        // فلتر موقع العمل
+        if (_filterCenter != null && emp.center != _filterCenter) return false;
+        return true;
+      }).toList();
     });
   }
+
+  /// إعادة تطبيق الفلاتر
+  void _applyFilters() => _filterEmployees(_searchQuery);
+
+  /// الحصول على القيم الفريدة لحقل معين
+  List<String> _getUniqueValues(String Function(EmployeeModel) getter) {
+    return _employees
+        .map(getter)
+        .where((v) => v.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+  }
+
+  bool get _hasActiveFilters => _filterDepartment != null || _filterRole != null || _filterCenter != null;
 
   // ═══════════════ ألوان التصميم الفاتح ═══════════════
   static const _dark1 = Color(0xFFF5F6FA); // خلفية فاتحة رئيسية
@@ -297,19 +330,371 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   }
 
   Widget _buildBody() {
-    return Column(
+    return Stack(
       children: [
-        _buildSearchBar(),
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: _accent))
-              : _error != null
-                  ? _buildErrorWidget()
-                  : _filteredEmployees.isEmpty
-                      ? _buildEmptyWidget()
-                      : _buildEmployeesList(),
+        Column(
+          children: [
+            _buildSearchBar(),
+            _buildFilterBar(),
+            if (_selectionMode) _buildSelectionBar(),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: _accent))
+                  : _error != null
+                      ? _buildErrorWidget()
+                      : _filteredEmployees.isEmpty
+                          ? _buildEmptyWidget()
+                          : _buildEmployeesList(),
+            ),
+          ],
         ),
+        // شريط التطبيق الجماعي
+        if (_selectionMode && _selectedIds.isNotEmpty)
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: _buildBulkActionBar(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildSelectionBar() {
+    final allVisibleSelected = _filteredEmployees.every((e) => _selectedIds.contains(e.id));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      color: _accent.withOpacity(0.06),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                if (allVisibleSelected) {
+                  _selectedIds.clear();
+                } else {
+                  for (final e in _filteredEmployees) {
+                    _selectedIds.add(e.id);
+                  }
+                }
+              });
+            },
+            borderRadius: BorderRadius.circular(6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  allVisibleSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                  color: _accent, size: 20,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  allVisibleSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل (${_filteredEmployees.length})',
+                  style: GoogleFonts.cairo(fontSize: 12, color: _accent, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Text(
+            '${_selectedIds.length} محدد',
+            style: GoogleFonts.cairo(fontSize: 12, color: _textWhite, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: () => setState(() {
+              _selectionMode = false;
+              _selectedIds.clear();
+            }),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _danger.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('إلغاء', style: GoogleFonts.cairo(fontSize: 11, color: _danger, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBulkActionBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, -3))],
+        border: Border(top: BorderSide(color: _accent.withOpacity(0.2))),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.security_rounded, color: _accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'تعيين صلاحيات لـ ${_selectedIds.length} موظف',
+                style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: _textWhite),
+              ),
+              if (_isBulkApplying) ...[
+                const SizedBox(width: 12),
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: PermissionRegistry.templateNames.entries.map((t) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _isBulkApplying ? null : () => _applyBulkTemplate(t.key),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _accent.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _accent.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(PermissionRegistry.templateIcons[t.key], size: 18, color: _accent),
+                        const SizedBox(width: 6),
+                        Text(t.value, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: _textWhite)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyBulkTemplate(String templateKey) async {
+    final templateName = PermissionRegistry.templateNames[templateKey] ?? templateKey;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تأكيد التعيين الجماعي', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          content: Text(
+            'سيتم تطبيق قالب "$templateName" على ${_selectedIds.length} موظف.\n\nسيتم استبدال صلاحياتهم الحالية. هل تريد المتابعة؟',
+            style: GoogleFonts.cairo(),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: _accent),
+              child: Text('تطبيق', style: GoogleFonts.cairo()),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isBulkApplying = true);
+
+    final template = PermissionRegistry.getTemplate(templateKey);
+    const allActions = ['view', 'add', 'edit', 'delete', 'export', 'import', 'print', 'send'];
+
+    // بناء Map<String, Map<String, bool>> لكل نظام
+    Map<String, Map<String, bool>> buildPerms(List<PermissionEntry> system) {
+      final perms = <String, Map<String, bool>>{};
+      // أولاً: إغلاق كل الميزات
+      for (final p in system) {
+        perms[p.key] = {for (final a in allActions) a: false};
+      }
+      // ثانياً: تفعيل ما في القالب
+      for (final entry in template.entries) {
+        if (perms.containsKey(entry.key)) {
+          final actions = entry.value['actions'] ?? [];
+          for (final a in allActions) {
+            perms[entry.key]![a] = actions.contains(a);
+          }
+        }
+      }
+      return perms;
+    }
+
+    final firstPerms = buildPerms(PermissionRegistry.firstSystem);
+    final secondPerms = buildPerms(PermissionRegistry.secondSystem);
+
+    int successCount = 0;
+    int failCount = 0;
+
+    for (final empId in _selectedIds) {
+      try {
+        final response = await _apiClient.put(
+          '/internal/companies/${widget.companyId}/employees/$empId/permissions-v2',
+          {
+            'firstSystemPermissionsV2': firstPerms,
+            'secondSystemPermissionsV2': secondPerms,
+          },
+          (json) => json,
+          useInternalKey: true,
+        );
+        if (response.isSuccess) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (_) {
+        failCount++;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isBulkApplying = false;
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          failCount == 0
+              ? 'تم تطبيق "$templateName" على $successCount موظف بنجاح'
+              : 'نجح: $successCount | فشل: $failCount',
+          style: GoogleFonts.cairo(),
+        ),
+        backgroundColor: failCount == 0 ? const Color(0xFF27AE60) : const Color(0xFFF39C12),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    final departments = _getUniqueValues((e) => e.department ?? '');
+    final roles = _getUniqueValues((e) => e.role ?? '');
+    final centers = _getUniqueValues((e) => e.center ?? '');
+
+    if (_employees.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildFilterChip('القسم', _filterDepartment, departments, (v) {
+                setState(() => _filterDepartment = v);
+                _applyFilters();
+              }, (e) => e)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildFilterChip('الدور', _filterRole, roles, (v) {
+                setState(() => _filterRole = v);
+                _applyFilters();
+              }, (e) => _getRoleNameAr(e))),
+              const SizedBox(width: 8),
+              Expanded(child: _buildFilterChip('موقع العمل', _filterCenter, centers, (v) {
+                setState(() => _filterCenter = v);
+                _applyFilters();
+              }, (e) => e)),
+              if (_hasActiveFilters) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () {
+                    setState(() { _filterDepartment = null; _filterRole = null; _filterCenter = null; });
+                    _applyFilters();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _danger.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.filter_alt_off, color: _danger, size: 20),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 8),
+              // زر التحديد الجماعي
+              InkWell(
+                onTap: () => setState(() {
+                  _selectionMode = !_selectionMode;
+                  if (!_selectionMode) _selectedIds.clear();
+                }),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _selectionMode ? _accent.withValues(alpha: 0.15) : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _selectionMode ? _accent : Colors.grey.shade300),
+                  ),
+                  child: Icon(Icons.checklist_rounded,
+                      color: _selectionMode ? _accent : _textGray, size: 20),
+                ),
+              ),
+            ],
+          ),
+          if (_hasActiveFilters)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '${_filteredEmployees.length} من ${_employees.length} موظف',
+                style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+              ),
+            ),
+          const SizedBox(height: 6),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String? selected, List<String> options,
+      ValueChanged<String?> onChanged, String Function(String) displayName) {
+    return Container(
+      height: 38,
+      decoration: BoxDecoration(
+        color: selected != null ? _accent.withValues(alpha: 0.1) : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: selected != null ? _accent : Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selected,
+          isExpanded: true,
+          isDense: true,
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(label, style: GoogleFonts.cairo(fontSize: 12, color: _textGray)),
+          ),
+          icon: Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: Icon(selected != null ? Icons.close : Icons.arrow_drop_down,
+                size: 18, color: selected != null ? _danger : _textGray),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          borderRadius: BorderRadius.circular(10),
+          style: GoogleFonts.cairo(fontSize: 12, color: _textWhite),
+          onTap: selected != null ? () {
+            onChanged(null);
+          } : null,
+          items: options.map((o) => DropdownMenuItem(
+            value: o,
+            child: Text(displayName(o), style: GoogleFonts.cairo(fontSize: 12)),
+          )).toList(),
+          onChanged: onChanged,
+        ),
+      ),
     );
   }
 
@@ -453,22 +838,36 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   Widget _buildEmployeeCard(EmployeeModel employee, int index) {
     final roleColor = _getRoleColor(employee.role);
     final roleLabel = _getRoleNameAr(employee.role);
+    final isSelected = _selectedIds.contains(employee.id);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _showEmployeeDetails(employee),
+          onTap: _selectionMode
+              ? () => setState(() {
+                    isSelected ? _selectedIds.remove(employee.id) : _selectedIds.add(employee.id);
+                  })
+              : () => _showEmployeeDetails(employee),
+          onLongPress: !_selectionMode
+              ? () => setState(() {
+                    _selectionMode = true;
+                    _selectedIds.add(employee.id);
+                  })
+              : null,
           borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isSelected ? _accent.withOpacity(0.04) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: employee.isActive
-                    ? roleColor.withOpacity(0.2)
-                    : Colors.grey.shade300,
+                color: isSelected
+                    ? _accent
+                    : employee.isActive
+                        ? roleColor.withOpacity(0.2)
+                        : Colors.grey.shade300,
+                width: isSelected ? 1.5 : 1,
               ),
               boxShadow: [
                 BoxShadow(
@@ -505,6 +904,15 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                   child: Row(
                     children: [
+                      // ═══ Checkbox في وضع التحديد ═══
+                      if (_selectionMode) ...[
+                        Icon(
+                          isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                          color: isSelected ? _accent : _textGray,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                      ],
                       // ═══ أفاتار فخم ═══
                       Container(
                         width: 52,

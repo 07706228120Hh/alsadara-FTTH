@@ -190,11 +190,15 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.of(context).size.width;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final availableHeight = MediaQuery.of(context).size.height - keyboardHeight;
+    final isMobile = screenW < 600;
     return Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 10 : 16),
       child: SizedBox(
-        width: double.maxFinite,
-        height: MediaQuery.of(context).size.height * 0.9,
+        width: isMobile ? screenW - 20 : 600,
+        height: availableHeight * 0.9,
         child: Column(
           children: [
             // شريط العنوان
@@ -433,7 +437,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: _isLoading
                           ? const SizedBox(
@@ -534,7 +538,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       items: items.where((item) => item.isNotEmpty).map((item) {
         return DropdownMenuItem(
           value: item,
-          child: Text(item),
+          child: Text(item, overflow: TextOverflow.ellipsis),
         );
       }).toList(),
       onChanged: onChanged,

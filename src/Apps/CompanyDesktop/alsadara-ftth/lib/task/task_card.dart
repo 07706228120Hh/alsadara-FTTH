@@ -5,10 +5,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/task.dart';
 import '../services/whatsapp_template_storage.dart';
 import '../services/task_api_service.dart';
+import 'task_attachments_widget.dart';
 import '../widgets/maintenance_messages_dialog.dart';
 import '../widgets/edit_task_dialog.dart';
 import '../ftth/users/quick_search_users_page.dart';
 import '../services/auth_service.dart';
+import '../permissions/permission_manager.dart';
+import '../services/dual_auth_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 /// TaskCard محسن مع عرض جميل لعنوان المهم�� وحل لجميع ����لأخطاء
@@ -33,16 +36,25 @@ class TaskCard extends StatefulWidget {
 class _TaskCardState extends State<TaskCard> {
   bool showDetails = false;
 
+  // التعليقات
+  List<Map<String, dynamic>> _comments = [];
+  bool _isLoadingComments = false;
+  bool _commentsLoaded = false;
+  final TextEditingController _commentController = TextEditingController();
+  bool _isSendingComment = false;
+
   // ═══════ الحالات المتاحة للمستخدم حسب الحالة الحالية ═══════
   /// الحصول على الحالات المسموح الانتقال إليها (يعرض فقط الحالات العملية)
   List<String> _getAvailableStatuses() {
     final current = widget.task.status;
-    // الحالات النهائية
-    if (current == 'مكتملة' || current == 'ملغية' || current == 'مرفوضة') {
-      return [current];
-    }
-    // لأي حالة غير نهائية: اعرض الخيارات العملية فقط
-    return {current, 'قيد التنفيذ', 'مكتملة', 'ملغية'}.toList();
+    // جميع الحالات متاحة دائماً (يمكن التراجع عن أي حالة)
+    return {current, 'مفتوحة', 'قيد التنفيذ', 'مكتملة', 'ملغية'}.toList();
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
   }
 
   // متغيرات لجلب بيانات الوكلاء
@@ -108,6 +120,24 @@ class _TaskCardState extends State<TaskCard> {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 14),
                   child: _buildCompactDetailedInfo(),
+                ),
+                // سجل الحالة
+                if (widget.task.statusHistory.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 14),
+                    child: _buildStatusTimeline(),
+                  ),
+                // التعليقات
+                Padding(
+                  padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
+                  child: _buildCommentsSection(),
+                ),
+                // المرفقات
+                Padding(
+                  padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
+                  child: TaskAttachmentsWidget(
+                    taskId: widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id,
+                  ),
                 ),
               ],
 
@@ -187,11 +217,11 @@ class _TaskCardState extends State<TaskCard> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   '${widget.task.department} • #${widget.task.id}',
                   style: TextStyle(
-                    fontSize: isSmall ? 9 : 11,
+                    fontSize: isSmall ? 11 : 12,
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
                   ),
@@ -233,8 +263,8 @@ class _TaskCardState extends State<TaskCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 6,
-              height: 6,
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -252,7 +282,7 @@ class _TaskCardState extends State<TaskCard> {
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
-                fontSize: 10,
+                fontSize: 11,
                 letterSpacing: 0.3,
               ),
             ),
@@ -351,7 +381,7 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: compact ? 8 : 9,
+                    fontSize: compact ? 10 : 11,
                     color: color.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
@@ -508,7 +538,7 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 11,
                     color: Colors.grey.shade500,
                     fontWeight: FontWeight.w500,
                   ),
@@ -552,7 +582,7 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 11,
                     color: Colors.grey.shade500,
                     fontWeight: FontWeight.w500,
                   ),
@@ -575,49 +605,382 @@ class _TaskCardState extends State<TaskCard> {
     );
   }
 
-  /// شريط الإجراءات الفخم
-  Widget _buildCompactActionBar() {
-    final buttons = <Widget>[];
+  // ═══════ سجل الحالة (Timeline) ═══════
 
-    // زر تفاصيل الاشتراك — يبحث عن المشترك ويفتح تفاصيله
-    if (widget.task.phone.isNotEmpty || widget.task.username.isNotEmpty)
-      buttons.add(_buildCompactActionButton(
+  Widget _buildStatusTimeline() {
+    final history = widget.task.statusHistory;
+    if (history.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.indigo.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.indigo.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: const Icon(Icons.timeline_rounded, size: 14, color: Colors.indigo),
+              ),
+              const SizedBox(width: 6),
+              const Text('سجل الحالة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.indigo)),
+              const Spacer(),
+              Text('${history.length} تغيير', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...history.reversed.take(5).map((h) {
+            final statusColor = _getStatusColor(h.toStatus);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    children: [
+                      Container(
+                        width: 10, height: 10,
+                        decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                      ),
+                      Container(width: 2, height: 20, color: Colors.grey.shade300),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(h.fromStatus, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, decoration: TextDecoration.lineThrough)),
+                            const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.arrow_forward, size: 12, color: Colors.grey)),
+                            Text(h.toStatus, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: statusColor)),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            if (h.changedBy.isNotEmpty)
+                              Text(h.changedBy, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('MM/dd HH:mm').format(h.changedAt),
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (history.length > 5)
+            Center(
+              child: Text('+ ${history.length - 5} تغييرات أخرى', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════ التعليقات ═══════
+
+  Future<void> _loadComments() async {
+    if (_commentsLoaded || _isLoadingComments) return;
+    setState(() => _isLoadingComments = true);
+    try {
+      final taskId = widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
+      final result = await TaskApiService.instance.getComments(taskId);
+      if (result['success'] == true && mounted) {
+        final data = result['data'];
+        List items = [];
+        if (data is List) {
+          items = data;
+        } else if (data is Map && data.containsKey('items')) {
+          items = data['items'] as List? ?? [];
+        }
+        setState(() {
+          _comments = items.cast<Map<String, dynamic>>();
+          _commentsLoaded = true;
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingComments = false);
+  }
+
+  Future<void> _addComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _isSendingComment = true);
+    try {
+      final taskId = widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
+      final result = await TaskApiService.instance.addComment(taskId, content: text);
+      if (result['success'] == true && mounted) {
+        _commentController.clear();
+        _commentsLoaded = false;
+        await _loadComments();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم إضافة التعليق'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'فشل إضافة التعليق'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('خطأ في إضافة التعليق'), backgroundColor: Colors.red),
+        );
+      }
+    }
+    if (mounted) setState(() => _isSendingComment = false);
+  }
+
+  Widget _buildCommentsSection() {
+    // تحميل التعليقات عند أول عرض
+    if (!_commentsLoaded && !_isLoadingComments) {
+      _loadComments();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.teal.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.teal.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // عنوان
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: const Icon(Icons.comment_outlined, size: 14, color: Colors.teal),
+              ),
+              const SizedBox(width: 6),
+              const Text('التعليقات', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.teal)),
+              const Spacer(),
+              if (_comments.isNotEmpty)
+                Text('${_comments.length}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // قائمة التعليقات
+          if (_isLoadingComments)
+            const Center(child: Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+          else if (_comments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text('لا توجد تعليقات بعد', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+            )
+          else
+            ..._comments.take(5).map((c) => _buildCommentItem(c)),
+
+          if (_comments.length > 5)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Center(child: Text('+ ${_comments.length - 5} تعليقات أخرى', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+            ),
+
+          const SizedBox(height: 8),
+
+          // حقل إضافة تعليق
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _commentController,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'أضف تعليقاً...',
+                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: Colors.teal, width: 1.5)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: _isSendingComment ? null : _addComment,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _isSendingComment ? Colors.grey.shade300 : Colors.teal,
+                    shape: BoxShape.circle,
+                  ),
+                  child: _isSendingComment
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentItem(Map<String, dynamic> comment) {
+    final content = comment['Content']?.toString() ?? comment['content']?.toString() ?? '';
+    final author = comment['CreatedByName']?.toString() ?? comment['createdBy']?.toString() ?? '';
+    final dateStr = comment['CreatedAt']?.toString() ?? comment['createdAt']?.toString() ?? '';
+    final date = DateTime.tryParse(dateStr);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.person_outline, size: 14, color: Colors.grey.shade500),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  author.isNotEmpty ? author : 'مجهول',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                ),
+              ),
+              if (date != null)
+                Text(
+                  DateFormat('MM/dd HH:mm').format(date),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(content, style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A2E), height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  /// شريط الإجراءات — على الموبايل: أزرار رئيسية + قائمة منبثقة
+  Widget _buildCompactActionBar() {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+
+    // الأزرار الرئيسية (تظهر دائماً)
+    final primaryButtons = <Widget>[];
+    if (widget.task.phone.isNotEmpty || widget.task.username.isNotEmpty) {
+      primaryButtons.add(_buildCompactActionButton(
         Icons.open_in_new_rounded, 'تفاصيل', const Color(0xFF1565C0),
         _openSubscriptionDetails,
       ));
-    if (widget.task.phone.isNotEmpty)
-      buttons.add(_buildCompactActionButton(
+    }
+    if (widget.task.phone.isNotEmpty) {
+      primaryButtons.add(_buildCompactActionButton(
         Icons.message_rounded, 'واتساب', const Color(0xFF25D366),
         () => _launchWhatsApp(widget.task.phone),
       ));
-    if (widget.currentUserRole == 'ليدر' || widget.currentUserRole == 'مدير')
-      buttons.add(_buildCompactActionButton(
-        Icons.group_rounded, 'وكيل', const Color(0xFF8E44AD), _showAgentsDialog,
-      ));
-    if (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر')
-      buttons.add(_buildCompactActionButton(
-        Icons.edit_rounded, 'تعديل', const Color(0xFF3498DB), _showEditTaskDialog,
-      ));
-    if (widget.currentUserRole == 'مدير')
-      buttons.add(_buildCompactActionButton(
-        Icons.delete_outline_rounded, 'حذف', const Color(0xFFE74C3C), _confirmDeleteTask,
-      ));
+    }
 
-    if (buttons.isEmpty) return const SizedBox.shrink();
+    // الأزرار الثانوية (popup menu على الموبايل)
+    final menuItems = <PopupMenuEntry<String>>[];
+    if (widget.currentUserRole == 'ليدر' || widget.currentUserRole == 'مدير') {
+      menuItems.add(const PopupMenuItem(value: 'agent', child: Row(children: [
+        Icon(Icons.group_rounded, size: 18, color: Color(0xFF8E44AD)),
+        SizedBox(width: 8), Text('وكيل'),
+      ])));
+    }
+    if (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر') {
+      menuItems.add(const PopupMenuItem(value: 'edit', child: Row(children: [
+        Icon(Icons.edit_rounded, size: 18, color: Color(0xFF3498DB)),
+        SizedBox(width: 8), Text('تعديل'),
+      ])));
+    }
+    if (widget.currentUserRole == 'مدير') {
+      menuItems.add(const PopupMenuItem(value: 'delete', child: Row(children: [
+        Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFE74C3C)),
+        SizedBox(width: 8), Text('حذف'),
+      ])));
+    }
 
-    final isMobile = MediaQuery.of(context).size.width < 500;
-    if (isMobile && buttons.length > 2) {
-      return Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: buttons.map((b) => SizedBox(
-          width: (MediaQuery.of(context).size.width - 40) / 2,
-          child: b,
-        )).toList(),
+    if (primaryButtons.isEmpty && menuItems.isEmpty) return const SizedBox.shrink();
+
+    // على الموبايل: أزرار رئيسية + قائمة منبثقة
+    if (isMobile && menuItems.isNotEmpty) {
+      return Row(
+        children: [
+          ...primaryButtons,
+          if (menuItems.isNotEmpty)
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                child: PopupMenuButton<String>(
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'agent': _showAgentsDialog(); break;
+                      case 'edit': _showEditTaskDialog(); break;
+                      case 'delete': _confirmDeleteTask(); break;
+                    }
+                  },
+                  itemBuilder: (_) => menuItems,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.more_horiz, size: 18, color: Color(0xFF6B7280)),
+                        SizedBox(width: 4),
+                        Text('المزيد', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       );
     }
 
-    return Row(children: buttons);
+    // على الديسكتوب: كل الأزرار في صف واحد
+    final allButtons = [...primaryButtons];
+    if (widget.currentUserRole == 'ليدر' || widget.currentUserRole == 'مدير') {
+      allButtons.add(_buildCompactActionButton(Icons.group_rounded, 'وكيل', const Color(0xFF8E44AD), _showAgentsDialog));
+    }
+    if (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر') {
+      allButtons.add(_buildCompactActionButton(Icons.edit_rounded, 'تعديل', const Color(0xFF3498DB), _showEditTaskDialog));
+    }
+    if (widget.currentUserRole == 'مدير') {
+      allButtons.add(_buildCompactActionButton(Icons.delete_outline_rounded, 'حذف', const Color(0xFFE74C3C), _confirmDeleteTask));
+    }
+    return Row(children: allButtons);
   }
 
   Widget _buildCompactActionButton(
@@ -722,15 +1085,16 @@ class _TaskCardState extends State<TaskCard> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final statusColor = _getStatusColor(selectedStatus);
+            final dialogWidth = MediaQuery.of(context).size.width;
             return Dialog(
+              insetPadding: EdgeInsets.symmetric(horizontal: dialogWidth < 420 ? 12 : 40, vertical: 24),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               elevation: 8,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Padding(
-                  padding: EdgeInsets.zero,
+                constraints: BoxConstraints(maxWidth: dialogWidth < 420 ? dialogWidth - 24 : 420),
+                child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -967,23 +1331,16 @@ class _TaskCardState extends State<TaskCard> {
                             Expanded(
                               flex: 2,
                               child: ElevatedButton.icon(
-                                onPressed: () async {
+                                onPressed: () {
                                   final String newStatus = selectedStatus;
                                   final String amount =
                                       amountController.text.trim();
                                   final String notes =
                                       notesController.text.trim();
 
+                                  amountController.dispose();
+                                  notesController.dispose();
                                   Navigator.of(context).pop();
-                                  await Future.delayed(
-                                      const Duration(milliseconds: 100));
-
-                                  try {
-                                    amountController.dispose();
-                                    notesController.dispose();
-                                  } catch (e) {
-                                    print('تم تجاهل خطأ dispose');
-                                  }
 
                                   _updateTaskStatus(newStatus,
                                       amount: amount, notes: notes);
@@ -1020,8 +1377,8 @@ class _TaskCardState extends State<TaskCard> {
 
   void _updateTaskStatus(String newStatus,
       {String amount = '', String notes = ''}) async {
-    print('🟦 [DEBUG] بدء تحديث المهمة - ID: ${widget.task.id}');
-    print('🟦 [DEBUG] الحالة الجديدة: $newStatus');
+    debugPrint('🟦 [DEBUG] بدء تحديث المهمة - ID: ${widget.task.id}');
+    debugPrint('🟦 [DEBUG] الحالة الجديدة: $newStatus');
 
     final oldTask = widget.task; // حفظ المهمة الأصلية للتراجع عند الفشل
 
@@ -1068,7 +1425,7 @@ class _TaskCardState extends State<TaskCard> {
     } catch (e) {
       // التراجع عن التحديث المحلي عند حدوث خطأ
       widget.onStatusChanged(oldTask);
-      print('🔴 [ERROR] خطأ في تحديث حالة المهمة');
+      debugPrint('🔴 [ERROR] خطأ في تحديث حالة المهمة');
 
       if (mounted) {
         _showErrorDialog('خطأ في تحديث المهمة', 'فشل تحديث حالة المهمة، يرجى المحاولة مرة أخرى');
@@ -1081,12 +1438,12 @@ class _TaskCardState extends State<TaskCard> {
     try {
       final apiStatus = Task.mapArabicStatusToApi(task.status);
       final taskId = task.guid.isNotEmpty ? task.guid : task.id;
-      print('🌐 [API] إرسال طلب تحديث الحالة...');
-      print('🌐 [API] Task ID: $taskId');
-      print('🌐 [API] Task GUID: "${task.guid}"');
-      print('🌐 [API] Task id: "${task.id}"');
-      print('🌐 [API] API Status: $apiStatus');
-      print('🌐 [API] Arabic Status: ${task.status}');
+      debugPrint('🌐 [API] إرسال طلب تحديث الحالة...');
+      debugPrint('🌐 [API] Task ID: $taskId');
+      debugPrint('🌐 [API] Task GUID: "${task.guid}"');
+      debugPrint('🌐 [API] Task id: "${task.id}"');
+      debugPrint('🌐 [API] API Status: $apiStatus');
+      debugPrint('🌐 [API] Arabic Status: ${task.status}');
 
       final result = await TaskApiService.instance.updateStatus(
         taskId,
@@ -1094,17 +1451,17 @@ class _TaskCardState extends State<TaskCard> {
         amount: task.amount.isNotEmpty ? double.tryParse(task.amount) : null,
       );
 
-      print('🌐 [API] النتيجة الكاملة: $result');
-      print('🌐 [API] success: ${result['success']}');
-      print('🌐 [API] statusCode: ${result['statusCode']}');
-      print('🌐 [API] message: ${result['message']}');
+      debugPrint('🌐 [API] النتيجة الكاملة: $result');
+      debugPrint('🌐 [API] success: ${result['success']}');
+      debugPrint('🌐 [API] statusCode: ${result['statusCode']}');
+      debugPrint('🌐 [API] message: ${result['message']}');
 
       if (result['success'] == true) {
-        print('✅ تم تحديث الحالة في السيرفر بنجاح');
+        debugPrint('✅ تم تحديث الحالة في السيرفر بنجاح');
         return true;
       } else {
         final msg = result['message'] ?? 'فشل غير معروف';
-        print('❌ فشل تحديث الحالة في السيرفر: $msg');
+        debugPrint('❌ فشل تحديث الحالة في السيرفر: $msg');
         return false;
       }
     } catch (e) {
@@ -1235,6 +1592,14 @@ class _TaskCardState extends State<TaskCard> {
           authToken: token,
           activatedBy: widget.currentUserName,
           initialSearchQuery: searchQuery,
+          hasServerSavePermission: PermissionManager.instance.canView('google_sheets'),
+          hasWhatsAppPermission: PermissionManager.instance.canView('whatsapp'),
+          isAdminFlag: DualAuthService.instance.ftthIsAdmin,
+          importantFtthApiPermissions: DualAuthService.instance.ftthImportantPermissions.isNotEmpty
+              ? DualAuthService.instance.ftthImportantPermissions
+              : null,
+          taskAgentName: widget.task.agentName.isNotEmpty ? widget.task.agentName : null,
+          taskAgentCode: widget.task.pageId.isNotEmpty ? widget.task.pageId : null,
         ),
       ),
     );
@@ -1365,7 +1730,7 @@ class _TaskCardState extends State<TaskCard> {
                   ),
                   const SizedBox(height: 4),
                   Text('افتح الواتساب يدوياً واذهب إلى: $formattedPhone'),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   const Text('ثم استخدم Ctrl+V للصق الرسالة',
                       style: TextStyle(fontSize: 11)),
                 ],
@@ -1482,7 +1847,7 @@ class _TaskCardState extends State<TaskCard> {
 
       return message;
     } catch (e) {
-      print('خطأ في بناء رسالة الواتساب');
+      debugPrint('خطأ في بناء رسالة الواتساب');
       // في حالة حدوث خطأ، استخدم القالب الافتراضي
       return _getDefaultTemplate()
           .replaceAll('{id}', widget.task.id.toString())
@@ -2593,7 +2958,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
                   ),
                   const SizedBox(height: 4),
                   Text('افتح الواتساب يدوياً واذهب إلى: $formattedPhone'),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   const Text('ثم استخدم Ctrl+V للصق الرسالة',
                       style: TextStyle(fontSize: 11)),
                 ],

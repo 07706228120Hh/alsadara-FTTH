@@ -120,11 +120,11 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       }
     }
 
-    // التحقق من كفاية الرصيد
+    // التحقق من كفاية الرصيد (محفظة العضو إن وُجدت وإلا الرئيسية)
     final totalPrice = _asDouble(priceDetails!['totalPrice']);
     final availableBalance = _selectedWalletSource == 'customer'
         ? customerWalletBalance
-        : walletBalance;
+        : _effectiveMainBalance;
 
     if (totalPrice > availableBalance) {
       safeSetState(() => errorMessage = 'الرصيد غير كافٍ لإتمام العملية');
@@ -689,7 +689,9 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
           body: jsonEncode(body),
         ).timeout(const Duration(seconds: 20));
 
-      debugPrint('📥 الاستجابة: ${resp.statusCode} - ${resp.body}');
+      debugPrint('📥 الاستجابة: ${resp.statusCode}');
+      debugPrint('📥 Headers: ${resp.headers}');
+      debugPrint('📥 Body: ${resp.body}');
 
       // إغلاق مؤشر الانتظار
       if (mounted && Navigator.of(context).canPop()) {
@@ -700,7 +702,13 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         // النجاح - لا نعرض Dialog هنا لأنه سيظهر في النهاية
         return true;
       } else {
-        String failMsg = 'فشل تفعيل الاشتراك (HTTP ${resp.statusCode})';
+        String failMsg;
+        if (resp.statusCode == 403) {
+          failMsg = 'ممنوع (403): لا تملك صلاحية تجديد هذا الاشتراك.\n'
+              'قد يكون المشترك تابع لمنطقة أو شريك آخر ليس لديك صلاحية عليه.';
+        } else {
+          failMsg = 'فشل تفعيل الاشتراك (HTTP ${resp.statusCode})';
+        }
         try {
           final data = jsonDecode(resp.body);
           final msg = data['message'] ?? data['error'];

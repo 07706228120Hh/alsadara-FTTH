@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'creator_transactions_detail_page.dart';
 
 //صفحة اسماء المنشاة للعمليات  الحسابة
@@ -349,7 +349,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
           action: SnackBarAction(
             label: 'فتح',
             textColor: Colors.white,
-            onPressed: () => OpenFile.open(filePath),
+            onPressed: () => OpenFilex.open(filePath),
           ),
         ),
       );

@@ -60,6 +60,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   bool _isLoading = false;
   bool _isLoadingData = true;
   String? _errorMessage;
+  int _currentStep = 0; // 0: القسم والفريق, 1: العميل, 2: الفني + ملاحظات
+  static const int _totalSteps = 3;
 
   final List<String> _priorities = ['منخفض', 'متوسط', 'عالي', 'عاجل'];
   final List<String> _serviceTypes = ['35', '50', '75', '150'];
@@ -85,7 +87,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     super.initState();
     _selectedDepartment = 'الصيانة';
     _selectedLeader = 'رسول';
-    _selectedTechnician = widget.currentUsername;
+    _selectedTechnician = '';
 
     if (widget.initialCustomerName?.isNotEmpty == true) {
       _usernameController.text = widget.initialCustomerName!;
@@ -109,12 +111,11 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       _selectedTaskType = widget.initialTaskType!;
     }
 
-    // عند شراء اشتراك: القسم = الحسابات تلقائياً + الفني = المستخدم الحالي
+    // عند شراء اشتراك: القسم = الحسابات + نوع المهمة ثابت + الفني يُختار من الحسابات
     if (_selectedTaskType == 'شراء اشتراك') {
-      _departments = ['الحسابات'];
       _selectedDepartment = 'الحسابات';
-      _technicians = [widget.currentUsername];
-      _selectedTechnician = widget.currentUsername;
+      _selectedLeader = '';
+      _selectedTechnician = '';
     }
 
     _loadDataFromApi();
@@ -194,7 +195,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       // موظفين
       _parseStaffData(staffResult);
     } catch (e) {
-      print('❌ خطأ في تحميل البيانات');
+      debugPrint('❌ خطأ في تحميل البيانات');
       _errorMessage = 'فشل في تحميل البيانات';
     } finally {
       if (mounted) {
@@ -237,12 +238,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           _technicians = technicians;
           _userPhones = phones;
 
-          // عند شراء اشتراك: أضف اسم الفني الحالي للقائمة إن لم يكن موجوداً
-          if (_selectedTaskType == 'شراء اشتراك' &&
-              widget.currentUsername.isNotEmpty &&
-              !_technicians.contains(widget.currentUsername)) {
-            _technicians.add(widget.currentUsername);
-          }
+          // عند شراء اشتراك: الفني يُختار من قسم الحسابات فقط (لا نضيف الفني الحالي)
         });
         _updateSelectedUserPhone();
       }
@@ -255,7 +251,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           await TaskApiService.instance.getTaskStaff(department: department);
       _parseStaffData(result);
     } catch (e) {
-      print('❌ خطأ في جلب الموظفين');
+      debugPrint('❌ خطأ في جلب الموظفين');
     }
   }
 
@@ -287,20 +283,23 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   List<DropdownMenuItem<String>> _getTaskTypeItems() {
     List<DropdownMenuItem<String>> items = [];
 
-    items.add(const DropdownMenuItem(
-      value: 'شراء اشتراك',
-      child: Row(children: [
-        Icon(Icons.shopping_cart, size: 16, color: Colors.purple),
-        SizedBox(width: 8),
-        Text('شراء اشتراك', style: TextStyle(fontWeight: FontWeight.bold)),
-      ]),
-    ));
+    // "شراء اشتراك" يظهر فقط لقسم الحسابات
+    if (_selectedDepartment == 'الحسابات' || _selectedDepartment.isEmpty) {
+      items.add(const DropdownMenuItem(
+        value: 'شراء اشتراك',
+        child: Row(children: [
+          Icon(Icons.shopping_cart, size: 16, color: Colors.purple),
+          SizedBox(width: 8),
+          Text('شراء اشتراك', style: TextStyle(fontWeight: FontWeight.bold)),
+        ]),
+      ));
 
-    items.add(const DropdownMenuItem(
-      value: '',
-      enabled: false,
-      child: Divider(height: 1),
-    ));
+      items.add(const DropdownMenuItem(
+        value: '',
+        enabled: false,
+        child: Divider(height: 1),
+      ));
+    }
 
     if (_selectedDepartment.isNotEmpty &&
         _departmentTasks.containsKey(_selectedDepartment)) {
@@ -395,7 +394,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         _showError(result['message'] ?? 'فشل في إنشاء المهمة');
       }
     } catch (e) {
-      print('❌ خطأ في إنشاء المهمة');
+      debugPrint('❌ خطأ في إنشاء المهمة');
       _showError('خطأ أثناء إنشاء المهمة');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -418,7 +417,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       }
 
       if (targetPhone?.trim().isEmpty ?? true) {
-        print('⚠️ لم يتم العثور على رقم هاتف $recipientType');
+        debugPrint('⚠️ لم يتم العثور على رقم هاتف $recipientType');
         return;
       }
 
@@ -428,7 +427,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
 
       await _sendViaWhatsApp(cleanPhone, message);
     } catch (e) {
-      print('❌ خطأ في إرسال WhatsApp');
+      debugPrint('❌ خطأ في إرسال WhatsApp');
     }
   }
 
@@ -548,7 +547,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         }
       }
     } catch (e) {
-      print('❌ خطأ في فتح واتساب');
+      debugPrint('❌ خطأ في فتح واتساب');
     }
   }
 
@@ -580,12 +579,47 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     final screenW = MediaQuery.of(context).size.width;
     final isMobile = screenW < 600;
     final isSmall = screenW < 420;
+    // على الموبايل الصغير: شاشة كاملة لسهولة الاستخدام
+    if (isSmall) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('إضافة مهمة جديدة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+          leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+        ),
+        body: Container(
+          padding: const EdgeInsets.all(10),
+          child: _isLoadingData
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                          const SizedBox(height: 6),
+                          Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                          const SizedBox(height: 6),
+                          ElevatedButton(
+                            onPressed: () { setState(() => _errorMessage = null); _loadDataFromApi(); },
+                            child: const Text('إعادة المحاولة'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildTaskForm(),
+        ),
+      );
+    }
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final availableHeight = MediaQuery.of(context).size.height - keyboardHeight;
     return Dialog(
-      insetPadding: EdgeInsets.symmetric(horizontal: isSmall ? 4 : (isMobile ? 6 : 40), vertical: isSmall ? 6 : (isMobile ? 10 : 24)),
+      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 40, vertical: isMobile ? 12 : 24),
       child: Container(
-        width: isSmall ? screenW - 8 : (isMobile ? screenW - 12 : screenW * 0.9),
-        height: MediaQuery.of(context).size.height * (isSmall ? 0.95 : (isMobile ? 0.93 : 0.9)),
-        padding: EdgeInsets.all(isSmall ? 6 : (isMobile ? 8 : 20)),
+        width: isMobile ? screenW - 16 : screenW * 0.9,
+        height: availableHeight * (isMobile ? 0.93 : 0.9),
+        padding: EdgeInsets.all(isMobile ? 12 : 20),
         child: Column(
           children: [
             Row(
@@ -662,6 +696,36 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildTaskForm() {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+
+    // على الموبايل: wizard متعدد الخطوات
+    if (isMobile) {
+      return Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            // شريط التقدم
+            _buildStepIndicator(),
+            const SizedBox(height: 12),
+
+            // محتوى الخطوة الحالية
+            Expanded(
+              child: SingleChildScrollView(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildCurrentStep(),
+                ),
+              ),
+            ),
+
+            // أزرار التنقل (ثابتة في الأسفل)
+            _buildStepNavigation(),
+          ],
+        ),
+      );
+    }
+
+    // على الديسكتوب: النموذج الكامل كما كان
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
@@ -669,20 +733,197 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDepartmentSection(),
-            SizedBox(height: _isNarrow ? 4 : 6),
+            const SizedBox(height: 6),
             _buildCustomerSection(),
-            SizedBox(height: _isNarrow ? 4 : 6),
+            const SizedBox(height: 6),
             _buildTechnicalSection(),
-            SizedBox(height: _isNarrow ? 4 : 6),
+            const SizedBox(height: 6),
             if (_selectedTaskType == 'شراء اشتراك') ...[
               _buildSubscriptionSection(),
-              SizedBox(height: _isNarrow ? 4 : 6),
+              const SizedBox(height: 6),
             ],
             _buildAdditionalSection(),
-            SizedBox(height: _isNarrow ? 4 : 6),
+            const SizedBox(height: 6),
             _buildActionButtons(),
           ],
         ),
+      ),
+    );
+  }
+
+  /// شريط تقدم الخطوات
+  Widget _buildStepIndicator() {
+    final steps = ['القسم والفريق', 'معلومات العميل', 'التفاصيل والملاحظات'];
+    return Row(
+      children: List.generate(steps.length, (i) {
+        final isActive = i == _currentStep;
+        final isDone = i < _currentStep;
+        return Expanded(
+          child: GestureDetector(
+            onTap: isDone ? () => setState(() => _currentStep = i) : null,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    if (i > 0) Expanded(child: Container(height: 2, color: isDone ? const Color(0xFF4CAF50) : Colors.grey.shade300)),
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: isActive ? const Color(0xFF1A237E) : isDone ? const Color(0xFF4CAF50) : Colors.grey.shade300,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: isDone
+                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            : Text('${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isActive ? Colors.white : Colors.grey.shade600)),
+                      ),
+                    ),
+                    if (i < steps.length - 1) Expanded(child: Container(height: 2, color: isDone ? const Color(0xFF4CAF50) : Colors.grey.shade300)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  steps[i],
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    color: isActive ? const Color(0xFF1A237E) : Colors.grey.shade500,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  /// محتوى الخطوة الحالية
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 0:
+        return Column(
+          key: const ValueKey(0),
+          children: [
+            _buildDepartmentSection(),
+          ],
+        );
+      case 1:
+        return Column(
+          key: const ValueKey(1),
+          children: [
+            _buildCustomerSection(),
+            const SizedBox(height: 8),
+            _buildTechnicalSection(),
+          ],
+        );
+      case 2:
+        return Column(
+          key: const ValueKey(2),
+          children: [
+            if (_selectedTaskType == 'شراء اشتراك') ...[
+              _buildSubscriptionSection(),
+              const SizedBox(height: 8),
+            ],
+            _buildAdditionalSection(),
+          ],
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  /// تحقق من صحة الخطوة الحالية قبل الانتقال
+  bool _validateCurrentStep() {
+    switch (_currentStep) {
+      case 0:
+        if (_selectedDepartment.isEmpty) { _showError('يجب اختيار القسم'); return false; }
+        if (_selectedTaskType.isEmpty) { _showError('يجب اختيار نوع المهمة'); return false; }
+        if (_selectedTaskType != 'شراء اشتراك' && _selectedTechnician.isEmpty) { _showError('يجب اختيار فني'); return false; }
+        return true;
+      case 1:
+        if (_usernameController.text.trim().isEmpty) { _showError('يجب إدخال اسم العميل'); return false; }
+        if (_phoneController.text.trim().isEmpty) { _showError('يجب إدخال رقم الهاتف'); return false; }
+        return true;
+      case 2:
+        return true; // الأولوية لها قيمة افتراضية
+      default:
+        return true;
+    }
+  }
+
+  /// أزرار التنقل بين الخطوات (ثابتة في الأسفل)
+  Widget _buildStepNavigation() {
+    final isLast = _currentStep == _totalSteps - 1;
+    final isFirst = _currentStep == 0;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        children: [
+          // زر السابق
+          if (!isFirst)
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _currentStep--),
+                icon: const Icon(Icons.arrow_forward, size: 18),
+                label: const Text('السابق'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('إلغاء'),
+              ),
+            ),
+
+          const SizedBox(width: 12),
+
+          // زر التالي / حفظ
+          Expanded(
+            flex: 2,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : () {
+                if (isLast) {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    _createTask();
+                  }
+                } else {
+                  if (_validateCurrentStep()) {
+                    setState(() => _currentStep++);
+                  }
+                }
+              },
+              icon: _isLoading
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Icon(isLast ? Icons.check_rounded : Icons.arrow_back, size: 20),
+              label: Text(isLast ? 'حفظ المهمة' : 'التالي'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isLast ? const Color(0xFF4CAF50) : const Color(0xFF1A237E),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -705,47 +946,66 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
             SizedBox(height: _isNarrow ? 3 : 6),
             _adaptiveRow(
-              DropdownButtonFormField<String>(
-                key: ValueKey('dept_${_selectedDepartment}_${_departments.length}'),
-                decoration: InputDecoration(
-                    labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                value: _departments.contains(_selectedDepartment)
-                    ? _selectedDepartment
-                    : null,
-                items: _departments
-                    .map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) _onDepartmentChanged(v);
-                },
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'يجب اختيار القسم' : null,
-              ),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                    labelText: 'نوع المهمة *',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                value: _selectedTaskType.isEmpty ? null : _selectedTaskType,
-                items: _getTaskTypeItems(),
-                onChanged: (v) {
-                  setState(() {
-                    _selectedTaskType = v ?? '';
-                    if (_selectedTaskType == 'شراء اشتراك') {
-                      if (!_departments.contains('الحسابات')) {
-                        _departments.add('الحسابات');
-                      }
-                      _selectedDepartment = 'الحسابات';
-                      if (widget.currentUserRole == 'فني') {
-                        _selectedTechnician = widget.currentUsername;
-                        _updateSelectedUserPhone();
-                      }
-                    }
-                  });
-                },
-                validator: (v) => (v == null || v.isEmpty)
-                    ? 'يجب اختيار نوع المهمة'
-                    : null,
-              ),
+              // القسم — ثابت عند شراء اشتراك
+              _selectedTaskType == 'شراء اشتراك'
+                  ? TextFormField(
+                      initialValue: 'الحسابات',
+                      readOnly: true,
+                      decoration: InputDecoration(
+                          labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          isDense: true, filled: true, fillColor: Colors.grey.shade100,
+                          suffixIcon: const Icon(Icons.lock_outline, size: 16, color: Colors.grey)),
+                    )
+                  : DropdownButtonFormField<String>(
+                      key: ValueKey('dept_${_selectedDepartment}_${_departments.length}'),
+                      decoration: InputDecoration(
+                          labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                      value: _departments.contains(_selectedDepartment)
+                          ? _selectedDepartment
+                          : null,
+                      items: _departments
+                          .map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) _onDepartmentChanged(v);
+                      },
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'يجب اختيار القسم' : null,
+                    ),
+              // نوع المهمة — ثابت عند شراء اشتراك
+              _selectedTaskType == 'شراء اشتراك'
+                  ? TextFormField(
+                      initialValue: 'شراء اشتراك',
+                      readOnly: true,
+                      decoration: InputDecoration(
+                          labelText: 'نوع المهمة *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          isDense: true, filled: true, fillColor: Colors.grey.shade100,
+                          suffixIcon: const Icon(Icons.lock_outline, size: 16, color: Colors.grey)),
+                    )
+                  : DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                          labelText: 'نوع المهمة *',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                      value: _selectedTaskType.isEmpty ? null : _selectedTaskType,
+                      items: _getTaskTypeItems(),
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedTaskType = v ?? '';
+                          if (_selectedTaskType == 'شراء اشتراك') {
+                            if (!_departments.contains('الحسابات')) {
+                              _departments.add('الحسابات');
+                            }
+                            _selectedDepartment = 'الحسابات';
+                            _selectedTechnician = '';
+                            _selectedLeader = '';
+                            _fetchStaffByDepartment('الحسابات');
+                          }
+                        });
+                      },
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'يجب اختيار نوع المهمة'
+                          : null,
+                    ),
             ),
             SizedBox(height: _isNarrow ? 3 : 6),
             _adaptiveRow(
@@ -870,18 +1130,66 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
             SizedBox(height: _isNarrow ? 3 : 6),
             _adaptiveRow(
+              // FBG — مربع بحث مع تصفية تلقائية
               _fbgOptions.isNotEmpty
-                  ? DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                          labelText: 'FBG *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                      value: _fbgOptions.contains(_fbgController.text.trim()) ? _fbgController.text.trim() : null,
-                      items: _fbgOptions.toSet().map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
-                      onChanged: (v) => setState(() => _fbgController.text = v ?? ''),
-                      validator: (v) => (v == null || v.isEmpty) ? 'يجب اختيار FBG' : null,
+                  ? Autocomplete<String>(
+                      optionsBuilder: (textEditingValue) {
+                        if (textEditingValue.text.isEmpty) return _fbgOptions.toSet();
+                        return _fbgOptions.toSet().where((f) =>
+                            f.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                      },
+                      initialValue: TextEditingValue(text: _fbgController.text),
+                      onSelected: (v) => setState(() => _fbgController.text = v),
+                      fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: 'FBG *',
+                            hintText: 'ابحث عن FBG...',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            isDense: true, filled: true, fillColor: Colors.white,
+                            prefixIcon: const Icon(Icons.search, size: 18),
+                            suffixIcon: controller.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 16),
+                                    onPressed: () { controller.clear(); setState(() => _fbgController.text = ''); },
+                                  )
+                                : null,
+                          ),
+                          onChanged: (v) => _fbgController.text = v,
+                          validator: (_) => _fbgController.text.trim().isEmpty ? 'يجب إدخال FBG' : null,
+                        );
+                      },
+                      optionsViewBuilder: (ctx, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topRight,
+                          child: Material(
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(8),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 200),
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (ctx, i) {
+                                  final option = options.elementAt(i);
+                                  return ListTile(
+                                    dense: true,
+                                    title: Text(option, style: const TextStyle(fontSize: 13)),
+                                    onTap: () => onSelected(option),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     )
                   : TextFormField(
                       controller: _fbgController,
-                      decoration: InputDecoration(labelText: 'FBG *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                      decoration: InputDecoration(labelText: 'FBG *', hintText: 'أدخل FBG...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال FBG' : null,
                     ),
               TextFormField(

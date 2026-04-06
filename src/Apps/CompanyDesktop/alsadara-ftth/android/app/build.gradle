@@ -22,8 +22,8 @@ android {
         applicationId = "com.alsadara.ftth_project"
         minSdkVersion flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 212
-        versionName = "1.6.52"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
 
         // تمكين دعم الأذونات في وقت التشغيل (الإعداد الافتراضي يدعم ذلك، لكن يتم تأكيده هنا)
         multiDexEnabled true
@@ -74,3 +74,5 @@ dependencies {
     // مكتبات أخرى قد تحتاجها
     implementation "androidx.multidex:multidex:2.0.1"
 }
+
+apply plugin: 'com.google.gms.google-services'

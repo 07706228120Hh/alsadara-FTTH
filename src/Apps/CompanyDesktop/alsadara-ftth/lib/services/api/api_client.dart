@@ -133,6 +133,52 @@ class ApiClient {
     return _request('DELETE', endpoint, parser, useInternalKey: useInternalKey);
   }
 
+  /// طلب GET يُرجع الـ JSON body الكامل بدون فك wrapper
+  /// مفيد عندما نحتاج حقول إضافية خارج data (مثل snappedPath, stops)
+  Future<Map<String, dynamic>?> getRaw(
+    String endpoint, {
+    bool useInternalKey = false,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+      final headers = useInternalKey ? _internalHeaders : _headers;
+      final response = await _client
+          .get(uri, headers: headers)
+          .timeout(ApiConfig.connectionTimeout);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final body = jsonDecode(response.body);
+        if (body is Map<String, dynamic>) return body;
+      }
+    } catch (e) {
+      if (kDebugMode) print('❌ getRaw error: $e');
+    }
+    return null;
+  }
+
+  /// طلب DELETE يُرجع الـ JSON body الكامل بدون فك wrapper
+  Future<Map<String, dynamic>?> deleteRaw(
+    String endpoint, {
+    bool useInternalKey = false,
+    Map<String, String>? extraHeaders,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+      final headers = Map<String, String>.from(
+          useInternalKey ? _internalHeaders : _headers);
+      if (extraHeaders != null) headers.addAll(extraHeaders);
+      final response = await _client
+          .delete(uri, headers: headers)
+          .timeout(ApiConfig.connectionTimeout);
+      if (response.body.isNotEmpty) {
+        final body = jsonDecode(response.body);
+        if (body is Map<String, dynamic>) return body;
+      }
+    } catch (e) {
+      if (kDebugMode) print('❌ deleteRaw error: $e');
+    }
+    return null;
+  }
+
   // ============================================
   // Internal Request Handler
   // ============================================

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
@@ -13,6 +13,7 @@ import '../../services/auth_service.dart';
 import '../../services/accounting_service.dart';
 import '../../services/plan_pricing_service.dart';
 import '../../theme/accounting_theme.dart';
+import '../../permissions/permission_manager.dart';
 import '../../theme/accounting_responsive.dart';
 import 'ftth_operator_account_page.dart';
 import 'ftth_operator_linking_page.dart';
@@ -1324,6 +1325,19 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   @override
   Widget build(BuildContext context) {
     final isMobile = context.accR.isMobile;
+
+    // حماية الصفحة بصلاحية
+    if (!PermissionManager.instance.canView('accounting.ftth_operators') &&
+        !PermissionManager.instance.canView('accounting')) {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          appBar: AppBar(title: const Text('غير مصرح')),
+          body: const Center(child: Text('لا تملك صلاحية الوصول لهذه الصفحة')),
+        ),
+      );
+    }
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -5423,7 +5437,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         action: SnackBarAction(
           label: 'فتح',
           textColor: Colors.white,
-          onPressed: () => OpenFile.open(filePath),
+          onPressed: () => OpenFilex.open(filePath),
         ),
       ),
     );

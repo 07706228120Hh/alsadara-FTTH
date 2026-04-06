@@ -14,6 +14,7 @@ import '../../services/whatsapp_template_storage.dart';
 import '../../services/subscription_logs_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../permissions/permission_manager.dart';
 import '../../services/dual_auth_service.dart';
 import '../../whatsapp/services/whatsapp_system_settings_service.dart';
 import '../../whatsapp/services/whatsapp_server_service.dart';
@@ -226,6 +227,9 @@ class SubscriptionDetailsPage extends StatefulWidget {
   final Map<String, bool>? ftthPermissions; // صلاحيات FTTH المحلية
   final String? userRoleHeader; // رأس دور المستخدم
   final String? clientAppHeader; // معرف التطبيق
+  // بيانات الوكيل من المهمة (لتعبئة تلقائية عند التجديد)
+  final String? taskAgentName;
+  final String? taskAgentCode;
 
   const SubscriptionDetailsPage({
     super.key,
@@ -271,6 +275,8 @@ class SubscriptionDetailsPage extends StatefulWidget {
     this.ftthPermissions, // صلاحيات FTTH المحلية
     this.userRoleHeader, // رأس دور المستخدم
     this.clientAppHeader, // رأس التطبيق
+    this.taskAgentName, // اسم الوكيل من المهمة
+    this.taskAgentCode, // كود الوكيل من المهمة
   });
 
   @override
@@ -327,6 +333,17 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   bool hasCustomerWallet = false;
   // مصدر المحفظة المختار للدفع (main أو member)
   String _selectedWalletSource = 'main';
+
+  /// الرصيد الفعلي المتاح للمستخدم الحالي (محفظة العضو إن وُجدت، وإلا الرئيسية)
+  double get _effectiveMainBalance =>
+      hasTeamMemberWallet ? teamMemberWalletBalance : walletBalance;
+
+  /// اسم المحفظة المعروض (محفظة العضو أو الرئيسية)
+  String get _effectiveMainWalletTitle =>
+      hasTeamMemberWallet ? 'محفظتك' : 'المحفظة الرئيسية';
+
+  /// هل المستخدم مدير ويحق له رؤية المحفظة الرئيسية؟
+  bool get _isAdminUser => widget.isAdminFlag == true;
   // مؤقت داخلي لتأجيل الحساب التلقائي بعد اختيار الخطة أو الفترة
   Timer? _autoPriceTimer;
   // حالة خاصة برصيد المحفظة (مستقلة عن isLoading العام)
@@ -486,12 +503,21 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
   // التحقق من امتلاك صلاحية إنشاء أو تجديد اشتراك
   bool get _canCreateOrRenew {
+    // المدير دائماً لديه صلاحية
+    if (widget.isAdminFlag == true) return true;
+
     final perms = widget.importantFtthApiPermissions ?? const [];
-    if (perms.isEmpty) return false;
+    if (perms.isEmpty) {
+      // fallback: إذا لم تُمرر الصلاحيات، تحقق من PermissionManager مباشرة
+      return PermissionManager.instance.canView('subscriptions') ||
+             PermissionManager.instance.canAdd('subscriptions');
+    }
     return perms.map((p) => p.toLowerCase()).any((p) =>
         // الإنجليزية الأصلية
         p.contains('create subscription') ||
         p.contains('renew subscription') ||
+        p.contains('can create') ||
+        p.contains('can renew') ||
         // العربية بعد الترجمة
         p.contains('إنشاء') ||
         p.contains('تجديد'));
@@ -499,10 +525,19 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
   // التحقق من صلاحية التفعيل العادي (يدوي)
   bool get _canManualActivate {
+    // أولاً: تحقق من صلاحية subscriptions.activate الصريحة
+    if (PermissionManager.instance.hasExplicit('subscriptions.activate', 'add')) {
+      return true;
+    }
+
+    // ثانياً: تحقق من صلاحيات FTTH API
     final perms = widget.importantFtthApiPermissions ?? const [];
-    if (perms.isEmpty) return false;
-    return perms.map((p) => p.toLowerCase()).any((p) =>
-        p.contains('manual activate') || p.contains('تفعيل عادي'));
+    if (perms.isNotEmpty) {
+      return perms.map((p) => p.toLowerCase()).any((p) =>
+          p.contains('manual activate') || p.contains('تفعيل عادي'));
+    }
+
+    return false;
   }
 
   // متحكم التمرير للصفحة لعرض شريط تمرير دائم وزر للانتقال للأسفل
@@ -2377,8 +2412,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       }
     }
     final totalPrice = _asDouble(priceDetails!['totalPrice']);
-    if (totalPrice > walletBalance) {
-      setState(() => errorMessage = 'الرصيد غير كافٍ لإتمام العملية');
+    if (totalPrice > _effectiveMainBalance) {
+      setState(() => errorMessage = 'الرصيد غير كافٍ في محفظتك لإتمام العملية');
       return;
     }
     await changeSubscription();
@@ -3893,7 +3928,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     if (_selectedWalletSource == 'customer') {
       available = customerWalletBalance;
     } else {
-      available = walletBalance; // المحفظة الرئيسية (الشريك)
+      available = _effectiveMainBalance; // محفظة العضو إن وُجدت وإلا الرئيسية
     }
     if (cost > available) {
       ftthShowSnackBar(
@@ -4150,15 +4185,15 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       return;
     }
 
-    // التحقق من الرصيد
+    // التحقق من الرصيد (محفظة العضو إن وُجدت وإلا الرئيسية)
     final total = _getFinalTotal();
     final available = _selectedWalletSource == 'customer'
         ? customerWalletBalance
-        : walletBalance;
+        : _effectiveMainBalance;
     if (total > available) {
       ftthShowSnackBar(
         context,
-        const SnackBar(content: Text('الرصيد غير كافٍ')),
+        const SnackBar(content: Text('الرصيد غير كافٍ في محفظتك')),
       );
       return;
     }
@@ -4754,11 +4789,11 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           '💰 حفظ رصيد محفظة العميل قبل العملية: ${customerWalletBalanceBefore.toStringAsFixed(2)}');
     }
 
-    // التحقق من الرصيد حسب المصدر المختار
+    // التحقق من الرصيد حسب المصدر المختار (محفظة العضو إن وُجدت)
     final double cost = _getFinalTotal();
     final double available = _selectedWalletSource == 'customer'
         ? customerWalletBalance
-        : walletBalance;
+        : _effectiveMainBalance;
     if (cost > available) {
       ftthShowSnackBar(
         context,
@@ -4925,7 +4960,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
     String failMsg = 'فشل تنفيذ العملية';
     if (lastResponse != null) {
-      failMsg += ' (HTTP ${lastResponse.statusCode})';
+      if (lastResponse.statusCode == 403) {
+        failMsg = 'ممنوع (403): لا تملك صلاحية تجديد هذا الاشتراك.\n'
+            'قد يكون المشترك تابع لمنطقة أو شريك آخر ليس لديك صلاحية عليه.';
+      } else {
+        failMsg += ' (HTTP ${lastResponse.statusCode})';
+      }
       final rid = lastResponse.headers['requestid'];
       if (rid != null) failMsg += ' | RequestId: $rid';
       try {
@@ -7832,104 +7872,270 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               const SizedBox(height: 6),
 
               // صف 1: أزرار الدفع | المحافظ
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // أزرار طريقة الدفع
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 4),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(child: _buildPaymentOptionButton(title: 'نقد', icon: Icons.attach_money, baseColor: Colors.green.shade600, selected: selectedPaymentMethod == 'نقد', onTap: () => setState(() { selectedPaymentMethod = 'نقد'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
-                            const SizedBox(width: 5),
-                            Expanded(child: _buildPaymentOptionButton(title: 'أجل', icon: Icons.schedule, baseColor: Colors.orange.shade600, selected: selectedPaymentMethod == 'أجل', onTap: () => setState(() { selectedPaymentMethod = 'أجل'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
-                            const SizedBox(width: 5),
-                            Expanded(child: _buildPaymentOptionButton(title: 'ماستر', icon: Icons.credit_card, baseColor: Colors.purple.shade600, selected: selectedPaymentMethod == 'ماستر', onTap: () => setState(() { selectedPaymentMethod = 'ماستر'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
-                            const SizedBox(width: 5),
-                            Expanded(child: _buildPaymentOptionButton(title: 'وكيل', icon: Icons.store, baseColor: Colors.blue.shade600, selected: selectedPaymentMethod == 'وكيل', onTap: () => setState(() { selectedPaymentMethod = 'وكيل'; _selectedLinkedTechnician = null; }))),
-                            const SizedBox(width: 5),
-                            Expanded(child: _buildPaymentOptionButton(title: 'فني', icon: Icons.engineering, baseColor: Colors.teal.shade600, selected: selectedPaymentMethod == 'فني', onTap: () => setState(() { selectedPaymentMethod = 'فني'; _selectedLinkedAgent = null; }))),
-                          ],
-                        ),
+              Builder(builder: (ctx) {
+                final bool isMobileLayout = MediaQuery.of(ctx).size.width < 600;
+                final paymentButtons = Container(
+                  margin: EdgeInsets.only(right: isMobileLayout ? 0 : 4),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                  ),
+                  child: isMobileLayout
+                    ? Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          _buildPaymentOptionButton(title: 'نقد', icon: Icons.attach_money, baseColor: Colors.green.shade600, selected: selectedPaymentMethod == 'نقد', onTap: () => setState(() { selectedPaymentMethod = 'نقد'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; })),
+                          _buildPaymentOptionButton(title: 'أجل', icon: Icons.schedule, baseColor: Colors.orange.shade600, selected: selectedPaymentMethod == 'أجل', onTap: () => setState(() { selectedPaymentMethod = 'أجل'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; })),
+                          _buildPaymentOptionButton(title: 'ماستر', icon: Icons.credit_card, baseColor: Colors.purple.shade600, selected: selectedPaymentMethod == 'ماستر', onTap: () => setState(() { selectedPaymentMethod = 'ماستر'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; })),
+                          _buildPaymentOptionButton(title: 'وكيل', icon: Icons.store, baseColor: Colors.blue.shade600, selected: selectedPaymentMethod == 'وكيل', onTap: () => setState(() { selectedPaymentMethod = 'وكيل'; _selectedLinkedTechnician = null; })),
+                          _buildPaymentOptionButton(title: 'فني', icon: Icons.engineering, baseColor: Colors.teal.shade600, selected: selectedPaymentMethod == 'فني', onTap: () => setState(() { selectedPaymentMethod = 'فني'; _selectedLinkedAgent = null; })),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: _buildPaymentOptionButton(title: 'نقد', icon: Icons.attach_money, baseColor: Colors.green.shade600, selected: selectedPaymentMethod == 'نقد', onTap: () => setState(() { selectedPaymentMethod = 'نقد'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
+                          const SizedBox(width: 5),
+                          Expanded(child: _buildPaymentOptionButton(title: 'أجل', icon: Icons.schedule, baseColor: Colors.orange.shade600, selected: selectedPaymentMethod == 'أجل', onTap: () => setState(() { selectedPaymentMethod = 'أجل'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
+                          const SizedBox(width: 5),
+                          Expanded(child: _buildPaymentOptionButton(title: 'ماستر', icon: Icons.credit_card, baseColor: Colors.purple.shade600, selected: selectedPaymentMethod == 'ماستر', onTap: () => setState(() { selectedPaymentMethod = 'ماستر'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
+                          const SizedBox(width: 5),
+                          Expanded(child: _buildPaymentOptionButton(title: 'وكيل', icon: Icons.store, baseColor: Colors.blue.shade600, selected: selectedPaymentMethod == 'وكيل', onTap: () => setState(() { selectedPaymentMethod = 'وكيل'; _selectedLinkedTechnician = null; }))),
+                          const SizedBox(width: 5),
+                          Expanded(child: _buildPaymentOptionButton(title: 'فني', icon: Icons.engineering, baseColor: Colors.teal.shade600, selected: selectedPaymentMethod == 'فني', onTap: () => setState(() { selectedPaymentMethod = 'فني'; _selectedLinkedAgent = null; }))),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    // المحافظ
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 4),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: _buildWalletSourceSelectBox(
-                                title: 'المحفظة الرئيسية', balance: walletBalance, value: 'main', color: Colors.teal,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            if (hasCustomerWallet)
-                              Expanded(
-                                child: _buildWalletSourceSelectBox(
-                                  title: 'محفظة المشترك', balance: customerWalletBalance, value: 'customer', color: Colors.deepPurple,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              if (selectedPaymentMethod == 'وكيل' || selectedPaymentMethod == 'فني') ...[
-                // صف 2: وكيل/فني | الخصم
-                IntrinsicHeight(
+                );
+                final walletBox = Container(
+                  margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 4),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                        child: _buildWalletSourceSelectBox(
+                          title: _effectiveMainWalletTitle, balance: _effectiveMainBalance, value: 'main', color: Colors.teal,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      if (hasCustomerWallet)
+                        Expanded(
+                          child: _buildWalletSourceSelectBox(
+                            title: 'محفظة المشترك', balance: customerWalletBalance, value: 'customer', color: Colors.deepPurple,
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (selectedPaymentMethod == 'وكيل') Expanded(child: _buildAgentDropdown()),
-                              if (selectedPaymentMethod == 'فني') Expanded(child: _buildTechnicianDropdown()),
-                            ],
+                        ),
+                    ],
+                  ),
+                );
+                if (isMobileLayout) {
+                  return Column(children: [
+                    paymentButtons,
+                    const SizedBox(height: 6),
+                    walletBox,
+                  ]);
+                }
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: paymentButtons),
+                      const SizedBox(width: 6),
+                      Expanded(child: walletBox),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 6),
+
+              if (selectedPaymentMethod == 'وكيل' || selectedPaymentMethod == 'فني') ...[
+                // صف 2: وكيل/فني | الخصم
+                Builder(builder: (ctx) {
+                  final bool isMobileLayout = MediaQuery.of(ctx).size.width < 600;
+                  final agentBox = Container(
+                    margin: EdgeInsets.only(right: isMobileLayout ? 0 : 4),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (selectedPaymentMethod == 'وكيل') SizedBox(height: 48, child: _buildAgentDropdown()),
+                        if (selectedPaymentMethod == 'فني') SizedBox(height: 48, child: _buildTechnicianDropdown()),
+                      ],
+                    ),
+                  );
+                  final discountBox = Container(
+                    margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange.shade400, width: 1.2),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text('الخصم (من النظام)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade800)),
+                                const SizedBox(height: 3),
+                                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                  Flexible(child: Text('${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.orange.shade900), overflow: TextOverflow.ellipsis)),
+                                  Transform.scale(scale: 0.7, child: Switch(value: systemDiscountEnabled, activeColor: Colors.green, onChanged: (v) => setState(() => systemDiscountEnabled = v))),
+                                ]),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _manualDiscountController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))],
+                            decoration: InputDecoration(
+                              isDense: true, labelText: 'الخصم (اختياري)',
+                              floatingLabelAlignment: FloatingLabelAlignment.center,
+                              labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade700),
+                              hintText: '0', suffixText: currency,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black87, width: 2)),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                            ),
+                            onChanged: (v) { setState(() { manualDiscount = double.tryParse(v.trim().isEmpty ? '0' : v) ?? 0.0; if (manualDiscount < 0) manualDiscount = 0.0; }); },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (isMobileLayout) {
+                    return Column(children: [agentBox, const SizedBox(height: 6), discountBox]);
+                  }
+                  return IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [Expanded(child: agentBox), const SizedBox(width: 6), Expanded(child: discountBox)],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 6),
+                // صف 3: ملاحظات | السعر الإجمالي
+                Builder(builder: (ctx) {
+                  final bool isMobileLayout = MediaQuery.of(ctx).size.width < 600;
+                  final notesBox = Container(
+                    margin: EdgeInsets.only(right: isMobileLayout ? 0 : 4),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                      border: Border.all(color: Colors.black54, width: 1.2),
+                    ),
+                    child: TextField(
+                      controller: _notesController,
+                      maxLines: isMobileLayout ? 2 : null,
+                      minLines: isMobileLayout ? 1 : null,
+                      expands: !isMobileLayout,
+                      textAlignVertical: TextAlignVertical.center,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'ملاحظات حول الاشتراك (اختياري)',
+                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade500, width: 2)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                        filled: true, fillColor: Colors.white,
+                        prefixIcon: isDataSavedToServer
+                            ? IconButton(
+                                onPressed: () => _updateNotesOnServer(),
+                                icon: const Icon(Icons.edit_note, size: 18),
+                                tooltip: 'تحديث الملاحظات',
+                                style: IconButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.all(4), minimumSize: const Size(28, 28)),
+                              )
+                            : null,
+                        suffixIcon: GestureDetector(
+                          onTap: () => setState(() => isNotesEnabled = !isNotesEnabled),
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(color: isNotesEnabled ? Colors.green : Colors.grey.shade400, borderRadius: BorderRadius.circular(10)),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(isNotesEnabled ? Icons.toggle_on : Icons.toggle_off, color: Colors.white, size: 14),
+                              const SizedBox(width: 2),
+                              Text(isNotesEnabled ? 'مفعل' : 'معطل', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                            ]),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.only(left: 4),
+                      onChanged: (value) => subscriptionNotes = value,
+                    ),
+                  );
+                  final totalBox = Container(
+                    margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                      border: Border.all(color: Colors.black54, width: 1.5),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("السعر الإجمالي", style: TextStyle(fontSize: 13, color: Colors.green.shade700, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        FittedBox(fit: BoxFit.scaleDown, child: Text("${_formatNumber(finalTotal.round())} $currency", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.green.shade800), textAlign: TextAlign.center)),
+                        if (manualDiscount > 0)
+                          Text("خصم: -${_formatNumber(manualDiscount.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.green.shade600, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                      ],
+                    ),
+                  );
+                  if (isMobileLayout) {
+                    return Column(children: [notesBox, const SizedBox(height: 6), totalBox]);
+                  }
+                  return IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [Expanded(child: notesBox), const SizedBox(width: 6), Expanded(child: totalBox)],
+                    ),
+                  );
+                }),
+              ] else ...[
+                // صف 2+3 مدمج: ملاحظات (يسار) | الخصم + السعر (يمين)
+                Builder(
+                  builder: (ctx) {
+                    final bool isMobileLayout = MediaQuery.of(ctx).size.width < 600;
+                    final rightColumn = Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.9),
                             border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
                           ),
                           child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Expanded(
                                 child: Container(
@@ -7945,7 +8151,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                       Text('الخصم (من النظام)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade800)),
                                       const SizedBox(height: 3),
                                       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                        Text('${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.orange.shade900)),
+                                        Flexible(child: Text('${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.orange.shade900), overflow: TextOverflow.ellipsis)),
                                         Transform.scale(scale: 0.7, child: Switch(value: systemDiscountEnabled, activeColor: Colors.green, onChanged: (v) => setState(() => systemDiscountEnabled = v))),
                                       ]),
                                     ],
@@ -7956,10 +8162,6 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                               Expanded(
                                 child: TextField(
                                   controller: _manualDiscountController,
-                                  expands: true,
-                                  maxLines: null,
-                                  minLines: null,
-                                  textAlignVertical: TextAlignVertical.center,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
@@ -7980,169 +8182,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                // صف 3: ملاحظات | السعر الإجمالي
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 4),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                            border: Border.all(color: Colors.black54, width: 1.2),
-                          ),
-                          child: TextField(
-                            controller: _notesController,
-                            expands: true,
-                            maxLines: null,
-                            minLines: null,
-                            textAlignVertical: TextAlignVertical.center,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              hintText: 'ملاحظات حول الاشتراك (اختياري)',
-                              hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2)),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade500, width: 2)),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                              filled: true, fillColor: Colors.white,
-                              prefixIcon: isDataSavedToServer
-                                  ? IconButton(
-                                      onPressed: () => _updateNotesOnServer(),
-                                      icon: const Icon(Icons.edit_note, size: 18),
-                                      tooltip: 'تحديث الملاحظات',
-                                      style: IconButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.all(4), minimumSize: const Size(28, 28)),
-                                    )
-                                  : null,
-                              suffixIcon: GestureDetector(
-                                onTap: () => setState(() => isNotesEnabled = !isNotesEnabled),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                  decoration: BoxDecoration(color: isNotesEnabled ? Colors.green : Colors.grey.shade400, borderRadius: BorderRadius.circular(10)),
-                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Icon(isNotesEnabled ? Icons.toggle_on : Icons.toggle_off, color: Colors.white, size: 14),
-                                    const SizedBox(width: 2),
-                                    Text(isNotesEnabled ? 'مفعل' : 'معطل', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                                  ]),
-                                ),
-                              ),
-                            ),
-                            onChanged: (value) => subscriptionNotes = value,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                            border: Border.all(color: Colors.black54, width: 1.5),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text("السعر الإجمالي", style: TextStyle(fontSize: 13, color: Colors.green.shade700, fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 4),
-                              Text("${_formatNumber(finalTotal.round())} $currency", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.green.shade800), textAlign: TextAlign.center),
-                              if (manualDiscount > 0)
-                                Text("خصم: -${_formatNumber(manualDiscount.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.green.shade600, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                // صف 2+3 مدمج: ملاحظات (يسار) | الخصم + السعر (يمين)
-                // نستخدم Row مع LayoutBuilder لتحقيق تطابق الارتفاع
-                Builder(
-                  builder: (context) {
-                    // بناء الجانب الأيمن (الخصم + السعر) كـ Column
-                    final rightColumn = Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // الخصم
-                        Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
-                          ),
-                          child: IntrinsicHeight(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.shade50,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.orange.shade400, width: 1.2),
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text('الخصم (من النظام)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade800)),
-                                        const SizedBox(height: 3),
-                                        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                          Text('${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.orange.shade900)),
-                                          Transform.scale(scale: 0.7, child: Switch(value: systemDiscountEnabled, activeColor: Colors.green, onChanged: (v) => setState(() => systemDiscountEnabled = v))),
-                                        ]),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _manualDiscountController,
-                                    expands: true,
-                                    maxLines: null,
-                                    minLines: null,
-                                    textAlignVertical: TextAlignVertical.center,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))],
-                                    decoration: InputDecoration(
-                                      isDense: true, labelText: 'الخصم (اختياري)',
-                                      floatingLabelAlignment: FloatingLabelAlignment.center,
-                                      labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade700),
-                                      hintText: '0', suffixText: currency,
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
-                                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
-                                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black87, width: 2)),
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-                                    ),
-                                    onChanged: (v) { setState(() { manualDiscount = double.tryParse(v.trim().isEmpty ? '0' : v) ?? 0.0; if (manualDiscount < 0) manualDiscount = 0.0; }); },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                         const SizedBox(height: 6),
-                        // السعر الإجمالي
                         Container(
                           width: double.infinity,
-                          margin: const EdgeInsets.only(left: 4),
+                          margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           decoration: BoxDecoration(
                             color: Colors.green.shade50,
@@ -8154,7 +8197,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                             children: [
                               Text("السعر الإجمالي", style: TextStyle(fontSize: 13, color: Colors.green.shade700, fontWeight: FontWeight.w700)),
                               const SizedBox(height: 4),
-                              Text("${_formatNumber(finalTotal.round())} $currency", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.green.shade800), textAlign: TextAlign.center),
+                              FittedBox(fit: BoxFit.scaleDown, child: Text("${_formatNumber(finalTotal.round())} $currency", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.green.shade800), textAlign: TextAlign.center)),
                               if (manualDiscount > 0)
                                 Text("خصم: -${_formatNumber(manualDiscount.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.green.shade600, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
                             ],
@@ -8163,63 +8206,64 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       ],
                     );
 
+                    final notesBox = Container(
+                      margin: EdgeInsets.only(right: isMobileLayout ? 0 : 4),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                        border: Border.all(color: Colors.black54, width: 1.2),
+                      ),
+                      child: TextField(
+                        controller: _notesController,
+                        maxLines: null,
+                        minLines: isMobileLayout ? 2 : 5,
+                        textAlignVertical: TextAlignVertical.top,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'ملاحظات حول الاشتراك (اختياري)',
+                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                          prefixIcon: isDataSavedToServer
+                              ? IconButton(
+                                  onPressed: () => _updateNotesOnServer(),
+                                  icon: const Icon(Icons.edit_note, size: 18),
+                                  tooltip: 'تحديث الملاحظات',
+                                  style: IconButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.all(4), minimumSize: const Size(28, 28)),
+                                )
+                              : null,
+                          suffixIcon: GestureDetector(
+                            onTap: () => setState(() => isNotesEnabled = !isNotesEnabled),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(color: isNotesEnabled ? Colors.green : Colors.grey.shade400, borderRadius: BorderRadius.circular(10)),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(isNotesEnabled ? Icons.toggle_on : Icons.toggle_off, color: Colors.white, size: 14),
+                                const SizedBox(width: 2),
+                                Text(isNotesEnabled ? 'مفعل' : 'معطل', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                              ]),
+                            ),
+                          ),
+                        ),
+                        onChanged: (value) => subscriptionNotes = value,
+                      ),
+                    );
+
+                    if (isMobileLayout) {
+                      return Column(children: [notesBox, const SizedBox(height: 6), rightColumn]);
+                    }
                     return IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // الملاحظات — تأخذ ارتفاع الصفين معاً
-                          Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 4),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                                border: Border.all(color: Colors.black54, width: 1.2),
-                              ),
-                              child: TextField(
-                                controller: _notesController,
-                                maxLines: null,
-                                minLines: 5,
-                                textAlignVertical: TextAlignVertical.top,
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  hintText: 'ملاحظات حول الاشتراك (اختياري)',
-                                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                                  prefixIcon: isDataSavedToServer
-                                      ? IconButton(
-                                          onPressed: () => _updateNotesOnServer(),
-                                          icon: const Icon(Icons.edit_note, size: 18),
-                                          tooltip: 'تحديث الملاحظات',
-                                          style: IconButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.all(4), minimumSize: const Size(28, 28)),
-                                        )
-                                      : null,
-                                  suffixIcon: GestureDetector(
-                                    onTap: () => setState(() => isNotesEnabled = !isNotesEnabled),
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                      decoration: BoxDecoration(color: isNotesEnabled ? Colors.green : Colors.grey.shade400, borderRadius: BorderRadius.circular(10)),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        Icon(isNotesEnabled ? Icons.toggle_on : Icons.toggle_off, color: Colors.white, size: 14),
-                                        const SizedBox(width: 2),
-                                        Text(isNotesEnabled ? 'مفعل' : 'معطل', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                                      ]),
-                                    ),
-                                  ),
-                                ),
-                                onChanged: (value) => subscriptionNotes = value,
-                              ),
-                            ),
-                          ),
+                          Expanded(child: notesBox),
                           const SizedBox(width: 6),
-                          // الخصم + السعر الإجمالي عمودياً
                           Expanded(child: rightColumn),
                         ],
                       ),
@@ -8354,7 +8398,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _buildWalletSourceSelectBox(title: 'المحفظة الرئيسية', balance: walletBalance, value: 'main', color: Colors.teal)),
+              Expanded(child: _buildWalletSourceSelectBox(title: _effectiveMainWalletTitle, balance: _effectiveMainBalance, value: 'main', color: Colors.teal)),
               if (hasCustomerWallet) ...[
                 const SizedBox(width: 6),
                 Expanded(child: _buildWalletSourceSelectBox(title: 'محفظة المشترك', balance: customerWalletBalance, value: 'customer', color: Colors.deepPurple)),
@@ -9417,27 +9461,29 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           foregroundColor: Colors.white,
           actionsIconTheme: const IconThemeData(color: Colors.white),
           actions: [
-            // زر الطباعة اليدوية
-            IconButton(
-              tooltip: _isPrinting
-                  ? 'جاري الطباعة...'
-                  : (isPrinted ? 'طباعة وصل (تم الطباعة $_printCount مرة)' : 'طباعة وصل'),
-              icon: _isPrinting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : Badge(
-                      isLabelVisible: _printCount > 0,
-                      label: Text('$_printCount', style: const TextStyle(fontSize: 10)),
-                      child: Icon(
-                        isPrinted ? Icons.print : Icons.print_outlined,
-                        color: isPrinted ? Colors.greenAccent : Colors.white,
+            // زر الطباعة اليدوية (يحتاج صلاحية subscriptions.print_receipt)
+            if (PermissionManager.instance.hasExplicit('subscriptions.print_receipt', 'print') ||
+                PermissionManager.instance.canPrint('subscriptions'))
+              IconButton(
+                tooltip: _isPrinting
+                    ? 'جاري الطباعة...'
+                    : (isPrinted ? 'طباعة وصل (تم الطباعة $_printCount مرة)' : 'طباعة وصل'),
+                icon: _isPrinting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Badge(
+                        isLabelVisible: _printCount > 0,
+                        label: Text('$_printCount', style: const TextStyle(fontSize: 10)),
+                        child: Icon(
+                          isPrinted ? Icons.print : Icons.print_outlined,
+                          color: isPrinted ? Colors.greenAccent : Colors.white,
+                        ),
                       ),
-                    ),
-              onPressed: _isPrinting ? null : printSubscriptionReceipt,
-            ),
+                onPressed: _isPrinting ? null : printSubscriptionReceipt,
+              ),
             // زر فتح صفحة المشترك في GPON - تم إخفاؤه بناءً على طلب المستخدم
             // IconButton(
             //   tooltip: 'فتح صفحة المشترك',
@@ -10322,6 +10368,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           setState(() {
             _agentsList = List<Map<String, dynamic>>.from(data['data']);
           });
+          // تعبئة تلقائية للوكيل من بيانات المهمة
+          _autoSelectTaskAgent();
         }
         debugPrint('🟦🟦🟦 [AGENTS] عدد: ${_agentsList.length}');
         for (var i = 0; i < _agentsList.length && i < 3; i++) {
@@ -10340,6 +10388,28 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     } finally {
       if (mounted) setState(() => _isLoadingAgents = false);
     }
+  }
+
+  /// تعبئة تلقائية للوكيل من بيانات المهمة (إن وُجدت)
+  void _autoSelectTaskAgent() {
+    if (widget.taskAgentCode == null && widget.taskAgentName == null) return;
+    if (_agentsList.isEmpty || _selectedLinkedAgent != null) return;
+
+    for (final agent in _agentsList) {
+      final code = agent['AgentCode']?.toString() ?? '';
+      final name = agent['Name']?.toString() ?? '';
+      if ((widget.taskAgentCode != null && code == widget.taskAgentCode) ||
+          (widget.taskAgentName != null && name == widget.taskAgentName)) {
+        setState(() {
+          selectedPaymentMethod = 'وكيل';
+          _selectedLinkedAgent = agent;
+          _selectedLinkedTechnician = null;
+        });
+        debugPrint('🟦 [AUTO-AGENT] تم اختيار الوكيل تلقائياً: $name ($code)');
+        return;
+      }
+    }
+    debugPrint('🟦 [AUTO-AGENT] لم يُعثر على وكيل مطابق: ${widget.taskAgentCode ?? widget.taskAgentName}');
   }
 
   /// جلب قائمة الفنيين من السيرفر (يُستدعى في initState فقط — لا يُستدعى عند الضغط)
