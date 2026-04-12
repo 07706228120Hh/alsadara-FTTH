@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/sadara_api_service.dart';
 import '../services/vps_auth_service.dart';
@@ -74,6 +75,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   final _fieldUsernameCtrl = TextEditingController();
   final _fieldPasswordCtrl = TextEditingController();
   bool _showFieldPassword = false;
+
+  // التحكم المحلي بالتذكير لهذا الجهاز
+  bool _localReminderEnabled = false; // معطّل افتراضياً
 
   // إعدادات التذكير التلقائي
   bool _autoReminderEnabled = false;
@@ -1246,6 +1250,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
 
   Future<void> _loadReminderSettings() async {
     if (!mounted) return;
+    // تحميل الإعداد المحلي لهذا الجهاز
+    final prefs = await SharedPreferences.getInstance();
+    _localReminderEnabled = prefs.getBool('local_reminder_enabled') ?? false;
+    if (!_localReminderEnabled) {
+      // الجهاز معطّل — لا نحمّل الإعدادات من السيرفر
+      if (mounted) setState(() => _isReminderLoading = false);
+      return;
+    }
     setState(() => _isReminderLoading = true);
     try {
       final tid = _resolvedTenantId ?? 'default';
@@ -1711,6 +1723,43 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               ],
             ),
           ),
+          // تفعيل/تعطيل على هذا الجهاز (محلي)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _localReminderEnabled ? Colors.green.shade50 : Colors.red.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _localReminderEnabled ? Colors.green.shade300 : Colors.red.shade300),
+            ),
+            child: SwitchListTile(
+              title: Text('تفعيل التذكير على هذا الجهاز',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: Text(
+                  _localReminderEnabled
+                      ? 'مفعّل — هذا الجهاز سيتحكم بإعدادات التذكير'
+                      : 'معطّل — إعدادات التذكير لا تُحمّل ولا تُعدّل من هذا الجهاز',
+                  style: GoogleFonts.cairo(fontSize: 11, color: _localReminderEnabled ? Colors.green.shade700 : Colors.red.shade700)),
+              value: _localReminderEnabled,
+              onChanged: (v) async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('local_reminder_enabled', v);
+                setState(() => _localReminderEnabled = v);
+                if (v) _loadReminderSettings(); // تحميل الإعدادات عند التفعيل
+              },
+              activeColor: Colors.green,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          if (!_localReminderEnabled)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Text('قم بتفعيل التذكير على هذا الجهاز للتحكم بالإعدادات',
+                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 13)),
+              ),
+            ),
+          if (_localReminderEnabled) ...[
           // تفعيل/تعطيل
           SwitchListTile(
             title: Text('تفعيل التذكير التلقائي',
@@ -2016,6 +2065,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               ),
             ),
           ],
+          ], // end if (_localReminderEnabled)
           const SizedBox(height: 12),
         ],
       ),

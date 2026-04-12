@@ -1051,21 +1051,24 @@ public class ServiceRequestsController : ControllerBase
     {
         try
         {
-            // التحقق من عدم وجود مهمة مكررة لنفس رقم الهاتف في نفس اليوم
+            // التحقق من عدم وجود مهمة مكررة لنفس رقم الهاتف ونفس النوع في نفس اليوم
+            // مهمة "تركيب" لا تمنع "شراء اشتراك" — فقط نفس النوع يُمنع
             if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
             {
                 var todayUtc = DateTime.UtcNow.Date;
+                var taskType = dto.TaskType ?? "";
                 var duplicate = await _unitOfWork.ServiceRequests.FirstOrDefaultAsync(r =>
                     r.ContactPhone == dto.CustomerPhone &&
                     r.CreatedAt >= todayUtc &&
-                    r.Status != ServiceRequestStatus.Cancelled);
+                    r.Status != ServiceRequestStatus.Cancelled &&
+                    r.Details != null && r.Details.Contains(taskType));
 
                 if (duplicate != null)
                 {
                     return Conflict(new
                     {
                         success = false,
-                        message = $"توجد مهمة مفتوحة اليوم لنفس الرقم ({dto.CustomerPhone}) — رقم الطلب: {duplicate.RequestNumber}",
+                        message = $"توجد مهمة '{taskType}' اليوم لنفس الرقم ({dto.CustomerPhone}) — رقم الطلب: {duplicate.RequestNumber}",
                         existingRequestNumber = duplicate.RequestNumber,
                         existingRequestId = duplicate.Id
                     });
