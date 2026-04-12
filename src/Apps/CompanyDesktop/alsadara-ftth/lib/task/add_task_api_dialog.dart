@@ -220,10 +220,11 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     if (staffResult['success'] == true && staffResult['data'] != null) {
       final data = staffResult['data'];
       final leadersList = data['leaders'] as List? ?? [];
-      final techniciansList = data['technicians'] as List? ?? [];
+      // نستخدم allStaff (كل موظفي القسم: فنيين + قادة + موظفين) بدلاً من technicians فقط
+      final allStaffList = data['allStaff'] as List? ?? data['technicians'] as List? ?? [];
 
       List<String> leaders = [];
-      List<String> technicians = [];
+      List<String> allDeptStaff = [];
       Map<String, String> phones = {};
 
       for (var leader in leadersList) {
@@ -235,11 +236,11 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         }
       }
 
-      for (var tech in techniciansList) {
-        final name = tech['Name']?.toString() ?? '';
-        final phone = tech['PhoneNumber']?.toString() ?? '';
+      for (var staff in allStaffList) {
+        final name = staff['Name']?.toString() ?? '';
+        final phone = staff['PhoneNumber']?.toString() ?? '';
         if (name.isNotEmpty) {
-          if (!technicians.contains(name)) technicians.add(name);
+          if (!allDeptStaff.contains(name)) allDeptStaff.add(name);
           if (phone.isNotEmpty) phones[name] = phone;
         }
       }
@@ -247,10 +248,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       if (mounted) {
         setState(() {
           _leaders = leaders;
-          _technicians = technicians;
+          _technicians = allDeptStaff;
           _userPhones = phones;
-
-          // عند شراء اشتراك: الفني يُختار من قسم الحسابات فقط (لا نضيف الفني الحالي)
         });
         _updateSelectedUserPhone();
       }
@@ -851,7 +850,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       case 0:
         if (_selectedDepartment.isEmpty) { _showError('يجب اختيار القسم'); return false; }
         if (_selectedTaskType.isEmpty) { _showError('يجب اختيار نوع المهمة'); return false; }
-        if (_selectedTaskType != 'شراء اشتراك' && _selectedTechnician.isEmpty) { _showError('يجب اختيار فني'); return false; }
+        if (_selectedTechnician.isEmpty) { _showError('يجب اختيار فني'); return false; }
         return true;
       case 1:
         if (_usernameController.text.trim().isEmpty) { _showError('يجب إدخال اسم العميل'); return false; }
@@ -1035,7 +1034,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                   });
                 },
                 validator: (v) {
-                  if (_selectedTaskType != 'شراء اشتراك' && v.isEmpty) return 'يجب اختيار فني';
+                  if (v.isEmpty) return 'يجب اختيار فني';
                   return null;
                 },
               ),
@@ -1379,7 +1378,10 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     required ValueChanged<String> onSelected,
     String? Function(String)? validator,
   }) {
+    // key يتغير عند تغيير القائمة لإجبار إعادة بناء Autocomplete
+    final dropdownKey = ValueKey('${label}_${items.length}_${items.hashCode}_$selectedValue');
     return LayoutBuilder(
+      key: dropdownKey,
       builder: (context, constraints) {
         return Autocomplete<String>(
           optionsBuilder: (textEditingValue) {

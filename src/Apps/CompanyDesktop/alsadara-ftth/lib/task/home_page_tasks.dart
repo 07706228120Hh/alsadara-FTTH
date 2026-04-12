@@ -1775,6 +1775,13 @@ class HomePageTasksState extends State<HomePageTasks> {
     int badgeCount = 0,
   }) {
     bool isSelected = currentIndex == index;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 500;
+    final isSmallMobile = screenWidth < 380;
+    final iconSize = isSmallMobile ? 16.0 : isMobile ? 18.0 : 20.0;
+    final fontSize = isSmallMobile ? 8.0 : isMobile ? 9.0 : 11.0;
+    final hMargin = isSmallMobile ? 1.0 : isMobile ? 2.0 : 3.0;
+    final hPadding = isSmallMobile ? 2.0 : isMobile ? 3.0 : 4.0;
 
     return Expanded(
       child: GestureDetector(
@@ -1788,8 +1795,8 @@ class HomePageTasksState extends State<HomePageTasks> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          margin: EdgeInsets.symmetric(horizontal: hMargin),
+          padding: EdgeInsets.symmetric(vertical: 6, horizontal: hPadding),
           constraints: const BoxConstraints(
             minHeight: 48,
             maxHeight: 56,
@@ -1826,26 +1833,28 @@ class HomePageTasksState extends State<HomePageTasks> {
                       child: Icon(
                         icon,
                         color: isSelected ? Colors.white : color,
-                        size: 20,
+                        size: iconSize,
                       ),
                     )
                   : Icon(
                       icon,
                       color: isSelected ? Colors.white : color,
-                      size: 20,
+                      size: iconSize,
                     ),
               const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF6B7280),
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  height: 1.0,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF6B7280),
+                    fontSize: fontSize,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    height: 1.0,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -2247,18 +2256,21 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   /// أيقونة شريط أدوات موحّدة
   Widget _buildBarIcon(IconData icon, VoidCallback onTap) {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+    final iconSize = isMobile ? 18.0 : 22.0;
+    final pad = isMobile ? 6.0 : 8.0;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(pad),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 22, color: Colors.white),
+          child: Icon(icon, size: iconSize, color: Colors.white),
         ),
       ),
     );
@@ -2344,41 +2356,7 @@ class HomePageTasksState extends State<HomePageTasks> {
   }
 
   void _showMoreMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              if (_shouldShowDrawer())
-                _buildMenuTile(
-                    Icons.menu_open, 'القائمة الجانبية', Colors.indigo, () {
-                  Navigator.pop(ctx);
-                  openDrawer();
-                }),
-              _buildMenuTile(Icons.info_outline, 'حول التطبيق', Colors.grey,
-                  () {
-                Navigator.pop(ctx);
-                _showAboutDialog();
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
+    openDrawer();
   }
 
   Widget _buildMenuTile(

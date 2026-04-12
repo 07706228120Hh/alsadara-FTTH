@@ -1307,6 +1307,94 @@ public class ServiceRequestsController : ControllerBase
     }
 
     /// <summary>
+    /// تعديل بيانات المهمة (بدون تغيير الحالة تلقائياً)
+    /// </summary>
+    [HttpPatch("{id:guid}/update-task")]
+    [Authorize(Policy = "TechnicianOrAbove")]
+    public async Task<IActionResult> UpdateTask(Guid id, [FromBody] UpdateTaskDto dto)
+    {
+        var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
+        if (request == null)
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
+        // تحديث Details JSON
+        var details = new Dictionary<string, object?>();
+        if (!string.IsNullOrEmpty(request.Details))
+        {
+            try
+            {
+                details = JsonSerializer.Deserialize<Dictionary<string, object?>>(request.Details) ?? new();
+            }
+            catch { details = new(); }
+        }
+
+        if (dto.Department != null) details["department"] = dto.Department;
+        if (dto.Leader != null) details["leader"] = dto.Leader;
+        if (dto.Technician != null) details["technician"] = dto.Technician;
+        if (dto.TechnicianPhone != null) details["technicianPhone"] = dto.TechnicianPhone;
+        if (dto.FBG != null) details["fbg"] = dto.FBG;
+        if (dto.FAT != null) details["fat"] = dto.FAT;
+        if (dto.Notes != null) details["notes"] = dto.Notes;
+        if (dto.Summary != null) details["summary"] = dto.Summary;
+        if (dto.Priority != null) details["priority"] = dto.Priority;
+
+        // تحديث الحقول المباشرة
+        if (dto.CustomerName != null) details["customerName"] = dto.CustomerName;
+        if (dto.CustomerPhone != null) { details["customerPhone"] = dto.CustomerPhone; request.ContactPhone = dto.CustomerPhone; }
+        if (dto.Location != null) request.Address = dto.Location;
+        if (dto.Amount.HasValue) request.FinalCost = dto.Amount.Value;
+
+        // تحديث الحالة إن أُرسلت
+        var oldStatus = request.Status;
+        if (!string.IsNullOrEmpty(dto.Status) && Enum.TryParse<ServiceRequestStatus>(dto.Status, true, out var newStatus) && newStatus != oldStatus)
+        {
+            if (!IsValidStatusTransition(oldStatus, newStatus))
+            {
+                return BadRequest(new { success = false, message = $"لا يمكن الانتقال من '{oldStatus}' إلى '{newStatus}'" });
+            }
+            request.Status = newStatus;
+            request.StatusNote = dto.Notes;
+
+            switch (newStatus)
+            {
+                case ServiceRequestStatus.Reviewing: request.ReviewedAt = DateTime.UtcNow; break;
+                case ServiceRequestStatus.InProgress: request.StartedAt = DateTime.UtcNow; break;
+                case ServiceRequestStatus.Completed: request.CompletedAt = DateTime.UtcNow; break;
+                case ServiceRequestStatus.Cancelled: request.CancelledAt = DateTime.UtcNow; break;
+            }
+
+            var history = new ServiceRequestStatusHistory
+            {
+                ServiceRequestId = id,
+                FromStatus = oldStatus,
+                ToStatus = newStatus,
+                Note = dto.Notes ?? "تعديل المهمة",
+                ChangedById = GetCurrentUserId(),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.ServiceRequestStatusHistories.AddAsync(history);
+        }
+
+        // تحديث الفني
+        if (!string.IsNullOrEmpty(dto.Technician))
+        {
+            var techUser = await _unitOfWork.Users.AsQueryable()
+                .FirstOrDefaultAsync(u => u.FullName == dto.Technician && !u.IsDeleted);
+            if (techUser != null)
+                request.TechnicianId = techUser.Id;
+        }
+
+        request.Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+        request.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.ServiceRequests.Update(request);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("تم تعديل المهمة {Id}", id);
+        return Ok(new { success = true, message = "تم تعديل المهمة بنجاح" });
+    }
+
+    /// <summary>
     /// بيانات القوائم المنسدلة للمهام (الأقسام، الفنيين، إلخ)
     /// </summary>
     [HttpGet("task-lookup")]
@@ -1573,9 +1661,9 @@ public class ServiceRequestsController : ControllerBase
         [ServiceRequestStatus.Assigned] = new[] { ServiceRequestStatus.InProgress, ServiceRequestStatus.Completed, ServiceRequestStatus.OnHold, ServiceRequestStatus.Cancelled },
         [ServiceRequestStatus.InProgress] = new[] { ServiceRequestStatus.Completed, ServiceRequestStatus.OnHold, ServiceRequestStatus.Cancelled },
         [ServiceRequestStatus.OnHold] = new[] { ServiceRequestStatus.InProgress, ServiceRequestStatus.Assigned, ServiceRequestStatus.Cancelled },
-        [ServiceRequestStatus.Completed] = Array.Empty<ServiceRequestStatus>(),  // حالة نهائية
-        [ServiceRequestStatus.Cancelled] = Array.Empty<ServiceRequestStatus>(),  // حالة نهائية
-        [ServiceRequestStatus.Rejected] = Array.Empty<ServiceRequestStatus>(),   // حالة نهائية
+        [ServiceRequestStatus.Completed] = new[] { ServiceRequestStatus.Pending, ServiceRequestStatus.Reviewing, ServiceRequestStatus.Assigned, ServiceRequestStatus.InProgress, ServiceRequestStatus.OnHold, ServiceRequestStatus.Cancelled },
+        [ServiceRequestStatus.Cancelled] = new[] { ServiceRequestStatus.Pending, ServiceRequestStatus.Reviewing, ServiceRequestStatus.Assigned, ServiceRequestStatus.InProgress, ServiceRequestStatus.OnHold, ServiceRequestStatus.Completed },
+        [ServiceRequestStatus.Rejected] = new[] { ServiceRequestStatus.Pending, ServiceRequestStatus.Reviewing, ServiceRequestStatus.Assigned, ServiceRequestStatus.InProgress, ServiceRequestStatus.OnHold },
     };
 
     private static bool IsValidStatusTransition(ServiceRequestStatus from, ServiceRequestStatus to)
@@ -2046,6 +2134,27 @@ public class CreateTaskDto
     
     /// <summary>معرف نوع العملية (اختياري)</summary>
     public int? OperationTypeId { get; set; }
+}
+
+/// <summary>
+/// تعديل بيانات المهمة
+/// </summary>
+public class UpdateTaskDto
+{
+    public string? Status { get; set; }
+    public string? Department { get; set; }
+    public string? Leader { get; set; }
+    public string? Technician { get; set; }
+    public string? TechnicianPhone { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? FBG { get; set; }
+    public string? FAT { get; set; }
+    public string? Location { get; set; }
+    public string? Notes { get; set; }
+    public string? Summary { get; set; }
+    public string? Priority { get; set; }
+    public decimal? Amount { get; set; }
 }
 
 /// <summary>

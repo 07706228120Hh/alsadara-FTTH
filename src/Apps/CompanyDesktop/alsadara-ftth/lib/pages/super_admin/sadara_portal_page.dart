@@ -2620,7 +2620,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         leaders = (staff['leaders'] as List<dynamic>? ?? [])
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
-        technicians = (staff['technicians'] as List<dynamic>? ?? [])
+        // نستخدم allStaff (كل موظفي القسم) بدلاً من technicians فقط
+        technicians = (staff['allStaff'] as List<dynamic>? ?? staff['technicians'] as List<dynamic>? ?? [])
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
         techPhones = {};

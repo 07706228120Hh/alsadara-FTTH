@@ -1144,8 +1144,21 @@ class _TaskCardState extends State<TaskCard> {
     }
 
     String selectedStatus = widget.task.status;
+    // تنسيق المبلغ المبدئي بفواصل المراتب
+    String initialAmount = widget.task.amount.replaceAll(',', '');
+    if (initialAmount.isNotEmpty) {
+      final digits = initialAmount.replaceAll(RegExp(r'[^\d]'), '');
+      if (digits.isNotEmpty) {
+        final buf = StringBuffer();
+        for (int i = 0; i < digits.length; i++) {
+          if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
+          buf.write(digits[i]);
+        }
+        initialAmount = buf.toString();
+      }
+    }
     final TextEditingController amountController =
-        TextEditingController(text: widget.task.amount);
+        TextEditingController(text: initialAmount);
     final TextEditingController notesController =
         TextEditingController(text: widget.task.notes);
     bool controllersDisposed = false;
@@ -1284,10 +1297,9 @@ class _TaskCardState extends State<TaskCard> {
                               style: const TextStyle(
                                   fontSize: 14, fontWeight: FontWeight.w600),
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9.]')),
                                 TextInputFormatter.withFunction(
                                     (oldValue, newValue) {
+                                  // تحويل الأرقام العربية
                                   String converted = newValue.text
                                       .replaceAll('٠', '0')
                                       .replaceAll('١', '1')
@@ -1299,14 +1311,27 @@ class _TaskCardState extends State<TaskCard> {
                                       .replaceAll('٧', '7')
                                       .replaceAll('٨', '8')
                                       .replaceAll('٩', '9');
+                                  // إزالة كل شيء ماعدا الأرقام
+                                  final digits = converted.replaceAll(RegExp(r'[^\d]'), '');
+                                  if (digits.isEmpty) {
+                                    return const TextEditingValue(text: '', selection: TextSelection.collapsed(offset: 0));
+                                  }
+                                  // إضافة فواصل المراتب
+                                  final buffer = StringBuffer();
+                                  final len = digits.length;
+                                  for (int i = 0; i < len; i++) {
+                                    if (i > 0 && (len - i) % 3 == 0) buffer.write(',');
+                                    buffer.write(digits[i]);
+                                  }
+                                  final formatted = buffer.toString();
                                   return TextEditingValue(
-                                      text: converted,
+                                      text: formatted,
                                       selection: TextSelection.collapsed(
-                                          offset: converted.length));
+                                          offset: formatted.length));
                                 }),
                               ],
                               decoration: InputDecoration(
-                                hintText: '0.00',
+                                hintText: '0',
                                 hintStyle:
                                     TextStyle(color: Colors.grey.shade400),
                                 filled: true,
@@ -1415,6 +1440,18 @@ class _TaskCardState extends State<TaskCard> {
                                   final String notes =
                                       notesController.text.trim();
 
+                                  // التحقق: المبلغ إذا أُدخل يجب أن يكون 1000 على الأقل
+                                  final digits = amount.replaceAll(RegExp(r'[^\d]'), '');
+                                  if (digits.isNotEmpty && digits.length < 4) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('المبلغ يجب أن يكون 1,000 على الأقل'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
                                   disposeControllers();
                                   Navigator.of(dialogContext).pop();
 
@@ -1521,7 +1558,7 @@ class _TaskCardState extends State<TaskCard> {
       final result = await TaskApiService.instance.updateStatus(
         taskId,
         status: apiStatus,
-        amount: task.amount.isNotEmpty ? double.tryParse(task.amount) : null,
+        amount: task.amount.isNotEmpty ? double.tryParse(task.amount.replaceAll(',', '')) : null,
       );
 
       debugPrint('🌐 [API] النتيجة الكاملة: $result');
@@ -1700,6 +1737,7 @@ class _TaskCardState extends State<TaskCard> {
     // بناء ملاحظات المهمة لتمريرها تلقائياً لشاشة التجديد
     final taskInfo = StringBuffer();
     if (widget.task.createdByName.isNotEmpty) taskInfo.writeln('أنشأها: ${widget.task.createdByName}');
+    if (widget.task.technician.isNotEmpty) taskInfo.writeln('الفني: ${widget.task.technician}');
     if (widget.task.serviceType.isNotEmpty) taskInfo.writeln('الخدمة: ${widget.task.serviceType} Mbps');
     if (widget.task.subscriptionDuration.isNotEmpty) taskInfo.writeln('المدة: ${widget.task.subscriptionDuration}');
     if (widget.task.amount.isNotEmpty) taskInfo.writeln('المبلغ: ${widget.task.amount}');

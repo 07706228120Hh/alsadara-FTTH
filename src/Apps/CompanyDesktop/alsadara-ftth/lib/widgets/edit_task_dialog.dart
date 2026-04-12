@@ -110,13 +110,6 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       List<String> technicians = [];
       List<String> leaders = [];
 
-      // قراءة الفنيين من data.technicians
-      final List<dynamic> techList = staffInner['technicians'] ?? staffInner['Technicians'] ?? [];
-      for (var t in techList) {
-        final name = (t['Name'] ?? t['name'] ?? t['FullName'] ?? '').toString().trim();
-        if (name.isNotEmpty && !technicians.contains(name)) technicians.add(name);
-      }
-
       // قراءة الليدرز من data.leaders
       final List<dynamic> leaderList = staffInner['leaders'] ?? staffInner['Leaders'] ?? [];
       for (var l in leaderList) {
@@ -124,19 +117,19 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         if (name.isNotEmpty && !leaders.contains(name)) leaders.add(name);
       }
 
-      // fallback: قراءة من allStaff إذا القوائم فارغة
-      if (technicians.isEmpty && leaders.isEmpty) {
-        final List<dynamic> allStaff = staffInner['allStaff'] ?? staffInner['staff'] ?? staffInner['Staff'] ?? [];
-        for (var staff in allStaff) {
-          final name = (staff['Name'] ?? staff['FullName'] ?? staff['fullName'] ?? '').toString().trim();
-          final role = (staff['Role'] ?? staff['role'] ?? '').toString();
-          if (name.isNotEmpty) {
-            if (role == 'Technician' || role == '12' || role == 'فني') {
-              technicians.add(name);
-            } else if (role == 'TechnicalLeader' || role == 'Manager' || role == '13' || role == '14' || role == 'ليدر') {
-              leaders.add(name);
-            }
-          }
+      // قراءة كل موظفي القسم من allStaff (فنيين + قادة + موظفين)
+      final List<dynamic> allStaff = staffInner['allStaff'] ?? staffInner['staff'] ?? staffInner['Staff'] ?? [];
+      for (var staff in allStaff) {
+        final name = (staff['Name'] ?? staff['FullName'] ?? staff['fullName'] ?? '').toString().trim();
+        if (name.isNotEmpty && !technicians.contains(name)) technicians.add(name);
+      }
+
+      // fallback: إذا allStaff فارغة نستخدم technicians
+      if (technicians.isEmpty) {
+        final List<dynamic> techList = staffInner['technicians'] ?? staffInner['Technicians'] ?? [];
+        for (var t in techList) {
+          final name = (t['Name'] ?? t['name'] ?? t['FullName'] ?? '').toString().trim();
+          if (name.isNotEmpty && !technicians.contains(name)) technicians.add(name);
         }
       }
 
@@ -698,10 +691,26 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
             : null,
       );
 
-      // حفظ التغييرات عبر API
+      // حفظ التغييرات عبر API — تعديل كامل لكل الحقول
       final apiStatus = Task.mapArabicStatusToApi(updatedTask.status);
-      await TaskApiService.instance
-          .updateStatus(updatedTask.id, status: apiStatus);
+      final amountText = _amountController.text.replaceAll(',', '').trim();
+      final parsedAmount = double.tryParse(amountText);
+      await TaskApiService.instance.updateTask(
+        updatedTask.id,
+        status: apiStatus,
+        department: updatedTask.department,
+        leader: updatedTask.leader,
+        technician: updatedTask.technician,
+        customerName: updatedTask.username,
+        customerPhone: updatedTask.phone,
+        fbg: updatedTask.fbg,
+        fat: updatedTask.fat,
+        location: updatedTask.location,
+        notes: updatedTask.notes,
+        summary: updatedTask.summary,
+        priority: updatedTask.priority,
+        amount: parsedAmount,
+      );
 
       // إشعار الوالد بالتحديث
       widget.onTaskUpdated(updatedTask);

@@ -30,12 +30,20 @@ class _ReportsPageState extends State<ReportsPage> {
   String? selectedFBG;
   List<Task> currentFilteredTasks = [];
   bool showFilterDetails = true; // للتحكم في إظهار/إخفاء تفاصيل التصفية
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     // استخدام جميع المهام وليس المهام المفلترة فقط
     currentFilteredTasks = widget.tasks;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -48,7 +56,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   void _applyFilters() {
     setState(() {
-      // تطبيق الفلاتر على جميع المهام وليس المهام المفلترة فقط
+      final query = _searchQuery.trim().toLowerCase();
       currentFilteredTasks = widget.tasks.where((task) {
         bool matchesDepartment =
             selectedDepartment == null || task.department == selectedDepartment;
@@ -56,7 +64,14 @@ class _ReportsPageState extends State<ReportsPage> {
             selectedTechnician == null || task.technician == selectedTechnician;
         bool matchesFBG = selectedFBG == null || task.fbg == selectedFBG;
 
-        return matchesDepartment && matchesTechnician && matchesFBG;
+        // بحث متعدد: اسم العميل، هاتف العميل، اسم الفني، المنشئ
+        bool matchesSearch = query.isEmpty ||
+            task.username.toLowerCase().contains(query) ||
+            task.phone.toLowerCase().contains(query) ||
+            task.technician.toLowerCase().contains(query) ||
+            task.createdByName.toLowerCase().contains(query);
+
+        return matchesDepartment && matchesTechnician && matchesFBG && matchesSearch;
       }).toList();
 
       // إخفاء تفاصيل التصفية بعد التطبيق
@@ -536,6 +551,51 @@ class _ReportsPageState extends State<ReportsPage> {
                 },
               ),
             ),
+
+            // مربع البحث
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                controller: _searchController,
+                textDirection: TextDirection.rtl,
+                decoration: InputDecoration(
+                  hintText: 'بحث بالاسم، الهاتف، الفني، أو المنشئ...',
+                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            _searchQuery = '';
+                            _applyFilters();
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5),
+                  ),
+                ),
+                onChanged: (v) {
+                  _searchQuery = v;
+                  _applyFilters();
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
 
             // قائمة المهام
             Expanded(

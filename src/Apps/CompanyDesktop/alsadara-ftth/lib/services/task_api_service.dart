@@ -198,6 +198,54 @@ class TaskApiService {
     return _toMap(response);
   }
 
+  // ═══════ تعديل مهمة ═══════
+
+  /// تعديل بيانات المهمة (كل الحقول)
+  Future<Map<String, dynamic>> updateTask(
+    String requestId, {
+    String? status,
+    String? department,
+    String? leader,
+    String? technician,
+    String? technicianPhone,
+    String? customerName,
+    String? customerPhone,
+    String? fbg,
+    String? fat,
+    String? location,
+    String? notes,
+    String? summary,
+    String? priority,
+    double? amount,
+  }) async {
+    final body = <String, dynamic>{
+      'Status': status,
+      'Department': department,
+      'Leader': leader,
+      'Technician': technician,
+      'TechnicianPhone': technicianPhone,
+      'CustomerName': customerName,
+      'CustomerPhone': customerPhone,
+      'FBG': fbg,
+      'FAT': fat,
+      'Location': location,
+      'Notes': notes,
+      'Summary': summary,
+      'Priority': priority,
+    };
+    if (amount != null && amount > 0) {
+      body['Amount'] = amount;
+    }
+    body.removeWhere((key, value) => value == null);
+
+    final response = await _client.patch(
+      '/servicerequests/$requestId/update-task',
+      body,
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   // ═══════ بيانات القوائم ═══════
 
   /// جلب بيانات القوائم المنسدلة (أقسام، أولويات، مهام الأقسام، FBG، إلخ)
