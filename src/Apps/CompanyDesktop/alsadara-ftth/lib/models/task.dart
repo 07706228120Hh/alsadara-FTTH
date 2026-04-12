@@ -201,10 +201,9 @@ class Task {
           details['notes']?.toString() ?? '',
           response['StatusNote']?.toString() ?? '',
         ].where((s) => s.isNotEmpty).join(' | '),
-      createdAt: (DateTime.tryParse(response['CreatedAt']?.toString() ?? '') ??
-          DateTime.now()).toLocal(),
+      createdAt: _parseUtcDate(response['CreatedAt']?.toString()) ?? DateTime.now(),
       closedAt: response['CompletedAt'] != null
-          ? DateTime.tryParse(response['CompletedAt'].toString())?.toLocal()
+          ? _parseUtcDate(response['CompletedAt'].toString())
           : null,
       summary: details['summary']?.toString() ?? '',
       priority: _mapApiPriorityToArabic(response['Priority']),
@@ -263,6 +262,15 @@ class Task {
   }
 
   /// تحويل حالة عربية إلى API
+  /// تحويل تاريخ من السيرفر (UTC بدون Z) إلى توقيت محلي
+  static DateTime? _parseUtcDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return null;
+    // السيرفر يرسل UTC بدون Z — نضيفها لضمان التحويل الصحيح
+    String s = dateStr;
+    if (!s.endsWith('Z') && !s.contains('+')) s += 'Z';
+    return DateTime.tryParse(s)?.toLocal();
+  }
+
   static String mapArabicStatusToApi(String status) {
     switch (status) {
       case 'مفتوحة':
