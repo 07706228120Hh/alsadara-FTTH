@@ -964,6 +964,15 @@ class _TaskCardState extends State<TaskCard> {
         SizedBox(width: 8), Text('حذف'),
       ])));
     }
+    // زر التفعيل في القائمة المنبثقة (موبايل)
+    if (widget.task.isCompleted &&
+        !widget.task.notes.contains('[مفعّل]') &&
+        (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر')) {
+      menuItems.add(const PopupMenuItem(value: 'activate', child: Row(children: [
+        Icon(Icons.verified_rounded, size: 18, color: Color(0xFF27AE60)),
+        SizedBox(width: 8), Text('تفعيل'),
+      ])));
+    }
 
     if (primaryButtons.isEmpty && menuItems.isEmpty) return const SizedBox.shrink();
 
@@ -982,6 +991,7 @@ class _TaskCardState extends State<TaskCard> {
                       case 'agent': _showAgentsDialog(); break;
                       case 'edit': _showEditTaskDialog(); break;
                       case 'delete': _confirmDeleteTask(); break;
+                      case 'activate': _markAsActivated(); break;
                     }
                   },
                   itemBuilder: (_) => menuItems,

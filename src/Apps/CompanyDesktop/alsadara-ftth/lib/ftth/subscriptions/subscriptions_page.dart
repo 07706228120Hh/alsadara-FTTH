@@ -2922,6 +2922,18 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         TextButton(
                           onPressed: () {
                             setModalState(() {
+                              tempSelected.clear();
+                              for (final z in filtered) {
+                                final id = (z['id'] ?? '').toString();
+                                if (id.isNotEmpty) tempSelected.add(id);
+                              }
+                            });
+                          },
+                          child: const Text('تحديد الكل'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
                               if (tempSelected.isNotEmpty) {
                                 undoBackup = Set<String>.from(tempSelected);
                               }

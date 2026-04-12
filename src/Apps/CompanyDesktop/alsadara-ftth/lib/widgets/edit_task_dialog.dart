@@ -607,7 +607,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
             elevation: 4,
             borderRadius: BorderRadius.circular(8),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 350),
+              constraints: BoxConstraints(maxHeight: 200, maxWidth: MediaQuery.of(context).size.width < 400 ? MediaQuery.of(context).size.width - 40 : 350),
               child: ListView.builder(
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
