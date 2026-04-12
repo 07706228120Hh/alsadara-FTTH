@@ -467,7 +467,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
           builder: (_) => HomePage(
             username: user.fullName.isNotEmpty ? user.fullName : user.username,
             permissions: user.isAdmin ? 'مدير' : _mapRoleToArabic(user.role),
-            department: company.name,
+            department: user.department?.isNotEmpty == true ? user.department! : company.name,
             center: company.code,
             salary: '0',
             tenantId: company.id,
@@ -486,6 +486,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       case 'super_admin':
         return 'مدير';
       case 'technical_leader':
+      case 'technicalleader':
         return 'ليدر';
       case 'technician':
         return 'فني';

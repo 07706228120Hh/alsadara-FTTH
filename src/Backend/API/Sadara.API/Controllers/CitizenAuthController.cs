@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Sadara.Domain.Entities;
+using Sadara.Domain.Enums;
 using Sadara.Infrastructure.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -458,7 +459,7 @@ public class CitizenAuthController : ControllerBase
     /// الحصول على الملف الشخصي
     /// </summary>
     [HttpGet("profile")]
-    [Authorize(AuthenticationSchemes = "CitizenJwt")]
+    [Authorize]
     public async Task<IActionResult> GetProfile()
     {
         try
@@ -509,7 +510,7 @@ public class CitizenAuthController : ControllerBase
     /// تحديث الملف الشخصي
     /// </summary>
     [HttpPut("profile")]
-    [Authorize(AuthenticationSchemes = "CitizenJwt")]
+    [Authorize]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
         try
@@ -560,7 +561,7 @@ public class CitizenAuthController : ControllerBase
     /// تغيير كلمة المرور
     /// </summary>
     [HttpPost("change-password")]
-    [Authorize(AuthenticationSchemes = "CitizenJwt")]
+    [Authorize]
     public async Task<IActionResult> ChangePassword([FromBody] CitizenChangePasswordRequest request)
     {
         try
@@ -598,7 +599,7 @@ public class CitizenAuthController : ControllerBase
     /// تحديث FCM Token
     /// </summary>
     [HttpPost("update-fcm-token")]
-    [Authorize(AuthenticationSchemes = "CitizenJwt")]
+    [Authorize]
     public async Task<IActionResult> UpdateFcmToken([FromBody] UpdateFcmTokenRequest request)
     {
         try
@@ -624,6 +625,86 @@ public class CitizenAuthController : ControllerBase
         {
             _logger.LogError(ex, "Error updating FCM token");
             return StatusCode(500, new { success = false });
+        }
+    }
+
+    // ==================== طلب سحب ديلفري ====================
+
+    /// <summary>
+    /// إنشاء طلب سحب ديلفري
+    /// </summary>
+    [HttpPost("delivery-withdrawal")]
+    [Authorize]
+    public async Task<IActionResult> CreateDeliveryWithdrawal([FromBody] DeliveryWithdrawalRequest dto)
+    {
+        try
+        {
+            var citizenId = GetCurrentCitizenId();
+            if (citizenId == null)
+                return Unauthorized();
+
+            var citizen = await _context.Citizens
+                .Include(c => c.Company)
+                .FirstOrDefaultAsync(c => c.Id == citizenId);
+            if (citizen == null)
+                return NotFound(new { success = false, messageAr = "المواطن غير موجود" });
+
+            // إنشاء رقم طلب فريد
+            var count = await _context.ServiceRequests.CountAsync() + 1;
+            var requestNumber = $"DW-{DateTime.UtcNow:yyyy}-{count:D5}";
+
+            var serviceRequest = new ServiceRequest
+            {
+                Id = Guid.NewGuid(),
+                RequestNumber = requestNumber,
+                ServiceId = 11, // بوابة المواطن
+                OperationTypeId = 12, // سحب ديلفري
+                CitizenId = null, // ServiceRequest.CitizenId points to User, not Citizen
+                CompanyId = citizen.CompanyId,
+                Status = ServiceRequestStatus.Pending,
+                Priority = 2,
+                Address = dto.Address,
+                ContactPhone = dto.ContactPhone,
+                EstimatedCost = dto.Amount,
+                Details = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    type = "delivery_withdrawal",
+                    customerName = citizen.FullName,
+                    customerPhone = citizen.PhoneNumber,
+                    amount = dto.Amount,
+                    latitude = dto.Latitude,
+                    longitude = dto.Longitude,
+                    locationUrl = $"https://www.google.com/maps?q={dto.Latitude},{dto.Longitude}",
+                    citizenId = citizenId,
+                    citizenCity = citizen.City,
+                    citizenAddress = citizen.FullAddress,
+                    notes = dto.Notes,
+                    source = "بوابة المواطن",
+                    requestedAt = DateTime.UtcNow
+                }, new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }),
+                RequestedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.ServiceRequests.Add(serviceRequest);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("طلب سحب ديلفري جديد: {RequestNumber} من المواطن {CitizenName}",
+                requestNumber, citizen.FullName);
+
+            return Ok(new
+            {
+                success = true,
+                messageAr = "تم إرسال طلب السحب بنجاح",
+                message = "Delivery withdrawal request created",
+                requestNumber,
+                requestId = serviceRequest.Id
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating delivery withdrawal");
+            return StatusCode(500, new { success = false, messageAr = "حدث خطأ أثناء إرسال الطلب" });
         }
     }
 
@@ -775,4 +856,14 @@ public class CitizenProfileResponse
     public bool HasCompany { get; set; }
     public bool IsActive { get; set; }
     public string Language { get; set; } = "ar";
+}
+
+public class DeliveryWithdrawalRequest
+{
+    public decimal Amount { get; set; }
+    public string ContactPhone { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public string? Notes { get; set; }
 }

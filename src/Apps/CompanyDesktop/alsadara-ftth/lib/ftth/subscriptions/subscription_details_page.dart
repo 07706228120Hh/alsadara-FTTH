@@ -16,6 +16,7 @@ import '../../services/auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/dual_auth_service.dart';
+import '../../services/task_api_service.dart';
 import '../../whatsapp/services/whatsapp_system_settings_service.dart';
 import '../../whatsapp/services/whatsapp_server_service.dart';
 import '../../whatsapp/services/whatsapp_message_log_service.dart';
@@ -230,6 +231,13 @@ class SubscriptionDetailsPage extends StatefulWidget {
   // بيانات الوكيل من المهمة (لتعبئة تلقائية عند التجديد)
   final String? taskAgentName;
   final String? taskAgentCode;
+  // ملاحظات المهمة (تفاصيل الاشتراك) لتعبئتها تلقائياً في الملاحظات
+  final String? taskNotes;
+  // بيانات المهمة للإغلاق التلقائي والمقارنة
+  final String? taskId; // معرف المهمة (guid) للإغلاق التلقائي
+  final String? taskServiceType; // الخدمة المطلوبة في المهمة (35, 50, 75, 150)
+  final String? taskDuration; // المدة المطلوبة في المهمة (عدد الأشهر)
+  final String? taskAmount; // المبلغ المطلوب في المهمة
 
   const SubscriptionDetailsPage({
     super.key,
@@ -277,6 +285,11 @@ class SubscriptionDetailsPage extends StatefulWidget {
     this.clientAppHeader, // رأس التطبيق
     this.taskAgentName, // اسم الوكيل من المهمة
     this.taskAgentCode, // كود الوكيل من المهمة
+    this.taskNotes, // ملاحظات المهمة
+    this.taskId, // معرف المهمة للإغلاق التلقائي
+    this.taskServiceType, // الخدمة المطلوبة في المهمة
+    this.taskDuration, // المدة المطلوبة في المهمة
+    this.taskAmount, // المبلغ المطلوب في المهمة
   });
 
   @override
@@ -583,6 +596,11 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   @override
   void initState() {
     super.initState();
+
+    // تعبئة تلقائية لملاحظات المهمة (تفاصيل الاشتراك)
+    if (widget.taskNotes != null && widget.taskNotes!.isNotEmpty) {
+      _notesController.text = widget.taskNotes!;
+    }
 
     // تحميل الإعدادات المحفوظة محلياً
     _loadWhatsAppSettings();
@@ -9495,8 +9513,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               tooltip: 'الصفحة الرئيسية',
               icon: const Icon(Icons.home),
               onPressed: () {
-                // العودة إلى صفحة FTTH الرئيسية بدون حذف routes النظام الأول
-                Navigator.of(context).popUntil(ModalRoute.withName('/ftth-home'));
+                // العودة إلى صفحة FTTH الرئيسية
+                // isFirst يمنع الشاشة السوداء عند الفتح من المهام (حيث لا يوجد route باسم /ftth-home)
+                Navigator.of(context).popUntil((route) =>
+                    route.settings.name == '/ftth-home' || route.isFirst);
               },
             ),
             // زر القائمة الجانبية (بعد زر الرجوع الافتراضي)

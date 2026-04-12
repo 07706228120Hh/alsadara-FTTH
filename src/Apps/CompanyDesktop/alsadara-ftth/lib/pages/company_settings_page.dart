@@ -188,18 +188,44 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _bgPage,
-        appBar: _buildAppBar(),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: _accent))
-            : _errorMessage != null
-                ? _buildErrorView()
-                : _buildBody(),
-      ),
-    );
+    try {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: _bgPage,
+          appBar: _buildAppBar(),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: _accent))
+              : _errorMessage != null
+                  ? _buildErrorView()
+                  : _buildBody(),
+        ),
+      );
+    } catch (e, stack) {
+      debugPrint('❌ خطأ في بناء صفحة إعدادات الشركة: $e\n$stack');
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          appBar: AppBar(title: const Text('إعدادات الشركة')),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('حدث خطأ غير متوقع: $e',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('رجوع'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -2799,11 +2825,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     final name = (center['Name'] ?? center['name'])?.toString() ?? 'غير مسمى';
     final description =
         (center['Description'] ?? center['description'])?.toString() ?? '';
-    final lat = (center['Latitude'] ?? center['latitude'] ?? 0.0) as num;
-    final lng = (center['Longitude'] ?? center['longitude'] ?? 0.0) as num;
-    final radius =
-        (center['RadiusMeters'] ?? center['radiusMeters'] ?? 200) as num;
-    final isActive = (center['IsActive'] ?? center['isActive'] ?? true) as bool;
+    final latRaw = center['Latitude'] ?? center['latitude'] ?? 0.0;
+    final lat = latRaw is num ? latRaw : num.tryParse(latRaw.toString()) ?? 0.0;
+    final lngRaw = center['Longitude'] ?? center['longitude'] ?? 0.0;
+    final lng = lngRaw is num ? lngRaw : num.tryParse(lngRaw.toString()) ?? 0.0;
+    final radRaw = center['RadiusMeters'] ?? center['radiusMeters'] ?? 200;
+    final radius = radRaw is num ? radRaw : num.tryParse(radRaw.toString()) ?? 200;
+    final actRaw = center['IsActive'] ?? center['isActive'] ?? true;
+    final isActive = actRaw is bool ? actRaw : actRaw == 1 || actRaw == 'true';
     final centerId = center['Id'] ?? center['id'];
 
     return Container(

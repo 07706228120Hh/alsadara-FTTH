@@ -1635,7 +1635,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   String _getRoleLabel(int role) => switch (role) {
-    0 => 'مواطن', 10 => 'موظف', 12 => 'فني', 13 => 'قائد فني',
+    0 => 'مواطن', 10 => 'موظف', 12 => 'فني', 13 => 'ليدر',
     14 => 'مشرف', 20 => 'مدير شركة', 90 => 'مسؤول', 100 => 'مسؤول أعلى',
     _ => 'موظف',
   };

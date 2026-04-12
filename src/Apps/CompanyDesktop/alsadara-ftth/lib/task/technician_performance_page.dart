@@ -9,7 +9,8 @@ class TechnicianPerformancePage extends StatefulWidget {
   const TechnicianPerformancePage({super.key, required this.tasks});
 
   @override
-  State<TechnicianPerformancePage> createState() => _TechnicianPerformancePageState();
+  State<TechnicianPerformancePage> createState() =>
+      _TechnicianPerformancePageState();
 }
 
 class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
@@ -20,7 +21,8 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
     final map = <String, _TechStat>{};
     for (final t in widget.tasks) {
       if (t.technician.trim().isEmpty) continue;
-      map.putIfAbsent(t.technician, () => _TechStat(name: t.technician, department: t.department));
+      map.putIfAbsent(t.technician,
+          () => _TechStat(name: t.technician, department: t.department));
       final s = map[t.technician]!;
       s.total++;
       if (t.status == 'مفتوحة') s.open++;
@@ -32,7 +34,9 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
         }
       }
       if (t.status == 'ملغية') s.cancelled++;
-      final amt = double.tryParse(t.amount.replaceAll('\$', '').replaceAll(',', '')) ?? 0;
+      final amt =
+          double.tryParse(t.amount.replaceAll('\$', '').replaceAll(',', '')) ??
+              0;
       s.totalAmount += amt;
     }
 
@@ -61,7 +65,8 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('أداء الفنيين', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('أداء الفنيين',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
         actions: [
@@ -79,7 +84,9 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
         ],
       ),
       body: stats.isEmpty
-          ? const Center(child: Text('لا توجد بيانات', style: TextStyle(fontSize: 16, color: Colors.grey)))
+          ? const Center(
+              child: Text('لا توجد بيانات',
+                  style: TextStyle(fontSize: 16, color: Colors.grey)))
           : SingleChildScrollView(
               padding: EdgeInsets.all(isMobile ? 10 : 20),
               child: Column(
@@ -89,7 +96,10 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                   SizedBox(height: isMobile ? 12 : 20),
 
                   // ─── بطاقات الفنيين ───
-                  ...stats.asMap().entries.map((e) => _buildTechCard(e.key + 1, e.value, isMobile)),
+                  ...stats
+                      .asMap()
+                      .entries
+                      .map((e) => _buildTechCard(e.key + 1, e.value, isMobile)),
                 ],
               ),
             ),
@@ -99,7 +109,8 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
   /// رسم بياني شريطي لمقارنة الفنيين
   Widget _buildChart(List<_TechStat> stats, bool isMobile) {
     final top = stats.take(8).toList();
-    final maxVal = top.fold<int>(0, (m, s) => s.total > m ? s.total : m).toDouble();
+    final maxVal =
+        top.fold<int>(0, (m, s) => s.total > m ? s.total : m).toDouble();
 
     return Container(
       height: isMobile ? 200 : 280,
@@ -107,12 +118,19 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('مقارنة الفنيين', style: TextStyle(fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.w700)),
+          Text('مقارنة الفنيين',
+              style: TextStyle(
+                  fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           // مفتاح الألوان
           Wrap(
@@ -152,28 +170,53 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            name.length > 6 ? '${name.substring(0, 6)}..' : name,
-                            style: TextStyle(fontSize: isMobile ? 9 : 11, fontWeight: FontWeight.w600),
+                            name.length > 6
+                                ? '${name.substring(0, 6)}..'
+                                : name,
+                            style: TextStyle(
+                                fontSize: isMobile ? 9 : 11,
+                                fontWeight: FontWeight.w600),
                           ),
                         );
                       },
                     ),
                   ),
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: !isMobile, reservedSize: 30)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                      sideTitles:
+                          SideTitles(showTitles: !isMobile, reservedSize: 30)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                 ),
                 gridData: FlGridData(show: !isMobile),
                 borderData: FlBorderData(show: false),
                 barGroups: top.asMap().entries.map((e) {
                   final s = e.value;
                   final w = isMobile ? 6.0 : 10.0;
-                  final r = const BorderRadius.vertical(top: Radius.circular(3));
+                  final r =
+                      const BorderRadius.vertical(top: Radius.circular(3));
                   return BarChartGroupData(x: e.key, barsSpace: 2, barRods: [
-                    BarChartRodData(toY: s.done.toDouble(), width: w, borderRadius: r, color: const Color(0xFF4CAF50)),
-                    BarChartRodData(toY: s.progress.toDouble(), width: w, borderRadius: r, color: const Color(0xFFFF9800)),
-                    BarChartRodData(toY: s.open.toDouble(), width: w, borderRadius: r, color: const Color(0xFF2196F3)),
-                    BarChartRodData(toY: s.cancelled.toDouble(), width: w, borderRadius: r, color: const Color(0xFFE53935)),
+                    BarChartRodData(
+                        toY: s.done.toDouble(),
+                        width: w,
+                        borderRadius: r,
+                        color: const Color(0xFF4CAF50)),
+                    BarChartRodData(
+                        toY: s.progress.toDouble(),
+                        width: w,
+                        borderRadius: r,
+                        color: const Color(0xFFFF9800)),
+                    BarChartRodData(
+                        toY: s.open.toDouble(),
+                        width: w,
+                        borderRadius: r,
+                        color: const Color(0xFF2196F3)),
+                    BarChartRodData(
+                        toY: s.cancelled.toDouble(),
+                        width: w,
+                        borderRadius: r,
+                        color: const Color(0xFFE53935)),
                   ]);
                 }).toList(),
               ),
@@ -188,9 +231,14 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+        Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(3))),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
       ],
     );
   }
@@ -209,8 +257,14 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: rank <= 3 ? Border.all(color: _rankColor(rank), width: 1.5) : null,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2))],
+        border:
+            rank <= 3 ? Border.all(color: _rankColor(rank), width: 1.5) : null,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: Column(
         children: [
@@ -219,13 +273,18 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
             children: [
               // ترتيب
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: _rankColor(rank),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Text('#$rank', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                  child: Text('#$rank',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
                 ),
               ),
               const SizedBox(width: 10),
@@ -233,20 +292,29 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(s.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    Text(s.name,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
                     if (s.department.isNotEmpty)
-                      Text(s.department, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      Text(s.department,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500)),
                   ],
                 ),
               ),
               // نسبة الإنجاز
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: rateColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('${s.completionRate.toStringAsFixed(0)}%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: rateColor)),
+                child: Text('${s.completionRate.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: rateColor)),
               ),
             ],
           ),
@@ -259,7 +327,8 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
               _miniStat('مكتملة', '${s.done}', const Color(0xFF4CAF50)),
               _miniStat('تنفيذ', '${s.progress}', const Color(0xFFFF9800)),
               _miniStat('ملغية', '${s.cancelled}', const Color(0xFFE53935)),
-              _miniStat('المتوسط', s.done > 0 ? s.avgHoursFormatted : '-', const Color(0xFF9C27B0)),
+              _miniStat('المتوسط', s.done > 0 ? s.avgHoursFormatted : '-',
+                  const Color(0xFF9C27B0)),
             ],
           ),
 
@@ -281,9 +350,14 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(Icons.payments_outlined, size: 14, color: Colors.grey.shade500),
+                Icon(Icons.payments_outlined,
+                    size: 14, color: Colors.grey.shade500),
                 const SizedBox(width: 4),
-                Text('${s.totalAmount.toStringAsFixed(0)} د.ع', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                Text('${s.totalAmount.toStringAsFixed(0)} د.ع',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600)),
               ],
             ),
           ],
@@ -296,8 +370,11 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
     return Expanded(
       child: Column(
         children: [
-          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: color)),
-          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w800, color: color)),
+          Text(label,
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
         ],
       ),
     );
@@ -305,10 +382,14 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
 
   Color _rankColor(int rank) {
     switch (rank) {
-      case 1: return const Color(0xFFFFD700); // ذهبي
-      case 2: return const Color(0xFFC0C0C0); // فضي
-      case 3: return const Color(0xFFCD7F32); // برونزي
-      default: return const Color(0xFF9CA3AF);
+      case 1:
+        return const Color(0xFFFFD700); // ذهبي
+      case 2:
+        return const Color(0xFFC0C0C0); // فضي
+      case 3:
+        return const Color(0xFFCD7F32); // برونزي
+      default:
+        return const Color(0xFF9CA3AF);
     }
   }
 }
@@ -336,6 +417,6 @@ class _TechStat {
     if (avg < 60) return '${avg.toStringAsFixed(0)}د';
     final h = (avg / 60).floor();
     final m = (avg % 60).round();
-    return '${h}س${m > 0 ? ' ${m}د' : ''}';
+    return '$hس${m > 0 ? ' $mد' : ''}';
   }
 }

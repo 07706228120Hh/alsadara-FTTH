@@ -113,6 +113,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               _cancelledAt = null; // انتهت فترة الحماية
           }
           _consecutiveFailures = status['consecutiveFailures'] ?? 0;
+          // مسح الخطأ القديم عندما المزامنة شغالة
+          if (_isSyncInProgress) _lastSyncError = null;
           // تقدم المزامنة
           _syncStage = status['syncStage'];
           _syncProgress = status['syncProgress'] ?? 0;
@@ -633,9 +635,22 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
     );
   }
 
+  /// ترجمة أخطاء المزامنة للعربي
+  String _translateError(String error) {
+    if (error.contains('sending the request')) return 'فشل الاتصال بسيرفر FTTH — قد يكون محظوراً مؤقتاً';
+    if (error.contains('saving the entity')) return 'فشل حفظ البيانات في قاعدة البيانات';
+    if (error.contains('login') || error.contains('Login')) return 'فشل تسجيل الدخول — تحقق من بيانات الدخول';
+    if (error.contains('timeout') || error.contains('Timeout')) return 'انتهت مهلة الاتصال — السيرفر لا يستجيب';
+    if (error.contains('401')) return 'انتهت صلاحية الجلسة — أعد المحاولة';
+    if (error.contains('418')) return 'سيرفر FTTH رفض الطلب — حاول لاحقاً';
+    if (error.contains('429')) return 'كثرة الطلبات — انتظر قليلاً ثم أعد المحاولة';
+    return 'خطأ في المزامنة — حاول مرة أخرى';
+  }
+
   Widget _buildSyncStatusCard() {
     final hasSync = _lastSyncAt != null;
-    final hasError = _lastSyncError != null && _lastSyncError!.isNotEmpty;
+    // إظهار الخطأ فقط عندما المزامنة ليست شغالة
+    final hasError = !_isSyncInProgress && _lastSyncError != null && _lastSyncError!.isNotEmpty;
 
     return Card(
       color: Colors.white,
@@ -671,18 +686,26 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
           const SizedBox(height: 6),
           _statusRow(
               'الحالة',
-              hasError
-                  ? 'خطأ'
-                  : hasSync
-                      ? 'ناجحة'
-                      : 'لم تتم',
-              icon: hasError ? Icons.error_outline : Icons.check_circle_outline,
-              color: hasError
-                  ? Colors.red
-                  : hasSync
-                      ? Colors.green
-                      : Colors.grey),
-          if (_consecutiveFailures > 0) ...[
+              _isSyncInProgress
+                  ? 'جاري المزامنة...'
+                  : hasError
+                      ? 'خطأ'
+                      : hasSync
+                          ? 'ناجحة'
+                          : 'لم تتم',
+              icon: _isSyncInProgress
+                  ? Icons.sync_rounded
+                  : hasError
+                      ? Icons.error_outline
+                      : Icons.check_circle_outline,
+              color: _isSyncInProgress
+                  ? Colors.blue
+                  : hasError
+                      ? Colors.red
+                      : hasSync
+                          ? Colors.green
+                          : Colors.grey),
+          if (!_isSyncInProgress && _consecutiveFailures > 0) ...[
             const SizedBox(height: 6),
             _statusRow('فشل متتالي', '$_consecutiveFailures',
                 icon: Icons.warning_amber_rounded, color: Colors.orange),
@@ -696,7 +719,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   color: Colors.red.shade50,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: Colors.red.shade200)),
-              child: Text(_lastSyncError!,
+              child: Text(_translateError(_lastSyncError!),
                   style: TextStyle(fontSize: 11, color: Colors.red.shade700)),
             ),
           ],

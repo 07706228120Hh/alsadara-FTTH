@@ -66,6 +66,9 @@ class ApiConfig {
   // Internet Plans (public)
   static const String publicInternetPlans = '$apiVersion/citizen/plans';
 
+  // Citizen Service Requests
+  static const String citizenDeliveryWithdrawal = '$apiVersion/citizen/delivery-withdrawal';
+
   // Service Requests
   static const String serviceRequests = '$apiVersion/servicerequests';
   static const String serviceRequestServices =

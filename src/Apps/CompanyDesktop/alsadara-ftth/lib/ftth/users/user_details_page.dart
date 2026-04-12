@@ -16,6 +16,7 @@ import '../reports/audit_log_page.dart';
 import '../../permissions/permissions.dart';
 import '../auth/auth_error_handler.dart';
 import '../../services/auth_service.dart';
+import '../../services/task_api_service.dart';
 
 // أنماط نص موحدة مختصرة
 class _TextStyles {
@@ -49,6 +50,13 @@ class UserDetailsPage extends StatefulWidget {
   // بيانات الوكيل من المهمة (لتعبئة تلقائية في صفحة التجديد)
   final String? taskAgentName;
   final String? taskAgentCode;
+  // ملاحظات المهمة (تفاصيل الاشتراك) لتعبئتها تلقائياً في صفحة التجديد
+  final String? taskNotes;
+  // بيانات المهمة للإغلاق التلقائي والمقارنة
+  final String? taskId;
+  final String? taskServiceType;
+  final String? taskDuration;
+  final String? taskAmount;
   const UserDetailsPage(
       {super.key,
       required this.userId,
@@ -67,7 +75,12 @@ class UserDetailsPage extends StatefulWidget {
       this.clientAppHeader,
       this.importantFtthApiPermissions,
       this.taskAgentName,
-      this.taskAgentCode});
+      this.taskAgentCode,
+      this.taskNotes,
+      this.taskId,
+      this.taskServiceType,
+      this.taskDuration,
+      this.taskAmount});
   @override
   UserDetailsPageState createState() => UserDetailsPageState();
 }
@@ -87,11 +100,36 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   final bool _compactMode = true;
   // تم استبدال عرض التذاكر في حوار بصفحة مستقلة CustomerTicketsPage
 
+  // ═══════ حالة طلب التحصيل ═══════
+  List<Map<String, dynamic>> _collectionTasks = [];
+  bool _isLoadingCollectionTasks = false;
+
   @override
   void initState() {
     super.initState();
     fetchDetails();
     _fetchAndStoreCustomerDetails();
+    _checkCollectionTasks();
+  }
+
+  Future<void> _checkCollectionTasks() async {
+    if (widget.userPhone.isEmpty) return;
+    setState(() => _isLoadingCollectionTasks = true);
+    try {
+      final result = await TaskApiService.instance.getCollectionTasks(customerPhone: widget.userPhone);
+      if (!mounted) return;
+      if (result['success'] == true && result['data'] != null) {
+        final data = result['data'];
+        final items = data is Map ? (data['items'] as List? ?? []) : (data is List ? data : []);
+        setState(() {
+          _collectionTasks = List<Map<String, dynamic>>.from(items);
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ فشل جلب طلبات التحصيل: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingCollectionTasks = false);
+    }
   }
 
   // يسمح بإضافة مهمة إذا تحقق أحد الشروط: isAdminFlag أو صلاحية tasks من PermissionManager
@@ -2245,10 +2283,103 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   clientAppHeader: widget.clientAppHeader,
                   taskAgentName: widget.taskAgentName,
                   taskAgentCode: widget.taskAgentCode,
+                  taskNotes: widget.taskNotes,
+                  taskId: widget.taskId,
+                  taskServiceType: widget.taskServiceType,
+                  taskDuration: widget.taskDuration,
+                  taskAmount: widget.taskAmount,
                 ))).then((_) {
       // تحديث بعد العودة
       fetchUserDetailsAndSubscription();
     });
+  }
+
+  // ═══════ بانر حالة التحصيل ═══════
+  Widget _collectionBanner() {
+    if (_isLoadingCollectionTasks || _collectionTasks.isEmpty) return const SizedBox.shrink();
+
+    // فحص آخر طلب تحصيل
+    final task = _collectionTasks.first;
+    final details = task['details'] is String ? task['details'] as String : '';
+    final status = task['status']?.toString().toLowerCase() ?? '';
+    final techName = task['technician']?['fullName']?.toString() ?? task['technicianName']?.toString() ?? '';
+    final taskId = task['id']?.toString() ?? '';
+    final createdAt = task['createdAt']?.toString() ?? '';
+
+    // استخراج المبلغ من Details
+    final amountMatch = RegExp(r'تحصيل\s+([\d,]+)').firstMatch(details);
+    final amountStr = amountMatch?.group(1) ?? '';
+
+    final isCompleted = status == 'completed' || status == 'مكتملة';
+    final isPending = status == 'pending' || status == 'مفتوحة' || status == 'inprogress' || status == 'قيد التنفيذ';
+
+    if (!isPending && !isCompleted) return const SizedBox.shrink();
+
+    final isMobile = _isMobile(context);
+    final smallFs = isMobile ? 11.0 : 12.0;
+    final titleFs = isMobile ? 12.0 : 14.0;
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: isMobile ? 6 : 8),
+      padding: EdgeInsets.all(isMobile ? 8 : 12),
+      decoration: BoxDecoration(
+        color: isCompleted ? Colors.green.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(isMobile ? 8 : 10),
+        border: Border.all(color: isCompleted ? Colors.green.shade300 : Colors.orange.shade300, width: 1.2),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(
+            isCompleted ? Icons.check_circle : Icons.schedule,
+            color: isCompleted ? Colors.green.shade700 : Colors.orange.shade700,
+            size: isMobile ? 18 : 22,
+          ),
+          SizedBox(width: isMobile ? 6 : 8),
+          Expanded(
+            child: Text(
+              isCompleted ? 'تم التحصيل — جاهز للتجديد' : 'طلب تحصيل قيد الانتظار',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: titleFs,
+                color: isCompleted ? Colors.green.shade800 : Colors.orange.shade800,
+              ),
+            ),
+          ),
+        ]),
+        SizedBox(height: isMobile ? 4 : 6),
+        if (techName.isNotEmpty) Text('الفني: $techName', style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
+        if (amountStr.isNotEmpty) Text('المبلغ: $amountStr د.ع', style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
+        if (createdAt.isNotEmpty)
+          Text('التاريخ: ${_formatDate(createdAt)}', style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
+        if (isCompleted) ...[
+          SizedBox(height: isMobile ? 6 : 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _onRenewPressed,
+              icon: Icon(Icons.refresh, size: isMobile ? 16 : 18),
+              label: Text('تجديد الاشتراك الآن', style: TextStyle(fontSize: isMobile ? 12 : 14)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: isMobile ? 8 : 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  String _formatDate(String isoDate) {
+    try {
+      final dt = DateTime.parse(isoDate);
+      return '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return isoDate;
+    }
   }
 
   Widget _renewButton(BuildContext context, {bool fullWidth = false}) {
@@ -2522,6 +2653,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                                 SizedBox(height: gap),
                                 _userInfoRow(),
                                 SizedBox(height: gap),
+                                _collectionBanner(),
                                 _renewButton(context, fullWidth: true),
                               ],
                             ),
@@ -2865,7 +2997,7 @@ extension _AddTaskExtension on UserDetailsPageState {
             currentUserRole: 'مستخدم',
             currentUserDepartment: 'عام',
             initialCustomerName: widget.userName,
-            initialCustomerPhone: _fmtPhoneLocal(widget.userPhone),
+            initialCustomerPhone: _resolvedPhone.isNotEmpty ? _fmtPhoneLocal(_resolvedPhone) : _fmtPhoneLocal(widget.userPhone),
             initialCustomerLocation: _extractInitialLocation(),
             initialFBG: _getFbgFat().$1 ?? '',
             initialFAT: _getFbgFat().$2 ?? '',

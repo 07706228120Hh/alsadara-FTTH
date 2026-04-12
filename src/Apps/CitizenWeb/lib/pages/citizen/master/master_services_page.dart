@@ -17,18 +17,11 @@ class MasterServicesPage extends StatelessWidget {
         'route': '/citizen/master/recharge',
       },
       {
-        'title': 'طلب بطاقة جديدة',
-        'description': 'احصل على بطاقة ماستر جديدة',
-        'icon': Icons.add_card,
-        'color': Colors.green,
-        'route': '/citizen/master/new-card',
-      },
-      {
-        'title': 'توصيل البطاقة',
-        'description': 'تتبع طلب توصيل بطاقتك',
-        'icon': Icons.local_shipping,
+        'title': 'طلب سحب ديلفري',
+        'description': 'اطلب سحب رصيد مع توصيل',
+        'icon': Icons.delivery_dining,
         'color': Colors.orange,
-        'route': '/citizen/master/delivery',
+        'route': '/citizen/master/delivery-withdraw',
       },
       {
         'title': 'كشف حساب',
@@ -213,6 +206,7 @@ class MasterServicesPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black26, width: 1),
           boxShadow: [
             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
           ],

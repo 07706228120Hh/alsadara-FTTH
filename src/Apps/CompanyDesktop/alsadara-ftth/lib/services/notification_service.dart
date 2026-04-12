@@ -1,13 +1,15 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:local_notifier/local_notifier.dart';
 import '../models/task.dart';
 import 'firebase_availability.dart';
 import '../pages/chat/chat_conversation_page.dart';
 import '../widgets/window_close_handler_fixed.dart' show navigatorKey;
 import 'chat_service.dart';
+import 'in_app_notification_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -47,22 +49,76 @@ class NotificationService {
     }
   }
 
+  static bool _windowsNotificationsReady = false;
+
   /// تهيئة خدمة الإشعارات
   static Future<void> initialize() async {
     try {
-      // تهيئة الإشعارات المحلية + القناة
-      await _initializeLocalNotifications();
-      // تهيئة FCM
+      if (Platform.isWindows) {
+        // Windows: استخدام local_notifier بدلاً من flutter_local_notifications
+        await _initializeWindowsNotifications();
+      } else {
+        // Android/iOS: الإشعارات المحلية + القناة
+        await _initializeLocalNotifications();
+      }
+      // تهيئة FCM (Android/iOS فقط)
       await _initializeFirebaseMessaging();
       print('✅ تم تهيئة الإشعارات (محلية + FCM)');
     } catch (e) {
-      print('❌ خطأ في تهيئة الإشعارات');
-      // الاستمرار حتى لو فشلت التهيئة
+      print('❌ خطأ في تهيئة الإشعارات: $e');
+      // محاولة ثانية للإشعارات المحلية فقط
       try {
-        await _initializeLocalNotifications();
+        if (Platform.isWindows) {
+          await _initializeWindowsNotifications();
+        } else {
+          await _initializeLocalNotifications();
+        }
       } catch (localError) {
         print('❌ خطأ في تهيئة الإشعارات المحلية: $localError');
       }
+    }
+  }
+
+  /// تهيئة إشعارات Windows عبر local_notifier
+  static Future<void> _initializeWindowsNotifications() async {
+    try {
+      await localNotifier.setup(
+        appName: 'الصدارة FTTH',
+        shortcutPolicy: ShortcutPolicy.requireCreate,
+      );
+      _windowsNotificationsReady = true;
+      debugPrint('✅ [Windows] تم تهيئة إشعارات Windows بنجاح');
+    } catch (e) {
+      debugPrint('❌ [Windows] خطأ في تهيئة إشعارات Windows: $e');
+    }
+  }
+
+  /// عرض إشعار Windows عبر local_notifier
+  static Future<void> _showWindowsNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (!_windowsNotificationsReady) {
+      debugPrint('⚠️ [Windows] إشعارات Windows غير مُهيّأة');
+      return;
+    }
+    try {
+      final notification = LocalNotification(
+        title: title,
+        body: body,
+      );
+      notification.onClick = () {
+        if (payload != null) {
+          try {
+            final data = jsonDecode(payload) as Map<String, dynamic>;
+            _handleNotificationNavigation(data);
+          } catch (_) {}
+        }
+      };
+      await notification.show();
+    } catch (e) {
+      debugPrint('⚠️ [Windows] خطأ في عرض إشعار Windows: $e');
     }
   }
 
@@ -137,6 +193,30 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       debugPrint('📩 رسالة FCM في الـ foreground: ${message.messageId}');
       await _showRemoteAsLocal(message);
+      // بانر داخل التطبيق
+      final data = message.data;
+      final notif = message.notification;
+      final fcmTitle = notif?.title ?? data['title'] ?? 'إشعار جديد';
+      final fcmBody = notif?.body ?? data['body'] ?? '';
+      final fcmType = data['type']?.toString() ?? '';
+      InAppNotificationType bannerType;
+      if (fcmType.contains('task') || fcmType.contains('status')) {
+        bannerType = InAppNotificationType.task;
+      } else if (fcmType.contains('chat') || fcmType.contains('message')) {
+        bannerType = InAppNotificationType.chat;
+      } else if (fcmType.contains('agent')) {
+        bannerType = InAppNotificationType.agent;
+      } else if (fcmType.contains('citizen')) {
+        bannerType = InAppNotificationType.citizen;
+      } else {
+        bannerType = InAppNotificationType.system;
+      }
+      InAppNotificationService.instance.show(
+        title: fcmTitle,
+        body: fcmBody,
+        type: bannerType,
+        referenceId: data['requestId']?.toString() ?? data['ticketId']?.toString(),
+      );
     });
 
     // عند فتح من الإشعار (terminated -> opened)
@@ -153,16 +233,23 @@ class NotificationService {
 
   static bool _localNotificationsReady = false;
 
-  /// عرض إشعار محلي عام
+  /// عرض إشعار محلي عام (يدعم Windows + Android + iOS)
   static Future<void> showLocalNotification({
     required String title,
     required String body,
     String? payload,
     int? id,
   }) async {
-    // Windows لا يدعم flutter_local_notifications — تجاهل
+    // Windows: استخدام local_notifier
+    if (Platform.isWindows) {
+      await _showWindowsNotification(title: title, body: body, payload: payload);
+      return;
+    }
+
+    // Android/iOS: استخدام flutter_local_notifications
     if (!_localNotificationsReady) {
-      debugPrint('⚠️ [Notification] Local notifications not initialized, skipping');
+      debugPrint(
+          '⚠️ [Notification] Local notifications not initialized, skipping');
       return;
     }
 
@@ -211,6 +298,20 @@ class NotificationService {
     required String roomId,
     String? messageId,
   }) async {
+    // Windows: استخدام إشعار عادي
+    if (Platform.isWindows) {
+      await _showWindowsNotification(
+        title: title,
+        body: body,
+        payload: jsonEncode({
+          'type': 'chat_message',
+          'roomId': roomId,
+          if (messageId != null) 'messageId': messageId,
+        }),
+      );
+      return;
+    }
+
     if (!_localNotificationsReady) return;
 
     try {
@@ -271,7 +372,8 @@ class NotificationService {
   }
 
   /// معالجة الرد من الإشعار
-  static Future<void> handleNotificationReply(String actionId, String? inputText) async {
+  static Future<void> handleNotificationReply(
+      String actionId, String? inputText) async {
     if (inputText == null || inputText.isEmpty) return;
 
     if (actionId.startsWith('reply_')) {
@@ -346,7 +448,6 @@ class NotificationService {
         'technicianPhone': task.technicianPhone,
       }),
     );
-
   }
 
   /// إشعار للمهام المتأخرة
@@ -365,7 +466,6 @@ class NotificationService {
         'taskIds': overdueTasks.map((t) => t.id).toList(),
       }),
     );
-
   }
 
   // ملاحظة: إرسال Push Notifications يتم من السيرفر (Backend) عبر FcmNotificationService

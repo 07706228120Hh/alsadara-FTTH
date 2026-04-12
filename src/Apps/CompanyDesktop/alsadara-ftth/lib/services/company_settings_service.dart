@@ -7,6 +7,7 @@ library;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'custom_auth_service.dart';
+import 'firebase_availability.dart';
 
 /// نموذج إعدادات الشركة
 class CompanySettings {
@@ -114,7 +115,8 @@ class CompanySettings {
 
 /// خدمة إعدادات الشركة
 class CompanySettingsService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static FirebaseFirestore? get _firestore =>
+      FirebaseAvailability.isAvailable ? FirebaseFirestore.instance : null;
   static final CustomAuthService _authService = CustomAuthService();
 
   static String? get _currentTenantId => _authService.currentTenantId;
@@ -128,13 +130,15 @@ class CompanySettingsService {
   static Future<bool> saveSettings(CompanySettings settings,
       {String? tenantId}) async {
     try {
+      final fs = _firestore;
+      if (fs == null) return false;
       final tid = tenantId ?? _currentTenantId;
       if (tid == null) {
         debugPrint('❌ لا يوجد tenant محدد');
         return false;
       }
 
-      await _firestore.doc(_getSettingsPath(tid)).set(
+      await fs.doc(_getSettingsPath(tid)).set(
             settings.toMap(),
             SetOptions(merge: true),
           );
@@ -150,13 +154,15 @@ class CompanySettingsService {
   /// تحميل إعدادات الشركة
   static Future<CompanySettings> getSettings({String? tenantId}) async {
     try {
+      final fs = _firestore;
+      if (fs == null) return CompanySettings();
       final tid = tenantId ?? _currentTenantId;
       if (tid == null) {
         debugPrint('⚠️ لا يوجد tenant - إرجاع الإعدادات الافتراضية');
         return CompanySettings();
       }
 
-      final doc = await _firestore.doc(_getSettingsPath(tid)).get();
+      final doc = await fs.doc(_getSettingsPath(tid)).get();
 
       if (doc.exists && doc.data() != null) {
         return CompanySettings.fromMap(doc.data()!);
@@ -183,10 +189,12 @@ class CompanySettingsService {
   static Future<bool> saveManagerWhatsApp(String phone,
       {String? tenantId}) async {
     try {
+      final fs = _firestore;
+      if (fs == null) return false;
       final tid = tenantId ?? _currentTenantId;
       if (tid == null) return false;
 
-      await _firestore.doc(_getSettingsPath(tid)).set({
+      await fs.doc(_getSettingsPath(tid)).set({
         'managerWhatsApp': phone,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -277,10 +285,12 @@ class CompanySettingsService {
     String? tenantId,
   }) async {
     try {
+      final fs = _firestore;
+      if (fs == null) return false;
       final tid = tenantId ?? _currentTenantId;
       if (tid == null) return false;
 
-      await _firestore.doc(_getRemindersPath(tid)).set({
+      await fs.doc(_getRemindersPath(tid)).set({
         'enabled': enabled,
         'batches': batches,
         'tenantId': tid,
@@ -300,10 +310,12 @@ class CompanySettingsService {
     String? tenantId,
   }) async {
     try {
+      final fs = _firestore;
+      if (fs == null) return {'enabled': false, 'batches': []};
       final tid = tenantId ?? _currentTenantId;
       if (tid == null) return {'enabled': false, 'batches': []};
 
-      final doc = await _firestore.doc(_getRemindersPath(tid)).get();
+      final doc = await fs.doc(_getRemindersPath(tid)).get();
       if (doc.exists && doc.data() != null) {
         return doc.data()!;
       }
@@ -321,10 +333,12 @@ class CompanySettingsService {
     String? tenantId,
   }) async {
     try {
+      final fs = _firestore;
+      if (fs == null) return false;
       final tid = tenantId ?? _currentTenantId;
       if (tid == null) return false;
 
-      await _firestore.doc(_getReminderResultsPath(tid)).set({
+      await fs.doc(_getReminderResultsPath(tid)).set({
         batchId: result,
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -341,10 +355,12 @@ class CompanySettingsService {
     String? tenantId,
   }) async {
     try {
+      final fs = _firestore;
+      if (fs == null) return {};
       final tid = tenantId ?? _currentTenantId;
       if (tid == null) return {};
 
-      final doc = await _firestore.doc(_getReminderResultsPath(tid)).get();
+      final doc = await fs.doc(_getReminderResultsPath(tid)).get();
       if (doc.exists && doc.data() != null) {
         return doc.data()!;
       }

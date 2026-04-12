@@ -158,18 +158,14 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Merchant", policy => policy.RequireRole("SuperAdmin", "Admin", "Merchant"));
 });
 
-// CORS - تم تقييده للأمان
-var allowedOrigins = builder.Configuration.GetSection("Security:AllowedOrigins").Get<string[]>() 
-    ?? new[] { "http://localhost:5000" };
-
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.AllowAnyOrigin()
             .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
+            .AllowAnyHeader();
     });
 });
 
@@ -275,10 +271,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseResponseCompression();
 app.UseRateLimiter();
-app.UseCors("AllowAll");
 
 // خدمة بوابة المواطن (Citizen Portal) كملفات ثابتة
 var citizenPortalPath = Path.Combine(AppContext.BaseDirectory, "citizen_portal");

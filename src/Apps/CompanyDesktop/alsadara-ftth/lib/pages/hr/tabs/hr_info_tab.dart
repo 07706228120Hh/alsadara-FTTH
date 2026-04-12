@@ -59,6 +59,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
   // الأقسام
   List<String> _departments = [];
+  List<String> _selectedDepts = [];
   bool _isDepartmentsLoading = true;
 
   // المراكز
@@ -94,7 +95,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
     {'value': 'Employee', 'label': 'موظف'},
     {'value': 'Viewer', 'label': 'مشاهد'},
     {'value': 'Technician', 'label': 'فني'},
-    {'value': 'TechnicalLeader', 'label': 'ليدر فني'},
+    {'value': 'TechnicalLeader', 'label': 'ليدر'},
     {'value': 'Manager', 'label': 'مدير'},
     {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
   ];
@@ -148,8 +149,11 @@ class _HrInfoTabState extends State<HrInfoTab> {
         TextEditingController(text: e['fullName'] ?? e['FullName'] ?? '');
     _phoneCtrl =
         TextEditingController(text: e['phoneNumber'] ?? e['PhoneNumber'] ?? '');
-    _deptCtrl =
-        TextEditingController(text: e['department'] ?? e['Department'] ?? '');
+    final deptStr = (e['department'] ?? e['Department'] ?? '').toString();
+    _deptCtrl = TextEditingController(text: deptStr);
+    _selectedDepts = deptStr.isNotEmpty
+        ? deptStr.split(',').map((d) => d.trim()).where((d) => d.isNotEmpty).toList()
+        : [];
     _empCodeCtrl = TextEditingController(
         text: e['employeeCode'] ?? e['EmployeeCode'] ?? '');
     _centerCtrl = TextEditingController(text: e['center'] ?? e['Center'] ?? '');
@@ -251,7 +255,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
         'fullName': _fullNameCtrl.text,
         'phoneNumber': _phoneCtrl.text,
         'role': _selectedRole,
-        'department': _deptCtrl.text,
+        'department': _selectedDepts.isNotEmpty ? _selectedDepts.join(',') : _deptCtrl.text,
         'employeeCode': _empCodeCtrl.text,
         'center': _centerCtrl.text,
         'salary': double.tryParse(_salaryCtrl.text) ?? 0,
@@ -819,29 +823,28 @@ class _HrInfoTabState extends State<HrInfoTab> {
   // ═══════════════ حقل القسم (dropdown عند التعديل) ═══════════════
 
   Widget _departmentDropdownField() {
-    final currentDept = _deptCtrl.text;
-    // بناء قائمة الأقسام مع القسم الحالي إن لم يكن في القائمة
-    final allDepts = <String>[..._departments];
-    if (currentDept.isNotEmpty && !allDepts.contains(currentDept)) {
-      allDepts.insert(0, currentDept);
-    }
+    // الأقسام المتاحة للإضافة (غير المحددة بعد)
+    final availableDepts = _departments.where((d) => !_selectedDepts.contains(d)).toList();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 150,
-            child: Row(
-              children: [
-                const Icon(Icons.business, size: 15, color: _labelColor),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text('القسم',
-                      style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.business, size: 15, color: _labelColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('القسم',
+                        style: GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -850,74 +853,118 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 ? (_isDepartmentsLoading
                     ? const SizedBox(
                         height: 30,
-                        child: Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
+                        child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
                       )
-                    : DropdownButtonFormField<String>(
-                        value: allDepts.contains(currentDept) &&
-                                currentDept.isNotEmpty
-                            ? currentDept
-                            : null,
-                        isDense: true,
-                        style:
-                            GoogleFonts.cairo(fontSize: 13, color: _valueColor),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
-                          hintText: 'اختر القسم',
-                          hintStyle: GoogleFonts.cairo(
-                              fontSize: 12, color: _labelColor),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFDDDDDD)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFDDDDDD)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide:
-                                const BorderSide(color: _accent, width: 1.5),
-                          ),
+                    : Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFDDDDDD)),
                         ),
-                        items: allDepts
-                            .map((d) => DropdownMenuItem<String>(
-                                  value: d,
-                                  child: Text(d,
-                                      style: GoogleFonts.cairo(fontSize: 13)),
-                                ))
-                            .toList(),
-                        onChanged: (v) {
-                          setState(() {
-                            _deptCtrl.text = v ?? '';
-                          });
-                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // الأقسام المحددة كـ chips
+                            if (_selectedDepts.isNotEmpty)
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: _selectedDepts.map((dept) {
+                                  final isFirst = _selectedDepts.indexOf(dept) == 0;
+                                  return Chip(
+                                    label: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (isFirst) ...[
+                                          Icon(Icons.star, size: 14, color: Colors.amber[700]),
+                                          const SizedBox(width: 4),
+                                        ],
+                                        Text(dept, style: GoogleFonts.cairo(fontSize: 12)),
+                                      ],
+                                    ),
+                                    deleteIcon: const Icon(Icons.close, size: 16),
+                                    onDeleted: () {
+                                      setState(() {
+                                        _selectedDepts.remove(dept);
+                                        _deptCtrl.text = _selectedDepts.join(',');
+                                      });
+                                    },
+                                    backgroundColor: isFirst ? Colors.amber[50] : Colors.grey[100],
+                                    side: BorderSide(color: isFirst ? Colors.amber[300]! : Colors.grey[300]!),
+                                    visualDensity: VisualDensity.compact,
+                                  );
+                                }).toList(),
+                              ),
+                            // زر إضافة قسم
+                            if (availableDepts.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: PopupMenuButton<String>(
+                                  onSelected: (dept) {
+                                    setState(() {
+                                      _selectedDepts.add(dept);
+                                      _deptCtrl.text = _selectedDepts.join(',');
+                                    });
+                                  },
+                                  itemBuilder: (ctx) => availableDepts
+                                      .map((d) => PopupMenuItem(value: d, child: Text(d, style: GoogleFonts.cairo(fontSize: 13))))
+                                      .toList(),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: _accent, style: BorderStyle.solid),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.add, size: 16, color: _accent),
+                                        const SizedBox(width: 4),
+                                        Text('إضافة قسم', style: GoogleFonts.cairo(fontSize: 12, color: _accent)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ))
                 : Container(
                     width: double.infinity,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFEEEEEE)),
                     ),
-                    child: Text(
-                      currentDept.isEmpty ? '—' : currentDept,
-                      style: GoogleFonts.cairo(
-                        fontSize: 13,
-                        color: currentDept.isEmpty ? _labelColor : _valueColor,
-                      ),
-                    ),
+                    child: _selectedDepts.isEmpty
+                        ? Text('—', style: GoogleFonts.cairo(fontSize: 13, color: _labelColor))
+                        : Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: _selectedDepts.asMap().entries.map((e) {
+                              final isFirst = e.key == 0;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isFirst ? Colors.amber[50] : Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: isFirst ? Colors.amber[300]! : Colors.grey[300]!),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isFirst) ...[
+                                      Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                                      const SizedBox(width: 3),
+                                    ],
+                                    Text(e.value, style: GoogleFonts.cairo(fontSize: 12, color: _valueColor)),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
                   ),
           ),
         ],
@@ -2053,7 +2100,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
       case 'Manager':
         return 'مدير';
       case 'TechnicalLeader':
-        return 'ليدر فني';
+        return 'ليدر';
       case 'Technician':
         return 'فني';
       case 'Viewer':

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 
 /// صفحة تسجيل دخول المواطن - تصميم فاخر
 class CitizenLoginPage extends StatefulWidget {
@@ -19,6 +20,7 @@ class _CitizenLoginPageState extends State<CitizenLoginPage>
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  final _apiService = ApiService();
 
   late AnimationController _entranceCtrl;
   late AnimationController _pulseCtrl;
@@ -52,6 +54,21 @@ class _CitizenLoginPageState extends State<CitizenLoginPage>
     )..repeat(reverse: true);
 
     _entranceCtrl.forward();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final rememberMe = await _apiService.getRememberMe();
+    if (rememberMe) {
+      final saved = await _apiService.getSavedCredentials();
+      if (saved.phone != null && mounted) {
+        setState(() {
+          _phoneController.text = saved.phone!;
+          _passwordController.text = saved.password ?? '';
+          _rememberMe = true;
+        });
+      }
+    }
   }
 
   @override
@@ -74,6 +91,14 @@ class _CitizenLoginPageState extends State<CitizenLoginPage>
     );
 
     if (success && mounted) {
+      if (_rememberMe) {
+        await _apiService.saveLoginCredentials(
+          _phoneController.text.trim(),
+          _passwordController.text,
+        );
+      } else {
+        await _apiService.clearSavedCredentials();
+      }
       context.go('/citizen/home');
     } else if (authProvider.error != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

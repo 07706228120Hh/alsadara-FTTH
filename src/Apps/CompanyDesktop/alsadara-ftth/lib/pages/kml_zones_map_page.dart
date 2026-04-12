@@ -217,7 +217,10 @@ _ParseResult _parseKml(String xmlString) {
 // ══════════════════════════════════════════════════════════════
 
 class KmlZonesMapPage extends StatefulWidget {
-  const KmlZonesMapPage({super.key});
+  final String? initialFbg;
+  final String? initialFat;
+
+  const KmlZonesMapPage({super.key, this.initialFbg, this.initialFat});
 
   @override
   State<KmlZonesMapPage> createState() => _KmlZonesMapPageState();
@@ -281,16 +284,50 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
   @override
   void initState() {
     super.initState();
+    // تطبيق الفلتر الأولي إذا تم تمريره من المهمة
+    if (widget.initialFbg != null && widget.initialFbg!.isNotEmpty) {
+      _selectedFbg = widget.initialFbg!;
+    }
+    if (widget.initialFat != null && widget.initialFat!.isNotEmpty) {
+      _selectedFat = widget.initialFat!;
+    }
     if (_cachedPoints != null) {
       // Instant load from memory
       _allPoints = _cachedPoints!;
       _allRegions = _cachedRegions!;
       _zones = _cachedZones!;
       _loading = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _computeFbgHulls());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _computeFbgHulls();
+        _zoomToFilteredPoints();
+      });
     } else {
       _loadKml();
     }
+  }
+
+  /// تقريب الخريطة على النقاط المفلترة عند فتح من مهمة
+  void _zoomToFilteredPoints() {
+    if (widget.initialFbg == null && widget.initialFat == null) return;
+    final points = _visiblePoints;
+    if (points.isEmpty) return;
+    if (points.length == 1) {
+      _mapController.move(points.first.position, 17.0);
+      setState(() => _selectedPoint = points.first);
+      return;
+    }
+    // حساب bounds لكل النقاط المفلترة
+    double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    for (final p in points) {
+      if (p.position.latitude < minLat) minLat = p.position.latitude;
+      if (p.position.latitude > maxLat) maxLat = p.position.latitude;
+      if (p.position.longitude < minLng) minLng = p.position.longitude;
+      if (p.position.longitude > maxLng) maxLng = p.position.longitude;
+    }
+    _mapController.fitCamera(CameraFit.bounds(
+      bounds: LatLngBounds(LatLng(minLat, minLng), LatLng(maxLat, maxLng)),
+      padding: const EdgeInsets.all(50),
+    ));
   }
 
   @override
@@ -500,6 +537,169 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
     } finally {
       if (mounted) setState(() => _fetchingLocation = false);
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // My Location — الذهاب لموقعي الحالي
+  // ══════════════════════════════════════════════════════════════
+  Future<void> _goToMyLocation() async {
+    setState(() => _fetchingLocation = true);
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.deniedForever || perm == LocationPermission.denied) {
+        if (mounted) _showNavError('لا توجد صلاحية للوصول إلى الموقع');
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      if (!mounted) return;
+      final myPos = LatLng(pos.latitude, pos.longitude);
+      setState(() {
+        _myLocation = myPos;
+        _fetchingLocation = false;
+      });
+      _mapController.move(myPos, 16.0);
+    } catch (e) {
+      if (mounted) _showNavError('فشل تحديد الموقع: $e');
+    } finally {
+      if (mounted) setState(() => _fetchingLocation = false);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // Coordinate Search — بحث بالإحداثيات أو رابط Google Maps
+  // ══════════════════════════════════════════════════════════════
+  void _showCoordinateSearchDialog(BuildContext context) {
+    final controller = TextEditingController();
+    final isSmall = MediaQuery.of(context).size.width < 420;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        insetPadding: EdgeInsets.symmetric(horizontal: isSmall ? 16 : 40, vertical: 24),
+        title: Row(children: [
+          Icon(Icons.pin_drop, color: _accent, size: isSmall ? 20 : 24),
+          SizedBox(width: isSmall ? 6 : 10),
+          Expanded(child: Text('بحث بالإحداثيات', style: TextStyle(fontSize: isSmall ? 15 : 17, fontWeight: FontWeight.bold))),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(
+            'الصق إحداثيات أو رابط Google Maps',
+            style: TextStyle(fontSize: isSmall ? 11 : 13, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: isSmall ? 8 : 12),
+          TextField(
+            controller: controller,
+            textDirection: TextDirection.ltr,
+            style: TextStyle(fontSize: isSmall ? 13 : 15),
+            decoration: InputDecoration(
+              hintText: '33.3573, 44.4415',
+              hintStyle: TextStyle(fontSize: isSmall ? 12 : 14, color: Colors.grey.shade400),
+              prefixIcon: Icon(Icons.location_on, size: isSmall ? 18 : 22),
+              suffixIcon: IconButton(
+                icon: Icon(Icons.content_paste, size: isSmall ? 18 : 20),
+                onPressed: () async {
+                  final data = await Clipboard.getData(Clipboard.kTextPlain);
+                  if (data?.text != null) controller.text = data!.text!;
+                },
+              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: isSmall ? 8 : 12),
+            ),
+            onSubmitted: (_) {
+              final result = _parseCoordinates(controller.text);
+              if (result != null) {
+                Navigator.of(ctx).pop();
+                _goToCoordinate(result);
+              }
+            },
+          ),
+          SizedBox(height: isSmall ? 4 : 8),
+          Text(
+            'أمثلة:\n• 33.3573, 44.4415\n• https://maps.google.com/?q=33.3573,44.4415\n• https://goo.gl/maps/...',
+            style: TextStyle(fontSize: isSmall ? 9 : 11, color: Colors.grey.shade500),
+          ),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('إلغاء', style: TextStyle(fontSize: isSmall ? 12 : 14, color: Colors.grey)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              final result = _parseCoordinates(controller.text);
+              if (result != null) {
+                Navigator.of(ctx).pop();
+                _goToCoordinate(result);
+              } else {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('صيغة غير صحيحة — أدخل إحداثيات أو رابط Google Maps'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            icon: Icon(Icons.search, size: isSmall ? 16 : 18),
+            label: Text('بحث', style: TextStyle(fontSize: isSmall ? 12 : 14)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// تحليل نص الإحداثيات — يدعم عدة صيغ
+  LatLng? _parseCoordinates(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return null;
+
+    // صيغة 1: "33.3573, 44.4415" أو "33.3573 44.4415"
+    final simpleMatch = RegExp(r'(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)').firstMatch(t);
+    if (simpleMatch != null) {
+      final lat = double.tryParse(simpleMatch.group(1)!);
+      final lng = double.tryParse(simpleMatch.group(2)!);
+      if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180) {
+        return LatLng(lat, lng);
+      }
+    }
+
+    // صيغة 2: رابط Google Maps — ?q=lat,lng أو @lat,lng أو /place/lat,lng
+    final googleMatch = RegExp(r'[?&@/](?:q=|place/)?(-?\d+\.?\d*)[,/](-?\d+\.?\d*)').firstMatch(t);
+    if (googleMatch != null) {
+      final lat = double.tryParse(googleMatch.group(1)!);
+      final lng = double.tryParse(googleMatch.group(2)!);
+      if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180) {
+        return LatLng(lat, lng);
+      }
+    }
+
+    // صيغة 3: رابط يحتوي ll= أو sll=
+    final llMatch = RegExp(r'[?&]s?ll=(-?\d+\.?\d*),(-?\d+\.?\d*)').firstMatch(t);
+    if (llMatch != null) {
+      final lat = double.tryParse(llMatch.group(1)!);
+      final lng = double.tryParse(llMatch.group(2)!);
+      if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180) {
+        return LatLng(lat, lng);
+      }
+    }
+
+    return null;
+  }
+
+  /// الذهاب لإحداثية محددة مع وضع علامة
+  void _goToCoordinate(LatLng coord) {
+    setState(() => _myLocation = coord);
+    _mapController.move(coord, 17.0);
   }
 
   Future<Map<String, dynamic>?> _fetchOsrmRoute(
@@ -733,6 +933,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       });
 
       _computeFbgHulls();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _zoomToFilteredPoints());
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -921,6 +1122,18 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                 Icons.tune_rounded,
                 'خيارات',
                 () => _showOptionsSheet(context),
+              ),
+              const SizedBox(height: 8),
+              _floatingBtn(
+                Icons.my_location_rounded,
+                'موقعي',
+                _goToMyLocation,
+              ),
+              const SizedBox(height: 8),
+              _floatingBtn(
+                Icons.pin_drop_rounded,
+                'إحداثيات',
+                () => _showCoordinateSearchDialog(context),
               ),
             ],
           ),

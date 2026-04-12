@@ -2,7 +2,7 @@ name: alsadara
 description: "Alsadara Flutter application - تطبيق الصدارة لإدارة شبكات FTTH"
 publish_to: 'none'
 
-version: 1.9.3+251
+version: 1.9.7+255
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -97,6 +97,7 @@ dependencies:
   signalr_netcore: ^1.4.4
   just_audio: ^0.9.42
   audioplayers: ^6.1.0
+  local_notifier: ^0.1.6
 
 dev_dependencies:
   flutter_test:

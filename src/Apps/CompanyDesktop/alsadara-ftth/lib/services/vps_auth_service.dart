@@ -224,6 +224,7 @@ class VpsAuthService {
             email: data.user.email,
             phone: data.user.phone,
             role: data.user.role,
+            department: data.user.department,
             permissions: List.from(data.user.permissions),
             rawFirstSystemV2: data.user.rawFirstSystemV2,
             rawSecondSystemV2: data.user.rawSecondSystemV2,
@@ -701,6 +702,7 @@ class VpsCompanyUser {
   final String? email;
   final String? phone;
   final String role;
+  final String? department;
   final List<String> permissions;
 
   /// صلاحيات V2 الخام — لحفظها في PermissionManager
@@ -715,6 +717,7 @@ class VpsCompanyUser {
     this.email,
     this.phone,
     required this.role,
+    this.department,
     required this.permissions,
     this.rawFirstSystemV2,
     this.rawSecondSystemV2,
@@ -754,6 +757,7 @@ class VpsCompanyUser {
     final email = json['email'] ?? json['Email'];
     final phone = phoneNumber ?? json['phone'] ?? json['Phone'];
     final isActive = json['isActive'] ?? json['IsActive'] ?? true;
+    final department = json['department']?.toString() ?? json['Department']?.toString();
 
     return VpsCompanyUser(
       id: id,
@@ -762,6 +766,7 @@ class VpsCompanyUser {
       email: email,
       phone: phone,
       role: role,
+      department: department,
       permissions: permissionsList,
       rawFirstSystemV2: firstSystemV2Str,
       rawSecondSystemV2: secondSystemV2Str,

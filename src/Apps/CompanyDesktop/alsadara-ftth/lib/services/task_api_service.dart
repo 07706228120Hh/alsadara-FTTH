@@ -85,6 +85,12 @@ class TaskApiService {
     return _toMap(response);
   }
 
+  /// جلب أقسام المستخدم الحالي (للليدر/المدير)
+  Future<Map<String, dynamic>> getMyDepartments() async {
+    final response = await _client.get('/servicerequests/my-departments', (json) => json);
+    return _toMap(response);
+  }
+
   // ═══════ جلب الطلبات ═══════
 
   /// جلب جميع الطلبات مع تصفية
@@ -96,6 +102,7 @@ class TaskApiService {
     String? source,
     String? department,
     String? technician,
+    String? createdByName,
   }) async {
     String query = '/servicerequests?page=$page&pageSize=$pageSize';
     if (status != null) query += '&status=$status';
@@ -105,6 +112,20 @@ class TaskApiService {
       query += '&department=${Uri.encodeComponent(department)}';
     if (technician != null)
       query += '&technician=${Uri.encodeComponent(technician)}';
+    if (createdByName != null)
+      query += '&createdByName=${Uri.encodeComponent(createdByName)}';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  /// جلب طلبات التحصيل لمشترك معين بالهاتف
+  Future<Map<String, dynamic>> getCollectionTasks({
+    required String customerPhone,
+    String? status,
+  }) async {
+    String query = '/servicerequests?pageSize=10&customerPhone=${Uri.encodeComponent(customerPhone)}'
+        '&taskType=${Uri.encodeComponent("تحصيل مبلغ تجديد")}';
+    if (status != null) query += '&status=$status';
     final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }
@@ -225,9 +246,13 @@ class TaskApiService {
   // ═══════ الإحصائيات ═══════
 
   /// إحصائيات الطلبات
-  Future<Map<String, dynamic>> getStatistics() async {
-    final response =
-        await _client.get('/servicerequests/statistics', (json) => json);
+  Future<Map<String, dynamic>> getStatistics({String? department, String? technician}) async {
+    var url = '/servicerequests/statistics';
+    final params = <String>[];
+    if (department != null && department.isNotEmpty) params.add('department=$department');
+    if (technician != null && technician.isNotEmpty) params.add('technician=$technician');
+    if (params.isNotEmpty) url += '?${params.join('&')}';
+    final response = await _client.get(url, (json) => json);
     return _toMap(response);
   }
 

@@ -10,6 +10,7 @@ import '../widgets/maintenance_messages_dialog.dart';
 import '../widgets/edit_task_dialog.dart';
 import '../ftth/users/quick_search_users_page.dart';
 import '../services/auth_service.dart';
+import '../pages/kml_zones_map_page.dart';
 import '../permissions/permission_manager.dart';
 import '../services/dual_auth_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -57,6 +58,10 @@ class _TaskCardState extends State<TaskCard> {
     super.dispose();
   }
 
+  // هل المهمة من نوع تحصيل
+  bool _isCollectionTask() =>
+      widget.task.title.contains('تحصيل مبلغ') || widget.task.title.contains('استحصال مبلغ');
+
   // متغيرات لجلب بيانات الوكلاء
   List<Map<String, dynamic>> agents = [];
   bool isLoadingAgents = false;
@@ -74,18 +79,21 @@ class _TaskCardState extends State<TaskCard> {
 
     final statusColor = _getStatusColor(widget.task.status);
     final isSmall = MediaQuery.of(context).size.width < 420;
+    final isCollectionTask = widget.task.title.contains('تحصيل مبلغ') || widget.task.title.contains('استحصال مبلغ');
     return Container(
       margin: EdgeInsets.symmetric(vertical: isSmall ? 3 : 5, horizontal: isSmall ? 4 : 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isCollectionTask ? const Color(0xFFFFF8E1) : Colors.white,
         borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
         border: Border.all(
-          color: statusColor.withValues(alpha: 0.4),
-          width: 1,
+          color: isCollectionTask ? const Color(0xFFFF8F00) : Colors.black87,
+          width: isCollectionTask ? 2.0 : 2.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withValues(alpha: 0.12),
+            color: isCollectionTask
+                ? const Color(0xFFFF8F00).withValues(alpha: 0.18)
+                : statusColor.withValues(alpha: 0.12),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -193,7 +201,7 @@ class _TaskCardState extends State<TaskCard> {
               ],
             ),
             child: Icon(
-              _getPriorityIcon(widget.task.priority),
+              _isCollectionTask() ? Icons.attach_money : _getPriorityIcon(widget.task.priority),
               color: Colors.white,
               size: 16,
             ),
@@ -204,19 +212,37 @@ class _TaskCardState extends State<TaskCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.task.title.isNotEmpty
-                      ? widget.task.title
-                      : 'مهمة غير محددة',
-                  style: TextStyle(
-                    fontSize: isSmall ? 12 : 15,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A2E),
-                    letterSpacing: 0.3,
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      widget.task.title.isNotEmpty
+                          ? widget.task.title
+                          : 'مهمة غير محددة',
+                      style: TextStyle(
+                        fontSize: isSmall ? 12 : 15,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A2E),
+                        letterSpacing: 0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  if (_isCollectionTask() && widget.task.amount.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF8F00),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${widget.task.amount} د.ع',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ]),
                 const SizedBox(height: 4),
                 Text(
                   '${widget.task.department} • #${widget.task.id}',
@@ -323,7 +349,13 @@ class _TaskCardState extends State<TaskCard> {
                 })
               : null),
       if (widget.task.amount.isNotEmpty)
-        _buildInfoTile(Icons.payments_outlined, 'المبلغ', '${widget.task.amount} د.ع', const Color(0xFFE74C3C), compact: compact),
+        _buildInfoTile(Icons.payments_outlined, 'المبلغ', '${_formatAmount(widget.task.amount)} د.ع', const Color(0xFFE74C3C), compact: compact),
+      if (widget.task.createdByName.isNotEmpty)
+        _buildInfoTile(Icons.person_add_outlined, 'أنشأها', widget.task.createdByName, const Color(0xFF2E86C1), compact: compact),
+      if (widget.task.serviceType.isNotEmpty)
+        _buildInfoTile(Icons.speed_outlined, 'الخدمة', '${widget.task.serviceType} Mbps', const Color(0xFFE67E22), compact: compact),
+      if (widget.task.subscriptionDuration.isNotEmpty)
+        _buildInfoTile(Icons.timer_outlined, 'المدة', widget.task.subscriptionDuration, const Color(0xFF16A085), compact: compact),
     ];
 
     // بناء الصفوف ديناميكياً حسب عدد الأعمدة
@@ -359,8 +391,8 @@ class _TaskCardState extends State<TaskCard> {
         color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withValues(alpha: 0.15),
-          width: 1,
+          color: Colors.black87,
+          width: 1.5,
         ),
       ),
       child: Row(
@@ -430,7 +462,7 @@ class _TaskCardState extends State<TaskCard> {
       decoration: BoxDecoration(
         color: statusColor.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: statusColor.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.black87, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,7 +550,7 @@ class _TaskCardState extends State<TaskCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        border: Border.all(color: Colors.black87, width: 1.5),
       ),
       child: Row(
         children: [
@@ -905,6 +937,12 @@ class _TaskCardState extends State<TaskCard> {
         () => _launchWhatsApp(widget.task.phone),
       ));
     }
+    if (widget.task.fbg.isNotEmpty || widget.task.fat.isNotEmpty) {
+      primaryButtons.add(_buildCompactActionButton(
+        Icons.map_rounded, 'خريطة', const Color(0xFF0097A7),
+        _openZonesMap,
+      ));
+    }
 
     // الأزرار الثانوية (popup menu على الموبايل)
     final menuItems = <PopupMenuEntry<String>>[];
@@ -951,7 +989,7 @@ class _TaskCardState extends State<TaskCard> {
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
+                      border: Border.all(color: Colors.black87, width: 1.5),
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -980,6 +1018,14 @@ class _TaskCardState extends State<TaskCard> {
     if (widget.currentUserRole == 'مدير') {
       allButtons.add(_buildCompactActionButton(Icons.delete_outline_rounded, 'حذف', const Color(0xFFE74C3C), _confirmDeleteTask));
     }
+    // زر تفعيل — يظهر فقط للمهام المكتملة غير المفعّلة (ليدر أو مدير)
+    if (widget.task.isCompleted &&
+        !widget.task.notes.contains('[مفعّل]') &&
+        (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر')) {
+      allButtons.add(_buildCompactActionButton(
+        Icons.verified_rounded, 'تفعيل', const Color(0xFF27AE60), _markAsActivated,
+      ));
+    }
     return Row(children: allButtons);
   }
 
@@ -991,8 +1037,8 @@ class _TaskCardState extends State<TaskCard> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Colors.black.withValues(alpha: 0.15),
-            width: 1,
+            color: Colors.black87,
+            width: 1.5,
           ),
         ),
         child: Material(
@@ -1025,6 +1071,21 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   /// الحصول على أيقونة الأولوية
+  /// تنسيق المبلغ بفواصل المراتب (5225 → 5,225)
+  String _formatAmount(String amount) {
+    // إزالة الجزء العشري أولاً (60000.0 → 60000) ثم استخراج الأرقام
+    final wholePart = amount.contains('.') ? amount.split('.').first : amount;
+    final digits = wholePart.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.isEmpty) return amount;
+    final buffer = StringBuffer();
+    final len = digits.length;
+    for (int i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
+
   IconData _getPriorityIcon(String priority) {
     switch (priority) {
       case 'عاجل':
@@ -1077,13 +1138,20 @@ class _TaskCardState extends State<TaskCard> {
         TextEditingController(text: widget.task.amount);
     final TextEditingController notesController =
         TextEditingController(text: widget.task.notes);
+    bool controllersDisposed = false;
+    void disposeControllers() {
+      if (controllersDisposed) return;
+      controllersDisposed = true;
+      amountController.dispose();
+      notesController.dispose();
+    }
 
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogContext, setDialogState) {
             final statusColor = _getStatusColor(selectedStatus);
             final dialogWidth = MediaQuery.of(context).size.width;
             return Dialog(
@@ -1309,9 +1377,8 @@ class _TaskCardState extends State<TaskCard> {
                             Expanded(
                               child: OutlinedButton(
                                 onPressed: () {
-                                  amountController.dispose();
-                                  notesController.dispose();
-                                  Navigator.of(context).pop();
+                                  disposeControllers();
+                                  Navigator.of(dialogContext).pop();
                                 },
                                 style: OutlinedButton.styleFrom(
                                   padding:
@@ -1338,9 +1405,8 @@ class _TaskCardState extends State<TaskCard> {
                                   final String notes =
                                       notesController.text.trim();
 
-                                  amountController.dispose();
-                                  notesController.dispose();
-                                  Navigator.of(context).pop();
+                                  disposeControllers();
+                                  Navigator.of(dialogContext).pop();
 
                                   _updateTaskStatus(newStatus,
                                       amount: amount, notes: notes);
@@ -1372,7 +1438,7 @@ class _TaskCardState extends State<TaskCard> {
           },
         );
       },
-    );
+    ).then((_) => disposeControllers()); // تنظيف عند إغلاق الـ dialog بأي طريقة
   }
 
   void _updateTaskStatus(String newStatus,
@@ -1398,38 +1464,35 @@ class _TaskCardState extends State<TaskCard> {
       // تحديث الحالة في API والتحقق من النتيجة
       final result = await _updateStatusViaApi(updatedTask);
 
+      if (!mounted) return; // Widget قد يكون أُتلف أثناء انتظار الـ API
+
       if (result) {
         // نجاح حقيقي من السيرفر
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('تم تحديث حالة المهمة إلى: $newStatus'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم تحديث حالة المهمة إلى: $newStatus'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       } else {
         // فشل من السيرفر - التراجع عن التحديث المحلي
         widget.onStatusChanged(oldTask);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('فشل تحديث الحالة - الانتقال غير مسموح'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('فشل تحديث الحالة - الانتقال غير مسموح'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
       // التراجع عن التحديث المحلي عند حدوث خطأ
+      if (!mounted) return;
       widget.onStatusChanged(oldTask);
       debugPrint('🔴 [ERROR] خطأ في تحديث حالة المهمة');
 
-      if (mounted) {
-        _showErrorDialog('خطأ في تحديث المهمة', 'فشل تحديث حالة المهمة، يرجى المحاولة مرة أخرى');
-      }
+      _showErrorDialog('خطأ في تحديث المهمة', 'فشل تحديث حالة المهمة، يرجى المحاولة مرة أخرى');
     }
   }
 
@@ -1551,6 +1614,60 @@ class _TaskCardState extends State<TaskCard> {
     );
   }
 
+  /// تحويل المهمة إلى مكتملة مفعّل
+  Future<void> _markAsActivated() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تأكيد التفعيل'),
+        content: const Text('هل تم تفعيل الاشتراك لهذا المشترك؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF27AE60)),
+            child: const Text('نعم، تم التفعيل', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final taskId = widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
+      await TaskApiService.instance.updateStatus(
+        taskId,
+        status: 'Completed',
+        note: '[مفعّل] تم التفعيل يدوياً',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحويل المهمة إلى مكتملة مفعّل'), backgroundColor: Colors.green),
+        );
+        widget.onStatusChanged(widget.task);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  /// فتح خريطة الزونات مع فلتر FBG/FAT من المهمة
+  void _openZonesMap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => KmlZonesMapPage(
+          initialFbg: widget.task.fbg.isNotEmpty ? widget.task.fbg : null,
+          initialFat: widget.task.fat.isNotEmpty ? widget.task.fat : null,
+        ),
+      ),
+    );
+  }
+
   /// فتح صفحة البحث عن المشترك مع تمرير بيانات المهمة
   Future<void> _openSubscriptionDetails() async {
     // البحث بالهاتف أولاً — أدق
@@ -1570,20 +1687,17 @@ class _TaskCardState extends State<TaskCard> {
       return;
     }
 
-    // بناء ملاحظات المهمة لتمريرها
+    // بناء ملاحظات المهمة لتمريرها تلقائياً لشاشة التجديد
     final taskInfo = StringBuffer();
+    if (widget.task.createdByName.isNotEmpty) taskInfo.writeln('أنشأها: ${widget.task.createdByName}');
+    if (widget.task.serviceType.isNotEmpty) taskInfo.writeln('الخدمة: ${widget.task.serviceType} Mbps');
+    if (widget.task.subscriptionDuration.isNotEmpty) taskInfo.writeln('المدة: ${widget.task.subscriptionDuration}');
+    if (widget.task.amount.isNotEmpty) taskInfo.writeln('المبلغ: ${widget.task.amount}');
     if (widget.task.agentName.isNotEmpty) taskInfo.writeln('الوكيل: ${widget.task.agentName}');
     if (widget.task.pageId.isNotEmpty) taskInfo.writeln('كود الوكيل: ${widget.task.pageId}');
     if (widget.task.notes.isNotEmpty) taskInfo.writeln('ملاحظات: ${widget.task.notes}');
-    if (widget.task.amount.isNotEmpty) taskInfo.writeln('المبلغ: ${widget.task.amount}');
 
-    // نسخ معلومات المهمة للحافظة ليستخدمها الفني
-    if (taskInfo.isNotEmpty) {
-      Clipboard.setData(ClipboardData(text: taskInfo.toString()));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم نسخ معلومات المهمة — الصقها في الملاحظات عند التجديد'), duration: Duration(seconds: 3)),
-      );
-    }
+    final taskNotesStr = taskInfo.toString().trim();
 
     Navigator.push(
       context,
@@ -1600,6 +1714,11 @@ class _TaskCardState extends State<TaskCard> {
               : null,
           taskAgentName: widget.task.agentName.isNotEmpty ? widget.task.agentName : null,
           taskAgentCode: widget.task.pageId.isNotEmpty ? widget.task.pageId : null,
+          taskNotes: taskNotesStr.isNotEmpty ? taskNotesStr : null,
+          taskId: widget.task.guid.isNotEmpty ? widget.task.guid : null,
+          taskServiceType: widget.task.serviceType.isNotEmpty ? widget.task.serviceType : null,
+          taskDuration: widget.task.subscriptionDuration.isNotEmpty ? widget.task.subscriptionDuration : null,
+          taskAmount: widget.task.amount.isNotEmpty ? widget.task.amount : null,
         ),
       ),
     );

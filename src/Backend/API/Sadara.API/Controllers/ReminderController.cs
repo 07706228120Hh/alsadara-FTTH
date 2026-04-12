@@ -144,15 +144,15 @@ public class ReminderController : ControllerBase
                 .Take(limit)
                 .Select(l => new
                 {
-                    l.Id,
-                    l.BatchId,
-                    l.Days,
-                    l.Total,
-                    l.Sent,
-                    l.Failed,
+                    id = l.Id,
+                    batchId = l.BatchId,
+                    days = l.Days,
+                    total = l.Total,
+                    sent = l.Sent,
+                    failed = l.Failed,
                     executedAt = l.ExecutedAt.ToString("o"),
-                    l.IsManual,
-                    l.TriggeredBy,
+                    isManual = l.IsManual,
+                    triggeredBy = l.TriggeredBy,
                 })
                 .ToListAsync();
 
@@ -258,16 +258,14 @@ public class ReminderController : ControllerBase
 
             if (!enabled)
             {
-                // إيقاف workflow
                 await client.PostAsync($"{N8nBaseUrl}/api/v1/workflows/{N8nWorkflowId}/deactivate", null);
                 return;
             }
 
-            // استخراج أول وجبة مفعّلة لتحديث cron
             var batches = System.Text.Json.JsonSerializer.Deserialize<List<BatchConfig>>(batchesJson ?? "[]");
-            var activeBatch = batches?.FirstOrDefault(b => b.enabled);
+            var activeBatches = batches?.Where(b => b.enabled).ToList();
 
-            if (activeBatch == null)
+            if (activeBatches == null || activeBatches.Count == 0)
             {
                 await client.PostAsync($"{N8nBaseUrl}/api/v1/workflows/{N8nWorkflowId}/deactivate", null);
                 return;
@@ -281,25 +279,27 @@ public class ReminderController : ControllerBase
             using var doc = System.Text.Json.JsonDocument.Parse(wfJson);
             var root = doc.RootElement;
 
-            // تحديث cron expression في trigger node
-            var cronExpression = $"{activeBatch.minute} {activeBatch.hour} * * *";
+            // بناء cron expressions لكل الوجبات المفعّلة
+            var cronIntervals = activeBatches.Select(b => new
+            {
+                field = "cronExpression",
+                expression = $"{b.minute} {b.hour} * * *"
+            }).ToArray();
 
-            // بناء payload للتحديث — نحدّث nodes
+            // بناء خريطة الوجبات: "hour:minute=days|hour:minute=days"
+            var batchMap = string.Join("|", activeBatches.Select(b => $"{b.hour}:{b.minute}={b.days}"));
+
             var nodes = new List<object>();
             foreach (var node in root.GetProperty("nodes").EnumerateArray())
             {
                 var nodeName = node.GetProperty("name").GetString();
                 if (nodeName == "Every Hour" || nodeName == "Schedule Trigger")
                 {
-                    // تحديث cron
                     nodes.Add(new
                     {
                         parameters = new
                         {
-                            rule = new
-                            {
-                                interval = new[] { new { field = "cronExpression", expression = cronExpression } }
-                            }
+                            rule = new { interval = cronIntervals }
                         },
                         id = node.GetProperty("id").GetString(),
                         name = node.GetProperty("name").GetString(),
@@ -313,8 +313,138 @@ public class ReminderController : ControllerBase
                 }
                 else if (nodeName == "Configuration")
                 {
-                    // تحديث days في Configuration node
-                    nodes.Add(System.Text.Json.JsonSerializer.Deserialize<object>(node.GetRawText())!);
+                    var cfgNode = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(node.GetRawText());
+                    var assignments = cfgNode.GetProperty("parameters")
+                        .GetProperty("assignments")
+                        .GetProperty("assignments");
+
+                    var updatedAssignments = new List<object>();
+                    bool hasBatchMap = false;
+                    foreach (var assignment in assignments.EnumerateArray())
+                    {
+                        var aName = assignment.GetProperty("name").GetString();
+                        if (aName == "batchMap")
+                        {
+                            hasBatchMap = true;
+                            updatedAssignments.Add(new
+                            {
+                                id = assignment.GetProperty("id").GetString(),
+                                name = "batchMap",
+                                value = batchMap,
+                                type = "string"
+                            });
+                        }
+                        else
+                        {
+                            updatedAssignments.Add(
+                                System.Text.Json.JsonSerializer.Deserialize<object>(assignment.GetRawText())!);
+                        }
+                    }
+
+                    // إضافة batchMap إذا لم تكن موجودة
+                    if (!hasBatchMap)
+                    {
+                        updatedAssignments.Add(new
+                        {
+                            id = "cfg-batchmap",
+                            name = "batchMap",
+                            value = batchMap,
+                            type = "string"
+                        });
+                    }
+
+                    nodes.Add(new
+                    {
+                        parameters = new
+                        {
+                            assignments = new { assignments = updatedAssignments }
+                        },
+                        id = cfgNode.GetProperty("id").GetString(),
+                        name = cfgNode.GetProperty("name").GetString(),
+                        type = cfgNode.GetProperty("type").GetString(),
+                        typeVersion = cfgNode.GetProperty("typeVersion").GetDouble(),
+                        position = new[] {
+                            cfgNode.GetProperty("position")[0].GetInt32(),
+                            cfgNode.GetProperty("position")[1].GetInt32()
+                        },
+                    });
+                }
+                else if (nodeName == "Calculate Dates")
+                {
+                    // تحديث كود Calculate Dates ليقرأ batchMap ويحدد days تلقائياً
+                    var calcNode = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(node.GetRawText());
+                    var newJsCode = @"const config = $('Configuration').first().json;
+const token = $json.access_token;
+// تحديد days من batchMap حسب الوقت الحالي (بتوقيت بغداد)
+let days = Number(config.days || 0);
+const batchMap = config.batchMap || '';
+if (batchMap) {
+  const now = new Date();
+  const baghdadOffset = 3 * 60;
+  const bNow = new Date(now.getTime() + (baghdadOffset + now.getTimezoneOffset()) * 60000);
+  const curH = bNow.getHours();
+  const curM = bNow.getMinutes();
+  let bestDiff = 999;
+  for (const entry of batchMap.split('|')) {
+    const [hm, d] = entry.split('=');
+    const [h, m] = hm.split(':').map(Number);
+    const diff = Math.abs((curH * 60 + curM) - (h * 60 + m));
+    if (diff < bestDiff) { bestDiff = diff; days = Number(d); }
+  }
+}
+const baghdadOff = 3 * 60;
+const nowD = new Date();
+const baghdadNow = new Date(nowD.getTime() + (baghdadOff + nowD.getTimezoneOffset()) * 60000);
+const target = new Date(baghdadNow);
+target.setDate(target.getDate() + days);
+const fromBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 0, 0, 0);
+const toBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 23, 59, 59);
+const fromUTC = new Date(fromBaghdad.getTime() - baghdadOff * 60000).toISOString();
+const toUTC = new Date(toBaghdad.getTime() - baghdadOff * 60000).toISOString();
+return [{ json: { access_token: token, fromExpirationDate: fromUTC, toExpirationDate: toUTC, pageNumber: 1, pageSize: 150, config: config, days: days } }];";
+
+                    nodes.Add(new
+                    {
+                        parameters = new { jsCode = newJsCode },
+                        id = calcNode.GetProperty("id").GetString(),
+                        name = calcNode.GetProperty("name").GetString(),
+                        type = calcNode.GetProperty("type").GetString(),
+                        typeVersion = calcNode.GetProperty("typeVersion").GetDouble(),
+                        position = new[] {
+                            calcNode.GetProperty("position")[0].GetInt32(),
+                            calcNode.GetProperty("position")[1].GetInt32()
+                        },
+                    });
+                }
+                else if (nodeName == "Build Report")
+                {
+                    // تحديث Build Report ليقرأ days من Calculate Dates بدل Configuration
+                    var brNode = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(node.GetRawText());
+                    var brCode = @"const store = $getWorkflowStaticData('global');
+const stats = store.stats || { total: 0, withPhone: 0, noPhone: 0, sent: 0, failed: 0 };
+const config = $('Configuration').first().json;
+const calcDays = $('Calculate Dates').first().json.days;
+const days = (calcDays !== undefined && calcDays !== null) ? Number(calcDays) : Number(config.days || 0);
+const now = new Date();
+const bNow = new Date(now.getTime() + 180 * 60000);
+const time = String(bNow.getHours()).padStart(2,'0') + ':' + String(bNow.getMinutes()).padStart(2,'0');
+const date = bNow.toISOString().split('T')[0];
+store.stats = null;
+const dLabel = days === 0 ? '\u0627\u0644\u0645\u0646\u062a\u0647\u064a \u0627\u0644\u064a\u0648\u0645' : days === 1 ? '\u0627\u0644\u0645\u0646\u062a\u0647\u064a \u063a\u062f\u0627\u064b' : '\u062e\u0644\u0627\u0644 ' + days + ' \u0623\u064a\u0627\u0645';
+return [{ json: { total: stats.total, sent: stats.sent, failed: stats.failed, withPhone: stats.withPhone, noPhone: stats.noPhone, time, date, days, apiKey: config.apiKey, managerPhone: config.managerPhone, phoneNumberId: config.phoneNumberId, message: '\ud83d\udcca *\u062a\u0642\u0631\u064a\u0631 \u0627\u0644\u062a\u0630\u0643\u064a\u0631 - ' + dLabel + '*\n\n' + date + ' - ' + time + '\n\n\u0627\u0644\u0645\u0634\u062a\u0631\u0643\u064a\u0646: *' + stats.total + '*\n\u0623\u0631\u0633\u0644: *' + stats.sent + '*\n\u0641\u0634\u0644: *' + stats.failed + '*' } }];";
+
+                    nodes.Add(new
+                    {
+                        parameters = new { jsCode = brCode },
+                        id = brNode.GetProperty("id").GetString(),
+                        name = brNode.GetProperty("name").GetString(),
+                        type = brNode.GetProperty("type").GetString(),
+                        typeVersion = brNode.GetProperty("typeVersion").GetDouble(),
+                        position = new[] {
+                            brNode.GetProperty("position")[0].GetInt32(),
+                            brNode.GetProperty("position")[1].GetInt32()
+                        },
+                    });
                 }
                 else
                 {
@@ -344,7 +474,9 @@ public class ReminderController : ControllerBase
             // تفعيل
             await client.PostAsync($"{N8nBaseUrl}/api/v1/workflows/{N8nWorkflowId}/activate", null);
 
-            _logger.LogInformation("Updated n8n reminder cron to: {Cron}", cronExpression);
+            _logger.LogInformation("Updated n8n reminder crons: {Crons}, batchMap: {Map}",
+                string.Join(", ", activeBatches.Select(b => $"{b.minute} {b.hour} * * *")),
+                batchMap);
         }
         catch (Exception ex)
         {

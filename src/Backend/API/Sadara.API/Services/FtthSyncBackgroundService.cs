@@ -23,9 +23,9 @@ public class FtthSyncBackgroundService : BackgroundService
 
     // ═══ ثوابت مطابقة للتطبيق (sync_settings_service.dart defaults) ═══
     private const int PageSize = 150;                   // عدد العناصر في كل صفحة/دفعة
-    private const int SubscriptionParallel = 10;        // اشتراكات: 10 صفحات متوازية
-    private const int DetailsParallel = 500;            // تفاصيل: حتى 500 دفعة متوازية
-    private const int PhoneParallel = 500;              // هواتف: حتى 500 طلب متوازي
+    private const int SubscriptionParallel = 10;         // اشتراكات: 10 صفحات متوازية — مثل التطبيق
+    private const int DetailsParallel = 500;            // تفاصيل: 500 دفعة متوازية — مثل التطبيق
+    private const int PhoneParallel = 500;              // هواتف: 500 طلب متوازي — مثل التطبيق
     private const int PhoneTimeoutSeconds = 3;          // timeout هاتف: 3 ثواني (مثل التطبيق)
     private const int DetailTimeoutSeconds = 90;        // timeout تفاصيل: 90 ثانية
     private const int SubscriptionTimeoutSeconds = 60;  // timeout اشتراك: 60 ثانية
@@ -283,7 +283,7 @@ public class FtthSyncBackgroundService : BackgroundService
             currentPage = endPage + 1;
             var pct = 5 + (int)(20.0 * all.Count / Math.Max(totalCount, 1));
             await UpdateProgress(companyId, "subscribers", pct, $"جلب الاشتراكات: {all.Count:N0}/{totalCount:N0} — صفحة {Math.Min(endPage, totalPages)}/{totalPages}", all.Count, totalCount);
-            if (currentPage <= totalPages && !ct.IsCancellationRequested) await Task.Delay(1000, ct);
+            if (currentPage <= totalPages && !ct.IsCancellationRequested) await Task.Delay(300, ct); // 300ms مثل التطبيق
         }
 
         _logger.LogInformation("Subscriptions done: {Count}/{Total}", all.Count, totalCount);
@@ -394,8 +394,8 @@ public class FtthSyncBackgroundService : BackgroundService
                     var serial = dd.ValueKind != JsonValueKind.Undefined && dd.TryGetProperty("serial", out var s) ? s.ToString() : "";
                     var gpsLat = gps.ValueKind != JsonValueKind.Undefined && gps.TryGetProperty("latitude", out var lat) ? lat.ToString() : "";
                     var gpsLng = gps.ValueKind != JsonValueKind.Undefined && gps.TryGetProperty("longitude", out var lng) ? lng.ToString() : "";
-                    var isTrial = data.TryGetProperty("isTrial", out var tr) && tr.GetBoolean();
-                    var isPending = data.TryGetProperty("isPending", out var pn) && pn.GetBoolean();
+                    var isTrial = data.TryGetProperty("isTrial", out var tr) && tr.ValueKind == JsonValueKind.True;
+                    var isPending = data.TryGetProperty("isPending", out var pn) && pn.ValueKind == JsonValueKind.True;
 
                     foreach (var sub in subs)
                     {
@@ -412,7 +412,7 @@ public class FtthSyncBackgroundService : BackgroundService
             currentBatch = endBatch;
             var pct = 25 + (int)(30.0 * currentBatch / Math.Max(totalBatches, 1));
             await UpdateProgress(companyId, "details", pct, $"جلب التفاصيل: {detailsLinked:N0} — دفعة {currentBatch}/{totalBatches}", currentBatch, totalBatches);
-            if (currentBatch < totalBatches && !ct.IsCancellationRequested) await Task.Delay(1000, ct);
+            if (currentBatch < totalBatches && !ct.IsCancellationRequested) await Task.Delay(3000, ct);
         }
 
         // محاولة نهائية للفاشلين بدفعات صغيرة (5 IDs بالمرة) — مثل التطبيق
@@ -629,13 +629,20 @@ public class FtthSyncBackgroundService : BackgroundService
     {
         int newCount = 0, updatedCount = 0, skippedCount = 0, deletedCount = 0;
 
-        // جلب كل الموجودين في DB
-        var existingMap = await context.FtthSubscriberCaches
-            .Where(x => x.CompanyId == companyId && !x.IsDeleted)
-            .ToDictionaryAsync(x => x.SubscriptionId, x => x);
+        // جلب كل الموجودين في DB (بما فيها المحذوفة soft delete)
+        var existingAll = await context.FtthSubscriberCaches
+            .IgnoreQueryFilters()
+            .Where(x => x.CompanyId == companyId)
+            .ToListAsync();
+        var existingMap = new Dictionary<string, FtthSubscriberCache>();
+        foreach (var e in existingAll)
+        {
+            existingMap.TryAdd(e.SubscriptionId, e); // أول واحد يكسب إذا تكرر
+        }
 
-        // تتبع أي subscriptionIds جاءت من FTTH
+        // تتبع أي subscriptionIds جاءت من FTTH + تجنب التكرار من API
         var ftthIds = new HashSet<string>();
+        var processedInThisBatch = new HashSet<string>();
 
         foreach (var sub in subscribers)
         {
@@ -643,8 +650,17 @@ public class FtthSyncBackgroundService : BackgroundService
             if (string.IsNullOrEmpty(subId)) continue;
             ftthIds.Add(subId);
 
+            // تجنب معالجة نفس الـ ID مرتين (API يرجع تكرارات أحياناً)
+            if (!processedInThisBatch.Add(subId)) continue;
+
             if (existingMap.TryGetValue(subId, out var existing))
             {
+                // إذا كان محذوف soft delete — أعد إحيائه
+                if (existing.IsDeleted)
+                {
+                    existing.IsDeleted = false;
+                    existing.DeletedAt = null;
+                }
                 // موجود — هل تغيّر؟
                 var newStatus = sub["Status"]?.ToString() ?? "";
                 var newExpires = sub["Expires"]?.ToString() ?? "";
@@ -781,8 +797,8 @@ public class FtthSyncBackgroundService : BackgroundService
                             if (gps.TryGetProperty("latitude", out var lat)) entity.GpsLat = lat.ToString();
                             if (gps.TryGetProperty("longitude", out var lng)) entity.GpsLng = lng.ToString();
                         }
-                        entity.IsTrial = data.TryGetProperty("isTrial", out var tr) && tr.GetBoolean();
-                        entity.IsPending = data.TryGetProperty("isPending", out var pn) && pn.GetBoolean();
+                        entity.IsTrial = data.TryGetProperty("isTrial", out var tr) && tr.ValueKind == JsonValueKind.True;
+                        entity.IsPending = data.TryGetProperty("isPending", out var pn) && pn.ValueKind == JsonValueKind.True;
                         entity.DetailsFetched = true;
                         entity.DetailsFetchedAt = DateTime.UtcNow;
                         entity.UpdatedAt = DateTime.UtcNow;
@@ -799,7 +815,7 @@ public class FtthSyncBackgroundService : BackgroundService
             var pct = 30 + (int)(25.0 * currentBatch / Math.Max(totalBatches, 1));
             await UpdateProgress(companyId, "details", pct,
                 $"جلب التفاصيل: {detailsLinked:N0} — دفعة {currentBatch}/{totalBatches}", currentBatch, totalBatches);
-            if (currentBatch < totalBatches && !ct.IsCancellationRequested) await Task.Delay(1000, ct);
+            if (currentBatch < totalBatches && !ct.IsCancellationRequested) await Task.Delay(300, ct); // 300ms مثل التطبيق
         }
 
         _logger.LogInformation("Smart Details done: {Count} linked", detailsLinked);
@@ -964,7 +980,7 @@ public class FtthSyncBackgroundService : BackgroundService
             ["Username"] = dd.ValueKind != JsonValueKind.Undefined && dd.TryGetProperty("username", out var un) ? un.ToString() : "",
             ["DisplayName"] = customer.ValueKind != JsonValueKind.Undefined && customer.TryGetProperty("displayValue", out var dn) ? dn.ToString() : "",
             ["Status"] = item.TryGetProperty("status", out var st) ? st.ToString() : "",
-            ["AutoRenew"] = item.TryGetProperty("autoRenew", out var ar) && ar.GetBoolean(),
+            ["AutoRenew"] = item.TryGetProperty("autoRenew", out var ar) && ar.ValueKind == JsonValueKind.True,
             ["ProfileName"] = profileName,
             ["BundleId"] = item.TryGetProperty("bundleId", out var bi) ? bi.ToString() : null,
             ["ZoneId"] = zone.ValueKind != JsonValueKind.Undefined && zone.TryGetProperty("id", out var zi) ? zi.ToString() : null,
@@ -974,7 +990,7 @@ public class FtthSyncBackgroundService : BackgroundService
             ["CommitmentPeriod"] = item.TryGetProperty("commitmentPeriod", out var cp) ? cp.ToString() : null,
             ["Phone"] = item.TryGetProperty("customerSummary", out var cs) && cs.TryGetProperty("primaryPhone", out var ph) ? ph.ToString() : "",
             ["LockedMac"] = item.TryGetProperty("lockedMac", out var lm) ? lm.ToString() : null,
-            ["IsSuspended"] = item.TryGetProperty("isSuspended", out var isSusp) && isSusp.GetBoolean(),
+            ["IsSuspended"] = item.TryGetProperty("isSuspended", out var isSusp) && isSusp.ValueKind == JsonValueKind.True,
             ["SuspensionReason"] = item.TryGetProperty("suspensionReason", out var sr) ? sr.ToString() : null,
             ["ServicesJson"] = servicesJson,
             ["FdtName"] = "", ["FatName"] = "", ["DeviceSerial"] = "",

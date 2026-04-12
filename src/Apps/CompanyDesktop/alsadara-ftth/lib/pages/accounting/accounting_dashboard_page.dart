@@ -36,6 +36,7 @@ import 'financial_ratios_page.dart';
 import 'year_comparison_page.dart';
 import 'budget_page.dart';
 import 'settlement_reports_page.dart';
+import 'wallet_transactions_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -465,6 +466,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             color: const Color(0xFF16A085),
             onTap: () =>
                 _navigateTo(SettlementReportsPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.account_balance_wallet_rounded,
+            label: 'عمليات المحفظة',
+            color: const Color(0xFF2980B9),
+            onTap: () =>
+                _navigateTo(WalletTransactionsPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
         ]))),
       ],
@@ -1436,6 +1444,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         color: const Color(0xFF16A085),
         onTap: () =>
             _navigateTo(SettlementReportsPage(companyId: widget.companyId)),
+      ),
+      _SectionItem(
+        title: 'عمليات المحفظة',
+        subtitle: 'عرض وتصدير جميع معاملات المحفظة',
+        icon: Icons.account_balance_wallet_rounded,
+        color: const Color(0xFF2980B9),
+        onTap: () =>
+            _navigateTo(WalletTransactionsPage(companyId: widget.companyId)),
       ),
     ];
 

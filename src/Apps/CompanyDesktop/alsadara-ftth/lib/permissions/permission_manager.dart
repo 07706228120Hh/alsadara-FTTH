@@ -225,6 +225,7 @@ class PermissionManager {
   }
 
   /// هل المفتاح موجود في البيانات المحملة؟
+  bool hasKey(String feature) => _hasKey(feature);
   bool _hasKey(String feature) {
     return _firstSystemV2.containsKey(feature) ||
         _secondSystemV2.containsKey(feature);

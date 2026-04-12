@@ -16,6 +16,8 @@ class _CitizenDashboardState extends State<CitizenDashboard>
     with TickerProviderStateMixin {
   // حالة القائمة الجانبية - مخفية افتراضياً
   bool _isSidebarExpanded = false;
+  int _currentSlide = 0;
+  late PageController _slideController;
 
   // Animation Controllers
   late AnimationController _sidebarController;
@@ -39,12 +41,27 @@ class _CitizenDashboardState extends State<CitizenDashboard>
       vsync: this,
       duration: const Duration(seconds: 20),
     )..repeat();
+
+    _slideController = PageController();
+    // Auto-slide every 4 seconds
+    Future.delayed(const Duration(seconds: 4), _autoSlide);
+  }
+
+  void _autoSlide() {
+    if (!mounted) return;
+    final next = (_currentSlide + 1) % 4;
+    setState(() => _currentSlide = next);
+    if (_slideController.hasClients) {
+      _slideController.animateToPage(next, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+    }
+    Future.delayed(const Duration(seconds: 4), _autoSlide);
   }
 
   @override
   void dispose() {
     _sidebarController.dispose();
     _backgroundController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
@@ -700,86 +717,138 @@ class _CitizenDashboardState extends State<CitizenDashboard>
   }
 
   Widget _buildWelcomeCard(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, auth, _) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF667eea).withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'مرحباً، ${auth.citizen?.fullName ?? 'مستخدم'}! 👋',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'ماذا تريد أن تفعل اليوم؟',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton.icon(
-                      onPressed: () => context.go('/citizen/internet'),
-                      icon: const Icon(Icons.explore, size: 14),
-                      label: const Text(
-                        'استكشف الخدمات',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF667eea),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.rocket_launch_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-            ],
-          ),
-        );
+    final slides = [
+      {
+        'title': 'خدمات الإنترنت',
+        'subtitle': 'اشتراكات فايبر بسرعات عالية تصل حتى 100 ميجا',
+        'icon': Icons.wifi_rounded,
+        'gradient': const [Color(0xFF667eea), Color(0xFF764ba2)],
+        'route': '/citizen/internet',
       },
+      {
+        'title': 'ماستر كارد',
+        'subtitle': 'شحن رصيد وسحب ديلفري بأسرع وقت',
+        'icon': Icons.credit_card_rounded,
+        'gradient': const [Color(0xFFf093fb), Color(0xFFf5576c)],
+        'route': '/citizen/master',
+      },
+      {
+        'title': 'المتجر',
+        'subtitle': 'راوترات وأجهزة شبكات بأفضل الأسعار',
+        'icon': Icons.shopping_cart_rounded,
+        'gradient': const [Color(0xFF4facfe), Color(0xFF00f2fe)],
+        'route': '/citizen/store',
+      },
+      {
+        'title': 'خريطة التغطية',
+        'subtitle': 'اكتشف مناطق تغطية الشبكة وحدد موقعك',
+        'icon': Icons.map_rounded,
+        'gradient': const [Color(0xFF11998e), Color(0xFF38ef7d)],
+        'route': '/citizen/kml-map',
+      },
+    ];
+
+    return Container(
+      height: 140,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF667eea).withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _slideController,
+              onPageChanged: (i) => setState(() => _currentSlide = i),
+              itemCount: slides.length,
+              itemBuilder: (context, index) {
+                final slide = slides[index];
+                final gradient = slide['gradient'] as List<Color>;
+                return GestureDetector(
+                  onTap: () => context.go(slide['route'] as String),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: gradient,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                slide['title'] as String,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                slide['subtitle'] as String,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            slide['icon'] as IconData,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Dots indicator
+            Positioned(
+              bottom: 10,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(slides.length, (i) {
+                  return Container(
+                    width: _currentSlide == i ? 18 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: _currentSlide == i ? Colors.white : Colors.white.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -811,46 +880,31 @@ class _CitizenDashboardState extends State<CitizenDashboard>
           ],
         ),
         const SizedBox(height: 12),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: isWide ? 4 : 3,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: isWide ? 1.4 : 0.95,
+        Row(
           children: [
-            _buildLuxuryServiceCard(
-              context,
-              icon: Icons.wifi_rounded,
-              title: 'الإنترنت',
-              subtitle: 'اشتراك • تجديد',
+            Expanded(child: _buildLuxuryServiceCard(context,
+              icon: Icons.wifi_rounded, title: 'الإنترنت', subtitle: 'اشتراك • تجديد',
               gradient: const [Color(0xFF667eea), Color(0xFF764ba2)],
               onTap: () => context.go('/citizen/internet'),
-            ),
-            _buildLuxuryServiceCard(
-              context,
-              icon: Icons.credit_card_rounded,
-              title: 'ماستر كارد',
-              subtitle: 'طلب • شحن',
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _buildLuxuryServiceCard(context,
+              icon: Icons.credit_card_rounded, title: 'ماستر كارد', subtitle: 'طلب • شحن',
               gradient: const [Color(0xFFf093fb), Color(0xFFf5576c)],
               onTap: () => context.go('/citizen/master'),
-            ),
-            _buildLuxuryServiceCard(
-              context,
-              icon: Icons.shopping_cart_rounded,
-              title: 'المتجر',
-              subtitle: 'راوترات • أجهزة',
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _buildLuxuryServiceCard(context,
+              icon: Icons.shopping_cart_rounded, title: 'المتجر', subtitle: 'راوترات • أجهزة',
               gradient: const [Color(0xFF4facfe), Color(0xFF00f2fe)],
               onTap: () => context.go('/citizen/store'),
-            ),
-            _buildLuxuryServiceCard(
-              context,
-              icon: Icons.map_rounded,
-              title: 'خريطة التغطية',
-              subtitle: 'مناطق الشبكة',
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _buildLuxuryServiceCard(context,
+              icon: Icons.map_rounded, title: 'خريطة التغطية', subtitle: 'مناطق الشبكة',
               gradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
               onTap: () => context.go('/citizen/kml-map'),
-            ),
+            )),
           ],
         ),
       ],
@@ -872,11 +926,12 @@ class _CitizenDashboardState extends State<CitizenDashboard>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.black26, width: 1),
           boxShadow: [
             BoxShadow(
-              color: gradient[0].withOpacity(0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              color: gradient[0].withOpacity(0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -918,6 +973,7 @@ class _CitizenDashboardState extends State<CitizenDashboard>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black26, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -1062,6 +1118,7 @@ class _CitizenDashboardState extends State<CitizenDashboard>
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
+        border: Border.all(color: Colors.black26, width: 1),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(

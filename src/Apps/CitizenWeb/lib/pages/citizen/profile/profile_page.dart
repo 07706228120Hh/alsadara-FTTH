@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../config/app_theme.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../services/api_service.dart';
 
 /// صفحة الملف الشخصي
 class ProfilePage extends StatefulWidget {
@@ -12,31 +15,38 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _isEditing = false;
+  bool _isSaving = false;
+  final _apiService = ApiService();
 
-  // بيانات المستخدم (تجريبية)
-  final Map<String, dynamic> _userData = {
-    'name': 'أحمد محمد العلي',
-    'phone': '0512345678',
-    'email': 'ahmed@example.com',
-    'nationalId': '1234567890',
-    'address': 'الرياض، حي النخيل، شارع الملك فهد',
-    'city': 'الرياض',
-    'postalCode': '12345',
-    'joinDate': '2024-01-15',
-  };
+  final Map<String, dynamic> _userData = {};
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
   late TextEditingController _addressController;
+  late TextEditingController _cityController;
+  late TextEditingController _postalCodeController;
 
   @override
   void initState() {
     super.initState();
+    final citizen = context.read<AuthProvider>().citizen;
+    _userData.addAll({
+      'name': citizen?.fullName ?? '',
+      'phone': citizen?.phoneNumber ?? '',
+      'email': citizen?.email ?? '',
+      'nationalId': '',
+      'address': citizen?.fullAddress ?? '',
+      'city': citizen?.city ?? '',
+      'postalCode': citizen?.district ?? '',
+      'joinDate': '',
+    });
     _nameController = TextEditingController(text: _userData['name']);
     _phoneController = TextEditingController(text: _userData['phone']);
     _emailController = TextEditingController(text: _userData['email']);
     _addressController = TextEditingController(text: _userData['address']);
+    _cityController = TextEditingController(text: _userData['city']);
+    _postalCodeController = TextEditingController(text: _userData['postalCode']);
   }
 
   @override
@@ -45,6 +55,8 @@ class _ProfilePageState extends State<ProfilePage> {
     _phoneController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
     super.dispose();
   }
 
@@ -75,6 +87,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     _phoneController.text = _userData['phone'];
                     _emailController.text = _userData['email'];
                     _addressController.text = _userData['address'];
+                    _cityController.text = _userData['city'];
+                    _postalCodeController.text = _userData['postalCode'];
                   }
                   _isEditing = !_isEditing;
                 });
@@ -105,16 +119,18 @@ class _ProfilePageState extends State<ProfilePage> {
                         controller: _nameController,
                         editable: true,
                       ),
-                      _buildInfoRow(
-                        'رقم الهوية',
-                        _userData['nationalId'],
-                        Icons.badge_outlined,
-                      ),
-                      _buildInfoRow(
-                        'تاريخ الانضمام',
-                        _formatDate(_userData['joinDate']),
-                        Icons.calendar_today_outlined,
-                      ),
+                      if (_userData['nationalId']?.isNotEmpty ?? false)
+                        _buildInfoRow(
+                          'رقم الهوية',
+                          _userData['nationalId'],
+                          Icons.badge_outlined,
+                        ),
+                      if (_userData['joinDate']?.isNotEmpty ?? false)
+                        _buildInfoRow(
+                          'تاريخ الانضمام',
+                          _formatDate(_userData['joinDate']),
+                          Icons.calendar_today_outlined,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -158,11 +174,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         'المدينة',
                         _userData['city'],
                         Icons.location_city_outlined,
+                        controller: _cityController,
+                        editable: true,
                       ),
                       _buildInfoRow(
                         'الرمز البريدي',
                         _userData['postalCode'],
                         Icons.markunread_mailbox_outlined,
+                        controller: _postalCodeController,
+                        editable: true,
                       ),
                     ],
                   ),
@@ -434,23 +454,55 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _saveChanges() {
-    setState(() {
-      _userData['name'] = _nameController.text;
-      _userData['phone'] = _phoneController.text;
-      _userData['email'] = _emailController.text;
-      _userData['address'] = _addressController.text;
-      _isEditing = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('تم حفظ التغييرات بنجاح'),
-        backgroundColor: AppTheme.successColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+  Future<void> _saveChanges() async {
+    setState(() => _isSaving = true);
+    try {
+      final token = await _apiService.getToken();
+      if (token != null) {
+        await _apiService.updateProfile(
+          fullName: _nameController.text,
+          email: _emailController.text,
+          city: _cityController.text,
+          district: _postalCodeController.text,
+          fullAddress: _addressController.text,
+        );
+      }
+      setState(() {
+        _userData['name'] = _nameController.text;
+        _userData['phone'] = _phoneController.text;
+        _userData['email'] = _emailController.text;
+        _userData['address'] = _addressController.text;
+        _userData['city'] = _cityController.text;
+        _userData['postalCode'] = _postalCodeController.text;
+        _isEditing = false;
+        _isSaving = false;
+      });
+      // إعادة تحميل البروفايل
+      if (mounted) {
+        await context.read<AuthProvider>().loadProfile();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('تم حفظ التغييرات بنجاح'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _showChangePasswordDialog() {

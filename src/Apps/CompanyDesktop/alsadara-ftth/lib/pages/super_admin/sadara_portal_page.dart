@@ -5,6 +5,8 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/accounting_theme.dart';
 import '../../services/sadara_api_service.dart';
@@ -80,7 +82,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         }
       }
 
-      final results = await _api.getServiceRequests(page: 1, pageSize: 200);
+      final results = await _api.getServiceRequests(page: 1, pageSize: 200, serviceId: 11);
       final requests = results.map((r) {
         if (r is Map<String, dynamic>) {
           return ServiceRequestModel.fromJson(r);
@@ -102,7 +104,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
           final refreshed = await VpsAuthService.instance.refreshAccessToken();
           if (refreshed) {
             final results =
-                await _api.getServiceRequests(page: 1, pageSize: 200);
+                await _api.getServiceRequests(page: 1, pageSize: 200, serviceId: 11);
             final requests = results.map((r) {
               if (r is Map<String, dynamic>) {
                 return ServiceRequestModel.fromJson(r);
@@ -1342,7 +1344,54 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                         [
                           _buildDetailItem(Icons.map_rounded, 'العنوان',
                               req.address ?? '-', AccountingTheme.neonOrange),
-                          if (details['notes'] != null)
+                          if (details['latitude'] != null && details['longitude'] != null) ...[
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: SizedBox(
+                                height: 200,
+                                child: FlutterMap(
+                                  options: MapOptions(
+                                    initialCenter: LatLng(
+                                      (details['latitude'] as num).toDouble(),
+                                      (details['longitude'] as num).toDouble(),
+                                    ),
+                                    initialZoom: 15,
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName: 'com.sadara.ftth',
+                                    ),
+                                    MarkerLayer(markers: [
+                                      Marker(
+                                        point: LatLng(
+                                          (details['latitude'] as num).toDouble(),
+                                          (details['longitude'] as num).toDouble(),
+                                        ),
+                                        width: 40,
+                                        height: 40,
+                                        child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                                      ),
+                                    ]),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            InkWell(
+                              onTap: () => launchUrl(Uri.parse(details['locationUrl'] ?? 'https://www.google.com/maps?q=${details["latitude"]},${details["longitude"]}')),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.open_in_new, size: 14, color: Colors.blue[700]),
+                                  const SizedBox(width: 4),
+                                  Text('فتح في Google Maps', style: TextStyle(color: Colors.blue[700], fontSize: 12, decoration: TextDecoration.underline)),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (details['notes'] != null && details['notes'].toString().isNotEmpty)
                             _buildDetailItem(Icons.note_alt_rounded, 'ملاحظات',
                                 details['notes'], AccountingTheme.textMuted),
                         ],

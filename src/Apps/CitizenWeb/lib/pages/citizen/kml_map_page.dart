@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:xml/xml.dart';
 
@@ -196,16 +197,53 @@ class _KmlMapPageState extends State<KmlMapPage> {
   bool _showPoints = true;
   bool _showRegions = true;
   bool _showOnlyActive = false;
+  bool _kmlLoaded = false;
 
   FatPoint? _selectedPoint;
+  LatLng? _savedLocation;
+  LatLng? _tappedLocation;
 
   final _mapController = MapController();
-  static const _initialCenter = LatLng(33.38, 44.47);
+  final _storage = const FlutterSecureStorage();
+  static const _baghdadCenter = LatLng(33.315, 44.366);
 
   @override
   void initState() {
     super.initState();
+    _loadSavedLocation();
     _loadKml();
+  }
+
+  Future<void> _loadSavedLocation() async {
+    final lat = await _storage.read(key: 'citizen_saved_lat');
+    final lng = await _storage.read(key: 'citizen_saved_lng');
+    if (lat != null && lng != null) {
+      final la = double.tryParse(lat);
+      final ln = double.tryParse(lng);
+      if (la != null && ln != null && mounted) {
+        setState(() => _savedLocation = LatLng(la, ln));
+      }
+    }
+  }
+
+  Future<void> _saveLocation(LatLng pos) async {
+    await _storage.write(key: 'citizen_saved_lat', value: pos.latitude.toString());
+    await _storage.write(key: 'citizen_saved_lng', value: pos.longitude.toString());
+    if (mounted) {
+      setState(() {
+        _savedLocation = pos;
+        _tappedLocation = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('تم حفظ موقعك بنجاح'),
+          backgroundColor: Colors.green[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _loadKml() async {
@@ -226,12 +264,14 @@ class _KmlMapPageState extends State<KmlMapPage> {
         _allPoints = result.points;
         _allRegions = result.regions;
         _zones = ['الكل', ...zonesSet.toList()..sort()];
+        _kmlLoaded = true;
         _loading = false;
       });
     } catch (e) {
+      // KML failed — show map without overlay data
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _kmlLoaded = false;
         _loading = false;
       });
     }
@@ -272,11 +312,7 @@ class _KmlMapPageState extends State<KmlMapPage> {
       child: Scaffold(
         backgroundColor: const Color(0xFF0D1B2A),
         appBar: _buildAppBar(),
-        body: _loading
-            ? _buildLoading()
-            : _error != null
-            ? _buildError()
-            : _buildMap(),
+        body: _loading ? _buildLoading() : _buildMap(),
       ),
     );
   }
@@ -290,7 +326,7 @@ class _KmlMapPageState extends State<KmlMapPage> {
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
       actions: [
-        if (!_loading && _error == null) ...[
+        if (!_loading && _kmlLoaded) ...[
           Padding(
             padding: const EdgeInsets.only(left: 8, top: 8, bottom: 8),
             child: Chip(
@@ -327,63 +363,27 @@ class _KmlMapPageState extends State<KmlMapPage> {
             'جاري تحميل الخريطة...',
             style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
-          SizedBox(height: 8),
-          Text(
-            'قد يستغرق ذلك لحظات',
-            style: TextStyle(color: Colors.white38, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildError() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 48),
-          const SizedBox(height: 12),
-          const Text(
-            'فشل تحميل الخريطة',
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              _error ?? '',
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                _loading = true;
-                _error = null;
-              });
-              _loadKml();
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('إعادة المحاولة'),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildMap() {
+    final initialCenter = _savedLocation ?? _baghdadCenter;
+
     return Stack(
       children: [
-        // ── FlutterMap ────────────────────────────────────────
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(
-            initialCenter: _initialCenter,
-            initialZoom: 11.5,
-            onTap: (tapPos, latLng) => setState(() => _selectedPoint = null),
+            initialCenter: initialCenter,
+            initialZoom: _savedLocation != null ? 15 : 12,
+            onTap: (tapPos, latLng) {
+              setState(() {
+                _selectedPoint = null;
+                _tappedLocation = latLng;
+              });
+            },
           ),
           children: [
             TileLayer(
@@ -391,7 +391,7 @@ class _KmlMapPageState extends State<KmlMapPage> {
               subdomains: const ['a', 'b', 'c'],
               userAgentPackageName: 'com.sadara.citizen_portal',
             ),
-            if (_showRegions)
+            if (_kmlLoaded && _showRegions)
               PolygonLayer(
                 polygons: _visibleRegions.map((r) {
                   final color = _polygonColor(r);
@@ -403,22 +403,44 @@ class _KmlMapPageState extends State<KmlMapPage> {
                   );
                 }).toList(),
               ),
-            if (_showPoints)
+            if (_kmlLoaded && _showPoints)
               MarkerLayer(markers: _visiblePoints.map(_buildMarker).toList()),
+            // Saved location marker
+            if (_savedLocation != null)
+              MarkerLayer(markers: [
+                Marker(
+                  point: _savedLocation!,
+                  width: 40,
+                  height: 40,
+                  child: const Icon(Icons.home_rounded, color: Colors.blue, size: 36),
+                ),
+              ]),
+            // Tapped location marker
+            if (_tappedLocation != null)
+              MarkerLayer(markers: [
+                Marker(
+                  point: _tappedLocation!,
+                  width: 40,
+                  height: 40,
+                  child: const Icon(Icons.location_on, color: Colors.red, size: 36),
+                ),
+              ]),
           ],
         ),
 
-        // ── Filter Panel ──────────────────────────────────────
-        Positioned(top: 12, right: 12, child: _buildFilterPanel()),
+        // Filter Panel (only when KML loaded)
+        if (_kmlLoaded)
+          Positioned(top: 12, right: 12, child: _buildFilterPanel()),
 
-        // ── Legend ────────────────────────────────────────────
-        Positioned(
-          bottom: _selectedPoint != null ? 200 : 12,
-          right: 12,
-          child: _buildLegend(),
-        ),
+        // Legend
+        if (_kmlLoaded)
+          Positioned(
+            bottom: _selectedPoint != null ? 200 : 80,
+            right: 12,
+            child: _buildLegend(),
+          ),
 
-        // ── Detail Sheet ──────────────────────────────────────
+        // Detail Sheet
         if (_selectedPoint != null)
           Positioned(
             bottom: 0,
@@ -426,7 +448,98 @@ class _KmlMapPageState extends State<KmlMapPage> {
             right: 0,
             child: _buildPointSheet(_selectedPoint!),
           ),
+
+        // Save location button
+        if (_tappedLocation != null)
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: _buildSaveLocationBar(),
+          ),
+
+        // Info banner when no KML
+        if (!_kmlLoaded)
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.orange[800],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'اضغط على الخريطة لتحديد موقعك ثم اضغط حفظ',
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // My location button
+        if (_savedLocation != null)
+          Positioned(
+            bottom: _tappedLocation != null ? 80 : 16,
+            left: 16,
+            child: FloatingActionButton.small(
+              backgroundColor: Colors.blue[700],
+              onPressed: () {
+                _mapController.move(_savedLocation!, 15);
+              },
+              child: const Icon(Icons.my_location, color: Colors.white),
+            ),
+          ),
       ],
+    );
+  }
+
+  Widget _buildSaveLocationBar() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1B2A).withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on, color: Colors.red, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${_tappedLocation!.latitude.toStringAsFixed(5)}, ${_tappedLocation!.longitude.toStringAsFixed(5)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _saveLocation(_tappedLocation!),
+            icon: const Icon(Icons.save, size: 16),
+            label: const Text('حفظ موقعي'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[700],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => setState(() => _tappedLocation = null),
+            icon: const Icon(Icons.close, color: Colors.white38, size: 18),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -475,7 +588,7 @@ class _KmlMapPageState extends State<KmlMapPage> {
       width: 195,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1B2A).withValues(alpha:0.93),
+        color: const Color(0xFF0D1B2A).withValues(alpha: 0.93),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white12),
         boxShadow: const [
@@ -598,7 +711,7 @@ class _KmlMapPageState extends State<KmlMapPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1B2A).withValues(alpha:0.9),
+        color: const Color(0xFF0D1B2A).withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white12),
       ),
@@ -614,6 +727,10 @@ class _KmlMapPageState extends State<KmlMapPage> {
             HSLColor.fromAHSL(0.5, 210, 0.65, 0.50).toColor(),
             'منطقة FDT',
           ),
+          if (_savedLocation != null) ...[
+            const SizedBox(height: 4),
+            _legendItem(Colors.blue, 'موقعي'),
+          ],
         ],
       ),
     );
@@ -649,7 +766,7 @@ class _KmlMapPageState extends State<KmlMapPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF0D1B2A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _markerColor(p).withValues(alpha:0.4)),
+        border: Border.all(color: _markerColor(p).withValues(alpha: 0.4)),
         boxShadow: const [
           BoxShadow(
             color: Colors.black54,
@@ -667,7 +784,7 @@ class _KmlMapPageState extends State<KmlMapPage> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: _markerColor(p).withValues(alpha:0.15),
+                  color: _markerColor(p).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -699,13 +816,12 @@ class _KmlMapPageState extends State<KmlMapPage> {
                   ],
                 ),
               ),
-              // Status badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _markerColor(p).withValues(alpha:0.15),
+                  color: _markerColor(p).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _markerColor(p).withValues(alpha:0.4)),
+                  border: Border.all(color: _markerColor(p).withValues(alpha: 0.4)),
                 ),
                 child: Text(
                   p.isActive ? 'مفعّل' : 'غير مفعّل',

@@ -42,7 +42,10 @@ public class ServiceRequestsController : ControllerBase
         [FromQuery] Guid? companyId = null,
         [FromQuery] string? source = null,
         [FromQuery] string? department = null,
-        [FromQuery] string? technician = null)
+        [FromQuery] string? technician = null,
+        [FromQuery] string? customerPhone = null,
+        [FromQuery] string? taskType = null,
+        [FromQuery] string? createdByName = null)
     {
         var query = _unitOfWork.ServiceRequests.AsQueryable();
 
@@ -64,18 +67,52 @@ public class ServiceRequestsController : ControllerBase
                 query = query.Where(r => r.AgentId == null);
         }
 
-        // فلتر القسم: البحث في حقل Details JSON عن اسم القسم
+        // فلتر القسم: يدعم قسم واحد أو أقسام متعددة مفصولة بفاصلة
         if (!string.IsNullOrEmpty(department))
         {
-            query = query.Where(r => r.Details != null && r.Details.Contains(department));
+            var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (depts.Length == 1)
+            {
+                query = query.Where(r => r.Details != null && r.Details.Contains(depts[0]));
+            }
+            else
+            {
+                query = query.Where(r => r.Details != null && depts.Any(d => r.Details.Contains(d)));
+            }
         }
 
-        // فلتر الفني: البحث في Details JSON أو في TechnicianName
-        if (!string.IsNullOrEmpty(technician))
+        // فلتر الفني أو المنشئ: إذا وُجد كلاهما يُستخدم OR بينهما
+        if (!string.IsNullOrEmpty(technician) && !string.IsNullOrEmpty(createdByName))
         {
-            query = query.Where(r => 
+            query = query.Where(r =>
+                (r.Details != null && r.Details.Contains(technician)) ||
+                (r.Technician != null && r.Technician.FullName == technician) ||
+                (r.Details != null && r.Details.Contains(createdByName)));
+        }
+        else if (!string.IsNullOrEmpty(technician))
+        {
+            query = query.Where(r =>
                 (r.Details != null && r.Details.Contains(technician)) ||
                 (r.Technician != null && r.Technician.FullName == technician));
+        }
+        else if (!string.IsNullOrEmpty(createdByName))
+        {
+            query = query.Where(r =>
+                r.Details != null && r.Details.Contains(createdByName));
+        }
+
+        // فلتر رقم هاتف العميل (بحث في Details JSON أو في PhoneNumber للمواطن)
+        if (!string.IsNullOrEmpty(customerPhone))
+        {
+            query = query.Where(r =>
+                (r.Details != null && r.Details.Contains(customerPhone)) ||
+                (r.Citizen != null && r.Citizen.PhoneNumber.Contains(customerPhone)));
+        }
+
+        // فلتر نوع المهمة (مثلاً: "تحصيل مبلغ تجديد")
+        if (!string.IsNullOrEmpty(taskType))
+        {
+            query = query.Where(r => r.Details != null && r.Details.Contains(taskType));
         }
 
         var total = await query.CountAsync();
@@ -197,7 +234,7 @@ public class ServiceRequestsController : ControllerBase
             OperationTypeId = dto.OperationTypeId,
             CitizenId = dto.CitizenId,
             CompanyId = dto.CompanyId,
-            Details = dto.Details != null ? JsonSerializer.Serialize(dto.Details) : null,
+            Details = dto.Details != null ? JsonSerializer.Serialize(dto.Details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) : null,
             Address = dto.Address,
             City = dto.City,
             Area = dto.Area,
@@ -777,11 +814,21 @@ public class ServiceRequestsController : ControllerBase
     /// إحصائيات الطلبات
     /// </summary>
     [HttpGet("statistics")]
-    public async Task<IActionResult> GetStatistics([FromQuery] Guid? companyId = null)
+    public async Task<IActionResult> GetStatistics(
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] string? department = null,
+        [FromQuery] string? technician = null)
     {
         var query = _unitOfWork.ServiceRequests.AsQueryable();
         if (companyId.HasValue)
             query = query.Where(r => r.CompanyId == companyId);
+        if (!string.IsNullOrEmpty(department))
+        {
+            var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            query = query.Where(r => r.Details != null && depts.Any(d => r.Details.Contains(d)));
+        }
+        if (!string.IsNullOrEmpty(technician))
+            query = query.Where(r => r.Details != null && r.Details.Contains(technician));
 
         var stats = new
         {
@@ -1004,6 +1051,27 @@ public class ServiceRequestsController : ControllerBase
     {
         try
         {
+            // التحقق من عدم وجود مهمة مكررة لنفس رقم الهاتف في نفس اليوم
+            if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
+            {
+                var todayUtc = DateTime.UtcNow.Date;
+                var duplicate = await _unitOfWork.ServiceRequests.FirstOrDefaultAsync(r =>
+                    r.ContactPhone == dto.CustomerPhone &&
+                    r.CreatedAt >= todayUtc &&
+                    r.Status != ServiceRequestStatus.Cancelled);
+
+                if (duplicate != null)
+                {
+                    return Conflict(new
+                    {
+                        success = false,
+                        message = $"توجد مهمة مفتوحة اليوم لنفس الرقم ({dto.CustomerPhone}) — رقم الطلب: {duplicate.RequestNumber}",
+                        existingRequestNumber = duplicate.RequestNumber,
+                        existingRequestId = duplicate.Id
+                    });
+                }
+            }
+
             // تحديد نوع العملية بناءً على نوع المهمة
             var operationTypeId = dto.OperationTypeId ?? dto.TaskType switch
             {
@@ -1028,6 +1096,12 @@ public class ServiceRequestsController : ControllerBase
                 _ => 3
             };
 
+            // جلب اسم المستخدم الذي أنشأ المهمة
+            var creatorId = GetCurrentUserId();
+            var creator = creatorId != Guid.Empty
+                ? await _unitOfWork.Users.GetByIdAsync(creatorId)
+                : null;
+
             // بناء تفاصيل JSON مع جميع بيانات المهمة
             var details = new Dictionary<string, object?>
             {
@@ -1043,6 +1117,8 @@ public class ServiceRequestsController : ControllerBase
                 ["notes"] = dto.Notes,
                 ["summary"] = dto.Summary,
                 ["source"] = "companyDesktop",
+                ["createdByName"] = creator?.FullName ?? "غير معروف",
+                ["createdById"] = creatorId != Guid.Empty ? creatorId.ToString() : null,
                 ["priorityLabel"] = dto.Priority
             };
 
@@ -1060,7 +1136,7 @@ public class ServiceRequestsController : ControllerBase
                 RequestNumber = GenerateRequestNumber(),
                 ServiceId = dto.ServiceId,
                 OperationTypeId = operationTypeId,
-                Details = JsonSerializer.Serialize(details),
+                Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }),
                 Address = dto.Location,
                 ContactPhone = dto.CustomerPhone,
                 Status = ServiceRequestStatus.Pending,
@@ -1161,7 +1237,7 @@ public class ServiceRequestsController : ControllerBase
         if (!string.IsNullOrEmpty(dto.Address))
             request.Address = dto.Address;
 
-        request.Details = JsonSerializer.Serialize(details);
+        request.Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
         request.AssignedAt = DateTime.UtcNow;
         request.UpdatedAt = DateTime.UtcNow;
 
@@ -1368,10 +1444,19 @@ public class ServiceRequestsController : ControllerBase
             var query = _unitOfWork.Users.AsQueryable()
                 .Where(u => staffRoles.Contains(u.Role));
 
-            // تصفية حسب القسم إن وُجد
+            // تصفية حسب القسم إن وُجد — تدعم القسم القديم + UserDepartments الجديد
             if (!string.IsNullOrWhiteSpace(department))
             {
-                query = query.Where(u => u.Department == department || string.IsNullOrEmpty(u.Department));
+                var deptUserIds = await _unitOfWork.UserDepartments.AsQueryable()
+                    .Include(ud => ud.Department)
+                    .Where(ud => ud.Department != null && ud.Department.NameAr == department)
+                    .Select(ud => ud.UserId)
+                    .ToListAsync();
+
+                query = query.Where(u =>
+                    u.Department == department ||
+                    string.IsNullOrEmpty(u.Department) ||
+                    deptUserIds.Contains(u.Id));
             }
 
             var staff = await query
@@ -1388,9 +1473,14 @@ public class ServiceRequestsController : ControllerBase
                 .ThenBy(u => u.Name)
                 .ToListAsync();
 
-            var leaders = staff
-                .Where(s => s.Role == nameof(UserRole.TechnicalLeader) || s.Role == nameof(UserRole.Manager))
-                .ToList();
+            // القادة: جلب من كل الأقسام (القائد يشرف على عدة أقسام)
+            var allStaffForLeaders = await _unitOfWork.Users.AsQueryable()
+                .Where(u => u.Role == UserRole.TechnicalLeader || u.Role == UserRole.Manager)
+                .Select(u => new { u.Id, Name = u.FullName, u.PhoneNumber, u.Department, Role = u.Role.ToString(), u.EmployeeCode })
+                .OrderBy(u => u.Name)
+                .ToListAsync();
+
+            var leaders = allStaffForLeaders.ToList();
 
             var technicians = staff
                 .Where(s => s.Role == nameof(UserRole.Technician) || s.Role == nameof(UserRole.TechnicalLeader))
@@ -1411,6 +1501,57 @@ public class ServiceRequestsController : ControllerBase
         {
             _logger.LogError(ex, "خطأ في جلب بيانات الموظفين للمهام");
             return StatusCode(500, new { success = false, message = "خطأ في جلب بيانات الموظفين" });
+        }
+    }
+
+    /// جلب أقسام المستخدم الحالي (للليدر/المدير الذي يشرف على أقسام متعددة)
+    [HttpGet("my-departments")]
+    [Authorize(Policy = "TechnicianOrAbove")]
+    public async Task<IActionResult> GetMyDepartments()
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized(new { success = false, message = "غير مصرح" });
+
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { success = false, message = "المستخدم غير موجود" });
+
+            // جلب الأقسام من UserDepartments
+            var userDepts = await _unitOfWork.UserDepartments.AsQueryable()
+                .Where(ud => ud.UserId == userId)
+                .Include(ud => ud.Department)
+                .OrderByDescending(ud => ud.IsPrimary)
+                .ThenBy(ud => ud.Department.NameAr)
+                .Select(ud => new
+                {
+                    ud.Department.Id,
+                    Name = ud.Department.NameAr ?? ud.Department.Name,
+                    ud.IsPrimary,
+                })
+                .ToListAsync();
+
+            // إذا لم يكن لديه أقسام في الجدول الجديد، أرجع القسم القديم
+            if (!userDepts.Any() && !string.IsNullOrEmpty(user.Department))
+            {
+                return Ok(new
+                {
+                    success = true,
+                    data = new[]
+                    {
+                        new { Id = 0, Name = user.Department, IsPrimary = true }
+                    }
+                });
+            }
+
+            return Ok(new { success = true, data = userDepts });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب أقسام المستخدم");
+            return StatusCode(500, new { success = false, message = "خطأ في جلب الأقسام" });
         }
     }
 
@@ -1499,6 +1640,49 @@ public class ServiceRequestsController : ControllerBase
                 ReferenceType = "ServiceRequest",
                 CreatedAt = DateTime.UtcNow
             });
+        }
+
+        // إشعار لمنشئ المهمة عند الإكمال أو الإلغاء (من Details JSON)
+        if (newStatus == ServiceRequestStatus.Completed || newStatus == ServiceRequestStatus.Cancelled)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(request.Details))
+                {
+                    var details = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(request.Details);
+                    if (details != null && details.TryGetValue("createdById", out var creatorIdEl))
+                    {
+                        var creatorIdStr = creatorIdEl.GetString();
+                        if (!string.IsNullOrEmpty(creatorIdStr) && Guid.TryParse(creatorIdStr, out var creatorId))
+                        {
+                            // لا ترسل إشعار مزدوج إذا كان المنشئ هو نفسه المعيّن أو الفني
+                            if (creatorId != request.AssignedToId && creatorId != request.TechnicianId)
+                            {
+                                var creatorName = details.TryGetValue("createdByName", out var nameEl) ? nameEl.GetString() : null;
+                                var taskType = details.TryGetValue("taskType", out var typeEl) ? typeEl.GetString() : null;
+                                var statusMsg = newStatus == ServiceRequestStatus.Completed ? "تم إنهاء" : "تم إلغاء";
+
+                                notifications.Add(new Notification
+                                {
+                                    UserId = creatorId,
+                                    Title = $"{statusMsg} المهمة {request.RequestNumber}",
+                                    TitleAr = $"{statusMsg} المهمة {request.RequestNumber}",
+                                    Body = $"{statusMsg} المهمة ({taskType ?? "مهمة"}) التي أنشأتها — الحالة: {statusAr}",
+                                    BodyAr = $"{statusMsg} المهمة ({taskType ?? "مهمة"}) التي أنشأتها — الحالة: {statusAr}",
+                                    Type = NotificationType.RequestStatusUpdate,
+                                    ReferenceId = request.Id,
+                                    ReferenceType = "ServiceRequest",
+                                    CreatedAt = DateTime.UtcNow
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "فشل استخراج createdById من Details للطلب {RequestNumber}", request.RequestNumber);
+            }
         }
 
         foreach (var n in notifications)

@@ -1830,6 +1830,16 @@ public class InternalDataController : ControllerBase
             log.IsWhatsAppSent = false;
         if (request.TryGetProperty("subscriptionNotes", out var pn) && pn.ValueKind == JsonValueKind.String)
             log.SubscriptionNotes = pn.GetString();
+        if (request.TryGetProperty("ActivatedBy", out var pab) && pab.ValueKind == JsonValueKind.String)
+            log.ActivatedBy = pab.GetString();
+        if (request.TryGetProperty("PlanPrice", out var ppr) && ppr.ValueKind == JsonValueKind.Number)
+            log.PlanPrice = ppr.GetDecimal();
+        if (request.TryGetProperty("CollectionType", out var pct) && pct.ValueKind == JsonValueKind.String)
+            log.CollectionType = pct.GetString();
+        if (request.TryGetProperty("TechnicianName", out var ptn) && ptn.ValueKind == JsonValueKind.String)
+            log.TechnicianName = ptn.GetString();
+        if (request.TryGetProperty("PaymentMethod", out var ppm) && ppm.ValueKind == JsonValueKind.String)
+            log.PaymentMethod = ppm.GetString();
 
         log.LastUpdateDate = DateTime.UtcNow;
         log.UpdatedAt = DateTime.UtcNow;

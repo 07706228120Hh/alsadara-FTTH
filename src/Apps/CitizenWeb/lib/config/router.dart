@@ -30,6 +30,7 @@ import '../pages/citizen/internet/new_subscription_page.dart';
 import '../pages/citizen/master/master_services_page.dart';
 import '../pages/citizen/master/recharge_card_page.dart';
 import '../pages/citizen/master/new_master_card_page.dart';
+import '../pages/citizen/master/delivery_withdrawal_page.dart';
 
 // المتجر
 import '../pages/citizen/store/store_page.dart';
@@ -220,19 +221,10 @@ GoRouter createRouter({
         builder: (context, state) => const NewMasterCardPage(),
       ),
 
-      /// توصيل البطاقة (placeholder)
+      /// طلب سحب ديلفري
       GoRoute(
-        path: '/citizen/master/delivery',
-        builder: (context, state) => Scaffold(
-          appBar: AppBar(
-            title: const Text('توصيل البطاقة'),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/citizen/master'),
-            ),
-          ),
-          body: const Center(child: Text('صفحة تتبع التوصيل - قيد التطوير')),
-        ),
+        path: '/citizen/master/delivery-withdraw',
+        builder: (context, state) => const DeliveryWithdrawalPage(),
       ),
 
       /// كشف حساب (placeholder)

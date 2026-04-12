@@ -8,6 +8,7 @@ import 'package:http/io_client.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'api/api_client.dart';
+import 'in_app_notification_service.dart';
 import 'api/api_config.dart';
 
 /// ═══════════════════════════════════════════════════════════════
@@ -391,14 +392,27 @@ class ChatService {
   void _onReceiveMessage(List<Object?>? args) {
     if (args == null || args.isEmpty) return;
     final data = args[0];
+    Map<String, dynamic>? msg;
     if (data is Map<String, dynamic>) {
-      _messageController.add(data);
-      refreshUnreadCount();
-      _playNotificationSound();
+      msg = data;
     } else if (data is Map) {
-      _messageController.add(Map<String, dynamic>.from(data));
+      msg = Map<String, dynamic>.from(data);
+    }
+    if (msg != null) {
+      _messageController.add(msg);
       refreshUnreadCount();
       _playNotificationSound();
+      // بانر داخل التطبيق
+      final sender = msg['senderName']?.toString() ?? msg['sender']?.toString() ?? '';
+      final content = msg['content']?.toString() ?? msg['message']?.toString() ?? 'رسالة جديدة';
+      if (sender.isNotEmpty) {
+        InAppNotificationService.instance.show(
+          title: sender,
+          body: content,
+          type: InAppNotificationType.chat,
+          referenceId: msg['roomId']?.toString(),
+        );
+      }
     }
   }
 

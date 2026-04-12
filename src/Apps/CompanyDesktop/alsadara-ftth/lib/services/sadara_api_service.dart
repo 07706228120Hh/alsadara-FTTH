@@ -315,8 +315,10 @@ class SadaraApiService {
 
   // --- طلبات الصيانة ---
   Future<List<dynamic>> getServiceRequests(
-      {int page = 1, int pageSize = 20}) async {
-    final result = await get('/servicerequests?page=$page&pageSize=$pageSize');
+      {int page = 1, int pageSize = 20, int? serviceId}) async {
+    var url = '/servicerequests?page=$page&pageSize=$pageSize';
+    if (serviceId != null) url += '&serviceId=$serviceId';
+    final result = await get(url);
     return result['data'] ?? [];
   }
 

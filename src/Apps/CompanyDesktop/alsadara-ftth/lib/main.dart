@@ -30,9 +30,11 @@ export 'widgets/window_close_handler_fixed.dart' show navigatorKey;
 import 'services/notification_service.dart';
 import 'services/location_foreground_service.dart';
 import 'services/ticket_updates_service.dart';
+import 'services/collection_tasks_polling_service.dart';
 import 'services/badge_service.dart';
 import 'services/responsive_text_service.dart'; // إضافة الخدمة الجديدة
 import 'services/app_text_scale.dart';
+import 'widgets/in_app_notification_overlay.dart';
 import 'pages/settings_text_scale_page.dart';
 import 'utils/app_typography.dart';
 import 'theme/app_theme.dart';
@@ -154,6 +156,8 @@ Future<void> main(List<String> args) async {
     logSuccess('تم تهيئة خدمة الإشعارات', tag: 'Notifications');
     // تشغيل خدمة التذاكر الخلفية (Polling) لبيئة Windows فقط بدون انتظار
     TicketUpdatesService.instance.start();
+    // تشغيل خدمة مراقبة مهام التحصيل المكتملة (Polling)
+    CollectionTasksPollingService.instance.start();
     // تهيئة شارة الأيقونة
     await BadgeService.instance.initialize();
     // الاشتراك في التذاكر الجديدة لزيادة الشارة
@@ -161,6 +165,14 @@ Future<void> main(List<String> args) async {
       if (tickets.isNotEmpty) {
         BadgeService.instance.setUnread(
           BadgeService.instance.unreadCount + tickets.length,
+        );
+      }
+    });
+    // الاشتراك في مهام التحصيل المكتملة لزيادة الشارة
+    CollectionTasksPollingService.instance.completedTasksStream.listen((tasks) {
+      if (tasks.isNotEmpty) {
+        BadgeService.instance.setUnread(
+          BadgeService.instance.unreadCount + tasks.length,
         );
       }
     });
@@ -252,11 +264,13 @@ class MyApp extends StatelessWidget {
                     final double clampedScale = isMobile
                         ? (systemScale * 1.4).clamp(1.2, 1.6)
                         : systemScale.clamp(0.85, 1.0);
-                    return MediaQuery(
-                      data: mq.copyWith(
-                        textScaler: TextScaler.linear(clampedScale),
+                    return InAppNotificationOverlay(
+                      child: MediaQuery(
+                        data: mq.copyWith(
+                          textScaler: TextScaler.linear(clampedScale),
+                        ),
+                        child: child ?? const SizedBox.shrink(),
                       ),
-                      child: child ?? const SizedBox.shrink(),
                     );
                   },
                   theme: AppTheme.lightTheme.copyWith(

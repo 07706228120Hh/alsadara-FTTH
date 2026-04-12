@@ -4,7 +4,6 @@ library;
 
 import 'package:flutter/material.dart';
 import '../utils/responsive_helper.dart';
-import 'attendance_page.dart';
 import 'work_schedules_page.dart';
 import 'leave_management_page.dart';
 import 'salary_management_page.dart';
@@ -15,8 +14,9 @@ import 'users_page_firebase.dart';
 import 'users_page_vps.dart';
 import '../task/audit_dashboard_page.dart';
 import '../services/vps_auth_service.dart';
-
-class HrHubPage extends StatelessWidget {
+import '../services/attendance_api_service.dart';
+import '../widgets/notification_bell.dart';
+class HrHubPage extends StatefulWidget {
   final String username;
   final String permissions;
   final String department;
@@ -33,6 +33,54 @@ class HrHubPage extends StatelessWidget {
     this.tenantId,
     this.tenantCode,
   });
+
+  @override
+  State<HrHubPage> createState() => _HrHubPageState();
+}
+
+class _HrHubPageState extends State<HrHubPage> {
+  int _pendingLeaves = 0;
+  int _pendingWithdrawals = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCounts();
+  }
+
+  Future<void> _fetchCounts() async {
+    try {
+      final results = await Future.wait([
+        AttendanceApiService.instance.getLeaveSummary().catchError((_) => <String, dynamic>{}),
+        AttendanceApiService.instance.getWithdrawalRequests(status: 0, page: 1, pageSize: 1).catchError((_) => <String, dynamic>{}),
+      ]);
+
+      final leaveRaw = results[0];
+      final withdrawRaw = results[1];
+      debugPrint('📊 HR leaves: $leaveRaw');
+      debugPrint('📊 HR withdrawals: $withdrawRaw');
+
+      if (mounted) {
+        final leaveData = (leaveRaw['data'] is Map) ? leaveRaw['data'] as Map<String, dynamic> : leaveRaw;
+        final withdrawData = (withdrawRaw['data'] is Map) ? withdrawRaw['data'] as Map<String, dynamic> : withdrawRaw;
+        setState(() {
+          _pendingLeaves = _extractInt(leaveData, 'Pending') + _extractInt(leaveData, 'pending');
+          _pendingWithdrawals = _extractInt(withdrawData, 'Total') + _extractInt(withdrawData, 'total');
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ HR _fetchCounts error: $e');
+    }
+  }
+
+  int _extractInt(Map<String, dynamic> map, String key) {
+    final val = map[key];
+    if (val == null) return 0;
+    if (val is int) return val;
+    if (val is double) return val.toInt();
+    if (val is String) return int.tryParse(val) ?? 0;
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +102,10 @@ class HrHubPage extends StatelessWidget {
                       color: Colors.white, size: r.appBarIconSize),
                   onPressed: () => Navigator.pop(context),
                 ),
+                actions: const [
+                  NotificationBell(),
+                  SizedBox(width: 8),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   centerTitle: true,
                   background: Container(
@@ -135,12 +187,10 @@ class HrHubPage extends StatelessWidget {
         gradient: [Colors.blue[600]!, Colors.blue[800]!],
         onTap: () {
           final companyId =
-              tenantId ?? VpsAuthService.instance.currentCompanyId;
+              widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
           final companyCode =
-              tenantCode ?? VpsAuthService.instance.currentCompanyCode;
-          final companyName = department.isNotEmpty
-              ? department
-              : (VpsAuthService.instance.currentCompanyName ?? 'الشركة');
+              widget.tenantCode ?? VpsAuthService.instance.currentCompanyCode;
+          final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -153,33 +203,15 @@ class HrHubPage extends StatelessWidget {
                   : companyId != null
                       ? UsersPageFirebase(
                           tenantId: companyId,
-                          permissions: permissions,
+                          permissions: widget.permissions,
                         )
-                      : UsersPage(permissions: permissions),
+                      : UsersPage(permissions: widget.permissions),
             ),
           );
         },
       ),
 
-      // 2) البصمة
-      _HrCard(
-        icon: Icons.fingerprint_rounded,
-        title: 'البصمة',
-        subtitle: 'تسجيل الحضور والانصراف',
-        gradient: [Colors.indigo[500]!, Colors.indigo[700]!],
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AttendancePage(
-              username: username,
-              center: center,
-              permissions: permissions,
-            ),
-          ),
-        ),
-      ),
-
-      // 3) جداول الدوام
+      // 2) جداول الدوام
       _HrCard(
         icon: Icons.schedule_rounded,
         title: 'جداول الدوام',
@@ -199,6 +231,7 @@ class HrHubPage extends StatelessWidget {
         title: 'الإجازات',
         subtitle: 'طلبات الإجازات والأرصدة',
         gradient: [Colors.orange[600]!, Colors.orange[800]!],
+        badgeCount: _pendingLeaves,
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -227,6 +260,7 @@ class HrHubPage extends StatelessWidget {
         title: 'الخصومات والمكافآت',
         subtitle: 'إدارة الخصومات والمكافآت والبدلات',
         gradient: [Colors.red[500]!, Colors.red[700]!],
+        badgeCount: _pendingWithdrawals,
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -259,10 +293,10 @@ class HrHubPage extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) => AuditDashboardPage(
-              username: username,
-              permissions: permissions,
-              department: department,
-              center: center,
+              username: widget.username,
+              permissions: widget.permissions,
+              department: widget.department,
+              center: widget.center,
             ),
           ),
         ),
@@ -298,6 +332,7 @@ class _HrCard extends StatefulWidget {
   final String subtitle;
   final List<Color> gradient;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _HrCard({
     required this.icon,
@@ -305,6 +340,7 @@ class _HrCard extends StatefulWidget {
     required this.subtitle,
     required this.gradient,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -358,28 +394,52 @@ class _HrCardState extends State<_HrCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // أيقونة
-                        Container(
-                          width: r.isMobile ? 36 : 46,
-                          height: r.isMobile ? 36 : 46,
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(r.isMobile ? 10 : 14),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: widget.gradient,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: widget.gradient[0].withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+                        // أيقونة + بادج
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: r.isMobile ? 36 : 46,
+                              height: r.isMobile ? 36 : 46,
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(r.isMobile ? 10 : 14),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: widget.gradient,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: widget.gradient[0].withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Icon(widget.icon,
-                              color: Colors.white, size: r.isMobile ? 18 : 24),
+                              child: Icon(widget.icon,
+                                  color: Colors.white, size: r.isMobile ? 18 : 24),
+                            ),
+                            if (widget.badgeCount > 0)
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 4)],
+                                  ),
+                                  constraints: const BoxConstraints(minWidth: 18, minHeight: 16),
+                                  child: Text(
+                                    widget.badgeCount > 99 ? '99+' : widget.badgeCount.toString(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const Spacer(),
                         // العنوان

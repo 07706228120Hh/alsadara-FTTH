@@ -339,9 +339,14 @@ public class ChatController : ControllerBase
     {
         var userId = GetUserId();
 
-        var isMember = await _uow.ChatRoomMembers.AnyAsync(m =>
-            m.ChatRoomId == roomId && m.UserId == userId && !m.IsDeleted);
-        if (!isMember) return Forbid();
+        // السماح للمدير (CompanyAdmin+) بقراءة كل المحادثات
+        var currentUser = await _uow.Users.GetByIdAsync(userId);
+        if (currentUser?.IsCompanyAdminOrAbove != true)
+        {
+            var isMember = await _uow.ChatRoomMembers.AnyAsync(m =>
+                m.ChatRoomId == roomId && m.UserId == userId && !m.IsDeleted);
+            if (!isMember) return Forbid();
+        }
 
         var query = _uow.ChatMessages.AsQueryable()
             .Where(m => m.ChatRoomId == roomId && !m.IsDeleted);

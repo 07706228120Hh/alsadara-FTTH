@@ -1,7 +1,9 @@
 /// صفحة طلبات المواطنين
 library;
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
 import 'widgets/request_status_badge.dart';
@@ -489,13 +491,14 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
                 _buildDetailRow('المواطن', request.citizenName ?? '-'),
                 _buildDetailRow('الهاتف', request.citizenPhone ?? '-'),
                 _buildDetailRow('العنوان', request.address ?? '-'),
-                _buildDetailRow('التفاصيل', request.details ?? '-'),
                 if (request.estimatedCost != null)
-                  _buildDetailRow('التكلفة المقدرة',
+                  _buildDetailRow('المبلغ',
                       '${request.estimatedCost!.toStringAsFixed(0)} د.ع'),
                 if (request.finalCost != null)
                   _buildDetailRow('التكلفة النهائية',
                       '${request.finalCost!.toStringAsFixed(0)} د.ع'),
+                // عرض تفاصيل JSON المهيكلة
+                ..._buildParsedDetails(request.details),
               ],
             ),
           ),
@@ -527,6 +530,48 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildParsedDetails(String? detailsJson) {
+    if (detailsJson == null || detailsJson.isEmpty) return [];
+    try {
+      final d = jsonDecode(detailsJson) as Map<String, dynamic>;
+      final widgets = <Widget>[];
+      if (d['latitude'] != null && d['longitude'] != null) {
+        widgets.add(const Divider());
+        widgets.add(const Text('الموقع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)));
+        widgets.add(const SizedBox(height: 4));
+        widgets.add(_buildDetailRow('إحداثيات', '${d["latitude"]}, ${d["longitude"]}'));
+      }
+      if (d['locationUrl'] != null) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              const SizedBox(width: 100, child: Text('الخريطة:', style: TextStyle(fontWeight: FontWeight.bold))),
+              Expanded(
+                child: InkWell(
+                  onTap: () => launchUrl(Uri.parse(d['locationUrl'])),
+                  child: Text('فتح في Google Maps', style: TextStyle(color: Colors.blue[700], decoration: TextDecoration.underline)),
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
+      if (d['notes'] != null && d['notes'].toString().isNotEmpty) {
+        widgets.add(_buildDetailRow('ملاحظات', d['notes'].toString()));
+      }
+      if (d['citizenCity'] != null) {
+        widgets.add(_buildDetailRow('المدينة', d['citizenCity'].toString()));
+      }
+      if (d['source'] != null) {
+        widgets.add(_buildDetailRow('المصدر', d['source'].toString()));
+      }
+      return widgets;
+    } catch (_) {
+      return [_buildDetailRow('التفاصيل', detailsJson)];
+    }
   }
 
   void _assignRequest(ServiceRequestModel request) {

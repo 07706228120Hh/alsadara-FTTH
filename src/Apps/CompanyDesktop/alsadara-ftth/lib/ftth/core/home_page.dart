@@ -62,8 +62,11 @@ import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
 
 import '../../utils/responsive_helper.dart';
+import '../../widgets/notification_bell.dart';
 import '../../pages/super_admin/super_admin_dashboard.dart'; // ✅ لوحة تحكم Super Admin
 import '../../pages/server_data_page.dart'; // صفحة بيانات السيرفر
+import '../tasks/ftth_tasks_page.dart'; // صفحة مهام التوصيل FTTH
+import '../tasks/customer_search_connect_page.dart'; // بحث مشترك + توصيل
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -470,11 +473,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _walletTimer?.cancel();
     _searchDebounce?.cancel();
 
-    // إخفاء الأزرار العائمة قبل dispose لتجنب الشاشة السوداء
+    // إخفاء واتساب فقط — الشريط العائم يبقى ويُعاد تهيئته في النظام الأول
     Future.microtask(() {
       WhatsAppBottomWindow.hideConversationsFloatingButton();
     });
-    FloatingToolbar.dispose();
 
     _refreshAnimationController.dispose();
     _cardAnimationController.dispose();
@@ -1246,6 +1248,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _hasPermission(String permissionKey) {
     // V2: مصدر وحيد — PermissionManager
     return PermissionManager.instance.canView(permissionKey);
+  }
+
+  /// هل الصلاحية مُعطّلة صراحةً؟ (موجودة في البيانات وقيمتها false)
+  /// إذا المفتاح غير موجود أصلاً (مستخدم قديم) → يُعتبر غير مُعطّل (يظهر افتراضياً)
+  bool _isExplicitlyDisabled(String key) {
+    final pm = PermissionManager.instance;
+    if (!pm.hasKey(key)) return false; // غير موجود → افتراضي يظهر
+    return !pm.canView(key); // موجود → نتحقق من قيمته
   }
 
   /// فحص صلاحية V2 بإجراء محدد
@@ -2174,6 +2184,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       } else {
         FloatingToolbar.disableConversations();
       }
+
+      // زر التذاكر العائم (FTTH)
+      if (_hasPermission('tasks') && !_isExplicitlyDisabled('fab_tasks')) {
+        FloatingToolbar.enableTasks();
+      }
+
+      // زر المهام (النظام الأول) — يبقى ظاهراً إذا كان مُفعّلاً سابقاً
+      FloatingToolbar.reEnableS1Tasks();
+
+      // زر المحادثة الداخلية العائم
+      if (_hasPermission('chat') && !_isExplicitlyDisabled('fab_chat')) {
+        FloatingToolbar.enableChat();
+      }
     } catch (e) {
       debugPrint('⚠️ خطأ في إظهار الأزرار العائمة');
     }
@@ -2651,13 +2674,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
       actions: [
+        // جرس الإشعارات
+        const NotificationBell(),
         // ── الجهة اليسرى (في RTL): الرجوع ──
         iconBtn(
           icon: IconsaxPlusBold.arrow_right_1,
           onPressed: () {
-            // تنظيف العناصر العائمة قبل الخروج لتجنب الشاشة السوداء
+            // تنظيف واتساب فقط — الشريط العائم يُعاد تهيئته في النظام الأول
             WhatsAppBottomWindow.hideConversationsFloatingButton();
-            FloatingToolbar.dispose();
             if (Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
             }
@@ -2886,6 +2910,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   label: 'تحليلات Superset',
                   color: const Color(0xFF6A1B9A),
                   onTap: () => navigateToPage(DashboardProjectPage(authToken: currentToken)),
+                ),
+                _sidebarBtn(
+                  icon: IconsaxPlusBold.wifi,
+                  label: 'مهام التوصيل',
+                  color: const Color(0xFF00897B),
+                  onTap: () => navigateToPage(const FtthTasksPage()),
+                ),
+                _sidebarBtn(
+                  icon: IconsaxPlusBold.user_search,
+                  label: 'بحث مشترك — توصيل',
+                  color: const Color(0xFF0277BD),
+                  onTap: () => navigateToPage(const CustomerSearchConnectPage()),
                 ),
                 if (_hasPermission('quick_search'))
                   _sidebarBtn(
@@ -3261,6 +3297,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     isSmallPhone: isSmallPhone,
                     color: Colors.purple,
                     onTap: () => navigateToPage(DashboardProjectPage(authToken: currentToken)),
+                  ),
+                  // 14 مهام التوصيل
+                  _buildDrawerItem(
+                    icon: IconsaxPlusBold.wifi,
+                    title: 'مهام التوصيل',
+                    isTablet: isTablet,
+                    isSmallPhone: isSmallPhone,
+                    color: Colors.teal,
+                    onTap: () => navigateToPage(const FtthTasksPage()),
+                  ),
+                  // 15 بحث مشترك — توصيل
+                  _buildDrawerItem(
+                    icon: IconsaxPlusBold.user_search,
+                    title: 'بحث مشترك — توصيل',
+                    isTablet: isTablet,
+                    isSmallPhone: isSmallPhone,
+                    color: Colors.lightBlue,
+                    onTap: () => navigateToPage(const CustomerSearchConnectPage()),
                   ),
 
                   // تمت إزالة زر معلومات الشريك من القائمة الجانبية بناءً على الطلب

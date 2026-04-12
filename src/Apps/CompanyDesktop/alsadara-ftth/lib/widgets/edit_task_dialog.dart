@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
 import '../services/departments_data_service.dart';
@@ -62,7 +63,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     _locationController = TextEditingController(text: widget.task.location);
     _notesController = TextEditingController(text: widget.task.notes);
     _summaryController = TextEditingController(text: widget.task.summary);
-    _amountController = TextEditingController(text: widget.task.amount);
+    _amountController = TextEditingController(text: _ThousandsSeparatorFormatter.format(widget.task.amount));
 
     _selectedStatus = widget.task.status;
     _selectedPriority = widget.task.priority;
@@ -91,11 +92,12 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       setState(() => _isDataLoading = true);
 
       // جلب بيانات الأقسام والخيارات من API
-      final lookupData = await TaskApiService.instance.getTaskLookupData();
+      final lookupResult = await TaskApiService.instance.getTaskLookupData();
+      final lookupData = lookupResult['data'] ?? lookupResult;
 
       // استخراج الأقسام
-      final List<dynamic> departments =
-          lookupData['departments'] ?? lookupData['Departments'] ?? [];
+      final List<dynamic> deptRaw = lookupData['departments'] ?? lookupData['Departments'] ?? [];
+      final List<dynamic> departments = deptRaw.map((d) => d is Map ? (d['nameAr'] ?? d['name'] ?? d).toString() : d.toString()).toList();
 
       // استخراج خيارات FBG
       final List<dynamic> fbgOptions =
@@ -103,25 +105,37 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
 
       // جلب الموظفين (فنيين وليدرز)
       final staffData = await TaskApiService.instance.getTaskStaff();
-      final List<dynamic> staffList =
-          staffData['staff'] ?? staffData['Staff'] ?? [];
+      final staffInner = staffData['data'] ?? staffData;
 
       List<String> technicians = [];
       List<String> leaders = [];
 
-      for (var staff in staffList) {
-        final name =
-            (staff['FullName'] ?? staff['fullName'] ?? '').toString().trim();
-        final role = (staff['Role'] ?? staff['role'] ?? '').toString();
+      // قراءة الفنيين من data.technicians
+      final List<dynamic> techList = staffInner['technicians'] ?? staffInner['Technicians'] ?? [];
+      for (var t in techList) {
+        final name = (t['Name'] ?? t['name'] ?? t['FullName'] ?? '').toString().trim();
+        if (name.isNotEmpty && !technicians.contains(name)) technicians.add(name);
+      }
 
-        if (name.isNotEmpty) {
-          // Technician = 12, TechnicalLeader = 13
-          if (role == '12' || role == 'Technician' || role == 'فني') {
-            technicians.add(name);
-          } else if (role == '13' ||
-              role == 'TechnicalLeader' ||
-              role == 'ليدر') {
-            leaders.add(name);
+      // قراءة الليدرز من data.leaders
+      final List<dynamic> leaderList = staffInner['leaders'] ?? staffInner['Leaders'] ?? [];
+      for (var l in leaderList) {
+        final name = (l['Name'] ?? l['name'] ?? l['FullName'] ?? '').toString().trim();
+        if (name.isNotEmpty && !leaders.contains(name)) leaders.add(name);
+      }
+
+      // fallback: قراءة من allStaff إذا القوائم فارغة
+      if (technicians.isEmpty && leaders.isEmpty) {
+        final List<dynamic> allStaff = staffInner['allStaff'] ?? staffInner['staff'] ?? staffInner['Staff'] ?? [];
+        for (var staff in allStaff) {
+          final name = (staff['Name'] ?? staff['FullName'] ?? staff['fullName'] ?? '').toString().trim();
+          final role = (staff['Role'] ?? staff['role'] ?? '').toString();
+          if (name.isNotEmpty) {
+            if (role == 'Technician' || role == '12' || role == 'فني') {
+              technicians.add(name);
+            } else if (role == 'TechnicalLeader' || role == 'Manager' || role == '13' || role == '14' || role == 'ليدر') {
+              leaders.add(name);
+            }
           }
         }
       }
@@ -256,12 +270,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                             _buildSectionTitle('معلومات المهمة الأساسية'),
                             const SizedBox(height: 12),
 
-                            _buildTextFormField(
-                              controller: _titleController,
-                              label: 'عنوان المهمة',
-                              icon: Icons.title,
-                              required: true,
-                            ),
+                            _buildTaskTypeDropdown(),
                             const SizedBox(height: 12),
 
                             _buildDropdownField(
@@ -312,16 +321,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                             ),
                             const SizedBox(height: 12),
 
-                            _buildDropdownField(
-                              value: _selectedTechnician,
-                              items: _technicians.isEmpty
-                                  ? [_selectedTechnician]
-                                  : _technicians,
-                              label: 'الفني المسؤول',
-                              icon: Icons.engineering,
-                              onChanged: (value) =>
-                                  setState(() => _selectedTechnician = value!),
-                            ),
+                            _buildSearchableTechnicianField(),
                             const SizedBox(height: 20),
 
                             // معلومات العميل
@@ -350,6 +350,15 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                               label: 'المبلغ',
                               icon: Icons.attach_money,
                               keyboardType: TextInputType.number,
+                              inputFormatters: [_ThousandsSeparatorFormatter()],
+                              suffixText: 'دينار',
+                              validator: (v) {
+                                if (v != null && v.isNotEmpty) {
+                                  final amount = int.tryParse(v.replaceAll(',', '').trim());
+                                  if (amount != null && amount < 1000) return 'المبلغ يجب أن يكون 1,000 أو أكثر';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 20),
 
@@ -487,28 +496,137 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     bool required = false,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
+    String? suffixText,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
+        suffixText: suffixText,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
         filled: true,
         fillColor: Colors.grey.shade50,
       ),
-      validator: required
+      validator: validator ?? (required
           ? (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'هذا الحقل مطلوب';
               }
               return null;
             }
-          : null,
+          : null),
+    );
+  }
+
+  // أنواع المهام المتاحة
+  static const _taskTypes = [
+    'تركيب',
+    'إصلاح',
+    'صيانة دورية',
+    'فحص',
+    'استبدال',
+    'طوارئ',
+    'استشارة',
+    'شراء اشتراك',
+    'تجديد اشتراك',
+    'استحصال مبلغ',
+    'تحصيل مبلغ تجديد',
+    'سحب ديلفري',
+  ];
+
+  Widget _buildTaskTypeDropdown() {
+    final items = [..._taskTypes];
+    final current = _titleController.text.trim();
+    if (current.isNotEmpty && !items.contains(current)) {
+      items.insert(0, current);
+    }
+    return DropdownButtonFormField<String>(
+      value: items.contains(current) ? current : null,
+      decoration: InputDecoration(
+        labelText: 'نوع المهمة',
+        prefixIcon: const Icon(Icons.category),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+      ),
+      items: items.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+      onChanged: (v) {
+        if (v != null) {
+          setState(() => _titleController.text = v);
+        }
+      },
+      validator: (v) => (v == null || v.isEmpty) ? 'يرجى اختيار نوع المهمة' : null,
+    );
+  }
+
+  Widget _buildSearchableTechnicianField() {
+    return Autocomplete<String>(
+      initialValue: TextEditingValue(text: _selectedTechnician),
+      optionsBuilder: (textEditingValue) {
+        if (textEditingValue.text.isEmpty) return _technicians;
+        return _technicians.where(
+          (t) => t.contains(textEditingValue.text),
+        );
+      },
+      fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            labelText: 'الفني المسؤول',
+            prefixIcon: const Icon(Icons.engineering),
+            suffixIcon: controller.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () {
+                      controller.clear();
+                      setState(() => _selectedTechnician = '');
+                    },
+                  )
+                : null,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            hintText: 'ابحث عن فني...',
+          ),
+          onChanged: (v) => setState(() => _selectedTechnician = v),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topRight,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 350),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.person, size: 18),
+                    title: Text(option, style: const TextStyle(fontSize: 14)),
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+      onSelected: (value) => setState(() => _selectedTechnician = value),
     );
   }
 
@@ -574,7 +692,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         notes: _notesController.text.trim(),
         summary: _summaryController.text.trim(),
         priority: _selectedPriority,
-        amount: _amountController.text.trim(),
+        amount: _amountController.text.replaceAll(',', '').trim(),
         closedAt: (_selectedStatus == 'مكتملة' || _selectedStatus == 'ملغية')
             ? DateTime.now()
             : null,
@@ -611,5 +729,38 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         setState(() => _isLoading = false);
       }
     }
+  }
+}
+
+/// فورماتر يضيف فواصل المراتب (1,000,000) ويمنع الأرقام العشرية
+class _ThousandsSeparatorFormatter extends TextInputFormatter {
+  /// تنسيق نص عادي بفواصل المراتب
+  static String format(String value) {
+    final digits = value.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.isEmpty) return '';
+    final buffer = StringBuffer();
+    final len = digits.length;
+    for (int i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
+
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (digitsOnly.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+    final formatted = format(digitsOnly);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 }

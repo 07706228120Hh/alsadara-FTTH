@@ -3217,7 +3217,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
       {'value': 'Employee', 'label': 'موظف'},
       {'value': 'Viewer', 'label': 'مشاهد'},
       {'value': 'Technician', 'label': 'فني'},
-      {'value': 'TechnicalLeader', 'label': 'ليدر فني'},
+      {'value': 'TechnicalLeader', 'label': 'ليدر'},
       {'value': 'Manager', 'label': 'مدير'},
       {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
     ];
@@ -3424,7 +3424,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
       {'value': 'Employee', 'label': 'موظف'},
       {'value': 'Viewer', 'label': 'مشاهد'},
       {'value': 'Technician', 'label': 'فني'},
-      {'value': 'TechnicalLeader', 'label': 'ليدر فني'},
+      {'value': 'TechnicalLeader', 'label': 'ليدر'},
       {'value': 'Manager', 'label': 'مدير'},
       {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
     ];

@@ -199,7 +199,7 @@ class TenantUser {
 enum UserRole {
   admin('admin', 'مدير'),
   manager('manager', 'مشرف'),
-  technicalLeader('technical_leader', 'ليدر فني'),
+  technicalLeader('technical_leader', 'ليدر'),
   technician('technician', 'فني'),
   employee('employee', 'موظف'),
   viewer('viewer', 'مشاهد');

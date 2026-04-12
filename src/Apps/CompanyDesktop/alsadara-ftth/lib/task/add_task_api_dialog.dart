@@ -19,6 +19,8 @@ class AddTaskApiDialog extends StatefulWidget {
   final String? initialFAT;
   final String? initialNotes;
   final String? initialTaskType;
+  final String? initialServiceType;
+  final String? initialSubscriptionDuration;
 
   const AddTaskApiDialog({
     super.key,
@@ -33,6 +35,8 @@ class AddTaskApiDialog extends StatefulWidget {
     this.initialFAT,
     this.initialNotes,
     this.initialTaskType,
+    this.initialServiceType,
+    this.initialSubscriptionDuration,
   });
 
   @override
@@ -109,6 +113,14 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     }
     if (widget.initialTaskType?.isNotEmpty == true) {
       _selectedTaskType = widget.initialTaskType!;
+    }
+    if (widget.initialServiceType?.isNotEmpty == true &&
+        _serviceTypes.contains(widget.initialServiceType)) {
+      _selectedServiceType = widget.initialServiceType!;
+    }
+    if (widget.initialSubscriptionDuration?.isNotEmpty == true &&
+        _subscriptionDurations.contains(widget.initialSubscriptionDuration)) {
+      _selectedSubscriptionDuration = widget.initialSubscriptionDuration!;
     }
 
     // عند شراء اشتراك: القسم = الحسابات + نوع المهمة ثابت + الفني يُختار من الحسابات
@@ -276,6 +288,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       }
       _selectedTaskType = '';
       _currentSelectedPhone = '';
+      // مسح القائمة القديمة لمنع اختيار فني غير متاح أثناء التحميل
+      _leaders = [];
+      _technicians = [];
     });
     _fetchStaffByDepartment(newDepartment);
   }
@@ -283,7 +298,17 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   List<DropdownMenuItem<String>> _getTaskTypeItems() {
     List<DropdownMenuItem<String>> items = [];
 
-    // "شراء اشتراك" يظهر فقط لقسم الحسابات
+    // أنواع المهام من القسم المحدد
+    if (_selectedDepartment.isNotEmpty &&
+        _departmentTasks.containsKey(_selectedDepartment)) {
+      for (String task in _departmentTasks[_selectedDepartment] ?? []) {
+        if (task.isNotEmpty && task != 'شراء اشتراك') {
+          items.add(DropdownMenuItem(value: task, child: Text(task)));
+        }
+      }
+    }
+
+    // "شراء اشتراك" يظهر فقط لقسم الحسابات — في نهاية القائمة
     if (_selectedDepartment == 'الحسابات' || _selectedDepartment.isEmpty) {
       items.add(const DropdownMenuItem(
         value: 'شراء اشتراك',
@@ -293,21 +318,6 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           Text('شراء اشتراك', style: TextStyle(fontWeight: FontWeight.bold)),
         ]),
       ));
-
-      items.add(const DropdownMenuItem(
-        value: '',
-        enabled: false,
-        child: Divider(height: 1),
-      ));
-    }
-
-    if (_selectedDepartment.isNotEmpty &&
-        _departmentTasks.containsKey(_selectedDepartment)) {
-      for (String task in _departmentTasks[_selectedDepartment] ?? []) {
-        if (task.isNotEmpty && task != 'شراء اشتراك') {
-          items.add(DropdownMenuItem(value: task, child: Text(task)));
-        }
-      }
     }
 
     return items;
@@ -318,7 +328,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Future<void> _createTask() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedTaskType != 'شراء اشتراك' && _selectedTechnician.isEmpty) {
+    if (_selectedTechnician.isEmpty) {
       _showError('يجب اختيار فني لتنفيذ المهمة');
       return;
     }
@@ -339,8 +349,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         customerPhone: _phoneController.text.trim(),
         department: department,
         leader: _selectedLeader,
-        technician:
-            _selectedTechnician.isNotEmpty ? _selectedTechnician : 'غير محدد',
+        technician: _selectedTechnician,
         technicianPhone: _currentSelectedPhone,
         fbg: _fbgController.text.trim(),
         fat: _fatController.text.trim(),
@@ -354,7 +363,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             ? _selectedSubscriptionDuration
             : null,
         subscriptionAmount: _subscriptionAmountController.text.trim().isNotEmpty
-            ? double.tryParse(_subscriptionAmountController.text.trim())
+            ? double.tryParse(_subscriptionAmountController.text.replaceAll(',', '').trim())
             : null,
       );
 
@@ -1009,21 +1018,26 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             ),
             SizedBox(height: _isNarrow ? 3 : 6),
             _adaptiveRow(
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                    labelText: 'القائد', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                value: _leaders.contains(_selectedLeader) ? _selectedLeader : null,
-                items: _leaders.map((l) => DropdownMenuItem(value: l, child: Text(l, style: const TextStyle(fontSize: 13)))).toList(),
-                onChanged: (v) => setState(() => _selectedLeader = v ?? ''),
+              _buildSearchableDropdown(
+                label: 'القائد',
+                items: _leaders,
+                selectedValue: _selectedLeader,
+                onSelected: (v) => setState(() => _selectedLeader = v),
               ),
-              DropdownButtonFormField<String>(
-                key: ValueKey('tech_${_selectedTechnician}_${_technicians.length}'),
-                decoration: InputDecoration(
-                    labelText: 'الفني', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                value: _technicians.contains(_selectedTechnician) ? _selectedTechnician : null,
-                items: _technicians.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
-                onChanged: (v) { setState(() { _selectedTechnician = v ?? ''; _updateSelectedUserPhone(); }); },
-                validator: (v) { if (_selectedTaskType != 'شراء اشتراك' && (v == null || v.isEmpty)) return 'يجب اختيار فني'; return null; },
+              _buildSearchableDropdown(
+                label: 'الفني',
+                items: _technicians,
+                selectedValue: _selectedTechnician,
+                onSelected: (v) {
+                  setState(() {
+                    _selectedTechnician = v;
+                    _updateSelectedUserPhone();
+                  });
+                },
+                validator: (v) {
+                  if (_selectedTaskType != 'شراء اشتراك' && v.isEmpty) return 'يجب اختيار فني';
+                  return null;
+                },
               ),
             ),
             if (_currentSelectedPhone.isNotEmpty)
@@ -1257,14 +1271,16 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 prefixIcon:
                     Icon(Icons.attach_money, color: Colors.orange.shade600),
                 suffixText: 'دينار',
+                hintText: 'مثال: 15,000',
               ),
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [_ThousandsSeparatorFormatter()],
               validator: (v) {
                 if (_selectedTaskType == 'شراء اشتراك') {
                   if (v == null || v.trim().isEmpty) return 'يجب إدخال المبلغ';
-                  final amount = int.tryParse(v.trim());
+                  final amount = int.tryParse(v.replaceAll(',', '').trim());
                   if (amount == null || amount <= 0) return 'مبلغ غير صحيح';
+                  if (amount < 1000) return 'المبلغ يجب أن يكون 1,000 أو أكثر';
                 }
                 return null;
               },
@@ -1355,6 +1371,100 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     );
   }
 
+  /// مربع بحث وتصفية مع قائمة منسدلة مباشرة
+  Widget _buildSearchableDropdown({
+    required String label,
+    required List<String> items,
+    required String selectedValue,
+    required ValueChanged<String> onSelected,
+    String? Function(String)? validator,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Autocomplete<String>(
+          optionsBuilder: (textEditingValue) {
+            if (textEditingValue.text.isEmpty) return items;
+            return items.where((item) =>
+                item.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+          },
+          onSelected: onSelected,
+          initialValue: selectedValue.isNotEmpty
+              ? TextEditingValue(text: selectedValue)
+              : null,
+          optionsMaxHeight: 200,
+          optionsViewOpenDirection: OptionsViewOpenDirection.down,
+          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+            return TextFormField(
+              controller: controller,
+              focusNode: focusNode,
+              decoration: InputDecoration(
+                labelText: label,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                isDense: true,
+                filled: true,
+                fillColor: Colors.white,
+                suffixIcon: controller.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          controller.clear();
+                          onSelected('');
+                        },
+                      )
+                    : const Icon(Icons.search, size: 18),
+              ),
+              style: const TextStyle(fontSize: 13),
+              onChanged: (v) {
+                // إذا مسح المستخدم النص بالكامل، أفرغ الاختيار
+                if (v.isEmpty) onSelected('');
+              },
+              validator: validator != null ? (_) => validator(selectedValue) : null,
+            );
+          },
+          optionsViewBuilder: (context, onAutoSelected, options) {
+            return Align(
+              alignment: AlignmentDirectional.topStart,
+              child: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(8),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: 200,
+                    maxWidth: constraints.maxWidth,
+                  ),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final option = options.elementAt(index);
+                      final isSelected = option == selectedValue;
+                      return InkWell(
+                        onTap: () => onAutoSelected(option),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          color: isSelected ? Colors.blue.shade50 : null,
+                          child: Text(
+                            option,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                              color: isSelected ? Colors.blue.shade800 : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   /// Row على Desktop، Column على الهاتف — لمنع التداخل
   bool get _isNarrow => MediaQuery.of(context).size.width < 500;
 
@@ -1368,5 +1478,38 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       SizedBox(width: g),
       Expanded(child: child2),
     ]);
+  }
+}
+
+/// فورماتر يضيف فواصل المراتب (1,000,000) ويمنع الأرقام العشرية
+class _ThousandsSeparatorFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    // السماح فقط بالأرقام
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (digitsOnly.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+
+    // تنسيق بفواصل
+    final formatted = _formatWithCommas(digitsOnly);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  static String _formatWithCommas(String digits) {
+    final buffer = StringBuffer();
+    final len = digits.length;
+    for (int i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
   }
 }

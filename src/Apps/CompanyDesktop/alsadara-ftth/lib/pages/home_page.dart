@@ -53,6 +53,8 @@ import 'iptv/iptv_subscribers_page.dart'; // صفحة مشتركي IPTV
 import 'kml_zones_map_page.dart'; // خريطة الزونات
 import 'announcements/announcements_page.dart'; // صفحة الإعلانات والتبليغات
 import '../services/announcement_service.dart'; // خدمة الإعلانات
+import '../services/notification_api_service.dart'; // خدمة الإشعارات API
+import '../widgets/notification_bell.dart';
 import '../services/api/api_config.dart'; // إعدادات API
 // تم نقل زر جلب بيانات الموقع إلى النظام الثاني
 
@@ -102,6 +104,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _openTasksCount = 0;
   int _pendingEmployeeRequests = 0; // إجازات + سلف
   int _unreadChatCount = 0;
+  int _unreadNotificationsCount = 0;
+  Timer? _notificationsTimer;
   int _unreadAnnouncementsCount = 0;
   List<Map<String, dynamic>> _myAnnouncements = []; // كل الإعلانات الموجهة
   int _currentAnnouncementIndex = 0;
@@ -111,6 +115,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _counterRetried = false; // لمحاولة إعادة جلب العدادات مرة واحدة
   Timer? _countersRefreshTimer; // تحديث تلقائي للعدادات
   late final AnimationController _counterAnimController;
+
+  // أقسام الليدر المتعددة (محمّلة من API)
+  String _resolvedDepartments = '';
 
   // Unified fiber optic color
   final Color _fiberColor = const Color(0xFF00E5FF);
@@ -132,8 +139,62 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     );
+    _resolvedDepartments = widget.department;
     _initializeApp();
     _initChat();
+    _initNotificationsPolling();
+    _loadUserDepartments();
+  }
+
+  /// جلب أقسام الليدر المتعددة من API
+  Future<void> _loadUserDepartments() async {
+    if (widget.permissions != 'ليدر' && widget.permissions != 'مدير') return;
+    try {
+      final result = await TaskApiService.instance.getMyDepartments();
+      if (result['success'] == true && result['data'] != null && mounted) {
+        final depts = (result['data'] as List)
+            .map((d) => d['Name']?.toString() ?? d['name']?.toString() ?? '')
+            .where((n) => n.isNotEmpty)
+            .toList();
+        if (depts.isNotEmpty) {
+          setState(() => _resolvedDepartments = depts.join(','));
+          debugPrint('📋 أقسام الليدر: $_resolvedDepartments');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ فشل جلب أقسام الليدر: $e');
+    }
+  }
+
+  /// جلب عدد الإشعارات غير المقروءة دورياً
+  void _initNotificationsPolling() {
+    _fetchUnreadNotificationsCount();
+    _notificationsTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _fetchUnreadNotificationsCount();
+    });
+  }
+
+  Future<void> _fetchUnreadNotificationsCount() async {
+    try {
+      final res = await NotificationApiService.instance.getUnreadCount();
+      if (res['success'] == true && mounted) {
+        setState(() => _unreadNotificationsCount = (res['data'] ?? 0) as int);
+      }
+    } catch (_) {}
+  }
+
+  /// عرض لوحة الإشعارات
+  void _showNotificationsPanel() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _NotificationsPanel(
+        onRead: () {
+          _fetchUnreadNotificationsCount();
+        },
+      ),
+    );
   }
 
   /// تهيئة نظام المحادثة
@@ -286,8 +347,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       // جلب البيانات بالتوازي
       final results = await Future.wait([
-        // 1) إحصائيات طلبات الخدمة (تشمل طلبات الوكلاء والمهام)
-        TaskApiService.instance.getStatistics().catchError((e) {
+        // 1) إحصائيات طلبات الخدمة — مفلترة حسب الدور
+        TaskApiService.instance.getStatistics(
+          // المدير يرى الكل، الليدر يرى قسمه، الفني يرى مهامه
+          department: (widget.permissions == 'ليدر') ? _resolvedDepartments : null,
+          technician: (widget.permissions != 'مدير' && widget.permissions != 'ليدر') ? widget.username : null,
+        ).catchError((e) {
           debugPrint('❌ خطأ في جلب الإحصائيات');
           return <String, dynamic>{};
         }),
@@ -369,6 +434,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(() {
           _pendingAgentRequests = pendingAgent;
           _openTasksCount = openTasks;
+          FloatingToolbar.updateS1TasksBadge(openTasks);
           _pendingEmployeeRequests = employeeRequests;
           _unreadAnnouncementsCount = announcementsCount;
           _myAnnouncements = myAnns;
@@ -545,17 +611,61 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // Show global WhatsApp floating button
+  /// هل صلاحية fab مُعطّلة صراحةً؟ (مفتاح غير موجود = افتراضي يظهر)
+  bool _isFabDisabled(PermissionManager pm, String key) {
+    if (!pm.hasKey(key)) return false;
+    return !pm.canView(key);
+  }
+
   void _showGlobalWhatsAppButton() {
     try {
-      if (mounted) {
-        // تهيئة الشريط العائم الموحد إذا لم يكن مهيأً
-        FloatingToolbar.init(context);
-        FloatingToolbar.enableWhatsApp();
-        // إخفاء زر المحادثات (خاص بـ FTTH فقط)
-        FloatingToolbar.disableConversations();
+      if (!mounted) return;
+      final pm = PermissionManager.instance;
+
+      // تهيئة الشريط العائم الموحد
+      FloatingToolbar.init(context);
+      FloatingToolbar.enableWhatsApp();
+
+      // انتظر حتى تُحمّل الصلاحيات فعلاً قبل تفعيل الأزرار المشروطة
+      if (!pm.isLoaded) return;
+
+      // زر محادثات الواتساب
+      if (pm.canView('whatsapp_conversations_fab')) {
+        FloatingToolbar.enableConversations(isAdmin: _isAdminUser);
+      }
+
+      // زر المهام (النظام الأول)
+      if (pm.canView('tasks') && !_isFabDisabled(pm, 'fab_tasks')) {
+        FloatingToolbar.enableS1Tasks(
+          onTap: () {
+            if (!mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TaskListScreen(
+                  username: widget.username,
+                  permissions: widget.permissions,
+                  department: _resolvedDepartments,
+                  center: widget.center,
+                ),
+              ),
+            );
+          },
+          badgeCount: _openTasksCount,
+        );
+      }
+
+      // زر التذاكر (FTTH) — يظهر أيضاً في النظام الأول
+      if (pm.canView('tasks') && !_isFabDisabled(pm, 'fab_tasks')) {
+        FloatingToolbar.enableTasks();
+      }
+
+      // زر المحادثة الداخلية
+      if (pm.canView('chat') && !_isFabDisabled(pm, 'fab_chat')) {
+        FloatingToolbar.enableChat();
       }
     } catch (e) {
-      debugPrint('Error showing WhatsApp floating button');
+      debugPrint('Error showing WhatsApp floating button: $e');
     }
   }
 
@@ -801,6 +911,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void dispose() {
     _chatUnreadSub?.cancel();
     _chatPollTimer?.cancel();
+    _notificationsTimer?.cancel();
     _ftthStateSubscription?.cancel();
     _countersRefreshTimer?.cancel();
     _announcementRotateTimer?.cancel();
@@ -1299,6 +1410,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             },
           ),
           const SizedBox(width: 6),
+          // زر جرس الإشعارات
+          NotificationBell(iconSize: r.appBarIconSize),
+          const SizedBox(width: 6),
           if (_isAdminUser || PermissionManager.instance.canView('tracking'))
             _buildAnimatedActionButton(
               icon: Icon(
@@ -1369,9 +1483,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
                 final companyCode = widget.tenantCode ??
                     VpsAuthService.instance.currentCompanyCode;
-                final companyName = widget.department.isNotEmpty
-                    ? widget.department
-                    : (VpsAuthService.instance.currentCompanyName ?? 'الشركة');
+                final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -1610,9 +1722,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
                 final companyCode = widget.tenantCode ??
                     VpsAuthService.instance.currentCompanyCode;
-                final companyName = widget.department.isNotEmpty
-                    ? widget.department
-                    : (VpsAuthService.instance.currentCompanyName ?? 'الشركة');
+                final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -1867,7 +1977,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           firstSystemSalary: widget.salary,
         ),
       ),
-    );
+    ).then((_) {
+      // عند العودة من FTTH — إعادة تهيئة الشريط العائم للنظام الأول
+      if (mounted) {
+        _showGlobalWhatsAppButton();
+      }
+    });
   }
 
   // التنقل إلى صفحة FTTH - مباشرة إذا كان مسجل دخول، أو عبر تسجيل دخول صامت
@@ -2469,7 +2584,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 builder: (context) => TaskListScreen(
                   username: widget.username,
                   permissions: widget.permissions,
-                  department: widget.department,
+                  department: _resolvedDepartments,
                   center: widget.center,
                 ),
               ),
@@ -2489,7 +2604,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 builder: (context) => AriaPage(
                   username: widget.username,
                   permissions: widget.permissions,
-                  department: widget.department,
+                  department: _resolvedDepartments,
                   center: widget.center,
                 ),
               ),
@@ -2594,7 +2709,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 builder: (context) => FollowUpPage(
                   username: widget.username,
                   permissions: widget.permissions,
-                  department: widget.department,
+                  department: _resolvedDepartments,
                   center: widget.center,
                 ),
               ),
@@ -3480,4 +3595,193 @@ class _HomeIconDef {
   final int type;
   final double size;
   const _HomeIconDef(this.x, this.y, this.type, this.size);
+}
+
+/// لوحة الإشعارات — تظهر كـ BottomSheet
+class _NotificationsPanel extends StatefulWidget {
+  final VoidCallback? onRead;
+  const _NotificationsPanel({this.onRead});
+
+  @override
+  State<_NotificationsPanel> createState() => _NotificationsPanelState();
+}
+
+class _NotificationsPanelState extends State<_NotificationsPanel> {
+  List<Map<String, dynamic>> _notifications = [];
+  bool _isLoading = true;
+  bool _unreadOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await NotificationApiService.instance.getMyNotifications(
+        pageSize: 30,
+        unreadOnly: _unreadOnly ? true : null,
+      );
+      if (res['success'] == true && mounted) {
+        final items = res['data'] is List ? res['data'] as List : [];
+        setState(() => _notifications = items.cast<Map<String, dynamic>>());
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _markAsRead(int id) async {
+    await NotificationApiService.instance.markAsRead(id);
+    widget.onRead?.call();
+    _load();
+  }
+
+  Future<void> _markAllRead() async {
+    await NotificationApiService.instance.markAllAsRead();
+    widget.onRead?.call();
+    _load();
+  }
+
+  IconData _typeIcon(String? type) {
+    switch (type) {
+      case 'RequestStatusUpdate': return Icons.task_alt_rounded;
+      case 'RequestAssigned': return Icons.assignment_ind_rounded;
+      case 'AgentRequest': return Icons.storefront_rounded;
+      case 'ChatMessage': return Icons.chat_rounded;
+      default: return Icons.notifications_rounded;
+    }
+  }
+
+  Color _typeColor(String? type) {
+    switch (type) {
+      case 'RequestStatusUpdate': return const Color(0xFF1565C0);
+      case 'RequestAssigned': return const Color(0xFF00897B);
+      case 'AgentRequest': return const Color(0xFFEF6C00);
+      case 'ChatMessage': return const Color(0xFF2E7D32);
+      default: return const Color(0xFF546E7A);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 6),
+            width: 40, height: 4,
+            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.notifications_rounded, color: Color(0xFF1A237E), size: 24),
+                const SizedBox(width: 8),
+                const Text('الإشعارات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A237E))),
+                const Spacer(),
+                // فلتر غير المقروءة
+                FilterChip(
+                  label: Text(_unreadOnly ? 'غير المقروءة' : 'الكل', style: const TextStyle(fontSize: 11)),
+                  selected: _unreadOnly,
+                  onSelected: (v) { setState(() => _unreadOnly = v); _load(); },
+                  selectedColor: const Color(0xFF1A237E).withValues(alpha: 0.15),
+                  visualDensity: VisualDensity.compact,
+                ),
+                const SizedBox(width: 8),
+                // قراءة الكل
+                IconButton(
+                  tooltip: 'قراءة الكل',
+                  icon: const Icon(Icons.done_all_rounded, size: 20),
+                  onPressed: _markAllRead,
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // Content
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _notifications.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey.shade300),
+                            const SizedBox(height: 8),
+                            Text('لا توجد إشعارات', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: _notifications.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1, indent: 60),
+                          itemBuilder: (_, i) {
+                            final n = _notifications[i];
+                            final isRead = n['IsRead'] == true || n['isRead'] == true;
+                            final type = n['Type']?.toString() ?? n['type']?.toString();
+                            final title = n['TitleAr']?.toString() ?? n['Title']?.toString() ?? n['title']?.toString() ?? '';
+                            final body = n['BodyAr']?.toString() ?? n['Body']?.toString() ?? n['body']?.toString() ?? '';
+                            final id = n['Id'] ?? n['id'];
+                            final createdAt = DateTime.tryParse(n['CreatedAt']?.toString() ?? n['createdAt']?.toString() ?? '');
+                            final color = _typeColor(type);
+
+                            return ListTile(
+                              dense: true,
+                              tileColor: isRead ? null : color.withValues(alpha: 0.05),
+                              leading: Container(
+                                width: 38, height: 38,
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(_typeIcon(type), color: color, size: 20),
+                              ),
+                              title: Text(title, style: TextStyle(fontSize: 13, fontWeight: isRead ? FontWeight.w500 : FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(body, style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  if (createdAt != null)
+                                    Text(_timeAgo(createdAt), style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                ],
+                              ),
+                              trailing: !isRead && id != null
+                                  ? IconButton(
+                                      icon: Icon(Icons.check_circle_outline, size: 18, color: color),
+                                      tooltip: 'قراءة',
+                                      onPressed: () => _markAsRead(id is int ? id : int.tryParse(id.toString()) ?? 0),
+                                    )
+                                  : null,
+                            );
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inMinutes < 60) return 'قبل ${diff.inMinutes} دقيقة';
+    if (diff.inHours < 24) return 'قبل ${diff.inHours} ساعة';
+    if (diff.inDays < 7) return 'قبل ${diff.inDays} يوم';
+    return '${dt.day}/${dt.month}';
+  }
 }

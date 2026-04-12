@@ -42,6 +42,25 @@ class ApiService {
     return value == 'true';
   }
 
+  /// حفظ بيانات تسجيل الدخول
+  Future<void> saveLoginCredentials(String phone, String password) async {
+    await _storage.write(key: 'citizen_saved_phone', value: phone);
+    await _storage.write(key: 'citizen_saved_password', value: password);
+  }
+
+  /// استرجاع بيانات تسجيل الدخول المحفوظة
+  Future<({String? phone, String? password})> getSavedCredentials() async {
+    final phone = await _storage.read(key: 'citizen_saved_phone');
+    final password = await _storage.read(key: 'citizen_saved_password');
+    return (phone: phone, password: password);
+  }
+
+  /// مسح بيانات تسجيل الدخول المحفوظة
+  Future<void> clearSavedCredentials() async {
+    await _storage.delete(key: 'citizen_saved_phone');
+    await _storage.delete(key: 'citizen_saved_password');
+  }
+
   // Authentication APIs
   Future<Map<String, dynamic>> register({
     required String fullName,
@@ -174,6 +193,44 @@ class ApiService {
     }
   }
 
+  /// تحديث الملف الشخصي
+  Future<void> updateProfile({
+    String? fullName,
+    String? email,
+    String? city,
+    String? district,
+    String? fullAddress,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final client = _createClient();
+    try {
+      final body = <String, dynamic>{};
+      if (fullName != null && fullName.isNotEmpty) body['FullName'] = fullName;
+      if (email != null && email.isNotEmpty) body['Email'] = email;
+      if (city != null && city.isNotEmpty) body['City'] = city;
+      if (district != null && district.isNotEmpty) body['District'] = district;
+      if (fullAddress != null && fullAddress.isNotEmpty) body['FullAddress'] = fullAddress;
+
+      final response = await client.put(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.citizenProfile}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: json.encode(body),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) return;
+
+      final error = json.decode(utf8.decode(response.bodyBytes));
+      throw Exception(error['messageAr'] ?? error['message'] ?? 'حدث خطأ');
+    } finally {
+      client.close();
+    }
+  }
+
   // Plans APIs
   Future<List<dynamic>> getInternetPlans() async {
     final client = _createClient();
@@ -217,6 +274,48 @@ class ApiService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         return data['subscriptions'] ?? [];
+      }
+
+      final error = json.decode(utf8.decode(response.bodyBytes));
+      throw Exception(error['messageAr'] ?? error['message'] ?? 'حدث خطأ');
+    } finally {
+      client.close();
+    }
+  }
+
+  /// إنشاء طلب سحب ديلفري
+  Future<Map<String, dynamic>> createDeliveryWithdrawal({
+    required String citizenId,
+    required double amount,
+    required String phone,
+    required String address,
+    required double latitude,
+    required double longitude,
+    String? notes,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final client = _createClient();
+    try {
+      final response = await client.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.citizenDeliveryWithdrawal}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: json.encode({
+          'amount': amount,
+          'contactPhone': phone,
+          'address': address,
+          'latitude': latitude,
+          'longitude': longitude,
+          'notes': notes,
+        }),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return json.decode(utf8.decode(response.bodyBytes));
       }
 
       final error = json.decode(utf8.decode(response.bodyBytes));

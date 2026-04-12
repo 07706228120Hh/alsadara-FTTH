@@ -640,6 +640,16 @@ class _ServiceRequestsManagementPageState
                   Icons.location_on,
                   [
                     _detailRow('العنوان', req.address ?? '-'),
+                    if (details['latitude'] != null && details['longitude'] != null)
+                      _detailRow('الإحداثيات', '${details["latitude"]}, ${details["longitude"]}'),
+                    if (details['locationUrl'] != null)
+                      _detailRow('رابط الموقع', details['locationUrl']),
+                    if (details['notes'] != null && details['notes'].toString().isNotEmpty)
+                      _detailRow('ملاحظات', details['notes']),
+                    if (details['citizenCity'] != null)
+                      _detailRow('المدينة', details['citizenCity']),
+                    if (details['citizenAddress'] != null)
+                      _detailRow('عنوان المواطن', details['citizenAddress']),
                     if (details['planName'] != null) ...[
                       _detailRow('الباقة', details['planName']),
                       if (details['planSpeed'] != null)

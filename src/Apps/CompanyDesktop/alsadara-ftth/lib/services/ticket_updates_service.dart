@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
+import 'in_app_notification_service.dart';
 
 /// خدمة خلفية بسيطة (Polling) لاكتشاف التذاكر الجديدة على بيئة سطح المكتب (Windows)
 /// NOTE: مخصصة عندما لا يتوفر WebSocket ولا تعمل FCM على Windows.
@@ -160,6 +161,13 @@ class TicketUpdatesService {
           'customer': customer,
         }),
       );
+      // بانر داخل التطبيق
+      InAppNotificationService.instance.show(
+        title: 'تذكرة جديدة',
+        body: body,
+        type: InAppNotificationType.agent,
+        referenceId: f['id']?.toString(),
+      );
     } else {
       await NotificationService.showLocalNotification(
         title: '🔔 ${fresh.length} تذاكر جديدة',
@@ -169,6 +177,12 @@ class TicketUpdatesService {
           'count': fresh.length,
           'ids': fresh.map((e) => e['id']?.toString()).whereType<String>().toList(),
         }),
+      );
+      // بانر داخل التطبيق
+      InAppNotificationService.instance.show(
+        title: '${fresh.length} تذاكر جديدة',
+        body: 'وصلت ${fresh.length} تذاكر جديدة',
+        type: InAppNotificationType.agent,
       );
     }
   }

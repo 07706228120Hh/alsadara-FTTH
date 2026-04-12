@@ -1675,6 +1675,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             double agentTotal = 0.0;
             int masterCount = 0;
             double masterTotal = 0.0;
+            int technicianCount = 0;
+            double technicianTotal = 0.0;
             for (final r in filteredRecords) {
               final pay = _derivePaymentType(r);
               final priceStr = r['سعر الباقة']?.toString() ?? '0';
@@ -1695,6 +1697,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               } else if (pay.contains('ماستر') || pay.contains('master')) {
                 masterCount++;
                 masterTotal += price;
+              } else if (pay.contains('فني') || pay.contains('technician')) {
+                technicianCount++;
+                technicianTotal += price;
               }
             }
             return Column(children: [
@@ -1756,6 +1761,17 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       '$agentCount عملية',
                       [Color(0xFF1565C0), Color(0xFF1E88E5)],
                       Icons.store,
+                    ),
+                  ),
+                  // فني
+                  Expanded(
+                    flex: 2,
+                    child: _statBarCard(
+                      'فني',
+                      _formatAmountShort(technicianTotal),
+                      '$technicianCount عملية',
+                      [Color(0xFF00695C), Color(0xFF00897B)],
+                      Icons.engineering,
                     ),
                   ),
                 ],
@@ -2937,37 +2953,25 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 paymentType.contains('نقد')
                     ? Colors.teal.shade700
                     : Colors.purple.shade700),
-            SizedBox(height: 8),
-            // استخراج تاريخ/وقت أكثر موثوقية وإظهاره دائماً
-            Builder(builder: (ctx) {
-              final extractedDate = _deriveDisplayDate(record, activationDate);
-              final extractedTime = _deriveDisplayTime(record, activationTime);
-              // طباعة للتشخيص (تظهر مرة لكل بطاقة)
-              debugPrint(
-                  '🗓️ Record #${index + 1} date="$extractedDate" time="$extractedTime" rawDate="$activationDate" rawTime="$activationTime"');
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildInfoRow(
-                    '📅 التاريخ',
-                    extractedDate.isEmpty ? 'غير محدد' : extractedDate,
-                    FontWeight.w500,
-                    14,
-                    Colors.blue.shade600,
-                  ),
-                  if (extractedTime.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: _buildInfoRow(
-                        '⏰ الوقت',
-                        extractedTime,
-                        FontWeight.w500,
-                        14,
-                        Colors.indigo.shade600,
-                      ),
-                    ),
-                ],
-              );
+            // اسم الفني أو الوكيل حسب نوع الدفع
+            Builder(builder: (_) {
+              final collType = record['نوع التحصيل']?.toString() ?? record['CollectionType']?.toString() ?? '';
+              String? personLabel;
+              String? personName;
+              if (collType.contains('technician') || collType.contains('فني') || paymentType.contains('فني')) {
+                personLabel = '🔧 الفني';
+                personName = record['الفني']?.toString() ?? record['TechnicianName']?.toString() ?? '';
+              } else if (collType.contains('agent') || collType.contains('وكيل') || paymentType.contains('وكيل')) {
+                personLabel = '🏪 الوكيل';
+                personName = record['الوكيل']?.toString() ?? record['AgentName']?.toString() ?? '';
+              }
+              if (personLabel != null && personName != null && personName.isNotEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: _buildInfoRow(personLabel, personName, FontWeight.w600, 14, Colors.brown.shade700),
+                );
+              }
+              return const SizedBox.shrink();
             }),
 
             SizedBox(height: 8),
@@ -3394,7 +3398,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       List<Color> colors, IconData icon) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: colors,
@@ -3404,46 +3408,41 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.black, width: 1.2),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.end,
-                ),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Text(
-                    '$amount د.ع',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 9,
-                  ),
-                  textAlign: TextAlign.end,
-                ),
-              ],
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$amount د.ع',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

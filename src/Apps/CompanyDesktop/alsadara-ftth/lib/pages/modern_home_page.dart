@@ -204,7 +204,7 @@ class _ModernHomePageState extends State<ModernHomePage>
       case 'agent':
         return UsersPageVPS(
           companyId: widget.tenantId ?? '',
-          companyName: widget.department,
+          companyName: VpsAuthService.instance.currentCompanyName ?? widget.department,
           permissions: const {'users': true},
         );
       case 'tasks':

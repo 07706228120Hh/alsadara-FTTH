@@ -4,7 +4,9 @@ import 'home_page_tasks.dart';
 import 'add_task_api_dialog.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
+import '../services/api/api_client.dart';
 import '../services/notification_service.dart';
+import '../services/in_app_notification_service.dart';
 import '../widgets/maintenance_messages_dialog.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -53,9 +55,9 @@ class _TaskListScreenState extends State<TaskListScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // مراقبة دورة حياة ال��طبيق
-    _fetchTasks(); // جلب المهام عند بداية التحميل
-    _startAutoRefresh(); // بدء التحديث التلقائي
+    WidgetsBinding.instance.addObserver(this);
+    _fetchTasks();
+    _startAutoRefresh();
   }
 
   @override
@@ -114,13 +116,22 @@ class _TaskListScreenState extends State<TaskListScreen>
   }
 
   /// فلاتر السيرفر حسب دور المستخدم
+  bool get _isTechnician =>
+      widget.permissions != 'مدير' && widget.permissions != 'ليدر';
+
   String? get _techFilter {
-    final role = widget.permissions;
-    return (role != 'مدير' && role != 'ليدر') ? widget.username : null;
+    return _isTechnician ? widget.username : null;
+  }
+
+  /// الفني يحتاج أيضاً يرى المهام التي أنشأها (حتى لو لقسم آخر)
+  String? get _createdByFilter {
+    return _isTechnician ? widget.username : null;
   }
 
   String? get _deptFilter {
-    return widget.permissions == 'ليدر' ? widget.department : null;
+    if (widget.permissions != 'ليدر') return null;
+    // دعم أقسام متعددة مفصولة بفاصلة
+    return widget.department.isNotEmpty ? widget.department : null;
   }
 
   /// جلب المهام من الخادم (الصفحة الأولى أو تحديث)
@@ -134,12 +145,15 @@ class _TaskListScreenState extends State<TaskListScreen>
 
       _lastRefresh = DateTime.now();
 
+      debugPrint('📡 جلب المهام: tech=$_techFilter, created=$_createdByFilter, dept=$_deptFilter, token=${ApiClient.instance.authToken != null ? "موجود" : "❌ غير موجود"}');
       final response = await TaskApiService.instance.getRequests(
         page: 1,
         pageSize: _pageSize,
         technician: _techFilter,
         department: _deptFilter,
+        createdByName: _createdByFilter,
       );
+      debugPrint('📡 استجابة المهام: success=${response['success']}, items=${(response['data'] as List?)?.length ?? 0}');
       final List<dynamic> items =
           response['data'] ?? response['Items'] ?? response['items'] ?? [];
       final tasks = items
@@ -156,6 +170,13 @@ class _TaskListScreenState extends State<TaskListScreen>
             task: task,
             assignedTo: task.technician.isNotEmpty ? task.technician : 'غير محدد',
             notifyUsers: [widget.username],
+          );
+          // بانر داخل التطبيق
+          InAppNotificationService.instance.show(
+            title: 'مهمة جديدة: ${task.title}',
+            body: '${task.department} — ${task.username.isNotEmpty ? task.username : "بدون اسم"} • الفني: ${task.technician.isNotEmpty ? task.technician : "غير محدد"}',
+            type: InAppNotificationType.task,
+            referenceId: task.guid,
           );
         }
       }
@@ -174,8 +195,9 @@ class _TaskListScreenState extends State<TaskListScreen>
         _isLoading = false;
         _isRefreshing = false;
       });
-    } catch (e) {
-      debugPrint('خطأ في جلب المهام');
+    } catch (e, stack) {
+      debugPrint('❌ خطأ في جلب المهام: $e');
+      debugPrint('📋 Stack: $stack');
       if (!mounted) return;
       setState(() { _isLoading = false; _isRefreshing = false; });
       if (showLoadingIndicator) {
@@ -198,6 +220,7 @@ class _TaskListScreenState extends State<TaskListScreen>
         pageSize: _pageSize,
         technician: _techFilter,
         department: _deptFilter,
+        createdByName: _createdByFilter,
       );
       final List<dynamic> items =
           response['data'] ?? response['Items'] ?? response['items'] ?? [];

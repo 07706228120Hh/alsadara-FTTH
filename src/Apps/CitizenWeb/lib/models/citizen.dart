@@ -31,19 +31,19 @@ class Citizen {
 
   factory Citizen.fromJson(Map<String, dynamic> json) {
     return Citizen(
-      id: json['id'] ?? '',
-      fullName: json['fullName'] ?? '',
-      phoneNumber: json['phoneNumber'] ?? '',
-      email: json['email'],
-      city: json['city'],
-      district: json['district'],
-      fullAddress: json['fullAddress'],
-      profileImageUrl: json['profileImageUrl'],
-      companyId: json['companyId'] ?? '',
-      companyName: json['companyName'],
-      companyLogo: json['companyLogo'],
-      isActive: json['isActive'] ?? true,
-      language: json['language'],
+      id: json['id'] ?? json['Id'] ?? '',
+      fullName: json['fullName'] ?? json['FullName'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? json['PhoneNumber'] ?? '',
+      email: json['email'] ?? json['Email'],
+      city: json['city'] ?? json['City'],
+      district: json['district'] ?? json['District'],
+      fullAddress: json['fullAddress'] ?? json['FullAddress'],
+      profileImageUrl: json['profileImageUrl'] ?? json['ProfileImageUrl'],
+      companyId: json['companyId'] ?? json['CompanyId'] ?? '',
+      companyName: json['companyName'] ?? json['CompanyName'],
+      companyLogo: json['companyLogo'] ?? json['CompanyLogo'],
+      isActive: json['isActive'] ?? json['IsActive'] ?? true,
+      language: json['language'] ?? json['Language'],
     );
   }
 

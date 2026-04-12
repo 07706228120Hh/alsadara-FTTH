@@ -25,6 +25,13 @@ class QuickSearchUsersPage extends StatefulWidget {
   // بيانات الوكيل من المهمة (لتعبئة تلقائية في صفحة التجديد)
   final String? taskAgentName;
   final String? taskAgentCode;
+  // ملاحظات المهمة (تفاصيل الاشتراك) لتعبئتها تلقائياً في صفحة التجديد
+  final String? taskNotes;
+  // بيانات المهمة للإغلاق التلقائي والمقارنة
+  final String? taskId;
+  final String? taskServiceType;
+  final String? taskDuration;
+  final String? taskAmount;
 
   const QuickSearchUsersPage({
     super.key,
@@ -37,6 +44,11 @@ class QuickSearchUsersPage extends StatefulWidget {
     this.importantFtthApiPermissions,
     this.taskAgentName,
     this.taskAgentCode,
+    this.taskNotes,
+    this.taskId,
+    this.taskServiceType,
+    this.taskDuration,
+    this.taskAmount,
   });
 
   @override
@@ -1079,6 +1091,11 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                           importantFtthApiPermissions: widget.importantFtthApiPermissions,
                                           taskAgentName: widget.taskAgentName,
                                           taskAgentCode: widget.taskAgentCode,
+                                          taskNotes: widget.taskNotes,
+                                          taskId: widget.taskId,
+                                          taskServiceType: widget.taskServiceType,
+                                          taskDuration: widget.taskDuration,
+                                          taskAmount: widget.taskAmount,
                                         ),
                                       ),
                                     );

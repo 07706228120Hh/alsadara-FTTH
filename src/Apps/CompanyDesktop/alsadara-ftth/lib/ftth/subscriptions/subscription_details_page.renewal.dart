@@ -132,6 +132,105 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       return;
     }
 
+    // ═══════ مقارنة بيانات المهمة مع الاختيارات الحالية ═══════
+    if (widget.taskId != null) {
+      final mismatches = <String>[];
+
+      // مقارنة المدة
+      if (widget.taskDuration != null && widget.taskDuration!.isNotEmpty) {
+        final taskDur = int.tryParse(widget.taskDuration!);
+        if (taskDur != null && selectedCommitmentPeriod != null && taskDur != selectedCommitmentPeriod) {
+          mismatches.add('المدة: المهمة تطلب ${widget.taskDuration} شهر، لكنك اخترت $selectedCommitmentPeriod شهر');
+        }
+      }
+
+      // مقارنة الخدمة (نوع الباقة)
+      if (widget.taskServiceType != null && widget.taskServiceType!.isNotEmpty && selectedPlan != null) {
+        final taskService = widget.taskServiceType!.replaceAll(RegExp(r'[^\d]'), '');
+        final planDigits = selectedPlan!.replaceAll(RegExp(r'[^\d]'), '');
+        if (taskService.isNotEmpty && planDigits.isNotEmpty && !planDigits.contains(taskService)) {
+          mismatches.add('الخدمة: المهمة تطلب ${widget.taskServiceType} Mbps، لكنك اخترت $selectedPlan');
+        }
+      }
+
+      // مقارنة المبلغ
+      if (widget.taskAmount != null && widget.taskAmount!.isNotEmpty) {
+        final taskAmt = double.tryParse(widget.taskAmount!.replaceAll(RegExp(r'[^\d.]'), ''));
+        if (taskAmt != null && totalPrice > 0 && (taskAmt - totalPrice).abs() > 500) {
+          mismatches.add('المبلغ: المهمة تطلب ${widget.taskAmount} د.ع، لكن السعر المحسوب ${totalPrice.toStringAsFixed(0)} د.ع');
+        }
+      }
+
+      if (mismatches.isNotEmpty && mounted) {
+        final continueAnyway = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.compare_arrows, color: Colors.orange.shade700, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('اختلاف عن بيانات المهمة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'يوجد اختلاف بين ما هو مطلوب في المهمة وما اخترته:',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 12),
+                ...mismatches.map((m) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(m, style: const TextStyle(fontSize: 13))),
+                    ],
+                  ),
+                )),
+                const SizedBox(height: 8),
+                Text(
+                  'هل تريد المتابعة رغم الاختلاف؟',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('إلغاء، سأعدّل الاختيارات', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade700,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('متابعة رغم الاختلاف'),
+              ),
+            ],
+          ),
+        ) ?? false;
+        if (!continueAnyway) return;
+      }
+    }
+
     // تحذير عند اختيار فترة التزام أكثر من شهر واحد
     if (selectedCommitmentPeriod != null && selectedCommitmentPeriod! > 1) {
       final confirmCommitment = await showDialog<bool>(
@@ -193,6 +292,125 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       if (!confirmCommitment) return;
     }
 
+    // ═══════ سؤال التحصيل عند اختيار "فني" ═══════
+    bool techCollectionLater = false;
+    if (selectedPaymentMethod == 'فني' && _selectedLinkedTechnician != null && mounted) {
+      final techName = _selectedLinkedTechnician!['FullName']?.toString().trim().isNotEmpty == true
+          ? _selectedLinkedTechnician!['FullName'].toString().trim()
+          : _selectedLinkedTechnician!['Name']?.toString().trim() ?? 'الفني';
+      final customerName = subscriptionInfo?.customerName ?? widget.userName ?? '';
+      final totalStr = totalPrice.toStringAsFixed(0);
+
+      final screenW = MediaQuery.of(context).size.width;
+      final isSmallScreen = screenW < 420;
+
+      final collectionResult = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16)),
+          insetPadding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 16 : 40, vertical: 24),
+          title: Row(children: [
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+              child: Icon(Icons.account_balance_wallet, color: Colors.blue.shade700, size: isSmallScreen ? 22 : 28),
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Expanded(child: Text('هل تم تحصيل المبلغ؟', style: TextStyle(fontSize: isSmallScreen ? 15 : 17, fontWeight: FontWeight.bold))),
+          ]),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10)),
+              child: Column(children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text('المشترك:', style: TextStyle(color: Colors.grey, fontSize: isSmallScreen ? 12 : 14)),
+                  Flexible(child: Text(customerName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isSmallScreen ? 12 : 14), overflow: TextOverflow.ellipsis)),
+                ]),
+                const SizedBox(height: 6),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text('المبلغ:', style: TextStyle(color: Colors.grey, fontSize: isSmallScreen ? 12 : 14)),
+                  Text('$totalStr د.ع', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade700, fontSize: isSmallScreen ? 12 : 14)),
+                ]),
+                const SizedBox(height: 6),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text('الفني:', style: TextStyle(color: Colors.grey, fontSize: isSmallScreen ? 12 : 14)),
+                  Flexible(child: Text(techName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: isSmallScreen ? 12 : 14), overflow: TextOverflow.ellipsis)),
+                ]),
+              ]),
+            ),
+            SizedBox(height: isSmallScreen ? 10 : 16),
+            Text(
+              'هل قام الفني "$techName" بتحصيل المبلغ من المشترك؟',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: isSmallScreen ? 12 : 14, color: Colors.grey.shade700),
+            ),
+          ]),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsPadding: EdgeInsets.fromLTRB(isSmallScreen ? 12 : 16, 0, isSmallScreen ? 12 : 16, isSmallScreen ? 10 : 16),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  SizedBox(
+                    width: isSmallScreen ? double.infinity : null,
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.of(ctx).pop('cancel'),
+                      icon: Icon(Icons.cancel, size: isSmallScreen ? 16 : 18),
+                      label: Text('إلغاء الاشتراك', style: TextStyle(fontSize: isSmallScreen ? 11 : 13)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                        side: BorderSide(color: Colors.red.shade300),
+                        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 8 : 12, horizontal: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: isSmallScreen ? double.infinity : null,
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.of(ctx).pop('later'),
+                      icon: Icon(Icons.schedule, size: isSmallScreen ? 16 : 18),
+                      label: Text('لا، حصّل لاحقاً', style: TextStyle(fontSize: isSmallScreen ? 11 : 13)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange.shade700,
+                        side: BorderSide(color: Colors.orange.shade300),
+                        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 8 : 12, horizontal: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: isSmallScreen ? double.infinity : null,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(ctx).pop('collected'),
+                      icon: Icon(Icons.check_circle, size: isSmallScreen ? 16 : 18),
+                      label: Text('نعم، تم التحصيل', style: TextStyle(fontSize: isSmallScreen ? 11 : 13)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 8 : 12, horizontal: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (collectionResult == null) return; // أُغلق بدون اختيار
+      if (collectionResult == 'cancel') return; // إلغاء الاشتراك
+      techCollectionLater = collectionResult == 'later';
+    }
+
     // تأكيد العملية قبل التنفيذ
     final confirmed = await _showRenewalConfirmationDialog();
     if (!confirmed) return;
@@ -244,6 +462,94 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       // 🎉 عرض نافذة النجاح مع معلومات الاشتراك المحدثة
       if (mounted) {
         await _showActivationSuccessDialog();
+      }
+
+      // 🔄 إغلاق المهمة تلقائياً بعد نجاح التجديد
+      if (widget.taskId != null && widget.taskId!.isNotEmpty) {
+        debugPrint('🔄 إغلاق المهمة تلقائياً: ${widget.taskId}');
+        try {
+          await TaskApiService.instance.updateStatus(
+            widget.taskId!,
+            status: 'Completed',
+            note: '[مفعّل] تم إكمال التجديد تلقائياً من صفحة التجديد',
+          );
+          debugPrint('✅ تم إغلاق المهمة بنجاح');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.task_alt, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('تم إكمال المهمة تلقائياً'),
+                  ],
+                ),
+                backgroundColor: Colors.green.shade600,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint('⚠️ فشل إغلاق المهمة تلقائياً: $e');
+        }
+      }
+
+      // 📋 إنشاء مهمة تحصيل للفني إذا اختار "حصّل لاحقاً"
+      if (techCollectionLater && _selectedLinkedTechnician != null) {
+        debugPrint('📋 إنشاء مهمة تحصيل للفني...');
+        try {
+          final techName = _selectedLinkedTechnician!['FullName']?.toString().trim().isNotEmpty == true
+              ? _selectedLinkedTechnician!['FullName'].toString().trim()
+              : _selectedLinkedTechnician!['Name']?.toString().trim() ?? '';
+          final techPhone = _selectedLinkedTechnician!['PhoneNumber']?.toString().trim() ?? '';
+          final customerName = subscriptionInfo?.customerName ?? widget.userName ?? '';
+          final customerPhone = widget.userPhone?.isNotEmpty == true
+              ? widget.userPhone!
+              : (_fetchedCustomerPhone?.isNotEmpty == true
+                  ? _fetchedCustomerPhone!
+                  : _resolveTargetPhone() ?? '');
+          final totalStr = _asDouble(priceDetails?['totalPrice']).toStringAsFixed(0);
+
+          final fbg = widget.fbgValue?.trim() ?? widget.fdtDisplayValue?.trim() ?? '';
+          final fat = widget.fatValue?.trim() ?? widget.fatDisplayValue?.trim() ?? '';
+
+          await TaskApiService.instance.createTask(
+            taskType: 'تحصيل مبلغ تجديد',
+            customerName: customerName,
+            customerPhone: customerPhone,
+            department: 'الحسابات',
+            technician: techName,
+            technicianPhone: techPhone,
+            fbg: fbg,
+            fat: fat,
+            serviceType: selectedPlan,
+            subscriptionDuration: '${selectedCommitmentPeriod ?? 1}',
+            subscriptionAmount: _asDouble(priceDetails?['totalPrice']),
+            notes: 'تحصيل $totalStr د.ع من $customerName\n'
+                'الهاتف: $customerPhone\n'
+                'الخدمة: ${selectedPlan ?? ""} - ${selectedCommitmentPeriod ?? 1} شهر\n'
+                'المشغل: ${widget.activatedBy}\n'
+                'تاريخ التجديد: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+            summary: 'تحصيل $totalStr د.ع من $customerName — فني: $techName',
+            priority: 'عالي',
+          );
+          debugPrint('✅ تم إنشاء مهمة التحصيل بنجاح');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(children: [
+                  const Icon(Icons.assignment_turned_in, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('تم إرسال أمر تحصيل $totalStr د.ع للفني $techName')),
+                ]),
+                backgroundColor: Colors.orange.shade700,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint('⚠️ فشل إنشاء مهمة التحصيل: $e');
+        }
       }
 
       // 3️⃣ حفظ البيانات في VPS (دائماً بغض النظر عن الصلاحيات)

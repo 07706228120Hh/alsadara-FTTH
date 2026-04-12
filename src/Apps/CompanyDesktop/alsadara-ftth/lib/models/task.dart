@@ -29,6 +29,9 @@ class Task {
   final String agentCode; // رمز الوكيل
   final String pageId; // معرف صفحة الوكيل
   final String source; // مصدر الطلب (agent_portal أو companyDesktop)
+  final String serviceType; // نوع الخدمة (35, 50, 75, 150)
+  final String subscriptionDuration; // مدة الاشتراك
+  final String createdByName; // اسم من أنشأ المهمة
 
   /// **البناء الأساسي لمهمة جديدة**
   Task({
@@ -58,6 +61,9 @@ class Task {
     this.agentCode = '', // رمز الوكيل
     this.pageId = '', // معرف صفحة الوكيل
     this.source = '', // مصدر الطلب
+    this.serviceType = '', // نوع الخدمة
+    this.subscriptionDuration = '', // مدة الاشتراك
+    this.createdByName = '', // اسم من أنشأ المهمة
   });
 
   /// **نسخة معدلة من المهمة**: لإنشاء نسخة جديدة مع قيم محدثة
@@ -88,6 +94,9 @@ class Task {
     String? agentCode,
     String? pageId,
     String? source,
+    String? serviceType,
+    String? subscriptionDuration,
+    String? createdByName,
   }) {
     return Task(
       id: id ?? this.id,
@@ -117,6 +126,9 @@ class Task {
       agentCode: agentCode ?? this.agentCode,
       pageId: pageId ?? this.pageId,
       source: source ?? this.source,
+      serviceType: serviceType ?? this.serviceType,
+      subscriptionDuration: subscriptionDuration ?? this.subscriptionDuration,
+      createdByName: createdByName ?? this.createdByName,
     );
   }
 
@@ -166,7 +178,9 @@ class Task {
           response['RequestNumber']?.toString() ??
           '',
       status: mapApiStatusToArabic(response['Status']?.toString() ?? 'Pending'),
-      department: details['department']?.toString() ?? '',
+      department: details['department']?.toString().isNotEmpty == true
+          ? details['department'].toString()
+          : response['Department']?.toString() ?? '',
       leader: details['leader']?.toString() ?? '',
       technician: details['technician']?.toString() ??
           response['TechnicianName']?.toString() ??
@@ -183,24 +197,35 @@ class Task {
       location: response['Address']?.toString() ??
           details['location']?.toString() ??
           '',
-      notes: details['notes']?.toString() ??
-          response['StatusNote']?.toString() ??
-          '',
-      createdAt: DateTime.tryParse(response['CreatedAt']?.toString() ?? '') ??
-          DateTime.now(),
+      notes: [
+          details['notes']?.toString() ?? '',
+          response['StatusNote']?.toString() ?? '',
+        ].where((s) => s.isNotEmpty).join(' | '),
+      createdAt: (DateTime.tryParse(response['CreatedAt']?.toString() ?? '') ??
+          DateTime.now()).toLocal(),
       closedAt: response['CompletedAt'] != null
-          ? DateTime.tryParse(response['CompletedAt'].toString())
+          ? DateTime.tryParse(response['CompletedAt'].toString())?.toLocal()
           : null,
       summary: details['summary']?.toString() ?? '',
       priority: _mapApiPriorityToArabic(response['Priority']),
       agents: [],
       statusHistory: statusHistory,
-      createdBy: details['source']?.toString() ?? '',
-      amount: (details['subscriptionAmount'] ??
-              response['EstimatedCost'] ??
-              response['FinalCost'] ??
-              '')
-          .toString(),
+      createdBy: details['createdByName']?.toString() ??
+          details['source']?.toString() ??
+          '',
+      createdByName: details['createdByName']?.toString() ?? '',
+      serviceType: details['serviceType']?.toString() ?? '',
+      subscriptionDuration: details['subscriptionDuration']?.toString() ?? '',
+      amount: () {
+        final raw = (details['subscriptionAmount'] ??
+                response['EstimatedCost'] ??
+                response['FinalCost'] ??
+                '')
+            .toString();
+        // إزالة الكسور العشرية (60000.0 → 60000) لمنع تحولها لـ 600000 عند التنسيق
+        final num? parsed = num.tryParse(raw);
+        return parsed != null ? parsed.toInt().toString() : raw;
+      }(),
       technicianPhone: details['technicianPhone']?.toString() ?? '',
       agentName: response['AgentName']?.toString() ?? '',
       agentCode: response['AgentCode']?.toString() ?? '',

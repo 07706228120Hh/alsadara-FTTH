@@ -720,6 +720,24 @@ class PermissionRegistry {
       allowedActions: ['view', 'add', 'edit', 'delete'],
     ),
 
+    // ─── الشريط العائم ───
+    PermissionEntry(
+      key: 'fab_tasks',
+      labelAr: 'زر المهام العائم',
+      description: 'عرض زر المهام في الشريط العائم',
+      icon: Icons.assignment_rounded,
+      category: 'الشريط العائم',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'fab_chat',
+      labelAr: 'زر المحادثة العائم',
+      description: 'عرض زر المحادثة الداخلية في الشريط العائم',
+      icon: Icons.forum_rounded,
+      category: 'الشريط العائم',
+      allowedActions: ['view'],
+    ),
+
     // ─── واتساب (النظام الأول) ───
     PermissionEntry(
       key: 'whatsapp',
@@ -956,6 +974,25 @@ class PermissionRegistry {
       category: 'واتساب',
       allowedActions: ['view'],
     ),
+
+    // ─── الشريط العائم ───
+    PermissionEntry(
+      key: 'fab_tasks',
+      labelAr: 'زر المهام العائم',
+      description: 'عرض زر المهام في الشريط العائم',
+      icon: Icons.assignment_rounded,
+      category: 'الشريط العائم',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'fab_chat',
+      labelAr: 'زر المحادثة العائم',
+      description: 'عرض زر المحادثة الداخلية في الشريط العائم',
+      icon: Icons.forum_rounded,
+      category: 'الشريط العائم',
+      allowedActions: ['view'],
+    ),
+
     PermissionEntry(
       key: 'whatsapp_templates',
       labelAr: 'قوالب الرسائل',
@@ -1236,6 +1273,8 @@ class PermissionRegistry {
     'attendance.checkin': {'actions': ['view', 'add']},
     'my_dashboard': {'actions': ['view']},
     'announcements': {'actions': ['view']},
+    'fab_tasks': {'actions': ['view']},
+    'fab_chat': {'actions': ['view']},
   };
 
   // ═══════════════════════════════════════

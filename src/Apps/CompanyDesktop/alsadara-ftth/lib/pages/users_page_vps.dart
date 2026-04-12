@@ -1518,7 +1518,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       case 'manager':
         return 'مدير';
       case 'technicalleader':
-        return 'ليدر فني';
+        return 'ليدر';
       case 'technician':
         return 'فني';
       case 'viewer':
@@ -1657,13 +1657,16 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
     {'value': 'Employee', 'label': 'موظف'},
     {'value': 'Viewer', 'label': 'مشاهد'},
     {'value': 'Technician', 'label': 'فني'},
-    {'value': 'TechnicalLeader', 'label': 'ليدر فني'},
+    {'value': 'TechnicalLeader', 'label': 'ليدر'},
     {'value': 'Manager', 'label': 'مدير'},
     {'value': 'CompanyAdmin', 'label': 'مدير الشركة'},
   ];
 
   List<String> _departments = [];
   bool _isDepartmentsLoading = true;
+  // أقسام متعددة
+  List<String> _selectedDepartments = [];
+  String? _primaryDepartment;
 
   List<String> _centersList = [];
   bool _isCentersLoading = true;
@@ -1681,6 +1684,10 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
       _phoneController.text = emp.phoneNumber;
       _emailController.text = emp.email ?? '';
       _departmentController.text = emp.department ?? '';
+      if (emp.department != null && emp.department!.isNotEmpty) {
+        _selectedDepartments = [emp.department!];
+        _primaryDepartment = emp.department;
+      }
       _centerController.text = emp.center ?? '';
       _salaryController.text = emp.salary ?? '';
       // التأكد أن الدور موجود في القائمة
@@ -1740,9 +1747,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
             ? _emailController.text.trim()
             : null,
         'role': _selectedRole,
-        'department': _departmentController.text.trim().isNotEmpty
-            ? _departmentController.text.trim()
-            : null,
+        'department': _primaryDepartment ?? (_selectedDepartments.isNotEmpty ? _selectedDepartments.first : null),
         'center': _centerController.text.trim().isNotEmpty
             ? _centerController.text.trim()
             : null,
@@ -1945,29 +1950,89 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                       Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _departmentController.text.isNotEmpty &&
-                                      _getAllDepartments()
-                                          .contains(_departmentController.text)
-                                  ? _departmentController.text
-                                  : null,
-                              decoration: _inputDecoration(
-                                  _departmentController.text.isNotEmpty &&
-                                          !_departments.contains(
-                                              _departmentController.text)
-                                      ? 'القسم (الحالي: ${_departmentController.text})'
-                                      : 'القسم',
-                                  Icons.business_outlined),
-                              items: _getAllDepartments()
-                                  .map((d) => DropdownMenuItem(
-                                      value: d, child: Text(d)))
-                                  .toList(),
-                              onChanged: (v) {
-                                setState(() {
-                                  _departmentController.text = v ?? '';
-                                });
-                              },
-                            ),
+                            child: _isDepartmentsLoading
+                                ? const SizedBox(height: 48, child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+                                : InputDecorator(
+                                    decoration: _inputDecoration(
+                                      'الأقسام${_selectedDepartments.isNotEmpty ? " (${_selectedDepartments.length})" : ""}',
+                                      Icons.business_outlined,
+                                    ),
+                                    child: Wrap(
+                                      spacing: 4,
+                                      runSpacing: 4,
+                                      children: [
+                                        ..._selectedDepartments.map((d) => Chip(
+                                          label: Text(
+                                            d == _primaryDepartment ? '$d (رئيسي)' : d,
+                                            style: TextStyle(fontSize: 11, color: d == _primaryDepartment ? Colors.white : null),
+                                          ),
+                                          backgroundColor: d == _primaryDepartment ? Colors.blue : null,
+                                          deleteIcon: const Icon(Icons.close, size: 14),
+                                          onDeleted: () => setState(() {
+                                            _selectedDepartments.remove(d);
+                                            if (_primaryDepartment == d) {
+                                              _primaryDepartment = _selectedDepartments.isNotEmpty ? _selectedDepartments.first : null;
+                                            }
+                                          }),
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                        )),
+                                        // زر إضافة قسم
+                                        ActionChip(
+                                          label: const Text('+ إضافة', style: TextStyle(fontSize: 11)),
+                                          visualDensity: VisualDensity.compact,
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          onPressed: () {
+                                            final available = _getAllDepartments().where((d) => !_selectedDepartments.contains(d)).toList();
+                                            if (available.isEmpty) return;
+                                            showDialog(
+                                              context: context,
+                                              builder: (ctx) => SimpleDialog(
+                                                title: const Text('اختر قسم', style: TextStyle(fontSize: 15)),
+                                                children: available.map((d) => SimpleDialogOption(
+                                                  onPressed: () {
+                                                    Navigator.pop(ctx);
+                                                    setState(() {
+                                                      _selectedDepartments.add(d);
+                                                      _primaryDepartment ??= d;
+                                                    });
+                                                  },
+                                                  child: Text(d),
+                                                )).toList(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        // زر تعيين رئيسي
+                                        if (_selectedDepartments.length > 1)
+                                          ActionChip(
+                                            avatar: const Icon(Icons.star, size: 14, color: Colors.amber),
+                                            label: const Text('رئيسي', style: TextStyle(fontSize: 10)),
+                                            visualDensity: VisualDensity.compact,
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            onPressed: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (ctx) => SimpleDialog(
+                                                  title: const Text('اختر القسم الرئيسي', style: TextStyle(fontSize: 15)),
+                                                  children: _selectedDepartments.map((d) => SimpleDialogOption(
+                                                    onPressed: () {
+                                                      Navigator.pop(ctx);
+                                                      setState(() => _primaryDepartment = d);
+                                                    },
+                                                    child: Row(children: [
+                                                      if (d == _primaryDepartment) const Icon(Icons.star, size: 16, color: Colors.amber),
+                                                      if (d == _primaryDepartment) const SizedBox(width: 6),
+                                                      Text(d),
+                                                    ]),
+                                                  )).toList(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(

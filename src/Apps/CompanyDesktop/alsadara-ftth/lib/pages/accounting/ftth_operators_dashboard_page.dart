@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/accounting_service.dart';
+import '../../services/task_api_service.dart';
 import '../../services/plan_pricing_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../permissions/permission_manager.dart';
@@ -8187,12 +8188,20 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   String? _editingId;
   final _editOperatorCtrl = TextEditingController();
   final _editPriceCtrl = TextEditingController();
+  final _editTechnicianCtrl = TextEditingController();
+  final _editAgentCtrl = TextEditingController();
   String _editCollType = 'cash';
+  String _editPaymentMethod = '';
   bool _isSaving = false;
 
   // ── Linking ──
   Map<String, String> _linkingMap = {};
   Map<String, String> _reverseMap = {};
+
+  // ── قوائم الموظفين للتعديل ──
+  List<String> _staffTechnicians = [];
+  List<String> _staffAgents = [];
+  bool _staffLoaded = false;
 
   // ── Sort ──
   String? _sortKey;
@@ -8223,10 +8232,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     ['الباقة',      'اسم الباقة',        3],
     ['المبلغ',      'سعر الباقة',        3],
     ['نوع العملية', 'نوع العملية',       3],
-    ['التحصيل',     'نوع التحصيل',       2],
+    ['التحصيل',     'نوع التحصيل',       3],
     ['الفني',       'الفني',             3],
     ['الوكيل',      'الوكيل',            3],
-    ['طريقة الدفع', 'طريقة الدفع',       2],
     ['المنطقة',     'اسم المنطقة',       2],
     ['الهاتف',      'رقم الهاتف',        3],
     ['بداية',       'تاريخ البدء',       3],
@@ -8463,12 +8471,13 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'اسم العميل':      item['CustomerName']?.toString() ?? '',
           'اسم الباقة':      item['PlanName']?.toString() ?? '',
           'سعر الباقة':      item['PlanPrice']?.toString() ?? '',
-          'نوع العملية':     item['OperationType']?.toString() ?? '',
+          'نوع العملية':     _mapOperationType(item['OperationType']?.toString() ?? ''),
           'طريقة الدفع':     item['PaymentMethod']?.toString() ?? '',
           'الحالة الحالية':  item['CurrentStatus']?.toString() ?? '',
           'رقم الهاتف':      item['PhoneNumber']?.toString() ?? '',
           'اسم المنطقة':     item['ZoneName']?.toString() ?? '',
-          'نوع التحصيل':     item['CollectionType']?.toString() ?? '',
+          'نوع التحصيل':     _mapCollectionType(item['CollectionType']?.toString() ?? ''),
+          'نوع التحصيل_raw': item['CollectionType']?.toString() ?? '',
           'الرصيد قبل':      item['WalletBalanceBefore']?.toString() ?? '',
           'الرصيد بعد':      item['WalletBalanceAfter']?.toString() ?? '',
           'مطبوع':           item['IsPrinted'] == true,
@@ -8687,17 +8696,134 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     );
   }
 
+  // ── حقل بحث وتصفية (Autocomplete) ──
+  Widget _buildSearchableField({
+    required TextEditingController controller,
+    required List<String> options,
+    required String hint,
+  }) {
+    return Autocomplete<String>(
+      optionsBuilder: (textEditingValue) {
+        final q = textEditingValue.text.trim().toLowerCase();
+        if (q.isEmpty) return options;
+        return options.where((o) => o.toLowerCase().contains(q));
+      },
+      initialValue: TextEditingValue(text: controller.text),
+      onSelected: (v) {
+        controller.text = v;
+        setState(() {});
+      },
+      fieldViewBuilder: (ctx, fieldCtrl, focusNode, onSubmit) {
+        return TextField(
+          controller: fieldCtrl,
+          focusNode: focusNode,
+          style: GoogleFonts.cairo(fontSize: 10),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            hintStyle: GoogleFonts.cairo(fontSize: 9, color: Colors.grey),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide(color: Colors.teal.shade600),
+            ),
+            suffixIcon: const Icon(Icons.search, size: 14),
+            suffixIconConstraints: const BoxConstraints(maxWidth: 20, maxHeight: 20),
+          ),
+          onChanged: (v) => controller.text = v,
+          onSubmitted: (_) { onSubmit(); _saveEditing(); },
+        );
+      },
+      optionsViewBuilder: (ctx, onSelected, opts) {
+        return Align(
+          alignment: AlignmentDirectional.topStart,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(6),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 180, maxWidth: 200),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: opts.length,
+                itemBuilder: (_, i) {
+                  final o = opts.elementAt(i);
+                  return InkWell(
+                    onTap: () => onSelected(o),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Text(o, style: GoogleFonts.cairo(fontSize: 11)),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── ترجمة الحقول ──
+  static String _mapCollectionType(String v) => switch (v) {
+    'cash' => 'نقد', 'credit' => 'آجل', 'agent' => 'وكيل',
+    'master' => 'ماستر', 'technician' => 'فني', _ => v,
+  };
+  static String _mapCollectionTypeReverse(String v) => switch (v) {
+    'نقد' => 'cash', 'آجل' => 'credit', 'وكيل' => 'agent',
+    'ماستر' => 'master', 'فني' => 'technician', _ => v,
+  };
+  static String _mapOperationType(String v) => switch (v) {
+    'renewal' => 'تجديد', 'change' => 'تغيير', 'new' => 'جديد',
+    'upgrade' => 'ترقية', 'downgrade' => 'تخفيض', 'cancel' => 'إلغاء',
+    'suspend' => 'تعليق', 'resume' => 'استئناف', _ => v,
+  };
+
   // ── Inline edit ──
+  Future<void> _loadStaffForEditing() async {
+    if (_staffLoaded) return;
+    try {
+      final result = await TaskApiService.instance.getTaskStaff();
+      if (result['success'] == true && result['data'] != null) {
+        final data = result['data'];
+        final techs = <String>[];
+        final agents = <String>[];
+        for (final t in (data['technicians'] as List? ?? [])) {
+          final name = (t['Name'] ?? t['name'])?.toString() ?? '';
+          if (name.isNotEmpty) techs.add(name);
+        }
+        for (final l in (data['leaders'] as List? ?? [])) {
+          final name = (l['Name'] ?? l['name'])?.toString() ?? '';
+          if (name.isNotEmpty && !techs.contains(name)) techs.add(name);
+        }
+        // الوكلاء: استخراج أسماء فريدة من العمود "الوكيل" في البيانات المحمّلة
+        for (final r in _records) {
+          final agent = r['الوكيل']?.toString().trim() ?? '';
+          if (agent.isNotEmpty && agent != '-' && !agents.contains(agent)) agents.add(agent);
+        }
+        techs.sort();
+        agents.sort();
+        if (mounted) setState(() { _staffTechnicians = techs; _staffAgents = agents; _staffLoaded = true; });
+      }
+    } catch (_) {}
+  }
+
   void _startEditing(Map<String, dynamic> r) {
-    final collType = r['نوع التحصيل']?.toString() ?? 'cash';
+    _loadStaffForEditing();
+    final collTypeRaw = r['نوع التحصيل_raw']?.toString() ?? _mapCollectionTypeReverse(r['نوع التحصيل']?.toString() ?? 'cash');
+    final payMethod = r['طريقة الدفع']?.toString() ?? '';
     setState(() {
       _editingId = r['id']?.toString();
       _editOperatorCtrl.text = r['المُفعِّل']?.toString() ?? '';
       _editPriceCtrl.text = r['سعر الباقة']?.toString() ?? '';
+      _editTechnicianCtrl.text = r['الفني']?.toString() ?? '';
+      _editAgentCtrl.text = r['الوكيل']?.toString() ?? '';
       _editCollType = ['cash', 'credit', 'agent', 'master', 'technician']
-              .contains(collType)
-          ? collType
+              .contains(collTypeRaw)
+          ? collTypeRaw
           : 'cash';
+      _editPaymentMethod = payMethod;
     });
   }
 
@@ -8712,6 +8838,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         'ActivatedBy': _editOperatorCtrl.text.trim(),
         'PlanPrice': double.tryParse(_editPriceCtrl.text.trim()) ?? 0,
         'CollectionType': _editCollType,
+        'TechnicianName': _editTechnicianCtrl.text.trim(),
+        'AgentName': _editAgentCtrl.text.trim(),
+        'PaymentMethod': _editPaymentMethod,
       });
       final res = await http.put(
         Uri.parse('$_baseUrl/$id'),
@@ -8723,7 +8852,11 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         final updated = {
           'المُفعِّل': _editOperatorCtrl.text.trim(),
           'سعر الباقة': _editPriceCtrl.text.trim(),
-          'نوع التحصيل': _editCollType,
+          'نوع التحصيل': _mapCollectionType(_editCollType),
+          'نوع التحصيل_raw': _editCollType,
+          'الفني': _editTechnicianCtrl.text.trim(),
+          'الوكيل': _editAgentCtrl.text.trim(),
+          'طريقة الدفع': _editPaymentMethod,
         };
         setState(() {
           final idx = _records.indexWhere((r) => r['id'] == id);
@@ -9325,12 +9458,14 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       );
     }
 
-    return GestureDetector(
-      onSecondaryTapUp: (d) => _showRowMenu(ctx, d.globalPosition, r),
+    return Builder(builder: (rowCtx) => GestureDetector(
+      onSecondaryTapUp: (d) => _showRowMenu(rowCtx, d.globalPosition, r),
       onLongPress: () {
-        final box = ctx.findRenderObject() as RenderBox?;
-        _showRowMenu(ctx,
-            box?.localToGlobal(const Offset(50, 17)) ?? Offset.zero, r);
+        final obj = rowCtx.findRenderObject();
+        final pos = (obj is RenderBox)
+            ? obj.localToGlobal(const Offset(50, 17))
+            : Offset.zero;
+        _showRowMenu(rowCtx, pos, r);
       },
       child: Container(
         decoration: BoxDecoration(
@@ -9439,27 +9574,35 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
             // نوع العملية
             if (!_hiddenCols.contains('نوع العملية'))
               txt(3, r['نوع العملية']?.toString() ?? ''),
-            // التحصيل
+            // التحصيل (مدمج مع طريقة الدفع)
             if (!_hiddenCols.contains('نوع التحصيل'))
-              cell(2,
+              cell(3,
                 isEditing
                     ? StatefulBuilder(
-                        builder: (_, sl) => DropdownButton<String>(
-                          value: _editCollType,
-                          isDense: true,
-                          underline:
-                              Container(height: 1, color: Colors.teal.shade400),
-                          style: GoogleFonts.cairo(fontSize: 10, color: Colors.black87),
-                          items: const [
-                            DropdownMenuItem(value: 'cash', child: Text('نقد')),
-                            DropdownMenuItem(value: 'credit', child: Text('آجل')),
-                            DropdownMenuItem(value: 'agent', child: Text('وكيل')),
-                            DropdownMenuItem(value: 'master', child: Text('ماستر')),
-                            DropdownMenuItem(value: 'technician', child: Text('فني')),
-                          ],
-                          onChanged: (v) =>
-                              setState(() => _editCollType = v ?? _editCollType),
-                        ),
+                        builder: (_, sl) {
+                          // تأكد أن القيمة موجودة في القائمة
+                          const validValues = ['cash', 'credit', 'agent', 'master', 'technician'];
+                          final safeValue = validValues.contains(_editCollType)
+                              ? _editCollType
+                              : 'cash';
+                          if (safeValue != _editCollType) _editCollType = safeValue;
+                          return DropdownButton<String>(
+                            value: safeValue,
+                            isDense: true,
+                            isExpanded: true,
+                            underline: Container(height: 1, color: Colors.teal.shade400),
+                            style: GoogleFonts.cairo(fontSize: 10, color: Colors.black87),
+                            items: const [
+                              DropdownMenuItem(value: 'cash', child: Text('نقد')),
+                              DropdownMenuItem(value: 'credit', child: Text('آجل')),
+                              DropdownMenuItem(value: 'agent', child: Text('وكيل')),
+                              DropdownMenuItem(value: 'master', child: Text('ماستر')),
+                              DropdownMenuItem(value: 'technician', child: Text('فني')),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _editCollType = v ?? _editCollType),
+                          );
+                        },
                       )
                     : Text(
                         collType.isNotEmpty ? collType : '-',
@@ -9470,11 +9613,36 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                       ),
               ),
             if (!_hiddenCols.contains('الفني'))
-              txt(3, r['الفني']?.toString() ?? ''),
+              cell(3,
+                isEditing
+                    ? _buildSearchableField(
+                        controller: _editTechnicianCtrl,
+                        options: _staffTechnicians,
+                        hint: 'ابحث عن فني',
+                      )
+                    : Text(
+                        (r['الفني']?.toString() ?? '').isEmpty ? '-' : r['الفني'].toString(),
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.cairo(fontSize: 10),
+                      ),
+                start: true,
+              ),
             if (!_hiddenCols.contains('الوكيل'))
-              txt(3, r['الوكيل']?.toString() ?? ''),
-            if (!_hiddenCols.contains('طريقة الدفع'))
-              txt(2, r['طريقة الدفع']?.toString() ?? ''),
+              cell(3,
+                isEditing
+                    ? _buildSearchableField(
+                        controller: _editAgentCtrl,
+                        options: _staffAgents,
+                        hint: 'ابحث عن وكيل',
+                      )
+                    : Text(
+                        (r['الوكيل']?.toString() ?? '').isEmpty ? '-' : r['الوكيل'].toString(),
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.cairo(fontSize: 10),
+                      ),
+                start: true,
+              ),
+            // طريقة الدفع — مدمجة في عمود التحصيل
             if (!_hiddenCols.contains('اسم المنطقة'))
               txt(2, r['اسم المنطقة']?.toString() ?? ''),
             if (!_hiddenCols.contains('رقم الهاتف'))
@@ -9543,6 +9711,6 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

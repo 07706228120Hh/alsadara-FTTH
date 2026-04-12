@@ -866,7 +866,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       case 'Manager':
         return 'مدير';
       case 'TechnicalLeader':
-        return 'ليدر فني';
+        return 'ليدر';
       case 'Technician':
         return 'فني';
       case 'Viewer':

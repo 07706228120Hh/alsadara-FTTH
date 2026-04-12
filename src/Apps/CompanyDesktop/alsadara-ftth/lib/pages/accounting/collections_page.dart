@@ -23,11 +23,21 @@ class _CollectionsPageState extends State<CollectionsPage> {
   List<dynamic> _technicians = [];
   Map<String, dynamic> _summary = {};
   String _techFilter = 'all'; // all, debtor, creditor
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  String _sortBy = 'net'; // 'net', 'name', 'charges', 'payments'
+  bool _sortAsc = false; // false = تنازلي (الأعلى أولاً)
 
   @override
   void initState() {
     super.initState();
     _loadDues();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadDues() async {
@@ -193,7 +203,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
     return Column(
       children: [
         _buildSummaryBar(),
-        // أزرار التصفية
+        // مربع البحث + أزرار التصفية
         Container(
           padding: EdgeInsets.symmetric(
               horizontal: context.accR.paddingH,
@@ -205,9 +215,89 @@ class _CollectionsPageState extends State<CollectionsPage> {
               _techFilterBtn('مديون', 'debtor'),
               SizedBox(width: context.accR.spaceS),
               _techFilterBtn('دائن', 'creditor'),
+              const Spacer(),
+              SizedBox(
+                width: context.accR.isMobile ? 160 : 250,
+                height: context.accR.isMobile ? 34 : 40,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _searchQuery = v.trim()),
+                  textDirection: TextDirection.rtl,
+                  style: GoogleFonts.cairo(
+                    fontSize: context.accR.isMobile ? 12 : 14,
+                    color: AccountingTheme.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'بحث عن فني...',
+                    hintStyle: GoogleFonts.cairo(
+                      fontSize: context.accR.isMobile ? 12 : 14,
+                      color: AccountingTheme.textMuted,
+                    ),
+                    prefixIcon: Icon(Icons.search,
+                        size: context.accR.isMobile ? 16 : 20,
+                        color: AccountingTheme.textMuted),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.close,
+                                size: context.accR.isMobile ? 14 : 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AccountingTheme.bgCard,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                          context.accR.isMobile ? 8 : 10),
+                      borderSide:
+                          const BorderSide(color: AccountingTheme.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                          context.accR.isMobile ? 8 : 10),
+                      borderSide:
+                          const BorderSide(color: AccountingTheme.borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                          context.accR.isMobile ? 8 : 10),
+                      borderSide: const BorderSide(
+                          color: AccountingTheme.neonBlue, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+        // أزرار الترتيب
+        Container(
+          padding: EdgeInsets.symmetric(
+              horizontal: context.accR.paddingH),
+          child: Row(
+            children: [
+              Text('ترتيب حسب:',
+                  style: GoogleFonts.cairo(
+                      fontSize: context.accR.isMobile ? 11 : 13,
+                      color: AccountingTheme.textMuted)),
+              SizedBox(width: context.accR.spaceXS),
+              _sortBtn('المستحق', 'net'),
+              SizedBox(width: context.accR.spaceXS),
+              _sortBtn('الاسم', 'name'),
+              SizedBox(width: context.accR.spaceXS),
+              _sortBtn('الأجور', 'charges'),
+              SizedBox(width: context.accR.spaceXS),
+              _sortBtn('التسديدات', 'payments'),
+            ],
+          ),
+        ),
+        SizedBox(height: context.accR.spaceXS),
         Expanded(
           child: _filteredTechnicians.isEmpty
               ? Center(
@@ -256,11 +346,20 @@ class _CollectionsPageState extends State<CollectionsPage> {
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         borderRadius: BorderRadius.circular(ar.cardRadius),
+        border: Border.all(
+          color: AccountingTheme.neonBlue.withValues(alpha: 0.25),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AccountingTheme.neonBlue.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -392,11 +491,40 @@ class _CollectionsPageState extends State<CollectionsPage> {
   //  قائمة الفنيين
   // ═══════════════════════════════════════════════════
   List<dynamic> get _filteredTechnicians {
-    if (_techFilter == 'all') return _technicians;
-    return _technicians.where((t) {
-      final net = (t['netBalance'] ?? 0).toDouble();
-      return _techFilter == 'debtor' ? net < 0 : net >= 0;
-    }).toList();
+    var list = List<dynamic>.from(_technicians);
+    if (_techFilter != 'all') {
+      list = list.where((t) {
+        final net = (t['netBalance'] ?? 0).toDouble();
+        return _techFilter == 'debtor' ? net < 0 : net >= 0;
+      }).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      list = list.where((t) {
+        final name = (t['name'] ?? '').toString().toLowerCase();
+        final phone = (t['phone'] ?? '').toString().toLowerCase();
+        return name.contains(q) || phone.contains(q);
+      }).toList();
+    }
+    // ترتيب
+    list.sort((a, b) {
+      int cmp;
+      switch (_sortBy) {
+        case 'name':
+          cmp = (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString());
+          break;
+        case 'charges':
+          cmp = (a['totalCharges'] ?? 0).toDouble().compareTo((b['totalCharges'] ?? 0).toDouble());
+          break;
+        case 'payments':
+          cmp = (a['totalPayments'] ?? 0).toDouble().compareTo((b['totalPayments'] ?? 0).toDouble());
+          break;
+        default: // 'net'
+          cmp = (a['netBalance'] ?? 0).toDouble().abs().compareTo((b['netBalance'] ?? 0).toDouble().abs());
+      }
+      return _sortAsc ? cmp : -cmp;
+    });
+    return list;
   }
 
   Widget _techFilterBtn(String label, String value) {
@@ -432,6 +560,60 @@ class _CollectionsPageState extends State<CollectionsPage> {
     );
   }
 
+  Widget _sortBtn(String label, String value) {
+    final ar = context.accR;
+    final isActive = _sortBy == value;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          if (_sortBy == value) {
+            _sortAsc = !_sortAsc;
+          } else {
+            _sortBy = value;
+            _sortAsc = value == 'name'; // الاسم تصاعدي افتراضياً، البقية تنازلي
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+            horizontal: ar.isMobile ? 8 : 10, vertical: ar.isMobile ? 3 : 4),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AccountingTheme.neonBlue.withValues(alpha: 0.12)
+              : AccountingTheme.bgCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive
+                ? AccountingTheme.neonBlue.withValues(alpha: 0.4)
+                : AccountingTheme.borderColor,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? AccountingTheme.neonBlue : AccountingTheme.textMuted,
+                fontSize: ar.isMobile ? 10 : 12,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            if (isActive) ...[
+              const SizedBox(width: 2),
+              Icon(
+                _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
+                size: ar.isMobile ? 12 : 14,
+                color: AccountingTheme.neonBlue,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTechnicianList() {
     final ar = context.accR;
     final isMobile = ar.isMobile;
@@ -453,26 +635,39 @@ class _CollectionsPageState extends State<CollectionsPage> {
         // ignore: unused_local_variable
         final _ = phone;
 
+        final cardColor = isDebtor ? AccountingTheme.danger : AccountingTheme.success;
         return Container(
           margin: EdgeInsets.only(bottom: ar.spaceS),
           decoration: BoxDecoration(
             color: AccountingTheme.bgCard,
             borderRadius: BorderRadius.circular(ar.cardRadius),
-            border: Border(
-              right: BorderSide(
-                color:
-                    isDebtor ? AccountingTheme.danger : AccountingTheme.success,
-                width: isMobile ? 3 : 4,
-              ),
+            border: Border.all(
+              color: cardColor.withValues(alpha: 0.2),
+              width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 6,
+                color: cardColor.withValues(alpha: 0.06),
+                blurRadius: 10,
                 offset: const Offset(0, 2),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(ar.cardRadius),
+              border: Border(
+                right: BorderSide(
+                  color: cardColor,
+                  width: isMobile ? 3 : 5,
+                ),
+              ),
+            ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
@@ -641,6 +836,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       ),
               ),
             ),
+          ),
           ),
         );
       },
