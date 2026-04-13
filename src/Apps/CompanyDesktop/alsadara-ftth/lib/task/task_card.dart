@@ -1365,12 +1365,29 @@ class _TaskCardState extends State<TaskCard> {
 
                             const SizedBox(height: 16),
 
-                            // 3. ملاحظات
-                            Text('ملاحظات الفني',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700)),
+                            // 3. ملاحظات (إجباري عند الإلغاء)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                if (selectedStatus == 'ملغية')
+                                  Text(' * مطلوب',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.red.shade400,
+                                          fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 4),
+                                Text(
+                                    selectedStatus == 'ملغية'
+                                        ? 'سبب الإلغاء'
+                                        : 'ملاحظات الفني',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: selectedStatus == 'ملغية'
+                                            ? Colors.red.shade700
+                                            : Colors.grey.shade700)),
+                              ],
+                            ),
                             const SizedBox(height: 6),
                             TextField(
                               controller: notesController,
@@ -1378,9 +1395,14 @@ class _TaskCardState extends State<TaskCard> {
                               style: const TextStyle(
                                   fontSize: 14, fontWeight: FontWeight.w500),
                               decoration: InputDecoration(
-                                hintText: 'ملاحظات إضافية (اختياري)',
+                                hintText: selectedStatus == 'ملغية'
+                                    ? 'اكتب سبب الإلغاء...'
+                                    : 'ملاحظات إضافية (اختياري)',
                                 hintStyle: TextStyle(
-                                    color: Colors.grey.shade400, fontSize: 13),
+                                    color: selectedStatus == 'ملغية'
+                                        ? Colors.red.shade300
+                                        : Colors.grey.shade400,
+                                    fontSize: 13),
                                 filled: true,
                                 fillColor: Colors.grey.shade50,
                                 contentPadding: const EdgeInsets.symmetric(
@@ -1392,11 +1414,15 @@ class _TaskCardState extends State<TaskCard> {
                                 enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                        color: Colors.grey.shade300)),
+                                        color: selectedStatus == 'ملغية'
+                                            ? Colors.red.shade300
+                                            : Colors.grey.shade300)),
                                 focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                        color: Colors.orange.shade400,
+                                        color: selectedStatus == 'ملغية'
+                                            ? Colors.red.shade400
+                                            : Colors.orange.shade400,
                                         width: 1.5)),
                               ),
                             ),
@@ -1439,6 +1465,17 @@ class _TaskCardState extends State<TaskCard> {
                                       amountController.text.trim();
                                   final String notes =
                                       notesController.text.trim();
+
+                                  // التحقق: سبب الإلغاء إجباري
+                                  if (newStatus == 'ملغية' && notes.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('يجب كتابة سبب الإلغاء'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
 
                                   // التحقق: المبلغ إذا أُدخل يجب أن يكون 1000 على الأقل
                                   final digits = amount.replaceAll(RegExp(r'[^\d]'), '');

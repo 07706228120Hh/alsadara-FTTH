@@ -204,6 +204,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
   static const _textDark = Color(0xFF333333);
   static const _textGray = Color(0xFF7F8C8D);
 
+  bool get _isSmallScreen => MediaQuery.of(context).size.width < 600;
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -229,9 +231,13 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     final dept = _employee['department'] ?? _employee['Department'] ?? '';
     final isActive = _employee['isActive'] ?? _employee['IsActive'] ?? true;
     final phone = _employee['phoneNumber'] ?? _employee['PhoneNumber'] ?? '';
+    final isSmall = _isSmallScreen;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmall ? 8 : 20,
+        vertical: isSmall ? 8 : 12,
+      ),
       decoration: const BoxDecoration(
         color: _headerBg,
         boxShadow: [
@@ -244,151 +250,172 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       ),
       child: SafeArea(
         bottom: false,
-        child: Row(
+        child: isSmall ? _buildMobileHeader(name, role, code, dept, isActive, phone)
+            : _buildDesktopHeader(name, role, code, dept, isActive, phone),
+      ),
+    );
+  }
+
+  /// Header layout for desktop/tablet
+  Widget _buildDesktopHeader(String name, String role, String code, String dept, bool isActive, String phone) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_forward_rounded),
+          tooltip: 'رجوع',
+          style: IconButton.styleFrom(foregroundColor: Colors.white70),
+        ),
+        const SizedBox(width: 12),
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: _getRoleColor(role),
+          child: Text(
+            name.isNotEmpty ? name[0].toUpperCase() : '?',
+            style: GoogleFonts.cairo(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(name, style: GoogleFonts.cairo(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+              Row(
+                children: [
+                  _headerChip(_getRoleLabel(role), _getRoleColor(role)),
+                  if (dept.isNotEmpty) ...[const SizedBox(width: 8), _headerChip(dept, Colors.white24)],
+                  if (code.isNotEmpty) ...[const SizedBox(width: 8), _headerChip(code, Colors.white24)],
+                ],
+              ),
+            ],
+          ),
+        ),
+        _buildStatusBadge(isActive, false),
+        const SizedBox(width: 12),
+        if (phone.isNotEmpty) ...[
+          _buildPhoneBadge(phone, false),
+          const SizedBox(width: 8),
+        ],
+        _headerActionBtn(icon: Icons.key_rounded, tooltip: 'تغيير كلمة المرور', color: const Color(0xFFFF9800), onTap: () => _showPasswordDialog()),
+        const SizedBox(width: 4),
+        _headerActionBtn(icon: Icons.link_rounded, tooltip: 'ربط حساب FTTH', color: const Color(0xFFCDDC39), onTap: () => _openFtthLinking()),
+        const SizedBox(width: 4),
+        if (_pm.canDelete('users')) ...[
+          _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف الموظف', color: const Color(0xFFFF5252), onTap: () => _deleteEmployee()),
+          const SizedBox(width: 4),
+        ],
+        _headerActionBtn(icon: Icons.refresh_rounded, tooltip: 'تحديث', color: Colors.white70, onTap: _loadFullProfile),
+      ],
+    );
+  }
+
+  /// Header layout for mobile — stacked
+  Widget _buildMobileHeader(String name, String role, String code, String dept, bool isActive, String phone) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // الصف الأول: رجوع + اسم + حالة
+        Row(
           children: [
-            // زر الرجوع
-            IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_forward_rounded),
-              tooltip: 'رجوع',
-              style: IconButton.styleFrom(foregroundColor: Colors.white70),
+            InkWell(
+              onTap: () => Navigator.of(context).pop(),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white70, size: 20),
+              ),
             ),
-            const SizedBox(width: 12),
-            // الصورة
+            const SizedBox(width: 6),
             CircleAvatar(
-              radius: 24,
+              radius: 16,
               backgroundColor: _getRoleColor(role),
               child: Text(
                 name.isNotEmpty ? name[0].toUpperCase() : '?',
-                style: GoogleFonts.cairo(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: GoogleFonts.cairo(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(width: 14),
-            // الاسم والمعلومات
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    name,
-                    style: GoogleFonts.cairo(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(name, style: GoogleFonts.cairo(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                   Row(
                     children: [
                       _headerChip(_getRoleLabel(role), _getRoleColor(role)),
-                      if (dept.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        _headerChip(dept, Colors.white24),
-                      ],
-                      if (code.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        _headerChip(code, Colors.white24),
-                      ],
+                      if (dept.isNotEmpty) ...[const SizedBox(width: 4), _headerChip(dept, Colors.white24)],
                     ],
                   ),
                 ],
               ),
             ),
-            // الحالة
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? Colors.green.withOpacity(0.2)
-                    : Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isActive ? Colors.green : Colors.red,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isActive ? Icons.check_circle : Icons.cancel,
-                    color: isActive ? Colors.green : Colors.red,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isActive ? 'نشط' : 'معطل',
-                    style: GoogleFonts.cairo(
-                      color: isActive ? Colors.green : Colors.red,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // هاتف
-            if (phone.isNotEmpty)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.phone, color: Colors.white70, size: 14),
-                    const SizedBox(width: 4),
-                    Text(phone,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
-                  ],
-                ),
-              ),
-            const SizedBox(width: 8),
-            // ═══ أزرار الإجراءات ═══
-            // تغيير كلمة المرور
-            _headerActionBtn(
-              icon: Icons.key_rounded,
-              tooltip: 'تغيير كلمة المرور',
-              color: const Color(0xFFFF9800),
-              onTap: () => _showPasswordDialog(),
-            ),
-            const SizedBox(width: 4),
-            // ربط حساب FTTH
-            _headerActionBtn(
-              icon: Icons.link_rounded,
-              tooltip: 'ربط حساب FTTH',
-              color: const Color(0xFFCDDC39),
-              onTap: () => _openFtthLinking(),
-            ),
-            const SizedBox(width: 4),
-            // حذف الموظف
-            if (_pm.canDelete('users'))
-              _headerActionBtn(
-                icon: Icons.delete_outline_rounded,
-                tooltip: 'حذف الموظف',
-                color: const Color(0xFFFF5252),
-                onTap: () => _deleteEmployee(),
-              ),
-            if (_pm.canDelete('users')) const SizedBox(width: 4),
-            // زر تحديث
-            _headerActionBtn(
-              icon: Icons.refresh_rounded,
-              tooltip: 'تحديث',
-              color: Colors.white70,
-              onTap: _loadFullProfile,
-            ),
+            _buildStatusBadge(isActive, true),
           ],
         ),
+        const SizedBox(height: 6),
+        // الصف الثاني: هاتف + كود + أزرار
+        Row(
+          children: [
+            if (phone.isNotEmpty) ...[
+              _buildPhoneBadge(phone, true),
+              const SizedBox(width: 4),
+            ],
+            if (code.isNotEmpty) _headerChip(code, Colors.white24),
+            const Spacer(),
+            _headerActionBtn(icon: Icons.key_rounded, tooltip: 'كلمة المرور', color: const Color(0xFFFF9800), onTap: () => _showPasswordDialog(), small: true),
+            const SizedBox(width: 3),
+            _headerActionBtn(icon: Icons.link_rounded, tooltip: 'ربط FTTH', color: const Color(0xFFCDDC39), onTap: () => _openFtthLinking(), small: true),
+            const SizedBox(width: 3),
+            if (_pm.canDelete('users')) ...[
+              _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف', color: const Color(0xFFFF5252), onTap: () => _deleteEmployee(), small: true),
+              const SizedBox(width: 3),
+            ],
+            _headerActionBtn(icon: Icons.refresh_rounded, tooltip: 'تحديث', color: Colors.white70, onTap: _loadFullProfile, small: true),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge(bool isActive, bool small) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: small ? 7 : 12, vertical: small ? 3 : 6),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isActive ? Colors.green : Colors.red, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isActive ? Icons.check_circle : Icons.cancel, color: isActive ? Colors.green : Colors.red, size: small ? 11 : 14),
+          SizedBox(width: small ? 2 : 4),
+          Text(
+            isActive ? 'نشط' : 'معطل',
+            style: GoogleFonts.cairo(color: isActive ? Colors.green : Colors.red, fontSize: small ? 10 : 12, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhoneBadge(String phone, bool small) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: small ? 6 : 10, vertical: small ? 2 : 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.phone, color: Colors.white70, size: small ? 11 : 14),
+          SizedBox(width: small ? 2 : 4),
+          Text(phone, style: TextStyle(color: Colors.white70, fontSize: small ? 10 : 12)),
+        ],
       ),
     );
   }
@@ -398,23 +425,26 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     required String tooltip,
     required Color color,
     required VoidCallback onTap,
+    bool small = false,
   }) {
+    final sz = small ? 26.0 : 34.0;
+    final iconSz = small ? 13.0 : 16.0;
     return Tooltip(
       message: tooltip,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(small ? 6 : 8),
           child: Container(
-            width: 34,
-            height: 34,
+            width: sz,
+            height: sz,
             decoration: BoxDecoration(
               color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(small ? 6 : 8),
               border: Border.all(color: color.withOpacity(0.3)),
             ),
-            child: Icon(icon, size: 16, color: color),
+            child: Icon(icon, size: iconSz, color: color),
           ),
         ),
       ),
@@ -693,21 +723,24 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
   }
 
   Widget _headerChip(String text, Color color) {
+    final isSmall = _isSmallScreen;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: isSmall ? 5 : 8, vertical: isSmall ? 1 : 2),
       decoration: BoxDecoration(
         color: color.withOpacity(0.3),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         text,
-        style: GoogleFonts.cairo(color: Colors.white, fontSize: 11),
+        style: GoogleFonts.cairo(color: Colors.white, fontSize: isSmall ? 9 : 11),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
 
   /// شريط التبويبات
   Widget _buildTabBar() {
+    final isSmall = _isSmallScreen;
     return Container(
       color: Colors.white,
       child: TabBar(
@@ -716,19 +749,22 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         labelColor: _accent,
         unselectedLabelColor: _textGray,
         indicatorColor: _accent,
-        indicatorWeight: 3,
+        indicatorWeight: isSmall ? 2 : 3,
+        tabAlignment: TabAlignment.start,
+        labelPadding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 16),
         labelStyle: GoogleFonts.cairo(
           fontWeight: FontWeight.bold,
-          fontSize: 13,
+          fontSize: isSmall ? 11 : 13,
         ),
-        unselectedLabelStyle: GoogleFonts.cairo(fontSize: 13),
+        unselectedLabelStyle: GoogleFonts.cairo(fontSize: isSmall ? 11 : 13),
         tabs: _visibleTabs
             .map((t) => Tab(
+                  height: isSmall ? 36 : null,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(t.icon, size: 18),
-                      const SizedBox(width: 6),
+                      Icon(t.icon, size: isSmall ? 14 : 18),
+                      SizedBox(width: isSmall ? 3 : 6),
                       Text(t.label),
                     ],
                   ),

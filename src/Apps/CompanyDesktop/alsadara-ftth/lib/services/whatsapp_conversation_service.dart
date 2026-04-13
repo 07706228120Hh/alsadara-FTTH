@@ -213,6 +213,12 @@ class WhatsAppConversationService {
   }
 
   static Future<void> _fetchUnreadCount() async {
+    // الأولوية للكاش المحلي لأنه يعكس حالة القراءة الفعلية
+    if (_cachedConversations != null && _cachedConversations!.isNotEmpty) {
+      _updateUnreadFromCache();
+      return;
+    }
+    // إذا لا يوجد كاش — نجلب من API
     try {
       final response = await ApiClient.instance.get(
         '/whatsapp/unread-count',
@@ -229,7 +235,6 @@ class WhatsAppConversationService {
         _unreadController?.add(count);
       }
     } catch (e) {
-      // fallback: حساب من الكاش
       _updateUnreadFromCache();
     }
   }

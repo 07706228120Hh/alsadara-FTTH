@@ -1681,8 +1681,8 @@ public class ServiceRequestsController : ControllerBase
 
     private static bool IsValidStatusTransition(ServiceRequestStatus from, ServiceRequestStatus to)
     {
-        if (from == to) return true; // السماح بنفس الحالة (no-op)
-        return AllowedTransitions.TryGetValue(from, out var allowed) && allowed.Contains(to);
+        // السماح بجميع الانتقالات بدون قيود
+        return true;
     }
 
     private static IEnumerable<string> GetAllowedTransitions(ServiceRequestStatus from)

@@ -369,18 +369,37 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
   // ═══════════════ البناء ═══════════════
 
+  /// ينشئ صف أو عمود حسب حجم الشاشة
+  Widget _responsiveRow(List<Widget> children) {
+    final isSmall = MediaQuery.of(context).size.width < 600;
+    if (isSmall) {
+      return Column(
+        children: children.map((child) {
+          // إزالة Expanded من الأطفال لأننا في Column
+          if (child is Expanded) return child.child;
+          if (child is SizedBox) return SizedBox(height: child.width ?? 12);
+          if (child is Spacer) return const SizedBox.shrink();
+          return child;
+        }).toList(),
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 600;
     return Stack(
       children: [
         SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(isSmall ? 10 : 20),
           child: Column(
             children: [
               // ═══ صف أول: الحساب + الوظيفة ═══
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              _responsiveRow([
                   Expanded(
                     child: _sectionCard(
                       'معلومات الحساب',
@@ -407,13 +426,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              ]),
+              SizedBox(height: isSmall ? 10 : 16),
               // ═══ صف ثاني: الشخصية + المالية ═══
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              _responsiveRow([
                   Expanded(
                     child: _sectionCard(
                       'المعلومات الشخصية',
@@ -448,13 +464,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              ]),
+              SizedBox(height: isSmall ? 10 : 16),
               // ═══ صف ثالث: جدول الدوام + الطوارئ ═══
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              _responsiveRow([
                   Expanded(child: _scheduleCard()),
                   const SizedBox(width: 16),
                   Expanded(
@@ -470,18 +483,15 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       ],
                     ),
                   ),
-                ],
-              ),
+              ]),
               // ═══ كود أمان البصمة (يحتاج صلاحية hr.security_code صريحة) ═══
               if (_pm.hasExplicit('hr.security_code', 'view')) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: isSmall ? 10 : 16),
                 _securityCodeCard(),
               ],
-              const SizedBox(height: 16),
+              SizedBox(height: isSmall ? 10 : 16),
               // ═══ صف رابع: FTTH + ملاحظات ═══
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              _responsiveRow([
                   // FTTH (يحتاج صلاحية hr.ftth_info صريحة)
                   if (_pm.hasExplicit('hr.ftth_info', 'view'))
                     Expanded(child: _ftthCard())
@@ -496,8 +506,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       [_notesField()],
                     ),
                   ),
-                ],
-              ),
+              ]),
               const SizedBox(height: 80), // مسافة للزر العائم
             ],
           ),
@@ -505,8 +514,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
         // زر التعديل / الحفظ
         if (widget.canEdit)
           Positioned(
-            left: 20,
-            bottom: 20,
+            left: isSmall ? 10 : 20,
+            bottom: isSmall ? 10 : 20,
             child: Row(
               children: [
                 if (_editing) ...[
@@ -558,16 +567,18 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
   Widget _sectionCard(
       String title, IconData icon, Color color, List<Widget> children) {
+    final isSmall = MediaQuery.of(context).size.width < 600;
     return Container(
       width: double.infinity,
+      margin: isSmall ? const EdgeInsets.only(bottom: 8) : null,
       decoration: BoxDecoration(
         color: _cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 3)),
+              blurRadius: isSmall ? 6 : 10,
+              offset: Offset(0, isSmall ? 1 : 3)),
         ],
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -576,7 +587,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
         children: [
           // الرأس
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmall ? 10 : 16,
+              vertical: isSmall ? 8 : 12,
+            ),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [color.withOpacity(0.08), color.withOpacity(0.02)],
@@ -584,7 +598,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 end: Alignment.centerLeft,
               ),
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(14)),
+                  BorderRadius.vertical(top: Radius.circular(isSmall ? 10 : 14)),
               border: Border(
                 bottom: BorderSide(color: color.withOpacity(0.15)),
               ),
@@ -592,20 +606,20 @@ class _HrInfoTabState extends State<HrInfoTab> {
             child: Row(
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: isSmall ? 26 : 32,
+                  height: isSmall ? 26 : 32,
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(isSmall ? 6 : 8),
                   ),
-                  child: Icon(icon, color: color, size: 18),
+                  child: Icon(icon, color: color, size: isSmall ? 14 : 18),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: isSmall ? 6 : 10),
                 Text(
                   title,
                   style: GoogleFonts.cairo(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: isSmall ? 12 : 14,
                     color: _headerDark,
                   ),
                 ),
@@ -614,7 +628,12 @@ class _HrInfoTabState extends State<HrInfoTab> {
           ),
           // المحتوى
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            padding: EdgeInsets.fromLTRB(
+              isSmall ? 10 : 16,
+              isSmall ? 10 : 14,
+              isSmall ? 10 : 16,
+              isSmall ? 10 : 16,
+            ),
             child: Column(children: children),
           ),
         ],
@@ -626,32 +645,33 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
   Widget _field(String label, TextEditingController ctrl, IconData icon,
       {bool isNumber = false}) {
+    final isSmall = MediaQuery.of(context).size.width < 600;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: isSmall ? 8 : 12),
       child: Row(
         children: [
           SizedBox(
-            width: 150,
+            width: isSmall ? 100 : 150,
             child: Row(
               children: [
-                Icon(icon, size: 15, color: _labelColor),
-                const SizedBox(width: 6),
+                Icon(icon, size: isSmall ? 12 : 15, color: _labelColor),
+                SizedBox(width: isSmall ? 4 : 6),
                 Expanded(
                   child: Text(label,
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                          GoogleFonts.cairo(color: _labelColor, fontSize: isSmall ? 10 : 12)),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: isSmall ? 6 : 10),
           Expanded(
             child: _editing
                 ? TextField(
                     controller: ctrl,
                     keyboardType:
                         isNumber ? TextInputType.number : TextInputType.text,
-                    style: GoogleFonts.cairo(fontSize: 13),
+                    style: GoogleFonts.cairo(fontSize: isSmall ? 11 : 13),
                     decoration: InputDecoration(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(

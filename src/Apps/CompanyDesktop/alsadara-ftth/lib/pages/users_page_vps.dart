@@ -580,6 +580,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   }
 
   Widget _buildFilterBar() {
+    final r = context.responsive;
     final departments = _getUniqueValues((e) => e.department ?? '');
     final roles = _getUniqueValues((e) => e.role ?? '');
     final centers = _getUniqueValues((e) => e.center ?? '');
@@ -587,7 +588,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     if (_employees.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: r.contentPaddingH),
       child: Column(
         children: [
           Row(
@@ -661,8 +662,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
 
   Widget _buildFilterChip(String label, String? selected, List<String> options,
       ValueChanged<String?> onChanged, String Function(String) displayName) {
+    final r = context.responsive;
     return Container(
-      height: 38,
+      height: r.isMobile ? 32 : 38,
       decoration: BoxDecoration(
         color: selected != null ? _accent.withValues(alpha: 0.1) : Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -674,17 +676,17 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           isExpanded: true,
           isDense: true,
           hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(label, style: GoogleFonts.cairo(fontSize: 12, color: _textGray)),
+            padding: EdgeInsets.symmetric(horizontal: r.isMobile ? 4 : 10),
+            child: Text(label, style: GoogleFonts.cairo(fontSize: r.captionSize, color: _textGray)),
           ),
           icon: Padding(
-            padding: const EdgeInsets.only(left: 6),
+            padding: EdgeInsets.only(left: r.isMobile ? 2 : 6),
             child: Icon(selected != null ? Icons.close : Icons.arrow_drop_down,
-                size: 18, color: selected != null ? _danger : _textGray),
+                size: r.isMobile ? 14 : 18, color: selected != null ? _danger : _textGray),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: EdgeInsets.symmetric(horizontal: r.isMobile ? 4 : 10),
           borderRadius: BorderRadius.circular(10),
-          style: GoogleFonts.cairo(fontSize: 12, color: _textWhite),
+          style: GoogleFonts.cairo(fontSize: r.captionSize, color: _textWhite),
           onTap: selected != null ? () {
             onChanged(null);
           } : null,
@@ -699,12 +701,13 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   }
 
   Widget _buildSearchBar() {
+    final r = context.responsive;
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+      padding: EdgeInsets.fromLTRB(r.contentPaddingH, r.isMobile ? 8 : 14, r.contentPaddingH, r.isMobile ? 6 : 10),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(r.isMobile ? 10 : 14),
           border: Border.all(color: Colors.grey.shade300),
           boxShadow: [
             BoxShadow(
@@ -717,25 +720,27 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         child: TextField(
           controller: _searchController,
           onChanged: _filterEmployees,
-          style: GoogleFonts.cairo(color: _textWhite, fontSize: 14),
+          style: GoogleFonts.cairo(color: _textWhite, fontSize: r.bodySize),
           decoration: InputDecoration(
             hintText: 'بحث بالاسم، الهاتف، أو الدور...',
-            hintStyle: GoogleFonts.cairo(color: _textGray, fontSize: 13),
+            hintStyle: GoogleFonts.cairo(color: _textGray, fontSize: r.captionSize + 1),
             prefixIcon:
-                const Icon(Icons.search_rounded, color: _accent, size: 20),
+                Icon(Icons.search_rounded, color: _accent, size: r.iconSizeSmall),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     onPressed: () {
                       _searchController.clear();
                       _filterEmployees('');
                     },
-                    icon: const Icon(Icons.close_rounded,
-                        color: _textGray, size: 18),
+                    icon: Icon(Icons.close_rounded,
+                        color: _textGray, size: r.iconSizeSmall),
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: r.isMobile ? 10 : 16,
+              vertical: r.isMobile ? 10 : 14,
+            ),
           ),
         ),
       ),
@@ -825,8 +830,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   }
 
   Widget _buildEmployeesList() {
+    final r = context.responsive;
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 90),
+      padding: EdgeInsets.fromLTRB(r.contentPaddingH, 6, r.contentPaddingH, 90),
       itemCount: _filteredEmployees.length,
       itemBuilder: (context, index) {
         final employee = _filteredEmployees[index];
@@ -836,12 +842,13 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   }
 
   Widget _buildEmployeeCard(EmployeeModel employee, int index) {
+    final r = context.responsive;
     final roleColor = _getRoleColor(employee.role);
     final roleLabel = _getRoleNameAr(employee.role);
     final isSelected = _selectedIds.contains(employee.id);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: r.isMobile ? 8 : 12),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -901,7 +908,12 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  padding: EdgeInsets.fromLTRB(
+                    r.isMobile ? 10 : 16,
+                    r.isMobile ? 10 : 14,
+                    r.isMobile ? 10 : 16,
+                    r.isMobile ? 10 : 14,
+                  ),
                   child: Row(
                     children: [
                       // ═══ Checkbox في وضع التحديد ═══
@@ -909,14 +921,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                         Icon(
                           isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
                           color: isSelected ? _accent : _textGray,
-                          size: 22,
+                          size: r.isMobile ? 18 : 22,
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: r.isMobile ? 6 : 10),
                       ],
                       // ═══ أفاتار فخم ═══
                       Container(
-                        width: 52,
-                        height: 52,
+                        width: r.isMobile ? 40 : 52,
+                        height: r.isMobile ? 40 : 52,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: employee.isActive
@@ -954,14 +966,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                 ? employee.fullName[0].toUpperCase()
                                 : '?',
                             style: GoogleFonts.cairo(
-                              fontSize: 22,
+                              fontSize: r.isMobile ? 16 : 22,
                               fontWeight: FontWeight.bold,
                               color: employee.isActive ? roleColor : _textGray,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: r.isMobile ? 10 : 14),
                       // ═══ المعلومات ═══
                       Expanded(
                         child: Column(
@@ -972,12 +984,12 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                               employee.fullName,
                               style: GoogleFonts.cairo(
                                 color: _textWhite,
-                                fontSize: 15,
+                                fontSize: r.bodySize + 1,
                                 fontWeight: FontWeight.bold,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: r.isMobile ? 2 : 4),
                             // الدور + الكود + القسم
                             Row(
                               children: [
@@ -999,39 +1011,42 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                   child: Text(
                                     roleLabel,
                                     style: GoogleFonts.cairo(
-                                      fontSize: 10,
+                                      fontSize: r.captionSize - 1,
                                       color: roleColor,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                                 if (employee.employeeCode != null) ...[
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: r.isMobile ? 4 : 8),
                                   Icon(Icons.badge_outlined,
-                                      size: 12,
+                                      size: r.isMobile ? 10 : 12,
                                       color: _textGray.withOpacity(0.6)),
                                   const SizedBox(width: 3),
-                                  Text(
-                                    employee.employeeCode!,
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 10,
-                                      color: _textGray,
+                                  Flexible(
+                                    child: Text(
+                                      employee.employeeCode!,
+                                      style: GoogleFonts.cairo(
+                                        fontSize: r.captionSize - 1,
+                                        color: _textGray,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
                               ],
                             ),
-                            const SizedBox(height: 5),
+                            SizedBox(height: r.isMobile ? 3 : 5),
                             // الهاتف
                             Row(
                               children: [
                                 Icon(Icons.phone_rounded,
-                                    size: 13, color: _accent.withOpacity(0.7)),
-                                const SizedBox(width: 5),
+                                    size: r.isMobile ? 11 : 13, color: _accent.withOpacity(0.7)),
+                                SizedBox(width: r.isMobile ? 3 : 5),
                                 Text(
                                   employee.phoneNumber,
                                   style: GoogleFonts.cairo(
-                                      fontSize: 12, color: _textGray),
+                                      fontSize: r.captionSize, color: _textGray),
                                 ),
                               ],
                             ),
@@ -1045,8 +1060,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                         children: [
                           // شارة الحالة
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 3),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: r.isMobile ? 6 : 10, vertical: r.isMobile ? 2 : 3),
                             decoration: BoxDecoration(
                               color: employee.isActive
                                   ? _success.withOpacity(0.12)
@@ -1083,7 +1098,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                 Text(
                                   employee.isActive ? 'نشط' : 'معطل',
                                   style: GoogleFonts.cairo(
-                                    fontSize: 10,
+                                    fontSize: r.captionSize - 1,
                                     fontWeight: FontWeight.bold,
                                     color:
                                         employee.isActive ? _success : _danger,
@@ -1092,11 +1107,11 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: r.isMobile ? 6 : 12),
                           // سهم للدخول
                           Container(
-                            width: 28,
-                            height: 28,
+                            width: r.isMobile ? 22 : 28,
+                            height: r.isMobile ? 22 : 28,
                             decoration: BoxDecoration(
                               color: _accent.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),

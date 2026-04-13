@@ -695,8 +695,9 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       final apiStatus = Task.mapArabicStatusToApi(updatedTask.status);
       final amountText = _amountController.text.replaceAll(',', '').trim();
       final parsedAmount = double.tryParse(amountText);
-      await TaskApiService.instance.updateTask(
-        updatedTask.id,
+      final taskId = updatedTask.guid.isNotEmpty ? updatedTask.guid : updatedTask.id;
+      final result = await TaskApiService.instance.updateTask(
+        taskId,
         status: apiStatus,
         department: updatedTask.department,
         leader: updatedTask.leader,
@@ -712,23 +713,34 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         amount: parsedAmount,
       );
 
-      // إشعار الوالد بالتحديث
-      widget.onTaskUpdated(updatedTask);
+      if (result['success'] == true) {
+        // إشعار الوالد بالتحديث
+        widget.onTaskUpdated(updatedTask);
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم تحديث المهمة بنجاح'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم تحديث المهمة بنجاح'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']?.toString() ?? 'فشل تحديث المهمة'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تحديث المهمة'),
+            content: Text('خطأ في تحديث المهمة: $e'),
             backgroundColor: Colors.red,
           ),
         );

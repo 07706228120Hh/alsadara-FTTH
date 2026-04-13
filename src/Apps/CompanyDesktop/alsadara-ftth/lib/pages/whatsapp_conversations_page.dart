@@ -97,25 +97,30 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 600;
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
+        toolbarHeight: isSmall ? 48 : null,
+        titleSpacing: isSmall ? 4 : null,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(isSmall ? 5 : 8),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(isSmall ? 8 : 12),
               ),
-              child: const Icon(Icons.chat_bubble, size: 20),
+              child: Icon(Icons.chat_bubble, size: isSmall ? 16 : 20),
             ),
-            const SizedBox(width: 12),
-            const Text(
+            SizedBox(width: isSmall ? 6 : 12),
+            Text(
               'محادثات WhatsApp',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: isSmall ? 14 : 20,
               ),
             ),
           ],
@@ -132,8 +137,10 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
         actions: [
           // زر تنظيف المحادثات القديمة
           IconButton(
-            icon: const Icon(Icons.cleaning_services_rounded, size: 20),
+            icon: Icon(Icons.cleaning_services_rounded, size: isSmall ? 18 : 20),
             tooltip: 'حذف المحادثات الأقدم من 3 أيام',
+            constraints: isSmall ? const BoxConstraints(minWidth: 36, minHeight: 36) : null,
+            padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
@@ -174,10 +181,12 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               if (unreadCount == 0) return const SizedBox.shrink();
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                padding: EdgeInsets.symmetric(horizontal: isSmall ? 3.0 : 8.0),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmall ? 7 : 12,
+                    vertical: isSmall ? 3 : 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(20),
@@ -190,16 +199,18 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                     ],
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.notifications_active,
-                          size: 14, color: Colors.white),
-                      const SizedBox(width: 4),
+                      if (!isSmall)
+                        const Icon(Icons.notifications_active,
+                            size: 14, color: Colors.white),
+                      if (!isSmall) const SizedBox(width: 4),
                       Text(
                         '$unreadCount',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: isSmall ? 11 : 13,
                         ),
                       ),
                     ],
@@ -209,14 +220,15 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
             },
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: EdgeInsets.symmetric(horizontal: isSmall ? 2 : 4),
             child: ActionChip(
               avatar: Icon(
                 _showUnreadOnly ? Icons.mark_email_unread : Icons.mark_email_unread_outlined,
-                size: 16, color: _showUnreadOnly ? Colors.white : const Color(0xFF128C7E),
+                size: isSmall ? 14 : 16,
+                color: _showUnreadOnly ? Colors.white : const Color(0xFF128C7E),
               ),
-              label: Text('غير مقروءة', style: TextStyle(
-                fontSize: 12,
+              label: Text(isSmall ? 'جديد' : 'غير مقروءة', style: TextStyle(
+                fontSize: isSmall ? 10 : 12,
                 color: _showUnreadOnly ? Colors.white : const Color(0xFF128C7E),
                 fontWeight: FontWeight.bold,
               )),
@@ -225,10 +237,13 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               onPressed: () => setState(() => _showUnreadOnly = !_showUnreadOnly),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
+              padding: isSmall ? const EdgeInsets.symmetric(horizontal: 4) : null,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, size: isSmall ? 20 : 24),
+            constraints: isSmall ? const BoxConstraints(minWidth: 36, minHeight: 36) : null,
+            padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
             onPressed: () => setState(() {}),
             tooltip: 'تحديث',
           ),
@@ -238,7 +253,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
         children: [
           // شريط البحث
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmall ? 8 : 16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.grey[50]!, Colors.white],
@@ -249,28 +264,32 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(isSmall ? 24 : 30),
                 border: Border.all(
                   color: const Color(0xFF25D366).withValues(alpha: 0.3),
-                  width: 2,
+                  width: isSmall ? 1.5 : 2,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF25D366).withValues(alpha: 0.15),
-                    blurRadius: 15,
-                    spreadRadius: 2,
+                    blurRadius: isSmall ? 8 : 15,
+                    spreadRadius: isSmall ? 1 : 2,
                   ),
                 ],
               ),
               child: TextField(
                 controller: _searchController,
+                style: TextStyle(fontSize: isSmall ? 13 : 16),
                 decoration: InputDecoration(
                   hintText: 'البحث في المحادثات والأسماء...',
-                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  hintStyle: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: isSmall ? 12 : 14,
+                  ),
                   prefixIcon: Container(
-                    padding: const EdgeInsets.all(10),
-                    child: const Icon(Icons.search_rounded,
-                        color: Color(0xFF25D366), size: 26),
+                    padding: EdgeInsets.all(isSmall ? 6 : 10),
+                    child: Icon(Icons.search_rounded,
+                        color: const Color(0xFF25D366), size: isSmall ? 20 : 26),
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? Container(
@@ -278,9 +297,9 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                             color: Colors.grey[200],
                             shape: BoxShape.circle,
                           ),
-                          margin: const EdgeInsets.all(8),
+                          margin: EdgeInsets.all(isSmall ? 4 : 8),
                           child: IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            icon: Icon(Icons.clear_rounded, size: isSmall ? 16 : 18),
                             color: Colors.grey[700],
                             onPressed: () {
                               _searchController.clear();
@@ -290,13 +309,15 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                         )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(isSmall ? 24 : 30),
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: isSmall ? 12 : 20,
+                    vertical: isSmall ? 10 : 15,
+                  ),
                 ),
                 onChanged: (value) => setState(() => _searchQuery = value),
               ),
@@ -313,11 +334,12 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline,
-                            size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text('حدث خطأ: ${snapshot.error}'),
-                        const SizedBox(height: 16),
+                        Icon(Icons.error_outline,
+                            size: isSmall ? 40 : 64, color: Colors.red),
+                        SizedBox(height: isSmall ? 8 : 16),
+                        Text('حدث خطأ: ${snapshot.error}',
+                            style: TextStyle(fontSize: isSmall ? 12 : 14)),
+                        SizedBox(height: isSmall ? 8 : 16),
                         ElevatedButton.icon(
                           onPressed: () => setState(() {}),
                           icon: const Icon(Icons.refresh),
@@ -365,25 +387,28 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                           _searchQuery.isEmpty
                               ? Icons.chat_bubble_outline
                               : Icons.search_off,
-                          size: 80,
+                          size: isSmall ? 50 : 80,
                           color: Colors.grey[400],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: isSmall ? 8 : 16),
                         Text(
                           _searchQuery.isEmpty
                               ? 'لا توجد محادثات بعد'
                               : 'لم يتم العثور على نتائج',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: isSmall ? 14 : 18,
                             color: Colors.grey[600],
                           ),
                         ),
                         if (_searchQuery.isEmpty) ...[
-                          const SizedBox(height: 8),
+                          SizedBox(height: isSmall ? 4 : 8),
                           Text(
                             'عندما يرد العملاء على رسائلك،\nستظهر محادثاتهم هنا',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey[500]),
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: isSmall ? 12 : 14,
+                            ),
                           ),
                         ],
                       ],
@@ -408,6 +433,8 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
   }
 
   Widget _buildConversationTile(WhatsAppConversation conversation) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 600;
     final timeFormat = DateFormat('HH:mm');
     final dateFormat = DateFormat('dd/MM/yyyy');
     final now = DateTime.now();
@@ -416,26 +443,30 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
         conversation.lastMessageTime.day == now.day;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: EdgeInsets.symmetric(horizontal: isSmall ? 4 : 8, vertical: isSmall ? 2 : 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isSmall ? 12 : 16),
         color: Colors.white,
         border: Border.all(
           color: Colors.black,
-          width: conversation.unreadCount > 0 ? 2.5 : 1.5,
+          width: conversation.unreadCount > 0 ? (isSmall ? 1.5 : 2.5) : (isSmall ? 1 : 1.5),
         ),
         boxShadow: [
           BoxShadow(
             color: conversation.unreadCount > 0
                 ? const Color(0xFF25D366).withValues(alpha: 0.2)
                 : Colors.black.withValues(alpha: 0.08),
-            blurRadius: conversation.unreadCount > 0 ? 12 : 8,
-            offset: const Offset(0, 3),
+            blurRadius: conversation.unreadCount > 0 ? (isSmall ? 6 : 12) : (isSmall ? 4 : 8),
+            offset: Offset(0, isSmall ? 1 : 3),
           ),
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        dense: isSmall,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: isSmall ? 8 : 16,
+          vertical: isSmall ? 4 : 8,
+        ),
         leading: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -447,21 +478,21 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF25D366).withValues(alpha: 0.4),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                blurRadius: isSmall ? 4 : 8,
+                offset: Offset(0, isSmall ? 1 : 3),
               ),
             ],
           ),
           child: CircleAvatar(
             backgroundColor: Colors.transparent,
-            radius: 28,
+            radius: isSmall ? 20 : 28,
             child: Text(
               conversation.phoneNumber
                   .substring(conversation.phoneNumber.length - 2),
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: isSmall ? 13 : 18,
               ),
             ),
           ),
@@ -481,9 +512,9 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                           conversation.userName!.isNotEmpty)
                         Text(
                           conversation.userName!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: isSmall ? 13 : 16,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -497,8 +528,8 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                               : FontWeight.bold,
                           fontSize: conversation.userName != null &&
                                   conversation.userName!.isNotEmpty
-                              ? 13
-                              : 16,
+                              ? (isSmall ? 11 : 13)
+                              : (isSmall ? 13 : 16),
                           color: conversation.userName != null &&
                                   conversation.userName!.isNotEmpty
                               ? Colors.grey[600]
@@ -508,7 +539,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                       if (zone != null)
                         Text(
                           '📍 $zone',
-                          style: TextStyle(fontSize: 11, color: Colors.blue[700]),
+                          style: TextStyle(fontSize: isSmall ? 9 : 11, color: Colors.blue[700]),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -520,7 +551,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                   ? timeFormat.format(conversation.lastMessageTime)
                   : dateFormat.format(conversation.lastMessageTime),
               style: TextStyle(
-                fontSize: 12,
+                fontSize: isSmall ? 10 : 12,
                 color: conversation.unreadCount > 0
                     ? const Color(0xFF25D366)
                     : Colors.grey[600],
@@ -535,16 +566,17 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
             if (!conversation.isIncoming)
               Icon(
                 Icons.done_all,
-                size: 16,
+                size: isSmall ? 13 : 16,
                 color: Colors.grey[600],
               ),
-            if (!conversation.isIncoming) const SizedBox(width: 4),
+            if (!conversation.isIncoming) SizedBox(width: isSmall ? 2 : 4),
             Expanded(
               child: Text(
                 conversation.lastMessage,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
+                  fontSize: isSmall ? 11 : 14,
                   color: conversation.unreadCount > 0
                       ? Colors.black87
                       : Colors.grey[600],
@@ -561,7 +593,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
           children: [
             if (conversation.unreadCount > 0)
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(isSmall ? 5 : 8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF25D366), Color(0xFF128C7E)],
@@ -572,25 +604,27 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFF25D366).withValues(alpha: 0.5),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+                      blurRadius: isSmall ? 4 : 8,
+                      spreadRadius: isSmall ? 0 : 1,
                     ),
                   ],
                 ),
                 child: Text(
                   '${conversation.unreadCount}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: isSmall ? 10 : 12,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-            if (conversation.unreadCount > 0) const SizedBox(width: 8),
+            if (conversation.unreadCount > 0) SizedBox(width: isSmall ? 4 : 8),
             // زر البحث عن المشترك
             IconButton(
-              icon: const Icon(Icons.person_search, color: Color(0xFF1A237E), size: 22),
+              icon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: isSmall ? 18 : 22),
               tooltip: 'بحث عن المشترك',
+              constraints: isSmall ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+              padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
               onPressed: () {
                 final phone = conversation.formattedPhone;
                 HomePage.phoneSearchNotifier.value = phone;
@@ -603,8 +637,10 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 debugPrint('🔍 عرض زر الحذف: _isAdmin = $_isAdmin');
                 if (!_isAdmin) return const SizedBox.shrink();
                 return IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  icon: Icon(Icons.delete_outline, color: Colors.red, size: isSmall ? 18 : 24),
                   tooltip: 'حذف المحادثة',
+                  constraints: isSmall ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+                  padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
                   onPressed: () async {
                     // حفظ مرجع ScaffoldMessenger قبل العمليات غير المتزامنة
                     final scaffoldMessenger =

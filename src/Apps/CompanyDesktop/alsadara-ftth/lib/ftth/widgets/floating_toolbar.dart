@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/chat_service.dart';
 import '../../services/notification_api_service.dart';
 import '../../services/ticket_updates_service.dart';
-import '../../services/vps_sync_service.dart';
 import '../../services/whatsapp_conversation_service.dart';
 import '../../pages/whatsapp_conversations_page.dart' as conv_page;
 import '../../pages/chat/chat_rooms_page.dart';
@@ -24,9 +24,8 @@ class FloatingToolbar {
   // حالة الأزرار
   static bool _showWhatsApp = false;
   static bool _showConversations = false;
-  static bool _showVpsSync = false;
-  static bool _showTasks = false;       // تذاكر FTTH
-  static bool _showS1Tasks = false;     // مهام النظام الأول
+  static bool _showTasks = false;
+  static bool _showS1Tasks = false;
   static bool _showChat = false;
   static bool _showNotifications = false;
   static bool _isAdmin = false;
@@ -35,18 +34,139 @@ class FloatingToolbar {
   static VoidCallback? _s1TasksOnTap;
   static int _s1TasksCount = 0;
 
+  // تتبع الصفحة المفتوحة حالياً
+  static String? _currentOpenPage;
+  static bool _isNavigating = false; // حماية من الضغط المتكرر
+
+  // حالة الطي/الفتح
+  static final ValueNotifier<bool> _collapsedNotifier = ValueNotifier<bool>(false);
+
+  // إشعار shake لزر معين
+  static final ValueNotifier<String?> _shakeButtonNotifier = ValueNotifier<String?>(null);
+
   // notifiers
   static final ValueNotifier<int> _taskCount = ValueNotifier<int>(0);
   static final ValueNotifier<bool> _shakeNotifier = ValueNotifier<bool>(false);
   static final ValueNotifier<int> _chatUnreadCount = ValueNotifier<int>(0);
   static final ValueNotifier<int> _notifUnreadCount = ValueNotifier<int>(0);
+  static final ValueNotifier<int> _waUnreadCount = ValueNotifier<int>(0);
   static final ValueNotifier<_ToolbarConfig> _configNotifier =
       ValueNotifier<_ToolbarConfig>(_ToolbarConfig());
 
   static StreamSubscription? _taskCountSub;
   static StreamSubscription? _newTicketsSub;
   static StreamSubscription? _chatUnreadSub;
+  static StreamSubscription? _waUnreadSub;
   static Timer? _notifTimer;
+
+  // ═══ SharedPreferences keys ═══
+  static const _keyCollapsed = 'floating_toolbar_collapsed';
+  static const _keyDx = 'floating_toolbar_dx';
+  static const _keyDy = 'floating_toolbar_dy';
+
+  /// تحميل الحالة المحفوظة
+  static Future<void> _loadSavedState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _collapsedNotifier.value = prefs.getBool(_keyCollapsed) ?? false;
+    } catch (_) {}
+  }
+
+  /// حفظ حالة الطي
+  static Future<void> _saveCollapsed(bool collapsed) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyCollapsed, collapsed);
+    } catch (_) {}
+  }
+
+  /// حفظ الموقع
+  static Future<void> savePosition(double dx, double dy) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_keyDx, dx);
+      await prefs.setDouble(_keyDy, dy);
+    } catch (_) {}
+  }
+
+  /// تحميل الموقع المحفوظ
+  static Future<(double?, double?)> loadPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dx = prefs.getDouble(_keyDx);
+      final dy = prefs.getDouble(_keyDy);
+      return (dx, dy);
+    } catch (_) {
+      return (null, null);
+    }
+  }
+
+  /// طي/فتح الشريط
+  static void toggleCollapsed() {
+    _collapsedNotifier.value = !_collapsedNotifier.value;
+    _saveCollapsed(_collapsedNotifier.value);
+  }
+
+  /// إغلاق الصفحة المفتوحة حالياً
+  static void _closeCurrentPage() {
+    if (_currentOpenPage == null) return;
+    _currentOpenPage = null;
+    try {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null && Navigator.of(ctx).canPop()) {
+        Navigator.of(ctx).pop();
+      }
+    } catch (_) {}
+  }
+
+  /// فتح/إغلاق صفحة — نفس الزر يفتح ويغلق
+  static void _openPage(String pageName, VoidCallback openAction) {
+    if (_isNavigating) return;
+
+    // نفس الصفحة مفتوحة → أغلقها فقط (toggle)
+    if (_currentOpenPage == pageName) {
+      _closeCurrentPage();
+      return;
+    }
+
+    _isNavigating = true;
+
+    // صفحة مختلفة مفتوحة → أغلقها أولاً
+    if (_currentOpenPage != null) {
+      _closeCurrentPage();
+    }
+
+    // فتح الصفحة الجديدة بعد frame واحد لضمان اكتمال الإغلاق
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _currentOpenPage = pageName;
+      openAction();
+      // السماح بالضغط مجدداً بعد فترة
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isNavigating = false;
+      });
+    });
+  }
+
+  /// إعلام بإغلاق الصفحة (عند الرجوع بزر back أو سحب)
+  static void notifyPageClosed() {
+    _currentOpenPage = null;
+    _isNavigating = false;
+  }
+
+  /// تشغيل shake لزر معين
+  static void _triggerButtonShake(String buttonName) {
+    _shakeButtonNotifier.value = buttonName;
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (_shakeButtonNotifier.value == buttonName) {
+        _shakeButtonNotifier.value = null;
+      }
+    });
+  }
+
+  /// عدد الإشعارات الإجمالي من كل الأزرار
+  static int get totalBadgeCount =>
+      _taskCount.value + _s1TasksCount + _chatUnreadCount.value +
+      _notifUnreadCount.value + _waUnreadCount.value;
 
   /// تهيئة الشريط العائم — يُستدعى من home_page
   static void init(BuildContext context) {
@@ -57,7 +177,8 @@ class FloatingToolbar {
       return;
     }
 
-    // منع إنشاء أزرار FAB فردية قديمة وإزالة الموجودة
+    _loadSavedState();
+
     WhatsAppBottomWindow.suppressIndividualFabs = true;
     WhatsAppBottomWindow.removeAllFabs();
     AgentTasksBubble.suppressIndividualBubble = true;
@@ -67,7 +188,9 @@ class FloatingToolbar {
     _taskCountSub =
         TicketUpdatesService.instance.agentTaskCountStream.listen((count) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final old = _taskCount.value;
         _taskCount.value = count;
+        if (count > old && old >= 0) _triggerButtonShake('ftth_tickets');
         _refreshConfig();
       });
     });
@@ -78,6 +201,7 @@ class FloatingToolbar {
       if (newTasks.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _shakeNotifier.value = true;
+          _triggerButtonShake('ftth_tickets');
         });
         Future.delayed(const Duration(milliseconds: 800), () {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -95,46 +219,44 @@ class FloatingToolbar {
         _refreshConfig();
       });
     }
+
   }
 
-  /// إظهار زر واتساب ويب
   static void enableWhatsApp() {
     _showWhatsApp = true;
     _scheduleRefresh();
   }
 
-  /// إظهار زر محادثات الواتساب
   static void enableConversations({bool isAdmin = false}) {
     _showConversations = true;
     _isAdmin = isAdmin;
+    // الاشتراك في عدد واتساب غير المقروء
+    _waUnreadSub?.cancel();
+    _waUnreadSub = WhatsAppConversationService.getUnreadCount().listen((count) {
+      final old = _waUnreadCount.value;
+      _waUnreadCount.value = count;
+      if (count > old && old >= 0) _triggerButtonShake('conversations');
+    });
     _scheduleRefresh();
   }
 
-  /// إخفاء زر المحادثات
   static void disableConversations() {
     _showConversations = false;
+    _waUnreadSub?.cancel();
+    _waUnreadSub = null;
     _scheduleRefresh();
   }
 
-  /// إظهار زر تحديث VPS
-  static void enableVpsSync() {
-    _showVpsSync = true;
-    _scheduleRefresh();
-  }
-
-  /// إظهار زر التذاكر (FTTH) في الشريط العائم
   static void enableTasks() {
     _showTasks = true;
     _scheduleRefresh();
   }
 
-  /// إخفاء زر التذاكر
   static void disableTasks() {
     _showTasks = false;
     _scheduleRefresh();
   }
 
-  /// إظهار زر المهام (النظام الأول) في الشريط العائم
   static void enableS1Tasks({required VoidCallback onTap, int badgeCount = 0}) {
     _showS1Tasks = true;
     _s1TasksOnTap = onTap;
@@ -142,13 +264,13 @@ class FloatingToolbar {
     _scheduleRefresh();
   }
 
-  /// تحديث بادج المهام
   static void updateS1TasksBadge(int count) {
+    final old = _s1TasksCount;
     _s1TasksCount = count;
+    if (count > old && old >= 0) _triggerButtonShake('s1tasks');
     _scheduleRefresh();
   }
 
-  /// إعادة تفعيل زر المهام (النظام الأول) إذا كان مُفعّلاً سابقاً
   static void reEnableS1Tasks() {
     if (_s1TasksOnTap != null) {
       _showS1Tasks = true;
@@ -156,7 +278,6 @@ class FloatingToolbar {
     }
   }
 
-  /// إخفاء زر المهام (النظام الأول)
   static void disableS1Tasks() {
     _showS1Tasks = false;
     _s1TasksOnTap = null;
@@ -164,21 +285,20 @@ class FloatingToolbar {
     _scheduleRefresh();
   }
 
-  /// إظهار زر المحادثة الداخلية في الشريط العائم
   static void enableChat() {
     _showChat = true;
-    // الاشتراك في عداد الرسائل غير المقروءة
     _chatUnreadSub?.cancel();
     _chatUnreadSub = ChatService.instance.onUnreadCount.listen((count) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final old = _chatUnreadCount.value;
         _chatUnreadCount.value = count;
+        if (count > old && old >= 0) _triggerButtonShake('chat');
       });
     });
     ChatService.instance.refreshUnreadCount();
     _scheduleRefresh();
   }
 
-  /// إخفاء زر المحادثة الداخلية
   static void disableChat() {
     _showChat = false;
     _chatUnreadSub?.cancel();
@@ -186,10 +306,8 @@ class FloatingToolbar {
     _scheduleRefresh();
   }
 
-  /// إظهار زر الإشعارات في الشريط العائم
   static void enableNotifications() {
     _showNotifications = true;
-    // جلب عدد الإشعارات غير المقروءة كل 30 ثانية
     _notifTimer?.cancel();
     _fetchNotifCount();
     _notifTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -198,7 +316,6 @@ class FloatingToolbar {
     _scheduleRefresh();
   }
 
-  /// إخفاء زر الإشعارات
   static void disableNotifications() {
     _showNotifications = false;
     _notifTimer?.cancel();
@@ -212,16 +329,16 @@ class FloatingToolbar {
       if (res['success'] == true) {
         final count = (res['data'] ?? 0) as int;
         WidgetsBinding.instance.addPostFrameCallback((_) {
+          final old = _notifUnreadCount.value;
           _notifUnreadCount.value = count;
+          if (count > old && old >= 0) _triggerButtonShake('notifications');
         });
       }
     } catch (_) {}
   }
 
-  /// تحديث عداد الإشعارات يدوياً (يُستدعى بعد قراءة إشعار)
   static void refreshNotifCount() => _fetchNotifCount();
 
-  /// جدولة تحديث آمن — دائماً يؤجَّل لما بعد الـ frame الحالي
   static bool _refreshScheduled = false;
   static void _scheduleRefresh() {
     if (_refreshScheduled) return;
@@ -233,18 +350,11 @@ class FloatingToolbar {
   }
 
   static void _refreshConfig() {
-    final hasAny = _showWhatsApp ||
-        _showConversations ||
-        _showVpsSync ||
-        _showTasks ||
-        _showS1Tasks ||
-        _showChat ||
-        _showNotifications ||
-        _taskCount.value > 0;
+    final hasAny = _showWhatsApp || _showConversations || _showTasks ||
+        _showS1Tasks || _showChat || _showNotifications;
     _configNotifier.value = _ToolbarConfig(
       showWhatsApp: _showWhatsApp,
       showConversations: _showConversations,
-      showVpsSync: _showVpsSync,
       showTasks: _showTasks,
       showS1Tasks: _showS1Tasks,
       showChat: _showChat,
@@ -266,8 +376,11 @@ class FloatingToolbar {
       configNotifier: _configNotifier,
       taskCountNotifier: _taskCount,
       shakeNotifier: _shakeNotifier,
+      shakeButtonNotifier: _shakeButtonNotifier,
       chatUnreadNotifier: _chatUnreadCount,
       notifUnreadNotifier: _notifUnreadCount,
+      waUnreadNotifier: _waUnreadCount,
+      collapsedNotifier: _collapsedNotifier,
       isAdmin: _isAdmin,
     ));
     _rootOverlay!.insert(_entry!);
@@ -284,25 +397,29 @@ class FloatingToolbar {
     _taskCountSub?.cancel();
     _newTicketsSub?.cancel();
     _chatUnreadSub?.cancel();
+    _waUnreadSub?.cancel();
     _notifTimer?.cancel();
     _notifTimer = null;
     _chatUnreadSub = null;
+    _waUnreadSub = null;
     _hide();
     _rootOverlay = null;
     _showWhatsApp = false;
     _showConversations = false;
-    _showVpsSync = false;
     _showTasks = false;
     _showS1Tasks = false;
     _s1TasksOnTap = null;
     _s1TasksCount = 0;
     _showChat = false;
     _showNotifications = false;
+    _currentOpenPage = null;
+    _isNavigating = false;
     _refreshScheduled = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _taskCount.value = 0;
       _chatUnreadCount.value = 0;
       _notifUnreadCount.value = 0;
+      _waUnreadCount.value = 0;
     });
     WhatsAppBottomWindow.suppressIndividualFabs = false;
     AgentTasksBubble.suppressIndividualBubble = false;
@@ -312,7 +429,6 @@ class FloatingToolbar {
 class _ToolbarConfig {
   final bool showWhatsApp;
   final bool showConversations;
-  final bool showVpsSync;
   final bool showTasks;
   final bool showS1Tasks;
   final bool showChat;
@@ -322,7 +438,6 @@ class _ToolbarConfig {
   _ToolbarConfig({
     this.showWhatsApp = false,
     this.showConversations = false,
-    this.showVpsSync = false,
     this.showTasks = false,
     this.showS1Tasks = false,
     this.showChat = false,
@@ -337,16 +452,22 @@ class _ToolbarOverlay extends StatefulWidget {
   final ValueNotifier<_ToolbarConfig> configNotifier;
   final ValueNotifier<int> taskCountNotifier;
   final ValueNotifier<bool> shakeNotifier;
+  final ValueNotifier<String?> shakeButtonNotifier;
   final ValueNotifier<int> chatUnreadNotifier;
   final ValueNotifier<int> notifUnreadNotifier;
+  final ValueNotifier<int> waUnreadNotifier;
+  final ValueNotifier<bool> collapsedNotifier;
   final bool isAdmin;
 
   const _ToolbarOverlay({
     required this.configNotifier,
     required this.taskCountNotifier,
     required this.shakeNotifier,
+    required this.shakeButtonNotifier,
     required this.chatUnreadNotifier,
     required this.notifUnreadNotifier,
+    required this.waUnreadNotifier,
+    required this.collapsedNotifier,
     required this.isAdmin,
   });
 
@@ -355,12 +476,16 @@ class _ToolbarOverlay extends StatefulWidget {
 }
 
 class _ToolbarOverlayState extends State<_ToolbarOverlay>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   double? _dx;
   double? _dy;
+  bool _positionLoaded = false;
 
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
+
+  // shake controllers لكل زر
+  final Map<String, AnimationController> _btnShakeControllers = {};
 
   @override
   void initState() {
@@ -378,6 +503,41 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
     ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
 
     widget.shakeNotifier.addListener(_onShake);
+    widget.shakeButtonNotifier.addListener(_onButtonShake);
+
+    _loadPosition();
+  }
+
+  Future<void> _loadPosition() async {
+    final (dx, dy) = await FloatingToolbar.loadPosition();
+    if (mounted && (dx != null || dy != null)) {
+      setState(() {
+        _dx = dx;
+        _dy = dy;
+        _positionLoaded = true;
+      });
+    } else {
+      _positionLoaded = true;
+    }
+  }
+
+  AnimationController _getOrCreateShakeCtrl(String name) {
+    if (!_btnShakeControllers.containsKey(name)) {
+      _btnShakeControllers[name] = AnimationController(
+        duration: const Duration(milliseconds: 600),
+        vsync: this,
+      );
+    }
+    return _btnShakeControllers[name]!;
+  }
+
+  Animation<double> _buildShakeAnimation(AnimationController ctrl) {
+    return TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.25), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 1.25, end: 0.9), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.15), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 1.15, end: 1.0), weight: 1),
+    ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeInOut));
   }
 
   void _onShake() {
@@ -386,462 +546,403 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
     }
   }
 
+  void _onButtonShake() {
+    final name = widget.shakeButtonNotifier.value;
+    if (name != null) {
+      final ctrl = _getOrCreateShakeCtrl(name);
+      ctrl.forward(from: 0.0);
+    }
+  }
+
   @override
   void dispose() {
     widget.shakeNotifier.removeListener(_onShake);
+    widget.shakeButtonNotifier.removeListener(_onButtonShake);
     _shakeCtrl.dispose();
+    for (final c in _btnShakeControllers.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void _openToolbarPage(String name, Widget page) {
+    FloatingToolbar._openPage(name, () {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      Navigator.of(ctx).push(
+        MaterialPageRoute(builder: (_) => page),
+      ).then((_) => FloatingToolbar.notifyPageClosed());
+    });
+  }
+
+  void _openToolbarPageInstant(String name, Widget page) {
+    FloatingToolbar._openPage(name, () {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      Navigator.of(ctx).push(
+        PageRouteBuilder(
+          pageBuilder: (c, a, b) => page,
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          transitionsBuilder: (c, a, b, child) => child,
+        ),
+      ).then((_) => FloatingToolbar.notifyPageClosed());
+    });
+  }
+
+  Widget _buildBadge(int count) {
+    if (count <= 0) return const SizedBox.shrink();
+    return Positioned(
+      top: -4,
+      right: -4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)],
+        ),
+        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+        child: Text(
+          count > 99 ? '99+' : '$count',
+          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  /// بناء زر دائري مع دعم shake
+  Widget _buildCircleBtn({
+    required String name,
+    required String tooltip,
+    required Color color,
+    required IconData icon,
+    required VoidCallback onTap,
+    int badge = 0,
+    double btnSize = 38,
+    double iconSize = 18,
+  }) {
+    final ctrl = _getOrCreateShakeCtrl(name);
+    final scaleAnim = _buildShakeAnimation(ctrl);
+
+    return AnimatedBuilder(
+      animation: scaleAnim,
+      builder: (_, child) => Transform.scale(scale: scaleAnim.value, child: child),
+      child: Tooltip(
+        message: tooltip,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: SizedBox(
+            width: btnSize,
+            height: btnSize,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Material(
+                  color: color,
+                  shape: const CircleBorder(),
+                  elevation: 2,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onTap,
+                    child: Center(
+                      child: Icon(icon, color: Colors.white, size: iconSize),
+                    ),
+                  ),
+                ),
+                _buildBadge(badge),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // _dx = المسافة من اليمين (right)، _dy = المسافة من الأعلى (top)
+  void _onDragUpdate(DragUpdateDetails d, double maxW, double maxH, bool isMobile) {
+    setState(() {
+      final defaultRight = isMobile ? 10.0 : 20.0;
+      final defaultDy = maxH - (isMobile ? 120.0 : 70.0);
+      final currentRight = _dx ?? defaultRight;
+      final currentDy = _dy ?? defaultDy;
+      // dx = right: السحب لليمين يقلل right، والعكس
+      _dx = (currentRight - d.delta.dx).clamp(0.0, maxW - 60);
+      _dy = (currentDy + d.delta.dy).clamp(40.0, maxH - (isMobile ? 100 : 60));
+    });
+  }
+
+  void _onDragEnd() {
+    if (_dx != null && _dy != null) {
+      FloatingToolbar.savePosition(_dx!, _dy!);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context).size;
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final btnSize = isMobile ? 34.0 : 38.0;
+    final iconSize = isMobile ? 16.0 : 18.0;
 
-    return ValueListenableBuilder<_ToolbarConfig>(
-      valueListenable: widget.configNotifier,
-      builder: (_, config, __) {
-        final buttons = <Widget>[];
+    return ValueListenableBuilder<bool>(
+      valueListenable: widget.collapsedNotifier,
+      builder: (_, collapsed, __) {
+        return ValueListenableBuilder<_ToolbarConfig>(
+          valueListenable: widget.configNotifier,
+          builder: (_, config, __) {
+            final defaultRight = isMobile ? 10.0 : 20.0;
+            final right = _dx ?? defaultRight;
+            final dy = _dy ?? (mq.height - (isMobile ? 120 : 70));
 
-        // زر الإشعارات
-        if (config.showNotifications) {
-          buttons.add(_buildNotificationsBtn(context));
-        }
-
-        // زر المحادثة الداخلية
-        if (config.showChat) {
-          buttons.add(_buildChatBtn(context));
-        }
-
-        // زر محادثات الواتساب
-        if (config.showConversations) {
-          buttons.add(_buildConversationsBtn(context, mq));
-        }
-
-        // زر المهام (النظام الأول)
-        if (config.showS1Tasks) {
-          buttons.add(_buildS1TasksBtn(context, config.s1TasksCount));
-        }
-
-        // زر التذاكر (FTTH) — يظهر فقط إذا مفعّل بالصلاحية
-        if (config.showTasks) {
-          buttons.add(ValueListenableBuilder<int>(
-            valueListenable: widget.taskCountNotifier,
-            builder: (_, count, __) {
-              return AnimatedBuilder(
-                animation: _shakeAnim,
-                builder: (_, child) =>
-                    Transform.rotate(angle: _shakeAnim.value, child: child),
-                child: _buildTasksBtn(context, count),
-              );
-            },
-          ));
-        } else {
-          // السلوك القديم: يظهر ذاتياً فقط عند وجود تذاكر
-          buttons.add(ValueListenableBuilder<int>(
-            valueListenable: widget.taskCountNotifier,
-            builder: (_, count, __) {
-              if (count <= 0) return const SizedBox.shrink();
-              return AnimatedBuilder(
-                animation: _shakeAnim,
-                builder: (_, child) =>
-                    Transform.rotate(angle: _shakeAnim.value, child: child),
-                child: _buildTasksBtn(context, count),
-              );
-            },
-          ));
-        }
-
-        // زر واتساب ويب
-        if (config.showWhatsApp) {
-          buttons.add(_buildWhatsAppBtn(context));
-        }
-
-        // زر تحديث VPS
-        if (config.showVpsSync) {
-          buttons.add(_buildVpsSyncBtn(context));
-        }
-
-        if (buttons.isEmpty) return const SizedBox.shrink();
-
-        final isMobile = Platform.isAndroid || Platform.isIOS;
-        final dx = _dx ?? (mq.width - 280);
-        final dy = _dy ?? (mq.height - (isMobile ? 140 : 70));
-
-        return Positioned(
-          left: dx,
-          top: dy,
-          child: GestureDetector(
-            onPanUpdate: (d) {
-              setState(() {
-                _dx = (_dx ?? dx) + d.delta.dx;
-                _dy = (_dy ?? dy) + d.delta.dy;
-                _dx = _dx!.clamp(0.0, mq.width - 200);
-                _dy = _dy!.clamp(40.0, mq.height - (isMobile ? 120 : 60));
-              });
-            },
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(24),
-              color: Colors.white.withValues(alpha: 0.95),
-              shadowColor: Colors.black38,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.grey.shade300, width: 0.5),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.drag_indicator,
-                        size: 18, color: Colors.grey.shade400),
-                    const SizedBox(width: 2),
-                    ...buttons,
-                  ],
-                ),
-              ),
-            ),
-          ),
+            if (collapsed) {
+              return _buildCollapsedToolbar(right, dy, mq, isMobile);
+            }
+            return _buildExpandedToolbar(config, right, dy, mq, isMobile, btnSize, iconSize);
+          },
         );
       },
     );
   }
 
-  // ═══════════════════════════════════════
-  // أزرار الشريط
-  // ═══════════════════════════════════════
-
-  Widget _buildWhatsAppBtn(BuildContext context) {
-    return Tooltip(
-      message: 'واتساب عادي',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: SizedBox(
-          width: 38,
-          height: 38,
-          child: Material(
-            color: const Color(0xFF25D366),
-            shape: const CircleBorder(),
-            elevation: 2,
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () {
-                WhatsAppBottomWindow.showBottomWindow(context, '', '');
+  /// الشريط المطوي — أيقونة واحدة مع نقطة إشعار
+  Widget _buildCollapsedToolbar(double right, double dy, Size mq, bool isMobile) {
+    return Positioned(
+      right: right,
+      top: dy,
+      child: GestureDetector(
+        onPanUpdate: (d) => _onDragUpdate(d, mq.width, mq.height, isMobile),
+        onPanEnd: (_) => _onDragEnd(),
+        onTap: FloatingToolbar.toggleCollapsed,
+        child: ValueListenableBuilder<int>(
+          valueListenable: widget.taskCountNotifier,
+          builder: (_, taskCount, __) {
+            return ValueListenableBuilder<int>(
+              valueListenable: widget.chatUnreadNotifier,
+              builder: (_, chatUnread, __) {
+                return ValueListenableBuilder<int>(
+                  valueListenable: widget.notifUnreadNotifier,
+                  builder: (_, notifUnread, __) {
+                    return ValueListenableBuilder<int>(
+                      valueListenable: widget.waUnreadNotifier,
+                      builder: (_, waUnread, __) {
+                        final total = taskCount + FloatingToolbar._s1TasksCount +
+                            chatUnread + notifUnread + waUnread;
+                        return Material(
+                          elevation: 8,
+                          shape: const CircleBorder(),
+                          color: const Color(0xFF1A237E),
+                          shadowColor: Colors.black38,
+                          child: SizedBox(
+                            width: isMobile ? 44 : 50,
+                            height: isMobile ? 44 : 50,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                const Center(
+                                  child: Icon(Icons.apps_rounded, color: Colors.white, size: 22),
+                                ),
+                                if (total > 0)
+                                  Positioned(
+                                    top: -2,
+                                    right: -2,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(10),
+                                        boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.5), blurRadius: 6)],
+                                      ),
+                                      constraints: const BoxConstraints(minWidth: 18, minHeight: 16),
+                                      child: Text(
+                                        total > 99 ? '99+' : '$total',
+                                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
               },
-              child: const Center(
-                child: Icon(Icons.chat, color: Colors.white, size: 18),
-              ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildConversationsBtn(BuildContext context, Size mq) {
-    return Tooltip(
-      message: 'واتساب خاص',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: StreamBuilder<int>(
-          stream: WhatsAppConversationService.getUnreadCount(),
-          builder: (context, snapshot) {
-            final unread = snapshot.data ?? 0;
-            return SizedBox(
-              width: 38,
-              height: 38,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Material(
-                    color: const Color(0xFF128C7E),
-                    shape: const CircleBorder(),
-                    elevation: 2,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        if (conv_page.WhatsAppConversationsPage.isOpen) return;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => conv_page.WhatsAppConversationsPage(
-                                isAdmin: widget.isAdmin),
-                          ),
-                        );
-                      },
-                      child: const Center(
-                        child: Icon(Icons.chat_bubble,
-                            color: Colors.white, size: 18),
-                      ),
-                    ),
-                  ),
-                if (unread > 0)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints:
-                          const BoxConstraints(minWidth: 16, minHeight: 16),
-                      child: Text(
-                        unread > 99 ? '99+' : '$unread',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
+  /// الشريط الموسّع — كل الأزرار
+  Widget _buildExpandedToolbar(_ToolbarConfig config, double right, double dy,
+      Size mq, bool isMobile, double btnSize, double iconSize) {
+    final buttons = <Widget>[];
+
+    if (config.showNotifications) {
+      buttons.add(ValueListenableBuilder<int>(
+        valueListenable: widget.notifUnreadNotifier,
+        builder: (_, unread, __) => _buildCircleBtn(
+          name: 'notifications',
+          tooltip: unread > 0 ? 'الإشعارات ($unread)' : 'الإشعارات',
+          color: const Color(0xFF6A1B9A),
+          icon: Icons.notifications_rounded,
+          badge: unread,
+          btnSize: btnSize,
+          iconSize: iconSize,
+          onTap: () => _showNotificationsPanel(context),
+        ),
+      ));
+    }
+
+    if (config.showChat) {
+      buttons.add(ValueListenableBuilder<int>(
+        valueListenable: widget.chatUnreadNotifier,
+        builder: (_, unread, __) => _buildCircleBtn(
+          name: 'chat',
+          tooltip: unread > 0 ? 'المحادثة ($unread)' : 'المحادثة الداخلية',
+          color: const Color(0xFF1976D2),
+          icon: Icons.forum_rounded,
+          badge: unread,
+          btnSize: btnSize,
+          iconSize: iconSize + 2,
+          onTap: () => _openToolbarPage('chat', const ChatRoomsPage()),
+        ),
+      ));
+    }
+
+    if (config.showConversations) {
+      buttons.add(ValueListenableBuilder<int>(
+        valueListenable: widget.waUnreadNotifier,
+        builder: (_, unread, __) => _buildCircleBtn(
+          name: 'conversations',
+          tooltip: unread > 0 ? 'واتساب خاص ($unread)' : 'واتساب خاص',
+          color: const Color(0xFF128C7E),
+          icon: Icons.chat_bubble,
+          badge: unread,
+          btnSize: btnSize,
+          iconSize: iconSize,
+          onTap: () {
+            if (conv_page.WhatsAppConversationsPage.isOpen) return;
+            _openToolbarPage('conversations',
+              conv_page.WhatsAppConversationsPage(isAdmin: widget.isAdmin));
+          },
+        ),
+      ));
+    }
+
+    if (config.showS1Tasks) {
+      buttons.add(_buildCircleBtn(
+        name: 's1tasks',
+        tooltip: config.s1TasksCount > 0 ? 'المهام (${config.s1TasksCount})' : 'المهام',
+        color: const Color(0xFF43A047),
+        icon: Icons.task_alt_rounded,
+        badge: config.s1TasksCount,
+        btnSize: btnSize,
+        iconSize: iconSize + 2,
+        onTap: () {
+          if (FloatingToolbar._s1TasksOnTap != null) {
+            FloatingToolbar._closeCurrentPage();
+            FloatingToolbar._currentOpenPage = 's1tasks';
+            FloatingToolbar._s1TasksOnTap!();
+          }
+        },
+      ));
+    }
+
+    if (config.showTasks) {
+      buttons.add(ValueListenableBuilder<int>(
+        valueListenable: widget.taskCountNotifier,
+        builder: (_, count, __) {
+          return AnimatedBuilder(
+            animation: _shakeAnim,
+            builder: (_, child) =>
+                Transform.rotate(angle: _shakeAnim.value, child: child),
+            child: _buildCircleBtn(
+              name: 'ftth_tickets',
+              tooltip: count > 0 ? 'تذاكر مفتوحة ($count)' : 'التذاكر',
+              color: Colors.orange.shade700,
+              icon: Icons.assignment_rounded,
+              badge: count,
+              btnSize: btnSize,
+              iconSize: iconSize + 2,
+              onTap: () {
+                final token = TicketUpdatesService.instance.currentToken;
+                if (token == null || token.isEmpty) return;
+                _openToolbarPageInstant('ftth_tickets',
+                  TKTATsPage(authToken: token, initialTab: 'open'));
+              },
             ),
           );
         },
-        ),
-      ),
-    );
-  }
+      ));
+    }
 
-  Widget _buildS1TasksBtn(BuildContext context, int count) {
-    return Tooltip(
-      message: count > 0 ? 'المهام ($count)' : 'المهام',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: SizedBox(
-          width: 38,
-          height: 38,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Material(
-                color: const Color(0xFF43A047),
-                shape: const CircleBorder(),
-                elevation: 2,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: FloatingToolbar._s1TasksOnTap,
-                  child: const Center(
-                    child: Icon(Icons.task_alt_rounded,
-                        color: Colors.white, size: 20),
-                  ),
-                ),
-              ),
-              if (count > 0)
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)],
-                    ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text(
-                      count > 99 ? '99+' : '$count',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+    if (config.showWhatsApp) {
+      buttons.add(_buildCircleBtn(
+        name: 'whatsapp',
+        tooltip: 'واتساب عادي',
+        color: const Color(0xFF25D366),
+        icon: Icons.chat,
+        btnSize: btnSize,
+        iconSize: iconSize,
+        onTap: () {
+          WhatsAppBottomWindow.showBottomWindow(context, '', '');
+        },
+      ));
+    }
 
-  Widget _buildTasksBtn(BuildContext context, int count) {
-    return Tooltip(
-      message: count > 0 ? 'تذاكر مفتوحة ($count)' : 'التذاكر',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: SizedBox(
-        width: 38,
-        height: 38,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Material(
-              color: Colors.orange.shade700,
-              shape: const CircleBorder(),
-              elevation: 2,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () {
-                  final ctx = navigatorKey.currentContext;
-                  if (ctx == null) return;
-                  final token = TicketUpdatesService.instance.currentToken;
-                  if (token == null || token.isEmpty) return;
-                  Navigator.of(ctx).push(
-                    PageRouteBuilder(
-                      pageBuilder: (c, a, b) => TKTATsPage(authToken: token, initialTab: 'open'),
-                      transitionDuration: Duration.zero,
-                      reverseTransitionDuration: Duration.zero,
-                      transitionsBuilder: (c, a, b, child) => child,
-                    ),
-                  );
-                },
-                child: const Center(
-                  child: Icon(Icons.assignment_rounded,
-                      color: Colors.white, size: 20),
-                ),
-              ),
+    if (buttons.isEmpty) return const SizedBox.shrink();
+
+    return Positioned(
+      right: right,
+      top: dy,
+      child: GestureDetector(
+        onPanUpdate: (d) => _onDragUpdate(d, mq.width, mq.height, isMobile),
+        onPanEnd: (_) => _onDragEnd(),
+        child: Material(
+          elevation: 8,
+          borderRadius: BorderRadius.circular(24),
+          color: Colors.white.withValues(alpha: 0.95),
+          shadowColor: Colors.black38,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 5 : 8,
+              vertical: isMobile ? 3 : 4,
             ),
-            if (count > 0)
-              Positioned(
-                top: -4,
-                right: -4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)],
-                  ),
-                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                  child: Text(
-                    count > 99 ? '99+' : '$count',
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
-                    textAlign: TextAlign.center,
-                  ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.grey.shade300, width: 0.5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // زر الطي
+                GestureDetector(
+                  onTap: FloatingToolbar.toggleCollapsed,
+                  child: Icon(Icons.keyboard_arrow_left_rounded,
+                      size: isMobile ? 18 : 22, color: Colors.grey.shade500),
                 ),
-              ),
-          ],
-        ),
-       ),
-      ),
-    );
-  }
-
-  Widget _buildChatBtn(BuildContext context) {
-    return Tooltip(
-      message: 'المحادثة الداخلية',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: ValueListenableBuilder<int>(
-          valueListenable: widget.chatUnreadNotifier,
-          builder: (_, unread, __) {
-            return SizedBox(
-              width: 38,
-              height: 38,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Material(
-                    color: const Color(0xFF1976D2),
-                    shape: const CircleBorder(),
-                    elevation: 2,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        final ctx = navigatorKey.currentContext;
-                        if (ctx == null) return;
-                        Navigator.of(ctx).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ChatRoomsPage(),
-                          ),
-                        );
-                      },
-                      child: const Center(
-                        child: Icon(Icons.forum_rounded,
-                            color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ),
-                  if (unread > 0)
-                    Positioned(
-                      top: -4,
-                      right: -4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)],
-                        ),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text(
-                          unread > 99 ? '99+' : '$unread',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNotificationsBtn(BuildContext context) {
-    return Tooltip(
-      message: 'الإشعارات',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: ValueListenableBuilder<int>(
-          valueListenable: widget.notifUnreadNotifier,
-          builder: (_, unread, __) {
-            return SizedBox(
-              width: 38,
-              height: 38,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Material(
-                    color: const Color(0xFF6A1B9A),
-                    shape: const CircleBorder(),
-                    elevation: 2,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        _showNotificationsPanel(context);
-                      },
-                      child: const Center(
-                        child: Icon(Icons.notifications_rounded,
-                            color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ),
-                  if (unread > 0)
-                    Positioned(
-                      top: -4,
-                      right: -4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)],
-                        ),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text(
-                          unread > 99 ? '99+' : '$unread',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
+                SizedBox(width: isMobile ? 1 : 2),
+                // أيقونة السحب
+                Icon(Icons.drag_indicator,
+                    size: isMobile ? 14 : 18, color: Colors.grey.shade400),
+                SizedBox(width: isMobile ? 1 : 2),
+                ...buttons,
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
   void _showNotificationsPanel(BuildContext context) {
+    FloatingToolbar._closeCurrentPage();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -851,68 +952,9 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
       ),
     );
   }
-
-  Widget _buildVpsSyncBtn(BuildContext context) {
-    final vps = VpsSyncService.instance;
-    return AnimatedBuilder(
-      animation: vps,
-      builder: (_, __) {
-        final syncing = vps.isSyncing;
-        return Tooltip(
-          message: syncing ? vps.statusMessage : 'تحديث البيانات من السيرفر',
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: SizedBox(
-              width: 38,
-              height: 38,
-              child: Material(
-                color: syncing ? Colors.blue.shade600 : Colors.indigo.shade600,
-                shape: const CircleBorder(),
-                elevation: 2,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: syncing
-                      ? null
-                      : () async {
-                          final result = await vps.syncFromVps();
-                          if (context.mounted) {
-                            final msg = result.success
-                                ? 'تم التحديث — ${result.totalCount} مشترك'
-                                : result.error ?? 'فشل التحديث';
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(msg),
-                                duration: const Duration(seconds: 3),
-                                backgroundColor:
-                                    result.success ? Colors.green : Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                  child: Center(
-                    child: syncing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.cloud_download,
-                            color: Colors.white, size: 18),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
-/// لوحة الإشعارات — تُفتح من زر الإشعارات العائم
+/// لوحة الإشعارات
 class _NotificationsPanel extends StatefulWidget {
   final VoidCallback? onRead;
   const _NotificationsPanel({this.onRead});
