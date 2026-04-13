@@ -9,6 +9,7 @@ import 'reports_page.dart';
 import 'technician_performance_page.dart';
 import '../services/whatsapp_template_storage.dart';
 import '../ftth/tasks/customer_search_connect_page.dart';
+import '../services/task_api_service.dart';
 
 class HomePageTasks extends StatefulWidget {
   final String username;
@@ -56,6 +57,8 @@ class HomePageTasksState extends State<HomePageTasks> {
   // البحث
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  bool _isServerSearching = false;
+  List<Task>? _serverSearchResults; // null = لا يوجد بحث سيرفر نشط
 
   // فلاتر متقدمة
   String? _filterDepartment;
@@ -203,6 +206,11 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   void _filterTasksByStatus(String status) {
     setState(() {
+      // إذا يوجد نتائج بحث من السيرفر، نعرضها مباشرة
+      if (_serverSearchResults != null) {
+        _filteredTasks = _serverSearchResults!;
+        return;
+      }
       if (status == 'اللوحة') {
         _applyPermissionFilter();
       } else if (status == 'تحصيل') {
@@ -1458,59 +1466,124 @@ class HomePageTasksState extends State<HomePageTasks> {
     );
   }
 
+  /// بحث في السيرفر عن كل المهام
+  Future<void> _searchOnServer(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _serverSearchResults = null;
+        _isServerSearching = false;
+      });
+      _applyPermissionFilter();
+      _filterTasksByStatus(_getStatusByIndex(currentIndex));
+      return;
+    }
+    setState(() => _isServerSearching = true);
+    try {
+      final response = await TaskApiService.instance.searchAllTasks(query.trim());
+      final List<dynamic> items = response['data'] ?? [];
+      final tasks = items
+          .map((item) => Task.fromApiResponse(item as Map<String, dynamic>))
+          .toList();
+      if (mounted) {
+        setState(() {
+          _serverSearchResults = tasks;
+          _isServerSearching = false;
+          _filteredTasks = tasks;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isServerSearching = false);
+    }
+  }
+
   /// شريط البحث
   Widget _buildSearchBar() {
     final isSmall = MediaQuery.of(context).size.width < 420;
     return Padding(
       padding: EdgeInsets.fromLTRB(isSmall ? 8 : 12, 8, isSmall ? 8 : 12, 4),
-      child: TextField(
-        controller: _searchController,
-        textDirection: TextDirection.rtl,
-        style: TextStyle(fontSize: isSmall ? 13 : 14),
-        decoration: InputDecoration(
-          hintText: 'بحث بالاسم، الهاتف، الفني، FBG...',
-          hintStyle: TextStyle(
-              fontSize: isSmall ? 12 : 13, color: Colors.grey.shade400),
-          prefixIcon: Icon(Icons.search,
-              size: isSmall ? 20 : 22, color: Colors.grey.shade500),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon:
-                      Icon(Icons.clear, size: 18, color: Colors.grey.shade500),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                      _applyPermissionFilter();
-                      _filterTasksByStatus(_getStatusByIndex(currentIndex));
-                    });
-                  },
-                )
-              : null,
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 14, vertical: isSmall ? 10 : 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(fontSize: isSmall ? 13 : 14),
+              decoration: InputDecoration(
+                hintText: 'بحث بالاسم، الهاتف، الفني...',
+                hintStyle: TextStyle(
+                    fontSize: isSmall ? 12 : 13, color: Colors.grey.shade400),
+                prefixIcon: Icon(Icons.search,
+                    size: isSmall ? 20 : 22, color: Colors.grey.shade500),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, size: 18, color: Colors.grey.shade500),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                            _serverSearchResults = null;
+                          });
+                          _applyPermissionFilter();
+                          _filterTasksByStatus(_getStatusByIndex(currentIndex));
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 14, vertical: isSmall ? 10 : 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF1A237E), width: 1.5),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.trim();
+                  if (value.trim().isEmpty) {
+                    _serverSearchResults = null;
+                  }
+                });
+                // بحث محلي فوري
+                _applyPermissionFilter();
+                _filterTasksByStatus(_getStatusByIndex(currentIndex));
+              },
+              onSubmitted: (value) {
+                // عند الضغط على Enter: بحث في السيرفر
+                if (value.trim().isNotEmpty) _searchOnServer(value);
+              },
+            ),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+          const SizedBox(width: 6),
+          // زر بحث في كل المهام (سيرفر)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isServerSearching ? null : () {
+                if (_searchQuery.isNotEmpty) _searchOnServer(_searchQuery);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: EdgeInsets.all(isSmall ? 10 : 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A237E),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _isServerSearching
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Icon(Icons.manage_search, size: isSmall ? 20 : 22, color: Colors.white),
+              ),
+            ),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF1A237E), width: 1.5),
-          ),
-        ),
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value.trim();
-            _applyPermissionFilter();
-            _filterTasksByStatus(_getStatusByIndex(currentIndex));
-          });
-        },
+        ],
       ),
     );
   }

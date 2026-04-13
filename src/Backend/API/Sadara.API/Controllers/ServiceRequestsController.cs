@@ -45,7 +45,8 @@ public class ServiceRequestsController : ControllerBase
         [FromQuery] string? technician = null,
         [FromQuery] string? customerPhone = null,
         [FromQuery] string? taskType = null,
-        [FromQuery] string? createdByName = null)
+        [FromQuery] string? createdByName = null,
+        [FromQuery] string? search = null)
     {
         var query = _unitOfWork.ServiceRequests.AsQueryable();
 
@@ -113,6 +114,18 @@ public class ServiceRequestsController : ControllerBase
         if (!string.IsNullOrEmpty(taskType))
         {
             query = query.Where(r => r.Details != null && r.Details.Contains(taskType));
+        }
+
+        // بحث عام: اسم العميل، هاتف، فني، منشئ، رقم الطلب
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(r =>
+                (r.Details != null && r.Details.Contains(search)) ||
+                (r.ContactPhone != null && r.ContactPhone.Contains(search)) ||
+                (r.RequestNumber.Contains(search)) ||
+                (r.Technician != null && r.Technician.FullName.Contains(search)) ||
+                (r.Citizen != null && r.Citizen.FullName.Contains(search)) ||
+                (r.Citizen != null && r.Citizen.PhoneNumber.Contains(search)));
         }
 
         var total = await query.CountAsync();

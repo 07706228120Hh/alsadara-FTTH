@@ -118,6 +118,16 @@ class TaskApiService {
     return _toMap(response);
   }
 
+  /// بحث في كل المهام (بدون حد صفحات)
+  Future<Map<String, dynamic>> searchAllTasks(String query) async {
+    final encoded = Uri.encodeComponent(query);
+    final response = await _client.get(
+      '/servicerequests?page=1&pageSize=1000&search=$encoded',
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   /// جلب طلبات التحصيل لمشترك معين بالهاتف
   Future<Map<String, dynamic>> getCollectionTasks({
     required String customerPhone,

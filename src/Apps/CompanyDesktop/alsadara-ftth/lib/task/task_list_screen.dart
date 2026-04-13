@@ -43,7 +43,7 @@ class _TaskListScreenState extends State<TaskListScreen>
 
   // Pagination
   int _currentPage = 1;
-  static const int _pageSize = 50;
+  static const int _pageSize = 500;
   bool _hasMorePages = true;
   bool _isLoadingMore = false;
 
