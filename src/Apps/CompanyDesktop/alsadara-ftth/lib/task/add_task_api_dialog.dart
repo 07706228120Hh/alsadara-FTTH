@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/task_api_service.dart';
+import '../services/pending_subscribers_service.dart';
 
 /// حوار إضافة مهمة جديدة عبر API
 class AddTaskApiDialog extends StatefulWidget {
@@ -367,8 +368,16 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       );
 
       if (result['success'] == true) {
-        // إرسال إشعار WhatsApp — معطّل مؤقتاً
-        // await _sendWhatsAppNotification();
+        // حفظ المشترك محلياً للاستخدام أوفلاين
+        PendingSubscribersService.add(PendingSubscriber(
+          name: _usernameController.text.trim(),
+          phone: _phoneController.text.trim(),
+          pppoeUser: _fbgController.text.trim(),
+          serviceType: _selectedServiceType,
+          fbg: _fbgController.text.trim(),
+          fat: _fatController.text.trim(),
+          notes: _notesController.text.trim(),
+        ));
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/api/api_client.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
 
@@ -34,27 +35,38 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     _loadAttachments();
   }
 
+  http.Client _createClient() {
+    final httpClient = HttpClient()
+      ..badCertificateCallback = (cert, host, port) => true;
+    return IOClient(httpClient);
+  }
+
   Future<void> _loadAttachments() async {
     setState(() => _isLoading = true);
     try {
-      final client = ApiClient.instance;
-      final token = client.authToken;
+      final apiClient = ApiClient.instance;
+      final token = apiClient.authToken;
       if (token == null) return;
 
-      final response = await http.get(
-        Uri.parse('https://72.61.183.61/api/servicerequests/${widget.taskId}/attachments'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
+      final client = _createClient();
+      try {
+        final response = await client.get(
+          Uri.parse('https://72.61.183.61/api/servicerequests/${widget.taskId}/attachments'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        );
 
-      if (response.statusCode == 200 && mounted) {
-        final data = json.decode(response.body);
-        final items = data is List ? data : (data['items'] ?? data['data'] ?? []);
-        setState(() {
-          _attachments = List<Map<String, dynamic>>.from(items);
-        });
+        if (response.statusCode == 200 && mounted) {
+          final data = json.decode(response.body);
+          final items = data is List ? data : (data['items'] ?? data['data'] ?? []);
+          setState(() {
+            _attachments = List<Map<String, dynamic>>.from(items);
+          });
+        }
+      } finally {
+        client.close();
       }
     } catch (_) {
       // API قد لا يدعم المرفقات بعد — نعرض قائمة فارغة
@@ -96,30 +108,41 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     setState(() => _isUploading = true);
 
     try {
-      final client = ApiClient.instance;
-      final token = client.authToken;
+      final apiClient = ApiClient.instance;
+      final token = apiClient.authToken;
       if (token == null) throw 'غير مصادق';
 
       final uri = Uri.parse('https://72.61.183.61/api/servicerequests/${widget.taskId}/attachments');
-      final request = http.MultipartRequest('POST', uri)
-        ..headers['Authorization'] = 'Bearer $token'
-        ..files.add(await http.MultipartFile.fromPath('file', file.path, filename: fileName));
 
-      final response = await request.send();
-      final body = await response.stream.bytesToString();
+      final httpClient = HttpClient()
+        ..badCertificateCallback = (cert, host, port) => true;
+      final client = IOClient(httpClient);
 
-      if (mounted) {
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم رفع المرفق بنجاح'), backgroundColor: Colors.green),
-          );
-          await _loadAttachments();
-        } else {
-          _showError('فشل رفع الملف (${response.statusCode})');
+      try {
+        final request = http.MultipartRequest('POST', uri)
+          ..headers['Authorization'] = 'Bearer $token'
+          ..files.add(await http.MultipartFile.fromPath('file', file.path, filename: fileName));
+
+        final response = await client.send(request);
+        final body = await response.stream.bytesToString();
+
+        if (mounted) {
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تم رفع المرفق بنجاح'), backgroundColor: Colors.green),
+            );
+            await _loadAttachments();
+          } else {
+            debugPrint('Upload failed: status=${response.statusCode}, body=$body, taskId=${widget.taskId}');
+            _showError('فشل رفع الملف (${response.statusCode})');
+          }
         }
+      } finally {
+        client.close();
       }
     } catch (e) {
-      if (mounted) _showError('خطأ في رفع الملف');
+      if (mounted) _showError('خطأ في رفع الملف: $e');
+      debugPrint('Upload error for taskId=${widget.taskId}: $e');
     }
 
     if (mounted) setState(() => _isUploading = false);

@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../subscriptions/subscription_details_page.dart';
 // إضافة زر فتح نافذة إضافة مهمة
 import '../../task/add_task_api_dialog.dart';
@@ -17,6 +18,7 @@ import '../../permissions/permissions.dart';
 import '../auth/auth_error_handler.dart';
 import '../../services/auth_service.dart';
 import '../../services/task_api_service.dart';
+import '../../services/genieacs_service.dart';
 
 // أنماط نص موحدة مختصرة
 class _TextStyles {
@@ -90,6 +92,10 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   List<Map<String, dynamic>> _allSubscriptions = [];
   int _selectedSubscriptionIndex = 0;
   Map<String, dynamic>? deviceOntInfo;
+  Map<String, dynamic>?
+      _deviceFullInfo; // بيانات الجهاز الكاملة (IP + كلمة مرور)
+  Map<String, dynamic>? _totalUsageData; // إجمالي الاستهلاك
+  bool _isLoadingUsage = false;
   Map<String, dynamic>? _customerDataMain;
   String _resolvedPhone = ''; // رقم الهاتف المُحلَّل
   bool _isFetchingPhone = false; // جاري جلب الهاتف
@@ -104,23 +110,30 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   List<Map<String, dynamic>> _collectionTasks = [];
   bool _isLoadingCollectionTasks = false;
 
+  // ═══════ حالة ربط GenieACS ═══════
+  bool? _genieAcsLinked; // null = جاري الفحص, true = مرتبط, false = غير مرتبط
+
   @override
   void initState() {
     super.initState();
     fetchDetails();
     _fetchAndStoreCustomerDetails();
     _checkCollectionTasks();
+    _checkGenieAcsStatus();
   }
 
   Future<void> _checkCollectionTasks() async {
     if (widget.userPhone.isEmpty) return;
     setState(() => _isLoadingCollectionTasks = true);
     try {
-      final result = await TaskApiService.instance.getCollectionTasks(customerPhone: widget.userPhone);
+      final result = await TaskApiService.instance
+          .getCollectionTasks(customerPhone: widget.userPhone);
       if (!mounted) return;
       if (result['success'] == true && result['data'] != null) {
         final data = result['data'];
-        final items = data is Map ? (data['items'] as List? ?? []) : (data is List ? data : []);
+        final items = data is Map
+            ? (data['items'] as List? ?? [])
+            : (data is List ? data : []);
         setState(() {
           _collectionTasks = List<Map<String, dynamic>>.from(items);
         });
@@ -140,7 +153,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     }
     // استخدام PermissionManager بدلاً من فحص النص
     final allowed = PermissionManager.instance.canAdd('tasks');
-    debugPrint('[UserDetailsPage] فحص زر المهمة - PermissionManager.canAdd(tasks)=$allowed');
+    debugPrint(
+        '[UserDetailsPage] فحص زر المهمة - PermissionManager.canAdd(tasks)=$allowed');
     return allowed;
   }
 
@@ -176,13 +190,13 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   // ---------------- API -----------------
   Future<void> fetchDetails() async {
     try {
-      final r = await AuthService.instance.authenticatedRequest(
-          'GET',
+      final r = await AuthService.instance.authenticatedRequest('GET',
           'https://admin.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}');
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         final items = data['items'] as List?;
-        debugPrint('[fetchDetails] keys=${data.keys.toList()} totalCount=${data['totalCount']} itemsCount=${items?.length}');
+        debugPrint(
+            '[fetchDetails] keys=${data.keys.toList()} totalCount=${data['totalCount']} itemsCount=${items?.length}');
         if (mounted) {
           setState(() {
             _allSubscriptions =
@@ -206,6 +220,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         setState(() => isLoading = false);
         if (subscriptionDetails != null) {
           fetchDeviceOntInfo();
+          _fetchDeviceFullInfo();
+          _fetchTotalUsage();
           final id = _extractSubscriptionId(subscriptionDetails!);
           if (id != null && id.isNotEmpty) fetchFullSubscriptionDetails(id);
         }
@@ -216,16 +232,17 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   Future<void> fetchFullSubscriptionDetails(String id) async {
     try {
       final r = await AuthService.instance.authenticatedRequest(
-          'GET',
-          'https://admin.ftth.iq/api/subscriptions/$id');
+          'GET', 'https://admin.ftth.iq/api/subscriptions/$id');
       if (r.statusCode == 200 && mounted && subscriptionDetails != null) {
         final full = jsonDecode(r.body);
-        final merged = Map<String, dynamic>.from({...subscriptionDetails!, ...full});
+        final merged =
+            Map<String, dynamic>.from({...subscriptionDetails!, ...full});
         setState(() {
           subscriptionDetails = merged;
           // تحديث _allSubscriptions[i] بالبيانات الكاملة حتى لا تُفقد عند التبديل بين الاشتراكات
           if (_selectedSubscriptionIndex < _allSubscriptions.length) {
-            _allSubscriptions[_selectedSubscriptionIndex] = Map<String, dynamic>.from(merged);
+            _allSubscriptions[_selectedSubscriptionIndex] =
+                Map<String, dynamic>.from(merged);
           }
         });
       } else if (r.statusCode == 401) {
@@ -242,6 +259,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       errorMessage = '';
       ontErrorMessage = '';
       deviceOntInfo = null;
+      _deviceFullInfo = null;
+      _totalUsageData = null;
       _allSubscriptions = [];
       _selectedSubscriptionIndex = 0;
     });
@@ -266,8 +285,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       });
     }
     try {
-      final r = await AuthService.instance.authenticatedRequest(
-          'GET',
+      final r = await AuthService.instance.authenticatedRequest('GET',
           'https://admin.ftth.iq/api/subscriptions/device/ont?username=${username.trim()}');
       if (!mounted) return;
       if (r.statusCode == 200) {
@@ -297,6 +315,89 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           isLoadingOntInfo = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchDeviceFullInfo() async {
+    if (subscriptionDetails == null) return;
+    final id = _extractSubscriptionId(subscriptionDetails!);
+    if (id == null || id.isEmpty) return;
+    try {
+      final r = await AuthService.instance.authenticatedRequest(
+          'GET', 'https://admin.ftth.iq/api/subscriptions/$id/device');
+      if (!mounted) return;
+      debugPrint(
+          '[_fetchDeviceFullInfo] status=${r.statusCode} body=${r.body.length > 500 ? r.body.substring(0, 500) : r.body}');
+      if (r.statusCode == 200) {
+        final parsed = jsonDecode(r.body);
+        // بعض الـ APIs ترجع البيانات مباشرة وبعضها داخل model
+        Map<String, dynamic>? info;
+        if (parsed is Map) {
+          final m = Map<String, dynamic>.from(parsed);
+          if (m.containsKey('ipAddress')) {
+            info = m;
+          } else if (m.containsKey('model') && m['model'] is Map) {
+            info = Map<String, dynamic>.from(m['model']);
+          } else {
+            info = m;
+          }
+        }
+        debugPrint(
+            '[_fetchDeviceFullInfo] resolved keys=${info?.keys.toList()} ipAddress=${info?['ipAddress']}');
+        setState(() => _deviceFullInfo = info);
+      }
+    } catch (e) {
+      debugPrint('[_fetchDeviceFullInfo] error=$e');
+    }
+  }
+
+  String _usagePeriod = 'all'; // today, month, all — نبدأ بالكل لأنه مضمون
+
+  Future<void> _fetchTotalUsage() async {
+    if (subscriptionDetails == null) return;
+    final id = _extractSubscriptionId(subscriptionDetails!);
+    if (id == null || id.isEmpty) return;
+    setState(() => _isLoadingUsage = true);
+
+    String url;
+    final now = DateTime.now();
+    if (_usagePeriod == 'today') {
+      final start = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      url = 'https://admin.ftth.iq/api/subscriptions/$id/sessions/period-usage?PeriodSize=1&StartDate=$start';
+    } else if (_usagePeriod == 'month') {
+      final start = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+      url = 'https://admin.ftth.iq/api/subscriptions/$id/sessions/period-usage?PeriodSize=${now.day}&StartDate=$start';
+    } else {
+      url = 'https://admin.ftth.iq/api/subscriptions/$id/sessions/total-usage';
+    }
+
+    try {
+      final r = await AuthService.instance.authenticatedRequest('GET', url);
+      if (!mounted) return;
+      debugPrint('[_fetchTotalUsage] period=$_usagePeriod status=${r.statusCode} body=${r.body.length > 500 ? r.body.substring(0, 500) : r.body}');
+      if (r.statusCode == 200) {
+        final parsed = jsonDecode(r.body);
+        Map<String, dynamic>? usage;
+        if (parsed is Map) {
+          final m = Map<String, dynamic>.from(parsed);
+          if (m.containsKey('model') && m['model'] is Map) {
+            usage = Map<String, dynamic>.from(m['model']);
+          } else {
+            usage = m;
+          }
+        }
+        setState(() { _totalUsageData = usage; _isLoadingUsage = false; });
+      } else if (_usagePeriod != 'all') {
+        // إذا فشل period-usage، نرجع لـ total-usage
+        debugPrint('[_fetchTotalUsage] period-usage failed, falling back to total-usage');
+        _usagePeriod = 'all';
+        _fetchTotalUsage();
+        return;
+      } else {
+        setState(() => _isLoadingUsage = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingUsage = false);
     }
   }
 
@@ -784,7 +885,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           _metricTile(Icons.memory, 'السيريال', serial,
               accent: Colors.teal, valueMaxLines: valueLines),
           Positioned(
-            left: 6 * sc, top: 0, bottom: 0,
+            left: 6 * sc,
+            top: 0,
+            bottom: 0,
             child: Center(
               child: Material(
                 color: Colors.teal.shade700,
@@ -808,6 +911,13 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         tiles.add(_metricTile(Icons.lan, 'MAC Address', mac,
             accent: Colors.deepPurple, valueMaxLines: valueLines));
       }
+
+      // كلمة مرور الجهاز (PPPoE)
+      final pass = _safeGetString(_deviceFullInfo?['devicePassword']);
+      if (pass != null && pass.isNotEmpty) {
+        tiles.add(_metricTile(Icons.vpn_key, 'كلمة المرور', pass,
+            accent: Colors.red.shade700, valueMaxLines: valueLines));
+      }
     }
 
     // حالة الجهاز + قوة الإشارة من ONT
@@ -829,28 +939,804 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         statusIcon = Icons.signal_wifi_off;
       }
       final localizedStatus = _localizedDeviceStatus(rawStatusDisp);
-      tiles.add(_statusTile(statusIcon, 'حالة الجهاز', localizedStatus, statusColor));
+      tiles.add(
+          _statusTile(statusIcon, 'حالة الجهاز', localizedStatus, statusColor));
 
       Color powerColor = Colors.grey;
       String powerStatus = '';
       if (rxPower != null) {
         try {
           final p = double.parse(rxPower.toString());
-          if (p >= -20) { powerColor = Colors.green; powerStatus = 'ممتازة'; }
-          else if (p >= -25) { powerColor = Colors.orange; powerStatus = 'جيدة'; }
-          else if (p >= -30) { powerColor = Colors.amber; powerStatus = 'متوسطة'; }
-          else { powerColor = Colors.red; powerStatus = 'ضعيفة'; }
+          if (p >= -20) {
+            powerColor = Colors.green;
+            powerStatus = 'ممتازة';
+          } else if (p >= -25) {
+            powerColor = Colors.orange;
+            powerStatus = 'جيدة';
+          } else if (p >= -30) {
+            powerColor = Colors.amber;
+            powerStatus = 'متوسطة';
+          } else {
+            powerColor = Colors.red;
+            powerStatus = 'ضعيفة';
+          }
         } catch (_) {}
       }
       tiles.add(_statusTile(null, 'قوة الإشارة',
           '${_safeGetString(rxPower) ?? 'غير معروف'} dBm', powerColor,
           badge: powerStatus));
+
+      // موديل الجهاز
+      final modelName = _safeGetString(model?['model']);
+      if (modelName != null && modelName.isNotEmpty) {
+        tiles.add(_metricTile(Icons.router, 'موديل الجهاز', modelName,
+            accent: Colors.blueGrey, valueMaxLines: valueLines));
+      }
     }
 
-    if (tiles.isEmpty) {
-      return _msgBox('لا توجد معلومات تقنية متاحة للجهاز', Colors.grey, Icons.info_outline);
+    // زر الدخول للراوتر
+    {
+      final ip = _safeGetString(_deviceFullInfo?['ipAddress']);
+      final devicePass = _safeGetString(_deviceFullInfo?['devicePassword']);
+      if (ip != null && ip.isNotEmpty) {
+        tiles.add(_routerAccessTile(ip, devicePass));
+      }
     }
-    return _twoPerRowGrid(tiles);
+
+    if (tiles.isEmpty && _totalUsageData == null && !_isLoadingUsage) {
+      return _msgBox('لا توجد معلومات تقنية متاحة للجهاز', Colors.grey,
+          Icons.info_outline);
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (tiles.isNotEmpty) _twoPerRowGrid(tiles),
+        // بلاطة حجم التحميل (عرض كامل مع فلتر فترة)
+        if (_isLoadingUsage)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_totalUsageData != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _usageTile(),
+          ),
+      ],
+    );
+  }
+
+  String _fmtBytes(dynamic bytes) {
+    if (bytes == null) return '0';
+    final b = bytes is num
+        ? bytes.toDouble()
+        : double.tryParse(bytes.toString()) ?? 0;
+    if (b >= 1073741824) return '${(b / 1073741824).toStringAsFixed(2)} GB';
+    if (b >= 1048576) return '${(b / 1048576).toStringAsFixed(1)} MB';
+    if (b >= 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
+    return '${b.toStringAsFixed(0)} B';
+  }
+
+  Widget _usageTile() {
+    final u = _totalUsageData!;
+    final dl = u['totalDownloadedBytes'] ?? u['download'] ?? u['totalDownload'];
+    final ul = u['totalUploadedBytes'] ?? u['upload'] ?? u['totalUpload'];
+    num dlNum = dl is num ? dl : (num.tryParse(dl?.toString() ?? '') ?? 0);
+    num ulNum = ul is num ? ul : (num.tryParse(ul?.toString() ?? '') ?? 0);
+
+    final periodLabel = _usagePeriod == 'today'
+        ? 'اليوم'
+        : _usagePeriod == 'month'
+            ? 'هذا الشهر'
+            : 'الكل';
+    final isMobile = _isMobile(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // فلتر الفترة
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _periodChip('اليوم', 'today'),
+            const SizedBox(width: 6),
+            _periodChip('هذا الشهر', 'month'),
+            const SizedBox(width: 6),
+            _periodChip('الكل', 'all'),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // بلاطات التحميل والرفع
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => _showSessionsUsageDialog(),
+          child: Row(
+            children: [
+              Expanded(
+                child: _metricTile(Icons.cloud_download,
+                    '↓ تحميل ($periodLabel)', _fmtBytes(dlNum),
+                    accent: Colors.blue.shade700,
+                    highlightBg: true,
+                    valueMaxLines: isMobile ? 2 : 1),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _metricTile(Icons.cloud_upload, '↑ رفع ($periodLabel)',
+                    _fmtBytes(ulNum),
+                    accent: Colors.orange.shade700,
+                    highlightBg: true,
+                    valueMaxLines: isMobile ? 2 : 1),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _periodChip(String label, String value) {
+    final selected = _usagePeriod == value;
+    return GestureDetector(
+      onTap: () {
+        if (_usagePeriod != value) {
+          setState(() => _usagePeriod = value);
+          _fetchTotalUsage();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? Colors.blue.shade700 : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: selected ? Colors.blue.shade700 : Colors.grey.shade400),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : Colors.black87)),
+      ),
+    );
+  }
+
+  // ═══════ أزرار تعليق / إعادة تفعيل ═══════
+  bool _isSuspending = false;
+  bool _isUnsuspending = false;
+
+  Widget _suspendUnsuspendButtons() {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
+    final isMobile = _isMobile(context);
+
+    // تحديد حالة الاشتراك الحالية
+    final statusRaw = subscriptionDetails?['status'];
+    final statusStr = statusRaw is String
+        ? statusRaw
+        : _safeGetString((statusRaw as Map?)?['displayValue']) ?? '';
+    final isActive = statusStr.toLowerCase() == 'active';
+    final isSuspended = statusStr.toLowerCase() == 'suspended';
+
+    return Row(
+      children: [
+        // زر تعليق
+        if (isActive)
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: _isSuspending
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Icon(Icons.pause_circle_filled, size: 18 * sc),
+              label: Text(_isSuspending ? 'جاري التعليق...' : 'تعليق الاشتراك',
+                  style: TextStyle(
+                      fontSize: (isMobile ? 13 : 14) * sc,
+                      fontWeight: FontWeight.w800)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700,
+                foregroundColor: Colors.white,
+                padding:
+                    EdgeInsets.symmetric(vertical: (isMobile ? 10 : 14) * sc),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _isSuspending ? null : () => _confirmSuspend(),
+            ),
+          ),
+        // زر إعادة تفعيل
+        if (isSuspended)
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: _isUnsuspending
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Icon(Icons.play_circle_filled, size: 18 * sc),
+              label: Text(_isUnsuspending ? 'جاري التفعيل...' : 'إعادة تفعيل',
+                  style: TextStyle(
+                      fontSize: (isMobile ? 13 : 14) * sc,
+                      fontWeight: FontWeight.w800)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+                foregroundColor: Colors.white,
+                padding:
+                    EdgeInsets.symmetric(vertical: (isMobile ? 10 : 14) * sc),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _isUnsuspending ? null : () => _confirmUnsuspend(),
+            ),
+          ),
+        // زر الجلسات والاستهلاك
+        if (isActive || isSuspended) ...[
+          SizedBox(width: 8 * sc),
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.data_usage, size: 18 * sc),
+              label: Text('الجلسات والاستهلاك',
+                  style: TextStyle(
+                      fontSize: (isMobile ? 13 : 14) * sc,
+                      fontWeight: FontWeight.w800)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo.shade600,
+                foregroundColor: Colors.white,
+                padding:
+                    EdgeInsets.symmetric(vertical: (isMobile ? 10 : 14) * sc),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => _showSessionsUsageDialog(),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _confirmSuspend() {
+    final id = _extractSubscriptionId(subscriptionDetails!);
+    if (id == null || id.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 8),
+            Text('تأكيد التعليق',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: const Text(
+            'هل أنت متأكد من تعليق هذا الاشتراك؟\nسيتم إيقاف خدمة الإنترنت عن المشترك مؤقتاً.',
+            style: TextStyle(fontSize: 14)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700,
+                foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _suspendSubscription(id);
+            },
+            child: const Text('تعليق',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmUnsuspend() {
+    final id = _extractSubscriptionId(subscriptionDetails!);
+    if (id == null || id.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 8),
+            Text('تأكيد إعادة التفعيل',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: const Text(
+            'هل تريد إعادة تفعيل هذا الاشتراك؟\nسيتم استئناف خدمة الإنترنت.',
+            style: TextStyle(fontSize: 14)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+                foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _unsuspendSubscription(id);
+            },
+            child: const Text('تفعيل',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _suspendSubscription(String id) async {
+    setState(() => _isSuspending = true);
+    try {
+      final r = await AuthService.instance.authenticatedRequest(
+          'POST', 'https://admin.ftth.iq/api/subscriptions/$id/suspend');
+      if (!mounted) return;
+      if (r.statusCode == 200 || r.statusCode == 204) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تم تعليق الاشتراك بنجاح'),
+            backgroundColor: Colors.orange));
+        fetchUserDetailsAndSubscription();
+      } else if (r.statusCode == 401) {
+        AuthErrorHandler.handle401Error(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('فشل التعليق: ${r.statusCode} - ${r.body}'),
+            backgroundColor: Colors.red));
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isSuspending = false);
+    }
+  }
+
+  Future<void> _unsuspendSubscription(String id) async {
+    setState(() => _isUnsuspending = true);
+    try {
+      final r = await AuthService.instance.authenticatedRequest(
+          'POST', 'https://admin.ftth.iq/api/subscriptions/$id/unsuspend');
+      if (!mounted) return;
+      if (r.statusCode == 200 || r.statusCode == 204) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تم إعادة تفعيل الاشتراك بنجاح'),
+            backgroundColor: Colors.green));
+        fetchUserDetailsAndSubscription();
+      } else if (r.statusCode == 401) {
+        AuthErrorHandler.handle401Error(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('فشل التفعيل: ${r.statusCode} - ${r.body}'),
+            backgroundColor: Colors.red));
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isUnsuspending = false);
+    }
+  }
+
+  // ═══════ شاشة الجلسات والاستهلاك ═══════
+  void _showSessionsUsageDialog() {
+    final id = _extractSubscriptionId(subscriptionDetails!);
+    if (id == null || id.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => _SessionsUsageDialog(subscriptionId: id),
+    );
+  }
+
+  Widget _routerAccessTile(String ip, String? devicePass) {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
+    final bool isMobile = _isMobile(context);
+    final double iconSize = isMobile ? 14.0 : 20 * sc;
+    final double lblSize = isMobile ? 11.0 : 18 * sc;
+    final double vPad = isMobile ? 6.0 : 16 * sc;
+    final double hPad = isMobile ? 6.0 : 10 * sc;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => _showRouterAccessDialog(ip, devicePass),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.open_in_browser,
+                  size: iconSize, color: Colors.deepOrange),
+              SizedBox(width: isMobile ? 3.0 : 4 * sc),
+              Text('الدخول للراوتر',
+                  style: TextStyle(
+                      fontSize: lblSize,
+                      color: Colors.deepOrange,
+                      fontWeight: FontWeight.w900)),
+            ],
+          ),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          floatingLabelAlignment: FloatingLabelAlignment.center,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.deepOrange, width: 1.5),
+          ),
+          filled: true,
+          fillColor: Colors.deepOrange.withValues(alpha: 0.08),
+          contentPadding:
+              EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+          isDense: isMobile,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.router,
+                size: (isMobile ? 14 : 18) * sc, color: Colors.deepOrange),
+            SizedBox(width: 4 * sc),
+            Text(ip,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: (isMobile ? 12.0 : 18 * sc),
+                    fontWeight: FontWeight.w800,
+                    color: Colors.deepOrange)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// كشف نوع الـ IP: هل هو عام أم داخلي/CGNAT
+  String? _getIpWarning(String ip) {
+    final parts = ip.split('.');
+    if (parts.length != 4) return null;
+    final a = int.tryParse(parts[0]) ?? 0;
+    final b = int.tryParse(parts[1]) ?? 0;
+    // CGNAT: 100.64.0.0 – 100.127.255.255
+    if (a == 100 && b >= 64 && b <= 127) {
+      return 'هذا IP من نوع CGNAT (داخلي لشبكة المزود) — يجب أن تكون متصلاً بشبكة FTTH الداخلية أو عبر VPN للوصول إليه';
+    }
+    // Private: 10.x.x.x
+    if (a == 10) {
+      return 'هذا IP خاص (Private) — يجب أن تكون متصلاً بنفس الشبكة المحلية للوصول إليه';
+    }
+    // Private: 172.16-31.x.x
+    if (a == 172 && b >= 16 && b <= 31) {
+      return 'هذا IP خاص (Private) — يجب أن تكون متصلاً بنفس الشبكة المحلية للوصول إليه';
+    }
+    // Private: 192.168.x.x
+    if (a == 192 && b == 168) {
+      return 'هذا IP خاص (Private) — يجب أن تكون متصلاً بنفس الشبكة المحلية للوصول إليه';
+    }
+    return null; // IP عام
+  }
+
+  void _showRouterAccessDialog(String ip, String? devicePass) {
+    final ontModel =
+        _safeGetString(_safeGetMap(deviceOntInfo?['model'])?['model']);
+
+    final defaults = _getDefaultCredentials(ontModel);
+    final ipWarning = _getIpWarning(ip);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.router, color: Colors.deepOrange),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('الدخول لجهاز الراوتر',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 18)),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // تنبيه نوع الـ IP
+              if (ipWarning != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade300),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          size: 20, color: Colors.red.shade700),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(ipWarning,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.red.shade800,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                ),
+              _dialogInfoRow('IP', ip, Icons.language),
+              if (ontModel != null && ontModel.isNotEmpty)
+                _dialogInfoRow('الموديل', ontModel, Icons.devices),
+              const Divider(height: 24),
+              const Text('بيانات الدخول الافتراضية:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              const SizedBox(height: 8),
+              ...defaults.map((cred) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (cred['note'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(cred['note']!,
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.grey.shade600)),
+                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.person,
+                                size: 16, color: Colors.blueGrey),
+                            const SizedBox(width: 4),
+                            const Text('User: ',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13)),
+                            Expanded(
+                              child: SelectableText(cred['user']!,
+                                  style: const TextStyle(
+                                      fontSize: 13, fontFamily: 'monospace')),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 16),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                Clipboard.setData(
+                                    ClipboardData(text: cred['user']!));
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('تم النسخ'),
+                                        duration: Duration(seconds: 1)));
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.lock,
+                                size: 16, color: Colors.blueGrey),
+                            const SizedBox(width: 4),
+                            const Text('Pass: ',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13)),
+                            Expanded(
+                              child: SelectableText(cred['pass']!,
+                                  style: const TextStyle(
+                                      fontSize: 13, fontFamily: 'monospace')),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 16),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                Clipboard.setData(
+                                    ClipboardData(text: cred['pass']!));
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('تم النسخ'),
+                                        duration: Duration(seconds: 1)));
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  )),
+              if (devicePass != null && devicePass.isNotEmpty) ...[
+                const Divider(height: 24),
+                _dialogInfoRow('كلمة مرور PPPoE', devicePass, Icons.vpn_key),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                  'ملاحظة: كلمة مرور PPPoE تختلف عن كلمة مرور لوحة تحكم الراوتر',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange.shade800,
+                      fontStyle: FontStyle.italic)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.open_in_browser, size: 18),
+            label:
+                Text(ipWarning != null ? 'فتح (يحتاج VPN)' : 'فتح في المتصفح'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  ipWarning != null ? Colors.grey : Colors.deepOrange,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              final url = Uri.parse('http://$ip');
+              launchUrl(url, mode: LaunchMode.externalApplication);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dialogInfoRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.blueGrey),
+          const SizedBox(width: 6),
+          Text('$label: ',
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Expanded(
+            child: SelectableText(value,
+                style: const TextStyle(fontSize: 13, fontFamily: 'monospace')),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy, size: 16),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: value));
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('تم النسخ'), duration: Duration(seconds: 1)));
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, String>> _getDefaultCredentials(String? model) {
+    final m = (model ?? '').toLowerCase();
+    if (m.contains('huawei') ||
+        m.contains('hg8') ||
+        m.contains('eg8') ||
+        m.contains('hw')) {
+      return [
+        {'user': 'root', 'pass': 'adminHW', 'note': 'Huawei - الأكثر شيوعاً'},
+        {
+          'user': 'telecomadmin',
+          'pass': 'admintelecom',
+          'note': 'Huawei - بديل'
+        },
+      ];
+    } else if (m.contains('zte') || m.contains('f6') || m.contains('f67')) {
+      return [
+        {'user': 'admin', 'pass': 'admin', 'note': 'ZTE - افتراضي'},
+        {'user': 'user', 'pass': 'user', 'note': 'ZTE - مستخدم عادي'},
+      ];
+    } else if (m.contains('nokia') ||
+        m.contains('g-240') ||
+        m.contains('alcatel')) {
+      return [
+        {'user': 'admin', 'pass': '1234', 'note': 'Nokia/Alcatel - افتراضي'},
+      ];
+    } else if (m.contains('tp-link') || m.contains('tplink')) {
+      return [
+        {'user': 'admin', 'pass': 'admin', 'note': 'TP-Link - افتراضي'},
+      ];
+    } else if (m.contains('vsol') || m.contains('v-sol')) {
+      return [
+        {'user': 'admin', 'pass': 'stdONUi0', 'note': 'VSOL - افتراضي'},
+        {'user': 'admin', 'pass': 'admin', 'note': 'VSOL - بديل'},
+      ];
+    }
+    // افتراضي عام
+    return [
+      {'user': 'admin', 'pass': 'admin', 'note': 'افتراضي عام'},
+      {'user': 'root', 'pass': 'admin', 'note': 'بديل شائع'},
+    ];
+  }
+
+  // ═══════ فحص حالة ربط GenieACS (في الخلفية) ═══════
+  Future<void> _checkGenieAcsStatus() async {
+    try {
+      // ننتظر حتى تتوفر بيانات الاشتراك
+      await Future.delayed(const Duration(seconds: 2));
+      final deviceDetails = _safeGetMap(subscriptionDetails?['deviceDetails']);
+      final username = _safeGetString(deviceDetails?['username']);
+      if (username == null || username.trim().isEmpty) {
+        if (mounted) setState(() => _genieAcsLinked = false);
+        return;
+      }
+      final raw = await GenieAcsService.instance.findDevice(
+        pppoeUsername: username.trim(),
+        serial: _safeGetString(deviceDetails?['serial']),
+        mac: _safeGetString(deviceDetails?['macAddress']),
+      );
+      if (mounted) setState(() => _genieAcsLinked = raw != null);
+    } catch (_) {
+      if (mounted) setState(() => _genieAcsLinked = false);
+    }
+  }
+
+  // ═══════ زر تحكم بالراوتر عن بعد (GenieACS) ═══════
+  Widget _genieAcsButton() {
+    final deviceDetails = _safeGetMap(subscriptionDetails?['deviceDetails']);
+    final username = _safeGetString(deviceDetails?['username']);
+    if (username == null || username.trim().isEmpty) return const SizedBox.shrink();
+
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
+    final isMobile = _isMobile(context);
+
+    final linked = _genieAcsLinked;
+    final statusIcon = linked == null
+        ? SizedBox(width: 14 * sc, height: 14 * sc, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70))
+        : Icon(Icons.circle, size: 12 * sc, color: linked ? Colors.greenAccent : Colors.redAccent);
+    final statusText = linked == null ? '' : (linked ? '  متصل' : '  غير مرتبط');
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: Icon(Icons.settings_remote, size: 20 * sc),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('تحكم بالراوتر عن بعد',
+                style: TextStyle(fontSize: (isMobile ? 13 : 15) * sc, fontWeight: FontWeight.w800)),
+            SizedBox(width: 8 * sc),
+            statusIcon,
+            if (statusText.isNotEmpty)
+              Text(statusText, style: TextStyle(fontSize: 11 * sc, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: linked == false ? Colors.grey.shade600 : Colors.teal.shade700,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: (isMobile ? 10 : 14) * sc),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (_) => _RouterManagementDialog(
+              pppoeUsername: username.trim(),
+              serial: _safeGetString(deviceDetails?['serial']),
+              mac: _safeGetString(deviceDetails?['macAddress']),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showEditSerialDialog(String currentSerial) {
@@ -869,12 +1755,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         String? error;
         return StatefulBuilder(builder: (ctx, setDialogState) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             title: const Row(
               children: [
                 Icon(Icons.memory, color: Colors.teal),
                 SizedBox(width: 8),
-                Text('تعديل السيريال', style: TextStyle(fontWeight: FontWeight.w800)),
+                Text('تعديل السيريال',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
               ],
             ),
             content: Column(
@@ -884,17 +1772,22 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   controller: controller,
                   decoration: InputDecoration(
                     labelText: 'السيريال الجديد',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     prefixIcon: const Icon(Icons.memory),
                   ),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w800),
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 8),
-                  Text(error!, style: TextStyle(
-                    color: error!.contains('نجاح') ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.w800)),
+                  Text(error!,
+                      style: TextStyle(
+                          color: error!.contains('نجاح')
+                              ? Colors.green
+                              : Colors.red,
+                          fontWeight: FontWeight.w800)),
                 ],
               ],
             ),
@@ -904,48 +1797,60 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 child: const Text('إلغاء'),
               ),
               ElevatedButton(
-                onPressed: saving ? null : () async {
-                  final newSerial = controller.text.trim();
-                  if (newSerial.isEmpty) {
-                    setDialogState(() => error = 'أدخل السيريال');
-                    return;
-                  }
-                  setDialogState(() { saving = true; error = null; });
-                  try {
-                    final r = await AuthService.instance.authenticatedRequest(
-                        'PUT',
-                        'https://admin.ftth.iq/api/subscriptions/$id/device',
-                        body: jsonEncode({
-                          'username': username,
-                          'ontSerial': newSerial,
-                          'macAddress': mac,
-                        }));
-                    if (!ctx.mounted) return;
-                    if (r.statusCode == 200) {
-                      setDialogState(() => error = 'تم التحديث بنجاح');
-                      Future.delayed(const Duration(seconds: 1), () {
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        fetchUserDetailsAndSubscription();
-                      });
-                    } else if (r.statusCode == 401) {
-                      if (mounted) AuthErrorHandler.handle401Error(context);
-                      return;
-                    } else {
-                      setDialogState(() => error = 'فشل: ${r.statusCode}');
-                    }
-                  } catch (e) {
-                    if (ctx.mounted) setDialogState(() => error = 'خطأ');
-                  } finally {
-                    if (ctx.mounted) setDialogState(() => saving = false);
-                  }
-                },
+                onPressed: saving
+                    ? null
+                    : () async {
+                        final newSerial = controller.text.trim();
+                        if (newSerial.isEmpty) {
+                          setDialogState(() => error = 'أدخل السيريال');
+                          return;
+                        }
+                        setDialogState(() {
+                          saving = true;
+                          error = null;
+                        });
+                        try {
+                          final r = await AuthService.instance.authenticatedRequest(
+                              'PUT',
+                              'https://admin.ftth.iq/api/subscriptions/$id/device',
+                              body: jsonEncode({
+                                'username': username,
+                                'ontSerial': newSerial,
+                                'macAddress': mac,
+                              }));
+                          if (!ctx.mounted) return;
+                          if (r.statusCode == 200) {
+                            setDialogState(() => error = 'تم التحديث بنجاح');
+                            Future.delayed(const Duration(seconds: 1), () {
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              fetchUserDetailsAndSubscription();
+                            });
+                          } else if (r.statusCode == 401) {
+                            if (mounted)
+                              AuthErrorHandler.handle401Error(context);
+                            return;
+                          } else {
+                            setDialogState(
+                                () => error = 'فشل: ${r.statusCode}');
+                          }
+                        } catch (e) {
+                          if (ctx.mounted) setDialogState(() => error = 'خطأ');
+                        } finally {
+                          if (ctx.mounted) setDialogState(() => saving = false);
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,
                 ),
                 child: saving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('حفظ', style: TextStyle(fontWeight: FontWeight.w800)),
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('حفظ',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ],
           );
@@ -996,10 +1901,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             foregroundColor: Colors.white,
             textStyle:
                 const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
       ),
@@ -1024,7 +1928,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       if (parts.isNotEmpty) durationHuman = parts.join(' و ');
     }
 
-    return _statusTile(Icons.wifi, 'نشط منذ', durationHuman, Colors.green.shade700);
+    return _statusTile(
+        Icons.wifi, 'نشط منذ', durationHuman, Colors.green.shade700);
   }
 
   Widget _ontInfoSection() {
@@ -1090,57 +1995,58 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   }
 
   Widget _statusTile(IconData? icon, String label, String value, Color c,
-          {String? badge}) {
-      final screenH = MediaQuery.of(context).size.height;
-      final double sc = (screenH / 900).clamp(0.75, 1.0);
-      return InputDecorator(
-        decoration: InputDecoration(
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, color: c, size: 20 * sc),
-                SizedBox(width: 4 * sc),
-              ],
-              Text(label,
-                  style: TextStyle(fontSize: 18 * sc, color: c, fontWeight: FontWeight.w900)),
+      {String? badge}) {
+    final screenH = MediaQuery.of(context).size.height;
+    final double sc = (screenH / 900).clamp(0.75, 1.0);
+    return InputDecorator(
+      decoration: InputDecoration(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: c, size: 20 * sc),
+              SizedBox(width: 4 * sc),
             ],
-          ),
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          floatingLabelAlignment: FloatingLabelAlignment.center,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: c, width: 1.5),
-          ),
-          filled: true,
-          fillColor: c.withValues(alpha: 0.08),
-          contentPadding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 16 * sc),
-          isDense: false,
+            Text(label,
+                style: TextStyle(
+                    fontSize: 18 * sc, color: c, fontWeight: FontWeight.w900)),
+          ],
         ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 18 * sc,
-                  fontWeight: FontWeight.w800,
-                  color: c)),
-          if (badge != null && badge.isNotEmpty) ...[
-            SizedBox(width: 12 * sc),
-            Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: 8 * sc, vertical: 3 * sc),
-                decoration: BoxDecoration(
-                    color: c.withValues(alpha: .2),
-                    borderRadius: BorderRadius.circular(12)),
-                child: Text(badge,
-                    style: TextStyle(
-                        fontSize: 11 * sc,
-                        fontWeight: FontWeight.bold,
-                        color: c)))
-          ]
-        ]),
-      );
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        floatingLabelAlignment: FloatingLabelAlignment.center,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: c, width: 1.5),
+        ),
+        filled: true,
+        fillColor: c.withValues(alpha: 0.08),
+        contentPadding:
+            EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 16 * sc),
+        isDense: false,
+      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text(value,
+            style: TextStyle(
+                fontSize: 18 * sc, fontWeight: FontWeight.w800, color: c)),
+        if (badge != null && badge.isNotEmpty) ...[
+          SizedBox(width: 12 * sc),
+          Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 3 * sc),
+              decoration: BoxDecoration(
+                  color: c.withValues(alpha: .2),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Text(badge,
+                  style: TextStyle(
+                      fontSize: 11 * sc,
+                      fontWeight: FontWeight.bold,
+                      color: c)))
+        ]
+      ]),
+    );
   }
+
   Widget _hint() => Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -1216,27 +2122,31 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   Future<Map<String, dynamic>?> _fetchCustomerDetails() async {
     try {
       final r = await AuthService.instance.authenticatedRequest(
-          'GET',
-          'https://admin.ftth.iq/api/customers/${widget.userId}');
+          'GET', 'https://admin.ftth.iq/api/customers/${widget.userId}');
       debugPrint('📞 [fetchCustomerDetails] status=${r.statusCode}');
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
-        debugPrint('📞 [fetchCustomerDetails] keys=${data is Map<String,dynamic> ? data.keys.toList() : "NOT_MAP"}');
+        debugPrint(
+            '📞 [fetchCustomerDetails] keys=${data is Map<String, dynamic> ? data.keys.toList() : "NOT_MAP"}');
         if (data is Map<String, dynamic>) {
           final model = data['model'];
-          debugPrint('📞 [fetchCustomerDetails] model keys=${model is Map<String,dynamic> ? model.keys.toList() : "NO_MODEL"}');
+          debugPrint(
+              '📞 [fetchCustomerDetails] model keys=${model is Map<String, dynamic> ? model.keys.toList() : "NO_MODEL"}');
           if (model is Map<String, dynamic>) {
-            debugPrint('📞 [fetchCustomerDetails] primaryContact=${model['primaryContact']}');
+            debugPrint(
+                '📞 [fetchCustomerDetails] primaryContact=${model['primaryContact']}');
             return model;
           }
-          debugPrint('📞 [fetchCustomerDetails] primaryContact=${data['primaryContact']}');
+          debugPrint(
+              '📞 [fetchCustomerDetails] primaryContact=${data['primaryContact']}');
           return data;
         }
       } else if (r.statusCode == 401) {
         if (mounted) AuthErrorHandler.handle401Error(context);
         return null;
       } else {
-        debugPrint('📞 [fetchCustomerDetails] body=${r.body.substring(0, r.body.length.clamp(0, 200))}');
+        debugPrint(
+            '📞 [fetchCustomerDetails] body=${r.body.substring(0, r.body.length.clamp(0, 200))}');
       }
       return null;
     } catch (e) {
@@ -1488,7 +2398,10 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         Expanded(
             flex: 3,
             child: Text(value,
-                style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w800),
                 textAlign: TextAlign.right)),
       ]),
     );
@@ -1611,8 +2524,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     );
   }
 
-  Widget _buildPhoneTile(double width, Color? tileBg, Color? tileBorder,
-      Color? iconBg) {
+  Widget _buildPhoneTile(
+      double width, Color? tileBg, Color? tileBorder, Color? iconBg) {
     final screenH = MediaQuery.of(context).size.height;
     final double sc = (screenH / 900).clamp(0.75, 1.0);
     return SizedBox(
@@ -1632,7 +2545,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               decoration: BoxDecoration(
                   color: iconBg ?? Colors.green.shade100,
                   borderRadius: BorderRadius.circular(6)),
-              child: Icon(Icons.phone, size: 14 * sc, color: Colors.green.shade700),
+              child: Icon(Icons.phone,
+                  size: 14 * sc, color: Colors.green.shade700),
             ),
             SizedBox(width: 8 * sc),
             Expanded(
@@ -1666,8 +2580,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               Tooltip(
                 message: 'نسخ رقم الهاتف',
                 child: IconButton(
-                  icon:
-                      Icon(Icons.copy_rounded, size: 18 * sc, color: Colors.green.shade700),
+                  icon: Icon(Icons.copy_rounded,
+                      size: 18 * sc, color: Colors.green.shade700),
                   onPressed: () {
                     Clipboard.setData(
                         ClipboardData(text: _fmtPhoneLocal(_resolvedPhone)));
@@ -1689,11 +2603,11 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 message: 'جلب رقم الهاتف من النظام',
                 child: TextButton.icon(
                   onPressed: _fetchPhoneManually,
-                  icon: Icon(Icons.search, size: 16,
-                      color: Colors.blue.shade700),
+                  icon:
+                      Icon(Icons.search, size: 16, color: Colors.blue.shade700),
                   label: Text('إظهار الرقم',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.blue.shade700)),
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.blue.shade700)),
                   style: TextButton.styleFrom(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1819,14 +2733,17 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       final services = _safeGetList(subscriptionDetails!['services']);
       lines.add('الحزمة: ${_baseService(services)}');
       final fbgFat = _getFbgFat();
-      if (fbgFat.$1 != null && fbgFat.$1!.isNotEmpty) lines.add('FBG: ${fbgFat.$1}');
-      if (fbgFat.$2 != null && fbgFat.$2!.isNotEmpty) lines.add('FAT: ${fbgFat.$2}');
+      if (fbgFat.$1 != null && fbgFat.$1!.isNotEmpty)
+        lines.add('FBG: ${fbgFat.$1}');
+      if (fbgFat.$2 != null && fbgFat.$2!.isNotEmpty)
+        lines.add('FAT: ${fbgFat.$2}');
       final startedAt = _safeGetString(subscriptionDetails!['startedAt']) ??
           _safeGetString(subscriptionDetails!['startDate']);
       if (startedAt != null) lines.add('تاريخ البدء: ${_fmtDate(startedAt)}');
       final endDate = _safeGetString(subscriptionDetails!['endDate']) ??
           _safeGetString(subscriptionDetails!['expires']);
-      if (endDate != null) lines.add('تاريخ الانتهاء: ${_fmtDateTime(endDate)}');
+      if (endDate != null)
+        lines.add('تاريخ الانتهاء: ${_fmtDateTime(endDate)}');
       final d = _days(endDate);
       if (d > 0) {
         lines.add('الأيام المتبقية: $d يوم');
@@ -1868,7 +2785,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final double vPad = isMobile ? 6.0 : 16 * sc;
     final double hPad = isMobile ? 6.0 : 10 * sc;
 
-    Widget tile(IconData icon, String label, String value, Color accent, {Widget? trailing}) {
+    Widget tile(IconData icon, String label, String value, Color accent,
+        {Widget? trailing}) {
       return Expanded(
         child: InputDecorator(
           decoration: InputDecoration(
@@ -1877,7 +2795,11 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               children: [
                 Icon(icon, size: iconSize, color: accent),
                 SizedBox(width: isMobile ? 3.0 : 5 * sc),
-                Text(label, style: TextStyle(fontSize: lblSize, color: accent, fontWeight: FontWeight.w900)),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: lblSize,
+                        color: accent,
+                        fontWeight: FontWeight.w900)),
               ],
             ),
             floatingLabelBehavior: FloatingLabelBehavior.always,
@@ -1887,16 +2809,20 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Colors.black87, width: 1.5),
             ),
-            contentPadding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+            contentPadding:
+                EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
             isDense: isMobile,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
+                child: Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: valSize, fontWeight: FontWeight.w800)),
+                    style: TextStyle(
+                        fontSize: valSize, fontWeight: FontWeight.w800)),
               ),
               if (trailing != null) trailing,
             ],
@@ -1913,7 +2839,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           onTap: () {
             Clipboard.setData(ClipboardData(text: data));
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(msg), backgroundColor: color, duration: const Duration(seconds: 2)));
+                content: Text(msg),
+                backgroundColor: color,
+                duration: const Duration(seconds: 2)));
           },
           child: Padding(
             padding: EdgeInsets.all(4 * sc),
@@ -1923,24 +2851,33 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       );
     }
 
-    final phone = _resolvedPhone.isNotEmpty ? _fmtPhoneLocal(_resolvedPhone) : 'غير متوفر';
+    final phone = _resolvedPhone.isNotEmpty
+        ? _fmtPhoneLocal(_resolvedPhone)
+        : 'غير متوفر';
     final screenW = MediaQuery.of(context).size.width;
     final bool useColumn = screenW < 500;
 
-    final nameTile = tile(Icons.person, 'الاسم', widget.userName, Colors.blue.shade700,
+    final nameTile = tile(
+        Icons.person, 'الاسم', widget.userName, Colors.blue.shade700,
         trailing: copyBtn(widget.userName, 'تم نسخ الاسم', Colors.blue));
-    final phoneTile = tile(Icons.phone, 'رقم الهاتف', phone, Colors.green.shade700,
+    final phoneTile = tile(
+        Icons.phone, 'رقم الهاتف', phone, Colors.green.shade700,
         trailing: _resolvedPhone.isNotEmpty
-            ? copyBtn(_fmtPhoneLocal(_resolvedPhone), 'تم نسخ الرقم', Colors.green)
+            ? copyBtn(
+                _fmtPhoneLocal(_resolvedPhone), 'تم نسخ الرقم', Colors.green)
             : (_isFetchingPhone
-                ? SizedBox(width: 16 * sc, height: 16 * sc, child: const CircularProgressIndicator(strokeWidth: 2))
+                ? SizedBox(
+                    width: 16 * sc,
+                    height: 16 * sc,
+                    child: const CircularProgressIndicator(strokeWidth: 2))
                 : Tooltip(
                     message: 'جلب الرقم',
                     child: InkWell(
                       onTap: _fetchPhoneManually,
                       child: Padding(
                         padding: EdgeInsets.all(4 * sc),
-                        child: Icon(Icons.search, size: 16 * sc, color: Colors.blue.shade700),
+                        child: Icon(Icons.search,
+                            size: 16 * sc, color: Colors.blue.shade700),
                       ),
                     ),
                   )));
@@ -1986,7 +2923,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             decoration: BoxDecoration(
                 color: Colors.blue.shade100,
                 borderRadius: BorderRadius.circular(6)),
-            child: Icon(Icons.person, size: 14 * sc, color: Colors.blue.shade700),
+            child:
+                Icon(Icons.person, size: 14 * sc, color: Colors.blue.shade700),
           ),
           SizedBox(width: 8 * sc),
           Expanded(
@@ -2001,7 +2939,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           Tooltip(
             message: 'نسخ الاسم',
             child: IconButton(
-              icon: Icon(Icons.copy_rounded, size: 16 * sc, color: Colors.blue.shade700),
+              icon: Icon(Icons.copy_rounded,
+                  size: 16 * sc, color: Colors.blue.shade700),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: widget.userName));
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -2017,8 +2956,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             Tooltip(
               message: 'نسخ الاسم والرقم معاً',
               child: IconButton(
-                icon: Icon(Icons.contact_page_rounded, size: 16 * sc,
-                    color: Colors.teal.shade700),
+                icon: Icon(Icons.contact_page_rounded,
+                    size: 16 * sc, color: Colors.teal.shade700),
                 onPressed: () {
                   final text =
                       '${widget.userName}\n${_fmtPhoneLocal(_resolvedPhone)}';
@@ -2296,13 +3235,16 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
   // ═══════ بانر حالة التحصيل ═══════
   Widget _collectionBanner() {
-    if (_isLoadingCollectionTasks || _collectionTasks.isEmpty) return const SizedBox.shrink();
+    if (_isLoadingCollectionTasks || _collectionTasks.isEmpty)
+      return const SizedBox.shrink();
 
     // فحص آخر طلب تحصيل
     final task = _collectionTasks.first;
     final details = task['details'] is String ? task['details'] as String : '';
     final status = task['status']?.toString().toLowerCase() ?? '';
-    final techName = task['technician']?['fullName']?.toString() ?? task['technicianName']?.toString() ?? '';
+    final techName = task['technician']?['fullName']?.toString() ??
+        task['technicianName']?.toString() ??
+        '';
     final taskId = task['id']?.toString() ?? '';
     final createdAt = task['createdAt']?.toString() ?? '';
 
@@ -2311,7 +3253,10 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final amountStr = amountMatch?.group(1) ?? '';
 
     final isCompleted = status == 'completed' || status == 'مكتملة';
-    final isPending = status == 'pending' || status == 'مفتوحة' || status == 'inprogress' || status == 'قيد التنفيذ';
+    final isPending = status == 'pending' ||
+        status == 'مفتوحة' ||
+        status == 'inprogress' ||
+        status == 'قيد التنفيذ';
 
     if (!isPending && !isCompleted) return const SizedBox.shrink();
 
@@ -2326,7 +3271,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       decoration: BoxDecoration(
         color: isCompleted ? Colors.green.shade50 : Colors.orange.shade50,
         borderRadius: BorderRadius.circular(isMobile ? 8 : 10),
-        border: Border.all(color: isCompleted ? Colors.green.shade300 : Colors.orange.shade300, width: 1.2),
+        border: Border.all(
+            color: isCompleted ? Colors.green.shade300 : Colors.orange.shade300,
+            width: 1.2),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -2338,20 +3285,29 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           SizedBox(width: isMobile ? 6 : 8),
           Expanded(
             child: Text(
-              isCompleted ? 'تم التحصيل — جاهز للتجديد' : 'طلب تحصيل قيد الانتظار',
+              isCompleted
+                  ? 'تم التحصيل — جاهز للتجديد'
+                  : 'طلب تحصيل قيد الانتظار',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: titleFs,
-                color: isCompleted ? Colors.green.shade800 : Colors.orange.shade800,
+                color: isCompleted
+                    ? Colors.green.shade800
+                    : Colors.orange.shade800,
               ),
             ),
           ),
         ]),
         SizedBox(height: isMobile ? 4 : 6),
-        if (techName.isNotEmpty) Text('الفني: $techName', style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
-        if (amountStr.isNotEmpty) Text('المبلغ: $amountStr د.ع', style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
+        if (techName.isNotEmpty)
+          Text('الفني: $techName',
+              style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
+        if (amountStr.isNotEmpty)
+          Text('المبلغ: $amountStr د.ع',
+              style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
         if (createdAt.isNotEmpty)
-          Text('التاريخ: ${_formatDate(createdAt)}', style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
+          Text('التاريخ: ${_formatDate(createdAt)}',
+              style: TextStyle(fontSize: smallFs, color: Colors.grey.shade700)),
         if (isCompleted) ...[
           SizedBox(height: isMobile ? 6 : 8),
           SizedBox(
@@ -2359,12 +3315,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             child: ElevatedButton.icon(
               onPressed: _onRenewPressed,
               icon: Icon(Icons.refresh, size: isMobile ? 16 : 18),
-              label: Text('تجديد الاشتراك الآن', style: TextStyle(fontSize: isMobile ? 12 : 14)),
+              label: Text('تجديد الاشتراك الآن',
+                  style: TextStyle(fontSize: isMobile ? 12 : 14)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade600,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: isMobile ? 8 : 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
           ),
@@ -2435,7 +3393,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             final canPop = Navigator.of(ctx).canPop();
             if (!canPop) return const SizedBox();
             return Container(
-              margin: EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
+              margin:
+                  EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
               decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10)),
@@ -2443,7 +3402,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 icon: Icon(Icons.arrow_back_ios_new,
                     size: 22 * sc, color: Colors.white),
                 padding: EdgeInsets.all(8 * sc),
-                constraints: BoxConstraints(minWidth: 44 * sc, minHeight: 44 * sc),
+                constraints:
+                    BoxConstraints(minWidth: 44 * sc, minHeight: 44 * sc),
                 onPressed: () => Navigator.of(ctx).pop(),
                 tooltip: 'رجوع',
               ),
@@ -2455,14 +3415,16 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           Tooltip(
             message: 'إعادة تحميل',
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 2 * sc, vertical: 6 * sc),
+              margin:
+                  EdgeInsets.symmetric(horizontal: 2 * sc, vertical: 6 * sc),
               decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10)),
               child: IconButton(
                 icon: Icon(Icons.refresh, size: 20 * sc, color: Colors.white),
                 padding: EdgeInsets.all(6 * sc),
-                constraints: BoxConstraints(minWidth: 36 * sc, minHeight: 36 * sc),
+                constraints:
+                    BoxConstraints(minWidth: 36 * sc, minHeight: 36 * sc),
                 onPressed: _reloadAll,
               ),
             ),
@@ -2471,14 +3433,16 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           Tooltip(
             message: 'نسخ كل المعلومات',
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 2 * sc, vertical: 6 * sc),
+              margin:
+                  EdgeInsets.symmetric(horizontal: 2 * sc, vertical: 6 * sc),
               decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10)),
               child: IconButton(
                 icon: Icon(Icons.copy_all, size: 20 * sc, color: Colors.amber),
                 padding: EdgeInsets.all(6 * sc),
-                constraints: BoxConstraints(minWidth: 36 * sc, minHeight: 36 * sc),
+                constraints:
+                    BoxConstraints(minWidth: 36 * sc, minHeight: 36 * sc),
                 onPressed: _copyAllVisibleInfo,
               ),
             ),
@@ -2487,7 +3451,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             Tooltip(
               message: 'إضافة مهمة',
               child: Container(
-                margin: EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
+                margin:
+                    EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF00B86B), Color(0xFF00894F)],
@@ -2509,12 +3474,13 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                     borderRadius: BorderRadius.circular(14),
                     onTap: _openAddTaskDialog,
                     child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12 * sc, vertical: 6 * sc),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 12 * sc, vertical: 6 * sc),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.add_task, size: 22 * sc, color: Colors.white),
+                          Icon(Icons.add_task,
+                              size: 22 * sc, color: Colors.white),
                           SizedBox(width: 4 * sc),
                           Text('مهمة',
                               style: TextStyle(
@@ -2533,7 +3499,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             message: 'القائمة',
             child: Builder(
               builder: (ctx) => Container(
-                margin: EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
+                margin:
+                    EdgeInsets.symmetric(horizontal: 4 * sc, vertical: 6 * sc),
                 decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10)),
@@ -2551,259 +3518,306 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       ),
       endDrawer: _sideMenu(),
       body: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : errorMessage.isNotEmpty
-                ? Center(
-                    child: Text('خطأ: $errorMessage',
-                        style: const TextStyle(color: Colors.red)))
-                : SingleChildScrollView(
-                    padding: EdgeInsets.all(pad),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+          ? const Center(child: CircularProgressIndicator())
+          : errorMessage.isNotEmpty
+              ? Center(
+                  child: Text('خطأ: $errorMessage',
+                      style: const TextStyle(color: Colors.red)))
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(pad),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Card(
+                        margin: EdgeInsets.only(bottom: cardGap),
+                        elevation: 4,
+                        shadowColor: Colors.blue.shade200,
+                        color: Colors.blue.shade100.withValues(alpha: 0.8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(
+                                color: Colors.black87, width: 1.5)),
+                        child: Padding(
+                          padding: EdgeInsets.all(pad),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // هيدر البطاقة مع زر نسخ الكل
+                              Row(
+                                children: [
+                                  Icon(Icons.person_outline,
+                                      size: 15 * sc,
+                                      color: Colors.blue.shade800),
+                                  SizedBox(width: 4 * sc),
+                                  Text('معلومات المستخدم',
+                                      style: TextStyle(
+                                          fontSize: 12 * sc,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.blue.shade800)),
+                                  const Spacer(),
+                                  // زر نسخ كل المعلومات
+                                  Tooltip(
+                                    message: 'نسخ كل المعلومات',
+                                    child: InkWell(
+                                      onTap: () {
+                                        final phone = _resolvedPhone.isNotEmpty
+                                            ? _fmtPhoneLocal(_resolvedPhone)
+                                            : 'غير متوفر';
+                                        final fbgFat = _getFbgFat();
+                                        final fbg = fbgFat.$1 ?? '';
+                                        final fat = fbgFat.$2 ?? '';
+                                        final services = subscriptionDetails !=
+                                                null
+                                            ? _safeGetList(subscriptionDetails![
+                                                'services'])
+                                            : null;
+                                        final bundle = _baseService(services);
+                                        final parts = <String>[
+                                          'الاسم: ${widget.userName}',
+                                          'رقم الهاتف: $phone',
+                                        ];
+                                        if (fbg.isNotEmpty)
+                                          parts.add('FBG: $fbg');
+                                        if (fat.isNotEmpty)
+                                          parts.add('FAT: $fat');
+                                        parts.add('الحزمة: $bundle');
+                                        final text = parts.join('\n');
+                                        Clipboard.setData(
+                                            ClipboardData(text: text));
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
+                                          content: Text('تم نسخ كل المعلومات'),
+                                          backgroundColor: Colors.teal,
+                                          duration: Duration(seconds: 2),
+                                        ));
+                                      },
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 8 * sc,
+                                            vertical: 3 * sc),
+                                        decoration: BoxDecoration(
+                                          color: Colors.teal.shade50,
+                                          border: Border.all(
+                                              color: Colors.teal.shade200),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.contact_page_rounded,
+                                                size: 12 * sc,
+                                                color: Colors.teal.shade700),
+                                            SizedBox(width: 3 * sc),
+                                            Text('نسخ الكل',
+                                                style: TextStyle(
+                                                    fontSize: 11 * sc,
+                                                    color: Colors.teal.shade700,
+                                                    fontWeight:
+                                                        FontWeight.w800)),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: gap),
+                              _userInfoRow(),
+                              SizedBox(height: gap),
+                              _collectionBanner(),
+                              _renewButton(context, fullWidth: true),
+                              if (subscriptionDetails != null) ...[
+                                SizedBox(height: gap),
+                                _suspendUnsuspendButtons(),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (subscriptionDetails != null) ...[
                         Card(
                           margin: EdgeInsets.only(bottom: cardGap),
                           elevation: 4,
-                          shadowColor: Colors.blue.shade200,
-                          color: Colors.blue.shade100.withValues(alpha: 0.8),
+                          shadowColor: Colors.grey.shade300,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: const BorderSide(color: Colors.black87, width: 1.5)),
+                              side: const BorderSide(
+                                  color: Colors.black87, width: 1.5)),
                           child: Padding(
                             padding: EdgeInsets.all(pad),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // هيدر البطاقة مع زر نسخ الكل
-                                Row(
-                                  children: [
-                                    Icon(Icons.person_outline,
-                                        size: 15 * sc,
-                                        color: Colors.blue.shade800),
-                                    SizedBox(width: 4 * sc),
-                                    Text('معلومات المستخدم',
-                                        style: TextStyle(
-                                            fontSize: 12 * sc,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.blue.shade800)),
-                                    const Spacer(),
-                                    // زر نسخ كل المعلومات
-                                    Tooltip(
-                                      message: 'نسخ كل المعلومات',
-                                      child: InkWell(
-                                        onTap: () {
-                                          final phone = _resolvedPhone.isNotEmpty
-                                              ? _fmtPhoneLocal(_resolvedPhone)
-                                              : 'غير متوفر';
-                                          final fbgFat = _getFbgFat();
-                                          final fbg = fbgFat.$1 ?? '';
-                                          final fat = fbgFat.$2 ?? '';
-                                          final services = subscriptionDetails != null
-                                              ? _safeGetList(subscriptionDetails!['services'])
-                                              : null;
-                                          final bundle = _baseService(services);
-                                          final parts = <String>[
-                                            'الاسم: ${widget.userName}',
-                                            'رقم الهاتف: $phone',
-                                          ];
-                                          if (fbg.isNotEmpty) parts.add('FBG: $fbg');
-                                          if (fat.isNotEmpty) parts.add('FAT: $fat');
-                                          parts.add('الحزمة: $bundle');
-                                          final text = parts.join('\n');
-                                          Clipboard.setData(
-                                              ClipboardData(text: text));
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(const SnackBar(
-                                            content: Text('تم نسخ كل المعلومات'),
-                                            backgroundColor: Colors.teal,
-                                            duration: Duration(seconds: 2),
-                                          ));
-                                        },
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 8 * sc, vertical: 3 * sc),
-                                          decoration: BoxDecoration(
-                                            color: Colors.teal.shade50,
-                                            border: Border.all(
-                                                color: Colors.teal.shade200),
-                                            borderRadius:
-                                                BorderRadius.circular(6),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.contact_page_rounded,
-                                                  size: 12 * sc,
-                                                  color: Colors.teal.shade700),
-                                              SizedBox(width: 3 * sc),
-                                              Text('نسخ الكل',
-                                                  style: TextStyle(
-                                                      fontSize: 11 * sc,
-                                                      color: Colors.teal.shade700,
+                                // ── تفاصيل الاشتراك ──
+                                Text('تفاصيل الاشتراك',
+                                    style: _TextStyles.sectionHeader
+                                        .copyWith(fontSize: titleSize)),
+                                if (_allSubscriptions.length > 1) ...[
+                                  SizedBox(height: gap),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: List.generate(
+                                        _allSubscriptions.length,
+                                        (i) {
+                                          final sub = _allSubscriptions[i];
+                                          final devDetails =
+                                              _safeGetMap(sub['deviceDetails']);
+                                          final devUsername = _safeGetString(
+                                                  devDetails?['username']) ??
+                                              '';
+                                          final subStatus = sub['status']
+                                                  is String
+                                              ? sub['status'] as String
+                                              : _safeGetString(
+                                                      (sub['status'] as Map?)?[
+                                                          'displayValue']) ??
+                                                  '';
+                                          final isActive =
+                                              subStatus.toLowerCase() ==
+                                                  'active';
+                                          final isSelected =
+                                              _selectedSubscriptionIndex == i;
+                                          final pillColor = isSelected
+                                              ? Colors.blue[700]!
+                                              : isActive
+                                                  ? Colors.green[100]!
+                                                  : Colors.grey[200]!;
+                                          final textColor = isSelected
+                                              ? Colors.white
+                                              : isActive
+                                                  ? Colors.green[800]!
+                                                  : Colors.black87;
+                                          final pillLabel =
+                                              devUsername.isNotEmpty
+                                                  ? devUsername
+                                                  : 'اشتراك ${i + 1}';
+                                          return GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedSubscriptionIndex = i;
+                                                subscriptionDetails =
+                                                    _allSubscriptions[i];
+                                                deviceOntInfo = null;
+                                                ontErrorMessage = '';
+                                              });
+                                              fetchDeviceOntInfo();
+                                              final id = _extractSubscriptionId(
+                                                  _allSubscriptions[i]);
+                                              if (id != null && id.isNotEmpty)
+                                                fetchFullSubscriptionDetails(
+                                                    id);
+                                            },
+                                            child: Container(
+                                              margin:
+                                                  const EdgeInsetsDirectional
+                                                      .only(end: 8),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 7),
+                                              decoration: BoxDecoration(
+                                                color: pillColor,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: isSelected
+                                                      ? Colors.blue[700]!
+                                                      : isActive
+                                                          ? Colors.green[400]!
+                                                          : Colors.grey[400]!,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    pillLabel,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
                                                       fontWeight:
-                                                          FontWeight.w800)),
-                                            ],
-                                          ),
-                                        ),
+                                                          FontWeight.w700,
+                                                      color: textColor,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    isActive
+                                                        ? 'فعّال'
+                                                        : 'منتهي',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: isSelected
+                                                          ? Colors.white70
+                                                          : isActive
+                                                              ? Colors
+                                                                  .green[700]!
+                                                              : Colors
+                                                                  .red[400]!,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                                 SizedBox(height: gap),
-                                _userInfoRow(),
+                                _subscriptionDetails(),
+
+                                // ── معلومات الجهاز + حالة الجهاز + قوة الإشارة ──
+                                Divider(
+                                    height: gap * 3,
+                                    thickness: 1.5,
+                                    color: Colors.black54),
+                                Text('معلومات الجهاز',
+                                    style: _TextStyles.sectionHeader
+                                        .copyWith(fontSize: titleSize)),
                                 SizedBox(height: gap),
-                                _collectionBanner(),
-                                _renewButton(context, fullWidth: true),
+                                _deviceAndOntCombined(deviceDetails),
+                                SizedBox(height: gap),
+
+                                // ── تحكم بالراوتر عن بعد (GenieACS) ──
+                                _genieAcsButton(),
+                                SizedBox(height: gap),
+
+                                // ── الجلسة ──
+                                if (activeSession != null) ...[
+                                  Divider(
+                                      height: gap * 3,
+                                      thickness: 1.5,
+                                      color: Colors.black54),
+                                  Row(children: [
+                                    Expanded(
+                                        child: _sessionBox(activeSession!)),
+                                  ]),
+                                ],
                               ],
                             ),
                           ),
                         ),
-                        if (subscriptionDetails != null) ...[
-                          Card(
-                              margin: EdgeInsets.only(bottom: cardGap),
-                              elevation: 4,
-                              shadowColor: Colors.grey.shade300,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: const BorderSide(color: Colors.black87, width: 1.5)),
-                              child: Padding(
-                                padding: EdgeInsets.all(pad),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // ── تفاصيل الاشتراك ──
-                                    Text('تفاصيل الاشتراك',
-                                        style: _TextStyles.sectionHeader
-                                            .copyWith(
-                                                fontSize: titleSize)),
-                                    if (_allSubscriptions.length > 1) ...[
-                                      SizedBox(height: gap),
-                                      SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: Row(
-                                          children: List.generate(
-                                            _allSubscriptions.length,
-                                            (i) {
-                                              final sub = _allSubscriptions[i];
-                                              final devDetails = _safeGetMap(sub['deviceDetails']);
-                                              final devUsername = _safeGetString(devDetails?['username']) ?? '';
-                                              final subStatus = sub['status'] is String
-                                                  ? sub['status'] as String
-                                                  : _safeGetString((sub['status'] as Map?)?['displayValue']) ?? '';
-                                              final isActive = subStatus.toLowerCase() == 'active';
-                                              final isSelected = _selectedSubscriptionIndex == i;
-                                              final pillColor = isSelected
-                                                  ? Colors.blue[700]!
-                                                  : isActive
-                                                      ? Colors.green[100]!
-                                                      : Colors.grey[200]!;
-                                              final textColor = isSelected
-                                                  ? Colors.white
-                                                  : isActive
-                                                      ? Colors.green[800]!
-                                                      : Colors.black87;
-                                              final pillLabel = devUsername.isNotEmpty
-                                                  ? devUsername
-                                                  : 'اشتراك ${i + 1}';
-                                              return GestureDetector(
-                                                onTap: () {
-                                                  setState(() {
-                                                    _selectedSubscriptionIndex = i;
-                                                    subscriptionDetails = _allSubscriptions[i];
-                                                    deviceOntInfo = null;
-                                                    ontErrorMessage = '';
-                                                  });
-                                                  fetchDeviceOntInfo();
-                                                  final id = _extractSubscriptionId(_allSubscriptions[i]);
-                                                  if (id != null && id.isNotEmpty)
-                                                    fetchFullSubscriptionDetails(id);
-                                                },
-                                                child: Container(
-                                                  margin: const EdgeInsetsDirectional.only(end: 8),
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                                                  decoration: BoxDecoration(
-                                                    color: pillColor,
-                                                    borderRadius: BorderRadius.circular(20),
-                                                    border: Border.all(
-                                                      color: isSelected
-                                                          ? Colors.blue[700]!
-                                                          : isActive
-                                                              ? Colors.green[400]!
-                                                              : Colors.grey[400]!,
-                                                    ),
-                                                  ),
-                                                  child: Column(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      Text(
-                                                        pillLabel,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.w700,
-                                                          color: textColor,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        isActive ? 'فعّال' : 'منتهي',
-                                                        style: TextStyle(
-                                                          fontSize: 10,
-                                                          color: isSelected
-                                                              ? Colors.white70
-                                                              : isActive
-                                                                  ? Colors.green[700]!
-                                                                  : Colors.red[400]!,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    SizedBox(height: gap),
-                                    _subscriptionDetails(),
-
-                                    // ── معلومات الجهاز + حالة الجهاز + قوة الإشارة ──
-                                    Divider(height: gap * 3, thickness: 1.5, color: Colors.black54),
-                                    Text('معلومات الجهاز',
-                                        style: _TextStyles.sectionHeader
-                                            .copyWith(fontSize: titleSize)),
-                                    SizedBox(height: gap),
-                                    _deviceAndOntCombined(deviceDetails),
-                                    SizedBox(height: gap),
-
-                                    // ── الجلسة ──
-                                    if (activeSession != null) ...[
-                                      Divider(height: gap * 3, thickness: 1.5, color: Colors.black54),
-                                      Row(children: [
-                                        Expanded(child: _sessionBox(activeSession!)),
-                                      ]),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ] else ...[
-                          Card(
-                            elevation: 4,
-                            shadowColor: Colors.grey.shade200,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: Colors.grey.shade300, width: 1.5)),
-                            child: const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text('لا توجد تفاصيل اشتراك متاحة',
-                                  style: TextStyle(color: Colors.grey)),
-                            ),
+                      ] else ...[
+                        Card(
+                          elevation: 4,
+                          shadowColor: Colors.grey.shade200,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                  color: Colors.grey.shade300, width: 1.5)),
+                          child: const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('لا توجد تفاصيل اشتراك متاحة',
+                                style: TextStyle(color: Colors.grey)),
                           ),
-                        ]
-                      ],
-                    ),
+                        ),
+                      ]
+                    ],
                   ),
+                ),
     );
   }
 
@@ -2997,7 +4011,9 @@ extension _AddTaskExtension on UserDetailsPageState {
             currentUserRole: 'مستخدم',
             currentUserDepartment: 'عام',
             initialCustomerName: widget.userName,
-            initialCustomerPhone: _resolvedPhone.isNotEmpty ? _fmtPhoneLocal(_resolvedPhone) : _fmtPhoneLocal(widget.userPhone),
+            initialCustomerPhone: _resolvedPhone.isNotEmpty
+                ? _fmtPhoneLocal(_resolvedPhone)
+                : _fmtPhoneLocal(widget.userPhone),
             initialCustomerLocation: _extractInitialLocation(),
             initialFBG: _getFbgFat().$1 ?? '',
             initialFAT: _getFbgFat().$2 ?? '',
@@ -3152,8 +4168,7 @@ class EditDevicePageState extends State<EditDevicePage> {
       'macAddress': macController.text.trim()
     };
     try {
-      final r = await AuthService.instance.authenticatedRequest(
-          'PUT',
+      final r = await AuthService.instance.authenticatedRequest('PUT',
           'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/device',
           body: jsonEncode(body));
       if (!mounted) return;
@@ -3228,4 +4243,1612 @@ class EditDevicePageState extends State<EditDevicePage> {
       controller: c,
       decoration: InputDecoration(
           labelText: label, border: const OutlineInputBorder()));
+}
+
+// ═══════ شاشة الجلسات والاستهلاك ═══════
+class _SessionsUsageDialog extends StatefulWidget {
+  final String subscriptionId;
+  const _SessionsUsageDialog({required this.subscriptionId});
+
+  @override
+  State<_SessionsUsageDialog> createState() => _SessionsUsageDialogState();
+}
+
+class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
+  bool _loadingUsage = true;
+  bool _loadingSessions = true;
+  Map<String, dynamic>? _totalUsage;
+  List<Map<String, dynamic>> _sessions = [];
+  int _totalSessions = 0;
+  String? _usageError;
+  String? _sessionsError;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTotalUsage();
+    _fetchSessionHistory();
+  }
+
+  Future<void> _fetchTotalUsage() async {
+    try {
+      final r = await AuthService.instance.authenticatedRequest('GET',
+          'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/sessions/total-usage');
+      if (!mounted) return;
+      debugPrint(
+          '[total-usage] status=${r.statusCode} body=${r.body.length > 800 ? r.body.substring(0, 800) : r.body}');
+      if (r.statusCode == 200) {
+        final parsed = jsonDecode(r.body);
+        // دعم model{} wrapper
+        final usage = parsed is Map &&
+                parsed.containsKey('model') &&
+                parsed['model'] is Map
+            ? Map<String, dynamic>.from(parsed['model'])
+            : (parsed is Map
+                ? Map<String, dynamic>.from(parsed)
+                : <String, dynamic>{});
+        debugPrint('[total-usage] resolved keys=${usage.keys.toList()}');
+        setState(() {
+          _totalUsage = usage;
+          _loadingUsage = false;
+        });
+      } else {
+        setState(() {
+          _usageError = 'خطأ: ${r.statusCode}';
+          _loadingUsage = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[total-usage] error=$e');
+      if (mounted)
+        setState(() {
+          _usageError = 'خطأ';
+          _loadingUsage = false;
+        });
+    }
+  }
+
+  Future<void> _fetchSessionHistory() async {
+    try {
+      final r = await AuthService.instance.authenticatedRequest('GET',
+          'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/sessions/history?pageSize=20&pageNumber=1');
+      if (!mounted) return;
+      debugPrint(
+          '[sessions-history] status=${r.statusCode} body=${r.body.length > 800 ? r.body.substring(0, 800) : r.body}');
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        final items = data['items'] as List? ?? [];
+        if (items.isNotEmpty) {
+          debugPrint(
+              '[sessions-history] first item keys=${(items.first as Map).keys.toList()}');
+          debugPrint('[sessions-history] first item=${items.first}');
+        }
+        setState(() {
+          _sessions = items.map((e) => Map<String, dynamic>.from(e)).toList();
+          _totalSessions = data['totalCount'] ?? items.length;
+          _loadingSessions = false;
+        });
+      } else {
+        setState(() {
+          _sessionsError = 'خطأ: ${r.statusCode}';
+          _loadingSessions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted)
+        setState(() {
+          _sessionsError = 'خطأ';
+          _loadingSessions = false;
+        });
+    }
+  }
+
+  String _formatBytes(dynamic bytes) {
+    if (bytes == null) return '0';
+    final b = bytes is num
+        ? bytes.toDouble()
+        : double.tryParse(bytes.toString()) ?? 0;
+    if (b >= 1073741824) return '${(b / 1073741824).toStringAsFixed(2)} GB';
+    if (b >= 1048576) return '${(b / 1048576).toStringAsFixed(1)} MB';
+    if (b >= 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
+    return '${b.toStringAsFixed(0)} B';
+  }
+
+  String _formatDate(dynamic date) {
+    if (date == null) return '-';
+    try {
+      final dt = DateTime.parse(date.toString()).toLocal();
+      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return date.toString();
+    }
+  }
+
+  String _formatDuration(dynamic seconds) {
+    if (seconds == null) return '-';
+    final s = seconds is num
+        ? seconds.toInt()
+        : int.tryParse(seconds.toString()) ?? 0;
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    if (h > 0) return '$h ساعة $m دقيقة';
+    return '$m دقيقة';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final dialogWidth = (width * 0.85).clamp(400.0, 800.0);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SizedBox(
+        width: dialogWidth,
+        height: MediaQuery.of(context).size.height * 0.8,
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.indigo.shade600,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.data_usage, color: Colors.white, size: 24),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text('الجلسات وإجمالي الاستهلاك',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // إجمالي الاستهلاك
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              color: Colors.indigo.shade50,
+              child: _loadingUsage
+                  ? const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : _usageError != null
+                      ? Text(_usageError!,
+                          style: const TextStyle(color: Colors.red))
+                      : _buildUsageSection(),
+            ),
+
+            // عدد الجلسات
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.history, size: 18, color: Colors.grey),
+                  const SizedBox(width: 6),
+                  Text('سجل الجلسات ($_totalSessions جلسة)',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
+              ),
+            ),
+
+            // جدول الجلسات
+            Expanded(
+              child: _loadingSessions
+                  ? const Center(child: CircularProgressIndicator())
+                  : _sessionsError != null
+                      ? Center(
+                          child: Text(_sessionsError!,
+                              style: const TextStyle(color: Colors.red)))
+                      : _sessions.isEmpty
+                          ? const Center(child: Text('لا توجد جلسات'))
+                          : ListView.separated(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              itemCount: _sessions.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (ctx, i) =>
+                                  _buildSessionItem(_sessions[i]),
+                            ),
+            ),
+
+            // زر إغلاق
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('إغلاق',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _usageStat(IconData icon, String label, String value, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(height: 4),
+        Text(label,
+            style: TextStyle(
+                fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: TextStyle(
+                fontSize: 16, color: color, fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
+
+  // بناء قسم الاستهلاك — يعرض كل الحقول المتوفرة ديناميكياً
+  Widget _buildUsageSection() {
+    if (_totalUsage == null || _totalUsage!.isEmpty) {
+      return const Text('لا توجد بيانات استهلاك',
+          style: TextStyle(color: Colors.grey));
+    }
+    // محاولة عرض بحسب أسماء الحقول المعروفة
+    final u = _totalUsage!;
+    final dl = u['totalDownloadedBytes'] ??
+        u['download'] ??
+        u['totalDownload'] ??
+        u['acctInputOctets'] ??
+        u['inputOctets'];
+    final ul = u['totalUploadedBytes'] ??
+        u['upload'] ??
+        u['totalUpload'] ??
+        u['acctOutputOctets'] ??
+        u['outputOctets'];
+
+    if (dl != null || ul != null) {
+      num dlNum = dl is num ? dl : (num.tryParse(dl?.toString() ?? '') ?? 0);
+      num ulNum = ul is num ? ul : (num.tryParse(ul?.toString() ?? '') ?? 0);
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _usageStat(
+              Icons.cloud_download, 'تحميل', _formatBytes(dlNum), Colors.blue),
+          _usageStat(
+              Icons.cloud_upload, 'رفع', _formatBytes(ulNum), Colors.orange),
+          _usageStat(Icons.storage, 'الإجمالي', _formatBytes(dlNum + ulNum),
+              Colors.indigo),
+        ],
+      );
+    }
+
+    // لم نجد الحقول المعروفة — نعرض كل الحقول الخام
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: u.entries.map((e) {
+        final v = e.value;
+        final display = v is Map ? v.toString() : (v?.toString() ?? 'null');
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              Text('${e.key}: ',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      fontFamily: 'monospace')),
+              Expanded(
+                  child: SelectableText(display,
+                      style: const TextStyle(
+                          fontSize: 12, fontFamily: 'monospace'))),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // بناء عنصر جلسة واحد — يعرض الحقول ديناميكياً
+  Widget _buildSessionItem(Map<String, dynamic> s) {
+    // بحث عن الحقول بأسماء متعددة
+    final startTime = s['startTime'] ??
+        s['start'] ??
+        s['sessionStart'] ??
+        s['acctStartTime'] ??
+        s['startDate'];
+    final endTime = s['endTime'] ??
+        s['end'] ??
+        s['sessionEnd'] ??
+        s['acctStopTime'] ??
+        s['endDate'];
+    final duration = s['duration'] ??
+        s['sessionDuration'] ??
+        s['sessionTimeInSeconds'] ??
+        s['acctSessionTime'];
+    final download = s['download'] ??
+        s['downloadBytes'] ??
+        s['bytesDown'] ??
+        s['acctInputOctets'] ??
+        s['inputOctets'];
+    final upload = s['upload'] ??
+        s['uploadBytes'] ??
+        s['bytesUp'] ??
+        s['acctOutputOctets'] ??
+        s['outputOctets'];
+    final sessionIp = s['ipAddress'] ??
+        s['ip'] ??
+        s['framedIpAddress'] ??
+        s['framedIPAddress'];
+
+    final hasKnownFields =
+        startTime != null || duration != null || download != null;
+
+    if (!hasKnownFields) {
+      // عرض كل الحقول كـ raw data
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: s.entries.map((e) {
+            final v = e.value;
+            String display;
+            if (v is Map) {
+              display = (v['displayValue'] ?? v.toString()).toString();
+            } else {
+              display = v?.toString() ?? 'null';
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 1),
+              child: Text('${e.key}: $display',
+                  style:
+                      const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.circle,
+                  size: 8, color: endTime == null ? Colors.green : Colors.grey),
+              const SizedBox(width: 6),
+              Text(_formatDate(startTime),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600)),
+              if (endTime != null) ...[
+                const Text(' → ',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(_formatDate(endTime),
+                    style: const TextStyle(fontSize: 12)),
+              ] else
+                const Text('  (نشط الآن)',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              if (duration != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer, size: 14, color: Colors.blueGrey),
+                    const SizedBox(width: 3),
+                    Text(_formatDuration(duration),
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.blueGrey)),
+                  ],
+                ),
+              if (download != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_downward,
+                        size: 14, color: Colors.blue.shade600),
+                    const SizedBox(width: 2),
+                    Text(_formatBytes(download),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.blue.shade700)),
+                  ],
+                ),
+              if (upload != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_upward,
+                        size: 14, color: Colors.orange.shade600),
+                    const SizedBox(width: 2),
+                    Text(_formatBytes(upload),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.orange.shade700)),
+                  ],
+                ),
+              if (sessionIp != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.language, size: 14, color: Colors.grey),
+                    const SizedBox(width: 2),
+                    Text(sessionIp.toString(),
+                        style:
+                            const TextStyle(fontSize: 11, color: Colors.grey)),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════ واجهة إدارة الراوتر عن بعد (GenieACS) ═══════
+class _RouterManagementDialog extends StatefulWidget {
+  final String pppoeUsername;
+  final String? serial;
+  final String? mac;
+  const _RouterManagementDialog({required this.pppoeUsername, this.serial, this.mac});
+
+  @override
+  State<_RouterManagementDialog> createState() => _RouterManagementDialogState();
+}
+
+class _RouterManagementDialogState extends State<_RouterManagementDialog> {
+  bool _loading = true;
+  String? _error;
+  List<DeviceInfo> _devices = [];
+  List<Map<String, dynamic>> _rawDevices = [];
+  int _selectedDeviceIndex = 0;
+  bool _actionLoading = false;
+  String _actionMessage = '';
+
+  DeviceInfo? get _device => _devices.isNotEmpty ? _devices[_selectedDeviceIndex] : null;
+
+  @override
+  void initState() {
+    super.initState();
+    _findDevices();
+  }
+
+  Future<void> _findDevices() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final rawList = await GenieAcsService.instance.findAllDevices(
+          pppoeUsername: widget.pppoeUsername, serial: widget.serial, mac: widget.mac);
+      if (!mounted) return;
+      if (rawList.isNotEmpty) {
+        setState(() {
+          _rawDevices = rawList;
+          _devices = rawList.map((r) => GenieAcsService.parseDevice(r)).toList();
+          _selectedDeviceIndex = 0;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = 'الجهاز غير متصل بنظام إدارة الراوترات (GenieACS)\nتأكد من ضبط إعدادات TR-069 في الراوتر';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _error = 'خطأ في الاتصال: $e'; _loading = false; });
+    }
+  }
+
+  Future<void> _doAction(String name, Future<bool> Function() action) async {
+    setState(() { _actionLoading = true; _actionMessage = ''; });
+    final ok = await action();
+    if (!mounted) return;
+    setState(() {
+      _actionLoading = false;
+      _actionMessage = ok ? 'تم تنفيذ "$name" بنجاح' : 'فشل تنفيذ "$name"';
+    });
+    if (ok) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) _findDevices(); // تحديث البيانات
+      });
+    }
+  }
+
+  void _showSetWifiDialog() {
+    final ssidCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(Icons.wifi, color: Colors.teal),
+            SizedBox(width: 8),
+            Text('تغيير إعدادات WiFi', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ssidCtrl,
+              decoration: const InputDecoration(
+                labelText: 'اسم الشبكة (SSID)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.wifi),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passCtrl,
+              decoration: const InputDecoration(
+                labelText: 'كلمة المرور',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(ctx);
+              final id = _device!.id;
+              if (ssidCtrl.text.trim().isNotEmpty) {
+                _doAction('تغيير SSID', () => GenieAcsService.instance.setWifiSsid(id, ssidCtrl.text.trim()));
+              }
+              if (passCtrl.text.trim().isNotEmpty) {
+                _doAction('تغيير باسورد WiFi', () => GenieAcsService.instance.setWifiPassword(id, passCtrl.text.trim()));
+              }
+            },
+            child: const Text('تطبيق', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final dialogWidth = (width * 0.85).clamp(400.0, 750.0);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SizedBox(
+        width: dialogWidth,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.teal.shade700,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.settings_remote, color: Colors.white, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('تحكم بالراوتر عن بعد',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                        Text('PPPoE: ${widget.pppoeUsername}',
+                            style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    onPressed: _loading ? null : _findDevices,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(40),
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text('جاري البحث عن الجهاز...'),
+                  ],
+                ),
+              )
+            else if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Icon(Icons.router, size: 48, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    Text(_error!, textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.red.shade700, fontSize: 14)),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('إعادة المحاولة'),
+                      onPressed: _findDevices,
+                    ),
+                  ],
+                ),
+              )
+            else if (_device != null) ...[
+              // تبديل بين الأجهزة (إذا أكثر من واحد)
+              if (_devices.length > 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: Colors.teal.shade50,
+                  child: Row(
+                    children: [
+                      Icon(Icons.device_hub, size: 16, color: Colors.teal.shade700),
+                      const SizedBox(width: 8),
+                      Text('${_devices.length} أجهزة مُدارة:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.teal.shade800)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: List.generate(_devices.length, (i) {
+                              final d = _devices[i];
+                              final selected = i == _selectedDeviceIndex;
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    d.productClass.isNotEmpty ? d.productClass : (d.manufacturer.isNotEmpty ? d.manufacturer : 'جهاز ${i + 1}'),
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                                        color: selected ? Colors.white : Colors.teal.shade800),
+                                  ),
+                                  avatar: Icon(
+                                    d.productClass.toLowerCase().contains('hg8') ? Icons.cell_tower : Icons.router,
+                                    size: 14, color: selected ? Colors.white : Colors.teal.shade700,
+                                  ),
+                                  selected: selected,
+                                  selectedColor: Colors.teal.shade700,
+                                  backgroundColor: Colors.white,
+                                  onSelected: (_) => setState(() { _selectedDeviceIndex = i; _actionMessage = ''; }),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // معلومات الجهاز المحدد
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // حالة الاتصال
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _device!.isOnline ? Colors.green.shade50 : Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _device!.isOnline ? Colors.green.shade300 : Colors.red.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _device!.isOnline ? Icons.circle : Icons.circle_outlined,
+                              size: 14,
+                              color: _device!.isOnline ? Colors.green : Colors.red,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _device!.isOnline ? 'متصل' : 'غير متصل',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: _device!.isOnline ? Colors.green.shade800 : Colors.red.shade800,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text('آخر اتصال: ${_device!.lastInformFormatted}',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // تفاصيل الجهاز
+                      _infoGrid([
+                        _infoItem(Icons.factory, 'الشركة', _device!.manufacturer),
+                        _infoItem(Icons.router, 'الموديل', _device!.productClass),
+                        _infoItem(Icons.memory, 'السيريال', _device!.serialNumber),
+                        _infoItem(Icons.code, 'الفيرموير', _device!.softwareVersion),
+                        _infoItem(Icons.language, 'WAN IP', _device!.wanIp),
+                        _infoItem(Icons.hardware, 'الهاردوير', _device!.hardwareVersion),
+                        if (_device!.lanIp.isNotEmpty)
+                          _infoItem(Icons.home, 'LAN IP', _device!.lanIp),
+                      ]),
+
+                      // ═══ إعدادات WiFi ═══
+                      if (_device!.wifiConfigs.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        _sectionHeader(Icons.wifi, 'شبكات WiFi (${_device!.wifiConfigs.length})'),
+                        const SizedBox(height: 6),
+                        ...(_device!.wifiConfigs.map((w) => _buildWifiCard(w))),
+                      ],
+
+                      // ═══ DHCP ═══
+                      if (_device!.dhcpMinAddress.isNotEmpty || _device!.dhcpMaxAddress.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        _sectionHeader(Icons.dns, 'إعدادات DHCP'),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Column(
+                            children: [
+                              _dhcpRow('DHCP', _device!.dhcpEnabled ? 'مفعّل' : 'معطّل', _device!.dhcpEnabled ? Colors.green : Colors.red),
+                              if (_device!.dhcpMinAddress.isNotEmpty)
+                                _dhcpRow('النطاق', '${_device!.dhcpMinAddress} — ${_device!.dhcpMaxAddress}', Colors.blue.shade800),
+                              if (_device!.dhcpSubnetMask.isNotEmpty)
+                                _dhcpRow('Subnet', _device!.dhcpSubnetMask, Colors.grey.shade700),
+                              if (_device!.dnsServers.isNotEmpty)
+                                _dhcpRow('DNS', _device!.dnsServers, Colors.grey.shade700),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // ═══ الأجهزة المتصلة ═══
+                      if (_device!.connectedHosts.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        _sectionHeader(Icons.devices, 'الأجهزة المتصلة (${_device!.connectedHosts.length})'),
+                        const SizedBox(height: 6),
+                        ...(_device!.connectedHosts.map((h) => Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.devices, size: 16, color: Colors.blueGrey),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(h.hostname.isNotEmpty ? h.hostname : 'جهاز غير معروف',
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                              ),
+                              Text(h.ip, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                              const SizedBox(width: 8),
+                              Text(h.mac, style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontFamily: 'monospace')),
+                            ],
+                          ),
+                        ))),
+                      ],
+
+                      // رسالة حالة
+                      if (_actionMessage.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(_actionMessage,
+                              style: TextStyle(
+                                color: _actionMessage.contains('بنجاح') ? Colors.green.shade700 : Colors.red.shade700,
+                                fontWeight: FontWeight.w700,
+                              )),
+                        ),
+
+                      const SizedBox(height: 16),
+
+                      // أزرار التحكم
+                      if (_actionLoading)
+                        const CircularProgressIndicator()
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _actionBtn(Icons.restart_alt, 'إعادة تشغيل', Colors.orange, () {
+                              _confirmAction('إعادة تشغيل الراوتر', 'هل أنت متأكد؟ سيفقد المشترك الاتصال مؤقتاً.', () {
+                                _doAction('إعادة تشغيل', () => GenieAcsService.instance.rebootDevice(_device!.id));
+                              });
+                            }),
+                            _actionBtn(Icons.wifi, 'تغيير WiFi', Colors.teal, _showSetWifiDialog),
+                            _actionBtn(Icons.speed, 'تحديد السرعة', Colors.deepPurple, _showBandwidthDialog),
+                            _actionBtn(Icons.network_ping, 'تشخيص', Colors.indigo, _showDiagnosticsDialog),
+                            _actionBtn(Icons.dns, 'تغيير DHCP', Colors.blue.shade700, _showDhcpDialog),
+                            _actionBtn(Icons.refresh, 'تحديث البيانات', Colors.blue, () {
+                              _doAction('تحديث', () => GenieAcsService.instance.refreshDevice(_device!.id));
+                            }),
+                            _actionBtn(Icons.restore, 'إعادة ضبط المصنع', Colors.red, () {
+                              _confirmAction('إعادة ضبط المصنع', 'تحذير! سيتم مسح كل إعدادات الراوتر.\nهل أنت متأكد تماماً؟', () {
+                                _doAction('ضبط المصنع', () => GenieAcsService.instance.factoryReset(_device!.id));
+                              });
+                            }),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══ Helper widgets for router management ═══
+  Widget _sectionHeader(IconData icon, String title) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.teal.shade700),
+          const SizedBox(width: 6),
+          Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.teal.shade800)),
+        ],
+      ),
+    );
+  }
+
+  Widget _dhcpRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(width: 70, child: Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600))),
+          Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWifiCard(WifiConfig w) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: w.is5Ghz ? Colors.purple.shade50 : Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: w.is5Ghz ? Colors.purple.shade200 : Colors.teal.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.wifi, size: 16, color: w.is5Ghz ? Colors.purple.shade700 : Colors.teal.shade700),
+              const SizedBox(width: 6),
+              Text(w.bandLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                  color: w.is5Ghz ? Colors.purple.shade700 : Colors.teal.shade700)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(w.ssid.isNotEmpty ? w.ssid : '(بدون اسم)',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+              ),
+              if (!w.enabled)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.red.shade700, borderRadius: BorderRadius.circular(8)),
+                  child: const Text('معطّل', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                ),
+              if (w.hidden)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Icon(Icons.visibility_off, size: 14, color: Colors.grey.shade600),
+                ),
+              // زر تعديل
+              InkWell(
+                onTap: () => _showEditWifiDialog(w),
+                child: Icon(Icons.edit, size: 16, color: w.is5Ghz ? Colors.purple.shade600 : Colors.teal.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 12,
+            children: [
+              if (w.password.isNotEmpty)
+                Text('كلمة المرور: ${w.password}', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
+              Text('القناة: ${w.autoChannel ? "تلقائي" : w.channel}', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
+              if (w.macFilterEnabled)
+                Text('MAC Filter: مفعّل', style: TextStyle(fontSize: 10, color: Colors.orange.shade700, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditWifiDialog(WifiConfig w) {
+    final ssidCtrl = TextEditingController(text: w.ssid);
+    final passCtrl = TextEditingController(text: w.password);
+    bool hidden = w.hidden;
+    bool enabled = w.enabled;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Row(children: [
+            Icon(Icons.wifi, color: w.is5Ghz ? Colors.purple : Colors.teal),
+            const SizedBox(width: 8),
+            Text('تعديل WiFi ${w.bandLabel}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: ssidCtrl, decoration: const InputDecoration(labelText: 'اسم الشبكة (SSID)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.wifi))),
+              const SizedBox(height: 10),
+              TextField(controller: passCtrl, decoration: const InputDecoration(labelText: 'كلمة المرور', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock))),
+              const SizedBox(height: 8),
+              SwitchListTile(title: const Text('إخفاء الشبكة', style: TextStyle(fontSize: 13)), value: hidden, dense: true,
+                  onChanged: (v) => setLocal(() => hidden = v)),
+              SwitchListTile(title: const Text('تفعيل الشبكة', style: TextStyle(fontSize: 13)), value: enabled, dense: true,
+                  onChanged: (v) => setLocal(() => enabled = v)),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+              onPressed: () {
+                Navigator.pop(ctx);
+                final id = _device!.id;
+                final prefix = 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.${w.index}';
+                final params = <List<dynamic>>[];
+                if (ssidCtrl.text.trim() != w.ssid) params.add(['\$prefix.SSID', ssidCtrl.text.trim(), 'xsd:string']);
+                if (passCtrl.text.trim().isNotEmpty && passCtrl.text.trim() != w.password) params.add(['$prefix.KeyPassphrase', passCtrl.text.trim(), 'xsd:string']);
+                if (hidden != w.hidden) params.add(['$prefix.SSIDAdvertisementEnabled', !hidden, 'xsd:boolean']);
+                if (enabled != w.enabled) params.add(['$prefix.Enable', enabled, 'xsd:boolean']);
+                if (params.isNotEmpty) {
+                  _doAction('تعديل WiFi ${w.bandLabel}', () => GenieAcsService.instance.setParameters(id, params));
+                }
+              },
+              child: const Text('تطبيق', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══ تحديد سرعة المشترك ═══
+  void _showBandwidthDialog() {
+    final downloadCtrl = TextEditingController();
+    final uploadCtrl = TextEditingController();
+    // باقات شائعة
+    final presets = <Map<String, dynamic>>[
+      {'label': '10 Mbps', 'down': 10240, 'up': 5120},
+      {'label': '25 Mbps', 'down': 25600, 'up': 10240},
+      {'label': '50 Mbps', 'down': 51200, 'up': 20480},
+      {'label': '75 Mbps', 'down': 76800, 'up': 25600},
+      {'label': '100 Mbps', 'down': 102400, 'up': 51200},
+      {'label': 'بدون حد', 'down': 0, 'up': 0},
+    ];
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(children: [
+          Icon(Icons.speed, color: Colors.deepPurple),
+          SizedBox(width: 8),
+          Text('تحديد سرعة المشترك', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // باقات جاهزة
+            Wrap(
+              spacing: 6, runSpacing: 6,
+              children: presets.map((p) => ActionChip(
+                label: Text(p['label'], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                backgroundColor: Colors.deepPurple.shade50,
+                onPressed: () {
+                  downloadCtrl.text = p['down'].toString();
+                  uploadCtrl.text = p['up'].toString();
+                },
+              )).toList(),
+            ),
+            const SizedBox(height: 14),
+            TextField(controller: downloadCtrl, keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'سرعة التحميل (Kbps)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.download), hintText: '51200 = 50Mbps')),
+            const SizedBox(height: 10),
+            TextField(controller: uploadCtrl, keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'سرعة الرفع (Kbps)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.upload), hintText: '20480 = 20Mbps')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(ctx);
+              final down = int.tryParse(downloadCtrl.text.trim()) ?? 0;
+              final up = int.tryParse(uploadCtrl.text.trim()) ?? 0;
+              if (down > 0 && up > 0) {
+                _doAction('تحديد السرعة ${down ~/ 1024}Mbps/${up ~/ 1024}Mbps', () =>
+                    GenieAcsService.instance.setBandwidthLimit(_device!.id, down, up));
+              } else if (down == 0 && up == 0) {
+                _doAction('إزالة حد السرعة', () =>
+                    GenieAcsService.instance.setBandwidthLimit(_device!.id, 0, 0));
+              }
+            },
+            child: const Text('تطبيق', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══ تشخيص (Ping / Traceroute) ═══
+  void _showDiagnosticsDialog() {
+    final hostCtrl = TextEditingController(text: '8.8.8.8');
+    showDialog(
+      context: context,
+      builder: (_) => _DiagnosticsDialog(deviceId: _device!.id, hostCtrl: hostCtrl),
+    );
+  }
+
+  void _showDhcpDialog() {
+    final minCtrl = TextEditingController(text: _device!.dhcpMinAddress);
+    final maxCtrl = TextEditingController(text: _device!.dhcpMaxAddress);
+    final dnsCtrl = TextEditingController(text: _device!.dnsServers);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(children: [
+          Icon(Icons.dns, color: Colors.blue),
+          SizedBox(width: 8),
+          Text('إعدادات DHCP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: minCtrl, decoration: const InputDecoration(labelText: 'بداية النطاق (Min IP)', border: OutlineInputBorder())),
+            const SizedBox(height: 10),
+            TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'نهاية النطاق (Max IP)', border: OutlineInputBorder())),
+            const SizedBox(height: 10),
+            TextField(controller: dnsCtrl, decoration: const InputDecoration(labelText: 'DNS Servers (مفصول بفاصلة)', border: OutlineInputBorder(), hintText: '8.8.8.8,1.1.1.1')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(ctx);
+              final id = _device!.id;
+              if (minCtrl.text.trim().isNotEmpty && maxCtrl.text.trim().isNotEmpty) {
+                _doAction('تغيير نطاق DHCP', () => GenieAcsService.instance.setDhcpRange(id, minCtrl.text.trim(), maxCtrl.text.trim()));
+              }
+              if (dnsCtrl.text.trim().isNotEmpty && dnsCtrl.text.trim() != _device!.dnsServers) {
+                _doAction('تغيير DNS', () => GenieAcsService.instance.setDnsServers(id, dnsCtrl.text.trim()));
+              }
+            },
+            child: const Text('تطبيق', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTr069SetupDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => _Tr069SetupDialog(
+        acsUrl: GenieAcsService.acsUrl,
+        pppoeUsername: widget.pppoeUsername,
+      ),
+    );
+  }
+
+  void _confirmAction(String title, String message, VoidCallback onConfirm) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+          const SizedBox(width: 8),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ]),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () { Navigator.pop(ctx); onConfirm(); },
+            child: const Text('تأكيد', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionBtn(IconData icon, String label, Color color, VoidCallback onTap) {
+    return ElevatedButton.icon(
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: onTap,
+    );
+  }
+
+  Widget _infoGrid(List<Widget> items) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items,
+    );
+  }
+
+  Widget _infoItem(IconData icon, String label, String value) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.teal.shade700),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════ نافذة إعداد TR-069 على راوتر جديد ═══════
+// ═══════ نافذة التشخيص (Ping / Traceroute) ═══════
+class _DiagnosticsDialog extends StatefulWidget {
+  final String deviceId;
+  final TextEditingController hostCtrl;
+  const _DiagnosticsDialog({required this.deviceId, required this.hostCtrl});
+  @override
+  State<_DiagnosticsDialog> createState() => _DiagnosticsDialogState();
+}
+
+class _DiagnosticsDialogState extends State<_DiagnosticsDialog> {
+  bool _running = false;
+  String _result = '';
+  String _type = '';
+
+  Future<void> _runPing() async {
+    final host = widget.hostCtrl.text.trim();
+    if (host.isEmpty) return;
+    setState(() { _running = true; _result = 'جاري إرسال Ping إلى $host من الراوتر...'; _type = 'ping'; });
+    final ok = await GenieAcsService.instance.startPing(widget.deviceId, host);
+    if (!ok) { if (mounted) setState(() { _running = false; _result = 'فشل إرسال أمر Ping — الجهاز قد لا يدعم هذه الميزة'; }); return; }
+    // انتظر النتائج
+    setState(() => _result = 'تم الإرسال — جاري انتظار النتائج...');
+    await Future.delayed(const Duration(seconds: 5));
+    final ping = await GenieAcsService.instance.getPingResult(widget.deviceId);
+    if (!mounted) return;
+    if (ping != null) {
+      setState(() { _running = false; _result = 'Ping $host:\n${ping.summary}'; });
+    } else {
+      setState(() { _running = false; _result = 'لم يتم استلام نتائج — حاول مرة أخرى'; });
+    }
+  }
+
+  Future<void> _runTraceroute() async {
+    final host = widget.hostCtrl.text.trim();
+    if (host.isEmpty) return;
+    setState(() { _running = true; _result = 'جاري Traceroute إلى $host من الراوتر...'; _type = 'trace'; });
+    final ok = await GenieAcsService.instance.startTraceroute(widget.deviceId, host);
+    if (!mounted) return;
+    setState(() {
+      _running = false;
+      _result = ok
+          ? 'تم إرسال أمر Traceroute بنجاح\nالنتائج ستظهر عند تحديث بيانات الجهاز'
+          : 'فشل — الجهاز قد لا يدعم Traceroute';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.shade700,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.network_ping, color: Colors.white, size: 22),
+                    const SizedBox(width: 8),
+                    const Expanded(child: Text('تشخيص الشبكة من الراوتر', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16))),
+                    IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: widget.hostCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'العنوان (IP أو Domain)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.language),
+                        hintText: '8.8.8.8 أو google.com',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: _running && _type == 'ping'
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.network_ping, size: 18),
+                            label: const Text('Ping', style: TextStyle(fontWeight: FontWeight.w800)),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
+                            onPressed: _running ? null : _runPing,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: _running && _type == 'trace'
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.route, size: 18),
+                            label: const Text('Traceroute', style: TextStyle(fontWeight: FontWeight.w800)),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
+                            onPressed: _running ? null : _runTraceroute,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_result.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: SelectableText(_result,
+                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', height: 1.5)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Tr069SetupDialog extends StatefulWidget {
+  final String acsUrl;
+  final String pppoeUsername;
+  const _Tr069SetupDialog({required this.acsUrl, required this.pppoeUsername});
+
+  @override
+  State<_Tr069SetupDialog> createState() => _Tr069SetupDialogState();
+}
+
+class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
+  bool _scanning = false;
+  List<RouterDetectResult> _results = [];
+  String? _scanError;
+
+  Future<void> _scan() async {
+    setState(() { _scanning = true; _scanError = null; _results = []; });
+    try {
+      final results = await GenieAcsService.scanLocalNetwork();
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _scanning = false;
+        if (results.isEmpty) _scanError = 'لم يتم العثور على أي راوتر على الشبكة المحلية';
+      });
+    } catch (e) {
+      if (mounted) setState(() { _scanning = false; _scanError = 'خطأ: $e'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final dialogWidth = (width * 0.85).clamp(420.0, 700.0);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SizedBox(
+        width: dialogWidth,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.indigo.shade700,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.settings_input_antenna, color: Colors.white, size: 24),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('إعداد TR-069 على راوتر جديد',
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                        Text('ربط راوتر المشترك بنظام الإدارة',
+                            style: TextStyle(color: Colors.white70, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // إعدادات ACS الجاهزة للنسخ
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.indigo.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.vpn_key, size: 16, color: Colors.indigo.shade700),
+                            const SizedBox(width: 6),
+                            Text('إعدادات TR-069 المطلوبة', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.indigo.shade800)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _copyableField('ACS URL', widget.acsUrl),
+                        const SizedBox(height: 6),
+                        _copyableField('Periodic Inform', 'Enabled — كل 300 ثانية'),
+                        const SizedBox(height: 6),
+                        _copyableField('Username / Password', 'فارغ (اتركه فارغ)'),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // زر فحص الشبكة
+                  ElevatedButton.icon(
+                    icon: _scanning
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.radar, size: 20),
+                    label: Text(_scanning ? 'جاري الفحص...' : 'فحص الشبكة — كشف الراوتر',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: _scanning ? null : _scan,
+                  ),
+
+                  if (_scanError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(_scanError!, textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
+                    ),
+
+                  // نتائج الفحص
+                  if (_results.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text('الراوترات المكتشفة:', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.indigo.shade800)),
+                    const SizedBox(height: 8),
+                    ..._results.map((r) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: r.supportsTr069 ? Colors.green.shade50 : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: r.supportsTr069 ? Colors.green.shade300 : Colors.orange.shade300),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.router, size: 20, color: r.supportsTr069 ? Colors.green.shade700 : Colors.orange.shade700),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('${r.brand}${r.pageTitle.isNotEmpty ? ' — ${r.pageTitle}' : ''}',
+                                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13,
+                                            color: r.supportsTr069 ? Colors.green.shade800 : Colors.orange.shade800)),
+                                    Text(r.ip, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: r.supportsTr069 ? Colors.green.shade700 : Colors.orange.shade700,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  r.supportsTr069 ? 'يدعم TR-069' : 'لا يدعم',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('مسار الإعداد:', style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 2),
+                                Text(r.tr069Path.isNotEmpty ? r.tr069Path : 'غير محدد — ابحث في Advanced Settings',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                                        color: r.supportsTr069 ? Colors.indigo.shade800 : Colors.red.shade700)),
+                              ],
+                            ),
+                          ),
+                          if (r.supportsTr069) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '1. افتح http://${r.ip}\n2. ادخل ${r.tr069Path}\n3. الصق ACS URL أعلاه\n4. فعّل Periodic Inform (300 ثانية)',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade700, height: 1.5),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _copyableField(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 120,
+          child: Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.indigo.shade200),
+            ),
+            child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+          ),
+        ),
+        const SizedBox(width: 4),
+        InkWell(
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: value));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('تم نسخ $label'), duration: const Duration(seconds: 1)),
+            );
+          },
+          child: Icon(Icons.copy, size: 16, color: Colors.indigo.shade400),
+        ),
+      ],
+    );
+  }
 }

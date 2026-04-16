@@ -18,6 +18,7 @@ import '../../services/dual_auth_service.dart';
 import '../../services/fcm_token_service.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
+import '../offline_router_setup_page.dart';
 
 // ============================================
 // نماذج البيانات
@@ -1080,8 +1081,36 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             if (_savedCredentials.isNotEmpty) _buildSavedCredentialsDropdown(),
             SizedBox(height: isMobile ? 14 : 24),
             _buildLoginButton(),
+            SizedBox(height: gap),
+            _buildOfflineRouterSetupButton(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineRouterSetupButton() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
+    return SizedBox(
+      height: isSmall ? 38 : 44,
+      child: OutlinedButton.icon(
+        icon: Icon(Icons.settings_input_antenna, size: isSmall ? 16 : 18, color: _primaryGradient[0]),
+        label: Text(
+          'إعداد الراوتر (أوفلاين)',
+          style: GoogleFonts.cairo(
+            fontSize: isSmall ? 12 : 14,
+            fontWeight: FontWeight.w700,
+            color: _primaryGradient[0],
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: _primaryGradient[0].withOpacity(0.5)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isSmall ? 10 : 14)),
+        ),
+        onPressed: () {
+          Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const OfflineRouterSetupPage()));
+        },
       ),
     );
   }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../../services/ftth_connect_service.dart';
+import '../../services/pending_subscribers_service.dart';
+import '../../task/add_task_api_dialog.dart';
 
 /// Wizard: بحث → بيانات المنطقة → معلومات الجهاز → كود التثبيت → إرسال
 class CustomerSearchConnectPage extends StatefulWidget {
@@ -148,6 +151,17 @@ class _State extends State<CustomerSearchConnectPage> {
       _selFat = null; _selVendor = null;
       _pointCtl.clear(); _serialCtl.clear(); _userCtl.clear(); _passCtl.clear(); _codeCtl.clear();
       _userOk = null; _passOk = null;
+
+      // حفظ بيانات المشترك محلياً عند البحث الناجح
+      final custName = _customer['fullName']?.toString() ?? _customer['name']?.toString() ?? '';
+      final custPhone = _phoneController.text.trim();
+      if (custPhone.isNotEmpty) {
+        PendingSubscribersService.add(PendingSubscriber(
+          name: custName,
+          phone: custPhone,
+        ));
+      }
+
       setState(() { _isSearching = false; _step = 1; });
     } catch (e) {
       if (!mounted) return;
@@ -226,7 +240,40 @@ class _State extends State<CustomerSearchConnectPage> {
     setState(() => _submitting = false);
 
     if (r['success'] == true) {
+      // حفظ المشترك محلياً للاستخدام أوفلاين
+      final custName = _customer['fullName']?.toString() ?? _customer['name']?.toString() ?? '';
+      final custPhone = _phoneController.text.trim();
+      PendingSubscribersService.add(PendingSubscriber(
+        name: custName,
+        phone: custPhone,
+        pppoeUser: _userCtl.text.trim(),
+        pppoePass: _passCtl.text,
+        fbg: _selFdt ?? '',
+        fat: _selFat ?? '',
+      ));
       _snack('تم توصيل المشترك بنجاح!', false);
+
+      // فتح مهمة "شراء اشتراك" تلقائياً مع بيانات المشترك
+      if (mounted) {
+        final prefs = await SharedPreferences.getInstance();
+        final currentUser = prefs.getString('savedUsername') ?? '';
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (_) => AddTaskApiDialog(
+              currentUsername: currentUser,
+              currentUserRole: '',
+              currentUserDepartment: 'الحسابات',
+              initialTaskType: 'شراء اشتراك',
+              initialCustomerName: custName,
+              initialCustomerPhone: custPhone,
+              initialFBG: _selFdt ?? '',
+              initialFAT: _selFat ?? '',
+            ),
+          );
+        }
+      }
+
       setState(() { _step = 0; _phoneController.clear(); });
     } else {
       String msg = r['error'] ?? 'حدث خطأ';

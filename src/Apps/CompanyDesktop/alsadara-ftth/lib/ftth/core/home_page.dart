@@ -50,6 +50,7 @@ import '../transactions/daily_settlement_page.dart';
 import '../../pages/local_storage_page.dart'; // صفحة التخزين الداخلي
 import '../../pages/ftth/fetch_server_data_page.dart'; // صفحة جلب بيانات الموقع
 import '../../pages/ftth/ftth_company_page.dart'; // صفحة الشركة
+import '../../widgets/platform_webview.dart'; // WebView للواجهات الخارجية
 import '../../services/background_sync_service.dart'; // خدمة المزامنة في الخلفية
 import '../subscriptions/expiring_soon_page.dart';
 import '../transactions/transactions_page.dart';
@@ -2824,6 +2825,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 //       DashboardProjectPage(authToken: currentToken),
                 //     ),
                 //   ),
+                // إدارة راوترات المستخدمين (GenieACS)
+                _sidebarBtn(
+                  icon: IconsaxPlusBold.cpu,
+                  label: 'إدارة الراوترات',
+                  color: Colors.deepOrange,
+                  onTap: () => navigateToPage(PlatformWebView(
+                    url: 'http://187.124.177.236:3000',
+                    title: 'إدارة راوترات المستخدمين',
+                  )),
+                ),
                 if (_hasPermission('zones'))
                   _sidebarBtn(
                     icon: IconsaxPlusBold.location,
@@ -3157,6 +3168,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                     ),
 
+
+                  // إدارة راوترات المستخدمين (GenieACS)
+                  _buildDrawerItem(
+                    icon: IconsaxPlusBold.cpu,
+                    title: 'إدارة الراوترات',
+                    isTablet: isTablet,
+                    isSmallPhone: isSmallPhone,
+                    color: Colors.deepOrange,
+                    onTap: () => navigateToPage(PlatformWebView(
+                      url: 'http://187.124.177.236:3000',
+                      title: 'إدارة راوترات المستخدمين',
+                    )),
+                  ),
 
                   // 2 إدارة الزونات
                   if (_hasPermission('zones'))

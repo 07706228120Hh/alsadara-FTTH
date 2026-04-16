@@ -760,38 +760,51 @@ public class ServiceRequestsController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> AddAttachment(Guid id, IFormFile file, [FromForm] string? description = null)
     {
-        var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
-
-        // حفظ الملف
-        var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "attachments");
-        Directory.CreateDirectory(uploadsPath);
-
-        var fileName = $"{id}_{DateTime.UtcNow:yyyyMMddHHmmss}_{file.FileName}";
-        var filePath = Path.Combine(uploadsPath, fileName);
-
-        using (var stream = new FileStream(filePath, FileMode.Create))
+        try
         {
-            await file.CopyToAsync(stream);
+            var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { success = false, message = "الطلب غير موجود" });
+
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+                return Unauthorized(new { success = false, message = "لم يتم التعرف على المستخدم" });
+
+            // حفظ الملف
+            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "attachments");
+            Directory.CreateDirectory(uploadsPath);
+
+            // تنظيف اسم الملف من الأحرف غير المسموحة
+            var safeFileName = string.Join("_", file.FileName.Split(Path.GetInvalidFileNameChars()));
+            var fileName = $"{id}_{DateTime.UtcNow:yyyyMMddHHmmss}_{safeFileName}";
+            var filePath = Path.Combine(uploadsPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var attachment = new ServiceRequestAttachment
+            {
+                ServiceRequestId = id,
+                UploadedById = userId,
+                FileName = file.FileName,
+                FileUrl = $"/uploads/attachments/{fileName}",
+                FileType = file.ContentType,
+                FileSizeBytes = file.Length,
+                Description = description,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.ServiceRequestAttachments.AddAsync(attachment);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, data = new { attachment.Id, attachment.FileUrl } });
         }
-
-        var attachment = new ServiceRequestAttachment
+        catch (Exception ex)
         {
-            ServiceRequestId = id,
-            UploadedById = GetCurrentUserId(),
-            FileName = file.FileName,
-            FileUrl = $"/uploads/attachments/{fileName}",
-            FileType = file.ContentType,
-            FileSizeBytes = file.Length,
-            Description = description,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _unitOfWork.ServiceRequestAttachments.AddAsync(attachment);
-        await _unitOfWork.SaveChangesAsync();
-
-        return Ok(new { success = true, data = new { attachment.Id, attachment.FileUrl } });
+            return StatusCode(500, new { success = false, message = $"خطأ في رفع المرفق: {ex.Message}" });
+        }
     }
 
     /// <summary>
