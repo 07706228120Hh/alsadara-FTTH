@@ -39,10 +39,12 @@ class FloatingToolbar {
   static bool _isNavigating = false; // حماية من الضغط المتكرر
 
   // حالة الطي/الفتح
-  static final ValueNotifier<bool> _collapsedNotifier = ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> _collapsedNotifier =
+      ValueNotifier<bool>(false);
 
   // إشعار shake لزر معين
-  static final ValueNotifier<String?> _shakeButtonNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> _shakeButtonNotifier =
+      ValueNotifier<String?>(null);
 
   // notifiers
   static final ValueNotifier<int> _taskCount = ValueNotifier<int>(0);
@@ -165,17 +167,33 @@ class FloatingToolbar {
 
   /// عدد الإشعارات الإجمالي من كل الأزرار
   static int get totalBadgeCount =>
-      _taskCount.value + _s1TasksCount + _chatUnreadCount.value +
-      _notifUnreadCount.value + _waUnreadCount.value;
+      _taskCount.value +
+      _s1TasksCount +
+      _chatUnreadCount.value +
+      _notifUnreadCount.value +
+      _waUnreadCount.value;
 
   /// تهيئة الشريط العائم — يُستدعى من home_page
   static void init(BuildContext context) {
+    _disposed = false;
+    OverlayState? newOverlay;
     try {
-      _rootOverlay = Overlay.of(context, rootOverlay: true);
+      newOverlay = Overlay.of(context, rootOverlay: true);
     } catch (e) {
       debugPrint('[FloatingToolbar] init overlay failed');
       return;
     }
+
+    // إذا تغيّر الـ overlay أو كان الشريط ظاهراً سابقاً — أعد التهيئة
+    // هذا يحل مشكلة الـ entry اليتيم بعد التنقل بين الصفحات
+    if (_isShowing && (_rootOverlay != newOverlay || _entry != null)) {
+      try {
+        _entry?.remove();
+      } catch (_) {}
+      _entry = null;
+      _isShowing = false;
+    }
+    _rootOverlay = newOverlay;
 
     _loadSavedState();
 
@@ -219,7 +237,6 @@ class FloatingToolbar {
         _refreshConfig();
       });
     }
-
   }
 
   static void enableWhatsApp() {
@@ -341,17 +358,22 @@ class FloatingToolbar {
 
   static bool _refreshScheduled = false;
   static void _scheduleRefresh() {
-    if (_refreshScheduled) return;
+    if (_refreshScheduled || _disposed) return;
     _refreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshScheduled = false;
-      _refreshConfig();
+      if (!_disposed) _refreshConfig();
     });
   }
 
   static void _refreshConfig() {
-    final hasAny = _showWhatsApp || _showConversations || _showTasks ||
-        _showS1Tasks || _showChat || _showNotifications;
+    if (_disposed) return;
+    final hasAny = _showWhatsApp ||
+        _showConversations ||
+        _showTasks ||
+        _showS1Tasks ||
+        _showChat ||
+        _showNotifications;
     _configNotifier.value = _ToolbarConfig(
       showWhatsApp: _showWhatsApp,
       showConversations: _showConversations,
@@ -371,47 +393,56 @@ class FloatingToolbar {
   }
 
   static void _show() {
-    if (_isShowing || _rootOverlay == null) return;
-    _entry = OverlayEntry(builder: (_) => _ToolbarOverlay(
-      configNotifier: _configNotifier,
-      taskCountNotifier: _taskCount,
-      shakeNotifier: _shakeNotifier,
-      shakeButtonNotifier: _shakeButtonNotifier,
-      chatUnreadNotifier: _chatUnreadCount,
-      notifUnreadNotifier: _notifUnreadCount,
-      waUnreadNotifier: _waUnreadCount,
-      collapsedNotifier: _collapsedNotifier,
-      isAdmin: _isAdmin,
-    ));
+    if (_disposed || _isShowing || _rootOverlay == null) return;
+    _entry = OverlayEntry(
+        builder: (_) => _ToolbarOverlay(
+              configNotifier: _configNotifier,
+              taskCountNotifier: _taskCount,
+              shakeNotifier: _shakeNotifier,
+              shakeButtonNotifier: _shakeButtonNotifier,
+              chatUnreadNotifier: _chatUnreadCount,
+              notifUnreadNotifier: _notifUnreadCount,
+              waUnreadNotifier: _waUnreadCount,
+              collapsedNotifier: _collapsedNotifier,
+              isAdmin: _isAdmin,
+            ));
     _rootOverlay!.insert(_entry!);
     _isShowing = true;
   }
 
+  static bool _disposed = false;
+
   static void _hide() {
-    _entry?.remove();
+    try {
+      _entry?.remove();
+    } catch (_) {}
     _entry = null;
     _isShowing = false;
   }
 
   static void dispose() {
+    _disposed = true;
     _taskCountSub?.cancel();
+    _taskCountSub = null;
     _newTicketsSub?.cancel();
+    _newTicketsSub = null;
     _chatUnreadSub?.cancel();
+    _chatUnreadSub = null;
     _waUnreadSub?.cancel();
+    _waUnreadSub = null;
     _notifTimer?.cancel();
     _notifTimer = null;
-    _chatUnreadSub = null;
-    _waUnreadSub = null;
-    _hide();
-    _rootOverlay = null;
+    // إيقاف كل العلامات أولاً لمنع _refreshConfig من إعادة الإظهار
     _showWhatsApp = false;
     _showConversations = false;
     _showTasks = false;
     _showS1Tasks = false;
-    _s1TasksOnTap = null;
-    _s1TasksCount = 0;
     _showChat = false;
     _showNotifications = false;
+    _hide();
+    _rootOverlay = null;
+    _s1TasksOnTap = null;
+    _s1TasksCount = 0;
     _currentOpenPage = null;
     _isNavigating = false;
     _refreshScheduled = false;
@@ -477,6 +508,10 @@ class _ToolbarOverlay extends StatefulWidget {
 
 class _ToolbarOverlayState extends State<_ToolbarOverlay>
     with TickerProviderStateMixin {
+  bool get _isSmallPhone =>
+      (Platform.isAndroid || Platform.isIOS) &&
+      MediaQuery.of(context).size.width < 380;
+
   double? _dx;
   double? _dy;
   bool _positionLoaded = false;
@@ -511,9 +546,11 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
   Future<void> _loadPosition() async {
     final (dx, dy) = await FloatingToolbar.loadPosition();
     if (mounted && (dx != null || dy != null)) {
+      // clamp to screen bounds — الموقع المحفوظ قد يكون من نافذة بحجم مختلف
+      final mq = MediaQuery.of(context).size;
       setState(() {
-        _dx = dx;
-        _dy = dy;
+        _dx = dx?.clamp(0.0, (mq.width - 60).clamp(0.0, double.infinity));
+        _dy = dy?.clamp(40.0, (mq.height - 60).clamp(40.0, double.infinity));
         _positionLoaded = true;
       });
     } else {
@@ -569,9 +606,11 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
     FloatingToolbar._openPage(name, () {
       final ctx = navigatorKey.currentContext;
       if (ctx == null) return;
-      Navigator.of(ctx).push(
-        MaterialPageRoute(builder: (_) => page),
-      ).then((_) => FloatingToolbar.notifyPageClosed());
+      Navigator.of(ctx)
+          .push(
+            MaterialPageRoute(builder: (_) => page),
+          )
+          .then((_) => FloatingToolbar.notifyPageClosed());
     });
   }
 
@@ -579,33 +618,39 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
     FloatingToolbar._openPage(name, () {
       final ctx = navigatorKey.currentContext;
       if (ctx == null) return;
-      Navigator.of(ctx).push(
-        PageRouteBuilder(
-          pageBuilder: (c, a, b) => page,
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-          transitionsBuilder: (c, a, b, child) => child,
-        ),
-      ).then((_) => FloatingToolbar.notifyPageClosed());
+      Navigator.of(ctx)
+          .push(
+            PageRouteBuilder(
+              pageBuilder: (c, a, b) => page,
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+              transitionsBuilder: (c, a, b, child) => child,
+            ),
+          )
+          .then((_) => FloatingToolbar.notifyPageClosed());
     });
   }
 
   Widget _buildBadge(int count) {
     if (count <= 0) return const SizedBox.shrink();
+    final small = _isSmallPhone;
     return Positioned(
-      top: -4,
-      right: -4,
+      top: small ? -3 : -4,
+      right: small ? -3 : -4,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: small ? 3 : 4, vertical: 2),
         decoration: BoxDecoration(
           color: Colors.red,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)],
+          boxShadow: [
+            BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)
+          ],
         ),
-        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+        constraints: BoxConstraints(minWidth: small ? 14 : 16, minHeight: small ? 14 : 16),
         child: Text(
           count > 99 ? '99+' : '$count',
-          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+          style: TextStyle(
+              color: Colors.white, fontSize: small ? 8 : 9, fontWeight: FontWeight.w900),
           textAlign: TextAlign.center,
         ),
       ),
@@ -628,11 +673,12 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
 
     return AnimatedBuilder(
       animation: scaleAnim,
-      builder: (_, child) => Transform.scale(scale: scaleAnim.value, child: child),
+      builder: (_, child) =>
+          Transform.scale(scale: scaleAnim.value, child: child),
       child: Tooltip(
         message: tooltip,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3),
+          padding: EdgeInsets.symmetric(horizontal: _isSmallPhone ? 2 : 3),
           child: SizedBox(
             width: btnSize,
             height: btnSize,
@@ -661,7 +707,8 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
   }
 
   // _dx = المسافة من اليمين (right)، _dy = المسافة من الأعلى (top)
-  void _onDragUpdate(DragUpdateDetails d, double maxW, double maxH, bool isMobile) {
+  void _onDragUpdate(
+      DragUpdateDetails d, double maxW, double maxH, bool isMobile) {
     setState(() {
       final defaultRight = isMobile ? 10.0 : 20.0;
       final defaultDy = maxH - (isMobile ? 120.0 : 70.0);
@@ -683,8 +730,9 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context).size;
     final isMobile = Platform.isAndroid || Platform.isIOS;
-    final btnSize = isMobile ? 34.0 : 38.0;
-    final iconSize = isMobile ? 16.0 : 18.0;
+    final smallPhone = _isSmallPhone;
+    final btnSize = smallPhone ? 30.0 : (isMobile ? 34.0 : 38.0);
+    final iconSize = smallPhone ? 14.0 : (isMobile ? 16.0 : 18.0);
 
     return ValueListenableBuilder<bool>(
       valueListenable: widget.collapsedNotifier,
@@ -699,7 +747,8 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
             if (collapsed) {
               return _buildCollapsedToolbar(right, dy, mq, isMobile);
             }
-            return _buildExpandedToolbar(config, right, dy, mq, isMobile, btnSize, iconSize);
+            return _buildExpandedToolbar(
+                config, right, dy, mq, isMobile, btnSize, iconSize);
           },
         );
       },
@@ -707,7 +756,8 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
   }
 
   /// الشريط المطوي — أيقونة واحدة مع نقطة إشعار
-  Widget _buildCollapsedToolbar(double right, double dy, Size mq, bool isMobile) {
+  Widget _buildCollapsedToolbar(
+      double right, double dy, Size mq, bool isMobile) {
     return Positioned(
       right: right,
       top: dy,
@@ -727,37 +777,52 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
                     return ValueListenableBuilder<int>(
                       valueListenable: widget.waUnreadNotifier,
                       builder: (_, waUnread, __) {
-                        final total = taskCount + FloatingToolbar._s1TasksCount +
-                            chatUnread + notifUnread + waUnread;
+                        final total = taskCount +
+                            FloatingToolbar._s1TasksCount +
+                            chatUnread +
+                            notifUnread +
+                            waUnread;
+                        final smallPh = _isSmallPhone;
                         return Material(
                           elevation: 8,
                           shape: const CircleBorder(),
                           color: const Color(0xFF1A237E),
                           shadowColor: Colors.black38,
                           child: SizedBox(
-                            width: isMobile ? 44 : 50,
-                            height: isMobile ? 44 : 50,
+                            width: smallPh ? 38 : (isMobile ? 44 : 50),
+                            height: smallPh ? 38 : (isMobile ? 44 : 50),
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
-                                const Center(
-                                  child: Icon(Icons.apps_rounded, color: Colors.white, size: 22),
+                                Center(
+                                  child: Icon(Icons.apps_rounded,
+                                      color: Colors.white, size: smallPh ? 18 : 22),
                                 ),
                                 if (total > 0)
                                   Positioned(
                                     top: -2,
                                     right: -2,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 5, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: Colors.red,
                                         borderRadius: BorderRadius.circular(10),
-                                        boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.5), blurRadius: 6)],
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color: Colors.red
+                                                  .withValues(alpha: 0.5),
+                                              blurRadius: 6)
+                                        ],
                                       ),
-                                      constraints: const BoxConstraints(minWidth: 18, minHeight: 16),
+                                      constraints: const BoxConstraints(
+                                          minWidth: 18, minHeight: 16),
                                       child: Text(
                                         total > 99 ? '99+' : '$total',
-                                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900),
                                         textAlign: TextAlign.center,
                                       ),
                                     ),
@@ -829,7 +894,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
           onTap: () {
             if (conv_page.WhatsAppConversationsPage.isOpen) return;
             _openToolbarPage('conversations',
-              conv_page.WhatsAppConversationsPage(isAdmin: widget.isAdmin));
+                conv_page.WhatsAppConversationsPage(isAdmin: widget.isAdmin));
           },
         ),
       ));
@@ -838,7 +903,9 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
     if (config.showS1Tasks) {
       buttons.add(_buildCircleBtn(
         name: 's1tasks',
-        tooltip: config.s1TasksCount > 0 ? 'المهام (${config.s1TasksCount})' : 'المهام',
+        tooltip: config.s1TasksCount > 0
+            ? 'المهام (${config.s1TasksCount})'
+            : 'المهام',
         color: const Color(0xFF43A047),
         icon: Icons.task_alt_rounded,
         badge: config.s1TasksCount,
@@ -874,7 +941,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
                 final token = TicketUpdatesService.instance.currentToken;
                 if (token == null || token.isEmpty) return;
                 _openToolbarPageInstant('ftth_tickets',
-                  TKTATsPage(authToken: token, initialTab: 'open'));
+                    TKTATsPage(authToken: token, initialTab: 'open'));
               },
             ),
           );
@@ -911,7 +978,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
           shadowColor: Colors.black38,
           child: Container(
             padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 5 : 8,
+              horizontal: _isSmallPhone ? 3 : (isMobile ? 5 : 8),
               vertical: isMobile ? 3 : 4,
             ),
             decoration: BoxDecoration(
@@ -925,12 +992,12 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
                 GestureDetector(
                   onTap: FloatingToolbar.toggleCollapsed,
                   child: Icon(Icons.keyboard_arrow_left_rounded,
-                      size: isMobile ? 18 : 22, color: Colors.grey.shade500),
+                      size: _isSmallPhone ? 15 : (isMobile ? 18 : 22), color: Colors.grey.shade500),
                 ),
                 SizedBox(width: isMobile ? 1 : 2),
                 // أيقونة السحب
                 Icon(Icons.drag_indicator,
-                    size: isMobile ? 14 : 18, color: Colors.grey.shade400),
+                    size: _isSmallPhone ? 12 : (isMobile ? 14 : 18), color: Colors.grey.shade400),
                 SizedBox(width: isMobile ? 1 : 2),
                 ...buttons,
               ],
@@ -1003,21 +1070,31 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
 
   IconData _typeIcon(String? type) {
     switch (type) {
-      case 'RequestStatusUpdate': return Icons.task_alt_rounded;
-      case 'RequestAssigned': return Icons.assignment_ind_rounded;
-      case 'AgentRequest': return Icons.storefront_rounded;
-      case 'ChatMessage': return Icons.chat_rounded;
-      default: return Icons.notifications_rounded;
+      case 'RequestStatusUpdate':
+        return Icons.task_alt_rounded;
+      case 'RequestAssigned':
+        return Icons.assignment_ind_rounded;
+      case 'AgentRequest':
+        return Icons.storefront_rounded;
+      case 'ChatMessage':
+        return Icons.chat_rounded;
+      default:
+        return Icons.notifications_rounded;
     }
   }
 
   Color _typeColor(String? type) {
     switch (type) {
-      case 'RequestStatusUpdate': return const Color(0xFF1565C0);
-      case 'RequestAssigned': return const Color(0xFF00897B);
-      case 'AgentRequest': return const Color(0xFFEF6C00);
-      case 'ChatMessage': return const Color(0xFF2E7D32);
-      default: return const Color(0xFF546E7A);
+      case 'RequestStatusUpdate':
+        return const Color(0xFF1565C0);
+      case 'RequestAssigned':
+        return const Color(0xFF00897B);
+      case 'AgentRequest':
+        return const Color(0xFFEF6C00);
+      case 'ChatMessage':
+        return const Color(0xFF2E7D32);
+      default:
+        return const Color(0xFF546E7A);
     }
   }
 
@@ -1033,22 +1110,35 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
         children: [
           Container(
             margin: const EdgeInsets.only(top: 10, bottom: 6),
-            width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.notifications_rounded, color: Color(0xFF6A1B9A), size: 24),
+                const Icon(Icons.notifications_rounded,
+                    color: Color(0xFF6A1B9A), size: 24),
                 const SizedBox(width: 8),
-                const Text('الإشعارات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A237E))),
+                const Text('الإشعارات',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1A237E))),
                 const Spacer(),
                 FilterChip(
-                  label: Text(_unreadOnly ? 'غير المقروءة' : 'الكل', style: const TextStyle(fontSize: 11)),
+                  label: Text(_unreadOnly ? 'غير المقروءة' : 'الكل',
+                      style: const TextStyle(fontSize: 11)),
                   selected: _unreadOnly,
-                  onSelected: (v) { setState(() => _unreadOnly = v); _load(); },
-                  selectedColor: const Color(0xFF6A1B9A).withValues(alpha: 0.15),
+                  onSelected: (v) {
+                    setState(() => _unreadOnly = v);
+                    _load();
+                  },
+                  selectedColor:
+                      const Color(0xFF6A1B9A).withValues(alpha: 0.15),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
@@ -1069,9 +1159,12 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey.shade300),
+                            Icon(Icons.notifications_off_outlined,
+                                size: 48, color: Colors.grey.shade300),
                             const SizedBox(height: 8),
-                            Text('لا توجد إشعارات', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+                            Text('لا توجد إشعارات',
+                                style: TextStyle(
+                                    color: Colors.grey.shade500, fontSize: 14)),
                           ],
                         ),
                       )
@@ -1080,42 +1173,73 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: _notifications.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, indent: 60),
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, indent: 60),
                           itemBuilder: (_, i) {
                             final n = _notifications[i];
-                            final isRead = n['IsRead'] == true || n['isRead'] == true;
-                            final type = n['Type']?.toString() ?? n['type']?.toString();
-                            final title = n['TitleAr']?.toString() ?? n['Title']?.toString() ?? n['title']?.toString() ?? '';
-                            final body = n['BodyAr']?.toString() ?? n['Body']?.toString() ?? n['body']?.toString() ?? '';
+                            final isRead =
+                                n['IsRead'] == true || n['isRead'] == true;
+                            final type =
+                                n['Type']?.toString() ?? n['type']?.toString();
+                            final title = n['TitleAr']?.toString() ??
+                                n['Title']?.toString() ??
+                                n['title']?.toString() ??
+                                '';
+                            final body = n['BodyAr']?.toString() ??
+                                n['Body']?.toString() ??
+                                n['body']?.toString() ??
+                                '';
                             final id = n['Id'] ?? n['id'];
-                            final createdAt = DateTime.tryParse(n['CreatedAt']?.toString() ?? n['createdAt']?.toString() ?? '');
+                            final createdAt = DateTime.tryParse(
+                                n['CreatedAt']?.toString() ??
+                                    n['createdAt']?.toString() ??
+                                    '');
                             final color = _typeColor(type);
 
                             return ListTile(
                               dense: true,
-                              tileColor: isRead ? null : color.withValues(alpha: 0.05),
+                              tileColor:
+                                  isRead ? null : color.withValues(alpha: 0.05),
                               leading: Container(
-                                width: 38, height: 38,
+                                width: 38,
+                                height: 38,
                                 decoration: BoxDecoration(
                                   color: color.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: Icon(_typeIcon(type), color: color, size: 20),
+                                child: Icon(_typeIcon(type),
+                                    color: color, size: 20),
                               ),
-                              title: Text(title, style: TextStyle(fontSize: 13, fontWeight: isRead ? FontWeight.w500 : FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              title: Text(title,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isRead
+                                          ? FontWeight.w500
+                                          : FontWeight.w800),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(body, style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  Text(body,
+                                      style: const TextStyle(fontSize: 12),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis),
                                   if (createdAt != null)
-                                    Text(_timeAgo(createdAt), style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                    Text(_timeAgo(createdAt),
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey.shade500)),
                                 ],
                               ),
                               trailing: !isRead && id != null
                                   ? IconButton(
-                                      icon: Icon(Icons.check_circle_outline, size: 18, color: color),
+                                      icon: Icon(Icons.check_circle_outline,
+                                          size: 18, color: color),
                                       tooltip: 'قراءة',
-                                      onPressed: () => _markAsRead(id is int ? id : int.tryParse(id.toString()) ?? 0),
+                                      onPressed: () => _markAsRead(id is int
+                                          ? id
+                                          : int.tryParse(id.toString()) ?? 0),
                                     )
                                   : null,
                             );

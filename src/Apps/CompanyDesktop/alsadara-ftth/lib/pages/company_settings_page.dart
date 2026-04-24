@@ -4,6 +4,8 @@
 /// تاريخ الإنشاء: 2025
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1392,7 +1394,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 ],
               ),
               content: SizedBox(
-                width: 400,
+                width: min(400, MediaQuery.of(context).size.width * 0.85),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1540,7 +1542,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 ],
               ),
               content: SizedBox(
-                width: 400,
+                width: min(400, MediaQuery.of(context).size.width * 0.85),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,

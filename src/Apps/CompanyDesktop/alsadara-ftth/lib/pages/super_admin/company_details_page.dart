@@ -3,6 +3,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/api/auth/super_admin_api.dart';
@@ -2064,8 +2065,8 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 700,
-        height: 600,
+        width: min(700, MediaQuery.of(context).size.width * 0.9),
+        height: min(600, MediaQuery.of(context).size.height * 0.6),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2334,8 +2335,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 800,
-        height: 600,
+        width: min(800, MediaQuery.of(context).size.width * 0.9),
+        height: min(600, MediaQuery.of(context).size.height * 0.6),
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
@@ -2746,8 +2747,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             ],
           ),
           content: SizedBox(
-            width: 500,
-            height: 400,
+            width: min(500, MediaQuery.of(context).size.width * 0.85),
+            height: min(400, MediaQuery.of(context).size.height * 0.6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -3238,7 +3239,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             ],
           ),
           content: SizedBox(
-            width: 400,
+            width: min(400, MediaQuery.of(context).size.width * 0.85),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -3450,7 +3451,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             ],
           ),
           content: SizedBox(
-            width: 500,
+            width: min(500, MediaQuery.of(context).size.width * 0.85),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

@@ -619,6 +619,17 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 ),
               ),
             if (conversation.unreadCount > 0) SizedBox(width: isSmall ? 4 : 8),
+            // زر تعليم كغير مقروءة
+            if (conversation.unreadCount == 0)
+              IconButton(
+                icon: Icon(Icons.mark_email_unread_outlined, color: const Color(0xFF128C7E), size: isSmall ? 18 : 22),
+                tooltip: 'غير مقروءة',
+                constraints: isSmall ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+                padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
+                onPressed: () async {
+                  await WhatsAppConversationService.markAsUnread(conversation.phoneNumber);
+                },
+              ),
             // زر البحث عن المشترك
             IconButton(
               icon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: isSmall ? 18 : 22),
@@ -738,6 +749,16 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                     conversation.phoneNumber);
               },
             ),
+            if (conversation.unreadCount == 0)
+              ListTile(
+                leading: const Icon(Icons.mark_email_unread, color: Color(0xFF128C7E)),
+                title: const Text('تعليم كغير مقروءة'),
+                onTap: () async {
+                  Navigator.pop(bottomSheetContext);
+                  await WhatsAppConversationService.markAsUnread(
+                      conversation.phoneNumber);
+                },
+              ),
             if (_isAdmin)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),

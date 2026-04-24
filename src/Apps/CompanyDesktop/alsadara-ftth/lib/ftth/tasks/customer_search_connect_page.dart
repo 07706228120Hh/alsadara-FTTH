@@ -253,10 +253,30 @@ class _State extends State<CustomerSearchConnectPage> {
       ));
       _snack('تم توصيل المشترك بنجاح!', false);
 
-      // فتح مهمة "شراء اشتراك" تلقائياً مع بيانات المشترك
+      // فتح مهمة "شراء اشتراك" تلقائياً مع كل بيانات المشترك
       if (mounted) {
         final prefs = await SharedPreferences.getInstance();
         final currentUser = prefs.getString('savedUsername') ?? '';
+
+        // جلب اسم الباقة من الاشتراك إن وجد
+        final subPlan = _subs.isNotEmpty
+            ? (_subs.first['planName']?.toString() ?? '')
+            : '';
+        // استخراج رقم السرعة (35, 50, 75, 150)
+        final speedMatch = RegExp(r'(\d+)').firstMatch(subPlan);
+        final serviceType = speedMatch?.group(1) ?? '';
+
+        // جمع الملاحظات من بيانات التوصيل
+        final notes = StringBuffer();
+        notes.writeln('PPPoE User: ${_userCtl.text.trim()}');
+        notes.writeln('PPPoE Pass: ${_passCtl.text}');
+        if (_serialCtl.text.trim().isNotEmpty) notes.writeln('Serial: ${_serialCtl.text.trim()}');
+        if (_pointCtl.text.trim().isNotEmpty) notes.writeln('Point: ${_pointCtl.text.trim()}');
+
+        // جلب اسم FDT و FAT الفعلي
+        final fdtName = _fdts.where((f) => f['id'] == _selFdt).map((f) => f['displayValue']?.toString() ?? f['name']?.toString() ?? _selFdt).firstOrNull ?? _selFdt ?? '';
+        final fatName = _fats.where((f) => f['id'] == _selFat).map((f) => f['displayValue']?.toString() ?? f['name']?.toString() ?? _selFat).firstOrNull ?? _selFat ?? '';
+
         if (mounted) {
           showDialog(
             context: context,
@@ -267,8 +287,10 @@ class _State extends State<CustomerSearchConnectPage> {
               initialTaskType: 'شراء اشتراك',
               initialCustomerName: custName,
               initialCustomerPhone: custPhone,
-              initialFBG: _selFdt ?? '',
-              initialFAT: _selFat ?? '',
+              initialFBG: fdtName,
+              initialFAT: fatName,
+              initialServiceType: serviceType,
+              initialNotes: notes.toString().trim(),
             ),
           );
         }

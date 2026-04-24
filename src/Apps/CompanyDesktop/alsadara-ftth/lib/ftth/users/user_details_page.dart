@@ -5,6 +5,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -5525,7 +5526,7 @@ class _DiagnosticsDialogState extends State<_DiagnosticsDialog> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: SizedBox(
-          width: 480,
+          width: min(480, MediaQuery.of(context).size.width * 0.85),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

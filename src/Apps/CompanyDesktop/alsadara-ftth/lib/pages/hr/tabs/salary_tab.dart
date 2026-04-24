@@ -79,6 +79,20 @@ class _SalaryTabState extends State<SalaryTab> {
       totalBonuses += _parseDouble(s['bonuses'] ?? s['Bonuses'] ?? 0);
     }
 
+    final isSmall = MediaQuery.of(context).size.width < 500;
+    if (isSmall) {
+      final halfWidth = (MediaQuery.of(context).size.width - 48) / 2;
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          SizedBox(width: halfWidth, child: _infoCard('الراتب الأساسي', base, _accent, Icons.payments)),
+          SizedBox(width: halfWidth, child: _infoCard('إجمالي المدفوع', totalPaid, _green, Icons.account_balance_wallet)),
+          SizedBox(width: halfWidth, child: _infoCard('إجمالي الخصومات', totalDeductions, _red, Icons.remove_circle)),
+          SizedBox(width: halfWidth, child: _infoCard('إجمالي الحوافز', totalBonuses, Colors.amber.shade700, Icons.star)),
+        ],
+      );
+    }
     return Row(
       children: [
         _infoCard('الراتب الأساسي', base, _accent, Icons.payments),
@@ -96,9 +110,9 @@ class _SalaryTabState extends State<SalaryTab> {
   }
 
   Widget _infoCard(String label, double value, Color color, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
+    final isSmall = MediaQuery.of(context).size.width < 500;
+    final card = Container(
+        padding: EdgeInsets.all(isSmall ? 10 : 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -120,8 +134,9 @@ class _SalaryTabState extends State<SalaryTab> {
             Text(label, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
           ],
         ),
-      ),
     );
+    if (isSmall) return card;
+    return Expanded(child: card);
   }
 
   Widget _salaryHistory() {
@@ -205,7 +220,7 @@ class _SalaryTabState extends State<SalaryTab> {
         children: [
           // الشهر
           SizedBox(
-            width: 120,
+            width: MediaQuery.of(context).size.width < 500 ? 80 : 120,
             child: Text(month.toString(),
                 style: GoogleFonts.cairo(
                     fontWeight: FontWeight.bold, fontSize: 13)),

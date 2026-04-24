@@ -18,6 +18,10 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
   final _service = FtthConnectService.instance;
   final _formKey = GlobalKey<FormState>();
 
+  // ─── responsive helpers ───
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   // ─── بيانات المهمة التفصيلية ───
   Map<String, dynamic>? _taskDetails;
   List<Map<String, dynamic>> _comments = [];
@@ -256,7 +260,7 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
         body: _isLoadingDetails
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(_isPhone ? 10 : 16),
                 child: Column(
                   children: [
                     _buildCustomerInfo(),
@@ -294,7 +298,7 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(_isPhone ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -302,9 +306,9 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
               children: [
                 Icon(Icons.person, color: Colors.indigo.shade700, size: 20),
                 const SizedBox(width: 8),
-                const Text('معلومات المشترك',
+                Text('معلومات المشترك',
                     style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        TextStyle(fontSize: _fs(16), fontWeight: FontWeight.bold)),
               ],
             ),
             const Divider(height: 20),
@@ -333,16 +337,16 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
       child: Row(
         children: [
           SizedBox(
-            width: 100,
+            width: _isPhone ? 80 : 100,
             child: Text('$label:',
                 style: TextStyle(
                     color: Colors.grey.shade600,
-                    fontSize: 13,
+                    fontSize: _fs(13),
                     fontWeight: FontWeight.w500)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(fontSize: 13),
+                style: TextStyle(fontSize: _fs(13)),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis),
           ),
@@ -359,7 +363,7 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       elevation: 1,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(_isPhone ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -416,7 +420,7 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(_isPhone ? 12 : 16),
         child: Form(
           key: _formKey,
           child: Column(
@@ -426,9 +430,9 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
                 children: [
                   Icon(Icons.cable, color: Colors.green.shade700, size: 20),
                   const SizedBox(width: 8),
-                  const Text('بيانات التوصيل',
+                  Text('بيانات التوصيل',
                       style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          TextStyle(fontSize: _fs(16), fontWeight: FontWeight.bold)),
                 ],
               ),
               const Divider(height: 20),
@@ -545,7 +549,7 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
               // ─── زر التوصيل ───
               SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: _isPhone ? 40 : 48,
                 child: ElevatedButton.icon(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
@@ -562,10 +566,13 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.cable),
-                  label: Text(
-                    _isSubmitting ? 'جارٍ التوصيل...' : 'توصيل المشترك',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _isSubmitting ? 'جارٍ التوصيل...' : 'توصيل المشترك',
+                      style: TextStyle(
+                          fontSize: _fs(16), fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ),

@@ -2,6 +2,7 @@
 /// تعرض جميع البيانات المخزنة في قاعدة بيانات الخادم مع إمكانية التعديل والحذف
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -1019,7 +1020,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           ],
         ),
         content: SizedBox(
-          width: 400,
+          width: min(400, MediaQuery.of(context).size.width * 0.85),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1123,7 +1124,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           ],
         ),
         content: SizedBox(
-          width: 400,
+          width: min(400, MediaQuery.of(context).size.width * 0.85),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,

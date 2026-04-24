@@ -52,6 +52,7 @@ import '../services/message_log_service.dart'; // التقرير اليومي
 import 'iptv/iptv_subscribers_page.dart'; // صفحة مشتركي IPTV
 import 'kml_zones_map_page.dart'; // خريطة الزونات
 import 'announcements/announcements_page.dart'; // صفحة الإعلانات والتبليغات
+import '../ftth/requests/customer_hub_page.dart'; // مشترك جديد (Hub)
 import '../services/announcement_service.dart'; // خدمة الإعلانات
 import '../services/notification_api_service.dart'; // خدمة الإشعارات API
 import '../widgets/notification_bell.dart';
@@ -639,17 +640,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         FloatingToolbar.enableS1Tasks(
           onTap: () {
             if (!mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => TaskListScreen(
-                  username: widget.username,
-                  permissions: widget.permissions,
-                  department: _resolvedDepartments,
-                  center: widget.center,
-                ),
-              ),
-            );
+            _navigateTo(TaskListScreen(
+              username: widget.username,
+              permissions: widget.permissions,
+              department: _resolvedDepartments,
+              center: widget.center,
+            ));
           },
           badgeCount: _openTasksCount,
         );
@@ -682,6 +678,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } catch (e) {
       debugPrint('⚠️ خطأ في تسجيل الخروج');
     }
+
+    // إزالة الشريط العائم
+    FloatingToolbar.dispose();
 
     // الانتقال لصفحة تسجيل الدخول
     if (mounted) {
@@ -724,6 +723,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
   */
 
+  // انتقال سريع بدون أنيميشن — يمنع التأخير عند الدخول والخروج
+  void _navigateTo(Widget page) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (ctx, animation, secondaryAnimation) => page,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        transitionsBuilder: (ctx, animation, secondaryAnimation, child) => child,
+      ),
+    ).then((_) {
+      if (mounted) _showGlobalWhatsAppButton();
+    });
+  }
+
   Widget _buildEnhancedMenuItem({
     required String title,
     required String subtitle,
@@ -737,169 +751,157 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!hasPermission) return const SizedBox.shrink();
     final r = context.responsive;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: EdgeInsets.zero,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: hasPermission ? onTap : null,
-          borderRadius: BorderRadius.circular(r.cardRadius),
-          splashColor: gradient[0].withOpacity(0.1),
-          highlightColor: gradient[0].withOpacity(0.05),
-          child: Container(
-            constraints: BoxConstraints(minHeight: r.menuItemHeight),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(r.cardRadius),
-              border: Border.all(
-                color: const Color(0xFFD5D5D5),
-                width: 2.0,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: hasPermission ? onTap : null,
+        borderRadius: BorderRadius.circular(r.cardRadius + 2),
+        splashColor: gradient[0].withOpacity(0.08),
+        highlightColor: gradient[0].withOpacity(0.04),
+        child: Container(
+          constraints: BoxConstraints(minHeight: r.menuItemHeight),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(r.cardRadius + 2),
+            border: Border.all(
+              color: gradient[0].withOpacity(0.35),
+              width: 1.8,
             ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                  horizontal: r.isMobile ? 10 : 16,
-                  vertical: r.isMobile ? 6 : 8),
-              child: Row(
-                children: [
-                  // أيقونة دائرية ملونة + badge
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: r.menuIconCircleSize,
-                        height: r.menuIconCircleSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: hasPermission
-                              ? LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: gradient,
-                                )
-                              : LinearGradient(
-                                  colors: [
-                                    Colors.grey[400]!,
-                                    Colors.grey[500]!
-                                  ],
-                                ),
-                          boxShadow: hasPermission
-                              ? [
-                                  BoxShadow(
-                                    color: gradient[0].withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ]
-                              : null,
+            boxShadow: [
+              BoxShadow(
+                color: gradient[0].withOpacity(0.08),
+                blurRadius: 12,
+                spreadRadius: -2,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+                horizontal: r.isMobile ? 10 : 16,
+                vertical: r.isMobile ? 8 : 10),
+            child: Row(
+              children: [
+                // أيقونة دائرية ملونة + badge
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: r.menuIconCircleSize,
+                      height: r.menuIconCircleSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: gradient,
                         ),
-                        child: Icon(
-                          icon,
-                          color: Colors.white,
-                          size: r.menuIconInnerSize,
+                        boxShadow: [
+                          BoxShadow(
+                            color: gradient[0].withOpacity(0.35),
+                            blurRadius: 10,
+                            spreadRadius: -2,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: r.menuIconInnerSize,
+                      ),
+                    ),
+                    if (badgeCount > 0)
+                      Positioned(
+                        top: -5,
+                        right: -5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.4),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          constraints: const BoxConstraints(
+                              minWidth: 18, minHeight: 16),
+                          child: Text(
+                            badgeCount > 99 ? '99+' : badgeCount.toString(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: r.captionSize,
+                              fontWeight: FontWeight.w900,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                      if (badgeCount > 0)
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.withOpacity(0.4),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            constraints: const BoxConstraints(
-                                minWidth: 18, minHeight: 16),
-                            child: Text(
-                              badgeCount > 99 ? '99+' : badgeCount.toString(),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: r.captionSize,
-                                fontWeight: FontWeight.w900,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+                  ],
+                ),
+                SizedBox(width: r.isMobile ? 10 : 14),
+                // النص
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A2E),
+                            fontSize: r.menuItemTitleSize,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
                           ),
                         ),
-                    ],
-                  ),
-                  SizedBox(width: r.isMobile ? 10 : 14),
-                  // النص
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            title,
-                            style: TextStyle(
-                              color: hasPermission
-                                  ? const Color(0xFF000000)
-                                  : const Color(0xFF888888),
-                              fontSize: r.menuItemTitleSize,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: r.isMobile ? 1 : 3),
+                      ),
+                      if (!r.isMobile) ...[
+                        SizedBox(height: 3),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
                             subtitle,
                             style: TextStyle(
-                              color: hasPermission
-                                  ? const Color(0xFF1A1A1A)
-                                  : const Color(0xFFBBBBBB),
+                              color: const Color(0xFF6B7280),
                               fontSize: r.menuItemSubtitleSize,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  // سهم/قفل
-                  Container(
-                    width: r.menuArrowCircleSize,
-                    height: r.menuArrowCircleSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: hasPermission
-                          ? gradient[0].withOpacity(0.1)
-                          : Colors.red.withOpacity(0.08),
-                    ),
-                    child: Icon(
-                      hasPermission
-                          ? Icons.arrow_forward_ios_rounded
-                          : Icons.lock_rounded,
-                      color: hasPermission ? gradient[0] : Colors.red[300],
-                      size: r.menuArrowIconSize,
-                    ),
+                ),
+                // سهم
+                Container(
+                  width: r.menuArrowCircleSize,
+                  height: r.menuArrowCircleSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: gradient[0].withOpacity(0.08),
                   ),
-                ],
-              ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: gradient[0].withOpacity(0.6),
+                    size: r.menuArrowIconSize,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -1013,16 +1015,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required VoidCallback onPressed,
     String? tooltip,
     Color glowColor = Colors.cyanAccent,
-    EdgeInsetsGeometry margin = const EdgeInsets.symmetric(horizontal: 4),
+    EdgeInsetsGeometry? margin,
   }) {
+    final r = context.responsive;
+    final btnSize = r.scaled(34, 40, 44);
+    final btnPad = r.isMobile ? 5.0 : 8.0;
     return Container(
-      margin: margin,
+      margin: margin ?? EdgeInsets.symmetric(horizontal: r.isMobile ? 2 : 4),
       child: SizedBox(
-        width: 44,
-        height: 44,
+        width: btnSize,
+        height: btnSize,
         child: IconButton(
-          padding: const EdgeInsets.all(8),
-          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          padding: EdgeInsets.all(btnPad),
+          constraints: BoxConstraints(minWidth: btnSize, minHeight: btnSize),
           icon: icon,
           tooltip: tooltip,
           onPressed: onPressed,
@@ -1258,53 +1263,59 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '⚡ رمز الصدارة',
-              style: TextStyle(
-                fontSize: r.appBarTitleSize,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.5,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'رمز الصدارة',
+                style: TextStyle(
+                  fontSize: r.appBarTitleSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _isFtthConnected
-                        ? Colors.greenAccent
-                        : Colors.orangeAccent,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (_isFtthConnected
-                                ? Colors.greenAccent
-                                : Colors.orangeAccent)
-                            .withOpacity(0.6),
-                        blurRadius: 6,
-                        spreadRadius: 1,
-                      ),
-                    ],
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isFtthConnected
+                          ? Colors.greenAccent
+                          : Colors.orangeAccent,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (_isFtthConnected
+                                  ? Colors.greenAccent
+                                  : Colors.orangeAccent)
+                              .withOpacity(0.6),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  _isFtthConnected
-                      ? 'FTTH متصل ✓ ($_ftthConnectedUsername)'
-                      : 'FTTH غير متصل',
-                  style: TextStyle(
-                    color: _isFtthConnected
-                        ? Colors.greenAccent
-                        : Colors.orangeAccent,
-                    fontSize: r.labelSize,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(width: 4),
+                  Text(
+                    _isFtthConnected
+                        ? 'FTTH متصل ✓ ($_ftthConnectedUsername)'
+                        : 'FTTH غير متصل',
+                    style: TextStyle(
+                      color: _isFtthConnected
+                          ? Colors.greenAccent
+                          : Colors.orangeAccent,
+                      fontSize: r.scaled(9, 11, 12),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -1320,7 +1331,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               icon: Icon(
                 Icons.admin_panel_settings,
                 color: Colors.amber,
-                size: r.appBarIconSize,
+                size: r.scaled(18, 24, 26),
               ),
               tooltip: 'العودة للوحة تحكم مدير النظام',
               glowColor: Colors.amber,
@@ -1338,7 +1349,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icon(
               _isLocationActive ? Icons.location_on : Icons.location_off,
               color: _isLocationActive ? Colors.greenAccent : Colors.redAccent,
-              size: r.appBarIconSize,
+              size: r.scaled(18, 24, 26),
             ),
             tooltip: _isLocationActive
                 ? 'إيقاف مشاركة الموقع'
@@ -1409,25 +1420,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               }
             },
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: r.isMobile ? 2 : 6),
           // زر جرس الإشعارات
-          NotificationBell(iconSize: r.appBarIconSize),
-          const SizedBox(width: 6),
+          NotificationBell(iconSize: r.scaled(18, 24, 26)),
+          SizedBox(width: r.isMobile ? 2 : 6),
           if (_isAdminUser || PermissionManager.instance.canView('tracking'))
             _buildAnimatedActionButton(
               icon: Icon(
                 Icons.location_searching,
                 color: Colors.white,
-                size: r.appBarIconSize,
+                size: r.scaled(18, 24, 26),
               ),
               tooltip: 'تتبع الكادر على الخريطة',
               glowColor: Colors.cyanAccent,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TrackUsersMapPage()),
-                );
-              },
+              onPressed: () => _navigateTo(const TrackUsersMapPage()),
             ),
         ],
       ),
@@ -1478,27 +1484,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               label: 'إدارة المستخدمين',
               color: const Color(0xFF3498DB),
               onTap: () {
-                Navigator.pop(context); // أغلق الدرج
+                Navigator.pop(context);
                 final companyId =
                     widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
                 final companyCode = widget.tenantCode ??
                     VpsAuthService.instance.currentCompanyCode;
                 final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        companyId != null && companyCode != null
-                            ? UsersPageVPS(
-                                companyId: companyId,
-                                companyName: companyName,
-                                permissions: {'users': true})
-                            : companyId != null
-                                ? UsersPageFirebase(
-                                    tenantId: companyId,
-                                    permissions: widget.permissions)
-                                : UsersPage(permissions: widget.permissions),
-                  ),
+                _navigateTo(
+                  companyId != null && companyCode != null
+                      ? UsersPageVPS(
+                          companyId: companyId,
+                          companyName: companyName,
+                          permissions: const {'users': true})
+                      : companyId != null
+                          ? UsersPageFirebase(
+                              tenantId: companyId,
+                              permissions: widget.permissions)
+                          : UsersPage(permissions: widget.permissions),
                 );
               },
             ),
@@ -1519,14 +1521,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               color: const Color(0xFFE67E22),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CompanyDiagnosticsPage(
-                        tenantId: widget.tenantId,
-                        tenantCode: widget.tenantCode,
-                      ),
-                    ));
+                _navigateTo(CompanyDiagnosticsPage(
+                  tenantId: widget.tenantId,
+                  tenantCode: widget.tenantCode,
+                ));
               },
             ),
           if (_isAdminUser)
@@ -1536,18 +1534,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               color: const Color(0xFFF39C12),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CompanySettingsPage(
-                        companyId: widget.tenantId ??
-                            VpsAuthService.instance.currentCompanyId,
-                        companyCode: widget.tenantCode ??
-                            VpsAuthService.instance.currentCompanyCode,
-                        currentUserRole: widget.permissions,
-                        currentUsername: widget.username,
-                      ),
-                    ));
+                _navigateTo(CompanySettingsPage(
+                  companyId: widget.tenantId ??
+                      VpsAuthService.instance.currentCompanyId,
+                  companyCode: widget.tenantCode ??
+                      VpsAuthService.instance.currentCompanyCode,
+                  currentUserRole: widget.permissions,
+                  currentUsername: widget.username,
+                ));
               },
             ),
           if (_isAdminUser)
@@ -1557,11 +1551,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               color: const Color(0xFF8E44AD),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const FtthSyncSettingsPage(),
-                    ));
+                _navigateTo(const FtthSyncSettingsPage());
               },
             ),
           if (PermissionManager.instance.canView('chat'))
@@ -1571,12 +1561,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               color: const Color(0xFF1976D2),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ChatRoomsPage(),
-                  ),
-                );
+                _navigateTo(const ChatRoomsPage());
               },
             ),
           _drawerBtn(
@@ -1723,23 +1708,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 final companyCode = widget.tenantCode ??
                     VpsAuthService.instance.currentCompanyCode;
                 final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        companyId != null && companyCode != null
-                            ? UsersPageVPS(
-                                companyId: companyId,
-                                companyName: companyName,
-                                permissions: {'users': true},
-                              )
-                            : companyId != null
-                                ? UsersPageFirebase(
-                                    tenantId: companyId,
-                                    permissions: widget.permissions,
-                                  )
-                                : UsersPage(permissions: widget.permissions),
-                  ),
+                _navigateTo(
+                  companyId != null && companyCode != null
+                      ? UsersPageVPS(
+                          companyId: companyId,
+                          companyName: companyName,
+                          permissions: const {'users': true},
+                        )
+                      : companyId != null
+                          ? UsersPageFirebase(
+                              tenantId: companyId,
+                              permissions: widget.permissions,
+                            )
+                          : UsersPage(permissions: widget.permissions),
                 );
               },
             ),
@@ -1757,15 +1738,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               icon: Icons.bug_report,
               label: 'تشخيص النظام',
               color: const Color(0xFFE67E22),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CompanyDiagnosticsPage(
-                    tenantId: widget.tenantId,
-                    tenantCode: widget.tenantCode,
-                  ),
-                ),
-              ),
+              onTap: () => _navigateTo(CompanyDiagnosticsPage(
+                tenantId: widget.tenantId,
+                tenantCode: widget.tenantCode,
+              )),
             ),
           // إعدادات الشركة (للمدير فقط)
           if (_isAdminUser)
@@ -1773,19 +1749,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               icon: Icons.settings,
               label: 'إعدادات الشركة',
               color: const Color(0xFFF39C12),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CompanySettingsPage(
-                    companyId: widget.tenantId ??
-                        VpsAuthService.instance.currentCompanyId,
-                    companyCode: widget.tenantCode ??
-                        VpsAuthService.instance.currentCompanyCode,
-                    currentUserRole: widget.permissions,
-                    currentUsername: widget.username,
-                  ),
-                ),
-              ),
+              onTap: () => _navigateTo(CompanySettingsPage(
+                companyId: widget.tenantId ??
+                    VpsAuthService.instance.currentCompanyId,
+                companyCode: widget.tenantCode ??
+                    VpsAuthService.instance.currentCompanyCode,
+                currentUserRole: widget.permissions,
+                currentUsername: widget.username,
+              )),
             ),
           // مزامنة FTTH (للمدير فقط)
           if (_isAdminUser)
@@ -1793,12 +1764,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               icon: Icons.sync_rounded,
               label: 'مزامنة FTTH',
               color: const Color(0xFF8E44AD),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FtthSyncSettingsPage(),
-                ),
-              ),
+              onTap: () => _navigateTo(const FtthSyncSettingsPage()),
             ),
           // تسجيل الخروج
           _sidebarBtn(
@@ -1887,6 +1853,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildBody() {
     final r = context.responsive;
     final maxContentWidth = r.maxContentWidth;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Stack(
           children: [
@@ -1904,45 +1871,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
             SafeArea(
-              child: Column(
-                children: [
-                  // Add small top spacing to lower the company title a bit on phones
-                  const SizedBox(height: 2),
-                  // Compact header section
-                  Container(
-                    width: double.infinity,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: r.contentPaddingH),
+              bottom: false,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  left: r.contentPaddingH,
+                  right: r.contentPaddingH,
+                  bottom: bottomPadding + 80,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxContentWidth),
                     child: Column(
                       children: [
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         // بطاقة الإعلانات أو الترحيب
                         _buildWelcomeOrAnnouncementCard(r),
+                        // ===== عدادات سريعة =====
+                        _buildCountersRow(),
+                        SizedBox(height: r.isMobile ? 8 : 12),
+                        // شبكة القوائم
+                        _buildMenuGrid(),
                       ],
                     ),
-                  ), // Enhanced menu section
-                  // ===== عدادات سريعة =====
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: r.contentPaddingH),
-                    child: _buildCountersRow(),
                   ),
-                  SizedBox(height: r.isMobile ? 4 : 8),
-                  Expanded(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: r.contentPaddingH),
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: ConstrainedBox(
-                          constraints:
-                              BoxConstraints(maxWidth: maxContentWidth),
-                          child: _buildMenuGrid(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -2161,29 +2114,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             );
                           },
                         ),
-                  SizedBox(height: r.isMobile ? 4 : 8),
-                  // أيقونة + تسمية
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(icon, color: color, size: r.counterLabelSize + 1),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
+                  SizedBox(height: r.isMobile ? 2 : 8),
+                  // تسمية
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(icon, color: color, size: r.counterLabelSize + 1),
+                        const SizedBox(width: 3),
+                        Text(
                           label,
                           style: TextStyle(
                             color: const Color(0xFF1A1A1A),
                             fontSize: r.counterLabelSize,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
+                          maxLines: 1,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -2578,17 +2528,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             gradient: [Colors.orange[500]!, Colors.orange[700]!],
             permissionKey: 'tasks',
             badgeCount: _openTasksCount,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TaskListScreen(
-                  username: widget.username,
-                  permissions: widget.permissions,
-                  department: _resolvedDepartments,
-                  center: widget.center,
-                ),
-              ),
-            ),
+            onTap: () => _navigateTo(TaskListScreen(
+              username: widget.username,
+              permissions: widget.permissions,
+              department: _resolvedDepartments,
+              center: widget.center,
+            )),
           ),
 
           // 3) Zones
@@ -2598,17 +2543,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.map_outlined,
             gradient: [Colors.purple[500]!, Colors.purple[700]!],
             permissionKey: 'zones',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AriaPage(
-                  username: widget.username,
-                  permissions: widget.permissions,
-                  department: _resolvedDepartments,
-                  center: widget.center,
-                ),
-              ),
-            ),
+            onTap: () => _navigateTo(AriaPage(
+              username: widget.username,
+              permissions: widget.permissions,
+              department: _resolvedDepartments,
+              center: widget.center,
+            )),
           ),
           // 3b) خريطة الزونات
           _buildEnhancedMenuItem(
@@ -2617,12 +2557,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.location_on_rounded,
             gradient: [const Color(0xFF0369A1), const Color(0xFF0EA5E9)],
             permissionKey: 'zones',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const KmlZonesMapPage(),
-              ),
-            ),
+            onTap: () => _navigateTo(const KmlZonesMapPage()),
           ),
           // 4) HR - الموارد البشرية
           _buildEnhancedMenuItem(
@@ -2632,19 +2567,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             gradient: [const Color(0xFF0D47A1), const Color(0xFF1565C0)],
             permissionKey: 'hr',
             badgeCount: _pendingEmployeeRequests,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HrHubPage(
-                  username: widget.username,
-                  permissions: widget.permissions,
-                  department: widget.department,
-                  center: widget.center,
-                  tenantId: widget.tenantId,
-                  tenantCode: widget.tenantCode,
-                ),
-              ),
-            ),
+            onTap: () => _navigateTo(HrHubPage(
+              username: widget.username,
+              permissions: widget.permissions,
+              department: widget.department,
+              center: widget.center,
+              tenantId: widget.tenantId,
+              tenantCode: widget.tenantCode,
+            )),
           ),
           // 5) AI Search
           _buildEnhancedMenuItem(
@@ -2653,12 +2583,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.psychology,
             gradient: [Colors.red[500]!, Colors.red[700]!],
             permissionKey: 'ai_search',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SearchUsersPage(),
-              ),
-            ),
+            onTap: () => _navigateTo(const SearchUsersPage()),
           ),
           // 6) منصة الصدارة
           _buildEnhancedMenuItem(
@@ -2667,14 +2592,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.hub_rounded,
             gradient: [const Color(0xFF667eea), const Color(0xFF764ba2)],
             permissionKey: 'sadara_portal',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const Scaffold(
-                  body: SadaraPortalPage(),
-                ),
-              ),
-            ),
+            onTap: () => _navigateTo(const Scaffold(
+              body: SadaraPortalPage(),
+            )),
           ),
           // 7) الحسابات
           _buildEnhancedMenuItem(
@@ -2683,18 +2603,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.account_balance_wallet,
             gradient: [Colors.amber[600]!, Colors.amber[900]!],
             permissionKey: 'accounting',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PermissionGate.page(
-                  permission: 'accounting',
-                  pageName: 'الحسابات',
-                  child: AccountingDashboardPage(
-                    companyId: widget.tenantId,
-                  ),
-                ),
+            onTap: () => _navigateTo(PermissionGate.page(
+              permission: 'accounting',
+              pageName: 'الحسابات',
+              child: AccountingDashboardPage(
+                companyId: widget.tenantId,
               ),
-            ),
+            )),
           ),
           // 8) المتابعة والتقييم
           _buildEnhancedMenuItem(
@@ -2703,37 +2618,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.fact_check_rounded,
             gradient: [Colors.indigo[500]!, Colors.indigo[800]!],
             permissionKey: 'follow_up',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => FollowUpPage(
-                  username: widget.username,
-                  permissions: widget.permissions,
-                  department: _resolvedDepartments,
-                  center: widget.center,
-                ),
-              ),
-            ),
+            onTap: () => _navigateTo(FollowUpPage(
+              username: widget.username,
+              permissions: widget.permissions,
+              department: _resolvedDepartments,
+              center: widget.center,
+            )),
           ),
-          // 9) داشبورد التدقيق — مخفي حالياً
-          // _buildEnhancedMenuItem(
-          //   title: 'داشبورد التدقيق',
-          //   subtitle: 'إحصائيات وتحليلات شاملة',
-          //   icon: Icons.dashboard_rounded,
-          //   gradient: [const Color(0xFF1A237E), const Color(0xFF283593)],
-          //   permissionKey: 'audit_dashboard',
-          //   onTap: () => Navigator.push(
-          //     context,
-          //     MaterialPageRoute(
-          //       builder: (context) => AuditDashboardPage(
-          //         username: widget.username,
-          //         permissions: widget.permissions,
-          //         department: widget.department,
-          //         center: widget.center,
-          //       ),
-          //     ),
-          //   ),
-          // ),
           // 10) شاشتي - لوحة الموظف الشخصية
           _buildEnhancedMenuItem(
             title: 'شاشتي',
@@ -2741,16 +2632,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.dashboard_rounded,
             gradient: [Colors.teal[500]!, Colors.teal[800]!],
             permissionKey: 'my_dashboard',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MyDashboardPage(
-                  username: widget.username,
-                  permissions: widget.permissions,
-                  center: widget.center,
-                ),
-              ),
-            ),
+            onTap: () => _navigateTo(MyDashboardPage(
+              username: widget.username,
+              permissions: widget.permissions,
+              center: widget.center,
+            )),
           ),
           // 11) مشتركي IPTV
           _buildEnhancedMenuItem(
@@ -2759,12 +2645,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.live_tv_rounded,
             gradient: [Colors.deepPurple[500]!, Colors.deepPurple[900]!],
             permissionKey: 'iptv',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const IptvSubscribersPage(),
-              ),
-            ),
+            onTap: () => _navigateTo(const IptvSubscribersPage()),
           ),
           // 12) المحادثة الداخلية
           _buildEnhancedMenuItem(
@@ -2774,12 +2655,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             gradient: [const Color(0xFF1976D2), const Color(0xFF0D47A1)],
             permissionKey: 'chat',
             badgeCount: _unreadChatCount,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ChatRoomsPage(),
-              ),
-            ),
+            onTap: () => _navigateTo(const ChatRoomsPage()),
           ),
           // 12b) الإعلانات والتبليغات
           _buildEnhancedMenuItem(
@@ -2789,12 +2665,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             gradient: [const Color(0xFFE65100), const Color(0xFFFF6D00)],
             permissionKey: 'announcements',
             badgeCount: _unreadAnnouncementsCount,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AnnouncementsPage(),
-              ),
-            ),
+            onTap: () => _navigateTo(const AnnouncementsPage()),
           ),
           // 13) صفحة الشركة - لوحة تحكم FTTH في WebView
           _buildEnhancedMenuItem(
@@ -2803,12 +2674,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icons.business,
             gradient: [Colors.indigo[400]!, Colors.indigo[700]!],
             permissionKey: '',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const FtthCompanyPage(),
-              ),
-            ),
+            onTap: () => _navigateTo(const FtthCompanyPage()),
+          ),
+          // 14) تسجيل مشترك جديد — Customer Onboarding
+          _buildEnhancedMenuItem(
+            title: 'مشترك جديد',
+            subtitle: 'تسجيل مشترك FTTH جديد',
+            icon: Icons.person_add_alt_1_rounded,
+            gradient: [const Color(0xFF6A1B9A), const Color(0xFFAB47BC)],
+            permissionKey: '',
+            onTap: () => _navigateTo(CustomerHubPage(
+              authToken: DualAuthService.instance.ftthToken ?? '',
+            )),
           ),
         ];
 

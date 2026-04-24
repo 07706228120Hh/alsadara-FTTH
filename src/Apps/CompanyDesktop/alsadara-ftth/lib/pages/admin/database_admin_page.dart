@@ -2,6 +2,7 @@
 /// تعرض جميع الجداول مع إمكانية العرض والتعديل والحذف
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -320,7 +321,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           ],
         ),
         content: SizedBox(
-          width: 500,
+          width: min(500, MediaQuery.of(context).size.width * 0.85),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,

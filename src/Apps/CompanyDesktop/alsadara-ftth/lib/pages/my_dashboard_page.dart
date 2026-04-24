@@ -2,6 +2,7 @@
 /// تحتوي على: البصمة + المعاملات المالية + الراتب + الخصومات والمكافآت
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -569,7 +570,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
               ],
             ),
             content: SizedBox(
-              width: 450,
+              width: min(450, MediaQuery.of(context).size.width * 0.85),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -772,7 +773,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             ],
           ),
           content: SizedBox(
-            width: 420,
+            width: min(420, MediaQuery.of(context).size.width * 0.85),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

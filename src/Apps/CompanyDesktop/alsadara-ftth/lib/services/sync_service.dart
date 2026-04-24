@@ -533,97 +533,136 @@ class SyncService {
   /// https://admin.ftth.iq/api/customers/summary?partnersAndLOBAgnostic=false&pageSize=X&pageNumber=Y
   Future<int> _fetchCustomerPhones({
     required String token,
-    required List<String> customerIds, // لم نعد نحتاجها، لكن نبقيها للتوافق
+    required List<String> customerIds,
     required Function(int current, int total) onProgress,
   }) async {
-    // تهيئة الإعدادات
     await _settings.initialize();
 
-    print(
-        '⚙️ إعدادات المشتركين: $_usersPageSize/صفحة، $_usersParallelPages متوازي');
+    // جلب المشتركين بدون أرقام من قاعدة البيانات المحلية
+    final subscribers = await _db.getAllSubscribers();
+    final idsWithoutPhone = subscribers
+        .where((s) => (s['phone']?.toString() ?? '').isEmpty)
+        .map((s) => s['customer_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
 
-    int totalCount = 0;
-    int totalPages = 1;
-    int processedCount = 0;
+    // دمج مع القائمة المُمررة + إزالة التكرار
+    final allIds = {...idsWithoutPhone, ...customerIds}
+        .where((id) => id.isNotEmpty)
+        .toList();
 
-    // أولاً: جلب الصفحة الأولى لمعرفة إجمالي الصفحات
-    final firstPageUrl = Uri.parse(
-        '$_baseUrl/api/customers/summary?partnersAndLOBAgnostic=false&pageSize=$_usersPageSize&pageNumber=1');
-
-    final firstResponse = await _httpGetWithRetry(
-      firstPageUrl,
-      _getHeaders(token),
-      maxRetries: 5,
-      timeout: const Duration(seconds: 120),
-    );
-
-    if (firstResponse.statusCode == 401) {
-      throw Exception('انتهت صلاحية الجلسة - يرجى تسجيل الدخول مرة أخرى');
+    if (allIds.isEmpty) {
+      print('✅ جميع المشتركين لديهم أرقام هواتف');
+      return 0;
     }
 
-    if (firstResponse.statusCode != 200) {
-      throw Exception('فشل جلب المشتركين: ${firstResponse.statusCode}');
-    }
+    print('⚡ جلب أرقام الهواتف لـ ${allIds.length} مشترك (بدون رقم) عبر /api/customers/{id}');
 
-    final firstData = json.decode(firstResponse.body);
-    final List<dynamic> firstItems = firstData['items'] ?? [];
+    final int parallelRequests = _usersParallelPages.clamp(1, 500);
+    const int batchesBeforeSave = 10;
+    const int maxRetries = 3;
 
-    if (firstData['totalCount'] != null) {
-      totalCount = firstData['totalCount'] as int;
-      totalPages = (totalCount / _usersPageSize).ceil();
-      if (totalPages == 0) totalPages = 1;
-      print(
-          '📊 إجمالي المشتركين: $totalCount, الصفحات: $totalPages ($_usersPageSize/صفحة)');
-    }
+    int totalFetched = 0;
+    int dataFound = 0;
+    final List<Map<String, dynamic>> customersToUpdate = [];
 
-    // معالجة الصفحة الأولى
-    await _linkCustomerSummaryToSubscribers(firstItems);
-    processedCount += firstItems.length;
-    onProgress(1, totalPages);
+    final totalBatches = (allIds.length / parallelRequests).ceil();
+    final totalSaveGroups = (totalBatches / batchesBeforeSave).ceil();
 
-    if (totalPages <= 1 || _isCancelled) {
-      return processedCount;
-    }
+    // تجديد التوكن كل 10%
+    final refreshInterval = (totalSaveGroups / 10).ceil().clamp(1, totalSaveGroups);
+    int lastRefreshAt = 0;
+    String currentToken = token;
 
-    // جلب باقي الصفحات بشكل متوازي (بحد أقصى 5 في المرة للمشتركين)
-    int currentPage = 2;
-    final maxParallel =
-        _usersParallelPages.clamp(1, 5); // حد أقصى 5 متوازي للمشتركين
+    int currentIndex = 0;
+    int batchNum = 0;
+    int saveGroupNum = 0;
 
-    while (currentPage <= totalPages && !_isCancelled) {
-      final endPage =
-          (currentPage + maxParallel - 1).clamp(currentPage, totalPages);
-      final pagesToFetch =
-          List.generate(endPage - currentPage + 1, (i) => currentPage + i);
+    while (currentIndex < allIds.length && !_isCancelled) {
+      saveGroupNum++;
 
-      print('🚀 جلب متوازي للمشتركين: صفحات $currentPage إلى $endPage');
+      // 🔄 تجديد التوكن كل 10%
+      if (saveGroupNum - lastRefreshAt >= refreshInterval && saveGroupNum > 1) {
+        try {
+          final newToken = await AuthService.instance.getAccessToken();
+          if (newToken != null && newToken.isNotEmpty) {
+            currentToken = newToken;
+            lastRefreshAt = saveGroupNum;
+          }
+        } catch (_) {}
+      }
 
-      // جلب جميع الصفحات في الدفعة معاً
-      final futures = pagesToFetch
-          .map((pageNum) => _fetchSingleCustomerPage(token, pageNum));
-      final results = await Future.wait(futures);
+      for (int b = 0;
+          b < batchesBeforeSave && currentIndex < allIds.length && !_isCancelled;
+          b++) {
+        batchNum++;
 
-      // معالجة النتائج
-      for (int i = 0; i < results.length; i++) {
-        if (_isCancelled) break;
+        final endIndex = (currentIndex + parallelRequests).clamp(0, allIds.length);
+        final batch = allIds.sublist(currentIndex, endIndex);
 
-        final items = results[i];
-        if (items.isNotEmpty) {
-          await _linkCustomerSummaryToSubscribers(items);
-          processedCount += items.length;
-          onProgress(pagesToFetch[i], totalPages);
+        onProgress(saveGroupNum, totalSaveGroups);
+
+        // جلب متوازي مع إعادة محاولة للفاشلة
+        final Map<String, Map<String, dynamic>> successfulResults = {};
+        List<String> failedIds = List.from(batch);
+
+        int retryAttempt = 0;
+        while (failedIds.isNotEmpty && retryAttempt < maxRetries && !_isCancelled) {
+          if (retryAttempt > 0) {
+            await Future.delayed(Duration(seconds: retryAttempt * 2));
+          }
+
+          final futures = failedIds.map((customerId) async {
+            final result = await _fetchPhoneOnly(currentToken, customerId);
+            return MapEntry(customerId, result);
+          });
+
+          final results = await Future.wait(futures);
+
+          failedIds = [];
+          for (final entry in results) {
+            if (entry.value != null && entry.value!.isNotEmpty) {
+              successfulResults[entry.key] = entry.value!;
+            } else {
+              failedIds.add(entry.key);
+            }
+          }
+          retryAttempt++;
         }
+
+        // تجميع النتائج — تحويل للصيغة المتوافقة مع linkCustomerDataToSubscribers
+        for (final entry in successfulResults.entries) {
+          dataFound++;
+          customersToUpdate.add({
+            'customerId': entry.key,
+            'userName': '',
+            'phone': entry.value['phone'] ?? '',
+          });
+        }
+        totalFetched += batch.length;
+        currentIndex = endIndex;
       }
 
-      currentPage = endPage + 1;
+      // 💾 تخزين بعد كل 10 دفعات
+      if (customersToUpdate.isNotEmpty) {
+        await _db.linkCustomerDataToSubscribers(customersToUpdate);
+        customersToUpdate.clear();
+      }
 
-      // تأخير بين الدفعات لتخفيف الضغط على السيرفر
-      if (currentPage <= totalPages && !_isCancelled) {
-        await Future.delayed(const Duration(milliseconds: 500));
+      // ⏳ انتظار بين مجموعات التخزين
+      if (currentIndex < allIds.length && !_isCancelled) {
+        await Future.delayed(const Duration(seconds: 3));
       }
     }
 
-    return processedCount;
+    // تخزين المتبقي
+    if (customersToUpdate.isNotEmpty) {
+      await _db.linkCustomerDataToSubscribers(customersToUpdate);
+    }
+
+    print('✅ اكتمل جلب الهواتف: $dataFound رقم من $totalFetched مشترك');
+    return totalFetched;
   }
 
   /// جلب صفحة واحدة من المشتركين

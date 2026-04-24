@@ -48,6 +48,11 @@ class AccountStatsPage extends StatelessWidget {
   String _formatAmount(double amount) =>
       NumberFormat('#,###', 'ar').format(amount);
 
+  bool _isPhone(BuildContext context) =>
+      MediaQuery.of(context).size.width < 500;
+  double _fs(BuildContext context, double base) =>
+      _isPhone(context) ? base * 0.85 : base;
+
   /// التنقل إلى صفحة اسمية الوصولات لمستخدم محدد
   void _navigateToConnectionsList(BuildContext context, String userName) {
     print('🔍 AccountStatsPage - التنقل إلى ConnectionsListPage');
@@ -109,8 +114,8 @@ class AccountStatsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إحصائيات السجلات',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        title: Text('إحصائيات السجلات',
+            style: TextStyle(fontSize: _fs(context, 18), fontWeight: FontWeight.w600)),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
@@ -140,7 +145,7 @@ class AccountStatsPage extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: EdgeInsets.fromLTRB(_isPhone(context) ? 10 : 16, 12, _isPhone(context) ? 10 : 16, 24),
         children: [
           Row(children: const [
             Icon(Icons.insights, color: Colors.deepPurple),
@@ -191,6 +196,7 @@ class AccountStatsPage extends StatelessWidget {
       Widget tile(String title, IconData icon, MaterialColor color, int count,
               double amount, String label) =>
           _squareTile(
+            context: ctx,
             width: twoCols ? half : maxWidth,
             title: title,
             icon: icon,
@@ -238,6 +244,7 @@ class AccountStatsPage extends StatelessWidget {
                 width: half,
                 child: Column(children: [
                   _squareTile(
+                    context: ctx,
                     width: half,
                     title: 'العدد الكلي',
                     icon: Icons.format_list_numbered,
@@ -251,6 +258,7 @@ class AccountStatsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: spacing),
                   _squareTile(
+                    context: ctx,
                     width: half,
                     title: 'المجموع الكلي',
                     icon: Icons.account_balance_wallet,
@@ -274,6 +282,7 @@ class AccountStatsPage extends StatelessWidget {
                   renewalTotal, 'عملية'),
               const SizedBox(height: spacing),
               _squareTile(
+                context: ctx,
                 width: maxWidth,
                 title: 'العدد الكلي',
                 icon: Icons.format_list_numbered,
@@ -287,6 +296,7 @@ class AccountStatsPage extends StatelessWidget {
               ),
               const SizedBox(height: spacing),
               _squareTile(
+                context: ctx,
                 width: maxWidth,
                 title: 'المجموع الكلي',
                 icon: Icons.account_balance_wallet,
@@ -333,16 +343,16 @@ class AccountStatsPage extends StatelessWidget {
                       Row(
                         children: [
                           CircleAvatar(
-                            radius: 20,
+                            radius: _isPhone(context) ? 16 : 20,
                             backgroundColor: Colors.deepPurple.shade100,
                             child: Text(
                               u.name.isNotEmpty ? u.name.characters.first : '?',
                               style: TextStyle(
                                   color: Colors.deepPurple.shade800,
-                                  fontSize: 16),
+                                  fontSize: _fs(context, 16)),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          SizedBox(width: _isPhone(context) ? 6 : 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,62 +360,68 @@ class AccountStatsPage extends StatelessWidget {
                                 Text(u.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 16,
+                                    style: TextStyle(
+                                        fontSize: _fs(context, 16),
                                         fontWeight: FontWeight.w700)),
                                 const SizedBox(height: 2),
                                 Text('اضغط لعرض السجلات التفصيلية',
                                     style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: _fs(context, 11),
                                         color: Colors.grey.shade600,
                                         fontStyle: FontStyle.italic)),
                               ],
                             ),
                           ),
                           // زر اسمية الوصولات
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.deepPurple.shade50,
-                                  Colors.deepPurple.shade100
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                              border:
-                                  Border.all(color: Colors.deepPurple.shade200),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
+                          Flexible(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.deepPurple.shade50,
+                                    Colors.deepPurple.shade100
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
-                                onTap: () {
-                                  // إيقاف انتشار الضغطة للبطاقة الأصلية
-                                  _navigateToConnectionsList(context, u.name);
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.assignment_outlined,
-                                        size: 16,
-                                        color: Colors.deepPurple.shade700,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        ' الوصولات التوصيل',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                border:
+                                    Border.all(color: Colors.deepPurple.shade200),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () {
+                                    // إيقاف انتشار الضغطة للبطاقة الأصلية
+                                    _navigateToConnectionsList(context, u.name);
+                                  },
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: _isPhone(context) ? 8 : 12, vertical: _isPhone(context) ? 6 : 8),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.assignment_outlined,
+                                          size: _isPhone(context) ? 14 : 16,
                                           color: Colors.deepPurple.shade700,
                                         ),
-                                      ),
-                                    ],
+                                        SizedBox(width: _isPhone(context) ? 2 : 4),
+                                        Flexible(
+                                          child: Text(
+                                            _isPhone(context) ? 'الوصولات' : ' الوصولات التوصيل',
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                            style: TextStyle(
+                                              fontSize: _fs(context, 12),
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.deepPurple.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -418,24 +434,24 @@ class AccountStatsPage extends StatelessWidget {
                         scrollDirection: Axis.horizontal,
                         child: Row(children: [
                           _metricGroup([
-                            _metricBox('شراء', u.purchaseCount,
+                            _metricBox(context, 'شراء', u.purchaseCount,
                                 u.purchaseAmount, Colors.blue,
                                 margin:
                                     const EdgeInsetsDirectional.only(end: 12)),
-                            _metricBox('تجديد', u.renewalCount, u.renewalAmount,
+                            _metricBox(context, 'تجديد', u.renewalCount, u.renewalAmount,
                                 Colors.orange,
                                 margin: EdgeInsetsDirectional.zero),
                           ]),
                           _metricGroup([
-                            _metricBox(
+                            _metricBox(context,
                                 'نقد', u.cashCount, u.cashAmount, Colors.teal,
                                 margin:
                                     const EdgeInsetsDirectional.only(end: 12)),
-                            _metricBox('أجل', u.creditCount, u.creditAmount,
+                            _metricBox(context, 'أجل', u.creditCount, u.creditAmount,
                                 Colors.purple,
                                 margin: EdgeInsetsDirectional.zero),
                           ]),
-                          _metricBox('الإجمالي', u.totalActivations,
+                          _metricBox(context, 'الإجمالي', u.totalActivations,
                               u.totalAmount, Colors.green),
                         ]),
                       ),
@@ -459,23 +475,30 @@ class AccountStatsPage extends StatelessWidget {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       );
 
-  Widget _metricBox(String label, int count, double amount, MaterialColor color,
-          {EdgeInsetsDirectional? margin}) =>
-      Container(
-        width: label == 'الإجمالي' ? 480 : 300, // تكبير عرض الإجمالي أفقيًا فقط
+  Widget _metricBox(BuildContext context, String label, int count, double amount,
+          MaterialColor color,
+          {EdgeInsetsDirectional? margin}) {
+    final phone = _isPhone(context);
+    final screenW = MediaQuery.of(context).size.width;
+    final isTotal = label == 'الإجمالي';
+    final boxWidth = isTotal
+        ? (phone ? screenW * 0.85 : 480.0)
+        : (phone ? screenW * 0.4 : 300.0);
+
+    return Container(
+        width: boxWidth,
         margin: margin ?? const EdgeInsetsDirectional.only(end: 16),
         padding: EdgeInsets.symmetric(
-            horizontal: label == 'الإجمالي' ? 16 : 14,
-            vertical: label == 'الإجمالي' ? 14 : 12), // تقليل التباعد الداخلي
+            horizontal: isTotal ? (phone ? 10 : 16) : (phone ? 8 : 14),
+            vertical: isTotal ? (phone ? 10 : 14) : (phone ? 8 : 12)),
         decoration: BoxDecoration(
           color: color.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.black, width: 1),
         ),
         child: Column(
-          mainAxisAlignment: label == 'الإجمالي'
-              ? MainAxisAlignment.start
-              : MainAxisAlignment.center,
+          mainAxisAlignment:
+              isTotal ? MainAxisAlignment.start : MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -484,28 +507,29 @@ class AccountStatsPage extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: label == 'الإجمالي' ? 14 : 12,
+                    fontSize: isTotal ? _fs(context, 14) : _fs(context, 12),
                     fontWeight: FontWeight.w600,
                     color: color.shade800)),
-            SizedBox(height: label == 'الإجمالي' ? 8 : 6),
+            SizedBox(height: isTotal ? 8 : 6),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(_formatAmount(amount),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      fontSize: label == 'الإجمالي' ? 22 : 18,
+                      fontSize: isTotal ? _fs(context, 22) : _fs(context, 18),
                       fontWeight: FontWeight.w800,
                       color: color.shade900)),
             ),
-            SizedBox(height: label == 'الإجمالي' ? 10 : 6),
+            SizedBox(height: isTotal ? 10 : 6),
             Text('$count',
                 style: TextStyle(
-                    fontSize: label == 'الإجمالي' ? 18 : 15,
+                    fontSize: isTotal ? _fs(context, 18) : _fs(context, 15),
                     fontWeight: FontWeight.w600,
                     color: color.shade700)),
           ],
         ),
       );
+  }
 
   // تجميع عدة مربعات داخل إطار واحد
   Widget _metricGroup(List<Widget> children) => Container(
@@ -522,6 +546,7 @@ class AccountStatsPage extends StatelessWidget {
   // _detailChip أزيل لعدم الحاجة بعد إزالة صف الشيبس
 
   Widget _squareTile({
+    required BuildContext context,
     required double width,
     required String title,
     required IconData icon,
@@ -533,12 +558,13 @@ class AccountStatsPage extends StatelessWidget {
     String countLabel = 'عملية',
     bool showCount = true,
     bool showAmount = true,
-  }) =>
-      SizedBox(
+  }) {
+    final phone = _isPhone(context);
+    return SizedBox(
         width: width,
         child: Container(
-          height: 80,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          height: phone ? 70 : 80,
+          padding: EdgeInsets.symmetric(horizontal: phone ? 8 : 12, vertical: phone ? 6 : 10),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(12),
@@ -547,18 +573,21 @@ class AccountStatsPage extends StatelessWidget {
           child: Row(children: [
             Expanded(
                 child: Row(children: [
-              Icon(icon, color: color.shade700, size: 18),
-              const SizedBox(width: 8),
+              Icon(icon, color: color.shade700, size: phone ? 15 : 18),
+              SizedBox(width: phone ? 4 : 8),
               Flexible(
                   child: Text(title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: 16,
+                          fontSize: _fs(context, 16),
                           fontWeight: FontWeight.bold,
                           color: color.shade800))),
             ])),
-            Row(children: [
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (showCount)
                 Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -566,14 +595,14 @@ class AccountStatsPage extends StatelessWidget {
                     children: [
                       Text('$count',
                           style: TextStyle(
-                              fontSize: 20,
+                              fontSize: _fs(context, 20),
                               fontWeight: FontWeight.bold,
                               color: color.shade900)),
                       Text(countLabel,
                           style:
-                              TextStyle(fontSize: 12, color: color.shade700)),
+                              TextStyle(fontSize: _fs(context, 12), color: color.shade700)),
                     ]),
-              if (showCount && showAmount) const SizedBox(width: 14),
+              if (showCount && showAmount) SizedBox(width: phone ? 8 : 14),
               if (showAmount)
                 Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -583,15 +612,18 @@ class AccountStatsPage extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              fontSize: 16,
+                              fontSize: _fs(context, 16),
                               fontWeight: FontWeight.bold,
                               color: color.shade800)),
-                      const Text('IQD', style: TextStyle(fontSize: 12)),
+                      Text('IQD', style: TextStyle(fontSize: _fs(context, 12))),
                     ]),
-            ]),
+                ]),
+              ),
+            ),
           ]),
         ),
       );
+  }
 }
 
 // نموذج بيانات المستخدم

@@ -35,6 +35,9 @@ class AccountRecordsPage extends StatefulWidget {
 }
 
 class _AccountRecordsPageState extends State<AccountRecordsPage> {
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   List<Map<String, dynamic>> allRecords = [];
   List<Map<String, dynamic>> filteredRecords = [];
   // تحكم في دمج الأسماء المتطابقة بدون حساسية حالة الأحرف (افتراضي: معطل بناءً على طلب المستخدم)
@@ -163,10 +166,24 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     DateTime? fromDate,
     DateTime? toDate,
   }) async {
+    // بناء URL مع فلتر التاريخ — إرسال التاريخ بتوقيت UTC للسيرفر
+    final params = <String, String>{
+      'pageSize': '2000',
+    };
+    if (fromDate != null) {
+      final fromUtc = DateTime.utc(fromDate.year, fromDate.month, fromDate.day);
+      params['fromDate'] = fromUtc.toIso8601String();
+    }
+    if (toDate != null) {
+      final toUtc = DateTime.utc(toDate.year, toDate.month, toDate.day);
+      params['toDate'] = toUtc.toIso8601String();
+    }
+    final uri = Uri.parse('$_vpsBaseUrl/subscriptionlogs')
+        .replace(queryParameters: params);
+
     final client = HttpClient()
       ..badCertificateCallback = (cert, host, port) => true;
-    final request =
-        await client.getUrl(Uri.parse('$_vpsBaseUrl/subscriptionlogs'));
+    final request = await client.getUrl(uri);
     request.headers.set('Content-Type', 'application/json');
     request.headers.set('Accept', 'application/json');
     request.headers.set('X-Api-Key', _vpsApiKey);
@@ -185,42 +202,27 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       if (item is! Map) continue;
       final m = Map<String, dynamic>.from(item);
 
-      // تحليل تاريخ التفعيل
+      // تحليل تاريخ التفعيل — السيرفر يحفظ UTC، نحوّل للتوقيت المحلي
       String dateStr = '';
       String timeStr = '';
       final actDate = m['ActivationDate']?.toString() ?? '';
+      DateTime? localDt;
       if (actDate.isNotEmpty) {
         try {
-          final dt = DateTime.parse(actDate);
-          dateStr = '${dt.day}/${dt.month}/${dt.year}';
+          final parsed = DateTime.parse(actDate);
+          // إذا جاء بدون timezone info، نعتبره UTC ثم نحوّل للمحلي
+          localDt = parsed.isUtc ? parsed.toLocal() : parsed.toLocal();
+          dateStr = '${localDt.day}/${localDt.month}/${localDt.year}';
           timeStr = m['ActivationTime']?.toString() ??
-              '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+              '${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}';
         } catch (_) {
           dateStr = actDate;
           timeStr = m['ActivationTime']?.toString() ?? '';
         }
       }
 
-      // تصفية بالتاريخ محلياً
-      if (fromDate != null || toDate != null) {
-        DateTime? recordDate;
-        try {
-          if (actDate.isNotEmpty) recordDate = DateTime.parse(actDate);
-        } catch (_) {}
-        if (recordDate != null) {
-          final dayOnly =
-              DateTime(recordDate.year, recordDate.month, recordDate.day);
-          if (fromDate != null) {
-            final from = fromDate;
-            if (dayOnly.isBefore(DateTime(from.year, from.month, from.day)))
-              continue;
-          }
-          if (toDate != null) {
-            final to = toDate;
-            if (dayOnly.isAfter(DateTime(to.year, to.month, to.day))) continue;
-          }
-        }
-      }
+      // التصفية بالتاريخ تتم على السيرفر الآن (fromDate/toDate في الـ URL)
+      // لكن نبقي فحص احتياطي للحالات الحدودية (فرق timezone)
 
       // تطبيع نوع العملية
       String opType = m['OperationType']?.toString() ?? '';
@@ -1239,9 +1241,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 56,
+        toolbarHeight: _isPhone ? 48 : 56,
         title: Text('سجلات الحسابات',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w600)),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
@@ -1606,7 +1608,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   /// بناء شريط البحث والتصفية
   Widget _buildFilterBar() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(_isPhone ? 10 : 16),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         boxShadow: [
@@ -1654,7 +1656,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       )
                     : null,
               ),
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: _fs(15), fontWeight: FontWeight.w500),
               onChanged: (value) {
                 setState(() {
                   searchQuery = value;
@@ -1786,7 +1788,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       flex: 1,
                       child: Container(
                         margin: const EdgeInsets.only(left: 4),
-                        height: 44,
+                        height: _isPhone ? 38 : 44,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
@@ -1840,7 +1842,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     Expanded(
                       flex: 1,
                       child: Container(
-                        height: 44,
+                        height: _isPhone ? 38 : 44,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: showDuplicatesOnly
@@ -1907,7 +1909,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     Expanded(
                       flex: 1,
                       child: Container(
-                        height: 44,
+                        height: _isPhone ? 38 : 44,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: selectedReprintFilter == 'مطبوع أكثر من مرة'
@@ -2025,7 +2027,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           Text(
                             'التصفيات المتقدمة',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: _fs(16),
                               fontWeight: FontWeight.bold,
                               color: Colors.deepPurple,
                             ),
@@ -2574,9 +2576,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   child: ElevatedButton.icon(
                     onPressed: _applyFiltersAndHide,
                     icon: const Icon(Icons.check, size: 22),
-                    label: const Text('تطبيق',
+                    label: Text('تطبيق',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600)),
+                            fontSize: _fs(18), fontWeight: FontWeight.w600)),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 54),
                       padding: const EdgeInsets.symmetric(
@@ -2591,9 +2593,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   child: ElevatedButton.icon(
                     onPressed: _clearFilters,
                     icon: const Icon(Icons.clear, size: 22),
-                    label: const Text('إلغاء',
+                    label: Text('إلغاء',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600)),
+                            fontSize: _fs(18), fontWeight: FontWeight.w600)),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 54),
                       padding: const EdgeInsets.symmetric(
@@ -2784,7 +2786,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   /// بناء قائمة السجلات
   Widget _buildRecordsList() {
     return ListView.builder(
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.all(_isPhone ? 4 : 8),
       itemCount: filteredRecords.length,
       itemBuilder: (context, index) {
         final record = filteredRecords[index];
@@ -2843,7 +2845,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     }
 
     return Card(
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      margin: EdgeInsets.symmetric(vertical: _isPhone ? 4 : 8, horizontal: _isPhone ? 4 : 8),
       elevation: 4,
       shadowColor: cardBorderColor.withValues(alpha: 0.4),
       shape: RoundedRectangleBorder(
@@ -2852,14 +2854,14 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       ),
       color: cardBgColor,
       child: Padding(
-        padding: EdgeInsets.all(14),
+        padding: EdgeInsets.all(_isPhone ? 10 : 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // بطاقة المفعل في الأعلى
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 12, vertical: _isPhone ? 6 : 8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -2900,7 +2902,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           'مفعل بواسطة',
                           style: TextStyle(
                             color: Colors.white70,
-                            fontSize: 11,
+                            fontSize: _fs(11),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -2908,7 +2910,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           activatedBy,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: _fs(15),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -3234,12 +3236,15 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: fontSize - 1,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
+        Flexible(
+          flex: 0,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: _fs(fontSize - 1),
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         SizedBox(width: 8),
@@ -3247,7 +3252,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: fontSize,
+              fontSize: _fs(fontSize),
               fontWeight: fontWeight,
               color: textColor ?? Colors.black87,
             ),
@@ -3398,7 +3403,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       List<Color> colors, IconData icon) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: _isPhone ? 6 : 10, vertical: _isPhone ? 6 : 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: colors,
@@ -3411,13 +3416,13 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 22),
+          Icon(icon, color: Colors.white, size: _isPhone ? 16 : 22),
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white70,
-              fontSize: 11,
+              fontSize: _fs(11),
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
@@ -3427,9 +3432,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             fit: BoxFit.scaleDown,
             child: Text(
               '$amount د.ع',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: _fs(16),
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -3437,9 +3442,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 12,
+              fontSize: _fs(12),
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,

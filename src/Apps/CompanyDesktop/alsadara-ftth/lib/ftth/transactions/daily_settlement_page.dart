@@ -4,6 +4,7 @@
 /// مع مقارنة ببيانات الاشتراكات الفعلية من النظام
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -63,7 +64,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
   int _subsAgentCount = 0;
 
   // أصناف البنود
-  static const List<String> _itemCategories = ['مصاريف', 'أخرى'];
+  static const List<String> _itemCategories = ['مصاريف', 'إضافة أموال', 'أخرى'];
 
 
   // === الأيام الناقصة (بدون تقرير) ===
@@ -317,13 +318,24 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
   double get _totalExpenses {
     double total = 0;
     for (final item in _items) {
+      if (item['category'] == 'إضافة أموال') continue;
       total += (item['amount'] as num?)?.toDouble() ?? 0;
     }
     return total;
   }
 
-  /// النقد الصافي = نقد النظام − المصاريف
-  double get _netCashAmount => _subsCashTotal - _totalExpenses;
+  /// إجمالي الأموال المضافة (إيرادات خارجية)
+  double get _totalExtraIncome {
+    double total = 0;
+    for (final item in _items) {
+      if (item['category'] != 'إضافة أموال') continue;
+      total += (item['amount'] as num?)?.toDouble() ?? 0;
+    }
+    return total;
+  }
+
+  /// النقد الصافي = نقد النظام − المصاريف + إضافة أموال
+  double get _netCashAmount => _subsCashTotal - _totalExpenses + _totalExtraIncome;
 
   double get _totalAmount {
     double total = 0;
@@ -385,6 +397,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         'systemAgentCount': _subsAgentCount,
         // المبالغ المحسوبة
         'totalExpenses': _totalExpenses,
+        'totalExtraIncome': _totalExtraIncome,
         'netCashAmount': _netCashAmount,
       });
       if (result['success'] == true) {
@@ -1244,7 +1257,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                       textAlign: TextAlign.center, style: TextStyle(color: Colors.green, fontSize: 14)),
                 )
               : SizedBox(
-                  width: 400,
+                  width: min(400, MediaQuery.of(context).size.width * 0.85),
                   child: SingleChildScrollView(
                     child: Wrap(
                       spacing: 8,
@@ -1294,6 +1307,8 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     final fmt = NumberFormat('#,###');
     final netCash = _netCashAmount;
     final isNeg = netCash < 0;
+    final hasExpenses = _totalExpenses > 0;
+    final hasIncome = _totalExtraIncome > 0;
 
     final borderColor = isNeg ? Colors.red.shade300 : Colors.green.shade400;
     return Container(
@@ -1303,25 +1318,38 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         border: Border.all(color: borderColor, width: 1.5),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 6,
         children: [
-          Icon(Icons.account_balance_wallet, color: isNeg ? Colors.red.shade700 : Colors.green.shade700, size: 22),
-          const SizedBox(width: 8),
-          Text('النقد الصافي',
-              style: TextStyle(color: isNeg ? Colors.red.shade800 : Colors.green.shade800, fontSize: 14, fontWeight: FontWeight.bold)),
-          if (_totalExpenses > 0) ...[
-            const SizedBox(width: 8),
-            Text('(${fmt.format(_subsCashTotal)} − ${fmt.format(_totalExpenses)})',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
-          ],
-          const Spacer(),
-          if (_totalExpenses > 0) ...[
-            Text('مصاريف: ', style: TextStyle(color: Colors.orange.shade700, fontSize: 11)),
-            Text('−${fmt.format(_totalExpenses)}', style: TextStyle(color: Colors.orange.shade900, fontSize: 13, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 16),
-          ],
-          Text('${fmt.format(netCash)} د.ع',
-              style: TextStyle(color: isNeg ? Colors.red.shade900 : Colors.green.shade900, fontSize: 16, fontWeight: FontWeight.w900)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.account_balance_wallet, color: isNeg ? Colors.red.shade700 : Colors.green.shade700, size: 22),
+              const SizedBox(width: 8),
+              Text('النقد الصافي',
+                  style: TextStyle(color: isNeg ? Colors.red.shade800 : Colors.green.shade800, fontSize: 14, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasExpenses) ...[
+                Text('مصاريف: ', style: TextStyle(color: Colors.orange.shade700, fontSize: 11)),
+                Text('−${fmt.format(_totalExpenses)}', style: TextStyle(color: Colors.orange.shade900, fontSize: 13, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+              ],
+              if (hasIncome) ...[
+                Text('إضافة: ', style: TextStyle(color: Colors.blue.shade700, fontSize: 11)),
+                Text('+${fmt.format(_totalExtraIncome)}', style: TextStyle(color: Colors.blue.shade900, fontSize: 13, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+              ],
+              Text('${fmt.format(netCash)} د.ع',
+                  style: TextStyle(color: isNeg ? Colors.red.shade900 : Colors.green.shade900, fontSize: 16, fontWeight: FontWeight.w900)),
+            ],
+          ),
         ],
       ),
     );
@@ -1333,17 +1361,19 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     final amountCtrl = item['amountController'] as TextEditingController;
 
     final category = (item['category'] ?? '') as String;
+    final isIncome = category == 'إضافة أموال';
 
     final bool isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
-    return Padding(
+    return Container(
+      color: isIncome ? Colors.blue.shade50 : null,
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10, vertical: isMobile ? 4 : 6),
       child: Row(
         children: [
           CircleAvatar(
             radius: isMobile ? 10 : 14,
-            backgroundColor: Colors.deepPurple.shade50,
+            backgroundColor: isIncome ? Colors.blue.shade100 : Colors.deepPurple.shade50,
             child: Text('${index + 1}',
-                style: TextStyle(color: Colors.deepPurple.shade700, fontSize: isMobile ? 9 : 12, fontWeight: FontWeight.bold)),
+                style: TextStyle(color: isIncome ? Colors.blue.shade700 : Colors.deepPurple.shade700, fontSize: isMobile ? 9 : 12, fontWeight: FontWeight.bold)),
           ),
           SizedBox(width: isMobile ? 4 : 8),
           // المبلغ

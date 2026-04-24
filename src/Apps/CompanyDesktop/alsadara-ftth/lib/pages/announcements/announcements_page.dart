@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -585,7 +586,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                   const SizedBox(width: 8),
                   Text(isEdit ? 'تعديل إعلان' : 'إعلان جديد'),
                 ]),
-                content: SizedBox(width: 500, child: dialogContent),
+                content: SizedBox(width: min(500, MediaQuery.of(ctx).size.width * 0.85), child: dialogContent),
                 actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 actions: [actions],
               ),

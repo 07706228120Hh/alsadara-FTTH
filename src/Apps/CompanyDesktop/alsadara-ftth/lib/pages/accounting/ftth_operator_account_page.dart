@@ -1,4 +1,5 @@
 ﻿import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1046,8 +1047,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               ),
             ),
             content: SizedBox(
-              width: 400,
-              height: 500,
+              width: min(400, MediaQuery.of(context).size.width * 0.85),
+              height: min(500, MediaQuery.of(context).size.height * 0.6),
               child: ListView(
                 children: _columnKeys.map((key) {
                   return CheckboxListTile(
@@ -1138,8 +1139,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               ),
             ),
             content: SizedBox(
-              width: 550,
-              height: 500,
+              width: min(550, MediaQuery.of(context).size.width * 0.85),
+              height: min(500, MediaQuery.of(context).size.height * 0.6),
               child: ListView.builder(
                 itemCount: filterableKeys.length,
                 itemBuilder: (ctx, i) {
@@ -1360,7 +1361,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               ),
             ),
             content: SizedBox(
-              width: 500,
+              width: min(500, MediaQuery.of(context).size.width * 0.85),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -30,6 +30,10 @@ class AuditLogPage extends StatefulWidget {
 }
 
 class _AuditLogPageState extends State<AuditLogPage> {
+  // ─── responsive helpers ───
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   // الحالة العامة
   bool _initialLoading =
       true; // التحميل الأولي (الأنواع + الملخص + الصفحة الأولى)
@@ -290,7 +294,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                   stops: const [0, .55, 1])),
         ),
         title: Text('سجل التدقيق - ${widget.customerName}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w700)),
         actions: [
           IconButton(
               onPressed: _onRefresh,
@@ -355,7 +359,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
             Text(_error,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 14,
+                    fontSize: _fs(14),
                     fontWeight: FontWeight.w600,
                     color: Colors.red.shade700)),
             const SizedBox(height: 16),
@@ -371,13 +375,13 @@ class _AuditLogPageState extends State<AuditLogPage> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: EdgeInsets.fromLTRB(_isPhone ? 10 : 16, 12, _isPhone ? 10 : 16, 4),
       child: Material(
         elevation: 4,
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          padding: EdgeInsets.symmetric(horizontal: _isPhone ? 12 : 18, vertical: _isPhone ? 12 : 18),
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               gradient: LinearGradient(colors: [
@@ -391,17 +395,17 @@ class _AuditLogPageState extends State<AuditLogPage> {
               decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: .18),
                   borderRadius: BorderRadius.circular(16)),
-              child: const Icon(Icons.summarize, color: Colors.white, size: 28),
+              child: Icon(Icons.summarize, color: Colors.white, size: _isPhone ? 22 : 28),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('الملخص',
+                    Text('الملخص',
                         style: TextStyle(
                             color: Colors.white70,
-                            fontSize: 12,
+                            fontSize: _fs(12),
                             fontWeight: FontWeight.w600)),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 450),
@@ -416,8 +420,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
                             ? 'غير متوفر'
                             : 'إجمالي المبالغ: ${_totalAmount!.toStringAsFixed(0)}',
                         key: ValueKey(_totalAmount),
-                        style: const TextStyle(
-                            fontSize: 16,
+                        style: TextStyle(
+                            fontSize: _fs(16),
                             fontWeight: FontWeight.w800,
                             color: Colors.white),
                       ),
@@ -463,19 +467,19 @@ class _AuditLogPageState extends State<AuditLogPage> {
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               const SizedBox(height: 90),
-              Icon(Icons.inbox_outlined, size: 72, color: Colors.blue.shade200),
+              Icon(Icons.inbox_outlined, size: _isPhone ? 56 : 72, color: Colors.blue.shade200),
               const SizedBox(height: 16),
               Center(
                   child: Text('لا توجد سجلات',
                       style: TextStyle(
-                          fontSize: 15,
+                          fontSize: _fs(15),
                           fontWeight: FontWeight.w600,
                           color: Colors.blue.shade700))),
               const SizedBox(height: 8),
               Center(
                   child: Text('حاول تغيير نوع الحدث أو التحديث',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.blueGrey.shade600))),
+                          fontSize: _fs(12), color: Colors.blueGrey.shade600))),
               const SizedBox(height: 180),
             ],
           ),
@@ -582,7 +586,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
           ])),
           // المحتوى
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+            padding: EdgeInsets.fromLTRB(_isPhone ? 12 : 20, _isPhone ? 10 : 14, _isPhone ? 10 : 16, _isPhone ? 10 : 14),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(18)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,7 +597,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                     decoration: BoxDecoration(
                         color: color.withValues(alpha: .18),
                         borderRadius: BorderRadius.circular(14)),
-                    child: Icon(Icons.history_rounded, color: color, size: 22),
+                    child: Icon(Icons.history_rounded, color: color, size: _isPhone ? 18 : 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -605,7 +609,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 fontWeight: FontWeight.w900,
-                                fontSize: 15,
+                                fontSize: _fs(15),
                                 letterSpacing: .3,
                                 color: color)),
                         const SizedBox(height: 4),
@@ -615,7 +619,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           const SizedBox(width: 4),
                           Text(createdAt,
                               style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: _fs(11),
                                   color: color.withValues(alpha: .7),
                                   fontWeight: FontWeight.w500)),
                         ])
@@ -643,9 +647,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
                             color: Colors.white, size: 17),
                         const SizedBox(width: 4),
                         Text(success ? 'ناجح' : 'فشل',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: _fs(11),
                                 fontWeight: FontWeight.w700))
                       ]),
                     ),
@@ -657,7 +661,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           turns: expanded ? .5 : 0,
                           duration: const Duration(milliseconds: 300),
                           child: Icon(Icons.keyboard_arrow_down_rounded,
-                              color: color),
+                              color: color, size: _isPhone ? 20 : 24),
                         ))
                   ])
                 ]),
@@ -697,7 +701,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                     const SizedBox(width: 6),
                     Text('انقر لعرض تفاصيل سريعة',
                         style: TextStyle(
-                            fontSize: 11,
+                            fontSize: _fs(11),
                             fontWeight: FontWeight.w500,
                             color: color.withValues(alpha: .65)))
                   ]),
@@ -769,7 +773,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                 child: RichText(
                     text: TextSpan(
                         style: TextStyle(
-                            fontSize: 12,
+                            fontSize: _fs(12),
                             color: Colors.grey.shade800,
                             height: 1.3),
                         children: [
@@ -827,7 +831,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
   Widget _infoBadge(
           String label, String value, IconData icon, Color baseColor) =>
       Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 14, vertical: _isPhone ? 7 : 10),
         decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
@@ -838,7 +842,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                   blurRadius: 6,
                   offset: const Offset(0, 3))
             ]),
-        constraints: const BoxConstraints(minWidth: 110, maxWidth: 200),
+        constraints: BoxConstraints(minWidth: _isPhone ? 80 : 110, maxWidth: _isPhone ? 150 : 200),
         child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -863,7 +867,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: _fs(11),
                                     height: 1,
                                     letterSpacing: .3,
                                     color: Colors.black.withValues(alpha: .85),
@@ -874,7 +878,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: _fs(12),
                               color: Colors.grey.shade900,
                               fontWeight: FontWeight.w600))
                     ]),
@@ -923,10 +927,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
                       Expanded(
                           child: Text(
                         _arabicEventTitle((m['eventType'] ?? 'حدث').toString()),
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
-                            fontSize: 16),
+                            fontSize: _fs(16)),
                         overflow: TextOverflow.ellipsis,
                       )),
                       IconButton(
@@ -1013,7 +1017,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
         Expanded(
             child: Text(label,
                 style: TextStyle(
-                    fontSize: 13,
+                    fontSize: _fs(13),
                     fontWeight: FontWeight.w600,
                     color: Colors.grey.shade700))),
         const SizedBox(width: 12),
@@ -1021,8 +1025,8 @@ class _AuditLogPageState extends State<AuditLogPage> {
             flex: 2,
             child: Text(txt,
                 textAlign: TextAlign.right,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w500))),
+                style: TextStyle(
+                    fontSize: _fs(13), fontWeight: FontWeight.w500))),
       ]),
     );
   }

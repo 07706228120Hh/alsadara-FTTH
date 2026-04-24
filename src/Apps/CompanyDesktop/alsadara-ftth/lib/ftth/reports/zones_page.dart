@@ -4,6 +4,7 @@
 /// تاريخ الإنشاء: 2024
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../../services/auth_service.dart';
@@ -387,7 +388,7 @@ class _ZonesPageState extends State<ZonesPage> {
           ),
           content: SizedBox(
             width: double.maxFinite,
-            height: 500,
+            height: min(500, MediaQuery.of(context).size.height * 0.6),
             child: FutureBuilder<Map<String, dynamic>?>(
               future: fetchZoneDetails(zoneId),
               builder: (context, snapshot) {
@@ -923,6 +924,8 @@ class _ZonesPageState extends State<ZonesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isPhone = MediaQuery.of(context).size.width < 500;
+
     // تحديد ألوان التدرج للـ AppBar
     final gradientColors = [Colors.blueAccent, Colors.blue[600]!];
 
@@ -947,7 +950,7 @@ class _ZonesPageState extends State<ZonesPage> {
           'الزونات',
           style: SmartTextColor.getSmartTextStyle(
             context: context,
-            fontSize: 20,
+            fontSize: isPhone ? 16 : 20,
             fontWeight: FontWeight.bold,
             gradientColors: gradientColors,
           ),
@@ -1080,7 +1083,7 @@ class _ZonesPageState extends State<ZonesPage> {
                             Text(
                               'المعروض في التطبيق: $totalZones',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: isPhone ? 16 : 20,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.blue[800],
                               ),

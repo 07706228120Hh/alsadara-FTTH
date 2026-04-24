@@ -20,6 +20,9 @@ class AllSubscriptionsDetailsPage extends StatefulWidget {
 
 class _AllSubscriptionsDetailsPageState
     extends State<AllSubscriptionsDetailsPage> {
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   final List<Map<String, dynamic>> _subscriptions = [];
   bool _loading = true;
   bool _loadingDetails = false;
@@ -231,15 +234,15 @@ class _AllSubscriptionsDetailsPageState
           if (_loading || _loadingDetails)
             LinearProgressIndicator(value: _progress == 0 ? null : _progress),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: EdgeInsets.all(_isPhone ? 6.0 : 8.0),
             child: Row(
               children: [
                 Expanded(
                     child: Text(_statusMsg,
-                        style: const TextStyle(fontWeight: FontWeight.w500))),
+                        style: TextStyle(fontWeight: FontWeight.w500, fontSize: _fs(14)))),
                 if (!_loading && !_loadingDetails)
                   Text('${_subscriptions.length}',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: _fs(14))),
               ],
             ),
           ),
@@ -256,8 +259,8 @@ class _AllSubscriptionsDetailsPageState
                         final details = sub['details'] ?? {};
                         final services = (sub['services'] as List?) ?? [];
                         return Card(
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 6),
+                          margin: EdgeInsets.symmetric(
+                              horizontal: _isPhone ? 4 : 8, vertical: _isPhone ? 4 : 6),
                           child: ExpansionTile(
                             leading: CircleAvatar(
                               backgroundColor:
@@ -276,8 +279,8 @@ class _AllSubscriptionsDetailsPageState
                                 style: TextStyle(color: _statusColor(status))),
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 6),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: _isPhone ? 10 : 16, vertical: 6),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -332,7 +335,8 @@ class _AllSubscriptionsDetailsPageState
                                     Text('تفاصيل إضافية',
                                         style: TextStyle(
                                             color: Colors.grey.shade700,
-                                            fontWeight: FontWeight.bold)),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: _fs(14))),
                                     _kv(
                                         'sessionActive',
                                         sub['hasActiveSession'] == true
@@ -370,10 +374,10 @@ class _AllSubscriptionsDetailsPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-              width: 140,
+              width: _isPhone ? 100 : 140,
               child: Text(k,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54))),
-          Expanded(child: Text(val, style: const TextStyle(fontSize: 12))),
+                  style: TextStyle(fontSize: _fs(12), color: Colors.black54))),
+          Expanded(child: Text(val, style: TextStyle(fontSize: _fs(12)))),
         ],
       ),
     );

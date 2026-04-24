@@ -3,6 +3,8 @@
 /// المؤلف: تطبيق السدارة
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
@@ -819,7 +821,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         child: AlertDialog(
           title: Text('كشف راتب - ${salary['UserName'] ?? 'موظف'}'),
           content: SizedBox(
-            width: 500,
+            width: min(500, MediaQuery.of(context).size.width * 0.85),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1186,7 +1188,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
           child: AlertDialog(
             title: Text(isEdit ? 'تعديل سياسة الرواتب' : 'إنشاء سياسة رواتب'),
             content: SizedBox(
-              width: 500,
+              width: min(500, MediaQuery.of(context).size.width * 0.85),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

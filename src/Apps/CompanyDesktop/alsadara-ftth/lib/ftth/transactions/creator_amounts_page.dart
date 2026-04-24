@@ -34,6 +34,9 @@ class CreatorAmountsPage extends StatefulWidget {
 }
 
 class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   List<MapEntry<String, double>> sortedEntries = [];
   String searchQuery = '';
   String sortBy = 'name'; // تغيير الافتراضي إلى الترتيب حسب الأسماء الأبجدية
@@ -395,7 +398,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
               Text(
                 'خيارات الترتيب',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: _fs(16),
                   fontWeight: FontWeight.bold,
                   color: Colors.blue[700],
                 ),
@@ -494,9 +497,9 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
     return Expanded(
       // تغيير إلى Expanded لتوزيع المساحة بالتساوي
       child: Container(
-        height: 60, // ارتفاع أكبر قليلاً
-        padding: const EdgeInsets.symmetric(
-            horizontal: 6, vertical: 8), // زيادة الحشو الأفقي
+        height: _isPhone ? 48 : 60, // ارتفاع أكبر قليلاً
+        padding: EdgeInsets.symmetric(
+            horizontal: _isPhone ? 4 : 6, vertical: _isPhone ? 4 : 8), // زيادة الحشو الأفقي
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -518,24 +521,26 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // النص
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13, // زيادة من 11 إلى 13
-                    fontWeight: FontWeight.w900, // خط أعرض (أكثر سمكاً)
-                    color: color[700],
+                Flexible(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: _fs(13), // زيادة من 11 إلى 13
+                      fontWeight: FontWeight.w900, // خط أعرض (أكثر سمكاً)
+                      color: color[700],
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 6), // مسافة بين النص والمبلغ
+                SizedBox(width: _isPhone ? 3 : 6), // مسافة بين النص والمبلغ
                 // المبلغ
                 Flexible(
                   child: Text(
                     _formatCurrency(amount),
                     style: TextStyle(
-                      fontSize: 14, // زيادة من 12 إلى 14
+                      fontSize: _fs(14), // زيادة من 12 إلى 14
                       fontWeight: FontWeight.w900, // خط أعرض (أكثر سمكاً)
                       color: color[800],
                     ),
@@ -596,13 +601,13 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(_isPhone ? 8 : 12),
             child: Row(
               children: [
                 // أيقونة المنشأة
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: _isPhone ? 32 : 40,
+                  height: _isPhone ? 32 : 40,
                   decoration: BoxDecoration(
                     color: isPositive
                         ? Colors.green[100]
@@ -628,10 +633,10 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                         : isNegative
                             ? Colors.red[700]
                             : Colors.grey[700],
-                    size: 20,
+                    size: _isPhone ? 16 : 20,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: _isPhone ? 6 : 12),
 
                 // معلومات المنشأة
                 Expanded(
@@ -655,7 +660,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                     color: creatorName == 'بدون منشأة'
                                         ? Colors.orange[800]
                                         : Colors.black87,
-                                    fontSize: 14,
+                                    fontSize: _fs(14),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -665,14 +670,14 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                   children: [
                                     Icon(
                                       Icons.numbers,
-                                      size: 12,
+                                      size: _isPhone ? 10 : 12,
                                       color: Colors.grey[600],
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'رقم ${index + 1}',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: _fs(11),
                                         color: Colors.grey[600],
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -728,9 +733,9 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                 // بطاقة المبلغ الإجمالي - بنفس عرض المربعات الأخرى
                 Expanded(
                   child: Container(
-                    height: 60, // نفس ارتفاع المربعات الأخرى
+                    height: _isPhone ? 48 : 60, // نفس ارتفاع المربعات الأخرى
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                        EdgeInsets.symmetric(horizontal: _isPhone ? 4 : 6, vertical: _isPhone ? 4 : 8),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -791,7 +796,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                           ? Colors.red[800]
                                           : Colors.grey[800],
                                   fontSize:
-                                      16, // تكبير حجم المبلغ في المجموع النهائي
+                                      _fs(16), // تكبير حجم المبلغ في المجموع النهائي
                                 ),
                                 textAlign: TextAlign.center,
                                 maxLines: 1,
@@ -862,13 +867,13 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
         backgroundColor: const Color(0xFF1A237E),
         elevation: 0,
         toolbarHeight:
-            68, // زيادة ارتفاع الشريط أكثر لتجنب التداخل مع مربع البحث
+            _isPhone ? 56 : 68, // زيادة ارتفاع الشريط أكثر لتجنب التداخل مع مربع البحث
         iconTheme: const IconThemeData(color: Colors.white),
         title: Container(
           margin: const EdgeInsets.only(
               top: 5), // تقليل المسافة قليلاً مع زيادة الارتفاع
-          padding: const EdgeInsets.symmetric(
-              horizontal: 18, vertical: 8), // تقليل الـ padding العمودي قليلاً
+          padding: EdgeInsets.symmetric(
+              horizontal: _isPhone ? 10 : 18, vertical: _isPhone ? 6 : 8), // تقليل الـ padding العمودي قليلاً
           decoration: BoxDecoration(
             color: Colors.white, // خلفية بيضاء صلبة بدلاً من الشفاف
             borderRadius: BorderRadius.circular(16), // حواف مدورة أكثر
@@ -889,43 +894,46 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6), // تكبير إطار الأيقونة
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A237E)
-                      .withValues(alpha: 0.1), // خلفية أزرق فاتح
-                  borderRadius: BorderRadius.circular(10), // حواف مدورة أكثر
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(_isPhone ? 4 : 6), // تكبير إطار الأيقونة
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A237E)
+                        .withValues(alpha: 0.1), // خلفية أزرق فاتح
+                    borderRadius: BorderRadius.circular(10), // حواف مدورة أكثر
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet,
+                    color: const Color(0xFF1A237E), // لون أزرق داكن للأيقونة
+                    size: _isPhone ? 16 : 22, // تكبير الأيقونة أكثر
+                  ),
                 ),
-                child: Icon(
-                  Icons.account_balance_wallet,
-                  color: const Color(0xFF1A237E), // لون أزرق داكن للأيقونة
-                  size: 22, // تكبير الأيقونة أكثر
+                SizedBox(width: _isPhone ? 6 : 10), // زيادة المسافة
+                Text(
+                  'المجموع: ',
+                  style: TextStyle(
+                    color: const Color(
+                        0xFF1A237E), // لون أزرق داكن يتناسق مع لون الشريط
+                    fontSize: _fs(16), // تكبير الخط أكثر
+                    fontWeight: FontWeight.w700, // تقوية الخط
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10), // زيادة المسافة
-              Text(
-                'المجموع: ',
-                style: TextStyle(
-                  color: const Color(
-                      0xFF1A237E), // لون أزرق داكن يتناسق مع لون الشريط
-                  fontSize: 16, // تكبير الخط أكثر
-                  fontWeight: FontWeight.w700, // تقوية الخط
+                Text(
+                  '${_formatCurrency(_calculateTotalAmount())} IQD',
+                  style: TextStyle(
+                    color: const Color.fromARGB(
+                        255, 201, 12, 12), // لون أخضر داكن للمبلغ
+                    fontSize: _isPhone ? 18 : 28, // تكبير خط المبلغ أكثر
+                    fontWeight: FontWeight.w900, // أثقل خط للمبلغ
+                    letterSpacing: _isPhone ? 0.5 : 1.2, // تباعد بين الأحرف للمظهر الأنيق
+                  ),
                 ),
-              ),
-              Text(
-                '${_formatCurrency(_calculateTotalAmount())} IQD',
-                style: TextStyle(
-                  color: const Color.fromARGB(
-                      255, 201, 12, 12), // لون أخضر داكن للمبلغ
-                  fontSize: 28, // تكبير خط المبلغ أكثر
-                  fontWeight: FontWeight.w900, // أثقل خط للمبلغ
-                  letterSpacing: 1.2, // تباعد بين الأحرف للمظهر الأنيق
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         actions: [
@@ -961,7 +969,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
           // شريط البحث والإحصائيات
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(_isPhone ? 10 : 16),
             decoration: const BoxDecoration(
               color: Color(0xFF1A237E),
               borderRadius: BorderRadius.only(
@@ -1024,7 +1032,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
           // قائمة المنشآت
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 16),
               child: sortedEntries.isEmpty
                   ? Center(
                       child: Column(
@@ -1032,7 +1040,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                         children: [
                           Icon(
                             Icons.search_off,
-                            size: 80,
+                            size: _isPhone ? 56 : 80,
                             color: Colors.grey[400],
                           ),
                           const SizedBox(height: 16),
@@ -1041,7 +1049,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                 ? 'لا توجد نتائج للبحث'
                                 : 'لا توجد بيانات لعرضها',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: _fs(18),
                               fontWeight: FontWeight.w600,
                               color: Colors.grey[600],
                             ),

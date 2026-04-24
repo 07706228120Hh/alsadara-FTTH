@@ -957,6 +957,8 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
   /// بناء عنصر إحصائي
   Widget _buildStatItem(
       String label, String value, IconData icon, MaterialColor color) {
+    final isPhone = MediaQuery.of(context).size.width < 500;
+
     return Column(
       children: [
         Row(
@@ -967,7 +969,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
             Text(
               value,
               style: TextStyle(
-                fontSize: 20,
+                fontSize: isPhone ? 16 : 20,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),

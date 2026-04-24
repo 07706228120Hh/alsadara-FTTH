@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../services/attendance_api_service.dart';
@@ -740,15 +741,15 @@ class _SalariesPageState extends State<SalariesPage> {
                     Icon(Icons.group, color: AccountingTheme.info, size: 22),
                     const SizedBox(width: 8),
                     Text('كادر الرواتب',
-                        style: TextStyle(color: AccountingTheme.textPrimary, fontSize: 18)),
+                        style: TextStyle(color: AccountingTheme.textPrimary, fontSize: context.accR.headingSmall)),
                     const Spacer(),
                     Text('${selected.length}/${employees.length}',
                         style: TextStyle(color: AccountingTheme.textMuted, fontSize: 14)),
                   ],
                 ),
                 content: SizedBox(
-                  width: 450,
-                  height: 400,
+                  width: min(450, MediaQuery.of(context).size.width * 0.85),
+                  height: min(400, MediaQuery.of(context).size.height * 0.6),
                   child: ListView.builder(
                     itemCount: employees.length,
                     itemBuilder: (_, i) {
@@ -1345,7 +1346,7 @@ class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: 600),
+          constraints: BoxConstraints(minWidth: min(600, MediaQuery.of(context).size.width - 32)),
           child: DataTable(
             headingRowColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
             dataRowColor: WidgetStateProperty.resolveWith((states) {

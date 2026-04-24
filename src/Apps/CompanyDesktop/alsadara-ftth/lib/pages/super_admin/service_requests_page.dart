@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../theme/energy_dashboard_theme.dart';
 import '../../services/sadara_api_service.dart';
@@ -954,7 +955,7 @@ class _ServiceRequestsManagementPageState
                   ],
                 ),
                 content: SizedBox(
-                  width: 450,
+                  width: min(450, MediaQuery.of(context).size.width * 0.85),
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

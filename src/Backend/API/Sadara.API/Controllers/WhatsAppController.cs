@@ -71,7 +71,7 @@ public class WhatsAppController : ControllerBase
     [HttpGet("conversations")]
     [AllowAnonymous]
     public async Task<IActionResult> GetConversations(
-        [FromQuery] int limit = 200,
+        [FromQuery] int limit = 500,
         [FromQuery] DateTime? updatedSince = null)
     {
         if (!ValidateApiKey())
@@ -88,7 +88,8 @@ public class WhatsAppController : ControllerBase
             }
 
             var conversations = await query
-                .OrderByDescending(c => c.LastMessageTime)
+                .OrderByDescending(c => c.UnreadCount > 0 ? 1 : 0)
+                .ThenByDescending(c => c.LastMessageTime)
                 .Take(limit)
                 .Select(c => new
                 {
@@ -289,6 +290,44 @@ public class WhatsAppController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error marking conversation as read: {Phone}", phone);
+            return StatusCode(500, new { success = false, message = "حدث خطأ" });
+        }
+    }
+
+    // ══════════════════════════════════════
+    // PUT /api/whatsapp/conversations/{phone}/unread
+    // تعليم المحادثة كغير مقروءة
+    // ══════════════════════════════════════
+
+    [HttpPut("conversations/{phone}/unread")]
+    [AllowAnonymous]
+    public async Task<IActionResult> MarkAsUnread(string phone)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        try
+        {
+            var normalizedPhone = NormalizePhone(phone);
+            var conversation = await _unitOfWork.WhatsAppConversations
+                .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedPhone);
+
+            if (conversation == null)
+                return NotFound(new { success = false, message = "المحادثة غير موجودة" });
+
+            // إذا كانت بالفعل غير مقروءة لا نغير شيء
+            if (conversation.UnreadCount == 0)
+                conversation.UnreadCount = 1;
+
+            conversation.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.WhatsAppConversations.Update(conversation);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking conversation as unread: {Phone}", phone);
             return StatusCode(500, new { success = false, message = "حدث خطأ" });
         }
     }

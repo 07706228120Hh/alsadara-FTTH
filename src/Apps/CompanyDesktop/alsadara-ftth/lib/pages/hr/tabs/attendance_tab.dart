@@ -58,8 +58,10 @@ class _AttendanceTabState extends State<AttendanceTab> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 500;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isSmall ? 10 : 20),
       child: Column(
         children: [
           _monthSelector(),
@@ -156,6 +158,31 @@ class _AttendanceTabState extends State<AttendanceTab> {
       }
     }
 
+    final isSmall = MediaQuery.of(context).size.width < 500;
+    if (isSmall) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          SizedBox(
+            width: (MediaQuery.of(context).size.width - 28) / 2,
+            child: _statCard('حاضر', present, _green, Icons.check_circle),
+          ),
+          SizedBox(
+            width: (MediaQuery.of(context).size.width - 28) / 2,
+            child: _statCard('غائب', absent, _red, Icons.cancel),
+          ),
+          SizedBox(
+            width: (MediaQuery.of(context).size.width - 28) / 2,
+            child: _statCard('متأخر', late, _orange, Icons.access_time),
+          ),
+          SizedBox(
+            width: (MediaQuery.of(context).size.width - 28) / 2,
+            child: _statCard('إجازة', leave, _gray, Icons.event_busy),
+          ),
+        ],
+      );
+    }
     return Row(
       children: [
         _statCard('حاضر', present, _green, Icons.check_circle),
@@ -170,33 +197,34 @@ class _AttendanceTabState extends State<AttendanceTab> {
   }
 
   Widget _statCard(String label, int count, Color color, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(
-                color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-          ],
-          border: Border(bottom: BorderSide(color: color, width: 3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 6),
-            Text(
-              count.toString(),
-              style: GoogleFonts.cairo(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: color),
-            ),
-            Text(label,
-                style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
+    final isSmall = MediaQuery.of(context).size.width < 500;
+    final card = Container(
+      padding: EdgeInsets.all(isSmall ? 10 : 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+              color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        ],
+        border: Border(bottom: BorderSide(color: color, width: 3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 6),
+          Text(
+            count.toString(),
+            style: GoogleFonts.cairo(
+                fontSize: 22, fontWeight: FontWeight.bold, color: color),
+          ),
+          Text(label,
+              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
+        ],
       ),
     );
+    if (isSmall) return card;
+    return Expanded(child: card);
   }
 
   Widget _attendanceTable() {
@@ -237,9 +265,11 @@ class _AttendanceTabState extends State<AttendanceTab> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: DataTable(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
           headingRowColor: WidgetStateProperty.all(_accent.withOpacity(0.1)),
-          columnSpacing: 20,
+          columnSpacing: MediaQuery.of(context).size.width < 500 ? 10 : 20,
           columns: [
             DataColumn(
                 label: Text('التاريخ',
@@ -293,6 +323,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
               )),
             ]);
           }).toList(),
+        ),
         ),
       ),
     );

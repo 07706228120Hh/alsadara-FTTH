@@ -16,6 +16,14 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
 
+  // ─── Responsive helpers ───
+  bool get _isPhone =>
+      MediaQuery.of(context).size.width < 500;
+
+  double _fs(double size) => _isPhone ? size * 0.85 : size;
+
+  double _ic(double size) => _isPhone ? size * 0.85 : size;
+
   // بيانات
   List<Map<String, dynamic>> _tasks = [];
   List<Map<String, dynamic>> _taskTypes = [];
@@ -127,7 +135,8 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F6FA),
         appBar: AppBar(
-          title: const Text('مهام التوصيل — FTTH'),
+          title: Text('مهام التوصيل — FTTH',
+              style: TextStyle(fontSize: _fs(18))),
           centerTitle: true,
           backgroundColor: const Color(0xFF1A237E),
           foregroundColor: Colors.white,
@@ -155,7 +164,7 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.error_outline,
-                                  size: 48, color: Colors.red.shade300),
+                                  size: _ic(48), color: Colors.red.shade300),
                               const SizedBox(height: 12),
                               Text(_error!,
                                   textAlign: TextAlign.center,
@@ -163,21 +172,21 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
                               const SizedBox(height: 12),
                               ElevatedButton.icon(
                                 onPressed: _fetchTasks,
-                                icon: const Icon(Icons.refresh, size: 18),
+                                icon: Icon(Icons.refresh, size: _ic(18)),
                                 label: const Text('إعادة المحاولة'),
                               ),
                             ],
                           ),
                         )
                       : _tasks.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text('لا توجد مهام',
                                   style: TextStyle(
-                                      fontSize: 16, color: Colors.grey)),
+                                      fontSize: _fs(16), color: Colors.grey)),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: _isPhone ? 8 : 16, vertical: 8),
                               itemCount: _tasks.length,
                               itemBuilder: (ctx, i) =>
                                   _buildTaskCard(_tasks[i]),
@@ -196,7 +205,7 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
   // ─── الفلاتر ───
   Widget _buildFilters(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(_isPhone ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -218,7 +227,7 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
+                      icon: Icon(Icons.clear, size: _ic(18)),
                       onPressed: () {
                         _searchController.clear();
                         _currentPage = 1;
@@ -237,50 +246,56 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
           const SizedBox(height: 10),
 
           // فلتر الحالة
-          Row(
-            children: [
-              const Text('الحالة: ',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              ...[
-                _statusChip('الكل', 0),
-                _statusChip('لم تبدأ', 1),
-                _statusChip('قيد التنفيذ', 2),
-                _statusChip('مكتملة', 3),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Text('الحالة: ',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: _fs(13))),
+                const SizedBox(width: 8),
+                ...[
+                  _statusChip('الكل', 0),
+                  _statusChip('لم تبدأ', 1),
+                  _statusChip('قيد التنفيذ', 2),
+                  _statusChip('مكتملة', 3),
+                ],
               ],
-            ],
+            ),
           ),
           const SizedBox(height: 8),
 
           // فلتر النوع
-          Row(
-            children: [
-              const Text('النوع: ',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              ..._taskTypes.map((t) => Padding(
-                    padding: const EdgeInsets.only(left: 6),
-                    child: FilterChip(
-                      label: Text(_translateTaskType(t['displayValue'] ?? ''),
-                          style: const TextStyle(fontSize: 12)),
-                      selected: _selectedTypeIds.contains(t['id']),
-                      onSelected: (val) {
-                        setState(() {
-                          if (val) {
-                            _selectedTypeIds.add(t['id'] as String);
-                          } else {
-                            _selectedTypeIds.remove(t['id']);
-                          }
-                        });
-                        _currentPage = 1;
-                        _fetchTasks();
-                      },
-                      selectedColor: Colors.indigo.shade100,
-                      checkmarkColor: Colors.indigo,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  )),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Text('النوع: ',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: _fs(13))),
+                const SizedBox(width: 8),
+                ..._taskTypes.map((t) => Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: FilterChip(
+                        label: Text(_translateTaskType(t['displayValue'] ?? ''),
+                            style: TextStyle(fontSize: _fs(12))),
+                        selected: _selectedTypeIds.contains(t['id']),
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              _selectedTypeIds.add(t['id'] as String);
+                            } else {
+                              _selectedTypeIds.remove(t['id']);
+                            }
+                          });
+                          _currentPage = 1;
+                          _fetchTasks();
+                        },
+                        selectedColor: Colors.indigo.shade100,
+                        checkmarkColor: Colors.indigo,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    )),
+              ],
+            ),
           ),
 
           // العدد الكلي
@@ -289,7 +304,7 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 'المجموع: $_totalCount مهمة',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: _fs(12)),
               ),
             ),
         ],
@@ -302,7 +317,7 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
     return Padding(
       padding: const EdgeInsets.only(left: 6),
       child: ChoiceChip(
-        label: Text(label, style: const TextStyle(fontSize: 12)),
+        label: Text(label, style: TextStyle(fontSize: _fs(12))),
         selected: selected,
         onSelected: (_) {
           setState(() => _statusFilter = value);
@@ -355,7 +370,7 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openConnectForm(task),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(_isPhone ? 10 : 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -365,15 +380,15 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
                   Expanded(
                     child: Text(
                       customerName,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: _fs(15), fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        EdgeInsets.symmetric(horizontal: _isPhone ? 7 : 10, vertical: 3),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -381,7 +396,7 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
                     child: Text(statusAr,
                         style: TextStyle(
                             color: statusColor,
-                            fontSize: 11,
+                            fontSize: _fs(11),
                             fontWeight: FontWeight.w600)),
                   ),
                 ],
@@ -391,18 +406,21 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
               // السطر الثاني: النوع + الزون
               Row(
                 children: [
-                  Icon(Icons.cable, size: 14, color: Colors.grey.shade600),
+                  Icon(Icons.cable, size: _ic(14), color: Colors.grey.shade600),
                   const SizedBox(width: 4),
                   Text(_translateTaskType(taskName),
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-                  const SizedBox(width: 16),
+                          TextStyle(fontSize: _fs(12), color: Colors.grey.shade700)),
+                  SizedBox(width: _isPhone ? 10 : 16),
                   Icon(Icons.location_on,
-                      size: 14, color: Colors.grey.shade600),
+                      size: _ic(14), color: Colors.grey.shade600),
                   const SizedBox(width: 4),
-                  Text(zoneName,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                  Flexible(
+                    child: Text(zoneName,
+                        style:
+                            TextStyle(fontSize: _fs(12), color: Colors.grey.shade700),
+                        overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -411,18 +429,18 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
               Row(
                 children: [
                   Icon(Icons.calendar_today,
-                      size: 12, color: Colors.grey.shade500),
+                      size: _ic(12), color: Colors.grey.shade500),
                   const SizedBox(width: 4),
                   Text(_formatDate(createdAt),
                       style:
-                          TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                          TextStyle(fontSize: _fs(11), color: Colors.grey.shade500)),
                   if (dueAt.isNotEmpty) ...[
                     const SizedBox(width: 12),
-                    Icon(Icons.timer, size: 12, color: Colors.grey.shade500),
+                    Icon(Icons.timer, size: _ic(12), color: Colors.grey.shade500),
                     const SizedBox(width: 4),
                     Text(_formatDate(dueAt),
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500)),
+                            fontSize: _fs(11), color: Colors.grey.shade500)),
                   ],
                 ],
               ),

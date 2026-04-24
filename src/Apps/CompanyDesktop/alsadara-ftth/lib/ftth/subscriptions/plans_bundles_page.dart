@@ -5,6 +5,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../auth/auth_error_handler.dart';
@@ -127,7 +128,7 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
               Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: SizedBox(
-                  width: 340,
+                  width: min(340, MediaQuery.of(context).size.width * 0.8),
                   child: Text(
                     _rawBody!.length > 500
                         ? '${_rawBody!.substring(0, 500)}...'

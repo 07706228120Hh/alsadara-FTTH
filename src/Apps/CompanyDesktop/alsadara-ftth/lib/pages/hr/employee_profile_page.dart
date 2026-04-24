@@ -360,20 +360,22 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         Row(
           children: [
             if (phone.isNotEmpty) ...[
-              _buildPhoneBadge(phone, true),
+              Flexible(child: _buildPhoneBadge(phone, true)),
               const SizedBox(width: 4),
             ],
             if (code.isNotEmpty) _headerChip(code, Colors.white24),
             const Spacer(),
-            _headerActionBtn(icon: Icons.key_rounded, tooltip: 'كلمة المرور', color: const Color(0xFFFF9800), onTap: () => _showPasswordDialog(), small: true),
-            const SizedBox(width: 3),
-            _headerActionBtn(icon: Icons.link_rounded, tooltip: 'ربط FTTH', color: const Color(0xFFCDDC39), onTap: () => _openFtthLinking(), small: true),
-            const SizedBox(width: 3),
-            if (_pm.canDelete('users')) ...[
-              _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف', color: const Color(0xFFFF5252), onTap: () => _deleteEmployee(), small: true),
-              const SizedBox(width: 3),
-            ],
-            _headerActionBtn(icon: Icons.refresh_rounded, tooltip: 'تحديث', color: Colors.white70, onTap: _loadFullProfile, small: true),
+            Wrap(
+              spacing: 3,
+              runSpacing: 3,
+              children: [
+                _headerActionBtn(icon: Icons.key_rounded, tooltip: 'كلمة المرور', color: const Color(0xFFFF9800), onTap: () => _showPasswordDialog(), small: true),
+                _headerActionBtn(icon: Icons.link_rounded, tooltip: 'ربط FTTH', color: const Color(0xFFCDDC39), onTap: () => _openFtthLinking(), small: true),
+                if (_pm.canDelete('users'))
+                  _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف', color: const Color(0xFFFF5252), onTap: () => _deleteEmployee(), small: true),
+                _headerActionBtn(icon: Icons.refresh_rounded, tooltip: 'تحديث', color: Colors.white70, onTap: _loadFullProfile, small: true),
+              ],
+            ),
           ],
         ),
       ],
@@ -474,12 +476,18 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
 
     await showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) {
+        final screenWidth = MediaQuery.of(ctx).size.width;
+        return StatefulBuilder(
         builder: (ctx, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: screenWidth < 600 ? 16 : 40,
+              vertical: 24,
+            ),
             title: Row(
               children: [
                 Container(
@@ -642,7 +650,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
             ],
           ),
         ),
-      ),
+      );
+      },
     );
   }
 
@@ -652,11 +661,17 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     final empName = _employee['fullName'] ?? _employee['FullName'] ?? 'الموظف';
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => Directionality(
+      builder: (ctx) {
+        final screenWidth = MediaQuery.of(ctx).size.width;
+        return Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: screenWidth < 600 ? 16 : 40,
+            vertical: 24,
+          ),
           title: Row(
             children: [
               Icon(Icons.warning_rounded, color: Colors.red.shade400),
@@ -685,7 +700,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
             ),
           ],
         ),
-      ),
+      );
+      },
     );
 
     if (confirm == true) {

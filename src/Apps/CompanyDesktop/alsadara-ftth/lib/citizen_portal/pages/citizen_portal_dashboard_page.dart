@@ -53,6 +53,8 @@ class _CitizenPortalDashboardPageState
 
   @override
   Widget build(BuildContext context) {
+    final isPhone = MediaQuery.of(context).size.width < 500;
+
     if (isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -95,9 +97,9 @@ class _CitizenPortalDashboardPageState
             children: [
               Icon(Icons.lock, size: 80, color: Colors.grey[400]),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'بوابة المواطن غير متاحة',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: isPhone ? 18 : 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Text(
@@ -130,13 +132,13 @@ class _CitizenPortalDashboardPageState
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isPhone ? 12 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isPhone ? 12 : 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.teal, Colors.teal.shade700],
@@ -151,10 +153,10 @@ class _CitizenPortalDashboardPageState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'مرحباً بك في بوابة المواطن',
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: isPhone ? 18 : 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -173,11 +175,11 @@ class _CitizenPortalDashboardPageState
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: isPhone ? 16 : 32),
 
             // Statistics Cards
             GridView.count(
-              crossAxisCount: 4,
+              crossAxisCount: isPhone ? 2 : 4,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 16,
@@ -209,20 +211,20 @@ class _CitizenPortalDashboardPageState
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: isPhone ? 16 : 32),
 
             // Quick Actions
-            const Text(
+            Text(
               'الإجراءات السريعة',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: isPhone ? 16 : 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             GridView.count(
-              crossAxisCount: 3,
+              crossAxisCount: isPhone ? 2 : 3,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
+              mainAxisSpacing: isPhone ? 8 : 16,
+              crossAxisSpacing: isPhone ? 8 : 16,
               childAspectRatio: 1.5,
               children: [
                 _buildActionCard(

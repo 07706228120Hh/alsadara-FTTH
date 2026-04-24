@@ -36,40 +36,43 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
             ? '$mins:${secs.toString().padLeft(2, '0')} دقيقة'
             : '$secs ثانية';
         if (mounted) {
+          final sw = MediaQuery.of(context).size.width;
+          final small = sw < 420;
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(small ? 12 : 16)),
+              insetPadding: EdgeInsets.symmetric(horizontal: small ? 16 : 40, vertical: 24),
               title: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(small ? 6 : 8),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade100,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.timer, color: Colors.orange.shade700, size: 28),
+                    child: Icon(Icons.timer, color: Colors.orange.shade700, size: small ? 22 : 28),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text('يرجى الانتظار', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(width: small ? 8 : 12),
+                  Expanded(
+                    child: Text('يرجى الانتظار', style: TextStyle(fontSize: small ? 15 : 18, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.hourglass_top, size: 48, color: Colors.orange.shade400),
+                  Icon(Icons.hourglass_top, size: small ? 36 : 48, color: Colors.orange.shade400),
                   const SizedBox(height: 12),
                   Text(
                     'يجب الانتظار دقيقتين بين كل عملية تفعيل وأخرى',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: Colors.grey.shade800),
+                    style: TextStyle(fontSize: small ? 13 : 15, color: Colors.grey.shade800),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'المتبقي: $timeText',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange.shade700),
+                    style: TextStyle(fontSize: small ? 15 : 18, fontWeight: FontWeight.bold, color: Colors.orange.shade700),
                   ),
                 ],
               ),
@@ -162,24 +165,27 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       }
 
       if (mismatches.isNotEmpty && mounted) {
+        final mismatchScreenW = MediaQuery.of(context).size.width;
+        final mismatchSmall = mismatchScreenW < 420;
         final continueAnyway = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(mismatchSmall ? 12 : 16)),
+            insetPadding: EdgeInsets.symmetric(horizontal: mismatchSmall ? 16 : 40, vertical: 24),
             title: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(mismatchSmall ? 6 : 8),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.compare_arrows, color: Colors.orange.shade700, size: 28),
+                  child: Icon(Icons.compare_arrows, color: Colors.orange.shade700, size: mismatchSmall ? 22 : 28),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('اختلاف عن بيانات المهمة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                SizedBox(width: mismatchSmall ? 8 : 12),
+                Expanded(
+                  child: Text('اختلاف عن بيانات المهمة', style: TextStyle(fontSize: mismatchSmall ? 14 : 17, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -189,7 +195,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               children: [
                 Text(
                   'يوجد اختلاف بين ما هو مطلوب في المهمة وما اخترته:',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                  style: TextStyle(fontSize: mismatchSmall ? 12 : 14, color: Colors.grey.shade700),
                 ),
                 const SizedBox(height: 12),
                 ...mismatches.map((m) => Padding(
@@ -197,23 +203,23 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600, size: 20),
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600, size: mismatchSmall ? 16 : 20),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(m, style: const TextStyle(fontSize: 13))),
+                      Expanded(child: Text(m, style: TextStyle(fontSize: mismatchSmall ? 11 : 13))),
                     ],
                   ),
                 )),
                 const SizedBox(height: 8),
                 Text(
                   'هل تريد المتابعة رغم الاختلاف؟',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                  style: TextStyle(fontSize: mismatchSmall ? 12 : 14, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('إلغاء، سأعدّل الاختيارات', style: TextStyle(color: Colors.grey)),
+                child: FittedBox(child: Text('إلغاء، سأعدّل الاختيارات', style: TextStyle(color: Colors.grey, fontSize: mismatchSmall ? 11 : 14))),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
@@ -222,7 +228,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text('متابعة رغم الاختلاف'),
+                child: FittedBox(child: Text('متابعة رغم الاختلاف', style: TextStyle(fontSize: mismatchSmall ? 12 : 14))),
               ),
             ],
           ),
@@ -233,42 +239,45 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
 
     // تحذير عند اختيار فترة التزام أكثر من شهر واحد
     if (selectedCommitmentPeriod != null && selectedCommitmentPeriod! > 1) {
+      final commitScreenW = MediaQuery.of(context).size.width;
+      final commitSmall = commitScreenW < 420;
       final confirmCommitment = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(commitSmall ? 12 : 16)),
+          insetPadding: EdgeInsets.symmetric(horizontal: commitSmall ? 16 : 40, vertical: 24),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(commitSmall ? 6 : 8),
                 decoration: BoxDecoration(
                   color: Colors.amber.shade100,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700, size: 28),
+                child: Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700, size: commitSmall ? 22 : 28),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text('تنبيه: فترة التزام طويلة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              SizedBox(width: commitSmall ? 8 : 12),
+              Expanded(
+                child: Text('تنبيه: فترة التزام طويلة', style: TextStyle(fontSize: commitSmall ? 14 : 18, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.schedule, size: 48, color: Colors.amber.shade600),
+              Icon(Icons.schedule, size: commitSmall ? 36 : 48, color: Colors.amber.shade600),
               const SizedBox(height: 12),
               Text(
                 'فترة الالتزام المحددة هي $selectedCommitmentPeriod شهر',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: commitSmall ? 13 : 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
                 'هل أنت متأكد من أنك تريد التفعيل بفترة التزام أكثر من شهر واحد؟',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: commitSmall ? 12 : 14, color: Colors.grey.shade700),
               ),
             ],
           ),
@@ -284,7 +293,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: Text('نعم، تفعيل $selectedCommitmentPeriod شهر'),
+              child: FittedBox(child: Text('نعم، تفعيل $selectedCommitmentPeriod شهر', style: TextStyle(fontSize: commitSmall ? 12 : 14))),
             ),
           ],
         ),
@@ -331,7 +340,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                 const SizedBox(height: 6),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Text('المبلغ:', style: TextStyle(color: Colors.grey, fontSize: isSmallScreen ? 12 : 14)),
-                  Text('$totalStr د.ع', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade700, fontSize: isSmallScreen ? 12 : 14)),
+                  Flexible(child: Text('$totalStr د.ع', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade700, fontSize: isSmallScreen ? 12 : 14), overflow: TextOverflow.ellipsis)),
                 ]),
                 const SizedBox(height: 6),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -451,7 +460,8 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         debugPrint('⚠️ [2/5] فشل تحديث الصفحة: $e - المتابعة...');
       }
 
-      // استعادة القيم المختارة للطباعة والحفظ (لأن API قد يرجع القيم القديمة)
+      // ملاحظة: subscriptionInfo.expiresAt الآن يحتوي التاريخ الحقيقي من API بعد التفعيل
+      // استعادة القيم المختارة للطباعة والحفظ فقط (لأن API قد يرجع القيم القديمة)
       selectedPlan = activatedPlan;
       selectedCommitmentPeriod = activatedPeriod;
       priceDetails = activatedPriceDetails;
@@ -464,95 +474,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         await _showActivationSuccessDialog();
       }
 
-      // 🔄 إغلاق المهمة تلقائياً بعد نجاح التجديد
-      if (widget.taskId != null && widget.taskId!.isNotEmpty) {
-        debugPrint('🔄 إغلاق المهمة تلقائياً: ${widget.taskId}');
-        try {
-          await TaskApiService.instance.updateStatus(
-            widget.taskId!,
-            status: 'Completed',
-            note: '[مفعّل] تم إكمال التجديد تلقائياً من صفحة التجديد',
-          );
-          debugPrint('✅ تم إغلاق المهمة بنجاح');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Row(
-                  children: [
-                    Icon(Icons.task_alt, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text('تم إكمال المهمة تلقائياً'),
-                  ],
-                ),
-                backgroundColor: Colors.green.shade600,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        } catch (e) {
-          debugPrint('⚠️ فشل إغلاق المهمة تلقائياً: $e');
-        }
-      }
-
-      // 📋 إنشاء مهمة تحصيل للفني إذا اختار "حصّل لاحقاً"
-      if (techCollectionLater && _selectedLinkedTechnician != null) {
-        debugPrint('📋 إنشاء مهمة تحصيل للفني...');
-        try {
-          final techName = _selectedLinkedTechnician!['FullName']?.toString().trim().isNotEmpty == true
-              ? _selectedLinkedTechnician!['FullName'].toString().trim()
-              : _selectedLinkedTechnician!['Name']?.toString().trim() ?? '';
-          final techPhone = _selectedLinkedTechnician!['PhoneNumber']?.toString().trim() ?? '';
-          final customerName = subscriptionInfo?.customerName ?? widget.userName ?? '';
-          final customerPhone = widget.userPhone?.isNotEmpty == true
-              ? widget.userPhone!
-              : (_fetchedCustomerPhone?.isNotEmpty == true
-                  ? _fetchedCustomerPhone!
-                  : _resolveTargetPhone() ?? '');
-          final totalStr = _asDouble(priceDetails?['totalPrice']).toStringAsFixed(0);
-
-          final fbg = widget.fbgValue?.trim() ?? widget.fdtDisplayValue?.trim() ?? '';
-          final fat = widget.fatValue?.trim() ?? widget.fatDisplayValue?.trim() ?? '';
-
-          await TaskApiService.instance.createTask(
-            taskType: 'تحصيل مبلغ تجديد',
-            customerName: customerName,
-            customerPhone: customerPhone,
-            department: 'الحسابات',
-            technician: techName,
-            technicianPhone: techPhone,
-            fbg: fbg,
-            fat: fat,
-            serviceType: selectedPlan,
-            subscriptionDuration: '${selectedCommitmentPeriod ?? 1}',
-            subscriptionAmount: _asDouble(priceDetails?['totalPrice']),
-            notes: 'تحصيل $totalStr د.ع من $customerName\n'
-                'الهاتف: $customerPhone\n'
-                'الخدمة: ${selectedPlan ?? ""} - ${selectedCommitmentPeriod ?? 1} شهر\n'
-                'المشغل: ${widget.activatedBy}\n'
-                'تاريخ التجديد: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-            summary: 'تحصيل $totalStr د.ع من $customerName — فني: $techName',
-            priority: 'عالي',
-          );
-          debugPrint('✅ تم إنشاء مهمة التحصيل بنجاح');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(children: [
-                  const Icon(Icons.assignment_turned_in, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('تم إرسال أمر تحصيل $totalStr د.ع للفني $techName')),
-                ]),
-                backgroundColor: Colors.orange.shade700,
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          }
-        } catch (e) {
-          debugPrint('⚠️ فشل إنشاء مهمة التحصيل: $e');
-        }
-      }
-
-      // 3️⃣ حفظ البيانات في VPS (دائماً بغض النظر عن الصلاحيات)
+      // 3️⃣ حفظ البيانات في VPS فوراً بعد رسالة النجاح
       debugPrint('📊 [3/5] حفظ البيانات...');
       try {
         if (partnerWalletBalanceBefore == 0.0) {
@@ -568,33 +490,171 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         debugPrint('⚠️ [3/5] فشل الحفظ: $e - المتابعة...');
       }
 
-      // 4️⃣ طباعة الوصل
-      debugPrint('🖨️ [4/5] طباعة الوصل...');
-      try {
-        await _executePrintReceipt();
-        debugPrint('✅ [4/5] تم طباعة الوصل بنجاح');
-      } catch (e) {
-        debugPrint('⚠️ [4/5] فشل الطباعة: $e - المتابعة...');
-      }
-
-      // 5️⃣ إرسال واتساب (إن توفرت الصلاحية)
-      if (widget.hasWhatsAppPermission) {
-        debugPrint('📱 [5/5] إرسال رسالة واتساب...');
-        try {
-          await sendWhatsAppMessage();
-          debugPrint('✅ [5/5] تم إرسال الواتساب بنجاح');
-        } catch (e) {
-          debugPrint('⚠️ [5/5] فشل إرسال الواتساب');
-        }
-      } else {
-        debugPrint('⏭️ [5/5] تخطي واتساب - لا توجد صلاحية');
-      }
-
-      // ========== اكتمال العملية ==========
-      debugPrint('🎉 اكتملت جميع العمليات بنجاح!');
-    } finally {
+      // ========== تحرير الشاشة — المشغل يستطيع الرجوع الآن ==========
       safeSetState(() => _isActivating = false);
+      debugPrint('🔓 تم تحرير الشاشة — العمليات المتبقية تعمل في الخلفية');
+
+      // حفظ المتغيرات المطلوبة للعمليات الخلفية (لأن المشغل قد يغادر الصفحة)
+      final bgTaskId = widget.taskId;
+      final bgTechCollectionLater = techCollectionLater;
+      final bgTechnician = _selectedLinkedTechnician != null
+          ? Map<String, dynamic>.from(_selectedLinkedTechnician!)
+          : null;
+      final bgCustomerName = subscriptionInfo?.customerName ?? widget.userName ?? '';
+      final bgCustomerPhone = widget.userPhone?.isNotEmpty == true
+          ? widget.userPhone!
+          : (_fetchedCustomerPhone?.isNotEmpty == true
+              ? _fetchedCustomerPhone!
+              : _resolveTargetPhone() ?? '');
+      final bgActivatedBy = widget.activatedBy;
+      final bgHasWhatsApp = widget.hasWhatsAppPermission;
+      final bgSelectedPlan = selectedPlan;
+      final bgSelectedPeriod = selectedCommitmentPeriod;
+      final bgPriceDetails = priceDetails != null ? Map<String, dynamic>.from(priceDetails!) : null;
+      final bgFbg = widget.fbgValue?.trim() ?? widget.fdtDisplayValue?.trim() ?? '';
+      final bgFat = widget.fatValue?.trim() ?? widget.fatDisplayValue?.trim() ?? '';
+
+      // ========== العمليات المتبقية في الخلفية (لا تمنع المشغل) ==========
+      _runBackgroundPostActivation(
+        taskId: bgTaskId,
+        techCollectionLater: bgTechCollectionLater,
+        technician: bgTechnician,
+        customerName: bgCustomerName,
+        customerPhone: bgCustomerPhone,
+        activatedBy: bgActivatedBy,
+        hasWhatsApp: bgHasWhatsApp,
+        selectedPlan: bgSelectedPlan,
+        selectedPeriod: bgSelectedPeriod,
+        priceDetails: bgPriceDetails,
+        fbg: bgFbg,
+        fat: bgFat,
+      );
+
+    } catch (e) {
+      debugPrint('❌ خطأ في التفعيل: $e');
+    } finally {
+      // تأكد من تحرير القفل في كل الحالات
+      if (_isActivating) {
+        safeSetState(() => _isActivating = false);
+      }
     }
+  }
+
+  /// العمليات الخلفية بعد التفعيل — لا تمنع المشغل من الرجوع
+  Future<void> _runBackgroundPostActivation({
+    required String? taskId,
+    required bool techCollectionLater,
+    required Map<String, dynamic>? technician,
+    required String customerName,
+    required String customerPhone,
+    required String activatedBy,
+    required bool hasWhatsApp,
+    required String? selectedPlan,
+    required int? selectedPeriod,
+    required Map<String, dynamic>? priceDetails,
+    required String fbg,
+    required String fat,
+  }) async {
+    // 🔄 إغلاق المهمة تلقائياً
+    if (taskId != null && taskId.isNotEmpty) {
+      debugPrint('🔄 [خلفية] إغلاق المهمة: $taskId');
+      try {
+        await TaskApiService.instance.updateStatus(
+          taskId,
+          status: 'Completed',
+          note: '[مفعّل] تم إكمال التجديد تلقائياً من صفحة التجديد',
+        );
+        debugPrint('✅ [خلفية] تم إغلاق المهمة');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.task_alt, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('تم إكمال المهمة تلقائياً'),
+                ],
+              ),
+              backgroundColor: Colors.green.shade600,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('⚠️ [خلفية] فشل إغلاق المهمة: $e');
+      }
+    }
+
+    // 📋 إنشاء مهمة تحصيل للفني
+    if (techCollectionLater && technician != null) {
+      debugPrint('📋 [خلفية] إنشاء مهمة تحصيل...');
+      try {
+        final techName = technician['FullName']?.toString().trim().isNotEmpty == true
+            ? technician['FullName'].toString().trim()
+            : technician['Name']?.toString().trim() ?? '';
+        final techPhone = technician['PhoneNumber']?.toString().trim() ?? '';
+        final totalStr = _asDouble(priceDetails?['totalPrice']).toStringAsFixed(0);
+
+        await TaskApiService.instance.createTask(
+          taskType: 'تحصيل مبلغ تجديد',
+          customerName: customerName,
+          customerPhone: customerPhone,
+          department: 'الحسابات',
+          technician: techName,
+          technicianPhone: techPhone,
+          fbg: fbg,
+          fat: fat,
+          serviceType: selectedPlan,
+          subscriptionDuration: '${selectedPeriod ?? 1}',
+          subscriptionAmount: _asDouble(priceDetails?['totalPrice']),
+          notes: 'تحصيل $totalStr د.ع من $customerName\n'
+              'الهاتف: $customerPhone\n'
+              'الخدمة: ${selectedPlan ?? ""} - ${selectedPeriod ?? 1} شهر\n'
+              'المشغل: $activatedBy\n'
+              'تاريخ التجديد: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+          summary: 'تحصيل $totalStr د.ع من $customerName — فني: $techName',
+          priority: 'عالي',
+        );
+        debugPrint('✅ [خلفية] تم إنشاء مهمة التحصيل');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(children: [
+                const Icon(Icons.assignment_turned_in, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text('تم إرسال أمر تحصيل $totalStr د.ع للفني $techName')),
+              ]),
+              backgroundColor: Colors.orange.shade700,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('⚠️ [خلفية] فشل إنشاء مهمة التحصيل: $e');
+      }
+    }
+
+    // 4️⃣ طباعة الوصل
+    debugPrint('🖨️ [4/5] طباعة الوصل...');
+    try {
+      await _executePrintReceipt();
+      debugPrint('✅ [4/5] تم طباعة الوصل');
+    } catch (e) {
+      debugPrint('⚠️ [4/5] فشل الطباعة: $e');
+    }
+
+    // 5️⃣ إرسال واتساب
+    if (hasWhatsApp) {
+      debugPrint('📱 [5/5] إرسال رسالة واتساب...');
+      try {
+        await sendWhatsAppMessage();
+        debugPrint('✅ [5/5] تم إرسال الواتساب');
+      } catch (e) {
+        debugPrint('⚠️ [5/5] فشل إرسال الواتساب');
+      }
+    }
+
+    debugPrint('🎉 اكتملت جميع العمليات الخلفية!');
   }
 
   /// عرض تحذير التفعيل المكرر في نفس اليوم
@@ -610,16 +670,19 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     }
 
     final customerName = subscriptionInfo?.customerName ?? 'هذا المشترك';
+    final dupScreenW = MediaQuery.of(context).size.width;
+    final dupSmall = dupScreenW < 420;
 
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(dupSmall ? 12 : 16),
             ),
+            insetPadding: EdgeInsets.symmetric(horizontal: dupSmall ? 16 : 40, vertical: 24),
             title: Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(dupSmall ? 8 : 12),
               decoration: BoxDecoration(
                 color: Colors.orange.shade100,
                 borderRadius: BorderRadius.circular(12),
@@ -630,14 +693,14 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   Icon(
                     Icons.warning_amber_rounded,
                     color: Colors.orange.shade700,
-                    size: 32,
+                    size: dupSmall ? 24 : 32,
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: dupSmall ? 8 : 12),
                   Expanded(
                     child: Text(
                       'تحذير: تفعيل مكرر!',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: dupSmall ? 15 : 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.orange.shade800,
                       ),
@@ -647,21 +710,21 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               ),
             ),
             content: Container(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: BoxConstraints(maxWidth: min(400, dupScreenW * 0.85)),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 12),
                   Icon(
                     Icons.replay_circle_filled,
-                    size: 48,
+                    size: dupSmall ? 36 : 48,
                     color: Colors.orange.shade600,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'تم الضغط على التفعيل التلقائي لـ',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: dupSmall ? 12 : 14,
                       color: Colors.grey.shade700,
                     ),
                     textAlign: TextAlign.center,
@@ -669,8 +732,8 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   const SizedBox(height: 8),
                   Text(
                     customerName,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: dupSmall ? 14 : 16,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -678,7 +741,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   const SizedBox(height: 8),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        EdgeInsets.symmetric(horizontal: dupSmall ? 8 : 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -686,7 +749,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                     child: Text(
                       timeText,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: dupSmall ? 12 : 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.orange.shade800,
                       ),
@@ -696,7 +759,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   Text(
                     'هل تريد المتابعة والتفعيل مرة أخرى؟',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: dupSmall ? 12 : 14,
                       color: Colors.grey.shade600,
                     ),
                     textAlign: TextAlign.center,
@@ -709,13 +772,13 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               TextButton(
                 style: TextButton.styleFrom(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      EdgeInsets.symmetric(horizontal: dupSmall ? 14 : 24, vertical: dupSmall ? 8 : 12),
                 ),
                 onPressed: () => Navigator.of(ctx).pop(false),
                 child: Text(
                   'إلغاء',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: dupSmall ? 13 : 15,
                     color: Colors.grey.shade700,
                   ),
                 ),
@@ -725,14 +788,14 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   backgroundColor: Colors.orange.shade600,
                   foregroundColor: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      EdgeInsets.symmetric(horizontal: dupSmall ? 14 : 24, vertical: dupSmall ? 8 : 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('نعم، تابع التفعيل',
-                    style: TextStyle(fontSize: 15)),
+                child: FittedBox(child: Text('نعم، تابع التفعيل',
+                    style: TextStyle(fontSize: dupSmall ? 13 : 15))),
               ),
             ],
           ),
@@ -750,15 +813,19 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     final commitment =
         info?.commitmentPeriod ?? selectedCommitmentPeriod ?? 'غير محدد';
 
+    final successScreenW = MediaQuery.of(context).size.width;
+    final successSmall = successScreenW < 420;
+
     return showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(successSmall ? 14 : 20),
         ),
+        insetPadding: EdgeInsets.symmetric(horizontal: successSmall ? 16 : 40, vertical: 24),
         title: Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(successSmall ? 8 : 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.green.shade400, Colors.teal.shade400],
@@ -770,23 +837,23 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(successSmall ? 6 : 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_circle,
                   color: Colors.white,
-                  size: 32,
+                  size: successSmall ? 24 : 32,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: successSmall ? 8 : 12),
+              Expanded(
                 child: Text(
                   'تم التفعيل بنجاح!',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: successSmall ? 16 : 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -796,7 +863,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
           ),
         ),
         content: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: BoxConstraints(maxWidth: min(400, successScreenW * 0.85)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -822,7 +889,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               Text(
                 'سيتم الآن: حفظ البيانات، طباعة الوصل، وإرسال الواتساب',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: successSmall ? 11 : 12,
                   color: Colors.grey.shade600,
                   fontStyle: FontStyle.italic,
                 ),
@@ -836,14 +903,14 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade600,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              padding: EdgeInsets.symmetric(horizontal: successSmall ? 20 : 32, vertical: successSmall ? 10 : 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('موافق',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Text('موافق',
+                style: TextStyle(fontSize: successSmall ? 14 : 16, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -852,36 +919,38 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
 
   /// بناء صف معلومات في Dialog
   Widget _buildInfoRow(IconData icon, String label, String value) {
+    final infoSmall = MediaQuery.of(context).size.width < 420;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: infoSmall ? 4 : 6),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(infoSmall ? 4 : 6),
             decoration: BoxDecoration(
               color: Colors.teal.shade50,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 18, color: Colors.teal.shade700),
+            child: Icon(icon, size: infoSmall ? 14 : 18, color: Colors.teal.shade700),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: infoSmall ? 6 : 10),
           Text(
             '$label:',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: infoSmall ? 11 : 13,
               fontWeight: FontWeight.w600,
               color: Colors.grey.shade700,
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: infoSmall ? 4 : 8),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: infoSmall ? 12 : 14,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.left,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -907,13 +976,15 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
 
     // إظهار مؤشر انتظار
     if (mounted) {
+      final loadScreenW = MediaQuery.of(context).size.width;
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const AlertDialog(
+        builder: (_) => AlertDialog(
+          insetPadding: EdgeInsets.symmetric(horizontal: loadScreenW < 420 ? 24 : 40, vertical: 24),
           content: SizedBox(
-            width: 220,
-            child: Row(
+            width: min(220, loadScreenW * 0.6),
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(),
@@ -1056,17 +1127,20 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     required String title,
     required String message,
   }) {
+    final resScreenW = MediaQuery.of(context).size.width;
+    final resSmall = resScreenW < 420;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(resSmall ? 12 : 16),
         ),
+        insetPadding: EdgeInsets.symmetric(horizontal: resSmall ? 16 : 40, vertical: 24),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(resSmall ? 6 : 8),
               decoration: BoxDecoration(
                 color: isSuccess ? Colors.green.shade100 : Colors.red.shade100,
                 shape: BoxShape.circle,
@@ -1074,15 +1148,15 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               child: Icon(
                 isSuccess ? Icons.check_circle : Icons.error,
                 color: isSuccess ? Colors.green.shade700 : Colors.red.shade700,
-                size: 28,
+                size: resSmall ? 22 : 28,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: resSmall ? 8 : 12),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: resSmall ? 15 : 18,
                   fontWeight: FontWeight.bold,
                   color:
                       isSuccess ? Colors.green.shade800 : Colors.red.shade800,
@@ -1092,10 +1166,10 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
           ],
         ),
         content: Container(
-          constraints: const BoxConstraints(maxWidth: 350),
+          constraints: BoxConstraints(maxWidth: min(350, resScreenW * 0.85)),
           child: Text(
             message,
-            style: const TextStyle(fontSize: 14, height: 1.5),
+            style: TextStyle(fontSize: resSmall ? 12 : 14, height: 1.5),
           ),
         ),
         actions: [
@@ -1103,13 +1177,13 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
             style: ElevatedButton.styleFrom(
               backgroundColor: isSuccess ? Colors.green : Colors.red,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: resSmall ? 16 : 24, vertical: resSmall ? 8 : 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('موافق', style: TextStyle(fontSize: 16)),
+            child: Text('موافق', style: TextStyle(fontSize: resSmall ? 14 : 16)),
           ),
         ],
       ),
@@ -1271,29 +1345,33 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     final operationType = _getOperationTypeText();
     final price = _formatNumber(_getFinalTotal().round());
 
+    final confirmScreenW = MediaQuery.of(context).size.width;
+    final confirmSmall = confirmScreenW < 420;
+
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(confirmSmall ? 12 : 16)),
+            insetPadding: EdgeInsets.symmetric(horizontal: confirmSmall ? 16 : 40, vertical: 24),
             title: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(confirmSmall ? 6 : 8),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.warning_amber_rounded,
-                      color: Colors.orange.shade700, size: 28),
+                      color: Colors.orange.shade700, size: confirmSmall ? 22 : 28),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: confirmSmall ? 8 : 12),
                 Expanded(
                   child: Text(
                     'تأكيد $operationType',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: confirmSmall ? 15 : 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -1303,7 +1381,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(confirmSmall ? 8 : 12),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(10),
@@ -1325,7 +1403,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                 ),
                 const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(confirmSmall ? 8 : 10),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -1334,12 +1412,12 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   child: Row(
                     children: [
                       Icon(Icons.info_outline,
-                          color: Colors.amber.shade700, size: 20),
+                          color: Colors.amber.shade700, size: confirmSmall ? 16 : 20),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'سيتم خصم المبلغ من المحفظة وتفعيل الاشتراك',
-                          style: TextStyle(fontSize: 13),
+                          style: TextStyle(fontSize: confirmSmall ? 11 : 13),
                         ),
                       ),
                     ],
@@ -1355,8 +1433,8 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               ),
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                icon: const Icon(Icons.check, size: 18),
-                label: Text('تأكيد $operationType'),
+                icon: Icon(Icons.check, size: confirmSmall ? 16 : 18),
+                label: FittedBox(child: Text('تأكيد $operationType', style: TextStyle(fontSize: confirmSmall ? 12 : 14))),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green.shade600,
                   foregroundColor: Colors.white,
@@ -1373,26 +1451,29 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
 
   /// عرض مربع حوار عند عدم كفاية الرصيد
   void _showInsufficientBalanceDialog(double required, double available) {
+    final balScreenW = MediaQuery.of(context).size.width;
+    final balSmall = balScreenW < 420;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(balSmall ? 12 : 16)),
+        insetPadding: EdgeInsets.symmetric(horizontal: balSmall ? 16 : 40, vertical: 24),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(balSmall ? 6 : 8),
               decoration: BoxDecoration(
                 color: Colors.red.shade100,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.account_balance_wallet_outlined,
-                  color: Colors.red.shade700, size: 28),
+                  color: Colors.red.shade700, size: balSmall ? 22 : 28),
             ),
-            const SizedBox(width: 12),
-            const Expanded(
+            SizedBox(width: balSmall ? 8 : 12),
+            Expanded(
               child: Text(
                 'الرصيد غير كافٍ',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: balSmall ? 15 : 18, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -1401,7 +1482,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(balSmall ? 8 : 12),
               decoration: BoxDecoration(
                 color: Colors.red.shade50,
                 borderRadius: BorderRadius.circular(10),
@@ -1434,17 +1515,21 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
 
   /// بناء صف في مربع التأكيد
   Widget _buildConfirmRow(String label, String value, {Color? valueColor}) {
+    final rowSmall = MediaQuery.of(context).size.width < 420;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: valueColor ?? Colors.black87,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: rowSmall ? 11 : 13)),
+        Flexible(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: rowSmall ? 12 : 14,
+              color: valueColor ?? Colors.black87,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -1468,6 +1553,8 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     final bool canExecute = priceDetails != null &&
         selectedPlan != null &&
         selectedCommitmentPeriod != null;
+    final btnScreenW = MediaQuery.of(context).size.width;
+    final btnSmall = btnScreenW < 420;
 
     return Container(
       width: double.infinity,
@@ -1476,13 +1563,15 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         onPressed: canExecute ? executeRenewalOrPurchase : null,
         icon: Icon(
           isNewSubscription ? Icons.shopping_cart : Icons.refresh,
-          size: 22,
+          size: btnSmall ? 18 : 22,
         ),
-        label: Text(
-          operationType,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+        label: FittedBox(
+          child: Text(
+            operationType,
+            style: TextStyle(
+              fontSize: btnSmall ? 13 : 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         style: ElevatedButton.styleFrom(
@@ -1492,7 +1581,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   : Colors.blue.shade600)
               : Colors.grey.shade400,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(vertical: btnSmall ? 12 : 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(

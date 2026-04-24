@@ -69,8 +69,8 @@ class WhatsAppConversationService {
   static Future<void> _fetchConversations() async {
     try {
       final url = _lastConversationFetch != null
-          ? '/whatsapp/conversations?limit=200&updatedSince=${_lastConversationFetch!.toUtc().toIso8601String()}'
-          : '/whatsapp/conversations?limit=200';
+          ? '/whatsapp/conversations?limit=500&updatedSince=${_lastConversationFetch!.toUtc().toIso8601String()}'
+          : '/whatsapp/conversations?limit=500';
 
       final response = await ApiClient.instance.get(
         url,
@@ -157,7 +157,7 @@ class WhatsAppConversationService {
   static Future<void> _fetchMessages(String phoneNumber) async {
     try {
       final response = await ApiClient.instance.get(
-        '/whatsapp/conversations/$phoneNumber/messages?limit=200',
+        '/whatsapp/conversations/$phoneNumber/messages?limit=500',
         (data) => data,
         useInternalKey: true,
       );
@@ -307,6 +307,47 @@ class WhatsAppConversationService {
     try {
       await ApiClient.instance.put(
         '/whatsapp/conversations/$phoneNumber/read',
+        {},
+        (data) => data,
+        useInternalKey: true,
+      );
+    } catch (e) {
+      // صامت
+    }
+  }
+
+  // ══════════════════════════════════════
+  // markAsUnread()
+  // ══════════════════════════════════════
+
+  /// تعليم المحادثة كغير مقروءة
+  static Future<void> markAsUnread(String phoneNumber) async {
+    // تحديث محلي فوري (optimistic)
+    if (_cachedConversations != null) {
+      final idx = _cachedConversations!
+          .indexWhere((c) => c.phoneNumber == phoneNumber);
+      if (idx >= 0) {
+        final old = _cachedConversations![idx];
+        if (old.unreadCount == 0) {
+          _cachedConversations![idx] = WhatsAppConversation(
+            phoneNumber: old.phoneNumber,
+            userName: old.userName,
+            lastMessage: old.lastMessage,
+            lastMessageTime: old.lastMessageTime,
+            lastMessageType: old.lastMessageType,
+            unreadCount: 1,
+            isIncoming: old.isIncoming,
+            updatedAt: old.updatedAt,
+          );
+          _conversationsController?.add(_cachedConversations!);
+          _updateUnreadFromCache();
+        }
+      }
+    }
+
+    try {
+      await ApiClient.instance.put(
+        '/whatsapp/conversations/$phoneNumber/unread',
         {},
         (data) => data,
         useInternalKey: true,

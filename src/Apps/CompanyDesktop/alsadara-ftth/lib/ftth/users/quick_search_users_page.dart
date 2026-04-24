@@ -57,6 +57,8 @@ class QuickSearchUsersPage extends StatefulWidget {
 
 class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
     with SingleTickerProviderStateMixin {
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
   final List<dynamic> searchResults = [];
   final List<dynamic> zones = [];
   bool isLoading = false;
@@ -592,8 +594,8 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
             children: [
               // شريط البحث — صف واحد: [المنطقة | اسم المشترك | رقم الهاتف | مسح]
               Container(
-                margin: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                margin: EdgeInsets.fromLTRB(_isPhone ? 8 : 12, _isPhone ? 6 : 10, _isPhone ? 8 : 12, 6),
+                padding: EdgeInsets.symmetric(horizontal: _isPhone ? 6 : 10, vertical: _isPhone ? 6 : 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
@@ -887,12 +889,12 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              const Text(
+                              Text(
                                 'جاري جلب النتائج...',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 16,
+                                  fontSize: _fs(16),
                                 ),
                               ),
                             ],
@@ -920,7 +922,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         Text(
                           'خطأ: $errorMessage',
                           style: TextStyle(
-                              color: Colors.red.shade600, fontSize: 16),
+                              color: Colors.red.shade600, fontSize: _fs(16)),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
@@ -951,13 +953,13 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         Text(
                           'لا توجد نتائج للبحث الحالي',
                           style: TextStyle(
-                              color: Colors.grey.shade600, fontSize: 16),
+                              color: Colors.grey.shade600, fontSize: _fs(16)),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'جرب البحث بكلمات مختلفة أو تغيير نوع البحث',
                           style: TextStyle(
-                              color: Colors.grey.shade500, fontSize: 14),
+                              color: Colors.grey.shade500, fontSize: _fs(14)),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -970,8 +972,8 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                     children: [
                       // عداد النتائج
                       Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        margin: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 12),
+                        padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 14, vertical: _isPhone ? 6 : 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A237E),
                           borderRadius: BorderRadius.circular(10),
@@ -1101,13 +1103,13 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                     );
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                                    padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 18, vertical: _isPhone ? 10 : 16),
                                     child: Row(
                                       children: [
                                         // أيقونة المستخدم
                                         Container(
-                                          width: 54,
-                                          height: 54,
+                                          width: _isPhone ? 40 : 54,
+                                          height: _isPhone ? 40 : 54,
                                           decoration: BoxDecoration(
                                             gradient: const LinearGradient(
                                               begin: Alignment.topLeft,
@@ -1123,9 +1125,9 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                               ),
                                             ],
                                           ),
-                                          child: const Icon(Icons.person, color: Colors.white, size: 28),
+                                          child: Icon(Icons.person, color: Colors.white, size: _isPhone ? 22 : 28),
                                         ),
-                                        const SizedBox(width: 16),
+                                        SizedBox(width: _isPhone ? 10 : 16),
                                         // المعلومات الرئيسية
                                         Expanded(
                                           child: Column(
@@ -1138,10 +1140,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                     child: _buildHighlightedText(
                                                       userName.toString(),
                                                       _normalizeName(nameController.text),
-                                                      style: const TextStyle(
+                                                      style: TextStyle(
                                                         fontWeight: FontWeight.w700,
-                                                        fontSize: 16,
-                                                        color: Color(0xFF1A237E),
+                                                        fontSize: _fs(16),
+                                                        color: const Color(0xFF1A237E),
                                                       ),
                                                     ),
                                                   ),
@@ -1167,7 +1169,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                   else if (displayPhone.isNotEmpty)
                                                     InkWell(
                                                       onTap: () => _copyToClipboard('رقم الهاتف', displayPhone),
-                                                      child: Text(displayPhone, style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+                                                      child: Text(displayPhone, style: TextStyle(fontSize: _fs(14), color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
                                                     )
                                                   else if (userId.isNotEmpty && _fetchedPhones[userId] == null)
                                                     InkWell(
@@ -1183,8 +1185,8 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                       ),
                                                     )
                                                   else
-                                                    Text('غير متوفر', style: TextStyle(fontSize: 14, color: Colors.grey.shade400)),
-                                                  const SizedBox(width: 20),
+                                                    Text('غير متوفر', style: TextStyle(fontSize: _fs(14), color: Colors.grey.shade400)),
+                                                  SizedBox(width: _isPhone ? 10 : 20),
                                                   // ID
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

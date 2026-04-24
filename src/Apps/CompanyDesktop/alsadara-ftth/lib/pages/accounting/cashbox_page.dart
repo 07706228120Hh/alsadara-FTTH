@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
@@ -615,7 +616,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
                     : AccountingTheme.danger),
           ),
           content: SizedBox(
-            width: 350,
+            width: min(350, MediaQuery.of(context).size.width * 0.85),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

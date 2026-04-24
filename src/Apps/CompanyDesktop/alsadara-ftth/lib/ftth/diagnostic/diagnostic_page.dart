@@ -29,6 +29,8 @@ class DiagnosticPage extends StatefulWidget {
 }
 
 class _DiagnosticPageState extends State<DiagnosticPage> {
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
   final List<_LogEntry> _logs = [];
   final ScrollController _scrollCtrl = ScrollController();
   bool _isRunning = false;
@@ -829,7 +831,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
             // شريط الحالة
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 16, vertical: _isPhone ? 8 : 12),
               decoration: BoxDecoration(
                 color: _isRunning
                     ? Colors.blue.shade900
@@ -844,20 +846,20 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white)),
                     const SizedBox(width: 12),
-                    const Text('جاري التشخيص...',
-                        style: TextStyle(color: Colors.white, fontSize: 14)),
+                    Text('جاري التشخيص...',
+                        style: TextStyle(color: Colors.white, fontSize: _fs(14))),
                   ] else if (_isDone) ...[
-                    const Icon(Icons.check_circle,
-                        color: Colors.greenAccent, size: 20),
+                    Icon(Icons.check_circle,
+                        color: Colors.greenAccent, size: _isPhone ? 18 : 20),
                     const SizedBox(width: 8),
                     Text('انتهى — ${_totalStopwatch.elapsedMilliseconds}ms',
-                        style: const TextStyle(
-                            color: Colors.greenAccent, fontSize: 14)),
+                        style: TextStyle(
+                            color: Colors.greenAccent, fontSize: _fs(14))),
                   ] else ...[
-                    const Icon(Icons.bug_report, color: Colors.amber, size: 20),
+                    Icon(Icons.bug_report, color: Colors.amber, size: _isPhone ? 18 : 20),
                     const SizedBox(width: 8),
-                    const Text('اضغط "ابدأ التشخيص" للبدء',
-                        style: TextStyle(color: Colors.amber, fontSize: 14)),
+                    Text('اضغط "ابدأ التشخيص" للبدء',
+                        style: TextStyle(color: Colors.amber, fontSize: _fs(14))),
                   ],
                   const Spacer(),
                   Text('سجلات: ${_logs.length}',
@@ -875,14 +877,14 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.bug_report,
-                              size: 80, color: Colors.grey.shade700),
+                              size: _isPhone ? 60 : 80, color: Colors.grey.shade700),
                           const SizedBox(height: 16),
                           Text(
                             'سيتم البحث عن "مرتضى باسل" وتتبع كل خطوة\nحتى شاشة التجديد لتحديد سبب التجمد',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 color: Colors.grey.shade500,
-                                fontSize: 14,
+                                fontSize: _fs(14),
                                 height: 1.6),
                           ),
                         ],
@@ -890,7 +892,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                     )
                   : ListView.builder(
                       controller: _scrollCtrl,
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(_isPhone ? 8 : 12),
                       itemCount: _logs.length,
                       itemBuilder: (_, i) {
                         final log = _logs[i];
@@ -901,12 +903,12 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                             children: [
                               // الوقت
                               SizedBox(
-                                width: 70,
+                                width: _isPhone ? 55 : 70,
                                 child: Text(
                                   '${log.time}ms',
                                   style: TextStyle(
                                     color: Colors.grey.shade600,
-                                    fontSize: 11,
+                                    fontSize: _fs(11),
                                     fontFamily: 'Consolas',
                                   ),
                                 ),
@@ -918,7 +920,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                                   style: TextStyle(
                                     color: log.color,
                                     fontSize:
-                                        log.level == _LogLevel.header ? 14 : 12,
+                                        log.level == _LogLevel.header ? _fs(14) : _fs(12),
                                     fontWeight: log.level == _LogLevel.header
                                         ? FontWeight.bold
                                         : FontWeight.normal,
@@ -937,7 +939,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
             // زر البدء
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(_isPhone ? 10 : 16),
               decoration: BoxDecoration(
                 color: const Color(0xFF16213e),
                 border: Border(top: BorderSide(color: Colors.grey.shade800)),
@@ -951,14 +953,14 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                   _isRunning
                       ? 'جاري التشخيص...'
                       : (_isDone ? 'إعادة التشخيص' : 'ابدأ التشخيص'),
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: _fs(16), fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       _isRunning ? Colors.grey : Colors.green.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: _isPhone ? 10 : 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),

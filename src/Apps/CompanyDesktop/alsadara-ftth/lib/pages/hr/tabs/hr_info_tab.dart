@@ -377,7 +377,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
         children: children.map((child) {
           // إزالة Expanded من الأطفال لأننا في Column
           if (child is Expanded) return child.child;
-          if (child is SizedBox) return SizedBox(height: child.width ?? 12);
+          if (child is SizedBox) return SizedBox(height: child.height ?? child.width ?? 12);
           if (child is Spacer) return const SizedBox.shrink();
           return child;
         }).toList(),
@@ -651,7 +651,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
       child: Row(
         children: [
           SizedBox(
-            width: isSmall ? 100 : 150,
+            width: isSmall ? 80 : 150,
             child: Row(
               children: [
                 Icon(icon, size: isSmall ? 12 : 15, color: _labelColor),

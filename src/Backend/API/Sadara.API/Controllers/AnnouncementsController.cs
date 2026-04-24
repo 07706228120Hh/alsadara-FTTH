@@ -158,7 +158,14 @@ public class AnnouncementsController : ControllerBase
         {
             var q = _uow.Users.AsQueryable().Where(u => u.CompanyId == user.CompanyId && u.IsActive);
             if (announcement.TargetType == AnnouncementTargetType.Department)
-                q = q.Where(u => u.Department == announcement.TargetValue);
+            {
+                var deptUserIds = await _uow.UserDepartments.AsQueryable()
+                    .Include(ud => ud.Department)
+                    .Where(ud => ud.Department != null && ud.Department.NameAr == announcement.TargetValue)
+                    .Select(ud => ud.UserId)
+                    .ToListAsync();
+                q = q.Where(u => u.Department == announcement.TargetValue || deptUserIds.Contains(u.Id));
+            }
             else if (announcement.TargetType == AnnouncementTargetType.Role)
                 q = q.Where(u => u.Role.ToString() == announcement.TargetValue);
             else if (announcement.TargetType == AnnouncementTargetType.Location)
@@ -429,7 +436,14 @@ public class AnnouncementsController : ControllerBase
         }
         var q = _uow.Users.AsQueryable().Where(u => u.CompanyId == companyId && u.IsActive);
         if (announcement.TargetType == AnnouncementTargetType.Department)
-            q = q.Where(u => u.Department == announcement.TargetValue);
+        {
+            var deptUserIds = await _uow.UserDepartments.AsQueryable()
+                .Include(ud => ud.Department)
+                .Where(ud => ud.Department != null && ud.Department.NameAr == announcement.TargetValue)
+                .Select(ud => ud.UserId)
+                .ToListAsync();
+            q = q.Where(u => u.Department == announcement.TargetValue || deptUserIds.Contains(u.Id));
+        }
         else if (announcement.TargetType == AnnouncementTargetType.Role)
             q = q.Where(u => u.Role.ToString() == announcement.TargetValue);
         else if (announcement.TargetType == AnnouncementTargetType.Location)

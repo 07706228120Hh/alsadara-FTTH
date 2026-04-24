@@ -113,8 +113,16 @@ class ResponsiveHelper {
   double get bodySize => scaled(12, 13, 14);
   double get captionSize => scaled(10, 11, 12);
   double get appBarTitleSize => scaled(16, 18, 20);
-  double get counterValueSize => scaled(14, 16, 17);
-  double get counterLabelSize => scaled(9, 10, 10);
+  double get counterValueSize {
+    if (isMobile) return availableWidth < 360 ? 12 : 14 * mobileScale;
+    if (isTablet) return 16;
+    return 17;
+  }
+  double get counterLabelSize {
+    if (isMobile) return availableWidth < 360 ? 7.5 : 9 * mobileScale;
+    if (isTablet) return 10;
+    return 10;
+  }
   double get menuItemTitleSize => scaled(12, 14, 16);
   double get menuItemSubtitleSize => scaled(9, 11, 12);
 
@@ -128,10 +136,10 @@ class ResponsiveHelper {
   // ─── أحجام العناصر المتجاوبة (نسبية على الموبايل) ───
 
   /// ارتفاع بطاقة القائمة (الحد الأدنى)
-  double get menuItemHeight => scaled(52, 66, 72);
+  double get menuItemHeight => scaled(46, 66, 72);
 
   /// حجم أيقونة القائمة الدائرية
-  double get menuIconCircleSize => scaled(32, 42, 48);
+  double get menuIconCircleSize => scaled(28, 42, 48);
 
   /// حجم أيقونة القائمة الداخلية
   double get menuIconInnerSize => scaled(16, 21, 24);
@@ -143,10 +151,18 @@ class ResponsiveHelper {
   double get menuArrowIconSize => scaled(12, 13, 14);
 
   /// ارتفاع شريط التطبيق
-  double get appBarHeight => scaled(56, 64, 70);
+  double get appBarHeight {
+    if (isMobile) return availableWidth < 360 ? 52 : 58;
+    if (isTablet) return 64;
+    return 70;
+  }
 
   /// حجم دائرة العداد
-  double get counterCircleSize => scaled(60, 70, 80);
+  double get counterCircleSize {
+    if (isMobile) return availableWidth < 360 ? 44 : 54;
+    if (isTablet) return 70;
+    return 80;
+  }
 
   /// حجم صورة المستخدم
   double get userAvatarSize => scaled(32, 36, 40);
@@ -183,6 +199,9 @@ class ResponsiveHelper {
   /// padding بطاقة العداد
   EdgeInsets get counterCardPadding {
     if (isMobile) {
+      if (availableWidth < 360) {
+        return const EdgeInsets.symmetric(vertical: 6, horizontal: 4);
+      }
       return const EdgeInsets.symmetric(vertical: 8, horizontal: 6);
     }
     if (isTablet) {

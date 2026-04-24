@@ -2353,16 +2353,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             },
                           ),
                         ),
-                        TextButton(
-                          onPressed: () =>
-                              setModalState(() => tempSelected.clear()),
-                          child: const Text('تفريغ الكل'),
+                        Flexible(
+                          child: TextButton(
+                            onPressed: () =>
+                                setModalState(() => tempSelected.clear()),
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('تفريغ الكل')),
+                          ),
                         ),
-                        TextButton(
-                          onPressed: () => setModalState(() {
-                            tempSelected.addAll(filtered);
-                          }),
-                          child: const Text('تحديد الكل'),
+                        Flexible(
+                          child: TextButton(
+                            onPressed: () => setModalState(() {
+                              tempSelected.addAll(filtered);
+                            }),
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text('تحديد الكل')),
+                          ),
                         ),
                       ],
                     ),

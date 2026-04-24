@@ -1549,34 +1549,9 @@ public class ServiceRequestsController : ControllerBase
     {
         try
         {
-            // جلب الموظفين بأدوار فنية وقيادية
-            var staffRoles = new[]
-            {
-                UserRole.Technician,
-                UserRole.TechnicalLeader,
-                UserRole.Manager,
-                UserRole.Employee
-            };
-
-            var query = _unitOfWork.Users.AsQueryable()
-                .Where(u => staffRoles.Contains(u.Role));
-
-            // تصفية حسب القسم إن وُجد — تدعم القسم القديم + UserDepartments الجديد
-            if (!string.IsNullOrWhiteSpace(department))
-            {
-                var deptUserIds = await _unitOfWork.UserDepartments.AsQueryable()
-                    .Include(ud => ud.Department)
-                    .Where(ud => ud.Department != null && ud.Department.NameAr == department)
-                    .Select(ud => ud.UserId)
-                    .ToListAsync();
-
-                query = query.Where(u =>
-                    u.Department == department ||
-                    string.IsNullOrEmpty(u.Department) ||
-                    deptUserIds.Contains(u.Id));
-            }
-
-            var staff = await query
+            // جلب كل الموظفين النشطين بدون فلتر قسم أو دور
+            var staff = await _unitOfWork.Users.AsQueryable()
+                .Where(u => u.IsActive && u.Role != UserRole.Citizen)
                 .Select(u => new
                 {
                     u.Id,
@@ -1586,22 +1561,14 @@ public class ServiceRequestsController : ControllerBase
                     Role = u.Role.ToString(),
                     u.EmployeeCode
                 })
-                .OrderBy(u => u.Role)
-                .ThenBy(u => u.Name)
-                .ToListAsync();
-
-            // القادة: جلب من كل الأقسام (القائد يشرف على عدة أقسام)
-            var allStaffForLeaders = await _unitOfWork.Users.AsQueryable()
-                .Where(u => u.Role == UserRole.TechnicalLeader || u.Role == UserRole.Manager)
-                .Select(u => new { u.Id, Name = u.FullName, u.PhoneNumber, u.Department, Role = u.Role.ToString(), u.EmployeeCode })
                 .OrderBy(u => u.Name)
                 .ToListAsync();
 
-            var leaders = allStaffForLeaders.ToList();
-
-            var technicians = staff
-                .Where(s => s.Role == nameof(UserRole.Technician) || s.Role == nameof(UserRole.TechnicalLeader))
+            var leaders = staff
+                .Where(s => s.Role == nameof(UserRole.TechnicalLeader) || s.Role == nameof(UserRole.Manager))
                 .ToList();
+
+            var technicians = staff.ToList();
 
             return Ok(new
             {

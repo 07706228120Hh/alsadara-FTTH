@@ -14,6 +14,14 @@ class _TKTATState extends State<TKTAT> {
   bool isLoading = true;
   String message = "";
 
+  // ─── Responsive helpers ───
+  bool get _isPhone =>
+      MediaQuery.of(context).size.width < 500;
+
+  double _fs(double size) => _isPhone ? size * 0.85 : size;
+
+  double _ic(double size) => _isPhone ? size * 0.85 : size;
+
   @override
   void initState() {
     super.initState();
@@ -47,20 +55,20 @@ class _TKTATState extends State<TKTAT> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 50,
-        iconTheme: const IconThemeData(size: 20),
-        title: const Text('TKTATs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        toolbarHeight: _isPhone ? 44 : 50,
+        iconTheme: IconThemeData(size: _ic(20)),
+        title: Text('TKTATs', style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w600)),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, size: 20),
+            icon: Icon(Icons.refresh, size: _ic(20)),
             onPressed: fetchTKTATs,
           ),
         ],
       ),
       body: Container(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(_isPhone ? 10.0 : 16.0),
         child: _buildContent(),
       ),
     );
@@ -76,17 +84,17 @@ class _TKTATState extends State<TKTAT> {
         child: Text(
           message,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: _fs(16),
             color: Colors.red[600],
           ),
           textAlign: TextAlign.center,
         ),
       );
     } else if (tktats.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'لا توجد TKTATs متاحة',
-          style: TextStyle(fontSize: 18),
+          style: TextStyle(fontSize: _fs(18)),
         ),
       );
     } else {
@@ -95,10 +103,13 @@ class _TKTATState extends State<TKTAT> {
         itemBuilder: (context, index) {
           final tktat = tktats[index];
           return Card(
-            margin: const EdgeInsets.symmetric(vertical: 8),
+            margin: EdgeInsets.symmetric(vertical: _isPhone ? 5 : 8),
             child: ListTile(
-              title: Text(tktat['title'] ?? 'بدون عنوان'),
-              subtitle: Text(tktat['description'] ?? 'بدون وصف'),
+              dense: _isPhone,
+              title: Text(tktat['title'] ?? 'بدون عنوان',
+                  style: TextStyle(fontSize: _fs(14))),
+              subtitle: Text(tktat['description'] ?? 'بدون وصف',
+                  style: TextStyle(fontSize: _fs(12))),
               onTap: () {
                 // إضافة منطق فتح تفاصيل TKTAT
                 ScaffoldMessenger.of(context).showSnackBar(

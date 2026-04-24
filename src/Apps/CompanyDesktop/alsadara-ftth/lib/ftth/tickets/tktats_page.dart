@@ -4,6 +4,7 @@
 /// تاريخ الإنشاء: 2024
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -773,7 +774,7 @@ $lastErrorDetails
           ),
           content: SizedBox(
             width: double.maxFinite,
-            height: 400,
+            height: min(400, MediaQuery.of(context).size.height * 0.6),
             child: Column(
               children: [
                 Expanded(
@@ -2385,7 +2386,7 @@ $lastErrorDetails
           ),
           content: SizedBox(
             width: double.maxFinite,
-            height: 400,
+            height: min(400, MediaQuery.of(context).size.height * 0.6),
             child: Column(
               children: [
                 // إحصائيات سريعة

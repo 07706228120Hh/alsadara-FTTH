@@ -2,6 +2,8 @@
 /// إدارة الخصومات والمكافآت والبدلات اليدوية للموظفين
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
@@ -417,7 +419,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
               ],
             ),
             content: SizedBox(
-              width: 480,
+              width: min(480, MediaQuery.of(context).size.width * 0.85),
               child: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -595,7 +597,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
               ],
             ),
             content: SizedBox(
-              width: 420,
+              width: min(420, MediaQuery.of(context).size.width * 0.85),
               child: Form(
                 key: formKey,
                 child: SingleChildScrollView(

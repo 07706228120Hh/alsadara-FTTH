@@ -92,7 +92,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const config = $('Configuration').first().json;\nconst token = $json.access_token;\nconst days = Number(config.days || 0);\nconst now = new Date();\nconst baghdadOffset = 3 * 60;\nconst baghdadNow = new Date(now.getTime() + (baghdadOffset + now.getTimezoneOffset()) * 60000);\nconst target = new Date(baghdadNow);\ntarget.setDate(target.getDate() + days);\nconst fromBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 0, 0, 0);\nconst toBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 23, 59, 59);\nconst fromUTC = new Date(fromBaghdad.getTime() - baghdadOffset * 60000).toISOString();\nconst toUTC = new Date(toBaghdad.getTime() - baghdadOffset * 60000).toISOString();\nreturn [{ json: { access_token: token, fromExpirationDate: fromUTC, toExpirationDate: toUTC, pageNumber: 1, pageSize: 150, config: config } }];"
+        "jsCode": "const config = $('Configuration').first().json;\nconst token = $json.access_token;\nconst days = Number(config.days || 0);\nconst now = new Date();\nconst baghdadOffset = 3 * 60;\nconst baghdadNow = new Date(now.getTime() + (baghdadOffset + now.getTimezoneOffset()) * 60000);\nconst target = new Date(baghdadNow);\ntarget.setDate(target.getDate() + days);\nconst fromBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 0, 0, 0);\nconst toBaghdad = new Date(target.getFullYear(), target.getMonth(), target.getDate(), 23, 59, 59);\nconst fromUTC = new Date(fromBaghdad.getTime() - baghdadOffset * 60000).toISOString();\nconst toUTC = new Date(toBaghdad.getTime() - baghdadOffset * 60000).toISOString();\n\n// Initialize pagination in static data\nconst store = $getWorkflowStaticData('global');\nstore.allSubs = [];\nstore.pageNum = 1;\n\nreturn [{ json: { access_token: token, fromExpirationDate: fromUTC, toExpirationDate: toUTC, pageNumber: 1, pageSize: 150, config: config } }];"
       },
       "id": "ar-dates",
       "name": "Calculate Dates",
@@ -136,13 +136,49 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst items = data.items || [];\nconst config = $('Calculate Dates').first().json.config;\nconst token = $('Calculate Dates').first().json.access_token;\nif (items.length === 0) return [];\nreturn items.map(row => ({ json: { customer_id: row.customer?.id, customer_name: row.customer?.displayValue, service_name: row.services?.[0]?.displayValue || row.bundle?.displayValue, zone_name: row.zone?.displayValue, expires: row.expires, access_token: token, config: config } }));"
+        "jsCode": "const store = $getWorkflowStaticData('global');\nconst data = $input.first().json;\nconst items = data.items || [];\nconst calcData = $('Calculate Dates').first().json;\nconst token = calcData.access_token;\nconst config = calcData.config;\n\n// Collect subscribers from this page\nfor (const row of items) {\n  store.allSubs.push({\n    customer_id: row.customer?.id,\n    customer_name: row.customer?.displayValue,\n    service_name: row.services?.[0]?.displayValue || row.bundle?.displayValue,\n    zone_name: row.zone?.displayValue,\n    expires: row.expires,\n    access_token: token,\n    config: config\n  });\n}\n\nstore.pageNum = (store.pageNum || 1) + 1;\nconst hasMore = items.length >= 150;\n\nreturn [{ json: { hasMore: hasMore, collected: store.allSubs.length, page: store.pageNum - 1 } }];"
       },
-      "id": "ar-extract",
-      "name": "Extract Subscribers",
+      "id": "ar-collect",
+      "name": "Collect Page",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 400],
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [{ "id": "check-more", "leftValue": "={{ $json.hasMore }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ar-has-more",
+      "name": "Has More?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1540, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nconst calcData = $('Calculate Dates').first().json;\n\nreturn [{ json: {\n  access_token: calcData.access_token,\n  fromExpirationDate: calcData.fromExpirationDate,\n  toExpirationDate: calcData.toExpirationDate,\n  pageNumber: store.pageNum || 2,\n  pageSize: 150,\n  config: calcData.config\n} }];"
+      },
+      "id": "ar-next-page",
+      "name": "Next Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 560]
+    },
+    {
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nconst allSubs = store.allSubs || [];\n\n// Reset pagination state\nstore.allSubs = [];\nstore.pageNum = 1;\n\nif (allSubs.length === 0) return [];\nreturn allSubs.map(s => ({ json: s }));"
+      },
+      "id": "ar-emit-all",
+      "name": "Emit All Subscribers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 400],
       "alwaysOutputData": true
     },
     {
@@ -151,7 +187,7 @@
       "name": "Split For Phones",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
-      "position": [1560, 400]
+      "position": [1980, 400]
     },
     {
       "parameters": {
@@ -171,7 +207,7 @@
       "name": "Get Phone",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 400],
+      "position": [2200, 400],
       "retryOnFail": true,
       "waitBetweenTries": 2000,
       "maxTries": 2,
@@ -185,7 +221,7 @@
       "name": "Store Phone",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 400]
+      "position": [2420, 400]
     },
     {
       "parameters": {
@@ -195,7 +231,7 @@
       "name": "Output Ready",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1780, 600],
+      "position": [2200, 600],
       "alwaysOutputData": true
     },
     {
@@ -204,7 +240,7 @@
       "name": "Split For Send",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
-      "position": [2000, 600]
+      "position": [2420, 600]
     },
     {
       "parameters": {
@@ -214,7 +250,7 @@
       "name": "Prepare Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2220, 600]
+      "position": [2640, 600]
     },
     {
       "parameters": {
@@ -231,7 +267,7 @@
       "name": "Send WhatsApp",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2440, 600],
+      "position": [2860, 600],
       "retryOnFail": true,
       "waitBetweenTries": 3000,
       "maxTries": 2,
@@ -246,7 +282,7 @@
       "name": "Track Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2660, 600]
+      "position": [3080, 600]
     },
     {
       "parameters": {
@@ -256,7 +292,7 @@
       "name": "Prepare API Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2780, 500]
+      "position": [3200, 500]
     },
     {
       "parameters": {
@@ -273,7 +309,7 @@
       "name": "Save To API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2900, 500]
+      "position": [3320, 500]
     },
     {
       "parameters": { "amount": 1.5, "unit": "seconds" },
@@ -281,7 +317,7 @@
       "name": "Delay",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [2900, 600],
+      "position": [3320, 600],
       "webhookId": "ar-delay"
     },
     {
@@ -292,7 +328,7 @@
       "name": "Build Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2220, 800]
+      "position": [2640, 800]
     },
     {
       "parameters": {
@@ -309,7 +345,7 @@
       "name": "Save Execution Log",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2440, 800]
+      "position": [2860, 800]
     },
     {
       "parameters": {
@@ -326,7 +362,7 @@
       "name": "Notify Manager",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2660, 800],
+      "position": [3080, 800],
       "credentials": { "whatsAppApi": { "id": "EzucHolIyaZJI1AD", "name": "WhatsApp account" } },
       "continueOnFail": true
     }
@@ -338,8 +374,11 @@
     "FTTH Login": { "main": [[{ "node": "Login OK?", "type": "main", "index": 0 }]] },
     "Login OK?": { "main": [[{ "node": "Calculate Dates", "type": "main", "index": 0 }], []] },
     "Calculate Dates": { "main": [[{ "node": "Get Subscriptions", "type": "main", "index": 0 }]] },
-    "Get Subscriptions": { "main": [[{ "node": "Extract Subscribers", "type": "main", "index": 0 }]] },
-    "Extract Subscribers": { "main": [[{ "node": "Split For Phones", "type": "main", "index": 0 }]] },
+    "Get Subscriptions": { "main": [[{ "node": "Collect Page", "type": "main", "index": 0 }]] },
+    "Collect Page": { "main": [[{ "node": "Has More?", "type": "main", "index": 0 }]] },
+    "Has More?": { "main": [[{ "node": "Next Page", "type": "main", "index": 0 }], [{ "node": "Emit All Subscribers", "type": "main", "index": 0 }]] },
+    "Next Page": { "main": [[{ "node": "Get Subscriptions", "type": "main", "index": 0 }]] },
+    "Emit All Subscribers": { "main": [[{ "node": "Split For Phones", "type": "main", "index": 0 }]] },
     "Split For Phones": { "main": [[{ "node": "Get Phone", "type": "main", "index": 0 }], [{ "node": "Output Ready", "type": "main", "index": 0 }]] },
     "Get Phone": { "main": [[{ "node": "Store Phone", "type": "main", "index": 0 }]] },
     "Store Phone": { "main": [[{ "node": "Split For Phones", "type": "main", "index": 0 }]] },

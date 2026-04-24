@@ -51,6 +51,12 @@ class SubscriptionsPage extends StatefulWidget {
 }
 
 class _SubscriptionsPageState extends State<SubscriptionsPage> {
+  // === responsive helpers ===
+  bool _isPhone(BuildContext context) =>
+      MediaQuery.of(context).size.width < 600;
+  double _fs(BuildContext context, double size) =>
+      _isPhone(context) ? size * (MediaQuery.of(context).size.width / 375).clamp(0.78, 1.0) : size;
+
   // === متغيرات البيانات الأساسية ===
   List<dynamic> subscriptions = [];
   List<dynamic> zones = [];
@@ -1595,7 +1601,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 46,
+        toolbarHeight: _isPhone(context) ? 42 : 46,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -1729,8 +1735,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green.shade600,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: _isPhone(context) ? 10 : 16, vertical: 12),
                                 ),
                                 onPressed: _onMainExportPressed,
                                 icon: const Icon(Icons.lock_open),
@@ -1857,7 +1863,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           },
         ),
         backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: smartIconColor, size: 26),
+        iconTheme: IconThemeData(color: smartIconColor, size: _isPhone(context) ? 22 : 26),
         centerTitle: true,
         elevation: 2,
         actions: [
@@ -1977,7 +1983,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           if (isExporting)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(_isPhone(context) ? 10 : 16),
               color: Colors.blue.shade50,
               child: Column(
                 children: [
@@ -2067,8 +2073,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         : errorMessage.isNotEmpty && !isExporting
             ? Center(
                 child: Container(
-                  padding: const EdgeInsets.all(20),
-                  margin: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(_isPhone(context) ? 14 : 20),
+                  margin: EdgeInsets.all(_isPhone(context) ? 10 : 16),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
@@ -2081,7 +2087,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                       const SizedBox(height: 12),
                       Text(
                         "خطأ: $errorMessage",
-                        style: const TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: _fs(context, 16)),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
@@ -2194,7 +2200,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(_isPhone(context) ? 8 : 16),
       decoration: BoxDecoration(gradient: gradient),
       child: Row(
         children: [
@@ -2430,7 +2436,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             return GestureDetector(
               onTap: () => setState(() => selectedSessionFilter = label),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: EdgeInsets.symmetric(horizontal: _isPhone(context) ? 8 : 14),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: sel ? color : Colors.white,
@@ -2545,7 +2551,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.white,
                     shadowColor: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: _isPhone(context) ? 12 : 20),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
@@ -2839,8 +2845,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             return SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
+                  left: _isPhone(context) ? 10 : 16,
+                  right: _isPhone(context) ? 10 : 16,
                   top: 12,
                   bottom: MediaQuery.of(context).viewInsets.bottom + 12,
                 ),
@@ -2863,7 +2869,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         Text('اختيار المناطق',
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: _fs(context, 16),
                                 color: Colors.blue.shade800)),
                         const Spacer(),
                         Text('${tempSelected.length} مختارة',
@@ -3200,7 +3206,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             Text(
               'لا توجد اشتراكات للعرض',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: _fs(context, 18),
                 color: Colors.grey.shade600,
                 fontWeight: FontWeight.w500,
               ),
@@ -3625,15 +3631,24 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           ),
           const SizedBox(width: 10),
           // معلومات الصفحة
-          Text(
-            'صفحة $currentPage من $totalPages',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+          Flexible(
+            child: Text(
+              _isPhone(context)
+                  ? '$currentPage/$totalPages'
+                  : 'صفحة $currentPage من $totalPages',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           const SizedBox(width: 6),
-          Text(
-            'عرض ${((currentPage - 1) * pageSize) + 1} - ${(currentPage * pageSize).clamp(0, totalSubscriptions)} من $totalSubscriptions',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-          ),
+          if (!_isPhone(context))
+            Flexible(
+              child: Text(
+                'عرض ${((currentPage - 1) * pageSize) + 1} - ${(currentPage * pageSize).clamp(0, totalSubscriptions)} من $totalSubscriptions',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
         ],
       ),
     );
@@ -3678,6 +3693,12 @@ class _BulkWhatsAppDialog extends StatefulWidget {
 }
 
 class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
+  // === responsive helpers ===
+  bool _isPhone(BuildContext context) =>
+      MediaQuery.of(context).size.width < 600;
+  double _fs(BuildContext context, double size) =>
+      _isPhone(context) ? size * (MediaQuery.of(context).size.width / 375).clamp(0.78, 1.0) : size;
+
   // حالة التحميل
   bool _isLoading = false;
   bool _isSending = false;
@@ -4496,14 +4517,14 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
         '🔍 BUILD: filtered=${filtered.length}, withPhone=$withPhone, selected=${_selectedIds.length}, selectedWithPhone=$selectedWithPhone');
 
     return Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(_isPhone(context) ? 10 : 16),
         child: Column(
           children: [
 
             // شريط التحميل
             if (_isLoading || _isSending) ...[
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(_isPhone(context) ? 10 : 16),
                 child: Column(
                   children: [
                     Text(_loadingMessage),
@@ -4583,20 +4604,24 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
               // أزرار التحديد وجلب الأرقام
               Row(
                 children: [
-                  ElevatedButton.icon(
+                  Flexible(
+                    child: ElevatedButton.icon(
                     onPressed: _toggleSelectAll,
                     icon: const Icon(Icons.select_all, size: 18),
-                    label: Text(
-                      _filteredSubscriptions.every(
-                              (s) => _selectedIds.contains(_getUniqueId(s)))
-                          ? 'إلغاء تحديد الكل'
-                          : 'تحديد الكل ($withPhone)',
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _filteredSubscriptions.every(
+                                (s) => _selectedIds.contains(_getUniqueId(s)))
+                            ? 'إلغاء تحديد الكل'
+                            : 'تحديد الكل ($withPhone)',
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue.shade100,
                       foregroundColor: Colors.blue.shade800,
                     ),
-                  ),
+                  )),
                   const SizedBox(width: 8),
                   if (_selectedIds.isNotEmpty)
                     TextButton.icon(
@@ -4609,7 +4634,8 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                     ),
                   const Spacer(),
                   // زر جلب الأرقام من الذاكرة الداخلية
-                  ElevatedButton.icon(
+                  Flexible(
+                    child: ElevatedButton.icon(
                     onPressed: _isLoadingLocalPhones
                         ? null
                         : _fetchPhonesFromLocalStorage,
@@ -4625,8 +4651,11 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                                 : Icons.phone_callback,
                             size: 18,
                           ),
-                    label: Text(
-                        _localPhonesLoaded ? 'تحديث الأرقام' : 'جلب الأرقام'),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                          _localPhonesLoaded ? 'تحديث الأرقام' : 'جلب الأرقام'),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _localPhonesLoaded
                           ? Colors.green.shade100
@@ -4635,7 +4664,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                           ? Colors.green.shade800
                           : Colors.orange.shade800,
                     ),
-                  ),
+                  )),
                 ],
               ),
               const SizedBox(height: 8),
@@ -4900,10 +4929,10 @@ ${customer.toString()}
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'اختر القالب:',
                       style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: _fs(context, 16)),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -4999,39 +5028,48 @@ ${customer.toString()}
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   // زر التقارير
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const WhatsAppBatchReportsPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.analytics, size: 18),
-                    label: const Text('التقارير'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue,
+                  Flexible(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const WhatsAppBatchReportsPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.analytics, size: 18),
+                      label: const Text('التقارير'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                      ),
                     ),
                   ),
                   const Spacer(),
-                  OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('إلغاء'),
+                  Flexible(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('إلغاء'),
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: selectedWithPhone > 0 ? _sendMessages : null,
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    label: Text(
-                      'إرسال ($selectedWithPhone)',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
+                  Flexible(
+                    child: ElevatedButton.icon(
+                      onPressed: selectedWithPhone > 0 ? _sendMessages : null,
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'إرسال ($selectedWithPhone)',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        padding: EdgeInsets.symmetric(
+                            horizontal: _isPhone(context) ? 14 : 24, vertical: 12),
+                      ),
                     ),
                   ),
                 ],
@@ -5048,7 +5086,7 @@ ${customer.toString()}
         Text(
           value.toString(),
           style: TextStyle(
-            fontSize: 20,
+            fontSize: _fs(context, 20),
             fontWeight: FontWeight.bold,
             color: color,
           ),

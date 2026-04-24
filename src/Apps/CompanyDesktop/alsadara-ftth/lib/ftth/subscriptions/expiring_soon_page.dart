@@ -4,6 +4,7 @@
 /// تاريخ الإنشاء: 2024
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/notification_filter.dart';
 import 'package:flutter/services.dart';
@@ -38,6 +39,9 @@ class ExpiringSoonPage extends StatefulWidget {
 }
 
 class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   bool isLoading = true;
   List<dynamic> expiringSoonData = [];
   String errorMessage = '';
@@ -928,7 +932,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
               ],
             ),
             content: SizedBox(
-              width: 400,
+              width: min(400, MediaQuery.of(context).size.width * 0.85),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1131,8 +1135,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             ],
           ),
           content: SizedBox(
-            width: 420,
-            height: 400,
+            width: min(420, MediaQuery.of(context).size.width * 0.85),
+            height: min(400, MediaQuery.of(context).size.height * 0.6),
             child: Column(
               children: [
                 // إحصائيات
@@ -1234,10 +1238,10 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
               showTrialSubscriptions
                   ? 'الاشتراكات التجريبية'
                   : 'الاشتراكات المنتهية قريباً',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: _fs(16),
               ),
             ),
           ],
@@ -1454,7 +1458,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                   Text(
                                     'المجموع الكلي',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: _fs(14),
                                       color: Colors.grey[700],
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1463,7 +1467,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                   Text(
                                     '$totalItems',
                                     style: TextStyle(
-                                      fontSize: 22,
+                                      fontSize: _fs(22),
                                       fontWeight: FontWeight.w800,
                                       color: showTrialSubscriptions
                                           ? const Color(0xFF6366F1)
@@ -1496,7 +1500,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                   Text(
                                     'المبلغ',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: _fs(14),
                                       color: Colors.grey[700],
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1509,8 +1513,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                           NumberFormat('#,##0').format(amount);
                                       return Text(
                                         formatted,
-                                        style: const TextStyle(
-                                          fontSize: 20,
+                                        style: TextStyle(
+                                          fontSize: _fs(20),
                                           fontWeight: FontWeight.w800,
                                           color: Colors.green,
                                         ),
@@ -1573,9 +1577,9 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       Expanded(
                         child: Text(
                           exportMessage,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: _fs(14),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1617,11 +1621,11 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 if (_selectedZoneId != null || _selectedPlanName != null)
                   TextButton(
                     onPressed: _resetFilters,
-                    child: const Text(
+                    child: Text(
                       'إزالة الفلاتر',
                       style: TextStyle(
                         color: Colors.red,
-                        fontSize: 12,
+                        fontSize: _fs(12),
                       ),
                     ),
                   ),
@@ -1863,7 +1867,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                         'المنطقة: ${_zones.firstWhere((z) => z['id']?.toString() == _selectedZoneId, orElse: () => {
                               'displayValue': 'غير محدد'
                             })['displayValue']}',
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: _fs(12)),
                       ),
                       backgroundColor: showTrialSubscriptions
                           ? const Color(0xFFE0E7FF)
@@ -1880,7 +1884,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     Chip(
                       label: Text(
                         'الباقة: $_selectedPlanName',
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: _fs(12)),
                       ),
                       backgroundColor: showTrialSubscriptions
                           ? const Color(0xFFE0E7FF)
@@ -1907,7 +1911,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                     : _dateFilterType == 'all'
                                         ? 'الكل'
                                         : 'فلتر تاريخ',
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: _fs(12)),
                       ),
                       backgroundColor: showTrialSubscriptions
                           ? const Color(0xFFE0E7FF)
@@ -1975,7 +1979,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             children: [
               if (type == 'custom')
                 Icon(Icons.calendar_month,
-                    size: 16,
+                    size: _fs(16),
                     color: selected
                         ? Colors.white
                         : (showTrialSubscriptions
@@ -1990,7 +1994,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       : (showTrialSubscriptions
                           ? const Color(0xFF6366F1)
                           : const Color(0xFFEC4899)),
-                  fontSize: 12,
+                  fontSize: _fs(12),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2064,13 +2068,13 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.date_range, size: 16),
+            Icon(Icons.date_range, size: _fs(16)),
             const SizedBox(width: 4),
             Text(
               date == null
                   ? label
                   : '$label: ${DateFormat('MM/dd').format(date)}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: _fs(12), fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -2094,8 +2098,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
               showTrialSubscriptions
                   ? 'جاري تحميل الاشتراكات التجريبية وأرقام الهواتف...'
                   : 'جاري تحميل البيانات وأرقام الهواتف...',
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: _fs(16),
                 fontWeight: FontWeight.w500,
                 color: Colors.grey,
               ),
@@ -2104,7 +2108,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             Text(
               'التحميل بشكل متوازي لتسريع العملية',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: _fs(12),
                 color: Colors.grey[600],
               ),
             ),
@@ -2127,19 +2131,19 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             Text(
               'حدث خطأ',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: _fs(20),
                 fontWeight: FontWeight.bold,
                 color: Colors.red[700],
               ),
             ),
             const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: EdgeInsets.symmetric(horizontal: _isPhone ? 16 : 32),
               child: Text(
                 errorMessage,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: _fs(16),
                   color: Colors.grey[600],
                 ),
               ),
@@ -2179,7 +2183,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                   ? 'لا توجد اشتراكات تجريبية'
                   : 'لا توجد اشتراكات تنتهي خلال 3 أيام',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: _fs(20),
                 fontWeight: FontWeight.bold,
                 color: Colors.green[700],
               ),
@@ -2190,7 +2194,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                   ? 'جميع الاشتراكات مفعلة بالكامل'
                   : 'جميع الاشتراكات النشطة في حالة جيدة',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: _fs(16),
                 color: Colors.grey[600],
               ),
             ),
@@ -2317,7 +2321,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       color: showTrialSubscriptions
                           ? const Color(0xFF6366F1)
                           : const Color(0xFFEC4899),
-                      size: 20,
+                      size: _fs(20),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -2328,10 +2332,10 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       child: Text(
                         item['customer']?['displayValue'] ??
                             'عميل غير محدد',
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: _fs(14),
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C3E50),
+                          color: const Color(0xFF2C3E50),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2352,7 +2356,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
-                      child: Icon(Icons.copy_rounded, size: 16, color: Colors.grey[500]),
+                      child: Icon(Icons.copy_rounded, size: _fs(16), color: Colors.grey[500]),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -2592,11 +2596,11 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             children: [
               Flexible(
                 child: Text(value,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.green[800]),
+                    style: TextStyle(fontSize: _fs(13), fontWeight: FontWeight.w700, color: Colors.green[800]),
                     overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.copy_rounded, size: 14, color: Colors.green[600]),
+              Icon(Icons.copy_rounded, size: _fs(14), color: Colors.green[600]),
             ],
           ),
         ),
@@ -2619,21 +2623,21 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
               Flexible(
                 child: Text(value,
                     style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700,
+                      fontSize: _fs(13), fontWeight: FontWeight.w700,
                       color: isLink ? (showTrialSubscriptions ? const Color(0xFF4338CA) : const Color(0xFF9D174D)) : effectiveValueColor,
                       decoration: isLink ? TextDecoration.underline : TextDecoration.none,
                     ),
                     overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.open_in_new_rounded, size: 14, color: accent),
+              Icon(Icons.open_in_new_rounded, size: _fs(14), color: accent),
             ],
           ),
         ),
       );
     } else {
       valueWidget = Text(value,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: effectiveValueColor),
+          style: TextStyle(fontSize: _fs(13), fontWeight: FontWeight.w700, color: effectiveValueColor),
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
           maxLines: 2);
@@ -2655,11 +2659,11 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (labelIcon != null) ...[
-                Icon(labelIcon, size: 14, color: labelIconColor),
+                Icon(labelIcon, size: _fs(14), color: labelIconColor),
                 const SizedBox(width: 4),
               ],
               Text(label,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                  style: TextStyle(fontSize: _fs(11), fontWeight: FontWeight.w600, color: Colors.grey[600])),
             ],
           ),
           const SizedBox(height: 4),
@@ -2756,10 +2760,10 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                         ),
                                         child: Text(
                                           '$pageNumber',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                            fontSize: _fs(14),
                                           ),
                                         ),
                                       )
@@ -2789,7 +2793,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                                   ? const Color(0xFF6366F1)
                                                   : const Color(0xFFEC4899),
                                               fontWeight: FontWeight.w500,
-                                              fontSize: 14,
+                                              fontSize: _fs(14),
                                             ),
                                           ),
                                         ),

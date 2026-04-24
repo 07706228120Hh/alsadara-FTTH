@@ -29,6 +29,11 @@ import 'agents_management_page.dart'; // 👤 إدارة الوكلاء
 import 'service_requests_page.dart'; // 📋 طلبات الخدمة
 import 'sadara_portal_page.dart'; // 🌐 منصة الصدارة
 import 'plans_management_page.dart'; // 💰 إدارة الباقات والأسعار
+import 'comprehensive_dashboard_page.dart'; // 📊 لوحة التحكم الشاملة
+import 'financial_oversight_page.dart'; // 💰 المراقبة المالية
+import 'unified_subscriptions_page.dart'; // 📋 مراقبة الاشتراكات
+import 'audit_log_page.dart'; // 📝 سجل العمليات
+import 'system_health_page.dart'; // 🏥 صحة النظام
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -192,7 +197,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ? null
           : Drawer(
               width: 260,
-              backgroundColor: const Color(0xFF0F172A),
+              backgroundColor: const Color(0xFF1E3A5F),
               child: SafeArea(
                 child: _buildEnergySidebar(forDrawer: true),
               ),
@@ -240,24 +245,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         vertical: r.isMobile ? 10 : 16,
       ),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: EnergyDashboardTheme.bgCard,
         border: const Border(
           bottom: BorderSide(color: EnergyDashboardTheme.borderColor, width: 1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: EnergyDashboardTheme.neonGreen.withOpacity(0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: EnergyDashboardTheme.softShadow,
       ),
       child: Row(
         children: [
           // زر القائمة للشاشات الصغيرة
           if (!r.showSidebar) ...[
             IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white70),
+              icon: Icon(Icons.menu, color: EnergyDashboardTheme.textSecondary),
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
             const SizedBox(width: 8),
@@ -278,7 +277,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 ),
                 child: Icon(
                   Icons.bolt_rounded,
-                  color: EnergyDashboardTheme.bgPrimary,
+                  color: Colors.white,
                   size: r.isMobile ? 20 : 24,
                 ),
               ),
@@ -373,7 +372,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: EnergyDashboardTheme.bgCard,
         border: const Border(
           top: BorderSide(color: EnergyDashboardTheme.borderColor, width: 1),
         ),
@@ -434,10 +433,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+          colors: [Color(0xFF2A4A72), Color(0xFF1E3A5F)],
         ),
         border: const Border(
-          left: BorderSide(color: Color(0xFF334155), width: 1),
+          left: BorderSide(color: Color(0xFF4A6FA5), width: 1),
         ),
         boxShadow: [
           BoxShadow(
@@ -522,6 +521,41 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   label: 'منصة الصدارة',
                   color: EnergyDashboardTheme.neonPurple,
                 ),
+                // === الصفحات الجديدة ===
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Divider(color: Color(0xFF4A6FA5), height: 1),
+                ),
+                _buildEnergyNavItem(
+                  index: 12,
+                  icon: Icons.dashboard_customize_rounded,
+                  label: 'لوحة تحكم شاملة',
+                  color: EnergyDashboardTheme.neonGreen,
+                ),
+                _buildEnergyNavItem(
+                  index: 13,
+                  icon: Icons.account_balance_rounded,
+                  label: 'المراقبة المالية',
+                  color: EnergyDashboardTheme.neonOrange,
+                ),
+                _buildEnergyNavItem(
+                  index: 14,
+                  icon: Icons.subscriptions_rounded,
+                  label: 'مراقبة الاشتراكات',
+                  color: EnergyDashboardTheme.neonPurple,
+                ),
+                _buildEnergyNavItem(
+                  index: 15,
+                  icon: Icons.history_rounded,
+                  label: 'سجل العمليات',
+                  color: EnergyDashboardTheme.neonBlue,
+                ),
+                _buildEnergyNavItem(
+                  index: 16,
+                  icon: Icons.monitor_heart_rounded,
+                  label: 'صحة النظام',
+                  color: EnergyDashboardTheme.neonPink,
+                ),
                 _buildEnergyNavItem(
                   index: 7,
                   icon: Icons.settings_outlined,
@@ -542,9 +576,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               padding: const EdgeInsets.symmetric(vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: const Color(0xFF2A4A72),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF334155)),
+                border: Border.all(color: const Color(0xFF4A6FA5)),
               ),
               child: Center(
                 child: Icon(
@@ -582,7 +616,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               padding: EdgeInsets.all(_isSidebarCollapsed ? 8 : 10),
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF1E3A5F),
               ),
               child: Icon(
                 Icons.shield_rounded,
@@ -853,6 +887,21 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       case 11:
         // 🌐 منصة الصدارة
         return const SadaraPortalPage();
+      case 12:
+        // 📊 لوحة التحكم الشاملة
+        return const ComprehensiveDashboardPage();
+      case 13:
+        // 💰 المراقبة المالية
+        return const FinancialOversightPage();
+      case 14:
+        // 📋 مراقبة الاشتراكات
+        return const UnifiedSubscriptionsPage();
+      case 15:
+        // 📝 سجل العمليات
+        return const AuditLogPage();
+      case 16:
+        // 🏥 صحة النظام
+        return const SystemHealthPage();
       default:
         // 🏠 الافتراضي: الشاشة الرئيسية
         return const EnergyDashboardHome();

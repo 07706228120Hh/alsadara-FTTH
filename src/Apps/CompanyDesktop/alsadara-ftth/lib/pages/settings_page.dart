@@ -22,6 +22,10 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  // ─── responsive helpers ───
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   final TextEditingController _rasoulPhoneController = TextEditingController();
   bool _isLoading = false;
 
@@ -111,44 +115,50 @@ class _SettingsPageState extends State<SettingsPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(_isPhone ? 10 : 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // معلومات المستخدم
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(_isPhone ? 10 : 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'معلومات المستخدم',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: _fs(18),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(Icons.person, color: Colors.blue),
+                              Icon(Icons.person, color: Colors.blue, size: _isPhone ? 20 : 24),
                               const SizedBox(width: 8),
-                              Text(
-                                'المستخدم: ${widget.currentUsername}',
-                                style: const TextStyle(fontSize: 16),
+                              Expanded(
+                                child: Text(
+                                  'المستخدم: ${widget.currentUsername}',
+                                  style: TextStyle(fontSize: _fs(16)),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.admin_panel_settings,
-                                  color: Colors.orange),
+                              Icon(Icons.admin_panel_settings,
+                                  color: Colors.orange, size: _isPhone ? 20 : 24),
                               const SizedBox(width: 8),
-                              Text(
-                                'الدور: ${widget.currentUserRole}',
-                                style: const TextStyle(fontSize: 16),
+                              Expanded(
+                                child: Text(
+                                  'الدور: ${widget.currentUserRole}',
+                                  style: TextStyle(fontSize: _fs(16)),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -162,28 +172,30 @@ class _SettingsPageState extends State<SettingsPage> {
                   // إعدادات الإشعارات
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(_isPhone ? 10 : 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.notifications, color: Colors.green),
-                              SizedBox(width: 8),
-                              Text(
-                                'إعدادات الإشعارات',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              Icon(Icons.notifications, color: Colors.green, size: _isPhone ? 20 : 24),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'إعدادات الإشعارات',
+                                  style: TextStyle(
+                                    fontSize: _fs(18),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'رقم هاتف القائد رسول للإشعارات:',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: _fs(16),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -209,14 +221,14 @@ class _SettingsPageState extends State<SettingsPage> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.info_outline,
-                                  size: 16, color: Colors.grey),
+                              Icon(Icons.info_outline,
+                                  size: _isPhone ? 14 : 16, color: Colors.grey),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   'سيتم إرسال إشعارات المهام الجديدة لهذا الرقم',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: _fs(12),
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -248,18 +260,18 @@ class _SettingsPageState extends State<SettingsPage> {
                   // معلومات إضافية
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(_isPhone ? 10 : 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.info, color: Colors.orange),
-                              SizedBox(width: 8),
+                              Icon(Icons.info, color: Colors.orange, size: _isPhone ? 20 : 24),
+                              const SizedBox(width: 8),
                               Text(
                                 'معلومات مهمة',
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: _fs(18),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -291,7 +303,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Text(
             '• ',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: _fs(16),
               color: Colors.grey[700],
               fontWeight: FontWeight.bold,
             ),
@@ -300,7 +312,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: RichText(
               text: TextSpan(
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: _fs(14),
                   color: Colors.grey[700],
                 ),
                 children: [

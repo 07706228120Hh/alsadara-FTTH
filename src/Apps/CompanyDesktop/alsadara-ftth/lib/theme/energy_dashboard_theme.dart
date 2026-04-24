@@ -14,13 +14,12 @@ class EnergyDashboardTheme {
   // 🎨 الألوان الرئيسية - Modern Bright Dashboard
   // ═══════════════════════════════════════════════════════════════
 
-  // الخلفيات (كحلي داكن - Navy Dark)
-  static const Color bgPrimary = Color(0xFF1E3A5F); // كحلي رئيسي
-  static const Color bgSecondary = Color(0xFF162D4D); // كحلي أغمق
-  static const Color bgCard =
-      Color(0xFF2A4A72); // كحلي أفتح للبطاقات - تباين أعلى
-  static const Color bgCardHover = Color(0xFF345A88); // كحلي hover
-  static const Color bgSidebar = Color(0xFF0F1D33); // الشريط الجانبي أغمق
+  // الخلفيات (فاتحة - Clean White)
+  static const Color bgPrimary = Color(0xFFF8FAFC); // أبيض رمادي فاتح
+  static const Color bgSecondary = Color(0xFFF1F5F9); // رمادي فاتح
+  static const Color bgCard = Color(0xFFFFFFFF); // أبيض للبطاقات
+  static const Color bgCardHover = Color(0xFFF8FAFC); // رمادي hover
+  static const Color bgSidebar = Color(0xFF1E3A5F); // الشريط الجانبي كحلي متوسط
 
   // ألوان حيوية مبهجة
   static const Color neonGreen = Color(0xFF10B981); // أخضر زمردي
@@ -36,9 +35,9 @@ class EnergyDashboardTheme {
   static const Color danger = Color(0xFFEF4444); // أحمر حيوي
   static const Color info = Color(0xFF3B82F6); // أزرق سماوي
 
-  // ألوان النصوص (فاتحة - للخلفية الداكنة)
-  static const Color textPrimary = Color(0xFFF1F5F9); // أبيض رمادي
-  static const Color textSecondary = Color(0xFFCBD5E1); // رمادي فاتح
+  // ألوان النصوص (داكنة - للخلفية الفاتحة)
+  static const Color textPrimary = Color(0xFF1E293B); // كحلي غامق
+  static const Color textSecondary = Color(0xFF475569); // رمادي غامق
   static const Color textMuted = Color(0xFF94A3B8); // رمادي متوسط
   static const Color textAccent = Color(0xFF10B981); // أخضر زمردي
 
@@ -49,18 +48,18 @@ class EnergyDashboardTheme {
   static const Color textOnDarkAccent = Color(0xFF10B981); // أخضر زمردي
 
   // ألوان الحدود
-  static const Color borderColor = Color(0xFF4A7AAF); // أزرق حدود أوضح
+  static const Color borderColor = Color(0xFFE2E8F0); // رمادي فاتح
   static const Color borderGlow = Color(0xFF10B981);
 
   // ═══════════════════════════════════════════════════════════════
   // � ألوان مالية / محاسبية - Financial / Accounting Colors
   // ═══════════════════════════════════════════════════════════════
 
-  /// خلفية حقل المدين (أخضر داكن)
-  static const Color debitFill = Color(0xFF0D3320);
+  /// خلفية حقل المدين (أخضر فاتح)
+  static const Color debitFill = Color(0xFFECFDF5);
 
-  /// خلفية حقل الدائن (أحمر داكن)
-  static const Color creditFill = Color(0xFF3D1515);
+  /// خلفية حقل الدائن (أحمر فاتح)
+  static const Color creditFill = Color(0xFFFEF2F2);
 
   /// لون نص المدين
   static const Color debitText = Color(0xFF059669);
@@ -81,9 +80,9 @@ class EnergyDashboardTheme {
       salaryStatusColors[status] ?? textMuted;
 
   // الجداول
-  static const Color tableHeaderBg = Color(0xFF152A45);
-  static const Color tableHeaderText = Color(0xFFFFFFFF);
-  static const Color tableRowAlt = Color(0x15FFFFFF);
+  static const Color tableHeaderBg = Color(0xFFF1F5F9);
+  static const Color tableHeaderText = Color(0xFF1E293B);
+  static const Color tableRowAlt = Color(0x08000000);
 
   /// رأس الجدول
   static BoxDecoration get tableHeader => BoxDecoration(
@@ -393,14 +392,14 @@ class EnergyDashboardTheme {
   // 🌈 التدرجات - Modern Gradients
   // ═══════════════════════════════════════════════════════════════
 
-  // تدرج الخلفية الرئيسي (كحلي داكن)
+  // تدرج الخلفية الرئيسي (فاتح)
   static const LinearGradient backgroundGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF1E3A5F),
-      Color(0xFF162D4D),
-      Color(0xFF1E3A5F),
+      Color(0xFFF8FAFC),
+      Color(0xFFF1F5F9),
+      Color(0xFFF8FAFC),
     ],
   );
 
@@ -448,25 +447,25 @@ class EnergyDashboardTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0x15FFFFFF),
-      Color(0x05FFFFFF),
+      Color(0xFFFFFFFF),
+      Color(0xFFF8FAFC),
     ],
   );
 
-  // تدرج الشريط الجانبي
+  // تدرج الشريط الجانبي (كحلي متوسط)
   static const LinearGradient sidebarGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFF0F1629), Color(0xFF080C15)],
+    colors: [Color(0xFF2A4A72), Color(0xFF1E3A5F)],
   );
 
-  // تدرج بطاقة الطاقة (كحلي)
+  // تدرج بطاقة الطاقة (فاتح)
   static const LinearGradient energyCardGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF2A4A72),
-      Color(0xFF1E3A5F),
+      Color(0xFFFFFFFF),
+      Color(0xFFF8FAFC),
     ],
   );
 
@@ -530,15 +529,15 @@ class EnergyDashboardTheme {
         ),
       ];
 
-  /// ظل البطاقة الناعم (معزز للخلفية الداكنة)
+  /// ظل البطاقة الناعم (للخلفية الفاتحة)
   static List<BoxShadow> get softShadow => [
         BoxShadow(
-          color: Colors.black.withOpacity(0.25),
+          color: Colors.black.withOpacity(0.06),
           blurRadius: 12,
           offset: const Offset(0, 4),
         ),
         BoxShadow(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.withOpacity(0.04),
           blurRadius: 4,
           offset: const Offset(0, 1),
         ),
@@ -547,12 +546,12 @@ class EnergyDashboardTheme {
   /// ظل البطاقة العادي
   static List<BoxShadow> get cardShadow => [
         BoxShadow(
-          color: Colors.black.withOpacity(0.3),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
+          color: Colors.black.withOpacity(0.08),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
         ),
         BoxShadow(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.withOpacity(0.04),
           blurRadius: 6,
           offset: const Offset(0, 2),
         ),
@@ -561,14 +560,14 @@ class EnergyDashboardTheme {
   /// ظل مرتفع (للعناصر البارزة)
   static List<BoxShadow> get elevatedShadow => [
         BoxShadow(
-          color: Colors.black.withOpacity(0.35),
-          blurRadius: 30,
-          offset: const Offset(0, 15),
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 24,
+          offset: const Offset(0, 8),
         ),
         BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 10,
-          offset: const Offset(0, 5),
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
         ),
       ];
 
@@ -578,10 +577,10 @@ class EnergyDashboardTheme {
 
   /// بطاقة زجاجية
   static BoxDecoration get glassCard => BoxDecoration(
-        gradient: glassGradient,
+        color: bgCard,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.15),
+          color: borderColor,
           width: 1,
         ),
         boxShadow: softShadow,
@@ -592,19 +591,19 @@ class EnergyDashboardTheme {
         color: bgCard,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: glowColor.withOpacity(0.45),
-          width: 1.5,
+          color: glowColor.withOpacity(0.3),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: glowColor.withOpacity(0.2),
-            blurRadius: 20,
+            color: glowColor.withOpacity(0.08),
+            blurRadius: 16,
             spreadRadius: 0,
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       );

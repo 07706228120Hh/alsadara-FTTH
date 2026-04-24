@@ -1,5 +1,6 @@
 ﻿import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:excel/excel.dart' as xl;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8306,7 +8307,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               ),
             ]),
             content: SizedBox(
-              width: 320,
+              width: min(320, MediaQuery.of(context).size.width * 0.85),
               height: (_cols.length * 42.0).clamp(200, 500),
               child: ListView(
                 children: _cols.map((col) {
@@ -8604,7 +8605,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               ),
             ]),
             content: SizedBox(
-              width: 300,
+              width: min(300, MediaQuery.of(context).size.width * 0.85),
               height: (values.length * 44.0).clamp(100, 380),
               child: ListView(
                 children: values.map((v) {

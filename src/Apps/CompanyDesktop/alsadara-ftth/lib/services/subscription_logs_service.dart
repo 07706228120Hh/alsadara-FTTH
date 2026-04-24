@@ -93,7 +93,7 @@ class SubscriptionLogsService {
         // معلومات العملية
         'operationType': operationType,
         'activatedBy': activatedBy,
-        'activationDate': activationDate?.toIso8601String(),
+        'activationDate': activationDate?.toUtc().toIso8601String(),
         'activationTime': activationTime,
         'sessionId': sessionId,
         // معلومات الموقع

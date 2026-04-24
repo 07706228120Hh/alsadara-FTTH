@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -844,8 +845,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           ],
         ),
         content: SizedBox(
-          width: 700,
-          height: 500,
+          width: min(700, MediaQuery.of(context).size.width * 0.85),
+          height: min(500, MediaQuery.of(context).size.height * 0.6),
           child: Column(
             children: [
               // معلومات المصدر

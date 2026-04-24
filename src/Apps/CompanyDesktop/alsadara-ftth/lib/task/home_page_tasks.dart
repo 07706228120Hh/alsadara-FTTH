@@ -486,10 +486,6 @@ class HomePageTasksState extends State<HomePageTasks> {
               ],
             );
           }),
-          const SizedBox(height: 20),
-
-          // ── لوحة إحصائيات التحصيل ──
-          _buildCollectionStatsCard(),
           const SizedBox(height: 14),
 
           // ── بطاقة توزيع المهام حسب الفني ──
@@ -2804,7 +2800,14 @@ class HomePageTasksState extends State<HomePageTasks> {
                       )
                     : currentIndex == 0
                         ? _buildDashboardView()
-                        : _buildTaskListView(),
+                        : currentIndex == 5
+                            ? Column(
+                                children: [
+                                  _buildCollectionStatsCard(),
+                                  Expanded(child: _buildTaskListView()),
+                                ],
+                              )
+                            : _buildTaskListView(),
           ),
         ],
       ),

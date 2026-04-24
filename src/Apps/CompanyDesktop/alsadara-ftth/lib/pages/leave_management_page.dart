@@ -3,6 +3,8 @@
 /// المؤلف: تطبيق السدارة
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
@@ -191,7 +193,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
           title: const Text('طلب إجازة جديد',
               style: TextStyle(fontWeight: FontWeight.bold)),
           content: SizedBox(
-            width: 450,
+            width: min(450, MediaQuery.of(context).size.width * 0.85),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

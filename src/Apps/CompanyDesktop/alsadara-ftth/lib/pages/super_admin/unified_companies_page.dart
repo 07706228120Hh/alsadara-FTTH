@@ -8,6 +8,7 @@
 /// - تجديد الاشتراك
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/api/auth/super_admin_api.dart';
@@ -2200,7 +2201,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 750,
+        width: min(750, MediaQuery.of(context).size.width * 0.85),
         constraints: const BoxConstraints(maxHeight: 750),
         decoration: BoxDecoration(
           gradient: LinearGradient(

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -734,7 +735,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                   color: Color(0xFF1e293b), fontWeight: FontWeight.bold),
             ),
             content: SizedBox(
-              width: 500,
+              width: min(500, MediaQuery.of(context).size.width * 0.85),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1058,8 +1059,8 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                     fontSize: 16,
                     fontWeight: FontWeight.bold)),
             content: SizedBox(
-              width: 400,
-              height: 400,
+              width: min(400, MediaQuery.of(context).size.width * 0.85),
+              height: min(400, MediaQuery.of(context).size.height * 0.6),
               child: Column(
                 children: [
                   TextField(

@@ -4,6 +4,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -234,8 +235,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.groups_rounded,
-                    color: Colors.white, size: 24),
+                child: Icon(Icons.groups_rounded,
+                    color: Colors.white, size: r.isMobile ? 20 : 24),
               ),
               const SizedBox(width: 14),
               // العنوان
@@ -265,8 +266,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               ),
               // عداد الموظفين
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: EdgeInsets.symmetric(
+                    horizontal: r.isMobile ? 8 : 14, vertical: r.isMobile ? 4 : 6),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -280,14 +281,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.people_alt_rounded,
-                        size: 15, color: _accentLight),
-                    const SizedBox(width: 6),
+                    Icon(Icons.people_alt_rounded,
+                        size: r.isMobile ? 12 : 15, color: _accentLight),
+                    SizedBox(width: r.isMobile ? 4 : 6),
                     Text(
                       '${_employees.length} / ${widget.maxUsers}',
                       style: GoogleFonts.cairo(
                         color: _accentLight,
-                        fontSize: 12,
+                        fontSize: r.isMobile ? 10 : 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -298,7 +299,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               _glassButton(
                 icon: Icons.refresh_rounded,
                 onTap: _loadEmployees,
-                size: 38,
+                size: r.isMobile ? 32 : 38,
               ),
             ],
           ),
@@ -591,60 +592,72 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       padding: EdgeInsets.symmetric(horizontal: r.contentPaddingH),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(child: _buildFilterChip('القسم', _filterDepartment, departments, (v) {
-                setState(() => _filterDepartment = v);
-                _applyFilters();
-              }, (e) => e)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildFilterChip('الدور', _filterRole, roles, (v) {
-                setState(() => _filterRole = v);
-                _applyFilters();
-              }, (e) => _getRoleNameAr(e))),
-              const SizedBox(width: 8),
-              Expanded(child: _buildFilterChip('موقع العمل', _filterCenter, centers, (v) {
-                setState(() => _filterCenter = v);
-                _applyFilters();
-              }, (e) => e)),
-              if (_hasActiveFilters) ...[
-                const SizedBox(width: 8),
-                InkWell(
-                  onTap: () {
-                    setState(() { _filterDepartment = null; _filterRole = null; _filterCenter = null; });
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: r.isMobile ? 110 : 150,
+                  child: _buildFilterChip('القسم', _filterDepartment, departments, (v) {
+                    setState(() => _filterDepartment = v);
                     _applyFilters();
-                  },
+                  }, (e) => e),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: r.isMobile ? 110 : 150,
+                  child: _buildFilterChip('الدور', _filterRole, roles, (v) {
+                    setState(() => _filterRole = v);
+                    _applyFilters();
+                  }, (e) => _getRoleNameAr(e)),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: r.isMobile ? 120 : 160,
+                  child: _buildFilterChip('موقع العمل', _filterCenter, centers, (v) {
+                    setState(() => _filterCenter = v);
+                    _applyFilters();
+                  }, (e) => e),
+                ),
+                if (_hasActiveFilters) ...[
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      setState(() { _filterDepartment = null; _filterRole = null; _filterCenter = null; });
+                      _applyFilters();
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _danger.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.filter_alt_off, color: _danger, size: 20),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                // زر التحديد الجماعي
+                InkWell(
+                  onTap: () => setState(() {
+                    _selectionMode = !_selectionMode;
+                    if (!_selectionMode) _selectedIds.clear();
+                  }),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _danger.withValues(alpha: 0.1),
+                      color: _selectionMode ? _accent.withValues(alpha: 0.15) : Colors.white,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _selectionMode ? _accent : Colors.grey.shade300),
                     ),
-                    child: const Icon(Icons.filter_alt_off, color: _danger, size: 20),
+                    child: Icon(Icons.checklist_rounded,
+                        color: _selectionMode ? _accent : _textGray, size: 20),
                   ),
                 ),
               ],
-              const SizedBox(width: 8),
-              // زر التحديد الجماعي
-              InkWell(
-                onTap: () => setState(() {
-                  _selectionMode = !_selectionMode;
-                  if (!_selectionMode) _selectedIds.clear();
-                }),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _selectionMode ? _accent.withValues(alpha: 0.15) : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _selectionMode ? _accent : Colors.grey.shade300),
-                  ),
-                  child: Icon(Icons.checklist_rounded,
-                      color: _selectionMode ? _accent : _textGray, size: 20),
-                ),
-              ),
-            ],
+            ),
           ),
           if (_hasActiveFilters)
             Padding(
@@ -1833,11 +1846,13 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        width: 500,
-        constraints: const BoxConstraints(maxHeight: 700),
+        width: math.min(500, screenSize.width * 0.9),
+        constraints: BoxConstraints(maxHeight: math.min(700, screenSize.height * 0.8)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -2,6 +2,7 @@
 /// عرض الوكلاء + إضافة/تعديل/حذف + المحاسبة (أجور + تسديد + صافي)
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1989,7 +1990,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               ],
             ),
             content: SizedBox(
-              width: 400,
+              width: min(400, MediaQuery.of(context).size.width * 0.85),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2187,7 +2188,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               ],
             ),
             content: SizedBox(
-              width: 400,
+              width: min(400, MediaQuery.of(context).size.width * 0.85),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2333,7 +2334,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               ],
             ),
             content: SizedBox(
-              width: 360,
+              width: min(360, MediaQuery.of(context).size.width * 0.85),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -2479,7 +2480,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               ],
             ),
             content: SizedBox(
-              width: 360,
+              width: min(360, MediaQuery.of(context).size.width * 0.85),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -2626,7 +2627,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             ],
           ),
           content: SizedBox(
-            width: 360,
+            width: min(360, MediaQuery.of(context).size.width * 0.85),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

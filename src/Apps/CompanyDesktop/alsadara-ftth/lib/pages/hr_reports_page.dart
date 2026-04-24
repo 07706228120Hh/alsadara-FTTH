@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
@@ -644,6 +645,7 @@ class _HrReportsPageState extends State<HrReportsPage>
   }
 
   Widget _buildAttendanceDataTable() {
+    final isPhone = context.responsive.isMobile;
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -651,7 +653,7 @@ class _HrReportsPageState extends State<HrReportsPage>
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
-              columnSpacing: 20,
+              columnSpacing: isPhone ? 10 : 20,
               columns: const [
                 DataColumn(
                     label: Text('الموظف',
@@ -773,12 +775,13 @@ class _HrReportsPageState extends State<HrReportsPage>
   }
 
   Widget _buildSalaryDataTable() {
+    final isPhone = context.responsive.isMobile;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
-          columnSpacing: 16,
+          columnSpacing: isPhone ? 8 : 16,
           columns: const [
             DataColumn(
                 label: Text('الموظف',
@@ -876,12 +879,13 @@ class _HrReportsPageState extends State<HrReportsPage>
   }
 
   Widget _buildLeavesDataTable() {
+    final isPhone = context.responsive.isMobile;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
-          columnSpacing: 20,
+          columnSpacing: isPhone ? 10 : 20,
           columns: const [
             DataColumn(
                 label: Text('الموظف',
@@ -942,12 +946,13 @@ class _HrReportsPageState extends State<HrReportsPage>
   // ==================== Helper Widgets ====================
 
   Widget _buildSectionTitle(String title) {
+    final r = context.responsive;
     return Text(
       title,
-      style: const TextStyle(
-        fontSize: 18,
+      style: TextStyle(
+        fontSize: r.scaled(14, 16, 18),
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1A237E),
+        color: const Color(0xFF1A237E),
       ),
     );
   }
@@ -1201,13 +1206,14 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
-          width: 900,
-          height: 650,
+          width: min(900, screenSize.width * 0.9),
+          height: min(650, screenSize.height * 0.8),
           padding: const EdgeInsets.all(0),
           child: Column(
             children: [
@@ -1312,12 +1318,14 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
       recordMap[r['Date'] ?? ''] = r as Map<String, dynamic>;
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isPhone = screenWidth <= 600;
     return SingleChildScrollView(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 960),
+        constraints: BoxConstraints(minWidth: isPhone ? screenWidth : 960),
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
-          columnSpacing: 10,
+          columnSpacing: isPhone ? 6 : 10,
           dataRowMinHeight: 36,
           dataRowMaxHeight: 42,
           columns: const [

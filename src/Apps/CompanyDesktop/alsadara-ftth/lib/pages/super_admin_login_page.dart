@@ -1,6 +1,8 @@
 /// صفحة تسجيل دخول مدير النظام
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -111,7 +113,7 @@ class _SuperAdminLoginPageState extends State<SuperAdminLoginPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Container(
-                width: 400,
+                width: min(400, MediaQuery.of(context).size.width * 0.85),
                 padding: const EdgeInsets.all(32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

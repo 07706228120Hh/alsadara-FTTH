@@ -4,6 +4,7 @@
 /// تاريخ الإنشاء: 2024
 library;
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -517,7 +518,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 500,
+                height: min(500, MediaQuery.of(context).size.height * 0.6),
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

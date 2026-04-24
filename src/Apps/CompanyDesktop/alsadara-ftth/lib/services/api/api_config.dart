@@ -25,6 +25,8 @@ class ApiConfig {
   static const String superAdminLogout = '/superadmin/logout';
   static const String superAdminDashboard = '/superadmin/dashboard';
   static const String superAdminStatistics = '/superadmin/statistics';
+  static const String superAdminComprehensiveDashboard =
+      '/superadmin/comprehensive-dashboard';
 
   // ============================================
   // Endpoints - Companies

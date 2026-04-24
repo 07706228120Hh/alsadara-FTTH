@@ -3,6 +3,7 @@
 library;
 
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:excel/excel.dart' hide Border;
@@ -3270,8 +3271,8 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             ],
           ),
           content: SizedBox(
-            width: 300,
-            height: 400,
+            width: min(300, MediaQuery.of(context).size.width * 0.85),
+            height: min(400, MediaQuery.of(context).size.height * 0.6),
             child: Column(
               children: [
                 // مربع البحث

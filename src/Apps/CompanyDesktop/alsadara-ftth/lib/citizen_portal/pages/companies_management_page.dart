@@ -143,6 +143,8 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isPhone = MediaQuery.of(context).size.width < 500;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('إدارة الشركات'),
@@ -196,6 +198,8 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
   }
 
   Widget _buildCompanyCard(CompanyModel company) {
+    final isPhone = MediaQuery.of(context).size.width < 500;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 4,
@@ -214,7 +218,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                       company.isActive ? Colors.indigo : Colors.grey,
                   child: Text(
                     company.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontSize: 20),
+                    style: TextStyle(color: Colors.white, fontSize: isPhone ? 16 : 20),
                   ),
                 ),
                 const SizedBox(width: 12),

@@ -16,6 +16,7 @@ import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
 import '../../services/dual_auth_service.dart';
 import '../../services/fcm_token_service.dart';
+import '../../ftth/widgets/floating_toolbar.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
 import '../offline_router_setup_page.dart';
@@ -162,6 +163,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   @override
   void initState() {
     super.initState();
+    // إزالة الشريط العائم عند وصول صفحة تسجيل الدخول (احتياطي)
+    FloatingToolbar.dispose();
     _initAnimations();
     _loadAllData();
     PackageInfo.fromPlatform().then((info) {
@@ -428,11 +431,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   void _navigateAfterLogin() async {
     try {
-    // مسح بيانات FTTH القديمة قبل الانتقال لمنع رؤية home_page لبيانات المستخدم السابق
-    await DualAuthService.instance.clearFtthData();
-    // 🔄 تسجيل دخول FTTH الصامت في الخلفية (لا ينتظر)
+    // كل هذه العمليات تعمل في الخلفية بدون انتظار — الانتقال فوري
+    DualAuthService.instance.clearFtthData();
     _performSilentFtthLogin();
-    // 🔔 تسجيل FCM token في الخلفية (لا ينتظر)
     FcmTokenService.instance.registerToken();
     FcmTokenService.instance.listenForTokenRefresh();
 
@@ -441,27 +442,21 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const SuperAdminDashboard(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 150),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          transitionsBuilder: (_, __, ___, child) => child,
         ),
       );
-      // فحص التحديثات بعد الانتقال (بدون حظر)
       _checkForUpdatesAfterLogin();
     } else if (_authService.currentUser != null &&
         _authService.currentCompany != null) {
       final user = _authService.currentUser!;
       final company = _authService.currentCompany!;
 
-      // V2: تحميل الصلاحيات من PermissionManager
-      try {
-        final pm = PermissionManager.instance;
-        if (!pm.isLoaded) {
-          await pm.loadPermissions();
-        }
-      } catch (e) {
-        debugPrint('⚠️ فشل تحميل الصلاحيات: $e');
+      // تحميل الصلاحيات في الخلفية — لا ينتظر
+      final pm = PermissionManager.instance;
+      if (!pm.isLoaded) {
+        pm.loadPermissions();
       }
 
       if (!mounted) return;
@@ -476,13 +471,11 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             tenantId: company.id,
             tenantCode: company.code,
           ),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 150),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          transitionsBuilder: (_, __, ___, child) => child,
         ),
       );
-      // فحص التحديثات بعد الانتقال (بدون حظر)
       _checkForUpdatesAfterLogin();
     }
     } catch (e) {
@@ -961,11 +954,11 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             color: Colors.white,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: isSmall ? 2 : 4),
         Text(
           'تسجيل الدخول',
           style: GoogleFonts.cairo(
-            fontSize: 16,
+            fontSize: isSmall ? 13 : 16,
             color: Colors.white70,
           ),
         ),
@@ -1091,34 +1084,34 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   Widget _buildOfflineRouterSetupButton() {
     final isSmall = MediaQuery.of(context).size.width < 420;
+    final h = isSmall ? 38.0 : 44.0;
+    final r = isSmall ? 10.0 : 14.0;
     return SizedBox(
-      height: isSmall ? 38 : 44,
+      width: double.infinity,
+      height: h,
       child: OutlinedButton.icon(
         icon: Icon(Icons.settings_input_antenna, size: isSmall ? 16 : 18, color: _primaryGradient[0]),
         label: Text(
           'إعداد الراوتر (أوفلاين)',
-          style: GoogleFonts.cairo(
-            fontSize: isSmall ? 12 : 14,
-            fontWeight: FontWeight.w700,
-            color: _primaryGradient[0],
-          ),
+          style: GoogleFonts.cairo(fontSize: isSmall ? 12 : 14, fontWeight: FontWeight.w700, color: _primaryGradient[0]),
         ),
         style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 16),
           side: BorderSide(color: _primaryGradient[0].withOpacity(0.5)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isSmall ? 10 : 14)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r)),
         ),
         onPressed: () {
-          Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const OfflineRouterSetupPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const OfflineRouterSetupPage()));
         },
       ),
     );
   }
 
   Widget _buildApiStatusBadge() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: isSmall ? 10 : 16, vertical: isSmall ? 5 : 8),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -1127,30 +1120,15 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             ],
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFF11998e).withOpacity(0.3),
-          ),
+          border: Border.all(color: const Color(0xFF11998e).withOpacity(0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: Color(0xFF11998e),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'متصل بـ VPS API',
-              style: GoogleFonts.cairo(
-                fontSize: 12,
-                color: const Color(0xFF11998e),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Container(width: isSmall ? 6 : 8, height: isSmall ? 6 : 8,
+              decoration: const BoxDecoration(color: Color(0xFF11998e), shape: BoxShape.circle)),
+            SizedBox(width: isSmall ? 5 : 8),
+            Text('متصل بـ VPS API', style: GoogleFonts.cairo(fontSize: isSmall ? 10 : 12, color: const Color(0xFF11998e), fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -1258,21 +1236,22 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   Widget _buildErrorMessage() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(isSmall ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.red[50],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmall ? 8 : 12),
         border: Border.all(color: Colors.red[200]!),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline, color: Colors.red[700], size: 20),
-          const SizedBox(width: 10),
+          Icon(Icons.error_outline, color: Colors.red[700], size: isSmall ? 16 : 20),
+          SizedBox(width: isSmall ? 6 : 10),
           Expanded(
             child: Text(
               _errorMessage!,
-              style: GoogleFonts.cairo(color: Colors.red[700], fontSize: 13),
+              style: GoogleFonts.cairo(color: Colors.red[700], fontSize: isSmall ? 11 : 13),
             ),
           ),
         ],
@@ -1330,6 +1309,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   List<DropdownMenuItem<CompanyListItem>> _buildCompanyDropdownItems() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
+    final iconSize = isSmall ? 16.0 : 20.0;
+    final fs = isSmall ? 12.0 : 14.0;
     final items = <DropdownMenuItem<CompanyListItem>>[];
 
     // مدير النظام
@@ -1338,25 +1320,16 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         value: CompanyListItem(id: '1', name: 'مدير النظام', code: '1'),
         child: Row(
           children: [
-            Icon(Icons.admin_panel_settings,
-                color: Colors.amber[700], size: 20),
-            const SizedBox(width: 10),
-            Text(
-              'مدير النظام',
-              style: GoogleFonts.cairo(
-                fontWeight: FontWeight.bold,
-                color: Colors.amber[700],
-              ),
-            ),
+            Icon(Icons.admin_panel_settings, color: Colors.amber[700], size: iconSize),
+            SizedBox(width: isSmall ? 6 : 10),
+            Text('مدير النظام', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.amber[700], fontSize: fs)),
           ],
         ),
       ),
     );
 
-    // فاصل
     items.add(const DropdownMenuItem(enabled: false, child: Divider()));
 
-    // الشركات
     for (final company in _companies) {
       if (company.code == '1') continue;
       items.add(
@@ -1364,20 +1337,10 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           value: company,
           child: Row(
             children: [
-              Icon(Icons.business_rounded,
-                  color: _primaryGradient[0], size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  company.name,
-                  style: GoogleFonts.cairo(fontSize: 14),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                company.code,
-                style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[500]),
-              ),
+              Icon(Icons.business_rounded, color: _primaryGradient[0], size: iconSize),
+              SizedBox(width: isSmall ? 6 : 10),
+              Expanded(child: Text(company.name, style: GoogleFonts.cairo(fontSize: fs), overflow: TextOverflow.ellipsis)),
+              Text(company.code, style: GoogleFonts.cairo(fontSize: isSmall ? 9 : 11, color: Colors.grey[500])),
             ],
           ),
         ),
@@ -1388,10 +1351,11 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   Widget _buildUsernameField() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return TextFormField(
       controller: _usernameController,
       textDirection: TextDirection.ltr,
-      style: GoogleFonts.cairo(),
+      style: GoogleFonts.cairo(fontSize: isSmall ? 13 : 15),
       decoration: _buildInputDecoration(
         label: 'اسم المستخدم',
         hint: 'أدخل اسم المستخدم أو رقم الهاتف',
@@ -1405,11 +1369,12 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   Widget _buildPasswordField() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return TextFormField(
       controller: _passwordController,
       obscureText: _obscurePassword,
       textDirection: TextDirection.ltr,
-      style: GoogleFonts.cairo(),
+      style: GoogleFonts.cairo(fontSize: isSmall ? 13 : 15),
       decoration: _buildInputDecoration(
         label: 'كلمة المرور',
         hint: 'أدخل كلمة المرور',
@@ -1417,7 +1382,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: Colors.grey[500],
+            color: Colors.grey[500], size: isSmall ? 20 : 24,
           ),
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
         ),
@@ -1429,10 +1394,11 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   Widget _buildRememberMeCheckbox() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Row(
       children: [
         Transform.scale(
-          scale: 1.1,
+          scale: isSmall ? 0.9 : 1.1,
           child: Checkbox(
             value: _rememberMe,
             onChanged: (value) => setState(() => _rememberMe = value ?? false),
@@ -1445,7 +1411,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           onTap: () => setState(() => _rememberMe = !_rememberMe),
           child: Text(
             'تذكرني',
-            style: GoogleFonts.cairo(color: Colors.grey[700]),
+            style: GoogleFonts.cairo(color: Colors.grey[700], fontSize: isSmall ? 12 : 14),
           ),
         ),
       ],
@@ -1454,16 +1420,18 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   Widget _buildLoginButton() {
     final isSmall = MediaQuery.of(context).size.width < 420;
+    final h = isSmall ? 42.0 : 52.0;
+    final r = isSmall ? 10.0 : 14.0;
     return Container(
-      height: isSmall ? 44 : 56,
+      height: h,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: _primaryGradient),
-        borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
+        borderRadius: BorderRadius.circular(r),
         boxShadow: [
           BoxShadow(
-            color: _primaryGradient[0].withOpacity(0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: _primaryGradient[0].withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -1472,32 +1440,17 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          padding: EdgeInsets.symmetric(vertical: isSmall ? 0 : 4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r)),
         ),
         child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.5,
-                ),
-              )
+            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.login_rounded, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Text(
-                    'تسجيل الدخول',
-                    style: GoogleFonts.cairo(
-                      fontSize: MediaQuery.of(context).size.width < 420 ? 14 : 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  Icon(Icons.login_rounded, color: Colors.white, size: isSmall ? 18 : 22),
+                  SizedBox(width: isSmall ? 6 : 10),
+                  Text('تسجيل الدخول', style: GoogleFonts.cairo(fontSize: isSmall ? 14 : 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ],
               ),
       ),

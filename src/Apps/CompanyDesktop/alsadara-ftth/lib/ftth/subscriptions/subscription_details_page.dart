@@ -1,5 +1,6 @@
 // الجزء الأول: المستوردات والتعريفات الأساسية
 // صفحة تجديد الاشتراك
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/notification_filter.dart';
 import '../whatsapp/whatsapp_bottom_window.dart';
@@ -608,13 +609,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     // تحميل قائمة الفنيين
     _loadTechnicians();
 
-    // تحميل مسبق لقوائم الوكلاء والفنيين (بصمت في الخلفية)
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) _loadAgentsList();
-    });
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) _loadTechniciansList();
-    });
+    // تحميل مسبق لقوائم الوكلاء والفنيين (فوراً)
+    _loadAgentsList();
+    _loadTechniciansList();
 
     // أنيميشن خلفية بسيط (تغيير تدريجي للألوان) لمنح الصفحة حيوية بدون التأثير على الحجم
     _bgAnim = AnimationController(
@@ -856,8 +853,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         final total = _asDouble(priceDetails!['totalPrice']).round();
         b.writeln('السعر: $total IQD');
       }
-      if (widget.expires != null) {
-        b.writeln('انتهاء: ${widget.expires!.split('T').first}');
+      final expiry = subscriptionInfo!.expiresAt ?? widget.expires;
+      if (expiry != null) {
+        b.writeln('انتهاء: ${expiry.split('T').first}');
       }
       b.writeln('مُفعل بواسطة: ${widget.activatedBy}');
     }
@@ -2540,15 +2538,17 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           final finalTotal = (effectiveTotal - manualDiscount).clamp(0, double.infinity);
           price = finalTotal.round().toString();
         }
-        // حساب تاريخ الانتهاء الجديد = التاريخ القديم + فترة الالتزام
+        // تاريخ الانتهاء الحقيقي من API بعد التفعيل
+        // subscriptionInfo.expiresAt يحتوي التاريخ المحدث من السيرفر بعد fetchSubscriptionDetails
         String expiryDate;
         try {
-          final oldExpiry = DateTime.tryParse(subscriptionInfo?.expiresAt ?? widget.expires ?? '');
-          final period = selectedCommitmentPeriod ?? 1;
-          if (oldExpiry != null) {
-            final newExpiry = oldExpiry.add(Duration(days: 30 * period));
-            expiryDate = '${newExpiry.year}-${newExpiry.month.toString().padLeft(2, '0')}-${newExpiry.day.toString().padLeft(2, '0')}';
+          final apiExpiry = DateTime.tryParse(subscriptionInfo?.expiresAt ?? '');
+          if (apiExpiry != null) {
+            // التاريخ الحقيقي من السيرفر — لا نضيف الفترة لأنه محدّث بالفعل
+            expiryDate = '${apiExpiry.year}-${apiExpiry.month.toString().padLeft(2, '0')}-${apiExpiry.day.toString().padLeft(2, '0')}';
           } else {
+            // fallback: حساب تقريبي
+            final period = selectedCommitmentPeriod ?? 1;
             final newExpiry = DateTime.now().add(Duration(days: 30 * period));
             expiryDate = '${newExpiry.year}-${newExpiry.month.toString().padLeft(2, '0')}-${newExpiry.day.toString().padLeft(2, '0')}';
           }
@@ -3328,7 +3328,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         ),
         content: SizedBox(
           width: double.maxFinite,
-          height: 400,
+          height: min(400, MediaQuery.of(context).size.height * 0.6),
           child: SingleChildScrollView(
             child: Container(
               padding: EdgeInsets.all(16),
@@ -8511,7 +8511,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     Text('خصم: -${_formatNumber(manualDiscount.round())} $currency', style: const TextStyle(fontSize: 10, color: Colors.white60)),
                 ],
               ),
-              Text('${_formatNumber(finalTotal.round())} $currency', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
+              Flexible(child: Text('${_formatNumber(finalTotal.round())} $currency', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white), overflow: TextOverflow.ellipsis)),
             ],
           ),
         ),
@@ -10401,9 +10401,16 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             () => _agentsLoadError = 'خطأ من السيرفر (${response.statusCode})');
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الوكلاء');
+      debugPrint('❌ خطأ في جلب الوكلاء: $e');
       if (mounted) {
         setState(() => _agentsLoadError = 'خطأ في الاتصال');
+        // إعادة محاولة تلقائية بعد 3 ثوانٍ
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted && _agentsList.isEmpty && !_isLoadingAgents) {
+            debugPrint('🔄 إعادة محاولة جلب الوكلاء...');
+            _loadAgentsList(forceReload: true);
+          }
+        });
       }
     } finally {
       if (mounted) setState(() => _isLoadingAgents = false);
@@ -10484,9 +10491,16 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             _techniciansLoadError = 'خطأ من السيرفر (${response.statusCode})');
       }
     } catch (e) {
-      debugPrint('❌ خطأ في جلب الفنيين');
+      debugPrint('❌ خطأ في جلب الفنيين: $e');
       if (mounted) {
         setState(() => _techniciansLoadError = 'خطأ في الاتصال');
+        // إعادة محاولة تلقائية بعد 3 ثوانٍ
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted && _techniciansList.isEmpty && !_isLoadingTechnicians) {
+            debugPrint('🔄 إعادة محاولة جلب الفنيين...');
+            _loadTechniciansList(forceReload: true);
+          }
+        });
       }
     } finally {
       if (mounted) setState(() => _isLoadingTechnicians = false);
@@ -10516,14 +10530,25 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       );
     }
     if (_agentsList.isEmpty) {
+      final hasError = _agentsLoadError != null;
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(children: [
-          Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
+          Icon(
+            hasError ? Icons.wifi_off : Icons.info_outline,
+            size: 16,
+            color: hasError ? Colors.red.shade600 : Colors.orange.shade600,
+          ),
           const SizedBox(width: 6),
-          Text('لا يوجد وكلاء متاحين',
-              style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
-          const Spacer(),
+          Expanded(
+            child: Text(
+              hasError ? 'فشل تحميل الوكلاء — $_agentsLoadError' : 'لا يوجد وكلاء متاحين',
+              style: TextStyle(
+                fontSize: 12,
+                color: hasError ? Colors.red.shade700 : Colors.orange.shade700,
+              ),
+            ),
+          ),
           TextButton.icon(
             onPressed: () => _loadAgentsList(forceReload: true),
             icon: Icon(Icons.refresh, size: 14, color: Colors.blue.shade600),
@@ -10726,14 +10751,25 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       );
     }
     if (_techniciansList.isEmpty) {
+      final hasError = _techniciansLoadError != null;
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(children: [
-          Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
+          Icon(
+            hasError ? Icons.wifi_off : Icons.info_outline,
+            size: 16,
+            color: hasError ? Colors.red.shade600 : Colors.orange.shade600,
+          ),
           const SizedBox(width: 6),
-          Text('لا يوجد فنيين متاحين',
-              style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
-          const Spacer(),
+          Expanded(
+            child: Text(
+              hasError ? 'فشل تحميل الفنيين — $_techniciansLoadError' : 'لا يوجد فنيين متاحين',
+              style: TextStyle(
+                fontSize: 12,
+                color: hasError ? Colors.red.shade700 : Colors.orange.shade700,
+              ),
+            ),
+          ),
           TextButton.icon(
             onPressed: () => _loadTechniciansList(forceReload: true),
             icon: Icon(Icons.refresh, size: 14, color: Colors.teal.shade600),

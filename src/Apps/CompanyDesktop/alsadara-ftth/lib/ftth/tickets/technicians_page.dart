@@ -5,6 +5,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -81,7 +82,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
           ],
         ),
         content: SizedBox(
-          width: 400,
+          width: min(400, MediaQuery.of(context).size.width * 0.85),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

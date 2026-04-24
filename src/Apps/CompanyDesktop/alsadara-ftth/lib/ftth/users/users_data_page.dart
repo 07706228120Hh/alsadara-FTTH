@@ -482,7 +482,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                         Text(
                           isCloudflareError ? 'حماية Cloudflare' : 'خطأ',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: MediaQuery.of(context).size.width < 500 ? 16 : 20,
                             fontWeight: FontWeight.bold,
                             color: isCloudflareError
                                 ? Colors.orange[800]

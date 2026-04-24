@@ -152,12 +152,12 @@ class _TasksTabState extends State<TasksTab> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
         children: filters.map((f) {
           final selected = _filter == f.$1;
-          return Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: ChoiceChip(
+          return ChoiceChip(
               label: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -172,7 +172,6 @@ class _TasksTabState extends State<TasksTab> {
                   color: selected ? Colors.white : Colors.black87,
                   fontSize: 11),
               onSelected: (_) => setState(() => _filter = f.$1),
-            ),
           );
         }).toList(),
       ),
@@ -224,7 +223,7 @@ class _TasksTabState extends State<TasksTab> {
         border: Border(right: BorderSide(color: statusColor, width: 4)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 8 : 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

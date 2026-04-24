@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
@@ -40,6 +41,9 @@ class CreatorTransactionsDetailPage extends StatefulWidget {
 
 class _CreatorTransactionsDetailPageState
     extends State<CreatorTransactionsDetailPage> {
+  bool get _isPhone => MediaQuery.of(context).size.width < 500;
+  double _fs(double base) => _isPhone ? base * 0.85 : base;
+
   late List<Map<String, dynamic>> creatorTransactions;
   late List<Map<String, dynamic>> filteredTransactions;
   String searchQuery = '';
@@ -970,266 +974,179 @@ class _CreatorTransactionsDetailPageState
     }
   }
 
+  Widget _buildStatBox({
+    required String title,
+    required String subtitle,
+    required String amount,
+    required Color titleColor,
+    required Color subtitleColor,
+    required Color amountColor,
+    required List<Color> gradientColors,
+    required Color borderColor,
+    required Color shadowColor,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(_isPhone ? 8 : 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: _fs(16),
+                    color: titleColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: _fs(14),
+                    color: subtitleColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: Text(
+              amount,
+              style: TextStyle(
+                fontSize: _fs(17),
+                fontWeight: FontWeight.bold,
+                color: amountColor,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatisticsCard() {
+    final statBoxes = <Widget>[
+      // المربع الأول - تعبئة الرصيد
+      _buildStatBox(
+        title: 'تعبئة رصيد',
+        subtitle: '$walletTopupCount معاملة',
+        amount: _formatCurrency(walletTopupAmount),
+        titleColor: Colors.teal[700]!,
+        subtitleColor: Colors.teal[600]!,
+        amountColor: Colors.teal[800]!,
+        gradientColors: [Colors.teal[50]!, Colors.teal[100]!],
+        borderColor: Colors.teal[300]!,
+        shadowColor: Colors.teal.withValues(alpha: 0.1),
+      ),
+      // المربع الثاني - عمليات الشراء
+      _buildStatBox(
+        title: 'عمليات الشراء',
+        subtitle: '$purchaseCount معاملة',
+        amount: _formatCurrency(purchaseAmount),
+        titleColor: Colors.orange[700]!,
+        subtitleColor: Colors.orange[600]!,
+        amountColor: Colors.orange[800]!,
+        gradientColors: [Colors.orange[50]!, Colors.orange[100]!],
+        borderColor: Colors.orange[300]!,
+        shadowColor: Colors.orange.withValues(alpha: 0.1),
+      ),
+      // المربع الثالث - التجديد والتغيير
+      _buildStatBox(
+        title: 'تجديد وتغيير',
+        subtitle: '$renewChangeScheduleCount معاملة',
+        amount: _formatCurrency(renewChangeScheduleAmount),
+        titleColor: Colors.purple[700]!,
+        subtitleColor: Colors.purple[600]!,
+        amountColor: Colors.purple[800]!,
+        gradientColors: [Colors.purple[50]!, Colors.purple[100]!],
+        borderColor: Colors.purple[300]!,
+        shadowColor: Colors.purple.withValues(alpha: 0.1),
+      ),
+      // المربع الرابع - المبالغ السالبة
+      _buildStatBox(
+        title: 'المبالغ الكلي',
+        subtitle: '${filteredTransactions.where((t) => (double.tryParse(t['amount']?.toString() ?? '0') ?? 0.0) < 0).length} معاملة',
+        amount: _formatCurrency(negativeAmount),
+        titleColor: Colors.red[700]!,
+        subtitleColor: Colors.red[600]!,
+        amountColor: Colors.red[800]!,
+        gradientColors: [Colors.red[50]!, Colors.red[100]!],
+        borderColor: Colors.red[300]!,
+        shadowColor: Colors.red.withValues(alpha: 0.1),
+      ),
+    ];
+
     return Card(
-      margin: const EdgeInsets.all(16),
+      margin: EdgeInsets.all(_isPhone ? 8 : 16),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(_isPhone ? 10 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'إحصائيات المعاملات',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: _fs(18),
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1A237E),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: _isPhone ? 10 : 16),
 
-            // الصف الوحيد - جميع الإحصائيات
-            Row(
-              children: [
-                // المربع الأول - تعبئة الرصيد
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.teal[50]!, Colors.teal[100]!],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.teal[300]!),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.teal.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'تعبئة رصيد',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.teal[700],
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                '$walletTopupCount معاملة',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.teal[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          _formatCurrency(walletTopupAmount),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // المربع الثاني - عمليات الشراء
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.orange[50]!, Colors.orange[100]!],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[300]!),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.orange.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'عمليات الشراء',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.orange[700],
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                '$purchaseCount معاملة',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.orange[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          _formatCurrency(purchaseAmount),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // المربع الثالث - التجديد والتغيير
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.purple[50]!, Colors.purple[100]!],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.purple[300]!),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.purple.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'تجديد وتغيير',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.purple[700],
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                '$renewChangeScheduleCount معاملة',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.purple[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          _formatCurrency(renewChangeScheduleAmount),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.purple[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // المربع الرابع - المبالغ السالبة
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.red[50]!, Colors.red[100]!],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red[300]!),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'المبالغ الكلي',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.red[700],
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                '${filteredTransactions.where((t) => (double.tryParse(t['amount']?.toString() ?? '0') ?? 0.0) < 0).length} معاملة',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.red[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          _formatCurrency(negativeAmount),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // الصف الوحيد - جميع الإحصائيات (2x2 grid on phone, single row on desktop)
+            if (_isPhone) ...[
+              Row(
+                children: [
+                  Expanded(child: statBoxes[0]),
+                  const SizedBox(width: 6),
+                  Expanded(child: statBoxes[1]),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(child: statBoxes[2]),
+                  const SizedBox(width: 6),
+                  Expanded(child: statBoxes[3]),
+                ],
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(child: statBoxes[0]),
+                  const SizedBox(width: 6),
+                  Expanded(child: statBoxes[1]),
+                  const SizedBox(width: 6),
+                  Expanded(child: statBoxes[2]),
+                  const SizedBox(width: 6),
+                  Expanded(child: statBoxes[3]),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -1242,7 +1159,9 @@ class _CreatorTransactionsDetailPageState
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('خيارات الترتيب'),
-          content: Column(
+          content: SizedBox(
+            width: math.min(400, MediaQuery.of(context).size.width * 0.85),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
@@ -1304,6 +1223,7 @@ class _CreatorTransactionsDetailPageState
               ),
             ],
           ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -1317,8 +1237,8 @@ class _CreatorTransactionsDetailPageState
 
   Widget _buildSortAndSearchControls() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 16),
+      padding: EdgeInsets.all(_isPhone ? 10 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1373,7 +1293,7 @@ class _CreatorTransactionsDetailPageState
         transaction['changeType']['displayValue'] == 'Scheduled';
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 16, vertical: _isPhone ? 4 : 8),
       elevation: isScheduled ? 8 : 4, // ارتفاع أكبر للمجدول
       shadowColor: isScheduled
           ? Colors.red[300]!.withValues(alpha: 0.5) // ظلال حمراء للمجدول
@@ -1402,7 +1322,7 @@ class _CreatorTransactionsDetailPageState
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(_isPhone ? 10 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1433,7 +1353,7 @@ class _CreatorTransactionsDetailPageState
                                 child: Text(
                                   _translateTransactionType(type),
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: _fs(16),
                                     fontWeight: FontWeight.bold,
                                     color: isScheduled
                                         ? Colors.red[800] // أحمر داكن للمجدول
@@ -1510,20 +1430,23 @@ class _CreatorTransactionsDetailPageState
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: color.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        '${amount >= 0 ? '+' : ''}${_formatCurrency(amount)} $currency',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: color,
+                    Flexible(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: _isPhone ? 8 : 12, vertical: _isPhone ? 6 : 8),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: color.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          '${amount >= 0 ? '+' : ''}${_formatCurrency(amount)} $currency',
+                          style: TextStyle(
+                            fontSize: _fs(16),
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -1665,12 +1588,15 @@ class _CreatorTransactionsDetailPageState
                       Icon(Icons.account_balance_wallet,
                           color: Colors.blue[600], size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        'الرصيد المتبقي: ${_formatCurrency(balance)} $currency',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue[700],
+                      Flexible(
+                        child: Text(
+                          'الرصيد المتبقي: ${_formatCurrency(balance)} $currency',
+                          style: TextStyle(
+                            fontSize: _fs(14),
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue[700],
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -1731,45 +1657,50 @@ class _CreatorTransactionsDetailPageState
               fontWeight: FontWeight.w500,
             ),
           ),
-          GestureDetector(
-            onTap: () async {
-              await Clipboard.setData(ClipboardData(text: customerId));
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('تم نسخ معرف العميل: $customerId'),
-                    duration: const Duration(seconds: 2),
-                    backgroundColor: Colors.blue,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.blue[100],
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.blue[300]!, width: 0.5),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    customerId,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue[800],
+          Flexible(
+            child: GestureDetector(
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: customerId));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم نسخ معرف العميل: $customerId'),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: Colors.blue,
+                      behavior: SnackBarBehavior.floating,
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.copy,
-                    size: 12,
-                    color: Colors.blue[600],
-                  ),
-                ],
+                  );
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.blue[300]!, width: 0.5),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        customerId,
+                        style: TextStyle(
+                          fontSize: _fs(13),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue[800],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.copy,
+                      size: 12,
+                      color: Colors.blue[600],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1795,8 +1726,8 @@ class _CreatorTransactionsDetailPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // الصف الأول: المستخدم ونوع المحفظة
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               // أيقونة صغيرة
               Icon(Icons.person, size: 14, color: Colors.amber[600]),
@@ -1807,7 +1738,7 @@ class _CreatorTransactionsDetailPageState
                 Text(
                   'المستخدم: ',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: _fs(12),
                     fontWeight: FontWeight.w500,
                     color: Colors.grey[600],
                   ),
@@ -1815,7 +1746,7 @@ class _CreatorTransactionsDetailPageState
                 Text(
                   actorInfo['username'].toString(),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: _fs(12),
                     fontWeight: FontWeight.bold,
                     color: Colors.amber[800],
                   ),
@@ -1829,7 +1760,7 @@ class _CreatorTransactionsDetailPageState
                 Text(
                   ' • ',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: _fs(12),
                     color: Colors.grey[500],
                   ),
                 ),
@@ -1841,7 +1772,7 @@ class _CreatorTransactionsDetailPageState
                 Text(
                   'نوع المحفظة: ',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: _fs(12),
                     fontWeight: FontWeight.w500,
                     color: Colors.grey[600],
                   ),
@@ -1849,7 +1780,7 @@ class _CreatorTransactionsDetailPageState
                 Text(
                   actorInfo['accountType'].toString(),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: _fs(12),
                     fontWeight: FontWeight.bold,
                     color: Colors.amber[700],
                   ),
@@ -1862,8 +1793,8 @@ class _CreatorTransactionsDetailPageState
           if (actorInfo['createdAt'] != null ||
               actorInfo['isSuccessful'] != null) ...[
             const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 // أيقونة التاريخ
                 Icon(Icons.access_time, size: 12, color: Colors.amber[600]),
@@ -1874,7 +1805,7 @@ class _CreatorTransactionsDetailPageState
                   Text(
                     'تاريخ العملية: ',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: _fs(11),
                       fontWeight: FontWeight.w500,
                       color: Colors.grey[600],
                     ),
@@ -1882,7 +1813,7 @@ class _CreatorTransactionsDetailPageState
                   Text(
                     _formatDate(actorInfo['createdAt'].toString()),
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: _fs(11),
                       fontWeight: FontWeight.bold,
                       color: Colors.amber[700],
                     ),
@@ -1895,7 +1826,7 @@ class _CreatorTransactionsDetailPageState
                   Text(
                     ' • ',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: _fs(11),
                       color: Colors.grey[500],
                     ),
                   ),
@@ -1916,7 +1847,7 @@ class _CreatorTransactionsDetailPageState
                   Text(
                     'حالة العملية: ',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: _fs(11),
                       fontWeight: FontWeight.w500,
                       color: Colors.grey[600],
                     ),
@@ -1924,7 +1855,7 @@ class _CreatorTransactionsDetailPageState
                   Text(
                     actorInfo['isSuccessful'] == true ? 'نجحت' : 'فشلت',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: _fs(11),
                       fontWeight: FontWeight.bold,
                       color: actorInfo['isSuccessful'] == true
                           ? Colors.green[700]
@@ -2013,8 +1944,8 @@ class _CreatorTransactionsDetailPageState
               Expanded(
                 child: Text(
                   'تفاصيل المعاملة',
-                  style: const TextStyle(
-                    fontSize: 20,
+                  style: TextStyle(
+                    fontSize: _fs(20),
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1A237E),
                   ),
@@ -2023,7 +1954,7 @@ class _CreatorTransactionsDetailPageState
             ],
           ),
           content: Container(
-            width: double.maxFinite,
+            width: math.min(500, MediaQuery.of(context).size.width * 0.85),
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height * 0.6,
             ),
@@ -2217,11 +2148,11 @@ class _CreatorTransactionsDetailPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: _isPhone ? 90 : 120,
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: _fs(14),
                 fontWeight: FontWeight.w500,
                 color: Colors.grey[700],
               ),
@@ -2231,10 +2162,10 @@ class _CreatorTransactionsDetailPageState
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: _fs(14),
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF2C3E50),
+                color: const Color(0xFF2C3E50),
               ),
             ),
           ),
@@ -2363,8 +2294,8 @@ class _CreatorTransactionsDetailPageState
           children: [
             Text(
               'تفاصيل معاملات',
-              style: const TextStyle(
-                fontSize: 18,
+              style: TextStyle(
+                fontSize: _fs(18),
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -2429,7 +2360,7 @@ class _CreatorTransactionsDetailPageState
                               ? 'لا توجد نتائج للبحث'
                               : 'لا توجد معاملات لعرضها',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: _fs(18),
                             fontWeight: FontWeight.w600,
                             color: Colors.grey[600],
                           ),
