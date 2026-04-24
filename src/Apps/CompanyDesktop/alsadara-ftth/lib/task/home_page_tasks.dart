@@ -1409,7 +1409,7 @@ class HomePageTasksState extends State<HomePageTasks> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
-          for (final f in ['الكل', 'معلقة', 'مكتملة غير مفعّل', 'مكتملة مفعّل', 'متأخرة'])
+          for (final f in ['الكل', 'معلقة', 'مكتملة غير مفعّل', 'مكتملة مفعّل', 'متأخرة', 'إحصائيات'])
             Padding(
               padding: EdgeInsets.only(left: isSmall ? 4 : 6),
               child: ChoiceChip(
@@ -2751,8 +2751,8 @@ class HomePageTasksState extends State<HomePageTasks> {
         children: [
           // شريط الأدوات العلوي مع زر إضافة المهام
           _buildTopActionBar(),
-          // شريط البحث — يظهر في تبويبات القوائم فقط (ليس اللوحة)
-          if (currentIndex != 0) _buildSearchBar(),
+          // شريط البحث — يظهر في تبويبات القوائم فقط (ليس اللوحة والإحصائيات)
+          if (currentIndex != 0 && currentIndex != 6) _buildSearchBar(),
           if (currentIndex == 5) _buildCollectionFilterBar(),
           Expanded(
             child: isLoading
@@ -2800,12 +2800,9 @@ class HomePageTasksState extends State<HomePageTasks> {
                       )
                     : currentIndex == 0
                         ? _buildDashboardView()
-                        : currentIndex == 5
-                            ? Column(
-                                children: [
-                                  _buildCollectionStatsCard(),
-                                  Expanded(child: _buildTaskListView()),
-                                ],
+                        : (currentIndex == 5 && _collectionStatusFilter == 'إحصائيات')
+                            ? SingleChildScrollView(
+                                child: _buildCollectionStatsCard(),
                               )
                             : _buildTaskListView(),
           ),
