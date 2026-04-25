@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Sadara.Infrastructure.Data;
 using System.Text.Json;
 
@@ -74,51 +75,149 @@ public class DatabaseAdminController : ControllerBase
         {
             var tables = new List<object>
             {
-                // Core entities
+                // Core (9)
                 new { name = "Users", displayName = "المستخدمين", icon = "person", category = "Core" },
                 new { name = "Merchants", displayName = "التجار", icon = "store", category = "Core" },
                 new { name = "Customers", displayName = "العملاء", icon = "people", category = "Core" },
                 new { name = "Products", displayName = "المنتجات", icon = "inventory", category = "Core" },
+                new { name = "ProductVariants", displayName = "متغيرات المنتجات", icon = "style", category = "Core" },
                 new { name = "Orders", displayName = "الطلبات", icon = "shopping_cart", category = "Core" },
+                new { name = "OrderItems", displayName = "عناصر الطلبات", icon = "list", category = "Core" },
+                new { name = "OrderStatusHistories", displayName = "سجل حالة الطلبات", icon = "history", category = "Core" },
                 new { name = "Payments", displayName = "المدفوعات", icon = "payment", category = "Core" },
-                
-                // Commerce entities
+
+                // Commerce (8)
                 new { name = "Categories", displayName = "التصنيفات", icon = "category", category = "Commerce" },
                 new { name = "Cities", displayName = "المدن", icon = "location_city", category = "Commerce" },
                 new { name = "Areas", displayName = "المناطق", icon = "map", category = "Commerce" },
+                new { name = "Reviews", displayName = "التقييمات", icon = "star", category = "Commerce" },
+                new { name = "WishlistItems", displayName = "قائمة الرغبات", icon = "favorite", category = "Commerce" },
+                new { name = "CartItems", displayName = "عناصر السلة", icon = "shopping_basket", category = "Commerce" },
+                new { name = "Addresses", displayName = "العناوين", icon = "home", category = "Commerce" },
                 new { name = "Coupons", displayName = "القسائم", icon = "local_offer", category = "Commerce" },
-                
-                // System entities
+
+                // System (4)
                 new { name = "Notifications", displayName = "الإشعارات", icon = "notifications", category = "System" },
                 new { name = "Advertisings", displayName = "الإعلانات", icon = "campaign", category = "System" },
                 new { name = "AppVersions", displayName = "إصدارات التطبيق", icon = "system_update", category = "System" },
                 new { name = "Settings", displayName = "الإعدادات", icon = "settings", category = "System" },
-                
-                // Company entities
+
+                // Company (2)
                 new { name = "Companies", displayName = "الشركات", icon = "business", category = "Company" },
-                
-                // Permission entities
+                new { name = "CompanyServices", displayName = "خدمات الشركات", icon = "business_center", category = "Company" },
+
+                // Permissions (5)
                 new { name = "PermissionGroups", displayName = "مجموعات الصلاحيات", icon = "security", category = "Permissions" },
                 new { name = "Permissions", displayName = "الصلاحيات", icon = "lock", category = "Permissions" },
                 new { name = "UserPermissions", displayName = "صلاحيات المستخدمين", icon = "verified_user", category = "Permissions" },
-                
-                // Service entities
+                new { name = "PermissionTemplates", displayName = "قوالب الصلاحيات", icon = "content_copy", category = "Permissions" },
+                new { name = "TemplatePermissions", displayName = "صلاحيات القوالب", icon = "checklist", category = "Permissions" },
+
+                // Services (7)
                 new { name = "Services", displayName = "الخدمات", icon = "build", category = "Services" },
+                new { name = "OperationTypes", displayName = "أنواع العمليات", icon = "tune", category = "Services" },
+                new { name = "ServiceOperations", displayName = "عمليات الخدمة", icon = "engineering", category = "Services" },
                 new { name = "ServiceRequests", displayName = "طلبات الخدمات", icon = "assignment", category = "Services" },
-                
-                // Citizen Portal
+                new { name = "ServiceRequestComments", displayName = "تعليقات الطلبات", icon = "comment", category = "Services" },
+                new { name = "ServiceRequestAttachments", displayName = "مرفقات الطلبات", icon = "attach_file", category = "Services" },
+                new { name = "ServiceRequestStatusHistories", displayName = "سجل حالة الطلبات", icon = "timeline", category = "Services" },
+
+                // CitizenPortal (10)
                 new { name = "Citizens", displayName = "المواطنين", icon = "badge", category = "CitizenPortal" },
                 new { name = "InternetPlans", displayName = "باقات الإنترنت", icon = "wifi", category = "CitizenPortal" },
                 new { name = "CitizenSubscriptions", displayName = "اشتراكات المواطنين", icon = "subscriptions", category = "CitizenPortal" },
                 new { name = "SupportTickets", displayName = "تذاكر الدعم", icon = "support_agent", category = "CitizenPortal" },
                 new { name = "TicketMessages", displayName = "رسائل التذاكر", icon = "message", category = "CitizenPortal" },
                 new { name = "CitizenPayments", displayName = "مدفوعات المواطنين", icon = "account_balance_wallet", category = "CitizenPortal" },
-                
-                // Store entities (متجر المواطن)
-                new { name = "ProductCategories", displayName = "تصنيفات المنتجات", icon = "folder", category = "Store" },
-                new { name = "StoreProducts", displayName = "منتجات المتجر", icon = "shopping_bag", category = "Store" },
-                new { name = "StoreOrders", displayName = "طلبات المتجر", icon = "receipt_long", category = "Store" },
-                new { name = "StoreOrderItems", displayName = "عناصر الطلبات", icon = "list_alt", category = "Store" },
+                new { name = "StoreProducts", displayName = "منتجات المتجر", icon = "shopping_bag", category = "CitizenPortal" },
+                new { name = "ProductCategories", displayName = "تصنيفات المنتجات", icon = "folder", category = "CitizenPortal" },
+                new { name = "StoreOrders", displayName = "طلبات المتجر", icon = "receipt_long", category = "CitizenPortal" },
+                new { name = "StoreOrderItems", displayName = "عناصر الطلبات", icon = "list_alt", category = "CitizenPortal" },
+
+                // Subscriptions (1)
+                new { name = "SubscriptionLogs", displayName = "سجلات الاشتراكات", icon = "receipt", category = "Subscriptions" },
+
+                // Agents (3)
+                new { name = "Agents", displayName = "الوكلاء", icon = "support_agent", category = "Agents" },
+                new { name = "AgentTransactions", displayName = "معاملات الوكلاء", icon = "swap_horiz", category = "Agents" },
+                new { name = "AgentCommissionRates", displayName = "عمولات الوكلاء", icon = "percent", category = "Agents" },
+
+                // Attendance (4)
+                new { name = "AttendanceRecords", displayName = "سجلات الحضور", icon = "fingerprint", category = "Attendance" },
+                new { name = "WorkCenters", displayName = "مراكز العمل", icon = "location_on", category = "Attendance" },
+                new { name = "AttendanceAuditLogs", displayName = "سجل تدقيق الحضور", icon = "fact_check", category = "Attendance" },
+                new { name = "WorkSchedules", displayName = "جداول العمل", icon = "schedule", category = "Attendance" },
+
+                // Leave (3)
+                new { name = "LeaveRequests", displayName = "طلبات الإجازة", icon = "event_busy", category = "Leave" },
+                new { name = "WithdrawalRequests", displayName = "طلبات السحب", icon = "money_off", category = "Leave" },
+                new { name = "LeaveBalances", displayName = "أرصدة الإجازات", icon = "event_available", category = "Leave" },
+
+                // ISP (3)
+                new { name = "ISPSubscribers", displayName = "مشتركي الإنترنت", icon = "router", category = "ISP" },
+                new { name = "IptvSubscribers", displayName = "مشتركي IPTV", icon = "tv", category = "ISP" },
+                new { name = "ZoneStatistics", displayName = "إحصائيات المناطق", icon = "analytics", category = "ISP" },
+
+                // Accounting (13)
+                new { name = "Accounts", displayName = "الحسابات", icon = "account_balance", category = "Accounting" },
+                new { name = "JournalEntries", displayName = "القيود المحاسبية", icon = "book", category = "Accounting" },
+                new { name = "JournalEntryLines", displayName = "بنود القيود", icon = "format_list_numbered", category = "Accounting" },
+                new { name = "CashBoxes", displayName = "الصناديق", icon = "savings", category = "Accounting" },
+                new { name = "CashTransactions", displayName = "حركات الصندوق", icon = "swap_vert", category = "Accounting" },
+                new { name = "EmployeeSalaries", displayName = "رواتب الموظفين", icon = "payments", category = "Accounting" },
+                new { name = "SalaryPolicies", displayName = "سياسات الرواتب", icon = "policy", category = "Accounting" },
+                new { name = "TechnicianCollections", displayName = "تحصيلات الفنيين", icon = "collections", category = "Accounting" },
+                new { name = "TechnicianTransactions", displayName = "معاملات الفنيين", icon = "sync_alt", category = "Accounting" },
+                new { name = "Expenses", displayName = "المصاريف", icon = "receipt_long", category = "Accounting" },
+                new { name = "EmployeeDeductionBonuses", displayName = "خصومات ومكافآت", icon = "price_change", category = "Accounting" },
+                new { name = "FixedExpenses", displayName = "المصاريف الثابتة", icon = "event_repeat", category = "Accounting" },
+                new { name = "FixedExpensePayments", displayName = "دفعات المصاريف", icon = "paid", category = "Accounting" },
+
+                // Tasks (1)
+                new { name = "TaskAudits", displayName = "تدقيق المهام", icon = "task_alt", category = "Tasks" },
+
+                // Departments (3)
+                new { name = "Departments", displayName = "الأقسام", icon = "corporate_fare", category = "Departments" },
+                new { name = "DepartmentTasks", displayName = "مهام الأقسام", icon = "assignment_turned_in", category = "Departments" },
+                new { name = "UserDepartments", displayName = "أقسام المستخدمين", icon = "group_work", category = "Departments" },
+
+                // FCM (1)
+                new { name = "UserFcmTokens", displayName = "رموز الإشعارات", icon = "key", category = "FCM" },
+
+                // Settlement (1)
+                new { name = "DailySettlementReports", displayName = "تقارير التسوية", icon = "summarize", category = "Settlement" },
+
+                // WhatsApp (3)
+                new { name = "WhatsAppConversations", displayName = "محادثات واتساب", icon = "chat", category = "WhatsApp" },
+                new { name = "WhatsAppMessages", displayName = "رسائل واتساب", icon = "sms", category = "WhatsApp" },
+                new { name = "WhatsAppBatchReports", displayName = "تقارير الإرسال", icon = "send", category = "WhatsApp" },
+
+                // Location (2)
+                new { name = "EmployeeLocations", displayName = "مواقع الموظفين", icon = "location_on", category = "Location" },
+                new { name = "EmployeeLocationLogs", displayName = "سجل المواقع", icon = "share_location", category = "Location" },
+
+                // Reminders (2)
+                new { name = "ReminderSettings", displayName = "إعدادات التذكيرات", icon = "alarm", category = "Reminders" },
+                new { name = "ReminderExecutionLogs", displayName = "سجل التذكيرات", icon = "notification_important", category = "Reminders" },
+
+                // Chat (7)
+                new { name = "ChatRooms", displayName = "غرف المحادثة", icon = "forum", category = "Chat" },
+                new { name = "ChatRoomMembers", displayName = "أعضاء الغرف", icon = "group", category = "Chat" },
+                new { name = "ChatMessages", displayName = "الرسائل", icon = "chat_bubble", category = "Chat" },
+                new { name = "ChatAttachments", displayName = "المرفقات", icon = "attachment", category = "Chat" },
+                new { name = "ChatMentions", displayName = "الإشارات", icon = "alternate_email", category = "Chat" },
+                new { name = "ChatMessageReads", displayName = "قراءة الرسائل", icon = "done_all", category = "Chat" },
+                new { name = "ChatReactions", displayName = "التفاعلات", icon = "add_reaction", category = "Chat" },
+
+                // Announcements (3)
+                new { name = "Announcements", displayName = "الإعلانات الداخلية", icon = "campaign", category = "Announcements" },
+                new { name = "AnnouncementTargets", displayName = "أهداف الإعلانات", icon = "target", category = "Announcements" },
+                new { name = "AnnouncementReads", displayName = "قراءات الإعلانات", icon = "visibility", category = "Announcements" },
+
+                // FTTH (3)
+                new { name = "CompanyFtthSettings", displayName = "إعدادات FTTH", icon = "settings_ethernet", category = "FTTH" },
+                new { name = "FtthSubscriberCaches", displayName = "كاش المشتركين", icon = "cached", category = "FTTH" },
+                new { name = "FtthSyncLogs", displayName = "سجلات المزامنة", icon = "sync", category = "FTTH" },
             };
 
             return Ok(new { success = true, data = tables });
@@ -403,6 +502,220 @@ public class DatabaseAdminController : ControllerBase
             _logger.LogError(ex, "خطأ في جلب بيانات الجدول: {TableName}", tableName);
             return StatusCode(500, new { success = false, message = "حدث خطأ في النظام: " + ex.Message });
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Generic Dynamic Endpoints — يعمل مع أي جدول تلقائياً
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// قراءة بيانات أي جدول ديناميكياً
+    /// </summary>
+    [HttpGet("generic/{tableName}")]
+    public async Task<IActionResult> GetGenericTableData(string tableName, int page = 1, int pageSize = 50, string? search = null, string? sortBy = null, string? sortDir = "desc")
+    {
+        try
+        {
+            var entityType = _context.Model.GetEntityTypes()
+                .FirstOrDefault(e =>
+                    e.GetTableName()?.Equals(tableName, StringComparison.OrdinalIgnoreCase) == true ||
+                    e.ClrType.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase) == true);
+
+            if (entityType == null)
+                return NotFound(new { success = false, message = $"الجدول '{tableName}' غير موجود" });
+
+            var actualTableName = entityType.GetTableName() ?? tableName;
+            var schema = entityType.GetSchema();
+            var fullTableName = schema != null ? $"\"{schema}\".\"{actualTableName}\"" : $"\"{actualTableName}\"";
+
+            var properties = entityType.GetProperties().ToList();
+            var columns = properties.Select(p => new {
+                name = p.GetColumnName(),
+                clrName = p.Name,
+                type = p.ClrType.Name,
+                isNullable = p.IsNullable,
+                isPrimaryKey = p.IsPrimaryKey()
+            }).ToList();
+
+            var conn = _context.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open)
+                await conn.OpenAsync();
+
+            using var countCmd = conn.CreateCommand();
+            countCmd.CommandText = $"SELECT COUNT(*) FROM {fullTableName}";
+            var totalCount = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
+
+            var sortColumn = "\"Id\"";
+            if (!string.IsNullOrEmpty(sortBy))
+            {
+                var matchProp = properties.FirstOrDefault(p =>
+                    p.Name.Equals(sortBy, StringComparison.OrdinalIgnoreCase) ||
+                    p.GetColumnName().Equals(sortBy, StringComparison.OrdinalIgnoreCase));
+                if (matchProp != null) sortColumn = $"\"{matchProp.GetColumnName()}\"";
+            }
+            else
+            {
+                var createdAt = properties.FirstOrDefault(p => p.Name == "CreatedAt");
+                if (createdAt != null) sortColumn = $"\"{createdAt.GetColumnName()}\"";
+            }
+
+            var direction = sortDir?.ToLower() == "asc" ? "ASC" : "DESC";
+            var offset = (page - 1) * pageSize;
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT * FROM {fullTableName} ORDER BY {sortColumn} {direction} LIMIT {pageSize} OFFSET {offset}";
+
+            var items = new List<Dictionary<string, object?>>();
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var row = new Dictionary<string, object?>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                }
+                items.Add(row);
+            }
+
+            return Ok(new { success = true, tableName = actualTableName, columns, data = items,
+                pagination = new { page, pageSize, totalCount, totalPages = (int)Math.Ceiling((double)totalCount / pageSize) } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب بيانات الجدول: {TableName}", tableName);
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// حذف سجل من أي جدول ديناميكياً
+    /// </summary>
+    [HttpDelete("generic/{tableName}/{id}")]
+    public async Task<IActionResult> DeleteGenericRecord(string tableName, string id)
+    {
+        try
+        {
+            var entityType = _context.Model.GetEntityTypes()
+                .FirstOrDefault(e =>
+                    e.GetTableName()?.Equals(tableName, StringComparison.OrdinalIgnoreCase) == true ||
+                    e.ClrType.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase) == true);
+
+            if (entityType == null)
+                return NotFound(new { success = false, message = $"الجدول '{tableName}' غير موجود" });
+
+            var actualTableName = entityType.GetTableName() ?? tableName;
+            var schema = entityType.GetSchema();
+            var fullTableName = schema != null ? $"\"{schema}\".\"{actualTableName}\"" : $"\"{actualTableName}\"";
+            var pk = entityType.FindPrimaryKey()?.Properties.FirstOrDefault();
+            var pkColumn = pk?.GetColumnName() ?? "Id";
+
+            var conn = _context.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"DELETE FROM {fullTableName} WHERE \"{pkColumn}\" = @id";
+            var param = cmd.CreateParameter();
+            param.ParameterName = "id";
+            param.Value = Guid.TryParse(id, out var gid) ? gid : int.TryParse(id, out var iid) ? (object)iid : id;
+            cmd.Parameters.Add(param);
+
+            var affected = await cmd.ExecuteNonQueryAsync();
+            if (affected == 0) return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            _logger.LogWarning("حذف سجل من {Table} (ID: {Id})", tableName, id);
+            return Ok(new { success = true, message = "تم الحذف بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف سجل من {TableName}", tableName);
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// تحديث سجل في أي جدول ديناميكياً
+    /// </summary>
+    [HttpPut("generic/{tableName}/{id}")]
+    public async Task<IActionResult> UpdateGenericRecord(string tableName, string id, [FromBody] JsonElement data)
+    {
+        try
+        {
+            var entityType = _context.Model.GetEntityTypes()
+                .FirstOrDefault(e =>
+                    e.GetTableName()?.Equals(tableName, StringComparison.OrdinalIgnoreCase) == true ||
+                    e.ClrType.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase) == true);
+
+            if (entityType == null)
+                return NotFound(new { success = false, message = $"الجدول '{tableName}' غير موجود" });
+
+            var actualTableName = entityType.GetTableName() ?? tableName;
+            var schema = entityType.GetSchema();
+            var fullTableName = schema != null ? $"\"{schema}\".\"{actualTableName}\"" : $"\"{actualTableName}\"";
+            var pk = entityType.FindPrimaryKey()?.Properties.FirstOrDefault();
+            var pkColumn = pk?.GetColumnName() ?? "Id";
+
+            var properties = entityType.GetProperties().Where(p => !p.IsPrimaryKey()).ToList();
+            var setClauses = new List<string>();
+            var parameters = new List<System.Data.Common.DbParameter>();
+
+            var conn = _context.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
+            int pi = 0;
+            foreach (var prop in properties)
+            {
+                var colName = prop.GetColumnName();
+                var camelName = char.ToLower(prop.Name[0]) + prop.Name.Substring(1);
+
+                JsonElement value;
+                if (data.TryGetProperty(prop.Name, out value) || data.TryGetProperty(camelName, out value) || data.TryGetProperty(colName, out value))
+                {
+                    setClauses.Add($"\"{colName}\" = @p{pi}");
+                    var p = conn.CreateCommand().CreateParameter();
+                    p.ParameterName = $"p{pi}";
+                    p.Value = _ConvertJson(value, prop.ClrType) ?? DBNull.Value;
+                    parameters.Add(p);
+                    pi++;
+                }
+            }
+
+            if (setClauses.Count == 0) return BadRequest(new { success = false, message = "لا توجد حقول للتحديث" });
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"UPDATE {fullTableName} SET {string.Join(", ", setClauses)} WHERE \"{pkColumn}\" = @id";
+            var idParam = cmd.CreateParameter();
+            idParam.ParameterName = "id";
+            idParam.Value = Guid.TryParse(id, out var gid2) ? gid2 : int.TryParse(id, out var iid2) ? (object)iid2 : id;
+            cmd.Parameters.Add(idParam);
+            foreach (var p in parameters) cmd.Parameters.Add(p);
+
+            var affected = await cmd.ExecuteNonQueryAsync();
+            if (affected == 0) return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            _logger.LogInformation("تحديث سجل في {Table} (ID: {Id})", tableName, id);
+            return Ok(new { success = true, message = "تم التحديث بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تحديث سجل في {TableName}", tableName);
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    private static object? _ConvertJson(JsonElement el, Type t)
+    {
+        if (el.ValueKind == JsonValueKind.Null) return null;
+        var bt = Nullable.GetUnderlyingType(t) ?? t;
+        if (bt == typeof(string)) return el.GetString();
+        if (bt == typeof(int)) return el.GetInt32();
+        if (bt == typeof(long)) return el.GetInt64();
+        if (bt == typeof(decimal)) return el.GetDecimal();
+        if (bt == typeof(double)) return el.GetDouble();
+        if (bt == typeof(bool)) return el.GetBoolean();
+        if (bt == typeof(DateTime)) return el.GetDateTime();
+        if (bt == typeof(Guid)) return el.GetGuid();
+        if (bt.IsEnum) return Enum.Parse(bt, el.GetString() ?? "0");
+        return el.GetString();
     }
 
     /// <summary>

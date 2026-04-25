@@ -1,12 +1,15 @@
-/// صفحة إدارة قاعدة البيانات VPS
-/// تعرض جميع الجداول مع إمكانية العرض والتعديل والحذف
+/// صفحة إدارة قاعدة البيانات — CRUD ديناميكي لكل الجداول
+/// تستخدم generic endpoint لقراءة/تعديل/حذف أي جدول تلقائياً
 library;
 
-import 'dart:math';
-import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
+import '../super_admin/widgets/super_admin_widgets.dart';
 
 class DatabaseAdminPage extends StatefulWidget {
   const DatabaseAdminPage({super.key});
@@ -16,578 +19,304 @@ class DatabaseAdminPage extends StatefulWidget {
 }
 
 class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
-  // إعدادات الاتصال - نفس طريقة vps_data_manager_page
   static const String baseUrl = 'https://api.ramzalsadara.tech/api';
   static const String apiKey = 'sadara-internal-2024-secure-key';
 
+  // State
   List<Map<String, dynamic>> _tables = [];
-  Map<String, dynamic>? _selectedTable;
   List<Map<String, dynamic>> _tableData = [];
+  List<Map<String, dynamic>> _columns = [];
   Map<String, dynamic>? _pagination;
-  Map<String, dynamic>? _stats;
-
+  String? _selectedTableName;
+  String? _selectedCategory;
   bool _isLoadingTables = true;
   bool _isLoadingData = false;
-  String? _errorMessage;
-  String? _errorDetails;
+  String? _error;
   String _searchQuery = '';
   int _currentPage = 1;
-  bool _showGeneralStats = true; // عرض الإحصائيات العامة افتراضياً
 
-  final TextEditingController _searchController = TextEditingController();
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadTables();
-    _loadStats();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadTables() async {
-    debugPrint('🔍 _loadTables: بدء تحميل الجداول...');
-    if (!mounted) return;
-    setState(() {
-      _isLoadingTables = true;
-      _errorMessage = null;
-      _errorDetails = null;
-    });
+  // ═══════════════════════════════════════════════════════════════
+  // API Helpers
+  // ═══════════════════════════════════════════════════════════════
 
+  Future<Map<String, dynamic>?> _apiGet(String path) async {
     try {
       final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
-
-      final request =
-          await client.getUrl(Uri.parse('$baseUrl/databaseadmin/tables'));
-      request.headers.set('Content-Type', 'application/json');
-      request.headers.set('Accept', 'application/json');
+        ..badCertificateCallback = (_, __, ___) => true;
+      final request = await client.getUrl(Uri.parse('$baseUrl$path'));
       request.headers.set('X-Api-Key', apiKey);
-
+      request.headers.set('Accept', 'application/json');
       final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
+      final body = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) return json.decode(body);
+    } catch (_) {}
+    return null;
+  }
 
-      debugPrint('🔍 Response status: ${response.statusCode}');
-      debugPrint('🔍 Response body: $responseBody');
+  Future<Map<String, dynamic>?> _apiDelete(String path) async {
+    try {
+      final client = HttpClient()
+        ..badCertificateCallback = (_, __, ___) => true;
+      final request = await client.deleteUrl(Uri.parse('$baseUrl$path'));
+      request.headers.set('X-Api-Key', apiKey);
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      return json.decode(body);
+    } catch (_) {}
+    return null;
+  }
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(responseBody);
-        if (!mounted) return;
-        if (decoded['success'] == true) {
-          setState(() {
-            _tables = List<Map<String, dynamic>>.from(decoded['data']);
-            _isLoadingTables = false;
-          });
-          debugPrint('✅ تم تحميل ${_tables.length} جدول');
-        } else {
-          setState(() {
-            _errorMessage = decoded['message'] ?? 'فشل في تحميل الجداول';
-            _isLoadingTables = false;
-          });
-        }
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = 'خطأ في الاتصال: ${response.statusCode}';
-          _errorDetails = responseBody;
-          _isLoadingTables = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ خطأ');
-      if (!mounted) return;
+  Future<Map<String, dynamic>?> _apiPut(
+      String path, Map<String, dynamic> data) async {
+    try {
+      final client = HttpClient()
+        ..badCertificateCallback = (_, __, ___) => true;
+      final request = await client.putUrl(Uri.parse('$baseUrl$path'));
+      request.headers.set('X-Api-Key', apiKey);
+      request.headers.set('Content-Type', 'application/json');
+      request.write(json.encode(data));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      return json.decode(body);
+    } catch (_) {}
+    return null;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Data Loading
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> _loadTables() async {
+    setState(() => _isLoadingTables = true);
+    final result = await _apiGet('/databaseadmin/tables');
+    if (mounted && result != null && result['success'] == true) {
       setState(() {
-        _errorMessage = 'فشل الاتصال بالخادم';
-        _errorDetails = 'حدث خطأ';
+        _tables = List<Map<String, dynamic>>.from(result['data'] ?? []);
+        _isLoadingTables = false;
+      });
+    } else if (mounted) {
+      setState(() {
+        _error = 'فشل تحميل الجداول';
         _isLoadingTables = false;
       });
     }
   }
 
-  Future<void> _loadStats() async {
-    try {
-      final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
-
-      final request =
-          await client.getUrl(Uri.parse('$baseUrl/databaseadmin/stats'));
-      request.headers.set('Content-Type', 'application/json');
-      request.headers.set('X-Api-Key', apiKey);
-
-      final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(responseBody);
-        if (decoded['success'] == true && mounted) {
-          setState(() {
-            _stats = decoded['data'];
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('خطأ في تحميل الإحصائيات');
-    }
-  }
-
   Future<void> _loadTableData(String tableName, {int page = 1}) async {
-    if (!mounted) return;
     setState(() {
       _isLoadingData = true;
       _currentPage = page;
+      _error = null;
     });
 
-    try {
-      String url =
-          '$baseUrl/databaseadmin/table/$tableName?page=$page&pageSize=50';
-      if (_searchQuery.isNotEmpty) {
-        url += '&search=${Uri.encodeComponent(_searchQuery)}';
-      }
+    var path =
+        '/databaseadmin/generic/$tableName?page=$page&pageSize=50';
+    if (_searchQuery.isNotEmpty) {
+      path += '&search=${Uri.encodeComponent(_searchQuery)}';
+    }
 
-      final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
-
-      final request = await client.getUrl(Uri.parse(url));
-      request.headers.set('Content-Type', 'application/json');
-      request.headers.set('X-Api-Key', apiKey);
-
-      final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(responseBody);
-        if (decoded['success'] == true && mounted) {
-          setState(() {
-            _tableData = List<Map<String, dynamic>>.from(decoded['data']);
-            _pagination = decoded['pagination'];
-            _isLoadingData = false;
-          });
-        }
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = 'خطأ: ${response.statusCode}';
-          _isLoadingData = false;
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
+    final result = await _apiGet(path);
+    if (mounted && result != null && result['success'] == true) {
       setState(() {
-        _errorMessage = 'حدث خطأ';
+        _tableData =
+            List<Map<String, dynamic>>.from(result['data'] ?? []);
+        _columns =
+            List<Map<String, dynamic>>.from(result['columns'] ?? []);
+        _pagination = result['pagination'];
+        _isLoadingData = false;
+      });
+    } else if (mounted) {
+      setState(() {
+        _error = 'فشل تحميل البيانات';
         _isLoadingData = false;
       });
     }
   }
 
-  Future<void> _deleteRecord(String tableName, String id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: EnergyDashboardTheme.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: EnergyDashboardTheme.danger.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.delete_outline,
-                  color: EnergyDashboardTheme.danger, size: 20),
-            ),
-            const SizedBox(width: 12),
-            const Text('تأكيد الحذف',
-                style: TextStyle(
-                    color: EnergyDashboardTheme.textPrimary,
-                    fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text('هل أنت متأكد من حذف هذا السجل؟',
-            style: TextStyle(
-                color: EnergyDashboardTheme.textSecondary, fontSize: 15)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('إلغاء',
-                style: TextStyle(color: EnergyDashboardTheme.textMuted)),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                EnergyDashboardTheme.danger,
-                EnergyDashboardTheme.danger.withOpacity(0.8)
-              ]),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10)),
-              child: const Text('حذف',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
+  Future<void> _deleteRecord(String id) async {
+    if (_selectedTableName == null) return;
+
+    final confirm = await EnergyDashboardTheme.confirmDialog(
+      context,
+      title: 'حذف السجل',
+      message: 'هل أنت متأكد من حذف هذا السجل؟ هذا الإجراء لا يمكن التراجع عنه.',
+      confirmLabel: 'حذف',
+      confirmColor: EnergyDashboardTheme.danger,
     );
 
-    if (confirm == true) {
-      try {
-        final client = HttpClient()
-          ..badCertificateCallback = (cert, host, port) => true;
+    if (confirm != true) return;
 
-        final request = await client.deleteUrl(
-            Uri.parse('$baseUrl/databaseadmin/table/$tableName/$id'));
-        request.headers.set('Content-Type', 'application/json');
-        request.headers.set('X-Api-Key', apiKey);
-
-        final response = await request.close();
-        final responseBody = await response.transform(utf8.decoder).join();
-
-        if (response.statusCode == 200) {
-          final decoded = json.decode(responseBody);
-          if (decoded['success'] == true) {
-            _showSnackBar('تم الحذف بنجاح', isError: false);
-            _loadTableData(tableName, page: _currentPage);
-          } else {
-            _showSnackBar(decoded['message'] ?? 'فشل الحذف', isError: true);
-          }
-        } else {
-          _showSnackBar('خطأ: ${response.statusCode}', isError: true);
-        }
-      } catch (e) {
-        _showSnackBar(e.toString(), isError: true);
+    final result =
+        await _apiDelete('/databaseadmin/generic/$_selectedTableName/$id');
+    if (mounted) {
+      if (result?['success'] == true) {
+        EnergyDashboardTheme.showSnack(
+            context, 'تم الحذف بنجاح', EnergyDashboardTheme.success);
+        _loadTableData(_selectedTableName!, page: _currentPage);
+      } else {
+        EnergyDashboardTheme.showSnack(
+            context,
+            result?['message'] ?? 'فشل الحذف',
+            EnergyDashboardTheme.danger);
       }
     }
   }
 
-  void _showEditDialog(String tableName, Map<String, dynamic> record) {
-    final controllers = <String, TextEditingController>{};
-    // استبعاد الحقول غير القابلة للتعديل (camelCase و PascalCase)
-    final nonEditableFields = [
-      'id',
-      'Id',
-      'createdAt',
-      'CreatedAt',
-      'updatedAt',
-      'UpdatedAt',
-      'passwordHash',
-      'PasswordHash',
-      'refreshToken',
-      'RefreshToken',
-      'refreshTokenExpiryTime',
-      'RefreshTokenExpiryTime',
-      'lastLoginAt',
-      'LastLoginAt'
-    ];
-    final editableFields =
-        record.keys.where((k) => !nonEditableFields.contains(k)).toList();
+  Future<void> _updateRecord(
+      String id, Map<String, dynamic> data) async {
+    if (_selectedTableName == null) return;
 
-    for (var field in editableFields) {
-      controllers[field] =
-          TextEditingController(text: record[field]?.toString() ?? '');
+    final result =
+        await _apiPut('/databaseadmin/generic/$_selectedTableName/$id', data);
+    if (mounted) {
+      if (result?['success'] == true) {
+        EnergyDashboardTheme.showSnack(
+            context, 'تم التحديث بنجاح', EnergyDashboardTheme.success);
+        Navigator.pop(context);
+        _loadTableData(_selectedTableName!, page: _currentPage);
+      } else {
+        EnergyDashboardTheme.showSnack(
+            context,
+            result?['message'] ?? 'فشل التحديث',
+            EnergyDashboardTheme.danger);
+      }
     }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: EnergyDashboardTheme.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: EnergyDashboardTheme.neonBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.edit,
-                  color: EnergyDashboardTheme.neonBlue, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Text('تعديل سجل',
-                style: TextStyle(
-                    color: EnergyDashboardTheme.textPrimary,
-                    fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: SizedBox(
-          width: min(500, MediaQuery.of(context).size.width * 0.85),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: editableFields.map((field) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: TextField(
-                    controller: controllers[field],
-                    style: const TextStyle(
-                        color: EnergyDashboardTheme.textPrimary),
-                    decoration: InputDecoration(
-                      labelText: field,
-                      labelStyle: const TextStyle(
-                          color: EnergyDashboardTheme.textMuted),
-                      filled: true,
-                      fillColor: EnergyDashboardTheme.bgSecondary,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                              color: EnergyDashboardTheme.borderColor)),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                              color: EnergyDashboardTheme.neonBlue, width: 2)),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء',
-                style: TextStyle(color: EnergyDashboardTheme.textMuted)),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: EnergyDashboardTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ElevatedButton(
-              onPressed: () async {
-                final data = <String, dynamic>{};
-                for (var entry in controllers.entries) {
-                  var value = entry.value.text;
-                  // تحويل اسم الحقل إلى camelCase
-                  String fieldName = entry.key;
-                  if (fieldName.isNotEmpty &&
-                      fieldName[0] == fieldName[0].toUpperCase()) {
-                    fieldName =
-                        fieldName[0].toLowerCase() + fieldName.substring(1);
-                  }
-                  // تحويل القيم المنطقية
-                  if (value.toLowerCase() == 'true') {
-                    data[fieldName] = true;
-                  } else if (value.toLowerCase() == 'false') {
-                    data[fieldName] = false;
-                  } else {
-                    data[fieldName] = value;
-                  }
-                }
-
-                try {
-                  final client = HttpClient()
-                    ..badCertificateCallback = (cert, host, port) => true;
-
-                  final recordId = record['id'] ?? record['Id'];
-                  final url =
-                      '$baseUrl/databaseadmin/table/$tableName/$recordId';
-                  debugPrint('📤 URL: $url');
-                  debugPrint('📤 Data: $data');
-
-                  final request = await client.putUrl(Uri.parse(url));
-                  request.headers
-                      .set('Content-Type', 'application/json; charset=utf-8');
-                  request.headers.set('X-Api-Key', apiKey);
-
-                  final jsonData = json.encode(data);
-                  final bytes = utf8.encode(jsonData);
-                  request.headers
-                      .set('Content-Length', bytes.length.toString());
-                  request.add(bytes);
-
-                  final response = await request.close();
-                  final responseBody =
-                      await response.transform(utf8.decoder).join();
-
-                  debugPrint(
-                      '📥 Response: ${response.statusCode} - $responseBody');
-
-                  if (response.statusCode == 200) {
-                    final decoded = json.decode(responseBody);
-                    if (decoded['success'] == true) {
-                      if (context.mounted) Navigator.pop(context);
-                      _showSnackBar('تم التحديث بنجاح', isError: false);
-                      // إعادة تحميل البيانات
-                      await _loadTableData(tableName, page: _currentPage);
-                    } else {
-                      _showSnackBar(decoded['message'] ?? 'فشل التحديث',
-                          isError: true);
-                    }
-                  } else {
-                    // محاولة قراءة رسالة الخطأ من الاستجابة
-                    String errorMsg = 'خطأ: ${response.statusCode}';
-                    try {
-                      final decoded = json.decode(responseBody);
-                      if (decoded['message'] != null) {
-                        errorMsg = decoded['message'];
-                      }
-                    } catch (_) {}
-                    debugPrint('❌ خطأ API: $responseBody');
-                    _showSnackBar(errorMsg, isError: true);
-                  }
-                } catch (e) {
-                  debugPrint('❌ Exception');
-                  _showSnackBar(e.toString(), isError: true);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
-              child: const Text('حفظ',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // تنظيف الـ controllers عند إغلاق الحوار
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-      ),
+  // ═══════════════════════════════════════════════════════════════
+  // Helpers
+  // ═══════════════════════════════════════════════════════════════
+
+  List<String> get _categories {
+    return _tables
+        .map((t) => t['category']?.toString() ?? '')
+        .toSet()
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get _filteredTables {
+    if (_selectedCategory == null) return _tables;
+    return _tables
+        .where((t) => t['category'] == _selectedCategory)
+        .toList();
+  }
+
+  Map<String, dynamic>? get _selectedTableInfo {
+    if (_selectedTableName == null) return null;
+    return _tables.firstWhere(
+      (t) =>
+          t['name']?.toString().toLowerCase() ==
+          _selectedTableName!.toLowerCase(),
+      orElse: () => {},
     );
   }
 
-  // تجميع الجداول حسب الفئة
-  Map<String, List<Map<String, dynamic>>> get _groupedTables {
-    final grouped = <String, List<Map<String, dynamic>>>{};
-    for (var table in _tables) {
-      final category = table['category'] as String? ?? 'Other';
-      grouped.putIfAbsent(category, () => []).add(table);
-    }
-    return grouped;
-  }
-
-  // ترتيب الفئات - يطابق الفئات الفعلية من API
-  List<String> get _categoryOrder => [
-        'Core',
-        'Commerce',
-        'System',
-        'Company',
-        'Permissions',
-        'Services',
-        'CitizenPortal',
-      ];
-
-  // الحصول على جميع الفئات (المرتبة + أي فئات جديدة)
-  List<String> _getAllCategories() {
-    final allCategories = <String>[];
-    // أضف الفئات المرتبة أولاً
-    for (var cat in _categoryOrder) {
-      if (_groupedTables.containsKey(cat)) {
-        allCategories.add(cat);
-      }
-    }
-    // أضف أي فئات جديدة غير موجودة في الترتيب
-    for (var cat in _groupedTables.keys) {
-      if (!allCategories.contains(cat)) {
-        allCategories.add(cat);
-      }
-    }
-    return allCategories;
-  }
+  // ═══════════════════════════════════════════════════════════════
+  // Build
+  // ═══════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: EnergyDashboardTheme.bgPrimary,
-      body: Column(
-        children: [
-          // شريط التبويبات العلوي
-          _buildTopTabBar(),
-
-          // المحتوى الرئيسي
-          Expanded(
-            child: _showGeneralStats
-                ? _buildGeneralStatsView()
-                : (_selectedTable == null
-                    ? _buildWelcomeView()
-                    : _buildDataView()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopTabBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
-        border:
-            Border(bottom: BorderSide(color: EnergyDashboardTheme.borderColor)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // التبويبات مع القوائم المنسدلة - تملأ المساحة المتاحة
-          Expanded(
-            child: _isLoadingTables
-                ? const Center(
-                    child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2)))
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      // تبويب عام
-                      _buildGeneralTab(),
-                      // باقي التبويبات
-                      ..._getAllCategories()
-                          .map((category) => _buildCategoryDropdown(category)),
-                    ],
-                  ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // زر التحديث
-          Container(
-            decoration: BoxDecoration(
-              gradient: EnergyDashboardTheme.neonBlueGradient,
-              borderRadius: BorderRadius.circular(8),
+      color: EnergyDashboardTheme.bgPrimary,
+      child: _isLoadingTables
+          ? const Center(
+              child: CircularProgressIndicator(
+                  color: EnergyDashboardTheme.neonGreen))
+          : Row(
+              children: [
+                // Sidebar — Tables list
+                SizedBox(
+                  width: 260,
+                  child: _buildTablesSidebar(),
+                ),
+                // Divider
+                Container(
+                  width: 1,
+                  color: EnergyDashboardTheme.borderColor,
+                ),
+                // Main content — Data view
+                Expanded(child: _buildDataView()),
+              ],
             ),
-            child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
-              onPressed: () {
-                _loadTables();
-                _loadStats();
-                if (_selectedTable != null) {
-                  _loadTableData(_selectedTable!['name']);
-                }
-              },
-              tooltip: 'تحديث',
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Tables Sidebar
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildTablesSidebar() {
+    return Container(
+      color: EnergyDashboardTheme.bgCard,
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom:
+                    BorderSide(color: EnergyDashboardTheme.borderColor),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.storage_rounded,
+                    color: EnergyDashboardTheme.neonGreen, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'قاعدة البيانات',
+                    style: GoogleFonts.cairo(
+                      color: EnergyDashboardTheme.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                SACountBadge(
+                  count: _tables.length,
+                  color: EnergyDashboardTheme.neonBlue,
+                ),
+              ],
+            ),
+          ),
+          // Category chips
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _categoryChip(null, 'الكل'),
+                  ..._categories.map((c) => _categoryChip(c, c)),
+                ],
+              ),
+            ),
+          ),
+          // Tables list
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              itemCount: _filteredTables.length,
+              itemBuilder: (_, i) => _buildTableItem(_filteredTables[i]),
             ),
           ),
         ],
@@ -595,1109 +324,868 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     );
   }
 
-  Widget _buildGeneralTab() {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _showGeneralStats = true;
-          _selectedTable = null;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: _showGeneralStats
-              ? EnergyDashboardTheme.neonPurpleGradient
-              : null,
-          color: _showGeneralStats ? null : EnergyDashboardTheme.bgSecondary,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: _showGeneralStats
-                ? Colors.transparent
-                : EnergyDashboardTheme.borderColor,
+  Widget _categoryChip(String? key, String label) {
+    final isSelected = _selectedCategory == key;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: InkWell(
+        onTap: () => setState(() => _selectedCategory = key),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? EnergyDashboardTheme.neonGreen.withOpacity(0.2)
+                : EnergyDashboardTheme.bgSecondary,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? EnergyDashboardTheme.neonGreen
+                  : EnergyDashboardTheme.borderColor,
+            ),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.cairo(
+              color: isSelected
+                  ? EnergyDashboardTheme.neonGreen
+                  : EnergyDashboardTheme.textMuted,
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            ),
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+      ),
+    );
+  }
+
+  Widget _buildTableItem(Map<String, dynamic> table) {
+    final name = table['name']?.toString() ?? '';
+    final displayName = table['displayName']?.toString() ?? name;
+    final category = table['category']?.toString() ?? '';
+    final isSelected =
+        _selectedTableName?.toLowerCase() == name.toLowerCase();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedTableName = name;
+            _searchQuery = '';
+            _searchController.clear();
+          });
+          _loadTableData(name);
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? EnergyDashboardTheme.neonGreen.withOpacity(0.1)
+                : null,
+            borderRadius: BorderRadius.circular(8),
+            border: isSelected
+                ? Border.all(
+                    color:
+                        EnergyDashboardTheme.neonGreen.withOpacity(0.3))
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: (isSelected
+                          ? EnergyDashboardTheme.neonGreen
+                          : EnergyDashboardTheme.textMuted)
+                      .withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  Icons.table_chart_rounded,
+                  size: 14,
+                  color: isSelected
+                      ? EnergyDashboardTheme.neonGreen
+                      : EnergyDashboardTheme.textMuted,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: GoogleFonts.cairo(
+                        color: isSelected
+                            ? EnergyDashboardTheme.neonGreen
+                            : EnergyDashboardTheme.textPrimary,
+                        fontSize: 11,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '$category / $name',
+                      style: GoogleFonts.cairo(
+                        color: EnergyDashboardTheme.textMuted,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Data View (Right panel)
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildDataView() {
+    if (_selectedTableName == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.dashboard,
-              size: 16,
-              color: _showGeneralStats
-                  ? Colors.white
-                  : EnergyDashboardTheme.textSecondary,
-            ),
-            const SizedBox(width: 6),
+            Icon(Icons.touch_app_rounded,
+                size: 64,
+                color: EnergyDashboardTheme.textMuted.withOpacity(0.3)),
+            const SizedBox(height: 16),
             Text(
-              'عام',
-              style: TextStyle(
-                color: _showGeneralStats
-                    ? Colors.white
-                    : EnergyDashboardTheme.textPrimary,
-                fontWeight:
-                    _showGeneralStats ? FontWeight.bold : FontWeight.w500,
-                fontSize: 13,
+              'اختر جدولاً من القائمة',
+              style: GoogleFonts.cairo(
+                color: EnergyDashboardTheme.textMuted,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${_tables.length} جدول متاح',
+              style: GoogleFonts.cairo(
+                color: EnergyDashboardTheme.textMuted,
+                fontSize: 12,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildGeneralStatsView() {
-    if (_isLoadingTables) {
-      return const Center(child: CircularProgressIndicator());
+      );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // عنوان مضغوط
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: EnergyDashboardTheme.neonBlueGradient,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child:
-                    const Icon(Icons.analytics, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'إحصائيات قاعدة البيانات',
-                    style: TextStyle(
-                      color: EnergyDashboardTheme.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '${_tables.length} جدول متاح',
-                    style: const TextStyle(
-                        color: EnergyDashboardTheme.textMuted, fontSize: 13),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // بطاقات الإحصائيات - صف واحد
-          if (_stats != null) _buildCompactStatsRow(),
-          const SizedBox(height: 16),
-
-          // بطاقات الجداول مقسمة حسب الفئات
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: _getAllCategories()
-                    .map((category) => _buildCategorySection(category))
-                    .toList(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactStatsRow() {
-    final statItems = [
-      {
-        'label': 'المستخدمين',
-        'value': _stats!['users'],
-        'icon': Icons.person,
-        'color': EnergyDashboardTheme.neonBlue
-      },
-      {
-        'label': 'الشركات',
-        'value': _stats!['companies'],
-        'icon': Icons.business,
-        'color': EnergyDashboardTheme.neonPurple
-      },
-      {
-        'label': 'الطلبات',
-        'value': _stats!['orders'],
-        'icon': Icons.shopping_cart,
-        'color': EnergyDashboardTheme.neonOrange
-      },
-      {
-        'label': 'المدن',
-        'value': _stats!['cities'],
-        'icon': Icons.location_city,
-        'color': EnergyDashboardTheme.neonGreen
-      },
-      {
-        'label': 'المواطنين',
-        'value': _stats!['citizens'],
-        'icon': Icons.badge,
-        'color': EnergyDashboardTheme.neonPink
-      },
-      {
-        'label': 'تذاكر الدعم',
-        'value': _stats!['supportTickets'],
-        'icon': Icons.support_agent,
-        'color': EnergyDashboardTheme.danger
-      },
-    ];
-
-    return Row(
-      children: statItems.map((item) {
-        final color = item['color'] as Color;
-        return Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [color, color.withOpacity(0.8)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(item['icon'] as IconData, size: 22, color: Colors.white),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${item['value']}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      item['label'] as String,
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildCategorySection(String category) {
-    final tables = _groupedTables[category] ?? [];
-    if (tables.isEmpty) return const SizedBox.shrink();
+    final info = _selectedTableInfo;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // عنوان الفئة
-        Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                _getCategoryColor(category).withOpacity(0.15),
-                _getCategoryColor(category).withOpacity(0.05),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(8),
-            border:
-                Border.all(color: _getCategoryColor(category).withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_getCategoryIcon(category),
-                  size: 16, color: _getCategoryColor(category)),
-              const SizedBox(width: 8),
-              Text(
-                _getCategoryName(category),
-                style: TextStyle(
-                  color: _getCategoryColor(category),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: _getCategoryColor(category).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${tables.length}',
-                  style: TextStyle(
-                    color: _getCategoryColor(category),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // بطاقات الجداول
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children:
-              tables.map((table) => _buildTableCard(table, category)).toList(),
-        ),
-
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  Widget _buildTableCard(Map<String, dynamic> table, String category) {
-    final color = _getCategoryColor(category);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTable = table;
-            _showGeneralStats = false;
-            _searchQuery = '';
-            _searchController.clear();
-          });
-          _loadTableData(table['name']);
-        },
-        child: Container(
-          width: 150,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: EnergyDashboardTheme.bgCard,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: EnergyDashboardTheme.borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.1),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  _getIconData(table['icon']),
-                  size: 16,
-                  color: color,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  table['displayName'] ?? table['name'],
-                  style: const TextStyle(
-                    color: EnergyDashboardTheme.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'Core':
-        return EnergyDashboardTheme.neonBlue;
-      case 'Commerce':
-        return EnergyDashboardTheme.neonOrange;
-      case 'System':
-        return EnergyDashboardTheme.neonPurple;
-      case 'Company':
-        return EnergyDashboardTheme.neonGreen;
-      case 'Permissions':
-        return EnergyDashboardTheme.danger;
-      case 'Services':
-        return EnergyDashboardTheme.success;
-      case 'CitizenPortal':
-        return EnergyDashboardTheme.neonPink;
-      default:
-        return EnergyDashboardTheme.textMuted;
-    }
-  }
-
-  Widget _buildCategoryDropdown(String category) {
-    final tables = _groupedTables[category] ?? [];
-    final isCurrentCategory = _selectedTable != null &&
-        tables.any((t) => t['name'] == _selectedTable!['name']);
-    final color = _getCategoryColor(category);
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: PopupMenuButton<Map<String, dynamic>>(
-        offset: const Offset(0, 45),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: EnergyDashboardTheme.bgCard,
-        onSelected: (table) {
-          setState(() {
-            _selectedTable = table;
-            _showGeneralStats = false;
-            _searchQuery = '';
-            _searchController.clear();
-          });
-          _loadTableData(table['name']);
-        },
-        itemBuilder: (context) => tables.map((table) {
-          final isSelected = _selectedTable?['name'] == table['name'];
-          return PopupMenuItem<Map<String, dynamic>>(
-            value: table,
-            child: Row(
-              children: [
-                Icon(
-                  _getIconData(table['icon']),
-                  size: 18,
-                  color: isSelected ? color : EnergyDashboardTheme.textMuted,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  table['displayName'],
-                  style: TextStyle(
-                    color:
-                        isSelected ? color : EnergyDashboardTheme.textPrimary,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-                if (isSelected) ...[
-                  const Spacer(),
-                  Icon(Icons.check, size: 16, color: color),
-                ],
-              ],
-            ),
-          );
-        }).toList(),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: isCurrentCategory
-                ? LinearGradient(colors: [color, color.withOpacity(0.8)])
-                : null,
-            color: isCurrentCategory ? null : EnergyDashboardTheme.bgSecondary,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isCurrentCategory
-                  ? Colors.transparent
-                  : EnergyDashboardTheme.borderColor,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _getCategoryIcon(category),
-                size: 16,
-                color: isCurrentCategory
-                    ? Colors.white
-                    : EnergyDashboardTheme.textSecondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _getCategoryName(category),
-                style: TextStyle(
-                  color: isCurrentCategory
-                      ? Colors.white
-                      : EnergyDashboardTheme.textPrimary,
-                  fontWeight:
-                      isCurrentCategory ? FontWeight.bold : FontWeight.w500,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.keyboard_arrow_down,
-                size: 18,
-                color: isCurrentCategory
-                    ? Colors.white
-                    : EnergyDashboardTheme.textMuted,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Core':
-        return Icons.diamond;
-      case 'Commerce':
-        return Icons.shopping_bag;
-      case 'System':
-        return Icons.settings;
-      case 'Company':
-        return Icons.business;
-      case 'Permissions':
-        return Icons.security;
-      case 'Services':
-        return Icons.miscellaneous_services;
-      case 'CitizenPortal':
-        return Icons.people;
-      default:
-        return Icons.folder;
-    }
-  }
-
-  Widget _buildWelcomeView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              gradient: EnergyDashboardTheme.neonBlueGradient,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: EnergyDashboardTheme.neonBlue.withOpacity(0.4),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: const Icon(Icons.touch_app, size: 50, color: Colors.white),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'اختر فئة من الأعلى ثم حدد الجدول',
-            style: TextStyle(
-              color: EnergyDashboardTheme.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'يمكنك عرض وتعديل وحذف البيانات من أي جدول',
-            style:
-                TextStyle(color: EnergyDashboardTheme.textMuted, fontSize: 15),
-          ),
-          const SizedBox(height: 32),
-
-          // عرض الإحصائيات
-          if (_stats != null) _buildStatsGrid(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsGrid() {
-    final statItems = [
-      {
-        'label': 'المستخدمين',
-        'value': _stats!['users'],
-        'icon': Icons.person,
-        'color': EnergyDashboardTheme.neonBlue
-      },
-      {
-        'label': 'الشركات',
-        'value': _stats!['companies'],
-        'icon': Icons.business,
-        'color': EnergyDashboardTheme.neonPurple
-      },
-      {
-        'label': 'الطلبات',
-        'value': _stats!['orders'],
-        'icon': Icons.shopping_cart,
-        'color': EnergyDashboardTheme.neonOrange
-      },
-      {
-        'label': 'المدن',
-        'value': _stats!['cities'],
-        'icon': Icons.location_city,
-        'color': EnergyDashboardTheme.neonGreen
-      },
-      {
-        'label': 'المواطنين',
-        'value': _stats!['citizens'],
-        'icon': Icons.badge,
-        'color': EnergyDashboardTheme.neonPink
-      },
-      {
-        'label': 'تذاكر الدعم',
-        'value': _stats!['supportTickets'],
-        'icon': Icons.support_agent,
-        'color': EnergyDashboardTheme.danger
-      },
-    ];
-
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: statItems.map((item) {
-        final color = item['color'] as Color;
-        return Container(
-          width: 180,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [color, color.withOpacity(0.8)],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.4),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Icon(item['icon'] as IconData, size: 32, color: Colors.white),
-              const SizedBox(height: 10),
-              Text(
-                '${item['value']}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item['label'] as String,
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildDataView() {
-    return Column(
-      children: [
-        // شريط الأدوات
-        _buildToolbar(),
-
-        // الجدول
+        // Table header
+        _buildDataHeader(info),
+        // Search & filters
+        _buildSearchBar(),
+        // Data table
         Expanded(
           child: _isLoadingData
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                  child: CircularProgressIndicator(
+                      color: EnergyDashboardTheme.neonGreen))
               : _tableData.isEmpty
                   ? Center(
                       child: Text('لا توجد بيانات',
-                          style: TextStyle(
-                              color: EnergyDashboardTheme.textMuted,
-                              fontSize: 16)),
-                    )
+                          style: GoogleFonts.cairo(
+                              color: EnergyDashboardTheme.textMuted)))
                   : _buildDataTable(),
         ),
-
-        // شريط الصفحات
+        // Pagination
         if (_pagination != null) _buildPagination(),
       ],
     );
   }
 
-  Widget _buildToolbar() {
+  Widget _buildDataHeader(Map<String, dynamic>? info) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: EnergyDashboardTheme.bgCard,
-        border:
-            Border(bottom: BorderSide(color: EnergyDashboardTheme.borderColor)),
+        border: Border(
+          bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
+        ),
       ),
       child: Row(
         children: [
-          // اسم الجدول المحدد
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              gradient: EnergyDashboardTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: EnergyDashboardTheme.neonGreen.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              color: EnergyDashboardTheme.neonBlue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Icon(Icons.table_chart_rounded,
+                color: EnergyDashboardTheme.neonBlue, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(_getIconData(_selectedTable!['icon']),
-                    color: Colors.white, size: 18),
-                const SizedBox(width: 8),
                 Text(
-                  _selectedTable!['displayName'],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
+                  info?['displayName']?.toString() ??
+                      _selectedTableName ?? '',
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '${info?['category'] ?? ''} / $_selectedTableName — ${_columns.length} عمود',
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textMuted,
+                    fontSize: 11,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
           if (_pagination != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: EnergyDashboardTheme.bgSecondary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${_pagination!['totalCount']} سجل',
-                style: const TextStyle(
-                    color: EnergyDashboardTheme.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600),
-              ),
+            SACountBadge(
+              count: _pagination!['totalCount'] ?? 0,
+              color: EnergyDashboardTheme.neonBlue,
             ),
-          const Spacer(),
-
-          // حقل البحث
-          SizedBox(
-            width: 300,
-            child: TextField(
-              controller: _searchController,
-              style: const TextStyle(
-                  color: EnergyDashboardTheme.textPrimary, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'بحث...',
-                hintStyle:
-                    const TextStyle(color: EnergyDashboardTheme.textMuted),
-                prefixIcon: const Icon(Icons.search,
-                    color: EnergyDashboardTheme.neonBlue, size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear,
-                            color: EnergyDashboardTheme.textMuted),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                          _loadTableData(_selectedTable!['name']);
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: EnergyDashboardTheme.bgSecondary,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: EnergyDashboardTheme.borderColor),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                      color: EnergyDashboardTheme.neonBlue, width: 2),
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              onSubmitted: (value) {
-                setState(() => _searchQuery = value);
-                _loadTableData(_selectedTable!['name']);
-              },
-            ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () =>
+                _loadTableData(_selectedTableName!, page: _currentPage),
+            icon: const Icon(Icons.refresh_rounded,
+                color: EnergyDashboardTheme.neonGreen, size: 20),
+            tooltip: 'تحديث',
           ),
         ],
       ),
     );
   }
+
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      color: EnergyDashboardTheme.bgCard,
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: EnergyDashboardTheme.bgPrimary,
+                borderRadius: BorderRadius.circular(12),
+                border:
+                    Border.all(color: EnergyDashboardTheme.borderColor),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onSubmitted: (_) {
+                  _searchQuery = _searchController.text;
+                  _loadTableData(_selectedTableName!, page: 1);
+                },
+                style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textPrimary, fontSize: 12),
+                decoration: InputDecoration(
+                  hintText: 'بحث...',
+                  hintStyle: GoogleFonts.cairo(
+                      color: EnergyDashboardTheme.textMuted, fontSize: 12),
+                  prefixIcon: const Icon(Icons.search_rounded,
+                      color: EnergyDashboardTheme.textMuted, size: 18),
+                  border: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Columns info button
+          IconButton(
+            onPressed: _showColumnsDialog,
+            icon: Icon(Icons.view_column_rounded,
+                color: EnergyDashboardTheme.neonPurple, size: 20),
+            tooltip: 'معلومات الأعمدة',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Data Table
+  // ═══════════════════════════════════════════════════════════════
 
   Widget _buildDataTable() {
-    if (_tableData.isEmpty) return const SizedBox();
+    // Show max 8 columns to fit
+    final visibleColumns = _columns.take(8).toList();
 
-    final columns = _tableData.first.keys.toList();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: DataTable(
-              headingRowColor:
-                  WidgetStateProperty.all(EnergyDashboardTheme.bgSecondary),
-              dataRowColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.hovered)) {
-                  return EnergyDashboardTheme.neonBlue.withOpacity(0.05);
-                }
-                return EnergyDashboardTheme.bgCard;
-              }),
-              columnSpacing: 24,
-              horizontalMargin: 16,
-              headingRowHeight: 50,
-              dataRowMinHeight: 50,
-              dataRowMaxHeight: 60,
-              columns: [
-                DataColumn(
-                    label: Text('إجراءات',
-                        style: TextStyle(
-                            color: EnergyDashboardTheme.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13))),
-                ...columns.map((col) => DataColumn(
-                      label: Text(
-                        col,
-                        style: const TextStyle(
-                            color: EnergyDashboardTheme.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13),
+    return Scrollbar(
+      controller: _scrollController,
+      child: ListView(
+        controller: _scrollController,
+        children: [
+          // Header
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            color: EnergyDashboardTheme.bgSecondary,
+            child: Row(
+              children: [
+                ...visibleColumns.map((col) => Expanded(
+                      child: Text(
+                        col['clrName']?.toString() ?? col['name']?.toString() ?? '',
+                        style: GoogleFonts.cairo(
+                          color: EnergyDashboardTheme.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     )),
-              ],
-              rows: _tableData.map((row) {
-                final rowId = row['id'] ?? row['Id'] ?? '';
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: EnergyDashboardTheme.neonBlue
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.edit, size: 18),
-                              color: EnergyDashboardTheme.neonBlue,
-                              tooltip: 'تعديل',
-                              onPressed: () =>
-                                  _showEditDialog(_selectedTable!['name'], row),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            decoration: BoxDecoration(
-                              color:
-                                  EnergyDashboardTheme.danger.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.delete, size: 18),
-                              color: EnergyDashboardTheme.danger,
-                              tooltip: 'حذف',
-                              onPressed: () => _deleteRecord(
-                                  _selectedTable!['name'], rowId.toString()),
-                            ),
-                          ),
-                        ],
-                      ),
+                // Actions column
+                SizedBox(
+                  width: 80,
+                  child: Text(
+                    'إجراءات',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.cairo(
+                      color: EnergyDashboardTheme.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
                     ),
-                    ...columns.map((col) {
-                      final value = row[col];
-                      return DataCell(
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 200),
-                          child: _buildCellContent(col, value),
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              }).toList(),
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      },
+          // Rows
+          ..._tableData.map((row) => _buildDataRow(row, visibleColumns)),
+        ],
+      ),
     );
   }
 
-  Widget _buildCellContent(String column, dynamic value) {
-    if (value == null) {
-      return const Text('-',
-          style: TextStyle(color: EnergyDashboardTheme.textMuted));
-    }
+  Widget _buildDataRow(
+      Map<String, dynamic> row, List<Map<String, dynamic>> visibleColumns) {
+    final id = row['Id']?.toString() ?? row['id']?.toString() ?? '';
 
-    // عرض القيم المنطقية كشارات
-    if (value is bool) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    return InkWell(
+      onTap: () => _showRecordDialog(row),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: value
-              ? EnergyDashboardTheme.success.withOpacity(0.15)
-              : EnergyDashboardTheme.danger.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          value ? 'نعم' : 'لا',
-          style: TextStyle(
-            color: value
-                ? EnergyDashboardTheme.success
-                : EnergyDashboardTheme.danger,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
+          border: Border(
+            bottom: BorderSide(
+                color: EnergyDashboardTheme.borderColor.withOpacity(0.3)),
           ),
         ),
-      );
-    }
+        child: Row(
+          children: [
+            ...visibleColumns.map((col) {
+              final colName = col['name']?.toString() ?? '';
+              final value = row[colName];
+              final displayValue = _formatValue(value);
+              final type = col['type']?.toString() ?? '';
 
-    // تنسيق التواريخ
-    if (column.toLowerCase().contains('at') ||
-        column.toLowerCase().contains('date')) {
+              Color textColor = EnergyDashboardTheme.textSecondary;
+              if (type == 'Boolean') {
+                textColor = value == true
+                    ? EnergyDashboardTheme.success
+                    : EnergyDashboardTheme.danger;
+              }
+
+              return Expanded(
+                child: Text(
+                  displayValue,
+                  style: GoogleFonts.cairo(
+                    color: textColor,
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }),
+            // Action buttons
+            SizedBox(
+              width: 80,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  InkWell(
+                    onTap: () => _showEditDialog(row),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: EnergyDashboardTheme.neonBlue
+                            .withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(Icons.edit_rounded,
+                          color: EnergyDashboardTheme.neonBlue,
+                          size: 14),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: () => _deleteRecord(id),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color:
+                            EnergyDashboardTheme.danger.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(Icons.delete_rounded,
+                          color: EnergyDashboardTheme.danger, size: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatValue(dynamic value) {
+    if (value == null) return '-';
+    if (value is bool) return value ? 'نعم' : 'لا';
+    final str = value.toString();
+    // Format dates
+    if (str.length > 18 && str.contains('T')) {
       try {
-        final date = DateTime.parse(value.toString());
-        return Text(
-          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
-          style: const TextStyle(
-              color: EnergyDashboardTheme.textPrimary, fontSize: 13),
-        );
+        final dt = DateTime.parse(str);
+        return DateFormat('yyyy/MM/dd HH:mm').format(dt);
       } catch (_) {}
     }
-
-    // عرض الحالات بألوان
-    if (column.toLowerCase() == 'status' || column.toLowerCase() == 'role') {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: EnergyDashboardTheme.neonPurple.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          value.toString(),
-          style: const TextStyle(
-            color: EnergyDashboardTheme.neonPurple,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-    }
-
-    // القيم العادية
-    String text = value.toString();
-    if (text.length > 50) {
-      text = '${text.substring(0, 50)}...';
-    }
-
-    return Text(
-      text,
-      style: const TextStyle(
-          color: EnergyDashboardTheme.textPrimary, fontSize: 13),
-    );
+    if (str.length > 50) return '${str.substring(0, 50)}...';
+    return str;
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Pagination
+  // ═══════════════════════════════════════════════════════════════
+
   Widget _buildPagination() {
-    final totalPages = _pagination!['totalPages'] as int;
-    final currentPage = _pagination!['page'] as int;
+    final totalPages = _pagination?['totalPages'] ?? 1;
+    final totalCount = _pagination?['totalCount'] ?? 0;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: EnergyDashboardTheme.bgCard,
-        border:
-            Border(top: BorderSide(color: EnergyDashboardTheme.borderColor)),
+        border: Border(
+          top: BorderSide(color: EnergyDashboardTheme.borderColor),
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildPaginationButton(
-            icon: Icons.first_page,
-            onPressed: currentPage > 1
-                ? () => _loadTableData(_selectedTable!['name'], page: 1)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          _buildPaginationButton(
-            icon: Icons.chevron_left,
-            onPressed: currentPage > 1
-                ? () => _loadTableData(_selectedTable!['name'],
-                    page: currentPage - 1)
-                : null,
-          ),
-          const SizedBox(width: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: EnergyDashboardTheme.neonBlueGradient,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              'صفحة $currentPage من $totalPages',
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
+          Text(
+            'صفحة $_currentPage من $totalPages ($totalCount سجل)',
+            style: GoogleFonts.cairo(
+              color: EnergyDashboardTheme.textMuted,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(width: 16),
-          _buildPaginationButton(
-            icon: Icons.chevron_right,
-            onPressed: currentPage < totalPages
-                ? () => _loadTableData(_selectedTable!['name'],
-                    page: currentPage + 1)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          _buildPaginationButton(
-            icon: Icons.last_page,
-            onPressed: currentPage < totalPages
-                ? () =>
-                    _loadTableData(_selectedTable!['name'], page: totalPages)
-                : null,
+          Row(
+            children: [
+              IconButton(
+                onPressed: _currentPage > 1
+                    ? () => _loadTableData(_selectedTableName!,
+                        page: _currentPage - 1)
+                    : null,
+                icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                color: EnergyDashboardTheme.neonGreen,
+                disabledColor: EnergyDashboardTheme.textMuted,
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: EnergyDashboardTheme.neonGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$_currentPage',
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.neonGreen,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: _currentPage < totalPages
+                    ? () => _loadTableData(_selectedTableName!,
+                        page: _currentPage + 1)
+                    : null,
+                icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                color: EnergyDashboardTheme.neonGreen,
+                disabledColor: EnergyDashboardTheme.textMuted,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPaginationButton(
-      {required IconData icon, VoidCallback? onPressed}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: onPressed != null
-            ? EnergyDashboardTheme.bgSecondary
-            : EnergyDashboardTheme.bgSecondary.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: onPressed != null
-              ? EnergyDashboardTheme.borderColor
-              : Colors.transparent,
+  // ═══════════════════════════════════════════════════════════════
+  // Dialogs
+  // ═══════════════════════════════════════════════════════════════
+
+  void _showRecordDialog(Map<String, dynamic> row) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: EnergyDashboardTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            Icon(Icons.info_rounded,
+                color: EnergyDashboardTheme.neonBlue, size: 20),
+            const SizedBox(width: 8),
+            Text('تفاصيل السجل',
+                style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+          ],
         ),
-      ),
-      child: IconButton(
-        icon: Icon(icon),
-        onPressed: onPressed,
-        color: onPressed != null
-            ? EnergyDashboardTheme.neonBlue
-            : EnergyDashboardTheme.textMuted,
+        content: SizedBox(
+          width: 500,
+          height: 400,
+          child: ListView(
+            children: row.entries.map((e) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 140,
+                      child: Text(
+                        e.key,
+                        style: GoogleFonts.cairo(
+                          color: EnergyDashboardTheme.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: SelectableText(
+                        _formatValue(e.value),
+                        style: GoogleFonts.cairo(
+                          color: EnergyDashboardTheme.textPrimary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Clipboard.setData(
+                            ClipboardData(text: e.value?.toString() ?? ''));
+                        EnergyDashboardTheme.showSnack(
+                            ctx, 'تم النسخ', EnergyDashboardTheme.success);
+                      },
+                      icon: Icon(Icons.copy_rounded,
+                          size: 14,
+                          color: EnergyDashboardTheme.textMuted),
+                      constraints:
+                          const BoxConstraints(minWidth: 28, minHeight: 28),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إغلاق',
+                style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textMuted)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showEditDialog(row);
+            },
+            icon: const Icon(Icons.edit_rounded, size: 16),
+            label: Text('تعديل', style: GoogleFonts.cairo()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: EnergyDashboardTheme.neonBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  String _getCategoryName(String category) {
-    switch (category) {
-      case 'Core':
-        return 'الأساسيات';
-      case 'Commerce':
-        return 'التجارة';
-      case 'System':
-        return 'النظام';
-      case 'Company':
-        return 'الشركات';
-      case 'Permissions':
-        return 'الصلاحيات';
-      case 'Services':
-        return 'الخدمات';
-      case 'CitizenPortal':
-        return 'المواطن';
-      default:
-        return category;
+  void _showEditDialog(Map<String, dynamic> row) {
+    final id = row['Id']?.toString() ?? row['id']?.toString() ?? '';
+    final controllers = <String, TextEditingController>{};
+    final editableEntries = row.entries.where((e) {
+      final key = e.key.toLowerCase();
+      return key != 'id'; // Don't edit PK
+    }).toList();
+
+    for (final e in editableEntries) {
+      controllers[e.key] =
+          TextEditingController(text: e.value?.toString() ?? '');
     }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: EnergyDashboardTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            Icon(Icons.edit_rounded,
+                color: EnergyDashboardTheme.neonBlue, size: 20),
+            const SizedBox(width: 8),
+            Text('تعديل السجل',
+                style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          height: 400,
+          child: ListView(
+            children: editableEntries.map((e) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 130,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                          e.key,
+                          style: GoogleFonts.cairo(
+                            color: EnergyDashboardTheme.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: controllers[e.key],
+                        style: GoogleFonts.cairo(
+                            color: EnergyDashboardTheme.textPrimary,
+                            fontSize: 12),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: EnergyDashboardTheme.bgPrimary,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                                color:
+                                    EnergyDashboardTheme.borderColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                                color:
+                                    EnergyDashboardTheme.borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                                color:
+                                    EnergyDashboardTheme.neonGreen),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إلغاء',
+                style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textMuted)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              final updatedData = <String, dynamic>{};
+              for (final entry in editableEntries) {
+                final newValue = controllers[entry.key]?.text;
+                final oldValue = entry.value?.toString() ?? '';
+                if (newValue != oldValue) {
+                  // Try to preserve types
+                  if (entry.value is bool) {
+                    updatedData[entry.key] =
+                        newValue == 'true' || newValue == 'نعم';
+                  } else if (entry.value is int) {
+                    updatedData[entry.key] = int.tryParse(newValue ?? '');
+                  } else if (entry.value is double) {
+                    updatedData[entry.key] =
+                        double.tryParse(newValue ?? '');
+                  } else {
+                    updatedData[entry.key] = newValue;
+                  }
+                }
+              }
+              if (updatedData.isEmpty) {
+                Navigator.pop(ctx);
+                return;
+              }
+              _updateRecord(id, updatedData);
+            },
+            icon: const Icon(Icons.save_rounded, size: 16),
+            label: Text('حفظ', style: GoogleFonts.cairo()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: EnergyDashboardTheme.neonGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Cleanup
+    // Controllers will be disposed when dialog closes
   }
 
-  IconData _getIconData(String? iconName) {
-    switch (iconName) {
-      case 'person':
-        return Icons.person;
-      case 'store':
-        return Icons.store;
-      case 'people':
-        return Icons.people;
-      case 'inventory':
-        return Icons.inventory;
-      case 'shopping_cart':
-        return Icons.shopping_cart;
-      case 'payment':
-        return Icons.payment;
-      case 'category':
-        return Icons.category;
-      case 'location_city':
-        return Icons.location_city;
-      case 'map':
-        return Icons.map;
-      case 'star':
-        return Icons.star;
-      case 'local_offer':
-        return Icons.local_offer;
-      case 'home':
-        return Icons.home;
-      case 'notifications':
-        return Icons.notifications;
-      case 'campaign':
-        return Icons.campaign;
-      case 'system_update':
-        return Icons.system_update;
-      case 'settings':
-        return Icons.settings;
-      case 'business':
-        return Icons.business;
-      case 'miscellaneous_services':
-        return Icons.miscellaneous_services;
-      case 'security':
-        return Icons.security;
-      case 'lock':
-        return Icons.lock;
-      case 'verified_user':
-        return Icons.verified_user;
-      case 'description':
-        return Icons.description;
-      case 'build':
-        return Icons.build;
-      case 'playlist_add_check':
-        return Icons.playlist_add_check;
-      case 'assignment':
-        return Icons.assignment;
-      case 'badge':
-        return Icons.badge;
-      case 'wifi':
-        return Icons.wifi;
-      case 'subscriptions':
-        return Icons.subscriptions;
-      case 'support_agent':
-        return Icons.support_agent;
-      case 'receipt':
-        return Icons.receipt;
-      case 'shopping_bag':
-        return Icons.shopping_bag;
-      case 'local_shipping':
-        return Icons.local_shipping;
-      default:
-        return Icons.table_chart;
-    }
+  void _showColumnsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: EnergyDashboardTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            Icon(Icons.view_column_rounded,
+                color: EnergyDashboardTheme.neonPurple, size: 20),
+            const SizedBox(width: 8),
+            Text('أعمدة الجدول (${_columns.length})',
+                style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          height: 300,
+          child: ListView(
+            children: _columns.map((col) {
+              final isPK = col['isPrimaryKey'] == true;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isPK
+                      ? EnergyDashboardTheme.neonGreen.withOpacity(0.05)
+                      : null,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isPK
+                        ? EnergyDashboardTheme.neonGreen.withOpacity(0.2)
+                        : EnergyDashboardTheme.borderColor
+                            .withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (isPK)
+                      Icon(Icons.key_rounded,
+                          color: EnergyDashboardTheme.neonGreen, size: 14)
+                    else
+                      Icon(Icons.circle,
+                          color: EnergyDashboardTheme.textMuted, size: 6),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        col['clrName']?.toString() ?? '',
+                        style: GoogleFonts.cairo(
+                          color: EnergyDashboardTheme.textPrimary,
+                          fontSize: 12,
+                          fontWeight:
+                              isPK ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color:
+                            EnergyDashboardTheme.neonBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        col['type']?.toString() ?? '',
+                        style: GoogleFonts.cairo(
+                          color: EnergyDashboardTheme.neonBlue,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                    if (col['isNullable'] == true)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Text(
+                          '?',
+                          style: GoogleFonts.cairo(
+                            color: EnergyDashboardTheme.warning,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إغلاق',
+                style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textMuted)),
+          ),
+        ],
+      ),
+    );
   }
 }
