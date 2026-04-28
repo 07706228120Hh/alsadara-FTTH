@@ -155,6 +155,20 @@ public interface IUnitOfWork : IDisposable
     IRepository<FtthSubscriberCache, long> FtthSubscriberCaches { get; }
     IRepository<FtthSyncLog, long> FtthSyncLogs { get; }
 
+    // Inventory System (نظام المخازن والمواد)
+    IRepository<Warehouse, Guid> Warehouses { get; }
+    IRepository<InventoryCategory, int> InventoryCategories { get; }
+    IRepository<InventoryItem, Guid> InventoryItems { get; }
+    IRepository<Supplier, Guid> Suppliers { get; }
+    IRepository<PurchaseOrder, Guid> PurchaseOrders { get; }
+    IRepository<PurchaseOrderItem, long> PurchaseOrderItems { get; }
+    IRepository<SalesOrder, Guid> SalesOrders { get; }
+    IRepository<SalesOrderItem, long> SalesOrderItems { get; }
+    IRepository<TechnicianDispensing, Guid> TechnicianDispensings { get; }
+    IRepository<TechnicianDispensingItem, long> TechnicianDispensingItems { get; }
+    IRepository<StockMovement, long> StockMovements { get; }
+    IRepository<WarehouseStock, long> WarehouseStocks { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);

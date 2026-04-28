@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
 import '../services/departments_data_service.dart';
+import '../services/vps_auth_service.dart';
+import '../inventory/services/inventory_api_service.dart';
 
 /// نافذة تعديل المهمة الشاملة - جميع الحقول قابلة للتعديل
 class EditTaskDialog extends StatefulWidget {
@@ -48,11 +50,21 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
   List<String> _technicians = [];
   List<String> _fbgOptions = [];
 
+  // المواد المصروفة
+  List<Map<String, dynamic>> _dispensedItems = [];
+  bool _isLoadingMaterials = false;
+  // مواد جديدة يريد الفني إضافتها
+  List<Map<String, dynamic>> _newMaterialRows = [];
+  List<Map<String, dynamic>> _availableItems = [];
+  List<Map<String, dynamic>> _availableWarehouses = [];
+
   @override
   void initState() {
     super.initState();
     _initializeControllers();
     _fetchDataFromApi();
+    _loadDispensedMaterials();
+    _loadInventoryData();
   }
 
   void _initializeControllers() {
@@ -406,6 +418,13 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                               maxLines: 3,
                               required: false,
                             ),
+
+                            const SizedBox(height: 20),
+
+                            // المواد المصروفة
+                            _buildSectionTitle('المواد المصروفة'),
+                            const SizedBox(height: 12),
+                            _buildDispensedMaterialsSection(),
                           ],
                         ),
                       ),
@@ -479,6 +498,330 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
           color: Colors.blue.shade800,
         ),
       ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  المواد المصروفة
+  // ═══════════════════════════════════════════════════════════
+
+  Future<void> _loadDispensedMaterials() async {
+    final taskGuid = widget.task.guid;
+    if (taskGuid.isEmpty) return;
+    setState(() => _isLoadingMaterials = true);
+    try {
+      final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+      final result = await InventoryApiService.instance
+          .getDispensingsByServiceRequest(taskGuid, companyId: companyId);
+      if (!mounted) return;
+      final dispensings = (result['data'] as List<dynamic>?) ?? [];
+      final items = <Map<String, dynamic>>[];
+      for (final d in dispensings) {
+        for (final item in (d['items'] as List<dynamic>?) ?? []) {
+          items.add({
+            'itemName': item['itemName'] ?? item['inventoryItemName'] ?? '',
+            'itemSku': item['itemSku'] ?? item['sku'] ?? '',
+            'quantity': item['quantity'] ?? 0,
+            'returnedQuantity': item['returnedQuantity'] ?? 0,
+            'voucherNumber': d['voucherNumber'] ?? '',
+          });
+        }
+      }
+      setState(() {
+        _dispensedItems = items;
+        _isLoadingMaterials = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMaterials = false);
+    }
+  }
+
+  Future<void> _loadInventoryData() async {
+    try {
+      final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+      if (companyId.isEmpty) return;
+      final itemsResult = await InventoryApiService.instance
+          .getItems(companyId: companyId, pageSize: 200);
+      final warehouseResult = await InventoryApiService.instance
+          .getWarehouses(companyId: companyId);
+      if (!mounted) return;
+      setState(() {
+        _availableItems = ((itemsResult['data'] as List<dynamic>?) ?? [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        _availableWarehouses =
+            ((warehouseResult['data'] as List<dynamic>?) ?? [])
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _submitNewMaterials() async {
+    if (_newMaterialRows.isEmpty) return;
+    final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+    if (companyId.isEmpty) return;
+    // نختار أول مستودع متاح كافتراضي
+    final warehouseId = _availableWarehouses.isNotEmpty
+        ? _availableWarehouses.first['id']?.toString() ?? ''
+        : '';
+    if (warehouseId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا يوجد مستودع متاح'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
+    final taskGuid = widget.task.guid;
+    // نحضّر البنود
+    final items = _newMaterialRows
+        .where((r) => (r['itemId'] ?? '').toString().isNotEmpty && (r['quantity'] ?? 0) > 0)
+        .map((r) => {
+              'inventoryItemId': r['itemId'],
+              'quantity': r['quantity'],
+            })
+        .toList();
+    if (items.isEmpty) return;
+
+    try {
+      await InventoryApiService.instance.createDispensing(data: {
+        'technicianId': widget.task.technicianId,
+        'warehouseId': warehouseId,
+        'serviceRequestId': taskGuid,
+        'type': 0, // Dispensing
+        'notes': 'صرف من المهمة #${widget.task.id}',
+        'companyId': companyId,
+        'items': items,
+      });
+      if (!mounted) return;
+      // نعيد تحميل المواد
+      _newMaterialRows.clear();
+      await _loadDispensedMaterials();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم إضافة المواد بنجاح'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Widget _buildDispensedMaterialsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // المواد المصروفة سابقاً
+        if (_isLoadingMaterials)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(12),
+            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+          ))
+        else if (_dispensedItems.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.inventory_2, size: 16, color: Colors.orange.shade700),
+                    const SizedBox(width: 6),
+                    Text('مواد مصروفة سابقاً (${_dispensedItems.length})',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.orange.shade800)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ..._dispensedItems.map((item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${item['itemName']}${(item['itemSku'] ?? '').toString().isNotEmpty ? ' (${item['itemSku']})' : ''}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text('${item['quantity']}',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade900)),
+                          ),
+                          if ((item['returnedQuantity'] ?? 0) > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Text('مرجع: ${item['returnedQuantity']}',
+                                  style: TextStyle(fontSize: 10, color: Colors.green.shade600)),
+                            ),
+                        ],
+                      ),
+                    )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // إضافة مواد جديدة
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.add_circle_outline, size: 16, color: Colors.blue.shade700),
+                  const SizedBox(width: 6),
+                  Text('إضافة مواد مصروفة',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.blue.shade800)),
+                  const Spacer(),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _newMaterialRows.add({'itemId': '', 'itemName': '', 'quantity': 1});
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text('إضافة مادة', style: TextStyle(fontSize: 11, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_newMaterialRows.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ..._newMaterialRows.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final row = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        // اختيار المادة
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            value: (row['itemId'] ?? '').toString().isEmpty ? null : row['itemId'].toString(),
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'المادة',
+                              labelStyle: const TextStyle(fontSize: 12),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            style: const TextStyle(fontSize: 12, color: Colors.black87),
+                            items: _availableItems.map((item) {
+                              return DropdownMenuItem<String>(
+                                value: item['id']?.toString() ?? '',
+                                child: Text(
+                                  '${item['name'] ?? ''} (${item['sku'] ?? ''})',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _newMaterialRows[idx]['itemId'] = val ?? '';
+                                final selected = _availableItems.firstWhere(
+                                  (i) => i['id']?.toString() == val,
+                                  orElse: () => {},
+                                );
+                                _newMaterialRows[idx]['itemName'] = selected['name'] ?? '';
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // الكمية
+                        SizedBox(
+                          width: 80,
+                          child: TextFormField(
+                            initialValue: '${row['quantity'] ?? 1}',
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: InputDecoration(
+                              labelText: 'العدد',
+                              labelStyle: const TextStyle(fontSize: 11),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            onChanged: (val) {
+                              _newMaterialRows[idx]['quantity'] = int.tryParse(val) ?? 1;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // حذف
+                        InkWell(
+                          onTap: () => setState(() => _newMaterialRows.removeAt(idx)),
+                          child: const Icon(Icons.remove_circle, size: 22, color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+                // زر الحفظ
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _submitNewMaterials,
+                    icon: const Icon(Icons.save, size: 16),
+                    label: const Text('حفظ المواد المصروفة', style: TextStyle(fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+              ] else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text('اضغط "إضافة مادة" لتسجيل المواد المستخدمة',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

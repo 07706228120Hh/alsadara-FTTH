@@ -136,6 +136,20 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<FtthSubscriberCache, long>? _ftthSubscriberCaches;
     private IRepository<FtthSyncLog, long>? _ftthSyncLogs;
 
+    // Inventory System (نظام المخازن والمواد)
+    private IRepository<Warehouse, Guid>? _warehouses;
+    private IRepository<InventoryCategory, int>? _inventoryCategories;
+    private IRepository<InventoryItem, Guid>? _inventoryItems;
+    private IRepository<Supplier, Guid>? _suppliers;
+    private IRepository<PurchaseOrder, Guid>? _purchaseOrders;
+    private IRepository<PurchaseOrderItem, long>? _purchaseOrderItems;
+    private IRepository<SalesOrder, Guid>? _salesOrders;
+    private IRepository<SalesOrderItem, long>? _salesOrderItems;
+    private IRepository<TechnicianDispensing, Guid>? _technicianDispensings;
+    private IRepository<TechnicianDispensingItem, long>? _technicianDispensingItems;
+    private IRepository<StockMovement, long>? _stockMovements;
+    private IRepository<WarehouseStock, long>? _warehouseStocks;
+
     public UnitOfWork(SadaraDbContext context)
     {
         _context = context;
@@ -418,6 +432,32 @@ public class UnitOfWork : IUnitOfWork
         _ftthSubscriberCaches ??= new Repository<FtthSubscriberCache, long>(_context);
     public IRepository<FtthSyncLog, long> FtthSyncLogs =>
         _ftthSyncLogs ??= new Repository<FtthSyncLog, long>(_context);
+
+    // Inventory System (نظام المخازن والمواد)
+    public IRepository<Warehouse, Guid> Warehouses =>
+        _warehouses ??= new Repository<Warehouse, Guid>(_context);
+    public IRepository<InventoryCategory, int> InventoryCategories =>
+        _inventoryCategories ??= new Repository<InventoryCategory, int>(_context);
+    public IRepository<InventoryItem, Guid> InventoryItems =>
+        _inventoryItems ??= new Repository<InventoryItem, Guid>(_context);
+    public IRepository<Supplier, Guid> Suppliers =>
+        _suppliers ??= new Repository<Supplier, Guid>(_context);
+    public IRepository<PurchaseOrder, Guid> PurchaseOrders =>
+        _purchaseOrders ??= new Repository<PurchaseOrder, Guid>(_context);
+    public IRepository<PurchaseOrderItem, long> PurchaseOrderItems =>
+        _purchaseOrderItems ??= new Repository<PurchaseOrderItem, long>(_context);
+    public IRepository<SalesOrder, Guid> SalesOrders =>
+        _salesOrders ??= new Repository<SalesOrder, Guid>(_context);
+    public IRepository<SalesOrderItem, long> SalesOrderItems =>
+        _salesOrderItems ??= new Repository<SalesOrderItem, long>(_context);
+    public IRepository<TechnicianDispensing, Guid> TechnicianDispensings =>
+        _technicianDispensings ??= new Repository<TechnicianDispensing, Guid>(_context);
+    public IRepository<TechnicianDispensingItem, long> TechnicianDispensingItems =>
+        _technicianDispensingItems ??= new Repository<TechnicianDispensingItem, long>(_context);
+    public IRepository<StockMovement, long> StockMovements =>
+        _stockMovements ??= new Repository<StockMovement, long>(_context);
+    public IRepository<WarehouseStock, long> WarehouseStocks =>
+        _warehouseStocks ??= new Repository<WarehouseStock, long>(_context);
 
     #endregion
 

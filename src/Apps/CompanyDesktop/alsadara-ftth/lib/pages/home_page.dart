@@ -38,6 +38,7 @@ import 'ftth/ftth_company_page.dart'; // صفحة الشركة
 import 'settings/ftth_sync_settings_page.dart'; // إعدادات مزامنة FTTH
 import 'super_admin/sadara_portal_page.dart'; // منصة الصدارة
 import 'accounting/accounting_dashboard_page.dart'; // نظام المحاسبة
+import '../inventory/inventory_page.dart'; // نظام المخازن
 import '../task/follow_up_page.dart'; // صفحة المتابعة
 // import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق — مخفي حالياً
 // شاشتي - معاملات الفني
@@ -2611,7 +2612,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             )),
           ),
-          // 8) المتابعة والتقييم
+          // 8) المخازن والمواد
+          _buildEnhancedMenuItem(
+            title: 'المخازن',
+            subtitle: 'إدارة المواد والمستودعات',
+            icon: Icons.warehouse_rounded,
+            gradient: [Colors.brown[500]!, Colors.brown[800]!],
+            permissionKey: 'inventory',
+            onTap: () => _navigateTo(PermissionGate.page(
+              permission: 'inventory',
+              pageName: 'المخازن',
+              child: InventoryPage(
+                companyId: widget.tenantId,
+              ),
+            )),
+          ),
+          // 9) المتابعة والتقييم
           _buildEnhancedMenuItem(
             title: 'المتابعة',
             subtitle: 'متابعة وتقييم المهام',

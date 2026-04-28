@@ -151,6 +151,20 @@ public class SadaraDbContext : DbContext
     public DbSet<FtthSubscriberCache> FtthSubscriberCaches => Set<FtthSubscriberCache>();
     public DbSet<FtthSyncLog> FtthSyncLogs => Set<FtthSyncLog>();
 
+    // ==================== Inventory System (نظام المخازن والمواد) ====================
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<InventoryCategory> InventoryCategories => Set<InventoryCategory>();
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
+    public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
+    public DbSet<TechnicianDispensing> TechnicianDispensings => Set<TechnicianDispensing>();
+    public DbSet<TechnicianDispensingItem> TechnicianDispensingItems => Set<TechnicianDispensingItem>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<WarehouseStock> WarehouseStocks => Set<WarehouseStock>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -1236,6 +1250,209 @@ public class SadaraDbContext : DbContext
         {
             entity.Property(e => e.ManualDeductions).HasPrecision(18, 2);
             entity.Property(e => e.ManualBonuses).HasPrecision(18, 2);
+        });
+
+        // ==================== Inventory System (نظام المخازن والمواد) ====================
+
+        // Soft delete query filters
+        modelBuilder.Entity<Warehouse>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<InventoryCategory>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<InventoryItem>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<Supplier>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<PurchaseOrder>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<PurchaseOrderItem>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SalesOrder>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SalesOrderItem>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<TechnicianDispensing>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<TechnicianDispensingItem>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<StockMovement>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<WarehouseStock>().HasQueryFilter(x => !x.IsDeleted);
+
+        // Warehouse (المستودع)
+        modelBuilder.Entity<Warehouse>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => new { e.CompanyId, e.Code }).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.HasOne(e => e.ManagerUser).WithMany().HasForeignKey(e => e.ManagerUserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // InventoryCategory (تصنيف المواد)
+        modelBuilder.Entity<InventoryCategory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.NameEn).HasMaxLength(200);
+            entity.HasOne(e => e.ParentCategory).WithMany(c => c.SubCategories).HasForeignKey(e => e.ParentCategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // InventoryItem (المادة المخزنية)
+        modelBuilder.Entity<InventoryItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => new { e.CompanyId, e.SKU }).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.NameEn).HasMaxLength(200);
+            entity.Property(e => e.SKU).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Barcode).HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.ImageUrl).HasMaxLength(500);
+            entity.Property(e => e.CostPrice).HasPrecision(18, 2);
+            entity.Property(e => e.SellingPrice).HasPrecision(18, 2);
+            entity.Property(e => e.WholesalePrice).HasPrecision(18, 2);
+            entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Supplier (المورد)
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ContactPerson).HasMaxLength(100);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.TaxNumber).HasMaxLength(50);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PurchaseOrder (أمر الشراء)
+        modelBuilder.Entity<PurchaseOrder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompanyId, e.OrderNumber }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.SupplierId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.OrderDate);
+            entity.Property(e => e.OrderNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
+            entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(e => e.TaxAmount).HasPrecision(18, 2);
+            entity.Property(e => e.NetAmount).HasPrecision(18, 2);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.Property(e => e.AttachmentUrl).HasMaxLength(500);
+            entity.HasOne(e => e.Supplier).WithMany(s => s.PurchaseOrders).HasForeignKey(e => e.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ApprovedBy).WithMany().HasForeignKey(e => e.ApprovedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.JournalEntry).WithMany().HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PurchaseOrderItem (بند شراء)
+        modelBuilder.Entity<PurchaseOrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PurchaseOrderId);
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
+            entity.Property(e => e.TotalPrice).HasPrecision(18, 2);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasOne(e => e.PurchaseOrder).WithMany(p => p.Items).HasForeignKey(e => e.PurchaseOrderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.InventoryItem).WithMany().HasForeignKey(e => e.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SalesOrder (عملية بيع)
+        modelBuilder.Entity<SalesOrder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompanyId, e.OrderNumber }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.OrderDate);
+            entity.Property(e => e.OrderNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.CustomerName).HasMaxLength(200);
+            entity.Property(e => e.CustomerPhone).HasMaxLength(20);
+            entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
+            entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(e => e.TaxAmount).HasPrecision(18, 2);
+            entity.Property(e => e.NetAmount).HasPrecision(18, 2);
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.JournalEntry).WithMany().HasForeignKey(e => e.JournalEntryId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SalesOrderItem (بند بيع)
+        modelBuilder.Entity<SalesOrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.SalesOrderId);
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
+            entity.Property(e => e.TotalPrice).HasPrecision(18, 2);
+            entity.HasOne(e => e.SalesOrder).WithMany(s => s.Items).HasForeignKey(e => e.SalesOrderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.InventoryItem).WithMany().HasForeignKey(e => e.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // TechnicianDispensing (صرف الفني)
+        modelBuilder.Entity<TechnicianDispensing>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompanyId, e.VoucherNumber }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.TechnicianId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.DispensingDate);
+            entity.Property(e => e.VoucherNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Notes).HasColumnType("text");
+            entity.HasOne(e => e.Technician).WithMany().HasForeignKey(e => e.TechnicianId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ServiceRequest).WithMany().HasForeignKey(e => e.ServiceRequestId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ApprovedBy).WithMany().HasForeignKey(e => e.ApprovedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // TechnicianDispensingItem (بند صرف فني)
+        modelBuilder.Entity<TechnicianDispensingItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TechnicianDispensingId);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasOne(e => e.TechnicianDispensing).WithMany(d => d.Items).HasForeignKey(e => e.TechnicianDispensingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.InventoryItem).WithMany().HasForeignKey(e => e.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // StockMovement (حركة المخزون)
+        modelBuilder.Entity<StockMovement>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => new { e.InventoryItemId, e.WarehouseId, e.CreatedAt });
+            entity.HasIndex(e => e.MovementType);
+            entity.Property(e => e.UnitCost).HasPrecision(18, 2);
+            entity.Property(e => e.ReferenceType).HasMaxLength(50);
+            entity.Property(e => e.ReferenceId).HasMaxLength(100);
+            entity.Property(e => e.ReferenceNumber).HasMaxLength(50);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.HasOne(e => e.InventoryItem).WithMany(i => i.Movements).HasForeignKey(e => e.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // WarehouseStock (رصيد المخزون الحالي)
+        modelBuilder.Entity<WarehouseStock>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.WarehouseId, e.InventoryItemId }).IsUnique();
+            entity.HasIndex(e => e.CompanyId);
+            entity.Property(e => e.AverageCost).HasPrecision(18, 2);
+            entity.HasOne(e => e.Warehouse).WithMany(w => w.Stocks).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.InventoryItem).WithMany(i => i.Stocks).HasForeignKey(e => e.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

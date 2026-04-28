@@ -318,7 +318,13 @@ public enum JournalReferenceType
     OperatorCashDelivery = 11,
 
     /// <summary>تحصيل دين آجل من مشغل FTTH</summary>
-    OperatorCreditCollection = 12
+    OperatorCreditCollection = 12,
+
+    /// <summary>شراء مواد مخزنية</summary>
+    InventoryPurchase = 13,
+
+    /// <summary>بيع مواد مخزنية</summary>
+    InventorySales = 14
 }
 
 /// <summary>
@@ -376,4 +382,144 @@ public enum SalaryStatus
 
     /// <summary>ملغي</summary>
     Cancelled = 3
+}
+
+// ==================== Inventory System Enums (نظام المخازن) ====================
+
+/// <summary>
+/// وحدة قياس المواد المخزنية
+/// </summary>
+public enum InventoryUnitType
+{
+    /// <summary>قطعة</summary>
+    Piece = 0,
+
+    /// <summary>متر</summary>
+    Meter = 1,
+
+    /// <summary>لفة</summary>
+    Roll = 2,
+
+    /// <summary>صندوق</summary>
+    Box = 3,
+
+    /// <summary>كيلوغرام</summary>
+    Kilogram = 4,
+
+    /// <summary>لتر</summary>
+    Liter = 5,
+
+    /// <summary>طقم</summary>
+    Set = 6,
+
+    /// <summary>زوج</summary>
+    Pair = 7,
+
+    /// <summary>أخرى</summary>
+    Other = 99
+}
+
+/// <summary>
+/// حالة أمر الشراء
+/// </summary>
+public enum PurchaseOrderStatus
+{
+    /// <summary>مسودة</summary>
+    Draft = 0,
+
+    /// <summary>معتمد</summary>
+    Approved = 1,
+
+    /// <summary>استلام جزئي</summary>
+    PartiallyReceived = 2,
+
+    /// <summary>مستلم بالكامل</summary>
+    Received = 3,
+
+    /// <summary>ملغي</summary>
+    Cancelled = 4
+}
+
+/// <summary>
+/// حالة عملية البيع
+/// </summary>
+public enum SalesOrderStatus
+{
+    /// <summary>مسودة</summary>
+    Draft = 0,
+
+    /// <summary>مؤكد</summary>
+    Confirmed = 1,
+
+    /// <summary>تم التسليم</summary>
+    Delivered = 2,
+
+    /// <summary>ملغي</summary>
+    Cancelled = 3
+}
+
+/// <summary>
+/// حالة صرف الفني
+/// </summary>
+public enum DispensingStatus
+{
+    /// <summary>بانتظار الموافقة</summary>
+    Pending = 0,
+
+    /// <summary>موافق عليه (تم الصرف)</summary>
+    Approved = 1,
+
+    /// <summary>إرجاع جزئي</summary>
+    PartialReturn = 2,
+
+    /// <summary>إرجاع كامل</summary>
+    FullReturn = 3,
+
+    /// <summary>ملغي</summary>
+    Cancelled = 4
+}
+
+/// <summary>
+/// نوع عملية الصرف
+/// </summary>
+public enum DispensingType
+{
+    /// <summary>صرف للفني</summary>
+    Dispensing = 0,
+
+    /// <summary>إرجاع من الفني</summary>
+    Return = 1
+}
+
+/// <summary>
+/// نوع حركة المخزون
+/// </summary>
+public enum StockMovementType
+{
+    /// <summary>وارد شراء</summary>
+    PurchaseIn = 0,
+
+    /// <summary>صادر بيع</summary>
+    SalesOut = 1,
+
+    /// <summary>صرف فني</summary>
+    TechnicianDispensing = 2,
+
+    /// <summary>إرجاع فني</summary>
+    TechnicianReturn = 3,
+
+    /// <summary>تعديل جرد</summary>
+    Adjustment = 4,
+
+    /// <summary>تحويل وارد بين مستودعات</summary>
+    TransferIn = 5,
+
+    /// <summary>تحويل صادر بين مستودعات</summary>
+    TransferOut = 6,
+
+    /// <summary>رصيد افتتاحي</summary>
+    InitialStock = 7,
+
+    /// <summary>تالف</summary>
+    Damaged = 8
 }

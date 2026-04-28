@@ -279,11 +279,11 @@ public class ReminderController : ControllerBase
             using var doc = System.Text.Json.JsonDocument.Parse(wfJson);
             var root = doc.RootElement;
 
-            // بناء cron expressions لكل الوجبات المفعّلة
+            // بناء cron expressions لكل الوجبات المفعّلة (تحويل بغداد +3 → UTC)
             var cronIntervals = activeBatches.Select(b => new
             {
                 field = "cronExpression",
-                expression = $"{b.minute} {b.hour} * * *"
+                expression = $"{b.minute} {(b.hour - 3 + 24) % 24} * * *"
             }).ToArray();
 
             // بناء خريطة الوجبات: "hour:minute=days|hour:minute=days"

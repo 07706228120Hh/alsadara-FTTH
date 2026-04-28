@@ -9,6 +9,7 @@ class Task {
   final String department; // القسم المسؤول عن المهمة
   final String leader; // الليدر المسؤول عن المهمة
   final String technician; // الفني المسؤول عن المهمة
+  final String technicianId; // معرف الفني (GUID)
   final String username; // اسم المستخدم الذي أضاف المهمة
   final String phone; // رقم هاتف المستخدم
   final String fbg; // FBG المرتبط بالمهمة
@@ -42,6 +43,7 @@ class Task {
     required this.department,
     required this.leader,
     required this.technician,
+    this.technicianId = '',
     required this.username,
     required this.phone,
     required this.fbg,
@@ -75,6 +77,7 @@ class Task {
     String? department,
     String? leader,
     String? technician,
+    String? technicianId,
     String? username,
     String? phone,
     String? fbg,
@@ -106,6 +109,7 @@ class Task {
       department: department ?? this.department,
       leader: leader ?? this.leader,
       technician: technician ?? this.technician,
+      technicianId: technicianId ?? this.technicianId,
       username: username ?? this.username,
       phone: phone ?? this.phone,
       fbg: fbg ?? this.fbg,
@@ -185,6 +189,9 @@ class Task {
       technician: details['technician']?.toString() ??
           response['TechnicianName']?.toString() ??
           response['AssignedToName']?.toString() ??
+          '',
+      technicianId: response['TechnicianId']?.toString() ??
+          response['AssignedToId']?.toString() ??
           '',
       username: details['customerName']?.toString() ??
           response['CitizenName']?.toString() ??

@@ -227,6 +227,7 @@ class SadaraApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('خطأ في طلب $method');
     }
   }

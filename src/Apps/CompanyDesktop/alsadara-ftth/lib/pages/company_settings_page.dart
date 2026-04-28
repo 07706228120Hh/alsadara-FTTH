@@ -2074,7 +2074,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     );
   }
 
-  // ═══ إرسال مباشر لكل الوجبات المفعّلة ═══
+  // ═══ إرسال مباشر مع اختيار الوجبة ═══
   Future<void> _sendReminderNow() async {
     if (_reminderBatches.isEmpty) {
       _showSnack('لا توجد وجبات إرسال محفوظة');
@@ -2087,33 +2087,64 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
       return;
     }
 
-    final confirm = await showDialog<bool>(
+    // اختيار الوجبة المطلوبة
+    final selected = await showDialog<List<Map<String, dynamic>>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('إرسال مباشر', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-        content: Text(
-          'سيتم إرسال تذكير لـ ${activeBatches.length} وجبة مفعّلة:\n\n${activeBatches.map((b) => '• ${b['label'] ?? 'وجبة'} (${b['days']} يوم)').join('\n')}\n\nهل تريد المتابعة؟',
-          style: GoogleFonts.cairo(),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: Text('إرسال', style: GoogleFonts.cairo(color: Colors.white)),
+      builder: (ctx) {
+        final selectedBatches = <int>{};
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text('اختر الوجبات للإرسال', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...activeBatches.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final b = entry.value;
+                    final days = b['days'] as int? ?? 0;
+                    final label = days == 0 ? 'المنتهي اليوم' : days == 1 ? 'المنتهي غداً' : 'خلال $days أيام';
+                    final time = '${(b['hour'] as int? ?? 0).toString().padLeft(2, '0')}:${(b['minute'] as int? ?? 0).toString().padLeft(2, '0')}';
+                    return CheckboxListTile(
+                      value: selectedBatches.contains(i),
+                      onChanged: (v) => setDialogState(() {
+                        if (v == true) selectedBatches.add(i);
+                        else selectedBatches.remove(i);
+                      }),
+                      title: Text(label, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                      subtitle: Text('الساعة $time', style: GoogleFonts.cairo(color: Colors.grey)),
+                      activeColor: Colors.green,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    );
+                  }),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, null), child: Text('إلغاء', style: GoogleFonts.cairo())),
+                ElevatedButton(
+                  onPressed: selectedBatches.isEmpty ? null : () {
+                    Navigator.pop(ctx, selectedBatches.map((i) => activeBatches[i]).toList());
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  child: Text('إرسال', style: GoogleFonts.cairo(color: Colors.white)),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
 
-    if (confirm != true) return;
+    if (selected == null || selected.isEmpty) return;
 
     _showSnack('جاري الإرسال...');
 
     int totalSent = 0;
     int totalFailed = 0;
 
-    for (final batch in activeBatches) {
+    for (final batch in selected) {
       final days = batch['days'] as int? ?? 0;
       try {
         final result = await AutoRenewalReminderService.instance.sendManually(days);
