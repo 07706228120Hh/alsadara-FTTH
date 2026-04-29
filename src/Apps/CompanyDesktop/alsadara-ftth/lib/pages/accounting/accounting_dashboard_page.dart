@@ -24,6 +24,8 @@ import 'ftth_operators_dashboard_page.dart';
 import 'funds_overview_page.dart';
 import 'fixed_expenses_page.dart';
 import 'withdrawal_requests_page.dart';
+import 'zone_maintenance_fees_page.dart';
+import 'activation_profitability_page.dart';
 import 'trial_balance_page.dart';
 import 'income_statement_page.dart';
 import 'balance_sheet_page.dart';
@@ -416,6 +418,20 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                 _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
         _sidebarBtn(
+            icon: Icons.build_circle,
+            label: 'أجور صيانة الزونات',
+            color: const Color(0xFF26A69A),
+            onTap: () => _navigateTo(
+                ZoneMaintenanceFeesPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.analytics_outlined,
+            label: 'ربحية التفعيلات',
+            color: const Color(0xFF00897B),
+            onTap: () => _navigateTo(
+                ActivationProfitabilityPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
             icon: Icons.money_off,
             label: 'طلبات السحب',
             color: const Color(0xFFE74C3C),
@@ -490,18 +506,15 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
 
     return MouseRegion(
       onEnter: (_) {
-        // إيقاف المؤقت عند دخول الماوس للقائمة
         _autoCollapseTimer?.cancel();
+        if (!_sidebarExpanded && mounted) {
+          setState(() => _sidebarExpanded = true);
+        }
       },
       onExit: (_) {
-        // إعادة تشغيل المؤقت عند خروج الماوس
-        if (_sidebarExpanded) {
-          _autoCollapseTimer?.cancel();
-          _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
-            if (mounted && _sidebarExpanded) {
-              setState(() => _sidebarExpanded = false);
-            }
-          });
+        _autoCollapseTimer?.cancel();
+        if (_sidebarExpanded && mounted) {
+          setState(() => _sidebarExpanded = false);
         }
       },
       child: Container(
@@ -527,13 +540,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             onTap: () {
               _autoCollapseTimer?.cancel();
               setState(() => _sidebarExpanded = !_sidebarExpanded);
-              if (_sidebarExpanded) {
-                _autoCollapseTimer = Timer(const Duration(seconds: 5), () {
-                  if (mounted && _sidebarExpanded) {
-                    setState(() => _sidebarExpanded = false);
-                  }
-                });
-              }
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -666,6 +672,20 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     permKey: 'accounting.fixed_expenses',
                     onTap: () =>
                         _navigateTo(FixedExpensesPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.build_circle,
+                    label: 'أجور صيانة الزونات',
+                    color: const Color(0xFF26A69A),
+                    onTap: () => _navigateTo(
+                        ZoneMaintenanceFeesPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.analytics_outlined,
+                    label: 'ربحية التفعيلات',
+                    color: const Color(0xFF00897B),
+                    onTap: () => _navigateTo(
+                        ActivationProfitabilityPage(companyId: widget.companyId)),
                   ),
                   _sidebarBtn(
                     icon: Icons.money_off,

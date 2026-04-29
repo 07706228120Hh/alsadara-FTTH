@@ -75,6 +75,8 @@ class SubscriptionLogsService {
     double? manualDiscount,
     double? systemDiscount,
     bool? systemDiscountEnabled,
+    // أجور الصيانة
+    double? maintenanceFee,
   }) async {
     try {
       final body = {
@@ -131,6 +133,8 @@ class SubscriptionLogsService {
         'manualDiscount': manualDiscount,
         'systemDiscount': systemDiscount,
         'systemDiscountEnabled': systemDiscountEnabled,
+        // أجور الصيانة
+        'maintenanceFee': maintenanceFee,
       };
 
       // إزالة القيم null

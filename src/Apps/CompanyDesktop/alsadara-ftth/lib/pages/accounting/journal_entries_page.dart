@@ -881,16 +881,26 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // زر عرض/تعديل التفاصيل — متاح للمسودة والمرحّل
+                  if (status != 'Voided' && PermissionManager.instance.canEdit('accounting.journals'))
+                    TextButton.icon(
+                      onPressed: () => _showFullEditDialog(entry),
+                      icon: Icon(Icons.edit_note, size: context.accR.iconXS),
+                      label: Text('تفاصيل وتعديل',
+                          style: TextStyle(fontSize: context.accR.small)),
+                      style: TextButton.styleFrom(
+                          foregroundColor: AccountingTheme.info),
+                    ),
+                  if (status == 'Voided')
+                    TextButton.icon(
+                      onPressed: () => _showFullEditDialog(entry, readOnly: true),
+                      icon: Icon(Icons.visibility, size: context.accR.iconXS),
+                      label: Text('عرض التفاصيل',
+                          style: TextStyle(fontSize: context.accR.small)),
+                      style: TextButton.styleFrom(
+                          foregroundColor: AccountingTheme.textMuted),
+                    ),
                   if (status == 'Draft') ...[
-                    if (PermissionManager.instance.canEdit('accounting.journals'))
-                      TextButton.icon(
-                        onPressed: () => _showEditEntryDialog(entry),
-                        icon: Icon(Icons.edit, size: context.accR.iconXS),
-                        label: Text('تعديل',
-                            style: TextStyle(fontSize: context.accR.small)),
-                        style: TextButton.styleFrom(
-                            foregroundColor: AccountingTheme.info),
-                      ),
                     SizedBox(width: context.accR.spaceS),
                     if (PermissionManager.instance.canEdit('accounting.journals'))
                       TextButton.icon(
@@ -1802,102 +1812,669 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     );
   }
 
-  void _showEditEntryDialog(Map<String, dynamic> entry) {
+  /// عرض وتعديل تفاصيل القيد بشكل كامل
+  void _showFullEditDialog(Map<String, dynamic> entry, {bool readOnly = false}) {
+    final status = entry['Status']?.toString() ?? 'Draft';
+    final isVoided = status == 'Voided';
+    final effectiveReadOnly = readOnly || isVoided;
+
     final descCtrl = TextEditingController(text: entry['Description'] ?? '');
     final notesCtrl = TextEditingController(text: entry['Notes'] ?? '');
+    DateTime entryDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? '') ?? DateTime.now();
+
+    // تحضير أسطر القيد
+    final lines = <Map<String, dynamic>>[];
+    for (final l in ((entry['Lines'] as List?) ?? [])) {
+      lines.add({
+        'accountId': l['AccountId']?.toString() ?? '',
+        'accountName': l['AccountName']?.toString() ?? l['Account']?['Name']?.toString() ?? '',
+        'debit': ((l['DebitAmount'] ?? 0) as num).toDouble(),
+        'credit': ((l['CreditAmount'] ?? 0) as num).toDouble(),
+        'description': l['Description']?.toString() ?? '',
+        'debitCtrl': TextEditingController(text: ((l['DebitAmount'] ?? 0) as num).toDouble() > 0 ? ((l['DebitAmount'] ?? 0) as num).toStringAsFixed(0) : ''),
+        'creditCtrl': TextEditingController(text: ((l['CreditAmount'] ?? 0) as num).toDouble() > 0 ? ((l['CreditAmount'] ?? 0) as num).toStringAsFixed(0) : ''),
+        'descCtrl': TextEditingController(text: l['Description']?.toString() ?? ''),
+      });
+    }
+
+    // قائمة الحسابات المتاحة
+    List<Map<String, dynamic>> accounts = [];
+    bool accountsLoaded = false;
+    bool isSaving = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
-          title: Text('تعديل القيد',
-              style: TextStyle(color: AccountingTheme.textPrimary)),
-          content: SizedBox(
-            width: context.accR.dialogSmallW,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: descCtrl,
-                  style: const TextStyle(color: AccountingTheme.textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'الوصف',
-                    labelStyle:
-                        const TextStyle(color: AccountingTheme.textMuted),
-                    filled: true,
-                    fillColor: AccountingTheme.bgCardHover,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none),
-                  ),
-                ),
-                SizedBox(height: context.accR.spaceM),
-                TextField(
-                  controller: notesCtrl,
-                  style: const TextStyle(color: AccountingTheme.textPrimary),
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: 'ملاحظات',
-                    labelStyle:
-                        const TextStyle(color: AccountingTheme.textMuted),
-                    filled: true,
-                    fillColor: AccountingTheme.bgCardHover,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.info,
-                  foregroundColor: Colors.white),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                // فحص الفترة المحاسبية
-                final editDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? entry['CreatedAt']?.toString() ?? '');
-                if (editDate != null) {
-                  final allowed = await PeriodClosingService.checkAndWarnIfClosed(
-                    context, date: editDate, companyId: widget.companyId ?? '',
-                  );
-                  if (!allowed) return;
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDState) {
+          // تحميل الحسابات عند أول فتح
+          if (!accountsLoaded && !effectiveReadOnly) {
+            accountsLoaded = true;
+            AccountingService.instance.getAccounts(companyId: widget.companyId).then((res) {
+              if (res['success'] == true) {
+                final data = res['data'];
+                final list = data is List ? data : (data is Map ? (data['items'] ?? []) as List : []);
+                final leafAccounts = <Map<String, dynamic>>[];
+                for (final a in list) {
+                  if (a['IsLeaf'] == true || a['isLeaf'] == true) {
+                    leafAccounts.add({
+                      'id': (a['Id'] ?? a['id'])?.toString() ?? '',
+                      'name': '${a['Code'] ?? a['code'] ?? ''} - ${a['Name'] ?? a['name'] ?? ''}',
+                      'code': (a['Code'] ?? a['code'])?.toString() ?? '',
+                    });
+                  }
                 }
-                final result =
-                    await AccountingService.instance.updateJournalEntry(
-                  entry['Id'].toString(),
-                  {
-                    'Description': descCtrl.text,
-                    'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
-                  },
-                );
-                if (result['success'] == true) {
-                  _snack('تم تحديث القيد', AccountingTheme.success);
-                  AuditTrailService.instance.log(
-                    action: AuditAction.edit,
-                    entityType: AuditEntityType.journalEntry,
-                    entityId: entry['Id']?.toString() ?? '',
-                    entityDescription: 'قيد: ${descCtrl.text}',
-                  );
-                  _loadData();
-                } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
-                }
-              },
-              child: const Text('حفظ'),
+                leafAccounts.sort((a, b) => a['code'].compareTo(b['code']));
+                setDState(() => accounts = leafAccounts);
+              }
+            });
+          }
+
+          // حساب الإجماليات
+          double totalDebit = 0, totalCredit = 0;
+          for (final l in lines) {
+            totalDebit += double.tryParse(l['debitCtrl'].text) ?? 0;
+            totalCredit += double.tryParse(l['creditCtrl'].text) ?? 0;
+          }
+          final isBalanced = (totalDebit - totalCredit).abs() < 0.01;
+
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Dialog(
+              backgroundColor: AccountingTheme.bgCard,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 750,
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ── العنوان ──
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AccountingTheme.bgCardHover,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        border: const Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(effectiveReadOnly ? Icons.visibility : Icons.edit_note,
+                              color: AccountingTheme.info, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(effectiveReadOnly ? 'تفاصيل القيد' : 'تعديل القيد',
+                                    style: GoogleFonts.cairo(
+                                        color: AccountingTheme.textPrimary,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                                Text('#${entry['EntryNumber'] ?? ''}',
+                                    style: GoogleFonts.cairo(
+                                        color: AccountingTheme.neonBlue, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          // حالة القيد
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: (status == 'Posted'
+                                      ? AccountingTheme.success
+                                      : status == 'Voided'
+                                          ? AccountingTheme.danger
+                                          : AccountingTheme.warning)
+                                  .withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              status == 'Posted' ? 'مرحّل' : status == 'Voided' ? 'ملغي' : 'مسودة',
+                              style: GoogleFonts.cairo(
+                                color: status == 'Posted'
+                                    ? AccountingTheme.success
+                                    : status == 'Voided'
+                                        ? AccountingTheme.danger
+                                        : AccountingTheme.warning,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close, size: 20),
+                            style: IconButton.styleFrom(foregroundColor: AccountingTheme.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ── المحتوى ──
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── معلومات عامة ──
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: _editField(
+                                    label: 'الوصف',
+                                    controller: descCtrl,
+                                    readOnly: effectiveReadOnly,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: effectiveReadOnly ? null : () async {
+                                      final picked = await showDatePicker(
+                                        context: ctx,
+                                        initialDate: entryDate,
+                                        firstDate: DateTime(2020),
+                                        lastDate: DateTime(2030),
+                                      );
+                                      if (picked != null) {
+                                        setDState(() => entryDate = picked);
+                                      }
+                                    },
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'التاريخ',
+                                        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+                                        filled: true,
+                                        fillColor: AccountingTheme.bgCardHover,
+                                        border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            borderSide: BorderSide.none),
+                                        suffixIcon: Icon(Icons.calendar_today,
+                                            size: 16, color: AccountingTheme.textMuted),
+                                        isDense: true,
+                                      ),
+                                      child: Text(
+                                        '${entryDate.year}/${entryDate.month.toString().padLeft(2, '0')}/${entryDate.day.toString().padLeft(2, '0')}',
+                                        style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 13),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _editField(label: 'ملاحظات', controller: notesCtrl, readOnly: effectiveReadOnly, maxLines: 2),
+                            const SizedBox(height: 8),
+                            // معلومات إضافية
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 4,
+                              children: [
+                                if (entry['ReferenceType'] != null)
+                                  _infoChip('النوع', _refTypeLabel(entry['ReferenceType'])),
+                                if (entry['ReferenceId'] != null)
+                                  _infoChip('مرجع', entry['ReferenceId'].toString()),
+                                if (entry['CreatedBy'] != null)
+                                  _infoChip('أنشأه', (entry['CreatedBy']?['FullName'] ?? entry['CreatedBy']?['fullName'] ?? '').toString()),
+                                if (entry['ApprovedBy'] != null)
+                                  _infoChip('اعتمده', (entry['ApprovedBy']?['FullName'] ?? entry['ApprovedBy']?['fullName'] ?? '').toString()),
+                              ],
+                            ),
+
+                            const SizedBox(height: 18),
+                            const Divider(color: AccountingTheme.borderColor),
+                            const SizedBox(height: 10),
+
+                            // ── عنوان الأسطر ──
+                            Row(
+                              children: [
+                                Text('أسطر القيد',
+                                    style: GoogleFonts.cairo(
+                                        color: AccountingTheme.textPrimary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                                const Spacer(),
+                                if (!effectiveReadOnly)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setDState(() {
+                                        lines.add({
+                                          'accountId': '',
+                                          'accountName': '',
+                                          'debit': 0.0,
+                                          'credit': 0.0,
+                                          'description': '',
+                                          'debitCtrl': TextEditingController(),
+                                          'creditCtrl': TextEditingController(),
+                                          'descCtrl': TextEditingController(),
+                                        });
+                                      });
+                                    },
+                                    icon: const Icon(Icons.add_circle_outline, size: 16),
+                                    label: Text('إضافة سطر',
+                                        style: GoogleFonts.cairo(fontSize: 12)),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor: AccountingTheme.neonGreen),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+
+                            // ── رأس الجدول ──
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AccountingTheme.bgCardHover,
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                border: Border.all(color: AccountingTheme.borderColor),
+                              ),
+                              child: Row(
+                                children: [
+                                  if (!effectiveReadOnly)
+                                    const SizedBox(width: 32),
+                                  Expanded(flex: 3, child: Text('الحساب',
+                                      style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11, fontWeight: FontWeight.bold))),
+                                  SizedBox(width: 100, child: Text('مدين',
+                                      style: GoogleFonts.cairo(color: AccountingTheme.neonGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center)),
+                                  SizedBox(width: 100, child: Text('دائن',
+                                      style: GoogleFonts.cairo(color: AccountingTheme.danger, fontSize: 11, fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center)),
+                                  Expanded(flex: 2, child: Text('البيان',
+                                      style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11, fontWeight: FontWeight.bold))),
+                                ],
+                              ),
+                            ),
+
+                            // ── أسطر القيد ──
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AccountingTheme.borderColor),
+                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
+                              ),
+                              child: Column(
+                                children: [
+                                  for (int i = 0; i < lines.length; i++)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: i.isEven ? Colors.transparent : AccountingTheme.bgCardHover.withOpacity(0.3),
+                                        border: i < lines.length - 1
+                                            ? const Border(bottom: BorderSide(color: AccountingTheme.borderColor, width: 0.5))
+                                            : null,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // زر حذف السطر
+                                          if (!effectiveReadOnly)
+                                            SizedBox(
+                                              width: 32,
+                                              child: lines.length > 2
+                                                  ? IconButton(
+                                                      onPressed: () => setDState(() => lines.removeAt(i)),
+                                                      icon: const Icon(Icons.remove_circle_outline, size: 16),
+                                                      padding: EdgeInsets.zero,
+                                                      constraints: const BoxConstraints(),
+                                                      style: IconButton.styleFrom(foregroundColor: AccountingTheme.danger),
+                                                    )
+                                                  : null,
+                                            ),
+                                          // الحساب
+                                          Expanded(
+                                            flex: 3,
+                                            child: effectiveReadOnly
+                                                ? Text(
+                                                    lines[i]['accountName'].toString().isNotEmpty
+                                                        ? lines[i]['accountName']
+                                                        : 'حساب #${lines[i]['accountId']}',
+                                                    style: const TextStyle(color: AccountingTheme.textSecondary, fontSize: 12),
+                                                  )
+                                                : _accountDropdown(
+                                                    accounts: accounts,
+                                                    selectedId: lines[i]['accountId'],
+                                                    onChanged: (id, name) {
+                                                      setDState(() {
+                                                        lines[i]['accountId'] = id;
+                                                        lines[i]['accountName'] = name;
+                                                      });
+                                                    },
+                                                  ),
+                                          ),
+                                          // مدين
+                                          SizedBox(
+                                            width: 100,
+                                            child: effectiveReadOnly
+                                                ? Text(
+                                                    lines[i]['debit'] > 0 ? _fmt(lines[i]['debit']) : '-',
+                                                    style: TextStyle(
+                                                        color: lines[i]['debit'] > 0 ? AccountingTheme.neonGreen : AccountingTheme.textMuted,
+                                                        fontSize: 12),
+                                                    textAlign: TextAlign.center,
+                                                  )
+                                                : _amountField(
+                                                    controller: lines[i]['debitCtrl'],
+                                                    color: AccountingTheme.neonGreen,
+                                                    onChanged: () => setDState(() {}),
+                                                  ),
+                                          ),
+                                          // دائن
+                                          SizedBox(
+                                            width: 100,
+                                            child: effectiveReadOnly
+                                                ? Text(
+                                                    lines[i]['credit'] > 0 ? _fmt(lines[i]['credit']) : '-',
+                                                    style: TextStyle(
+                                                        color: lines[i]['credit'] > 0 ? AccountingTheme.danger : AccountingTheme.textMuted,
+                                                        fontSize: 12),
+                                                    textAlign: TextAlign.center,
+                                                  )
+                                                : _amountField(
+                                                    controller: lines[i]['creditCtrl'],
+                                                    color: AccountingTheme.danger,
+                                                    onChanged: () => setDState(() {}),
+                                                  ),
+                                          ),
+                                          // البيان
+                                          Expanded(
+                                            flex: 2,
+                                            child: effectiveReadOnly
+                                                ? Text(lines[i]['description'] ?? '',
+                                                    style: const TextStyle(color: AccountingTheme.textMuted, fontSize: 11))
+                                                : TextField(
+                                                    controller: lines[i]['descCtrl'],
+                                                    style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 12),
+                                                    decoration: InputDecoration(
+                                                      hintText: 'بيان...',
+                                                      hintStyle: TextStyle(color: AccountingTheme.textMuted.withOpacity(0.4), fontSize: 11),
+                                                      filled: true,
+                                                      fillColor: AccountingTheme.bgPrimary,
+                                                      isDense: true,
+                                                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                      border: OutlineInputBorder(
+                                                          borderRadius: BorderRadius.circular(4),
+                                                          borderSide: BorderSide.none),
+                                                    ),
+                                                  ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // ── شريط المجاميع ──
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isBalanced
+                                    ? AccountingTheme.success.withOpacity(0.1)
+                                    : AccountingTheme.danger.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                    color: isBalanced
+                                        ? AccountingTheme.success.withOpacity(0.3)
+                                        : AccountingTheme.danger.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isBalanced ? Icons.check_circle : Icons.warning,
+                                    size: 16,
+                                    color: isBalanced ? AccountingTheme.success : AccountingTheme.danger,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(isBalanced ? 'القيد متوازن' : 'القيد غير متوازن!',
+                                      style: GoogleFonts.cairo(
+                                          color: isBalanced ? AccountingTheme.success : AccountingTheme.danger,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold)),
+                                  const Spacer(),
+                                  Text('مدين: ${_fmt(totalDebit)}',
+                                      style: GoogleFonts.cairo(
+                                          color: AccountingTheme.neonGreen,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold)),
+                                  const SizedBox(width: 16),
+                                  Text('دائن: ${_fmt(totalCredit)}',
+                                      style: GoogleFonts.cairo(
+                                          color: AccountingTheme.danger,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold)),
+                                  if (!isBalanced) ...[
+                                    const SizedBox(width: 16),
+                                    Text('فرق: ${_fmt((totalDebit - totalCredit).abs())}',
+                                        style: GoogleFonts.cairo(
+                                            color: AccountingTheme.warning,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // ── أزرار الحفظ ──
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: AccountingTheme.bgCardHover,
+                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                        border: Border(top: BorderSide(color: AccountingTheme.borderColor)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text(effectiveReadOnly ? 'إغلاق' : 'إلغاء',
+                                style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+                          ),
+                          if (!effectiveReadOnly) ...[
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: isSaving || !isBalanced
+                                  ? null
+                                  : () async {
+                                      // التحقق من وجود حسابات
+                                      for (final l in lines) {
+                                        if ((l['accountId'] as String).isEmpty) {
+                                          _snack('يجب اختيار حساب لكل سطر', AccountingTheme.warning);
+                                          return;
+                                        }
+                                      }
+                                      setDState(() => isSaving = true);
+
+                                      // فحص الفترة المحاسبية
+                                      final editDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? entry['CreatedAt']?.toString() ?? '');
+                                      if (editDate != null) {
+                                        final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+                                          ctx, date: editDate, companyId: widget.companyId ?? '',
+                                        );
+                                        if (!allowed) {
+                                          setDState(() => isSaving = false);
+                                          return;
+                                        }
+                                      }
+
+                                      // تجهيز البيانات
+                                      final linesDtos = lines.map((l) => {
+                                        'AccountId': l['accountId'],
+                                        'DebitAmount': double.tryParse(l['debitCtrl'].text) ?? 0,
+                                        'CreditAmount': double.tryParse(l['creditCtrl'].text) ?? 0,
+                                        'Description': l['descCtrl'].text,
+                                      }).toList();
+
+                                      final result = await AccountingService.instance.updateJournalEntry(
+                                        entry['Id'].toString(),
+                                        {
+                                          'Description': descCtrl.text,
+                                          'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
+                                          'EntryDate': entryDate.toIso8601String(),
+                                          'Lines': linesDtos,
+                                        },
+                                      );
+
+                                      if (!ctx.mounted) return;
+                                      setDState(() => isSaving = false);
+
+                                      if (result['success'] == true) {
+                                        Navigator.pop(ctx);
+                                        _snack('تم تحديث القيد بنجاح', AccountingTheme.success);
+                                        AuditTrailService.instance.log(
+                                          action: AuditAction.edit,
+                                          entityType: AuditEntityType.journalEntry,
+                                          entityId: entry['Id']?.toString() ?? '',
+                                          entityDescription: 'قيد: ${descCtrl.text}',
+                                        );
+                                        _loadData();
+                                      } else {
+                                        _snack(result['message'] ?? 'خطأ في تحديث القيد', AccountingTheme.danger);
+                                      }
+                                    },
+                              icon: isSaving
+                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.save, size: 18),
+                              label: Text(isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات',
+                                  style: GoogleFonts.cairo(fontSize: 13)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AccountingTheme.info,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: AccountingTheme.textMuted.withOpacity(0.3),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  Widget _editField({
+    required String label,
+    required TextEditingController controller,
+    bool readOnly = false,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 13),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AccountingTheme.textMuted, fontSize: 12),
+        filled: true,
+        fillColor: readOnly ? Colors.transparent : AccountingTheme.bgCardHover,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: readOnly ? BorderSide(color: AccountingTheme.borderColor) : BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: readOnly ? BorderSide(color: AccountingTheme.borderColor) : BorderSide.none),
+      ),
+    );
+  }
+
+  Widget _infoChip(String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('$label: ', style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(
+            color: AccountingTheme.neonBlue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(value,
+              style: GoogleFonts.cairo(color: AccountingTheme.neonBlue, fontSize: 11, fontWeight: FontWeight.w600)),
+        ),
+      ],
+    );
+  }
+
+  Widget _amountField({
+    required TextEditingController controller,
+    required Color color,
+    required VoidCallback onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+      onChanged: (_) => onChanged(),
+      decoration: InputDecoration(
+        hintText: '0',
+        hintStyle: TextStyle(color: AccountingTheme.textMuted.withOpacity(0.3), fontSize: 11),
+        filled: true,
+        fillColor: AccountingTheme.bgPrimary,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
+      ),
+    );
+  }
+
+  Widget _accountDropdown({
+    required List<Map<String, dynamic>> accounts,
+    required String selectedId,
+    required void Function(String id, String name) onChanged,
+  }) {
+    if (accounts.isEmpty) {
+      return const SizedBox(
+        height: 30,
+        child: Center(child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))),
+      );
+    }
+    return DropdownButtonFormField<String>(
+      value: accounts.any((a) => a['id'] == selectedId) ? selectedId : null,
+      isExpanded: true,
+      isDense: true,
+      dropdownColor: AccountingTheme.bgCard,
+      style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 12),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AccountingTheme.bgPrimary,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
+      ),
+      hint: Text('اختر حساب...', style: TextStyle(color: AccountingTheme.textMuted.withOpacity(0.5), fontSize: 11)),
+      items: accounts.map((a) => DropdownMenuItem<String>(
+        value: a['id'],
+        child: Text(a['name'], style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
+      )).toList(),
+      onChanged: (val) {
+        if (val != null) {
+          final acc = accounts.firstWhere((a) => a['id'] == val, orElse: () => {});
+          onChanged(val, acc['name'] ?? '');
+        }
+      },
     );
   }
 

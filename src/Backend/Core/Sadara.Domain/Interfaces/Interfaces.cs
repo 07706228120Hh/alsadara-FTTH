@@ -90,6 +90,7 @@ public interface IUnitOfWork : IDisposable
     // ISP Data (بيانات مشتركي الإنترنت)
     IRepository<ISPSubscriber, long> ISPSubscribers { get; }
     IRepository<ZoneStatistic, int> ZoneStatistics { get; }
+    IRepository<ZoneMaintenanceFee, Guid> ZoneMaintenanceFees { get; }
 
     // IPTV Subscribers (مشتركي التلفزيون عبر الإنترنت)
     IRepository<IptvSubscriber, long> IptvSubscribers { get; }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sadara.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Sadara.Infrastructure.Data;
 namespace Sadara.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(SadaraDbContext))]
-    partial class SadaraDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260429012936_AddMaintenanceFeeToSubscriptionLog")]
+    partial class AddMaintenanceFeeToSubscriptionLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

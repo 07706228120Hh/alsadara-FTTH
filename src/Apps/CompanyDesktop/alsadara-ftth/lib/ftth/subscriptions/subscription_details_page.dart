@@ -18,6 +18,7 @@ import '../../services/vps_auth_service.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/dual_auth_service.dart';
 import '../../services/task_api_service.dart';
+import '../../services/accounting_service.dart';
 import '../../whatsapp/services/whatsapp_system_settings_service.dart';
 import '../../whatsapp/services/whatsapp_server_service.dart';
 import '../../whatsapp/services/whatsapp_message_log_service.dart';
@@ -379,6 +380,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   String? trialExpiredAt; // لحفظ تاريخ انتهاء الاشتراك التجريبي
   String? customerAddress; // عنوان المشترك (إن وُجد)
   double manualDiscount = 0.0; // خصم يدوي اختياري يطبّق على الإجمالي
+  double maintenanceFee = 0.0; // أجور صيانة الزون (تُضاف تلقائياً)
   final TextEditingController _manualDiscountController = TextEditingController();
   String subscriptionNotes = ''; // ملاحظات الاشتراك
   bool isNotesEnabled = true; // حالة زر تشغيل/إيقاف الملاحظات (افتراضي: مفعل)
@@ -1454,6 +1456,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             // تحميل عنوان المشترك أولاً ثم جلب الأرصدة ثم الحساب
             await _loadCustomerAddress();
             await _loadWalletsThenPrice();
+            await _checkZoneMaintenanceFee();
           } else {
             throw Exception('لم يتم العثور على اشتراكات لهذا المستخدم');
           }
@@ -2535,7 +2538,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           final totalVal = _asDouble(priceDetails!['totalPrice']);
           final discountVal = _asDouble(priceDetails!['discount'] ?? 0);
           final effectiveTotal = systemDiscountEnabled ? totalVal : (totalVal + discountVal);
-          final finalTotal = (effectiveTotal - manualDiscount).clamp(0, double.infinity);
+          final finalTotal = (effectiveTotal - manualDiscount + maintenanceFee).clamp(0, double.infinity);
           price = finalTotal.round().toString();
         }
         // تاريخ الانتهاء الحقيقي من API بعد التفعيل
@@ -5139,6 +5142,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             ? _asDouble(priceDetails!['discount'])
             : null,
         systemDiscountEnabled: systemDiscountEnabled,
+        // أجور الصيانة
+        maintenanceFee: maintenanceFee > 0 ? maintenanceFee : null,
       );
 
       if (logId != null) {
@@ -7442,12 +7447,17 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     Builder(builder: (ctx) {
                       final buttons = <Widget>[];
 
+                      // التحقق من اختيار فني/وكيل عند الحاجة
+                      final needsTechnician = selectedPaymentMethod == 'فني' && _selectedLinkedTechnician == null;
+                      final needsAgent = selectedPaymentMethod == 'وكيل' && _selectedLinkedAgent == null;
+                      final missingSelection = needsTechnician || needsAgent;
+
                       // عرض الأزرار فقط إذا كان لديه صلاحية إنشاء اشتراكات
                       if (_canCreateOrRenew) {
                         // زر التفعيل التلقائي (تجديد/تغيير/شراء الاشتراك)
                         buttons.add(
                           ElevatedButton.icon(
-                            onPressed: _isActivating ? null : executeRenewalOrPurchase,
+                            onPressed: _isActivating || missingSelection ? null : executeRenewalOrPurchase,
                             icon: _isActivating
                                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                 : Icon(
@@ -7459,14 +7469,16 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                             label: Text(
                               _isActivating
                                   ? "جاري التفعيل..."
-                                  : (isNewSubscription
-                                      ? "شراء الاشتراك"
-                                      : "تفعيل"),
+                                  : missingSelection
+                                      ? (needsTechnician ? "اختر الفني أولاً" : "اختر الوكيل أولاً")
+                                      : (isNewSubscription
+                                          ? "شراء الاشتراك"
+                                          : "تفعيل"),
                               style: TextStyle(
                                   fontSize: isMobile ? 13 : 15, fontWeight: FontWeight.w700),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _isActivating
+                              backgroundColor: _isActivating || missingSelection
                                   ? Colors.grey.shade500
                                   : (isNewSubscription
                                       ? Colors.green.shade600
@@ -7485,7 +7497,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         // زر التفعيل العادي - يظهر فقط لمن لديه صلاحية Can Manual Activate
                         if (_canManualActivate) buttons.add(
                           ElevatedButton.icon(
-                            onPressed: _isActivating ? null : () => _showManualActivationDialog(),
+                            onPressed: _isActivating || missingSelection ? null : () => _showManualActivationDialog(),
                             icon: const Icon(Icons.touch_app, size: 20),
                             label: Text(
                               "تفعيل عادي",
@@ -7799,7 +7811,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         ? originalTotal
         : (originalTotal + discountVal); // استرجاع الخصم عند الإيقاف
     final double finalTotal =
-        (effectiveTotal - manualDiscount).clamp(0, double.infinity);
+        (effectiveTotal - manualDiscount + maintenanceFee).clamp(0, double.infinity);
 
     // على الشاشات الضيقة (موبايل): تخطيط عمودي مبسط ونظيف
     if (MediaQuery.of(context).size.width < 600) {
@@ -8218,6 +8230,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                               FittedBox(fit: BoxFit.scaleDown, child: Text("${_formatNumber(finalTotal.round())} $currency", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.green.shade800), textAlign: TextAlign.center)),
                               if (manualDiscount > 0)
                                 Text("خصم: -${_formatNumber(manualDiscount.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.green.shade600, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                              if (maintenanceFee > 0)
+                                Text("صيانة: +${_formatNumber(maintenanceFee.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
                             ],
                           ),
                         ),
@@ -8520,13 +8534,39 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   }
 
   // إجمالي نهائي بعد الخصم اليدوي
+  /// فحص أجور صيانة الزون — يُستدعى بعد تحميل بيانات المشترك
+  Future<void> _checkZoneMaintenanceFee() async {
+    if (subscriptionInfo == null) return;
+    final zoneName = subscriptionInfo!.zoneDisplayValue;
+    if (zoneName.isEmpty) return;
+    try {
+      final companyId = VpsAuthService.instance.currentCompanyId;
+      final result = await AccountingService.instance.checkZoneMaintenanceFee(
+        zoneName,
+        companyId: companyId,
+      );
+      debugPrint('🔧 فحص صيانة الزون "$zoneName": $result');
+      // الـ API يرجع: {success, data: {success, hasMaintenanceFee, amount}}
+      // أو مباشرة: {success, hasMaintenanceFee, amount} حسب بنية _toMap
+      final data = result['data'] ?? result;
+      final hasFee = data['hasMaintenanceFee'] == true;
+      final amount = ((data['amount'] ?? 0) as num).toDouble();
+      debugPrint('🔧 صيانة: hasFee=$hasFee, amount=$amount');
+      if (hasFee && amount > 0 && mounted) {
+        setState(() => maintenanceFee = amount);
+      }
+    } catch (e) {
+      debugPrint('🔧 خطأ فحص صيانة: $e');
+    }
+  }
+
   double _getFinalTotal() {
     if (priceDetails == null) return 0.0;
     final orig = _asDouble(priceDetails!['totalPrice']);
     final discount = _asDouble(priceDetails!['discount']);
     // إذا كان خصم النظام متوقف نعيد الخصم إلى الإجمالي
     final adjusted = systemDiscountEnabled ? orig : (orig + discount);
-    final finalVal = (adjusted - manualDiscount);
+    final finalVal = (adjusted - manualDiscount + maintenanceFee);
     return finalVal.isFinite ? (finalVal < 0 ? 0.0 : finalVal) : 0.0;
   }
 

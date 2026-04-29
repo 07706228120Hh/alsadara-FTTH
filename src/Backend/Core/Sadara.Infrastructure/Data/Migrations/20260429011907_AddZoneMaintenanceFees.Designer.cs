@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sadara.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Sadara.Infrastructure.Data;
 namespace Sadara.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(SadaraDbContext))]
-    partial class SadaraDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260429011907_AddZoneMaintenanceFees")]
+    partial class AddZoneMaintenanceFees
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -6010,9 +6013,6 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.Property<Guid?>("LinkedTechnicianId")
                         .HasColumnType("uuid");
-
-                    b.Property<decimal?>("MaintenanceFee")
-                        .HasColumnType("numeric");
 
                     b.Property<DateTime?>("NextRenewalDate")
                         .HasColumnType("timestamp with time zone");

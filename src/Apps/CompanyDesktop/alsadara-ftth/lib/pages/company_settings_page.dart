@@ -16,7 +16,6 @@ import '../services/departments_data_service.dart';
 import '../services/centers_data_service.dart';
 import '../services/company_settings_service.dart';
 import '../services/custom_auth_service.dart';
-import '../services/auto_renewal_reminder_service.dart';
 import '../services/whatsapp_business_service.dart';
 import '../services/api/api_client.dart';
 import 'reminder_reports_page.dart';
@@ -2139,25 +2138,27 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
 
     if (selected == null || selected.isEmpty) return;
 
-    _showSnack('جاري الإرسال...');
-
-    int totalSent = 0;
-    int totalFailed = 0;
+    _showSnack('جاري تشغيل التذكير عبر n8n...');
 
     for (final batch in selected) {
       final days = batch['days'] as int? ?? 0;
+      final label = days == 0 ? 'المنتهي اليوم' : days == 1 ? 'المنتهي غداً' : 'خلال $days أيام';
       try {
-        final result = await AutoRenewalReminderService.instance.sendManually(days);
-        totalSent += (result['sent'] as int? ?? 0);
-        totalFailed += (result['failed'] as int? ?? 0);
+        final result = await ApiClient.instance.post(
+          '/reminders/send-now',
+          {'days': days, 'triggeredBy': 'manual'},
+          (data) => data,
+          useInternalKey: true,
+        );
+        if (mounted) {
+          _showSnack(result.isSuccess
+              ? 'تم تشغيل "$label" عبر n8n بنجاح ✓'
+              : 'فشل تشغيل "$label"');
+        }
       } catch (e) {
-        debugPrint('❌ خطأ في إرسال وجبة $days يوم: $e');
-        totalFailed++;
+        debugPrint('❌ خطأ في تشغيل وجبة $days: $e');
+        if (mounted) _showSnack('فشل تشغيل "$label"');
       }
-    }
-
-    if (mounted) {
-      _showSnack('تم الإرسال — نجح: $totalSent | فشل: $totalFailed');
     }
   }
 

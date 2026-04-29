@@ -89,6 +89,7 @@ public class SadaraDbContext : DbContext
     public DbSet<ISPSubscriber> ISPSubscribers => Set<ISPSubscriber>();
     public DbSet<IptvSubscriber> IptvSubscribers => Set<IptvSubscriber>();
     public DbSet<ZoneStatistic> ZoneStatistics => Set<ZoneStatistic>();
+    public DbSet<ZoneMaintenanceFee> ZoneMaintenanceFees => Set<ZoneMaintenanceFee>();
 
     // ==================== Accounting System (نظام المحاسبة) ====================
     public DbSet<Account> Accounts => Set<Account>();

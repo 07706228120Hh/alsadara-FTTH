@@ -8202,6 +8202,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   // ── قوائم الموظفين للتعديل ──
   List<String> _staffTechnicians = [];
   List<String> _staffAgents = [];
+  Map<String, String> _staffTechIdMap = {}; // name → id
+  Map<String, String> _staffAgentIdMap = {}; // name → id
   bool _staffLoaded = false;
 
   // ── Sort ──
@@ -8494,6 +8496,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               ? _extractTechName(item) : '',
           'الوكيل':          (item['CollectionType']?.toString() == 'agent')
               ? _extractTechName(item) : '',
+          'linkedTechnicianId': item['LinkedTechnicianId']?.toString() ?? '',
+          'linkedAgentId':      item['LinkedAgentId']?.toString() ?? '',
         };
       }).toList();
 
@@ -8790,22 +8794,42 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         final data = result['data'];
         final techs = <String>[];
         final agents = <String>[];
+        final techIdMap = <String, String>{};
+        final agentIdMap = <String, String>{};
         for (final t in (data['technicians'] as List? ?? [])) {
           final name = (t['Name'] ?? t['name'])?.toString() ?? '';
-          if (name.isNotEmpty) techs.add(name);
+          final id = (t['Id'] ?? t['id'])?.toString() ?? '';
+          if (name.isNotEmpty) {
+            techs.add(name);
+            if (id.isNotEmpty) techIdMap[name] = id;
+          }
         }
         for (final l in (data['leaders'] as List? ?? [])) {
           final name = (l['Name'] ?? l['name'])?.toString() ?? '';
-          if (name.isNotEmpty && !techs.contains(name)) techs.add(name);
+          final id = (l['Id'] ?? l['id'])?.toString() ?? '';
+          if (name.isNotEmpty && !techs.contains(name)) {
+            techs.add(name);
+            if (id.isNotEmpty) techIdMap[name] = id;
+          }
         }
-        // الوكلاء: استخراج أسماء فريدة من العمود "الوكيل" في البيانات المحمّلة
+        // الوكلاء: است��راج أسماء فريدة من العمود "ا��وكيل" في البيانات المحمّلة
         for (final r in _records) {
           final agent = r['الوكيل']?.toString().trim() ?? '';
-          if (agent.isNotEmpty && agent != '-' && !agents.contains(agent)) agents.add(agent);
+          final agentId = r['linkedAgentId']?.toString() ?? '';
+          if (agent.isNotEmpty && agent != '-' && !agents.contains(agent)) {
+            agents.add(agent);
+            if (agentId.isNotEmpty) agentIdMap[agent] = agentId;
+          }
         }
         techs.sort();
         agents.sort();
-        if (mounted) setState(() { _staffTechnicians = techs; _staffAgents = agents; _staffLoaded = true; });
+        if (mounted) setState(() {
+          _staffTechnicians = techs;
+          _staffAgents = agents;
+          _staffTechIdMap = techIdMap;
+          _staffAgentIdMap = agentIdMap;
+          _staffLoaded = true;
+        });
       }
     } catch (_) {}
   }
@@ -8835,14 +8859,25 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     if (id == null || id.isEmpty) return;
     setState(() => _isSaving = true);
     try {
-      final body = jsonEncode({
+      final techName = _editTechnicianCtrl.text.trim();
+      final agentName = _editAgentCtrl.text.trim();
+      final bodyMap = <String, dynamic>{
         'ActivatedBy': _editOperatorCtrl.text.trim(),
         'PlanPrice': double.tryParse(_editPriceCtrl.text.trim()) ?? 0,
         'CollectionType': _editCollType,
-        'TechnicianName': _editTechnicianCtrl.text.trim(),
-        'AgentName': _editAgentCtrl.text.trim(),
+        'TechnicianName': techName,
+        'AgentName': agentName,
         'PaymentMethod': _editPaymentMethod,
-      });
+      };
+      // إرسال LinkedTechnicianId إذا تغيّر الفني
+      if (techName.isNotEmpty && _staffTechIdMap.containsKey(techName)) {
+        bodyMap['LinkedTechnicianId'] = _staffTechIdMap[techName];
+      }
+      // إرسال LinkedAgentId إذا تغيّر الوكيل
+      if (agentName.isNotEmpty && _staffAgentIdMap.containsKey(agentName)) {
+        bodyMap['LinkedAgentId'] = _staffAgentIdMap[agentName];
+      }
+      final body = jsonEncode(bodyMap);
       final res = await http.put(
         Uri.parse('$_baseUrl/$id'),
         headers: {'X-Api-Key': _apiKey, 'Content-Type': 'application/json'},

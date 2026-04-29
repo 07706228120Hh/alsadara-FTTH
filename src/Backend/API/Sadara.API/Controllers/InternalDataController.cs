@@ -1841,13 +1841,244 @@ public class InternalDataController : ControllerBase
         if (request.TryGetProperty("PaymentMethod", out var ppm) && ppm.ValueKind == JsonValueKind.String)
             log.PaymentMethod = ppm.GetString();
 
+        // ═══ تحديث الفني/الوكيل المرتبط + تعديل القيد المحاسبي ═══
+        Guid? newLinkedTechnicianId = null;
+        Guid? newLinkedAgentId = null;
+        bool technicianChanged = false;
+        bool agentChanged = false;
+
+        if (request.TryGetProperty("LinkedTechnicianId", out var pLt) && pLt.ValueKind == JsonValueKind.String && Guid.TryParse(pLt.GetString(), out var ltGuid))
+        {
+            if (log.LinkedTechnicianId != ltGuid)
+            {
+                newLinkedTechnicianId = ltGuid;
+                technicianChanged = true;
+            }
+        }
+        if (request.TryGetProperty("LinkedAgentId", out var pLa) && pLa.ValueKind == JsonValueKind.String && Guid.TryParse(pLa.GetString(), out var laGuid))
+        {
+            if (log.LinkedAgentId != laGuid)
+            {
+                newLinkedAgentId = laGuid;
+                agentChanged = true;
+            }
+        }
+
+        // تعديل القيد المحاسبي عند تغيير الفني أو الوكيل
+        if ((technicianChanged || agentChanged) && log.JournalEntryId.HasValue && log.CompanyId.HasValue)
+        {
+            try
+            {
+                await UpdateJournalEntryForReassignment(log, newLinkedTechnicianId, newLinkedAgentId, technicianChanged, agentChanged);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "فشل تعديل القيد المحاسبي عند تغيير الفني/الوكيل للسجل {LogId}", id);
+                return StatusCode(500, new { success = false, message = "فشل تعديل القيد المحاسبي", error = ex.Message });
+            }
+        }
+
+        // تطبيق التغيير على السجل
+        if (technicianChanged)
+        {
+            log.LinkedTechnicianId = newLinkedTechnicianId;
+            // تحديث اسم الفني
+            var newTech = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == newLinkedTechnicianId!.Value);
+            if (newTech != null) log.TechnicianName = newTech.FullName;
+        }
+        if (agentChanged)
+        {
+            log.LinkedAgentId = newLinkedAgentId;
+            // تحديث اسم الوكيل
+            var newAgent = await _unitOfWork.Agents.FirstOrDefaultAsync(a => a.Id == newLinkedAgentId!.Value);
+            if (newAgent != null) log.TechnicianName = newAgent.Name;
+        }
+
         log.LastUpdateDate = DateTime.UtcNow;
         log.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.SubscriptionLogs.Update(log);
         await _unitOfWork.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "تم تحديث السجل بنجاح" });
+        return Ok(new { success = true, message = "تم تحديث السجل بنجاح", journalUpdated = technicianChanged || agentChanged });
+    }
+
+    /// <summary>
+    /// تعديل القيد المحاسبي عند إعادة تعيين الفني أو الوكيل
+    /// يُحدّث سطر المدين في القيد من الحساب الفرعي القديم إلى الجديد + تحديث الأرصدة
+    /// </summary>
+    private async Task UpdateJournalEntryForReassignment(
+        Sadara.Domain.Entities.SubscriptionLog log,
+        Guid? newTechnicianId, Guid? newAgentId,
+        bool technicianChanged, bool agentChanged)
+    {
+        var companyId = log.CompanyId!.Value;
+        var amount = log.PlanPrice ?? 0;
+        if (amount <= 0) return;
+
+        // جلب القيد المحاسبي مع أسطره
+        var entry = await _unitOfWork.JournalEntries.AsQueryable()
+            .Include(j => j.Lines)
+            .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId!.Value);
+
+        if (entry == null || entry.Status != JournalEntryStatus.Posted) return;
+
+        // تحديد الحساب القديم (سطر المدين — الأصول)
+        var debitLine = entry.Lines.FirstOrDefault(l => l.DebitAmount > 0);
+        if (debitLine == null) return;
+
+        var oldAccountId = debitLine.AccountId;
+        var oldAccount = await _unitOfWork.Accounts.GetByIdAsync(oldAccountId);
+
+        // ═══ تحديد الحساب الجديد ═══
+        Account newAccount;
+        string newDescription;
+        var opType = log.OperationType?.ToLower() == "purchase" ? "شراء" : "تجديد";
+        var planName = log.PlanName ?? "اشتراك";
+        var customerName = log.CustomerName ?? "عميل";
+
+        if (technicianChanged && newTechnicianId.HasValue)
+        {
+            var newTech = await _unitOfWork.Users.GetByIdAsync(newTechnicianId.Value);
+            if (newTech == null) throw new Exception("الفني الجديد غير موجود");
+
+            newAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                _unitOfWork, "1140", newTech.Id, newTech.FullName, companyId);
+            await _unitOfWork.SaveChangesAsync();
+            newDescription = $"{opType} {planName} - {customerName} - على فني {newTech.FullName} (معدّل)";
+
+            // تحديث رصيد الفني القديم (إزالة الشحنة)
+            if (log.LinkedTechnicianId.HasValue)
+            {
+                var oldTech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                if (oldTech != null)
+                {
+                    oldTech.TechTotalCharges -= amount;
+                    oldTech.TechNetBalance = oldTech.TechTotalPayments - oldTech.TechTotalCharges;
+                    _unitOfWork.Users.Update(oldTech);
+
+                    // حذف TechnicianTransaction القديمة
+                    var oldTechTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                        .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString()
+                            && t.TechnicianId == oldTech.Id && !t.IsDeleted);
+                    if (oldTechTx != null)
+                    {
+                        oldTechTx.IsDeleted = true;
+                        _unitOfWork.TechnicianTransactions.Update(oldTechTx);
+                    }
+                }
+            }
+
+            // تحديث رصيد الفني الجديد (إضافة الشحنة)
+            newTech.TechTotalCharges += amount;
+            newTech.TechNetBalance = newTech.TechTotalPayments - newTech.TechTotalCharges;
+            _unitOfWork.Users.Update(newTech);
+
+            // إنشاء TechnicianTransaction جديدة
+            var newTechTx = new TechnicianTransaction
+            {
+                TechnicianId = newTech.Id,
+                Type = TechnicianTransactionType.Charge,
+                Category = TechnicianTransactionCategory.Subscription,
+                Amount = amount,
+                BalanceAfter = newTech.TechNetBalance,
+                Description = $"{opType} {planName} - {customerName} (محوّل)",
+                ReferenceNumber = log.Id.ToString(),
+                CreatedById = log.UserId ?? Guid.Empty,
+                CompanyId = companyId,
+                JournalEntryId = entry.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.TechnicianTransactions.AddAsync(newTechTx);
+        }
+        else if (agentChanged && newAgentId.HasValue)
+        {
+            var newAgent = await _unitOfWork.Agents.GetByIdAsync(newAgentId.Value);
+            if (newAgent == null) throw new Exception("الوكيل الجديد غير موجود");
+
+            newAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                _unitOfWork, "1150", newAgent.Id, newAgent.Name, companyId);
+            await _unitOfWork.SaveChangesAsync();
+            newDescription = $"{opType} {planName} - {customerName} - على وكيل {newAgent.Name} (معدّل)";
+
+            // تحديث رصيد الوكيل القديم (إزالة الشحنة)
+            if (log.LinkedAgentId.HasValue)
+            {
+                var oldAgent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+                if (oldAgent != null)
+                {
+                    oldAgent.TotalCharges -= amount;
+                    oldAgent.NetBalance = oldAgent.TotalPayments - oldAgent.TotalCharges;
+                    _unitOfWork.Agents.Update(oldAgent);
+
+                    // حذف AgentTransaction القديمة
+                    var oldAgentTx = await _unitOfWork.AgentTransactions.AsQueryable()
+                        .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString()
+                            && t.AgentId == oldAgent.Id && !t.IsDeleted);
+                    if (oldAgentTx != null)
+                    {
+                        oldAgentTx.IsDeleted = true;
+                        _unitOfWork.AgentTransactions.Update(oldAgentTx);
+                    }
+                }
+            }
+
+            // تحديث رصيد الوكيل الجديد (إضافة الشحنة)
+            newAgent.TotalCharges += amount;
+            newAgent.NetBalance = newAgent.TotalPayments - newAgent.TotalCharges;
+            _unitOfWork.Agents.Update(newAgent);
+
+            // إنشاء AgentTransaction جديدة
+            var agentTxCat = log.OperationType?.ToLower() == "purchase"
+                ? TransactionCategory.NewSubscription
+                : TransactionCategory.RenewalSubscription;
+            var newAgentTx = new AgentTransaction
+            {
+                AgentId = newAgent.Id,
+                Type = TransactionType.Charge,
+                Category = agentTxCat,
+                Amount = amount,
+                BalanceAfter = newAgent.NetBalance,
+                Description = $"{opType} {planName} - {customerName} (محوّل)",
+                ReferenceNumber = log.Id.ToString(),
+                CreatedById = log.UserId ?? Guid.Empty,
+                JournalEntryId = entry.Id,
+                Notes = "تحويل من فني/وكيل آخر"
+            };
+            await _unitOfWork.AgentTransactions.AddAsync(newAgentTx);
+        }
+        else
+        {
+            return; // لا تغيير فعلي
+        }
+
+        // ═══ تحديث أرصدة الحسابات ═══
+        // عكس الرصيد من الحساب القديم
+        if (oldAccount != null)
+        {
+            if (oldAccount.AccountType == AccountType.Assets || oldAccount.AccountType == AccountType.Expenses)
+                oldAccount.CurrentBalance -= amount; // عكس المدين
+            else
+                oldAccount.CurrentBalance += amount;
+            _unitOfWork.Accounts.Update(oldAccount);
+        }
+
+        // إضافة الرصيد للحساب الجديد
+        if (newAccount.AccountType == AccountType.Assets || newAccount.AccountType == AccountType.Expenses)
+            newAccount.CurrentBalance += amount; // مدين جديد
+        else
+            newAccount.CurrentBalance -= amount;
+        _unitOfWork.Accounts.Update(newAccount);
+
+        // ═══ تعديل سطر القيد ═══
+        debitLine.AccountId = newAccount.Id;
+        debitLine.Description = $"{newAccount.Name} - {opType} {planName}";
+
+        // تعديل وصف القيد
+        entry.Description = newDescription;
+
+        _unitOfWork.JournalEntries.Update(entry);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>
@@ -1961,6 +2192,10 @@ public class InternalDataController : ControllerBase
                 log.LinkedAgentId = laGuid;
             if (request.TryGetProperty("linkedTechnicianId", out var pLt) && pLt.ValueKind == JsonValueKind.String && Guid.TryParse(pLt.GetString(), out var ltGuid))
                 log.LinkedTechnicianId = ltGuid;
+
+            // أجور الصيانة
+            if (request.TryGetProperty("maintenanceFee", out var pMf) && pMf.ValueKind == JsonValueKind.Number)
+                log.MaintenanceFee = pMf.GetDecimal();
 
             // حفظ اسم الفني من الطلب — تجاهل القيم الخاطئة مثل "فني" أو "وكيل"
             if (request.TryGetProperty("technicianName", out var pTn) && pTn.ValueKind == JsonValueKind.String)
@@ -2195,6 +2430,100 @@ public class InternalDataController : ControllerBase
     }
 
     /// <summary>
+    /// تقرير ربحية التفعيلات — يحسب التكلفة والربح لكل عملية
+    /// </summary>
+    [HttpGet("subscriptionlogs/profitability")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetProfitabilityReport(
+        [FromQuery] string? companyId,
+        [FromQuery] DateTime? fromDate,
+        [FromQuery] DateTime? toDate,
+        [FromQuery] string? operatorName,
+        [FromQuery] string? collectionType)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => !l.IsDeleted && l.PlanPrice.HasValue && l.PlanPrice > 0);
+
+        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
+            query = query.Where(l => l.CompanyId == cId);
+        if (fromDate.HasValue)
+            query = query.Where(l => l.ActivationDate >= DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc));
+        if (toDate.HasValue)
+            query = query.Where(l => l.ActivationDate <= DateTime.SpecifyKind(toDate.Value.AddDays(1), DateTimeKind.Utc));
+        if (!string.IsNullOrEmpty(operatorName))
+            query = query.Where(l => l.ActivatedBy == operatorName);
+        if (!string.IsNullOrEmpty(collectionType))
+            query = query.Where(l => l.CollectionType == collectionType);
+
+        var logs = await query
+            .OrderByDescending(l => l.ActivationDate)
+            .Select(l => new
+            {
+                l.Id,
+                l.CustomerName,
+                l.PlanName,
+                l.PlanPrice,
+                l.OperationType,
+                l.ActivatedBy,
+                l.ActivationDate,
+                l.CollectionType,
+                l.TechnicianName,
+                l.ZoneName,
+                l.MaintenanceFee,
+                l.WalletBalanceBefore,
+                l.WalletBalanceAfter,
+                WalletCost = (l.WalletBalanceBefore ?? 0) - (l.WalletBalanceAfter ?? 0),
+            })
+            .ToListAsync();
+
+        // حساب الربحية لكل سجل
+        var details = logs.Select(l =>
+        {
+            var walletCost = l.WalletCost > 0 ? l.WalletCost : 0;
+            var maintenance = l.MaintenanceFee ?? 0;
+            var subscriptionPrice = (l.PlanPrice ?? 0) - maintenance;
+            var discountProfit = subscriptionPrice - walletCost;
+            var totalProfit = discountProfit + maintenance;
+
+            return new
+            {
+                l.Id,
+                l.CustomerName,
+                l.PlanName,
+                l.ActivationDate,
+                l.OperationType,
+                l.ActivatedBy,
+                l.CollectionType,
+                l.TechnicianName,
+                l.ZoneName,
+                PaidBySubscriber = l.PlanPrice ?? 0,        // ما دفعه المشترك
+                WalletCost = walletCost,                     // تكلفة المحفظة
+                SubscriptionPrice = subscriptionPrice,       // سعر الاشتراك (بدون صيانة)
+                MaintenanceFee = maintenance,                // أجور الصيانة
+                DiscountProfit = discountProfit,              // ربح الخصم المخفي
+                TotalProfit = totalProfit,                    // إجمالي الربح
+            };
+        }).ToList();
+
+        // ملخص
+        var summary = new
+        {
+            TotalTransactions = details.Count,
+            TotalPaidBySubscribers = details.Sum(d => d.PaidBySubscriber),
+            TotalWalletCost = details.Sum(d => d.WalletCost),
+            TotalSubscriptionRevenue = details.Sum(d => d.SubscriptionPrice),
+            TotalMaintenanceRevenue = details.Sum(d => d.MaintenanceFee),
+            TotalDiscountProfit = details.Sum(d => d.DiscountProfit),
+            TotalProfit = details.Sum(d => d.TotalProfit),
+        };
+
+        return Ok(new { success = true, summary, data = details });
+    }
+
+    /// <summary>
     /// إنشاء قيد محاسبي لسجل FTTH — يُستدعى تلقائياً بعد حفظ السجل
     /// </summary>
     private async Task<Guid?> CreateAccountingEntryForLog(Sadara.Domain.Entities.SubscriptionLog log)
@@ -2313,11 +2642,45 @@ public class InternalDataController : ControllerBase
                 break;
         }
 
+        // ═══ حساب التكلفة والربح ═══
+        var maintenanceFee = log.MaintenanceFee ?? 0;
+        var subscriptionPrice = amount - maintenanceFee; // سعر الاشتراك بدون الصيانة
+        var walletCost = (log.WalletBalanceBefore ?? 0) - (log.WalletBalanceAfter ?? 0); // ما خُصم من محفظة FTTH
+        if (walletCost < 0) walletCost = 0;
+        var discountProfit = subscriptionPrice - walletCost; // ربح الخصم المخفي
+
+        // ═══ إضافة تفاصيل الربحية في وصف القيد ═══
+        var breakdown = new System.Text.StringBuilder();
+        breakdown.Append(description);
+        breakdown.Append($" | المشترك دفع: {amount:N0}");
+        if (walletCost > 0) breakdown.Append($" | تكلفة المحفظة: {walletCost:N0}");
+        if (discountProfit > 0) breakdown.Append($" | ربح الخصم: {discountProfit:N0}");
+        if (maintenanceFee > 0) breakdown.Append($" | صيانة: {maintenanceFee:N0}");
+        description = breakdown.ToString();
+
+        // ═══ بناء أسطر القيد ═══
         var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
         {
+            // مدين: الجهة المستلمة بالمبلغ الكامل (ما يدفعه المشترك)
             (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
-            (revenueAccount.Id, 0, amount, $"إيراد {opType} - {customerName}")
+            // دائن: إيراد الاشتراك
+            (revenueAccount.Id, 0, subscriptionPrice, $"إيراد {opType} - {customerName}")
         };
+
+        // إضافة سطر إيراد الصيانة إذا وُجد
+        if (maintenanceFee > 0)
+        {
+            var maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4300", companyId);
+            if (maintenanceRevenueAccount != null)
+            {
+                lines.Add((maintenanceRevenueAccount.Id, 0, maintenanceFee, $"إيراد صيانة - {customerName}"));
+            }
+            else
+            {
+                // إذا لم يوجد حساب 4300، ندمج الصيانة مع إيراد الاشتراك
+                lines[1] = (revenueAccount.Id, 0, amount, $"إيراد {opType} + صيانة - {customerName}");
+            }
+        }
 
         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
             _unitOfWork, companyId, userId, description,

@@ -83,6 +83,9 @@ public class SubscriptionLog : BaseEntity<long>
     /// <summary>القيد المحاسبي المُنشأ تلقائياً</summary>
     public Guid? JournalEntryId { get; set; }
     
+    /// <summary>أجور الصيانة المضافة (إن وُجدت)</summary>
+    public decimal? MaintenanceFee { get; set; }
+
     /// <summary>هل تمت المطابقة مع FTTH الخارجي</summary>
     public bool IsReconciled { get; set; } = false;
     

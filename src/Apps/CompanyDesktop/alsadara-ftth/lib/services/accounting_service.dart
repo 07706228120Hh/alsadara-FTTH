@@ -1052,4 +1052,37 @@ class AccountingService {
     final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }
+
+  // ═══════════════════════════════════════════
+  // أجور صيانة الزونات - Zone Maintenance Fees
+  // ═══════════════════════════════════════════
+
+  Future<Map<String, dynamic>> getZoneMaintenanceFees({String? companyId}) async {
+    String query = '/zone-maintenance-fees';
+    if (companyId != null) query += '?companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> checkZoneMaintenanceFee(String zoneName, {String? companyId}) async {
+    String query = '/zone-maintenance-fees/check?zoneName=${Uri.encodeComponent(zoneName)}';
+    if (companyId != null) query += '&companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> createZoneMaintenanceFee(Map<String, dynamic> body) async {
+    final response = await _client.post('/zone-maintenance-fees', body, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> updateZoneMaintenanceFee(String id, Map<String, dynamic> body) async {
+    final response = await _client.put('/zone-maintenance-fees/$id', body, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> deleteZoneMaintenanceFee(String id) async {
+    final response = await _client.delete('/zone-maintenance-fees/$id', (json) => json);
+    return _toMap(response);
+  }
 }

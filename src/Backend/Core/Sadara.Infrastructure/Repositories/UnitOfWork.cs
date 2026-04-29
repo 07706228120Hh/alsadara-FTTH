@@ -84,6 +84,7 @@ public class UnitOfWork : IUnitOfWork
     // ISP Data (بيانات مشتركي الإنترنت)
     private IRepository<ISPSubscriber, long>? _ispSubscribers;
     private IRepository<ZoneStatistic, int>? _zoneStatistics;
+    private IRepository<ZoneMaintenanceFee, Guid>? _zoneMaintenanceFees;
 
     // IPTV Subscribers (مشتركي التلفزيون عبر الإنترنت)
     private IRepository<IptvSubscriber, long>? _iptvSubscribers;
@@ -307,6 +308,9 @@ public class UnitOfWork : IUnitOfWork
 
     public IRepository<ZoneStatistic, int> ZoneStatistics =>
         _zoneStatistics ??= new Repository<ZoneStatistic, int>(_context);
+
+    public IRepository<ZoneMaintenanceFee, Guid> ZoneMaintenanceFees =>
+        _zoneMaintenanceFees ??= new Repository<ZoneMaintenanceFee, Guid>(_context);
 
     // IPTV Subscribers (مشتركي التلفزيون عبر الإنترنت)
     public IRepository<IptvSubscriber, long> IptvSubscribers =>

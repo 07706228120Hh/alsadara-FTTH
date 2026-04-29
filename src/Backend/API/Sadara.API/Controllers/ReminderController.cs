@@ -217,29 +217,30 @@ public class ReminderController : ControllerBase
         try
         {
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("X-N8N-API-KEY", N8nApiKey);
 
-            // تشغيل workflow يدوياً عبر n8n API
-            var response = await client.PostAsync(
-                $"{N8nBaseUrl}/api/v1/executions",
-                new StringContent(
-                    System.Text.Json.JsonSerializer.Serialize(new { workflowId = N8nWorkflowId }),
-                    System.Text.Encoding.UTF8,
-                    "application/json"
-                )
+            // تشغيل الـ workflow عبر Webhook مباشرة
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(new { days = request.Days }),
+                System.Text.Encoding.UTF8,
+                "application/json"
             );
+            var response = await client.PostAsync(
+                $"{N8nBaseUrl}/webhook/reminder-trigger", content);
+
+            var body = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("Manual reminder triggered via webhook: days={Days}, response={Body}", request.Days, body);
 
             return Ok(new
             {
                 success = true,
-                message = "تم تشغيل التذكير يدوياً",
+                message = $"تم تشغيل التذكير يدوياً — المنتهي خلال {request.Days} يوم",
                 days = request.Days,
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error triggering manual reminder");
-            return StatusCode(500, new { success = false });
+            return StatusCode(500, new { success = false, message = ex.Message });
         }
     }
 
