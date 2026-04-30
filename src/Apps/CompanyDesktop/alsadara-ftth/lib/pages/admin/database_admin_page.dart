@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../theme/energy_dashboard_theme.dart';
 import '../super_admin/widgets/super_admin_widgets.dart';
 
@@ -34,6 +36,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   String? _error;
   String _searchQuery = '';
   int _currentPage = 1;
+
+  // Cleanup state
+  bool _showCleanupView = false;
+  Map<String, dynamic>? _cleanupStats;
+  bool _isLoadingStats = false;
+  bool _isCleaningUp = false;
+  Map<String, dynamic>? _lastCleanupReport;
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
@@ -75,6 +84,21 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         ..badCertificateCallback = (_, __, ___) => true;
       final request = await client.deleteUrl(Uri.parse('$baseUrl$path'));
       request.headers.set('X-Api-Key', apiKey);
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      return json.decode(body);
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> _apiPost(String path) async {
+    try {
+      final client = HttpClient()
+        ..badCertificateCallback = (_, __, ___) => true;
+      final request = await client.postUrl(Uri.parse('$baseUrl$path'));
+      request.headers.set('X-Api-Key', apiKey);
+      request.headers.set('Content-Type', 'application/json');
+      request.contentLength = 0;
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       return json.decode(body);
@@ -200,6 +224,326 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // Archive (Download Excel)
+  // ═══════════════════════════════════════════════════════════════
+
+  bool _isArchiving = false;
+
+  Future<void> _archiveData(String category) async {
+    final categoryLabels = {
+      'accounting': 'المحاسبة',
+      'attendance': 'الحضور والبصمات',
+      'inventory': 'المخزون',
+      'all': 'جميع العمليات',
+    };
+
+    setState(() => _isArchiving = true);
+
+    try {
+      final client = HttpClient()
+        ..badCertificateCallback = (_, __, ___) => true;
+      final request = await client.getUrl(
+          Uri.parse('$baseUrl/databaseadmin/archive/$category'));
+      request.headers.set('X-Api-Key', apiKey);
+      final response = await request.close();
+
+      if (response.statusCode == 200) {
+        // حفظ الملف
+        final bytes = await response.fold<List<int>>(
+            <int>[], (prev, chunk) => prev..addAll(chunk));
+        final dir = await getDownloadsDirectory() ??
+            await getApplicationDocumentsDirectory();
+        final timestamp = DateFormat('yyyy-MM-dd_HH-mm').format(DateTime.now());
+        final filePath =
+            '${dir.path}/Sadara_Archive_${category}_$timestamp.xlsx';
+        final file = File(filePath);
+        await file.writeAsBytes(bytes);
+
+        if (mounted) {
+          setState(() => _isArchiving = false);
+          EnergyDashboardTheme.showSnack(
+            context,
+            'تم حفظ الأرشيف: ${categoryLabels[category]}',
+            EnergyDashboardTheme.success,
+          );
+          // فتح الملف
+          await OpenFilex.open(filePath);
+        }
+      } else {
+        final body = await response.transform(utf8.decoder).join();
+        if (mounted) {
+          setState(() => _isArchiving = false);
+          final parsed = json.decode(body);
+          EnergyDashboardTheme.showSnack(
+            context,
+            parsed['message'] ?? 'فشل التصدير',
+            EnergyDashboardTheme.danger,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isArchiving = false);
+        EnergyDashboardTheme.showSnack(
+          context,
+          'خطأ في التصدير: $e',
+          EnergyDashboardTheme.danger,
+        );
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Cleanup Operations
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> _loadCleanupStats() async {
+    setState(() => _isLoadingStats = true);
+    final result = await _apiGet('/databaseadmin/cleanup-stats');
+    if (mounted) {
+      setState(() {
+        _cleanupStats = result?['success'] == true
+            ? result!['data'] as Map<String, dynamic>?
+            : null;
+        _isLoadingStats = false;
+      });
+    }
+  }
+
+  Future<void> _executeCleanup(String category) async {
+    final categoryLabels = {
+      'accounting': 'المحاسبة والعمليات المالية',
+      'attendance': 'الحضور والبصمات والإجازات',
+      'inventory': 'المخزون والمستودعات',
+      'all': 'جميع العمليات (محاسبة + حضور + مخزون)',
+    };
+
+    final confirm = await EnergyDashboardTheme.confirmDialog(
+      context,
+      title: 'تصفير ${categoryLabels[category]}',
+      message:
+          'هل أنت متأكد؟ سيتم حذف جميع السجلات وتصفير الأرصدة.\nهذا الإجراء لا يمكن التراجع عنه!',
+      confirmLabel: 'تصفير',
+      confirmColor: EnergyDashboardTheme.danger,
+    );
+
+    if (confirm != true) return;
+
+    // تأكيد مزدوج للتصفير الشامل
+    if (category == 'all') {
+      final doubleConfirm = await EnergyDashboardTheme.confirmDialog(
+        context,
+        title: 'تأكيد نهائي — تصفير شامل',
+        message:
+            'أنت على وشك حذف جميع العمليات المحاسبية والحضور والمخزون.\nهل تريد المتابعة؟',
+        confirmLabel: 'نعم، صفّر الكل',
+        confirmColor: EnergyDashboardTheme.danger,
+      );
+      if (doubleConfirm != true) return;
+    }
+
+    setState(() => _isCleaningUp = true);
+
+    final endpoint = category == 'all'
+        ? '/databaseadmin/cleanup-all'
+        : '/databaseadmin/cleanup-$category';
+
+    final result = await _apiPost(endpoint);
+
+    if (mounted) {
+      setState(() => _isCleaningUp = false);
+
+      if (result?['success'] == true) {
+        setState(() => _lastCleanupReport = result);
+        EnergyDashboardTheme.showSnack(
+          context,
+          result?['message'] ?? 'تم التصفير بنجاح',
+          EnergyDashboardTheme.success,
+        );
+        _loadCleanupStats(); // refresh stats
+        _showCleanupReport(result!);
+      } else {
+        EnergyDashboardTheme.showSnack(
+          context,
+          result?['message'] ?? 'فشل التصفير',
+          EnergyDashboardTheme.danger,
+        );
+      }
+    }
+  }
+
+  void _showCleanupReport(Map<String, dynamic> result) {
+    final report = result['report'];
+    if (report == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: EnergyDashboardTheme.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.check_circle_rounded,
+                color: EnergyDashboardTheme.success, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'تقرير التصفير',
+                style: GoogleFonts.cairo(
+                  color: EnergyDashboardTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          height: 400,
+          child: ListView(
+            children: _buildReportItems(report),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: EnergyDashboardTheme.neonGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('حسناً', style: GoogleFonts.cairo()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildReportItems(dynamic report) {
+    final items = <Widget>[];
+
+    void addSection(String title, Map<String, dynamic> data) {
+      items.add(Padding(
+        padding: const EdgeInsets.only(top: 12, bottom: 6),
+        child: Text(
+          title,
+          style: GoogleFonts.cairo(
+            color: EnergyDashboardTheme.neonBlue,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ));
+      for (final entry in data.entries) {
+        items.add(Container(
+          margin: const EdgeInsets.only(bottom: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: EnergyDashboardTheme.bgPrimary,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                entry.key,
+                style: GoogleFonts.cairo(
+                  color: EnergyDashboardTheme.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (entry.value as num) > 0
+                      ? EnergyDashboardTheme.danger.withOpacity(0.15)
+                      : EnergyDashboardTheme.bgSecondary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${entry.value}',
+                  style: GoogleFonts.cairo(
+                    color: (entry.value as num) > 0
+                        ? EnergyDashboardTheme.danger
+                        : EnergyDashboardTheme.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
+    }
+
+    if (report is Map<String, dynamic>) {
+      // Check if it's a nested report (cleanup-all)
+      if (report.containsKey('accounting') ||
+          report.containsKey('attendance') ||
+          report.containsKey('inventory')) {
+        if (report['accounting'] != null) {
+          addSection('المحاسبة',
+              Map<String, dynamic>.from(report['accounting'] as Map));
+        }
+        if (report['attendance'] != null) {
+          addSection('الحضور والبصمات',
+              Map<String, dynamic>.from(report['attendance'] as Map));
+        }
+        if (report['inventory'] != null) {
+          addSection('المخزون',
+              Map<String, dynamic>.from(report['inventory'] as Map));
+        }
+      } else {
+        // Single category report
+        for (final entry in report.entries) {
+          items.add(Container(
+            margin: const EdgeInsets.only(bottom: 3),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: EnergyDashboardTheme.bgPrimary,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  entry.key,
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: EnergyDashboardTheme.danger.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${entry.value}',
+                    style: GoogleFonts.cairo(
+                      color: EnergyDashboardTheme.danger,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ));
+        }
+      }
+    }
+    return items;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // Helpers
   // ═══════════════════════════════════════════════════════════════
 
@@ -239,22 +583,24 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           ? const Center(
               child: CircularProgressIndicator(
                   color: EnergyDashboardTheme.neonGreen))
-          : Row(
-              children: [
-                // Sidebar — Tables list
-                SizedBox(
-                  width: 260,
-                  child: _buildTablesSidebar(),
+          : _showCleanupView
+              ? _buildCleanupView()
+              : Row(
+                  children: [
+                    // Sidebar — Tables list
+                    SizedBox(
+                      width: 260,
+                      child: _buildTablesSidebar(),
+                    ),
+                    // Divider
+                    Container(
+                      width: 1,
+                      color: EnergyDashboardTheme.borderColor,
+                    ),
+                    // Main content — Data view
+                    Expanded(child: _buildDataView()),
+                  ],
                 ),
-                // Divider
-                Container(
-                  width: 1,
-                  color: EnergyDashboardTheme.borderColor,
-                ),
-                // Main content — Data view
-                Expanded(child: _buildDataView()),
-              ],
-            ),
     );
   }
 
@@ -294,6 +640,34 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 SACountBadge(
                   count: _tables.length,
                   color: EnergyDashboardTheme.neonBlue,
+                ),
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _showCleanupView = !_showCleanupView;
+                      if (_showCleanupView) _loadCleanupStats();
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: _showCleanupView
+                          ? EnergyDashboardTheme.danger.withOpacity(0.2)
+                          : EnergyDashboardTheme.bgSecondary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      _showCleanupView
+                          ? Icons.table_chart_rounded
+                          : Icons.delete_sweep_rounded,
+                      size: 16,
+                      color: _showCleanupView
+                          ? EnergyDashboardTheme.danger
+                          : EnergyDashboardTheme.textMuted,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -835,6 +1209,592 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 disabledColor: EnergyDashboardTheme.textMuted,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Cleanup View
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildCleanupView() {
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: EnergyDashboardTheme.bgCard,
+            border: Border(
+              bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: EnergyDashboardTheme.danger.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.delete_sweep_rounded,
+                    color: EnergyDashboardTheme.danger, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'تصفير العمليات',
+                      style: GoogleFonts.cairo(
+                        color: EnergyDashboardTheme.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'حذف جميع السجلات التشغيلية وتصفير الأرصدة — لا يمكن التراجع',
+                      style: GoogleFonts.cairo(
+                        color: EnergyDashboardTheme.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: _loadCleanupStats,
+                icon: Icon(Icons.refresh_rounded,
+                    color: EnergyDashboardTheme.neonGreen, size: 20),
+                tooltip: 'تحديث الإحصائيات',
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => setState(() => _showCleanupView = false),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: EnergyDashboardTheme.bgSecondary,
+                    borderRadius: BorderRadius.circular(8),
+                    border:
+                        Border.all(color: EnergyDashboardTheme.borderColor),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.arrow_back_rounded,
+                          size: 14, color: EnergyDashboardTheme.textMuted),
+                      const SizedBox(width: 4),
+                      Text('العودة للجداول',
+                          style: GoogleFonts.cairo(
+                              color: EnergyDashboardTheme.textMuted,
+                              fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Content
+        Expanded(
+          child: _isLoadingStats
+              ? const Center(
+                  child: CircularProgressIndicator(
+                      color: EnergyDashboardTheme.neonGreen))
+              : _isCleaningUp
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                              color: EnergyDashboardTheme.danger),
+                          const SizedBox(height: 16),
+                          Text('جارٍ التصفير...',
+                              style: GoogleFonts.cairo(
+                                  color: EnergyDashboardTheme.textMuted,
+                                  fontSize: 14)),
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          // Cleanup cards grid
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                  child: _buildCleanupCard(
+                                'accounting',
+                                'المحاسبة والعمليات المالية',
+                                Icons.account_balance_rounded,
+                                EnergyDashboardTheme.neonBlue,
+                                [
+                                  'القيود المحاسبية وبنودها',
+                                  'معاملات وتحصيلات الفنيين',
+                                  'معاملات الوكلاء',
+                                  'حركات الصندوق',
+                                  'المصروفات ودفعات المصاريف',
+                                  'الرواتب والخصومات والمكافآت',
+                                  'تقارير التسوية اليومية',
+                                  'طلبات السحب',
+                                  'سجلات الاشتراكات',
+                                  'تصفير: أرصدة الحسابات + الصناديق + الفنيين + الوكلاء',
+                                ],
+                              )),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                  child: _buildCleanupCard(
+                                'attendance',
+                                'الحضور والبصمات والإجازات',
+                                Icons.fingerprint_rounded,
+                                EnergyDashboardTheme.neonPurple,
+                                [
+                                  'سجلات الحضور والانصراف',
+                                  'سجل تدقيق محاولات الحضور',
+                                  'طلبات الإجازة',
+                                  'أرصدة الإجازات',
+                                  'تصفير: بصمات الأجهزة المسجلة',
+                                ],
+                              )),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                  child: _buildCleanupCard(
+                                'inventory',
+                                'المخزون والمستودعات',
+                                Icons.warehouse_rounded,
+                                EnergyDashboardTheme.warning,
+                                [
+                                  'صرف مواد الفنيين وبنودها',
+                                  'أوامر الشراء وبنودها',
+                                  'عمليات البيع وبنودها',
+                                  'حركات المخزن',
+                                  'تصفير: أرصدة المخزون',
+                                ],
+                              )),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                  child: _buildCleanupAllCard()),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCleanupCard(
+    String category,
+    String title,
+    IconData icon,
+    Color color,
+    List<String> items,
+  ) {
+    final stats = _cleanupStats?[category] as Map<String, dynamic>?;
+    final totalRecords = stats?.values
+            .whereType<int>()
+            .fold<int>(0, (sum, v) => sum + v) ??
+        0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: EnergyDashboardTheme.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: totalRecords > 0
+                      ? color.withOpacity(0.15)
+                      : EnergyDashboardTheme.bgSecondary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$totalRecords سجل',
+                  style: GoogleFonts.cairo(
+                    color: totalRecords > 0
+                        ? color
+                        : EnergyDashboardTheme.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Stats detail
+          if (stats != null)
+            ...stats.entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        e.key,
+                        style: GoogleFonts.cairo(
+                          color: EnergyDashboardTheme.textMuted,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        '${e.value}',
+                        style: GoogleFonts.cairo(
+                          color: (e.value as num) > 0
+                              ? color
+                              : EnergyDashboardTheme.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          const SizedBox(height: 8),
+          // What will be deleted
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: EnergyDashboardTheme.bgPrimary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'سيتم حذف/تصفير:',
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ...items.map((item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('• ',
+                              style: GoogleFonts.cairo(
+                                  color: EnergyDashboardTheme.textMuted,
+                                  fontSize: 10)),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: GoogleFonts.cairo(
+                                color: EnergyDashboardTheme.textSecondary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Action buttons
+          Row(
+            children: [
+              // زر الأرشفة
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: totalRecords > 0 && !_isArchiving
+                      ? () => _archiveData(category)
+                      : null,
+                  icon: Icon(
+                      _isArchiving
+                          ? Icons.hourglass_top_rounded
+                          : Icons.archive_rounded,
+                      size: 16),
+                  label: Text(
+                    _isArchiving ? 'جارٍ التصدير...' : 'أرشفة Excel',
+                    style: GoogleFonts.cairo(fontSize: 11),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EnergyDashboardTheme.neonGreen,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
+                    disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // زر التصفير
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: totalRecords > 0
+                      ? () => _executeCleanup(category)
+                      : null,
+                  icon: Icon(Icons.delete_forever_rounded, size: 16),
+                  label: Text(
+                    totalRecords > 0 ? 'تصفير' : 'لا توجد بيانات',
+                    style: GoogleFonts.cairo(fontSize: 11),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EnergyDashboardTheme.danger,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
+                    disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCleanupAllCard() {
+    final allTotal = _cleanupStats?.values
+            .whereType<Map<String, dynamic>>()
+            .expand((m) => m.values.whereType<int>())
+            .fold<int>(0, (sum, v) => sum + v) ??
+        0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: EnergyDashboardTheme.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: EnergyDashboardTheme.danger.withOpacity(0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: EnergyDashboardTheme.danger.withOpacity(0.05),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: EnergyDashboardTheme.danger.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.warning_amber_rounded,
+                    color: EnergyDashboardTheme.danger, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'تصفير شامل',
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.danger,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: EnergyDashboardTheme.danger.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$allTotal سجل',
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.danger,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Warning
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: EnergyDashboardTheme.danger.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: EnergyDashboardTheme.danger.withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.dangerous_rounded,
+                    color: EnergyDashboardTheme.danger, size: 32),
+                const SizedBox(height: 8),
+                Text(
+                  'تحذير: هذا الإجراء سيحذف جميع العمليات',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.danger,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'سيتم تصفير كل البيانات المحاسبية والحضور والبصمات والمخزون دفعة واحدة. يتطلب تأكيد مزدوج.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cairo(
+                    color: EnergyDashboardTheme.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Summary
+          ..._cleanupStats?.entries.map((category) {
+                final catTotal =
+                    (category.value as Map<String, dynamic>?)?.values
+                            .whereType<int>()
+                            .fold<int>(0, (s, v) => s + v) ??
+                        0;
+                final labels = {
+                  'accounting': 'المحاسبة',
+                  'attendance': 'الحضور',
+                  'inventory': 'المخزون',
+                };
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        labels[category.key] ?? category.key,
+                        style: GoogleFonts.cairo(
+                          color: EnergyDashboardTheme.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        '$catTotal سجل',
+                        style: GoogleFonts.cairo(
+                          color: catTotal > 0
+                              ? EnergyDashboardTheme.danger
+                              : EnergyDashboardTheme.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList() ??
+              [],
+          const SizedBox(height: 16),
+          // أرشفة شاملة أولاً
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: allTotal > 0 && !_isArchiving
+                  ? () => _archiveData('all')
+                  : null,
+              icon: Icon(
+                  _isArchiving
+                      ? Icons.hourglass_top_rounded
+                      : Icons.archive_rounded,
+                  size: 18),
+              label: Text(
+                _isArchiving
+                    ? 'جارٍ تصدير الأرشيف...'
+                    : 'أرشفة الكل كـ Excel',
+                style: GoogleFonts.cairo(
+                    fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EnergyDashboardTheme.neonGreen,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
+                disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // تصفير شامل
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed:
+                  allTotal > 0 ? () => _executeCleanup('all') : null,
+              icon: Icon(Icons.delete_forever_rounded, size: 18),
+              label: Text(
+                allTotal > 0 ? 'تصفير جميع العمليات' : 'لا توجد بيانات',
+                style: GoogleFonts.cairo(
+                    fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EnergyDashboardTheme.danger,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
+                disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
           ),
         ],
       ),

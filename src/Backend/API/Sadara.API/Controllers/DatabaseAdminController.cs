@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Sadara.Infrastructure.Data;
 using System.Text.Json;
+using ClosedXML.Excel;
 
 namespace Sadara.API.Controllers;
 
@@ -218,6 +219,21 @@ public class DatabaseAdminController : ControllerBase
                 new { name = "CompanyFtthSettings", displayName = "إعدادات FTTH", icon = "settings_ethernet", category = "FTTH" },
                 new { name = "FtthSubscriberCaches", displayName = "كاش المشتركين", icon = "cached", category = "FTTH" },
                 new { name = "FtthSyncLogs", displayName = "سجلات المزامنة", icon = "sync", category = "FTTH" },
+
+                // Inventory (13)
+                new { name = "Warehouses", displayName = "المستودعات", icon = "warehouse", category = "Inventory" },
+                new { name = "InventoryCategories", displayName = "تصنيفات المواد", icon = "category", category = "Inventory" },
+                new { name = "InventoryItems", displayName = "المواد المخزنية", icon = "inventory_2", category = "Inventory" },
+                new { name = "Suppliers", displayName = "الموردون", icon = "local_shipping", category = "Inventory" },
+                new { name = "PurchaseOrders", displayName = "أوامر الشراء", icon = "add_shopping_cart", category = "Inventory" },
+                new { name = "PurchaseOrderItems", displayName = "بنود الشراء", icon = "format_list_bulleted", category = "Inventory" },
+                new { name = "SalesOrders", displayName = "عمليات البيع", icon = "point_of_sale", category = "Inventory" },
+                new { name = "SalesOrderItems", displayName = "بنود البيع", icon = "format_list_numbered", category = "Inventory" },
+                new { name = "TechnicianDispensings", displayName = "صرف مواد للفنيين", icon = "handyman", category = "Inventory" },
+                new { name = "TechnicianDispensingItems", displayName = "بنود الصرف", icon = "build_circle", category = "Inventory" },
+                new { name = "StockMovements", displayName = "حركات المخزن", icon = "swap_horiz", category = "Inventory" },
+                new { name = "WarehouseStocks", displayName = "أرصدة المخزون", icon = "inventory", category = "Inventory" },
+                new { name = "ZoneMaintenanceFees", displayName = "رسوم صيانة المناطق", icon = "home_repair_service", category = "Inventory" },
             };
 
             return Ok(new { success = true, data = tables });
@@ -1181,10 +1197,7 @@ public class DatabaseAdminController : ControllerBase
     }
 
     /// <summary>
-    /// تنظيف جميع البيانات المحاسبية وتصفير الأرصدة
-    /// يمسح: SubscriptionLogs, TechnicianTransactions, AgentTransactions,
-    /// JournalEntries, JournalEntryLines, CashTransactions, TechnicianCollections
-    /// ويصفّر أرصدة: Users (Tech*), Agents, CashBoxes, Accounts
+    /// تنظيف البيانات المحاسبية الشاملة وتصفير الأرصدة
     /// </summary>
     [HttpPost("cleanup-accounting")]
     public async Task<IActionResult> CleanupAccounting()
@@ -1193,7 +1206,9 @@ public class DatabaseAdminController : ControllerBase
         {
             var report = new Dictionary<string, int>();
 
-            // 1. مسح JournalEntryLines أولاً (FK)
+            // ═══ حذف الجداول الفرعية أولاً (FK constraints) ═══
+
+            // 1. سطور القيود
             var jelCount = await _context.JournalEntryLines.IgnoreQueryFilters().CountAsync();
             if (jelCount > 0)
             {
@@ -1201,7 +1216,7 @@ public class DatabaseAdminController : ControllerBase
                 report["JournalEntryLines"] = jelCount;
             }
 
-            // 2. مسح JournalEntries
+            // 2. القيود المحاسبية
             var jeCount = await _context.JournalEntries.IgnoreQueryFilters().CountAsync();
             if (jeCount > 0)
             {
@@ -1209,7 +1224,7 @@ public class DatabaseAdminController : ControllerBase
                 report["JournalEntries"] = jeCount;
             }
 
-            // 3. مسح TechnicianTransactions
+            // 3. معاملات الفنيين
             var ttCount = await _context.TechnicianTransactions.IgnoreQueryFilters().CountAsync();
             if (ttCount > 0)
             {
@@ -1217,7 +1232,7 @@ public class DatabaseAdminController : ControllerBase
                 report["TechnicianTransactions"] = ttCount;
             }
 
-            // 4. مسح TechnicianCollections
+            // 4. تحصيلات الفنيين
             var tcCount = await _context.TechnicianCollections.IgnoreQueryFilters().CountAsync();
             if (tcCount > 0)
             {
@@ -1225,7 +1240,7 @@ public class DatabaseAdminController : ControllerBase
                 report["TechnicianCollections"] = tcCount;
             }
 
-            // 5. مسح AgentTransactions
+            // 5. معاملات الوكلاء
             var atCount = await _context.AgentTransactions.IgnoreQueryFilters().CountAsync();
             if (atCount > 0)
             {
@@ -1233,7 +1248,7 @@ public class DatabaseAdminController : ControllerBase
                 report["AgentTransactions"] = atCount;
             }
 
-            // 6. مسح CashTransactions
+            // 6. حركات الصندوق
             var ctCount = await _context.CashTransactions.IgnoreQueryFilters().CountAsync();
             if (ctCount > 0)
             {
@@ -1241,7 +1256,7 @@ public class DatabaseAdminController : ControllerBase
                 report["CashTransactions"] = ctCount;
             }
 
-            // 7. مسح SubscriptionLogs
+            // 7. سجلات الاشتراكات
             var slCount = await _context.SubscriptionLogs.IgnoreQueryFilters().CountAsync();
             if (slCount > 0)
             {
@@ -1249,25 +1264,72 @@ public class DatabaseAdminController : ControllerBase
                 report["SubscriptionLogs"] = slCount;
             }
 
-            // 8. تصفير أرصدة الفنيين
+            // 8. المصروفات
+            var expCount = await _context.Expenses.IgnoreQueryFilters().CountAsync();
+            if (expCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"Expenses\"");
+                report["Expenses"] = expCount;
+            }
+
+            // 9. دفعات المصاريف الثابتة
+            var fepCount = await _context.FixedExpensePayments.IgnoreQueryFilters().CountAsync();
+            if (fepCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"FixedExpensePayments\"");
+                report["FixedExpensePayments"] = fepCount;
+            }
+
+            // 10. خصومات ومكافآت الموظفين
+            var edbCount = await _context.EmployeeDeductionBonuses.IgnoreQueryFilters().CountAsync();
+            if (edbCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"EmployeeDeductionBonuses\"");
+                report["EmployeeDeductionBonuses"] = edbCount;
+            }
+
+            // 11. رواتب الموظفين
+            var esCount = await _context.EmployeeSalaries.IgnoreQueryFilters().CountAsync();
+            if (esCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"EmployeeSalaries\"");
+                report["EmployeeSalaries"] = esCount;
+            }
+
+            // 12. تقارير التسوية اليومية
+            var dsrCount = await _context.DailySettlementReports.IgnoreQueryFilters().CountAsync();
+            if (dsrCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"DailySettlementReports\"");
+                report["DailySettlementReports"] = dsrCount;
+            }
+
+            // 13. طلبات السحب
+            var wrCount = await _context.WithdrawalRequests.IgnoreQueryFilters().CountAsync();
+            if (wrCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"WithdrawalRequests\"");
+                report["WithdrawalRequests"] = wrCount;
+            }
+
+            // ═══ تصفير الأرصدة التراكمية ═══
+
+            // 14. تصفير أرصدة الفنيين (كل المستخدمين الذين لديهم رصيد فني بغض النظر عن الدور)
             var techUsers = await _context.Users.IgnoreQueryFilters()
-                .Where(u => u.Role == Sadara.Domain.Enums.UserRole.Technician)
+                .Where(u => u.TechTotalCharges != 0 || u.TechTotalPayments != 0 || u.TechNetBalance != 0)
                 .ToListAsync();
             int techReset = 0;
             foreach (var tech in techUsers)
             {
-                if (tech.TechTotalCharges != 0 || tech.TechTotalPayments != 0 || tech.TechNetBalance != 0)
-                {
-                    tech.TechTotalCharges = 0;
-                    tech.TechTotalPayments = 0;
-                    tech.TechNetBalance = 0;
-                    _context.Users.Update(tech);
-                    techReset++;
-                }
+                tech.TechTotalCharges = 0;
+                tech.TechTotalPayments = 0;
+                tech.TechNetBalance = 0;
+                _context.Users.Update(tech);
+                techReset++;
             }
             report["TechniciansBalanceReset"] = techReset;
 
-            // 9. تصفير أرصدة الوكلاء
+            // 15. تصفير أرصدة الوكلاء
             var agentsList = await _context.Agents.IgnoreQueryFilters().ToListAsync();
             int agentReset = 0;
             foreach (var agent in agentsList)
@@ -1283,7 +1345,7 @@ public class DatabaseAdminController : ControllerBase
             }
             report["AgentsBalanceReset"] = agentReset;
 
-            // 10. تصفير أرصدة الصناديق
+            // 16. تصفير أرصدة الصناديق
             var boxes = await _context.CashBoxes.ToListAsync();
             int boxReset = 0;
             foreach (var box in boxes)
@@ -1297,7 +1359,7 @@ public class DatabaseAdminController : ControllerBase
             }
             report["CashBoxesReset"] = boxReset;
 
-            // 11. تصفير أرصدة الحسابات المحاسبية
+            // 17. تصفير أرصدة الحسابات المحاسبية
             var accountsList = await _context.Accounts.ToListAsync();
             int accReset = 0;
             foreach (var acc in accountsList)
@@ -1327,5 +1389,562 @@ public class DatabaseAdminController : ControllerBase
             _logger.LogError(ex, "خطأ في تنظيف البيانات المحاسبية");
             return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
         }
+    }
+
+    /// <summary>
+    /// تنظيف بيانات الحضور والبصمات والإجازات
+    /// </summary>
+    [HttpPost("cleanup-attendance")]
+    public async Task<IActionResult> CleanupAttendance()
+    {
+        try
+        {
+            var report = new Dictionary<string, int>();
+
+            // 1. سجل تدقيق الحضور
+            var aalCount = await _context.AttendanceAuditLogs.IgnoreQueryFilters().CountAsync();
+            if (aalCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"AttendanceAuditLogs\"");
+                report["AttendanceAuditLogs"] = aalCount;
+            }
+
+            // 2. سجلات الحضور
+            var arCount = await _context.AttendanceRecords.IgnoreQueryFilters().CountAsync();
+            if (arCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"AttendanceRecords\"");
+                report["AttendanceRecords"] = arCount;
+            }
+
+            // 3. طلبات الإجازة
+            var lrCount = await _context.LeaveRequests.IgnoreQueryFilters().CountAsync();
+            if (lrCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"LeaveRequests\"");
+                report["LeaveRequests"] = lrCount;
+            }
+
+            // 4. أرصدة الإجازات
+            var lbCount = await _context.LeaveBalances.IgnoreQueryFilters().CountAsync();
+            if (lbCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"LeaveBalances\"");
+                report["LeaveBalances"] = lbCount;
+            }
+
+            // 5. تصفير بصمات الأجهزة المسجلة
+            var usersWithFingerprints = await _context.Users.IgnoreQueryFilters()
+                .Where(u => u.RegisteredDeviceFingerprint != null || u.PendingDeviceFingerprint != null)
+                .ToListAsync();
+            int fpReset = 0;
+            foreach (var user in usersWithFingerprints)
+            {
+                user.RegisteredDeviceFingerprint = null;
+                user.PendingDeviceFingerprint = null;
+                user.DeviceApprovalStatus = 0;
+                user.DeviceApprovedAt = null;
+                user.DeviceApprovedByUserId = null;
+                _context.Users.Update(user);
+                fpReset++;
+            }
+            report["DeviceFingerprintsReset"] = fpReset;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogWarning("تم تنظيف بيانات الحضور والبصمات: {@Report}", report);
+
+            return Ok(new
+            {
+                success = true,
+                message = "تم تنظيف بيانات الحضور والبصمات والإجازات بنجاح",
+                report
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تنظيف بيانات الحضور");
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// تنظيف بيانات المخزون والمستودعات
+    /// </summary>
+    [HttpPost("cleanup-inventory")]
+    public async Task<IActionResult> CleanupInventory()
+    {
+        try
+        {
+            var report = new Dictionary<string, int>();
+
+            // ═══ حذف الجداول الفرعية أولاً (FK) ═══
+
+            // 1. بنود صرف الفنيين
+            var tdiCount = await _context.TechnicianDispensingItems.IgnoreQueryFilters().CountAsync();
+            if (tdiCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"TechnicianDispensingItems\"");
+                report["TechnicianDispensingItems"] = tdiCount;
+            }
+
+            // 2. صرف مواد الفنيين
+            var tdCount = await _context.TechnicianDispensings.IgnoreQueryFilters().CountAsync();
+            if (tdCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"TechnicianDispensings\"");
+                report["TechnicianDispensings"] = tdCount;
+            }
+
+            // 3. بنود أوامر الشراء
+            var poiCount = await _context.PurchaseOrderItems.IgnoreQueryFilters().CountAsync();
+            if (poiCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"PurchaseOrderItems\"");
+                report["PurchaseOrderItems"] = poiCount;
+            }
+
+            // 4. أوامر الشراء
+            var poCount = await _context.PurchaseOrders.IgnoreQueryFilters().CountAsync();
+            if (poCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"PurchaseOrders\"");
+                report["PurchaseOrders"] = poCount;
+            }
+
+            // 5. بنود عمليات البيع
+            var soiCount = await _context.SalesOrderItems.IgnoreQueryFilters().CountAsync();
+            if (soiCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"SalesOrderItems\"");
+                report["SalesOrderItems"] = soiCount;
+            }
+
+            // 6. عمليات البيع
+            var soCount = await _context.SalesOrders.IgnoreQueryFilters().CountAsync();
+            if (soCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"SalesOrders\"");
+                report["SalesOrders"] = soCount;
+            }
+
+            // 7. حركات المخزن
+            var smCount = await _context.StockMovements.IgnoreQueryFilters().CountAsync();
+            if (smCount > 0)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM \"StockMovements\"");
+                report["StockMovements"] = smCount;
+            }
+
+            // 8. تصفير أرصدة المخزون
+            var stocks = await _context.WarehouseStocks.IgnoreQueryFilters().ToListAsync();
+            int stockReset = 0;
+            foreach (var stock in stocks)
+            {
+                if (stock.CurrentQuantity != 0 || stock.ReservedQuantity != 0)
+                {
+                    stock.CurrentQuantity = 0;
+                    stock.ReservedQuantity = 0;
+                    stock.AverageCost = 0;
+                    _context.WarehouseStocks.Update(stock);
+                    stockReset++;
+                }
+            }
+            report["WarehouseStocksReset"] = stockReset;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogWarning("تم تنظيف بيانات المخزون: {@Report}", report);
+
+            return Ok(new
+            {
+                success = true,
+                message = "تم تنظيف بيانات المخزون والمستودعات بنجاح",
+                report
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تنظيف بيانات المخزون");
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// تصفير شامل — جميع العمليات المحاسبية + الحضور + المخزون
+    /// </summary>
+    [HttpPost("cleanup-all")]
+    public async Task<IActionResult> CleanupAll()
+    {
+        try
+        {
+            var allReports = new Dictionary<string, object>();
+
+            // 1. تنظيف المحاسبة
+            var accResult = await CleanupAccounting() as OkObjectResult;
+            if (accResult?.Value != null)
+            {
+                var val = accResult.Value;
+                var reportProp = val.GetType().GetProperty("report");
+                if (reportProp != null)
+                    allReports["accounting"] = reportProp.GetValue(val)!;
+            }
+
+            // 2. تنظيف الحضور
+            var attResult = await CleanupAttendance() as OkObjectResult;
+            if (attResult?.Value != null)
+            {
+                var val = attResult.Value;
+                var reportProp = val.GetType().GetProperty("report");
+                if (reportProp != null)
+                    allReports["attendance"] = reportProp.GetValue(val)!;
+            }
+
+            // 3. تنظيف المخزون
+            var invResult = await CleanupInventory() as OkObjectResult;
+            if (invResult?.Value != null)
+            {
+                var val = invResult.Value;
+                var reportProp = val.GetType().GetProperty("report");
+                if (reportProp != null)
+                    allReports["inventory"] = reportProp.GetValue(val)!;
+            }
+
+            _logger.LogWarning("تم التصفير الشامل لجميع العمليات: {@Report}", allReports);
+
+            return Ok(new
+            {
+                success = true,
+                message = "تم تصفير جميع العمليات بنجاح (محاسبة + حضور + مخزون)",
+                report = allReports
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في التصفير الشامل");
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// إحصائيات التصفير — عدد السجلات في كل فئة قبل التصفير
+    /// </summary>
+    [HttpGet("cleanup-stats")]
+    public async Task<IActionResult> GetCleanupStats()
+    {
+        try
+        {
+            var stats = new Dictionary<string, object>
+            {
+                ["accounting"] = new
+                {
+                    JournalEntryLines = await _context.JournalEntryLines.IgnoreQueryFilters().CountAsync(),
+                    JournalEntries = await _context.JournalEntries.IgnoreQueryFilters().CountAsync(),
+                    TechnicianTransactions = await _context.TechnicianTransactions.IgnoreQueryFilters().CountAsync(),
+                    TechnicianCollections = await _context.TechnicianCollections.IgnoreQueryFilters().CountAsync(),
+                    AgentTransactions = await _context.AgentTransactions.IgnoreQueryFilters().CountAsync(),
+                    CashTransactions = await _context.CashTransactions.IgnoreQueryFilters().CountAsync(),
+                    SubscriptionLogs = await _context.SubscriptionLogs.IgnoreQueryFilters().CountAsync(),
+                    Expenses = await _context.Expenses.IgnoreQueryFilters().CountAsync(),
+                    FixedExpensePayments = await _context.FixedExpensePayments.IgnoreQueryFilters().CountAsync(),
+                    EmployeeDeductionBonuses = await _context.EmployeeDeductionBonuses.IgnoreQueryFilters().CountAsync(),
+                    EmployeeSalaries = await _context.EmployeeSalaries.IgnoreQueryFilters().CountAsync(),
+                    DailySettlementReports = await _context.DailySettlementReports.IgnoreQueryFilters().CountAsync(),
+                    WithdrawalRequests = await _context.WithdrawalRequests.IgnoreQueryFilters().CountAsync(),
+                },
+                ["attendance"] = new
+                {
+                    AttendanceRecords = await _context.AttendanceRecords.IgnoreQueryFilters().CountAsync(),
+                    AttendanceAuditLogs = await _context.AttendanceAuditLogs.IgnoreQueryFilters().CountAsync(),
+                    LeaveRequests = await _context.LeaveRequests.IgnoreQueryFilters().CountAsync(),
+                    LeaveBalances = await _context.LeaveBalances.IgnoreQueryFilters().CountAsync(),
+                    DeviceFingerprints = await _context.Users.IgnoreQueryFilters()
+                        .CountAsync(u => u.RegisteredDeviceFingerprint != null || u.PendingDeviceFingerprint != null),
+                },
+                ["inventory"] = new
+                {
+                    TechnicianDispensingItems = await _context.TechnicianDispensingItems.IgnoreQueryFilters().CountAsync(),
+                    TechnicianDispensings = await _context.TechnicianDispensings.IgnoreQueryFilters().CountAsync(),
+                    PurchaseOrderItems = await _context.PurchaseOrderItems.IgnoreQueryFilters().CountAsync(),
+                    PurchaseOrders = await _context.PurchaseOrders.IgnoreQueryFilters().CountAsync(),
+                    SalesOrderItems = await _context.SalesOrderItems.IgnoreQueryFilters().CountAsync(),
+                    SalesOrders = await _context.SalesOrders.IgnoreQueryFilters().CountAsync(),
+                    StockMovements = await _context.StockMovements.IgnoreQueryFilters().CountAsync(),
+                    WarehouseStocks = await _context.WarehouseStocks.IgnoreQueryFilters().CountAsync(),
+                }
+            };
+
+            return Ok(new { success = true, data = stats });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب إحصائيات التصفير");
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// أرشفة جميع البيانات التشغيلية كملف Excel قبل التصفير
+    /// كل جدول في sheet منفصل
+    /// </summary>
+    [HttpGet("archive/{category}")]
+    public async Task<IActionResult> ArchiveData(string category)
+    {
+        try
+        {
+            using var workbook = new XLWorkbook();
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm");
+
+            if (category == "accounting" || category == "all")
+            {
+                await AddSheet(workbook, "القيود المحاسبية",
+                    await _context.JournalEntries.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.EntryNumber, e.EntryDate, e.Description, e.TotalDebit, e.TotalCredit, e.ReferenceType, e.Status, e.Notes, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "بنود القيود",
+                    await _context.JournalEntryLines.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.JournalEntryId, e.AccountId, e.DebitAmount, e.CreditAmount, e.Description, e.EntityType, e.EntityId })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "معاملات الفنيين",
+                    await _context.TechnicianTransactions.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.TechnicianId, e.Type, e.Category, e.Amount, e.BalanceAfter, e.Description, e.ReferenceNumber, e.Notes, e.ReceivedBy, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "تحصيلات الفنيين",
+                    await _context.TechnicianCollections.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.TechnicianId, e.CitizenId, e.Amount, e.CollectionDate, e.IsDelivered, e.DeliveredAt, e.Notes, e.Description, e.PaymentMethod, e.ReceiptNumber, e.ReceivedBy, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "معاملات الوكلاء",
+                    await _context.AgentTransactions.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.AgentId, e.Type, e.Category, e.Amount, e.BalanceAfter, e.Description, e.ReferenceNumber, e.Notes, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "حركات الصندوق",
+                    await _context.CashTransactions.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.CashBoxId, e.TransactionType, e.Amount, e.BalanceAfter, e.Description, e.ReferenceType, e.ReferenceId, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "المصروفات",
+                    await _context.Expenses.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.AccountId, e.Amount, e.Description, e.ExpenseDate, e.Category, e.Notes, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "دفعات المصاريف الثابتة",
+                    await _context.FixedExpensePayments.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.FixedExpenseId, e.Month, e.Year, e.Amount, e.IsPaid, e.PaidAt, e.Notes })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "رواتب الموظفين",
+                    await _context.EmployeeSalaries.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.UserId, e.Month, e.Year, e.BaseSalary, e.Allowances, e.Deductions, e.Bonuses, e.NetSalary, e.Status, e.PaidAt, e.AttendanceDays, e.AbsentDays, e.Notes })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "خصومات ومكافآت",
+                    await _context.EmployeeDeductionBonuses.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.UserId, e.Type, e.Category, e.Amount, e.Month, e.Year, e.Description, e.Notes, e.IsApplied, e.IsRecurring })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "تقارير التسوية",
+                    await _context.DailySettlementReports.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.ReportDate, e.OperatorName, e.TotalAmount, e.SystemTotal, e.SystemCashTotal, e.SystemCreditTotal, e.TotalExpenses, e.NetCashAmount, e.ReceivedAmount, e.Notes })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "طلبات السحب",
+                    await _context.WithdrawalRequests.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.UserId, e.UserName, e.Amount, e.Reason, e.Status, e.ReviewedByUserName, e.ReviewedAt, e.ReviewNotes, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "سجلات الاشتراكات",
+                    await _context.SubscriptionLogs.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.CustomerId, e.CustomerName, e.PhoneNumber, e.SubscriptionId, e.PlanName, e.PlanPrice, e.CurrentStatus, e.CreatedAt })
+                        .ToListAsync());
+
+                // أرصدة حالية (للمرجع)
+                await AddSheet(workbook, "أرصدة الحسابات",
+                    await _context.Accounts.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.Code, e.Name, e.AccountType, e.CurrentBalance, e.OpeningBalance, e.Level, e.IsLeaf })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "أرصدة الصناديق",
+                    await _context.CashBoxes
+                        .Select(e => new { e.Id, e.Name, e.CashBoxType, e.CurrentBalance, e.IsActive })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "أرصدة الفنيين",
+                    await _context.Users.IgnoreQueryFilters()
+                        .Where(u => u.TechTotalCharges != 0 || u.TechTotalPayments != 0 || u.TechNetBalance != 0)
+                        .Select(u => new { u.Id, u.FullName, u.Role, u.TechTotalCharges, u.TechTotalPayments, u.TechNetBalance })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "أرصدة الوكلاء",
+                    await _context.Agents.IgnoreQueryFilters()
+                        .Select(a => new { a.Id, a.Name, a.AgentCode, a.TotalCharges, a.TotalPayments, a.NetBalance })
+                        .ToListAsync());
+            }
+
+            if (category == "attendance" || category == "all")
+            {
+                await AddSheet(workbook, "سجلات الحضور",
+                    await _context.AttendanceRecords.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.UserId, e.UserName, e.Date, e.CheckInTime, e.CheckOutTime, e.CenterName, e.Status, e.LateMinutes, e.OvertimeMinutes, e.WorkedMinutes, e.EarlyDepartureMinutes, e.DeviceFingerprint })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "تدقيق الحضور",
+                    await _context.AttendanceAuditLogs.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.UserId, e.UserName, e.ActionType, e.IsSuccess, e.RejectionReason, e.CenterName, e.DistanceFromCenter, e.DeviceFingerprint, e.IsVpnSuspected, e.AttemptTime })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "طلبات الإجازة",
+                    await _context.LeaveRequests.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.UserId, e.UserName, e.LeaveType, e.StartDate, e.EndDate, e.TotalDays, e.Reason, e.Status, e.ReviewedByUserName, e.ReviewedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "أرصدة الإجازات",
+                    await _context.LeaveBalances.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.UserId, e.Year, e.LeaveType, e.TotalAllowance, e.UsedDays, e.RemainingDays })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "بصمات الأجهزة",
+                    await _context.Users.IgnoreQueryFilters()
+                        .Where(u => u.RegisteredDeviceFingerprint != null || u.PendingDeviceFingerprint != null)
+                        .Select(u => new { u.Id, u.FullName, u.RegisteredDeviceFingerprint, u.PendingDeviceFingerprint, u.DeviceApprovalStatus, u.DeviceApprovedAt })
+                        .ToListAsync());
+            }
+
+            if (category == "inventory" || category == "all")
+            {
+                await AddSheet(workbook, "صرف مواد الفنيين",
+                    await _context.TechnicianDispensings.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.VoucherNumber, e.TechnicianId, e.WarehouseId, e.DispensingDate, e.Status, e.Type, e.Notes, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "بنود الصرف",
+                    await _context.TechnicianDispensingItems.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.TechnicianDispensingId, e.InventoryItemId, e.Quantity, e.ReturnedQuantity, e.Notes })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "أوامر الشراء",
+                    await _context.PurchaseOrders.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.OrderNumber, e.SupplierId, e.WarehouseId, e.OrderDate, e.ReceivedDate, e.Status, e.TotalAmount, e.DiscountAmount, e.NetAmount, e.Notes })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "بنود الشراء",
+                    await _context.PurchaseOrderItems.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.PurchaseOrderId, e.InventoryItemId, e.Quantity, e.ReceivedQuantity, e.UnitPrice, e.TotalPrice })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "عمليات البيع",
+                    await _context.SalesOrders.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.OrderNumber, e.CustomerName, e.CustomerPhone, e.WarehouseId, e.OrderDate, e.Status, e.TotalAmount, e.DiscountAmount, e.NetAmount, e.PaymentMethod, e.Notes })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "بنود البيع",
+                    await _context.SalesOrderItems.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.SalesOrderId, e.InventoryItemId, e.Quantity, e.UnitPrice, e.TotalPrice })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "حركات المخزن",
+                    await _context.StockMovements.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.InventoryItemId, e.WarehouseId, e.MovementType, e.Quantity, e.StockBefore, e.StockAfter, e.UnitCost, e.ReferenceType, e.ReferenceNumber, e.Description, e.CreatedAt })
+                        .ToListAsync());
+
+                await AddSheet(workbook, "أرصدة المخزون",
+                    await _context.WarehouseStocks.IgnoreQueryFilters()
+                        .Select(e => new { e.Id, e.WarehouseId, e.InventoryItemId, e.CurrentQuantity, e.ReservedQuantity, e.AverageCost, e.LastStockInDate, e.LastStockOutDate })
+                        .ToListAsync());
+            }
+
+            // إذا لم يكن هناك أي بيانات
+            if (workbook.Worksheets.Count == 0)
+            {
+                workbook.AddWorksheet("فارغ").Cell(1, 1).Value = "لا توجد بيانات للأرشفة";
+            }
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            stream.Position = 0;
+
+            var fileName = $"Sadara_Archive_{category}_{timestamp}.xlsx";
+
+            _logger.LogWarning("تم تصدير أرشيف {Category} بتاريخ {Timestamp}", category, timestamp);
+
+            return File(stream.ToArray(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.document",
+                fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في أرشفة البيانات");
+            return StatusCode(500, new { success = false, message = "حدث خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Helper: إضافة sheet لقائمة بيانات
+    /// </summary>
+    private static Task AddSheet<T>(XLWorkbook workbook, string sheetName, List<T> data)
+    {
+        // تقصير اسم الـ sheet (max 31 chars in Excel)
+        var safeName = sheetName.Length > 31 ? sheetName[..31] : sheetName;
+        var ws = workbook.AddWorksheet(safeName);
+
+        if (data.Count == 0)
+        {
+            ws.Cell(1, 1).Value = "لا توجد بيانات";
+            return Task.CompletedTask;
+        }
+
+        // Headers
+        var props = typeof(T).GetProperties();
+        for (int i = 0; i < props.Length; i++)
+        {
+            var headerCell = ws.Cell(1, i + 1);
+            headerCell.Value = props[i].Name;
+            headerCell.Style.Font.Bold = true;
+            headerCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1B5E20");
+            headerCell.Style.Font.FontColor = XLColor.White;
+        }
+
+        // Data rows
+        for (int row = 0; row < data.Count; row++)
+        {
+            for (int col = 0; col < props.Length; col++)
+            {
+                var val = props[col].GetValue(data[row]);
+                var cell = ws.Cell(row + 2, col + 1);
+
+                if (val == null)
+                    cell.Value = "";
+                else if (val is DateTime dt)
+                    cell.Value = dt.ToString("yyyy-MM-dd HH:mm:ss");
+                else if (val is DateTimeOffset dto)
+                    cell.Value = dto.ToString("yyyy-MM-dd HH:mm:ss");
+                else if (val is decimal d)
+                    cell.Value = (double)d;
+                else if (val is int intVal)
+                    cell.Value = intVal;
+                else if (val is long longVal)
+                    cell.Value = longVal;
+                else if (val is double dblVal)
+                    cell.Value = dblVal;
+                else if (val is bool b)
+                    cell.Value = b ? "نعم" : "لا";
+                else if (val is Guid g)
+                    cell.Value = g.ToString();
+                else
+                    cell.Value = val.ToString();
+            }
+        }
+
+        // Auto-fit columns
+        ws.Columns().AdjustToContents(1, 100);
+
+        // Freeze header row
+        ws.SheetView.FreezeRows(1);
+
+        return Task.CompletedTask;
     }
 }

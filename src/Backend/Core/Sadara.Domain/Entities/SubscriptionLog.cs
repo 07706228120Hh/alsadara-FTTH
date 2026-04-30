@@ -86,6 +86,18 @@ public class SubscriptionLog : BaseEntity<long>
     /// <summary>أجور الصيانة المضافة (إن وُجدت)</summary>
     public decimal? MaintenanceFee { get; set; }
 
+    /// <summary>السعر الأساسي للباقة (قبل أي خصم)</summary>
+    public decimal? BasePrice { get; set; }
+
+    /// <summary>خصم الشركة (FTTH)</summary>
+    public decimal? CompanyDiscount { get; set; }
+
+    /// <summary>خصم اختياري (منّا للعميل)</summary>
+    public decimal? ManualDiscount { get; set; }
+
+    /// <summary>هل خصم الشركة مفعّل (ممرّر للعميل)؟</summary>
+    public bool SystemDiscountEnabled { get; set; } = true;
+
     /// <summary>هل تمت المطابقة مع FTTH الخارجي</summary>
     public bool IsReconciled { get; set; } = false;
     

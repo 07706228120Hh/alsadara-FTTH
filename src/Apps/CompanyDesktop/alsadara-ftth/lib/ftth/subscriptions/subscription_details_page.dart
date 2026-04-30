@@ -5136,12 +5136,16 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                 return fn.isNotEmpty ? fn : (n.isNotEmpty ? n : null);
               })()
             : _selectedLinkedAgent?['Name']?.toString().trim(),
-        // حقول الخصم
+        // حقول الخصم والتسعير
         manualDiscount: manualDiscount > 0 ? manualDiscount : null,
         systemDiscount: priceDetails!['discount'] != null
             ? _asDouble(priceDetails!['discount'])
             : null,
         systemDiscountEnabled: systemDiscountEnabled,
+        basePrice: priceDetails!['basePrice'] != null
+            ? _asDouble(priceDetails!['basePrice'])
+            : (_asDouble(priceDetails!['totalPrice']) +
+               _asDouble(priceDetails!['discount'] ?? 0)),
         // أجور الصيانة
         maintenanceFee: maintenanceFee > 0 ? maintenanceFee : null,
       );

@@ -131,86 +131,127 @@ public class FtthAccountingController : ControllerBase
 
     /// <summary>
     /// إنشاء القيد المحاسبي حسب نوع التحصيل
+    /// القيد الجديد:
+    ///   مدين: حساب التحصيل (المبلغ المحصّل من العميل)
+    ///   مدين: مصاريف عروض (الخصم الاختياري — إن وُجد)
+    ///   دائن: رصيد الصفحة 11102 (صافي الشركة = السعر - خصم الشركة)
+    ///   دائن: إيراد صيانة 4110 (رسوم الصيانة — إن وُجدت)
+    ///   دائن: إيراد خصم الشركة 4120 (خصم الشركة غير الممرّر — إن لم يُفعَّل)
     /// </summary>
     private async Task<Guid?> CreateAccountingEntry(SubscriptionLog log, FtthLogWithAccountingDto dto)
     {
         var companyId = dto.CompanyId!.Value;
         var userId = dto.UserId!.Value;
-        var amount = dto.PlanPrice!.Value;
         var collectionType = dto.CollectionType ?? "cash";
 
-        // تحديد حساب الإيراد (تجديد أو شراء)
-        var revenueCode = dto.OperationType?.ToLower() == "purchase" ? "4120" : "4110";
-        var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId);
-        
-        // fallback إلى 4100 إذا لم يوجد 4110/4120
-        if (revenueAccount == null)
-            revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
-        if (revenueAccount == null)
-        {
-            _logger.LogWarning("حساب الإيراد غير موجود للشركة {CompanyId}", companyId);
-            return null;
-        }
-
-        // تحديد الطرف المدين حسب نوع التحصيل
-        Account debitAccount;
-        string description;
         var operatorName = dto.ActivatedBy ?? "مشغل";
         var planName = dto.PlanName ?? "اشتراك";
         var customerName = dto.CustomerName ?? "عميل";
         var opType = dto.OperationType?.ToLower() == "purchase" ? "شراء" : "تجديد";
 
+        // ═══ حساب المبالغ ═══
+        var basePrice = dto.BasePrice ?? dto.PlanPrice ?? 0;
+        var companyDiscount = dto.CompanyDiscount ?? 0;
+        var manualDiscount = dto.ManualDiscount ?? 0;
+        var maintenanceFee = dto.MaintenanceFee ?? 0;
+        var systemDiscountEnabled = dto.SystemDiscountEnabled;
+
+        // صافي الشركة = ما يُخصم من رصيد الصفحة (دائماً السعر - خصم الشركة)
+        var netFromCompany = basePrice - companyDiscount;
+
+        // المبلغ المحصّل من العميل
+        var collectedAmount = systemDiscountEnabled
+            ? (basePrice - companyDiscount - manualDiscount + maintenanceFee)  // خصم مفعّل
+            : (basePrice - manualDiscount + maintenanceFee);                   // خصم غير مفعّل
+
+        // ربح خصم الشركة (إيراد عند عدم تفعيل الخصم)
+        var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
+
+        // ═══ جلب الحسابات ═══
+        // دائن: رصيد الصفحة الداخلي (11102)
+        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "11102", companyId);
+        if (pageBalanceAccount == null)
+        {
+            _logger.LogWarning("حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId}", companyId);
+            return null;
+        }
+
+        // دائن: إيراد صيانة (4110)
+        Account? maintenanceRevenueAccount = null;
+        if (maintenanceFee > 0)
+        {
+            maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4110", companyId);
+            if (maintenanceRevenueAccount == null)
+                _logger.LogWarning("حساب إيراد الصيانة 4110 غير موجود — سيتم تجاهل رسوم الصيانة في القيد");
+        }
+
+        // دائن: إيراد خصم الشركة (4120)
+        Account? discountRevenueAccount = null;
+        if (companyDiscountProfit > 0)
+        {
+            discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4120", companyId);
+            if (discountRevenueAccount == null)
+                _logger.LogWarning("حساب إيراد خصم الشركة 4120 غير موجود — سيتم تجاهل ربح الخصم في القيد");
+        }
+
+        // مدين: مصاريف عروض (5110)
+        Account? promotionExpenseAccount = null;
+        if (manualDiscount > 0)
+        {
+            promotionExpenseAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "5110", companyId);
+            if (promotionExpenseAccount == null)
+                _logger.LogWarning("حساب مصاريف العروض 5110 غير موجود — سيتم تجاهل الخصم الاختياري في القيد");
+        }
+
+        // ═══ تحديد حساب التحصيل (الطرف المدين الرئيسي) ═══
+        Account debitAccount;
+        string description;
+
         switch (collectionType.ToLower())
         {
             case "cash":
-                // نقد → صندوق المشغل (فرعي تحت 1110)
                 debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
-                await _unitOfWork.SaveChangesAsync(); // حفظ الحساب الجديد قبل القيد
+                await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - نقد عبر {operatorName}";
                 break;
 
             case "credit":
-                // آجل → ذمة المشغل (فرعي تحت 1160)
                 debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1160", userId, $"ذمة {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - آجل على {operatorName}";
                 break;
 
             case "master":
-                // ماستر → صندوق الدفع الإلكتروني (1170)
                 debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1170", companyId)
                     ?? throw new Exception("حساب صندوق الدفع الإلكتروني 1170 غير موجود");
                 description = $"{opType} {planName} - {customerName} - ماستر (إلكتروني)";
                 break;
 
             case "agent":
-                // وكيل → ذمة الوكيل (فرعي تحت 1150)
                 if (!dto.LinkedAgentId.HasValue)
                     throw new Exception("يجب تحديد الوكيل عند اختيار نوع الدفع 'وكيل'");
-                
+
                 var agent = await _unitOfWork.Agents.GetByIdAsync(dto.LinkedAgentId.Value);
                 if (agent == null)
                     throw new Exception("الوكيل غير موجود");
-                
+
                 debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, agent.Name, companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
 
-                // ═══ توحيد: تحديث رصيد الوكيل + إنشاء AgentTransaction ═══
-                agent.TotalCharges += amount;
+                // تحديث رصيد الوكيل + إنشاء AgentTransaction
+                agent.TotalCharges += collectedAmount;
                 agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
                 _unitOfWork.Agents.Update(agent);
-
-                var agentTxCategory = dto.OperationType?.ToLower() == "purchase"
-                    ? TransactionCategory.NewSubscription
-                    : TransactionCategory.RenewalSubscription;
 
                 var agentTx = new AgentTransaction
                 {
                     AgentId = agent.Id,
                     Type = TransactionType.Charge,
-                    Category = agentTxCategory,
-                    Amount = amount,
+                    Category = dto.OperationType?.ToLower() == "purchase"
+                        ? TransactionCategory.NewSubscription
+                        : TransactionCategory.RenewalSubscription,
+                    Amount = collectedAmount,
                     BalanceAfter = agent.NetBalance,
                     Description = $"{opType} {planName} - {customerName}",
                     ReferenceNumber = log.Id.ToString(),
@@ -221,33 +262,28 @@ public class FtthAccountingController : ControllerBase
                 break;
 
             case "technician":
-                // فني → ذمة الفني (فرعي تحت 1140)
                 if (!dto.LinkedTechnicianId.HasValue)
                     throw new Exception("يجب تحديد الفني عند اختيار نوع الدفع 'فني'");
-                
+
                 var tech = await _unitOfWork.Users.GetByIdAsync(dto.LinkedTechnicianId.Value);
                 if (tech == null)
                     throw new Exception("الفني غير موجود");
-                
+
                 debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1140", tech.Id, tech.FullName, companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
 
-                // ═══ توحيد: تحديث رصيد الفني + إنشاء TechnicianTransaction ═══
-                tech.TechTotalCharges += amount;
+                // تحديث رصيد الفني + إنشاء TechnicianTransaction
+                tech.TechTotalCharges += collectedAmount;
                 tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
                 _unitOfWork.Users.Update(tech);
-
-                var techTxCategory = dto.OperationType?.ToLower() == "purchase"
-                    ? TechnicianTransactionCategory.Subscription
-                    : TechnicianTransactionCategory.Subscription;
 
                 var techTx = new TechnicianTransaction
                 {
                     TechnicianId = tech.Id,
                     Type = TechnicianTransactionType.Charge,
-                    Category = techTxCategory,
-                    Amount = amount,
+                    Category = TechnicianTransactionCategory.Subscription,
+                    Amount = collectedAmount,
                     BalanceAfter = tech.TechNetBalance,
                     Description = $"{opType} {planName} - {customerName}",
                     ReferenceNumber = log.Id.ToString(),
@@ -259,20 +295,42 @@ public class FtthAccountingController : ControllerBase
                 break;
 
             default:
-                // افتراضي: نقد
                 debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - عبر {operatorName}";
                 break;
         }
 
-        // إنشاء القيد
-        var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
-        {
-            (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
-            (revenueAccount.Id, 0, amount, $"إيراد {opType} - {customerName}")
-        };
+        // ═══ بناء سطور القيد ═══
+        var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
 
+        // مدين: حساب التحصيل (المبلغ المحصّل من العميل)
+        if (collectedAmount > 0)
+            lines.Add((debitAccount.Id, collectedAmount, 0, $"{debitAccount.Name} - {opType} {planName}"));
+
+        // مدين: مصاريف عروض (الخصم الاختياري)
+        if (manualDiscount > 0 && promotionExpenseAccount != null)
+            lines.Add((promotionExpenseAccount.Id, manualDiscount, 0, $"خصم اختياري - {customerName}"));
+
+        // دائن: رصيد الصفحة (صافي الشركة)
+        if (netFromCompany > 0)
+            lines.Add((pageBalanceAccount.Id, 0, netFromCompany, $"خصم من رصيد الصفحة - {opType} {planName}"));
+
+        // دائن: إيراد صيانة
+        if (maintenanceFee > 0 && maintenanceRevenueAccount != null)
+            lines.Add((maintenanceRevenueAccount.Id, 0, maintenanceFee, $"إيراد صيانة - {customerName}"));
+
+        // دائن: إيراد خصم الشركة (ربح عدم تمرير الخصم)
+        if (companyDiscountProfit > 0 && discountRevenueAccount != null)
+            lines.Add((discountRevenueAccount.Id, 0, companyDiscountProfit, $"إيراد خصم الشركة - {customerName}"));
+
+        if (lines.Count < 2)
+        {
+            _logger.LogWarning("لا توجد سطور كافية للقيد المحاسبي — تم التخطي");
+            return null;
+        }
+
+        // إنشاء القيد
         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
             _unitOfWork, companyId, userId, description,
             JournalReferenceType.FtthSubscription, log.Id.ToString(), lines);
@@ -1914,7 +1972,8 @@ public class FtthAccountingController : ControllerBase
                         log.SubscriptionNotes, log.StartDate, log.EndDate,
                         log.TechnicianName, log.PaymentStatus,
                         log.CollectionType, log.FtthTransactionId, log.ServiceRequestId,
-                        log.LinkedAgentId, log.LinkedTechnicianId);
+                        log.LinkedAgentId, log.LinkedTechnicianId,
+                        log.PlanPrice, 0, 0, log.MaintenanceFee ?? 0, true);
 
                     var jeId = await CreateAccountingEntry(log, dto);
                     if (jeId.HasValue)
@@ -2213,7 +2272,13 @@ public record FtthLogWithAccountingDto(
     string? FtthTransactionId,
     Guid? ServiceRequestId,
     Guid? LinkedAgentId,
-    Guid? LinkedTechnicianId
+    Guid? LinkedTechnicianId,
+    // حقول التسعير التفصيلية
+    decimal? BasePrice,            // سعر الباقة الأساسي (قبل أي خصم)
+    decimal? CompanyDiscount,      // خصم الشركة (FTTH)
+    decimal? ManualDiscount,       // خصم اختياري (منّا)
+    decimal? MaintenanceFee,       // رسوم صيانة المنطقة
+    bool SystemDiscountEnabled = true  // هل خصم الشركة مفعّل للعميل؟
 );
 
 public record OperatorCashDeliveryDto(

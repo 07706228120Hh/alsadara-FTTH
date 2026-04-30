@@ -2193,9 +2193,17 @@ public class InternalDataController : ControllerBase
             if (request.TryGetProperty("linkedTechnicianId", out var pLt) && pLt.ValueKind == JsonValueKind.String && Guid.TryParse(pLt.GetString(), out var ltGuid))
                 log.LinkedTechnicianId = ltGuid;
 
-            // أجور الصيانة
+            // أجور الصيانة وحقول التسعير
             if (request.TryGetProperty("maintenanceFee", out var pMf) && pMf.ValueKind == JsonValueKind.Number)
                 log.MaintenanceFee = pMf.GetDecimal();
+            if (request.TryGetProperty("basePrice", out var pBp) && pBp.ValueKind == JsonValueKind.Number)
+                log.BasePrice = pBp.GetDecimal();
+            if (request.TryGetProperty("systemDiscount", out var pSd) && pSd.ValueKind == JsonValueKind.Number)
+                log.CompanyDiscount = pSd.GetDecimal();
+            if (request.TryGetProperty("manualDiscount", out var pMd) && pMd.ValueKind == JsonValueKind.Number)
+                log.ManualDiscount = pMd.GetDecimal();
+            if (request.TryGetProperty("systemDiscountEnabled", out var pSde))
+                log.SystemDiscountEnabled = pSde.ValueKind == JsonValueKind.True;
 
             // حفظ اسم الفني من الطلب — تجاهل القيم الخاطئة مثل "فني" أو "وكيل"
             if (request.TryGetProperty("technicianName", out var pTn) && pTn.ValueKind == JsonValueKind.String)
@@ -2524,27 +2532,57 @@ public class InternalDataController : ControllerBase
     }
 
     /// <summary>
-    /// إنشاء قيد محاسبي لسجل FTTH — يُستدعى تلقائياً بعد حفظ السجل
+    /// إنشاء القيد المحاسبي — النظام الجديد:
+    ///   مدين: حساب التحصيل (المبلغ المحصّل من العميل)
+    ///   دائن: رصيد الصفحة 11102 (صافي الشركة)
+    ///   دائن: إيراد صيانة 4110 (إن وُجدت)
+    ///   دائن: إيراد خصم الشركة 4120 (إن لم يُمرَّر)
     /// </summary>
     private async Task<Guid?> CreateAccountingEntryForLog(Sadara.Domain.Entities.SubscriptionLog log)
     {
         var companyId = log.CompanyId!.Value;
         var userId = log.UserId!.Value;
-        var amount = log.PlanPrice!.Value;
         var collectionType = log.CollectionType ?? "cash";
 
-        // تحديد حساب الإيراد
-        var revenueCode = log.OperationType?.ToLower() == "purchase" ? "4120" : "4110";
-        var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId);
-        if (revenueAccount == null)
-            revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
-        if (revenueAccount == null)
+        // ═══ حساب المبالغ ═══
+        var collectedAmount = log.PlanPrice ?? 0;       // المبلغ المحصّل من العميل
+        var maintenanceFee = log.MaintenanceFee ?? 0;   // رسوم صيانة
+        var manualDiscount = log.ManualDiscount ?? 0;   // خصم اختياري
+        var companyDiscount = log.CompanyDiscount ?? 0;  // خصم الشركة
+        var basePrice = log.BasePrice ?? 0;              // السعر الأساسي
+
+        // صافي الشركة = ما يُخصم من رصيد الصفحة
+        decimal netFromCompany;
+        if (basePrice > 0 && companyDiscount >= 0)
         {
-            _logger.LogWarning("حساب الإيراد غير موجود للشركة {CompanyId}", companyId);
+            // الحقول الجديدة متوفرة — حساب دقيق
+            netFromCompany = basePrice - companyDiscount;
+        }
+        else
+        {
+            // fallback: حساب من فرق المحفظة
+            netFromCompany = (log.WalletBalanceBefore ?? 0) - (log.WalletBalanceAfter ?? 0);
+            if (netFromCompany <= 0) netFromCompany = collectedAmount - maintenanceFee;
+        }
+
+        // ربح خصم الشركة (عند عدم تمرير الخصم للعميل)
+        var companyDiscountProfit = log.SystemDiscountEnabled ? 0 : companyDiscount;
+
+        // ═══ جلب حسابات القيد ═══
+        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "11102", companyId);
+        if (pageBalanceAccount == null)
+        {
+            _logger.LogWarning("حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId}", companyId);
             return null;
         }
 
-        // اسم المشغل
+        Sadara.Domain.Entities.Account? maintenanceRevenueAccount = maintenanceFee > 0
+            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4110", companyId) : null;
+        Sadara.Domain.Entities.Account? discountRevenueAccount = companyDiscountProfit > 0
+            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4120", companyId) : null;
+        Sadara.Domain.Entities.Account? promotionExpenseAccount = manualDiscount > 0
+            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "5110", companyId) : null;
+
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
         var operatorName = user?.FullName ?? "مشغل";
         var planName = log.PlanName ?? "اشتراك";
@@ -2583,7 +2621,7 @@ public class InternalDataController : ControllerBase
                 description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
 
                 // ═══ توحيد: تحديث رصيد الوكيل + إنشاء AgentTransaction ═══
-                agent.TotalCharges += amount;
+                agent.TotalCharges += collectedAmount;
                 agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
                 _unitOfWork.Agents.Update(agent);
 
@@ -2596,7 +2634,7 @@ public class InternalDataController : ControllerBase
                     AgentId = agent.Id,
                     Type = TransactionType.Charge,
                     Category = agentTxCat,
-                    Amount = amount,
+                    Amount = collectedAmount,
                     BalanceAfter = agent.NetBalance,
                     Description = $"{opType} {planName} - {customerName}",
                     ReferenceNumber = log.Id.ToString(),
@@ -2615,7 +2653,7 @@ public class InternalDataController : ControllerBase
                 description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
 
                 // ═══ توحيد: تحديث رصيد الفني + إنشاء TechnicianTransaction ═══
-                tech.TechTotalCharges += amount;
+                tech.TechTotalCharges += collectedAmount;
                 tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
                 _unitOfWork.Users.Update(tech);
 
@@ -2624,7 +2662,7 @@ public class InternalDataController : ControllerBase
                     TechnicianId = tech.Id,
                     Type = TechnicianTransactionType.Charge,
                     Category = TechnicianTransactionCategory.Subscription,
-                    Amount = amount,
+                    Amount = collectedAmount,
                     BalanceAfter = tech.TechNetBalance,
                     Description = $"{opType} {planName} - {customerName}",
                     ReferenceNumber = log.Id.ToString(),
@@ -2642,44 +2680,33 @@ public class InternalDataController : ControllerBase
                 break;
         }
 
-        // ═══ حساب التكلفة والربح ═══
-        var maintenanceFee = log.MaintenanceFee ?? 0;
-        var subscriptionPrice = amount - maintenanceFee; // سعر الاشتراك بدون الصيانة
-        var walletCost = (log.WalletBalanceBefore ?? 0) - (log.WalletBalanceAfter ?? 0); // ما خُصم من محفظة FTTH
-        if (walletCost < 0) walletCost = 0;
-        var discountProfit = subscriptionPrice - walletCost; // ربح الخصم المخفي
+        // ═══ بناء سطور القيد الجديد ═══
+        var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
 
-        // ═══ إضافة تفاصيل الربحية في وصف القيد ═══
-        var breakdown = new System.Text.StringBuilder();
-        breakdown.Append(description);
-        breakdown.Append($" | المشترك دفع: {amount:N0}");
-        if (walletCost > 0) breakdown.Append($" | تكلفة المحفظة: {walletCost:N0}");
-        if (discountProfit > 0) breakdown.Append($" | ربح الخصم: {discountProfit:N0}");
-        if (maintenanceFee > 0) breakdown.Append($" | صيانة: {maintenanceFee:N0}");
-        description = breakdown.ToString();
+        // مدين: حساب التحصيل (المبلغ المحصّل من العميل)
+        if (collectedAmount > 0)
+            lines.Add((debitAccount.Id, collectedAmount, 0, $"{debitAccount.Name} - {opType} {planName}"));
 
-        // ═══ بناء أسطر القيد ═══
-        var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+        // مدين: مصاريف عروض (الخصم الاختياري)
+        if (manualDiscount > 0 && promotionExpenseAccount != null)
+            lines.Add((promotionExpenseAccount.Id, manualDiscount, 0, $"خصم اختياري - {customerName}"));
+
+        // دائن: رصيد الصفحة (صافي الشركة)
+        if (netFromCompany > 0)
+            lines.Add((pageBalanceAccount.Id, 0, netFromCompany, $"خصم من رصيد الصفحة - {opType} {planName}"));
+
+        // دائن: إيراد صيانة
+        if (maintenanceFee > 0 && maintenanceRevenueAccount != null)
+            lines.Add((maintenanceRevenueAccount.Id, 0, maintenanceFee, $"إيراد صيانة - {customerName}"));
+
+        // دائن: إيراد خصم الشركة (ربح عدم تمرير الخصم)
+        if (companyDiscountProfit > 0 && discountRevenueAccount != null)
+            lines.Add((discountRevenueAccount.Id, 0, companyDiscountProfit, $"إيراد خصم الشركة - {customerName}"));
+
+        if (lines.Count < 2)
         {
-            // مدين: الجهة المستلمة بالمبلغ الكامل (ما يدفعه المشترك)
-            (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
-            // دائن: إيراد الاشتراك
-            (revenueAccount.Id, 0, subscriptionPrice, $"إيراد {opType} - {customerName}")
-        };
-
-        // إضافة سطر إيراد الصيانة إذا وُجد
-        if (maintenanceFee > 0)
-        {
-            var maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4300", companyId);
-            if (maintenanceRevenueAccount != null)
-            {
-                lines.Add((maintenanceRevenueAccount.Id, 0, maintenanceFee, $"إيراد صيانة - {customerName}"));
-            }
-            else
-            {
-                // إذا لم يوجد حساب 4300، ندمج الصيانة مع إيراد الاشتراك
-                lines[1] = (revenueAccount.Id, 0, amount, $"إيراد {opType} + صيانة - {customerName}");
-            }
+            _logger.LogWarning("لا توجد سطور كافية للقيد المحاسبي — تم التخطي");
+            return null;
         }
 
         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(

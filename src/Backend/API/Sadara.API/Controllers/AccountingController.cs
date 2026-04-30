@@ -3512,20 +3512,43 @@ public class AccountingController : ControllerBase
                 cashAccountBalance = cashLeafAccounts + selfBalance;
             }
 
-            // ═══ صافي الوكلاء (الصافي الكلي لجميع الوكلاء) ═══
-            var agentsQuery = _unitOfWork.Agents.AsQueryable();
-            if (companyId.HasValue) agentsQuery = agentsQuery.Where(a => a.CompanyId == companyId);
-            // NetBalance = TotalPayments - TotalCharges → سالب = مديون، موجب = دائن
-            var agentNetTotal = await agentsQuery
-                .SumAsync(a => (decimal?)a.NetBalance) ?? 0;
+            // ═══ صافي الوكلاء (محسوب من المعاملات مباشرة) ═══
+            var agentTxQuery = _unitOfWork.AgentTransactions.AsQueryable()
+                .Where(t => !t.IsDeleted);
+            if (companyId.HasValue)
+            {
+                var companyAgentIds = await _unitOfWork.Agents.AsQueryable()
+                    .Where(a => a.CompanyId == companyId)
+                    .Select(a => a.Id)
+                    .ToListAsync();
+                agentTxQuery = agentTxQuery.Where(t => companyAgentIds.Contains(t.AgentId));
+            }
+            var agentCharges = await agentTxQuery
+                .Where(t => t.Type == Sadara.Domain.Entities.TransactionType.Charge)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0;
+            var agentPayments = await agentTxQuery
+                .Where(t => t.Type == Sadara.Domain.Entities.TransactionType.Payment)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0;
+            var agentNetTotal = agentPayments - agentCharges; // سالب = مديون
 
-            // ═══ صافي الفنيين (الصافي الكلي لجميع الفنيين) ═══
-            var techQuery = _unitOfWork.Users.AsQueryable();
-            if (companyId.HasValue) techQuery = techQuery.Where(u => u.CompanyId == companyId);
-            // TechNetBalance = TotalPayments - TotalCharges → سالب = مديون، موجب = دائن
-            var techNetTotal = await techQuery
-                .Where(u => u.TechTotalCharges > 0 || u.TechTotalPayments > 0)
-                .SumAsync(u => (decimal?)u.TechNetBalance) ?? 0;
+            // ═══ صافي الفنيين (محسوب من المعاملات مباشرة) ═══
+            var techTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => !t.IsDeleted);
+            if (companyId.HasValue)
+            {
+                var companyTechIds = await _unitOfWork.Users.AsQueryable()
+                    .Where(u => u.CompanyId == companyId)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+                techTxQuery = techTxQuery.Where(t => companyTechIds.Contains(t.TechnicianId));
+            }
+            var techCharges = await techTxQuery
+                .Where(t => t.Type == Sadara.Domain.Entities.TechnicianTransactionType.Charge)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0;
+            var techPayments = await techTxQuery
+                .Where(t => t.Type == Sadara.Domain.Entities.TechnicianTransactionType.Payment)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0;
+            var techNetTotal = techPayments - techCharges; // سالب = مديون
 
             // الصافي الكلي = صافي الوكلاء + صافي الفنيين (سالب = مديون عليهم للشركة)
             var totalNet = agentNetTotal + techNetTotal;

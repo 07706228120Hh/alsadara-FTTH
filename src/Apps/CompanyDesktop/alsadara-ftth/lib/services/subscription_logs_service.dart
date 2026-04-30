@@ -71,10 +71,11 @@ class SubscriptionLogsService {
     String? linkedAgentId,
     String? linkedTechnicianId,
     String? technicianName,
-    // حقول الخصم
+    // حقول الخصم والتسعير
     double? manualDiscount,
     double? systemDiscount,
     bool? systemDiscountEnabled,
+    double? basePrice,
     // أجور الصيانة
     double? maintenanceFee,
   }) async {
@@ -129,10 +130,11 @@ class SubscriptionLogsService {
         'linkedAgentId': linkedAgentId,
         'linkedTechnicianId': linkedTechnicianId,
         'technicianName': technicianName,
-        // حقول الخصم
+        // حقول الخصم والتسعير
         'manualDiscount': manualDiscount,
         'systemDiscount': systemDiscount,
         'systemDiscountEnabled': systemDiscountEnabled,
+        'basePrice': basePrice,
         // أجور الصيانة
         'maintenanceFee': maintenanceFee,
       };
