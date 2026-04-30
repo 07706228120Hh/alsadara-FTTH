@@ -156,15 +156,26 @@ public class FtthAccountingController : ControllerBase
         var maintenanceFee = dto.MaintenanceFee ?? 0;
         var systemDiscountEnabled = dto.SystemDiscountEnabled;
 
-        // صافي الشركة = ما يُخصم من رصيد الصفحة (دائماً السعر - خصم الشركة)
-        var netFromCompany = basePrice - companyDiscount;
-
         // المبلغ المحصّل من العميل
-        var collectedAmount = systemDiscountEnabled
-            ? (basePrice - companyDiscount - manualDiscount + maintenanceFee)  // خصم مفعّل
-            : (basePrice - manualDiscount + maintenanceFee);                   // خصم غير مفعّل
+        var collectedAmount = dto.PlanPrice ?? 0;
 
-        // ربح خصم الشركة (إيراد عند عدم تفعيل الخصم)
+        // صافي الشركة = السعر الأساسي - خصم الشركة (ثابت دائماً)
+        decimal netFromCompany;
+        if (basePrice > 0)
+        {
+            netFromCompany = basePrice - companyDiscount;
+        }
+        else
+        {
+            if (systemDiscountEnabled)
+                netFromCompany = collectedAmount + manualDiscount - maintenanceFee;
+            else
+                netFromCompany = collectedAmount + manualDiscount - maintenanceFee - companyDiscount;
+
+            if (netFromCompany <= 0) netFromCompany = collectedAmount;
+        }
+
+        // ربح خصم الشركة = خصم الشركة عند عدم تفعيله
         var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
 
         // ═══ جلب الحسابات ═══

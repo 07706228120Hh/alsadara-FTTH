@@ -2545,27 +2545,42 @@ public class InternalDataController : ControllerBase
         var collectionType = log.CollectionType ?? "cash";
 
         // ═══ حساب المبالغ ═══
-        var collectedAmount = log.PlanPrice ?? 0;       // المبلغ المحصّل من العميل
+        // المعادلات الثابتة:
+        //   رصيد الصفحة (دائن)     = السعر الأساسي - خصم الشركة  ← ثابت دائماً
+        //   إيراد خصم الشركة (دائن) = خصم الشركة                 ← فقط عند عدم التفعيل
+        //   مصاريف عروض (مدين)      = الخصم الاختياري             ← إن وُجد
+        //   إيراد صيانة (دائن)      = رسوم الصيانة               ← إن وُجدت
+        //   حساب التحصيل (مدين)     = PlanPrice (ما يدفعه العميل) ← دائماً
+
+        var collectedAmount = log.PlanPrice ?? 0;       // ما يدفعه العميل
         var maintenanceFee = log.MaintenanceFee ?? 0;   // رسوم صيانة
         var manualDiscount = log.ManualDiscount ?? 0;   // خصم اختياري
         var companyDiscount = log.CompanyDiscount ?? 0;  // خصم الشركة
         var basePrice = log.BasePrice ?? 0;              // السعر الأساسي
 
-        // صافي الشركة = ما يُخصم من رصيد الصفحة
+        // صافي الشركة = السعر الأساسي - خصم الشركة (ثابت دائماً)
         decimal netFromCompany;
-        if (basePrice > 0 && companyDiscount >= 0)
+        if (basePrice > 0)
         {
             // الحقول الجديدة متوفرة — حساب دقيق
             netFromCompany = basePrice - companyDiscount;
         }
         else
         {
-            // fallback: حساب من فرق المحفظة
-            netFromCompany = (log.WalletBalanceBefore ?? 0) - (log.WalletBalanceAfter ?? 0);
-            if (netFromCompany <= 0) netFromCompany = collectedAmount - maintenanceFee;
+            // fallback (تطبيق قديم): نحسب من المعادلة العكسية
+            // إذا الخصم مفعّل: PlanPrice = BasePrice - CompanyDiscount - ManualDiscount + MaintenanceFee
+            //   إذاً: netFromCompany = PlanPrice + ManualDiscount - MaintenanceFee
+            // إذا الخصم غير مفعّل: PlanPrice = BasePrice - ManualDiscount + MaintenanceFee
+            //   إذاً: netFromCompany = PlanPrice + ManualDiscount - MaintenanceFee - CompanyDiscount
+            if (log.SystemDiscountEnabled)
+                netFromCompany = collectedAmount + manualDiscount - maintenanceFee;
+            else
+                netFromCompany = collectedAmount + manualDiscount - maintenanceFee - companyDiscount;
+
+            if (netFromCompany <= 0) netFromCompany = collectedAmount;
         }
 
-        // ربح خصم الشركة (عند عدم تمرير الخصم للعميل)
+        // ربح خصم الشركة = خصم الشركة عند عدم تفعيله (إيراد)
         var companyDiscountProfit = log.SystemDiscountEnabled ? 0 : companyDiscount;
 
         // ═══ جلب حسابات القيد ═══
