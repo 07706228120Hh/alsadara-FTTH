@@ -406,12 +406,12 @@ public class FtthAccountingController : ControllerBase
                 query = query.Where(l => l.CompanyId == companyId);
             if (from.HasValue)
             {
-                var fromUtc = DateTime.SpecifyKind(from.Value.Date, DateTimeKind.Utc);
+                var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(l => l.ActivationDate >= fromUtc);
             }
             if (to.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1), DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(l => l.ActivationDate <= toUtc);
             }
 
@@ -540,7 +540,20 @@ public class FtthAccountingController : ControllerBase
                         l.LinkedAgentId,
                         l.LinkedTechnicianId,
                         l.RenewalCycleMonths,
-                        l.PaidMonths
+                        l.PaidMonths,
+                        // حقول محاسبية
+                        l.BasePrice,
+                        l.CompanyDiscount,
+                        l.ManualDiscount,
+                        l.MaintenanceFee,
+                        l.SystemDiscountEnabled,
+                        PageDeduction = (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
+                            : l.SystemDiscountEnabled
+                                ? (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0)
+                                : (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0) - (l.CompanyDiscount ?? 0),
+                        Revenue = (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0)),
+                        Expense = l.ManualDiscount ?? 0
                     })
                 }
             });
@@ -572,12 +585,12 @@ public class FtthAccountingController : ControllerBase
                 query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
             if (from.HasValue)
             {
-                var fromUtc = DateTime.SpecifyKind(from.Value.Date, DateTimeKind.Utc);
+                var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(l => l.ActivationDate >= fromUtc);
             }
             if (to.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1), DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(l => l.ActivationDate <= toUtc);
             }
 
@@ -615,7 +628,19 @@ public class FtthAccountingController : ControllerBase
                     ScheduleCount = g.Count(l => l.OperationType != null && l.OperationType.ToUpper().Contains("SCHEDULE")),
                     ScheduleAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("SCHEDULE")).Sum(l => l.PlanPrice ?? 0),
                     // مطابقة
-                    ReconciledCount = g.Count(l => l.IsReconciled)
+                    ReconciledCount = g.Count(l => l.IsReconciled),
+                    // حقول محاسبية: المستقطع والإيرادات والمصاريف
+                    TotalMaintenanceFee = g.Sum(l => l.MaintenanceFee ?? 0),
+                    TotalManualDiscount = g.Sum(l => l.ManualDiscount ?? 0),
+                    TotalCompanyDiscountProfit = g.Where(l => !l.SystemDiscountEnabled).Sum(l => l.CompanyDiscount ?? 0),
+                    // المستقطع من الصفحة = BasePrice - CompanyDiscount (أو PlanPrice + ManualDiscount - MaintenanceFee إذا لم يوجد BasePrice)
+                    PageDeduction = g.Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
+                            : l.SystemDiscountEnabled
+                                ? (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0)
+                                : (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0) - (l.CompanyDiscount ?? 0)
+                    )
                 })
                 .ToListAsync();
 
@@ -727,7 +752,14 @@ public class FtthAccountingController : ControllerBase
                     changeAmount = g.ChangeAmount,
                     scheduleCount = g.ScheduleCount,
                     scheduleAmount = g.ScheduleAmount,
-                    reconciledCount = g.ReconciledCount
+                    reconciledCount = g.ReconciledCount,
+                    // محاسبية
+                    pageDeduction = g.PageDeduction,
+                    maintenanceFee = g.TotalMaintenanceFee,
+                    manualDiscount = g.TotalManualDiscount,
+                    companyDiscountProfit = g.TotalCompanyDiscountProfit,
+                    revenue = g.TotalMaintenanceFee + g.TotalCompanyDiscountProfit,
+                    expense = g.TotalManualDiscount
                 };
             }).OrderByDescending(x => x.totalAmount).ToList();
 
@@ -872,6 +904,10 @@ public class FtthAccountingController : ControllerBase
                     totalChangeCount = result.Sum(r => r.changeCount),
                     totalSchedule = result.Sum(r => r.scheduleAmount),
                     totalScheduleCount = result.Sum(r => r.scheduleCount),
+                    // محاسبية
+                    totalPageDeduction = result.Sum(r => r.pageDeduction),
+                    totalRevenue = result.Sum(r => r.revenue),
+                    totalExpense = result.Sum(r => r.expense),
                     // مطابقة
                     reconciledCount = reconciledTotal,
                     reconciledPercentage = totalRecords > 0
@@ -1459,6 +1495,75 @@ public class FtthAccountingController : ControllerBase
         }
     }
 
+    // ==================== 8.5 جلب معرّفات FTTH المحفوظة ====================
+
+    /// <summary>
+    /// يرجع بصمات العمليات المحفوظة (FtthTransactionId + composite keys) لتحديد العمليات الناقصة
+    /// </summary>
+    [HttpGet("existing-ftth-ids")]
+    public async Task<IActionResult> GetExistingFtthIds(
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            var baseQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+
+            if (companyId.HasValue)
+                baseQuery = baseQuery.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+            if (from.HasValue)
+            {
+                var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
+                baseQuery = baseQuery.Where(l => l.ActivationDate >= fromUtc);
+            }
+            if (to.HasValue)
+            {
+                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                baseQuery = baseQuery.Where(l => l.ActivationDate <= toUtc);
+            }
+
+            // 1. FtthTransactionId للعمليات المُزامنة
+            var ids = await baseQuery
+                .Where(l => l.FtthTransactionId != null && l.FtthTransactionId != "")
+                .Select(l => l.FtthTransactionId!)
+                .ToListAsync();
+
+            // 2. بصمات بمعرّف العميل: customerId|المستقطع|تاريخ
+            var fingerprints = await baseQuery
+                .Where(l => l.CustomerId != null && l.CustomerId != "")
+                .Select(l => new {
+                    l.CustomerId, l.PlanPrice, l.ActivationDate,
+                    l.BasePrice, l.CompanyDiscount, l.ManualDiscount,
+                    l.MaintenanceFee, l.SystemDiscountEnabled
+                })
+                .ToListAsync();
+
+            var keys = fingerprints.Select(f =>
+            {
+                var cid = f.CustomerId!.Trim();
+                // حساب المستقطع من الصفحة (نفس منطق القيد المحاسبي)
+                int pageDeduction;
+                if ((f.BasePrice ?? 0) > 0)
+                    pageDeduction = (int)((f.BasePrice ?? 0) - (f.CompanyDiscount ?? 0));
+                else if (f.SystemDiscountEnabled)
+                    pageDeduction = (int)((f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0));
+                else
+                    pageDeduction = (int)((f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0) - (f.CompanyDiscount ?? 0));
+                if (pageDeduction <= 0) pageDeduction = (int)(f.PlanPrice ?? 0);
+                var date = f.ActivationDate?.ToString("yyyy-MM-dd") ?? "";
+                return $"{cid}|{pageDeduction}|{date}";
+            }).ToList();
+
+            return Ok(new { success = true, ids, keys });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
     // ==================== 9. مزامنة عمليات FTTH دفعة واحدة ====================
 
     /// <summary>
@@ -1540,7 +1645,14 @@ public class FtthAccountingController : ControllerBase
                     // البحث عن المشغل
                     Guid? userId = null;
                     Guid? companyId = dto.CompanyId;
-                    if (!string.IsNullOrEmpty(tx.CreatedBy))
+
+                    // أولاً: استخدام operatorUserId المرسل مباشرة (من المقارنة)
+                    if (!string.IsNullOrEmpty(tx.OperatorUserId) && Guid.TryParse(tx.OperatorUserId, out var directUserId))
+                    {
+                        userId = directUserId;
+                    }
+                    // ثانياً: البحث بـ CreatedBy (اسم المستخدم في FTTH)
+                    else if (!string.IsNullOrEmpty(tx.CreatedBy))
                     {
                         var key = tx.CreatedBy.ToLower().Trim();
                         if (ftthToUser.TryGetValue(key, out var user))
@@ -1550,13 +1662,16 @@ public class FtthAccountingController : ControllerBase
                         }
                     }
 
+                    var planPrice = tx.Amount != null ? Math.Abs(tx.Amount.Value) : (decimal?)null;
+                    var collectionType = !string.IsNullOrEmpty(tx.CollectionType) ? tx.CollectionType : "cash";
+
                     var log = new SubscriptionLog
                     {
                         CustomerId = tx.CustomerId,
                         CustomerName = tx.CustomerName,
                         SubscriptionId = tx.SubscriptionId,
                         PlanName = tx.PlanName,
-                        PlanPrice = tx.Amount != null ? Math.Abs(tx.Amount.Value) : null,
+                        PlanPrice = planPrice,
                         OperationType = tx.OperationType,
                         ActivatedBy = tx.CreatedBy,
                         ActivationDate = tx.OccuredAt,
@@ -1565,13 +1680,54 @@ public class FtthAccountingController : ControllerBase
                         FtthTransactionId = tx.FtthTransactionId,
                         UserId = userId,
                         CompanyId = companyId,
-                        CollectionType = tx.CollectionType,
+                        CollectionType = collectionType,
+                        PaymentMethod = tx.PaymentMethod,
+                        StartDate = tx.StartDate?.ToString("yyyy-MM-dd"),
+                        EndDate = tx.EndDate?.ToString("yyyy-MM-dd"),
+                        WalletBalanceAfter = tx.RemainingBalance,
                         IsReconciled = true,
                         ReconciliationNotes = "مزامنة تلقائية من FTTH"
                     };
 
                     await _unitOfWork.SubscriptionLogs.AddAsync(log);
+                    await _unitOfWork.SaveChangesAsync();
                     saved++;
+
+                    // إنشاء قيد محاسبي (افتراضي: نقد، بدون خصومات)
+                    if (tx.CreateAccounting && userId.HasValue && companyId.HasValue && planPrice > 0)
+                    {
+                        try
+                        {
+                            var accountingDto = new FtthLogWithAccountingDto(
+                                tx.CustomerId, tx.CustomerName, null,
+                                tx.SubscriptionId, tx.PlanName, planPrice,
+                                null, null, null,
+                                tx.DeviceUsername, tx.OperationType, tx.CreatedBy,
+                                tx.OccuredAt, null, null,
+                                tx.ZoneId, null, null, null, null,
+                                null, tx.RemainingBalance,
+                                null, null,
+                                null, tx.PaymentMethod, null, null,
+                                userId, companyId, false, false,
+                                null, tx.StartDate?.ToString("yyyy-MM-dd"), tx.EndDate?.ToString("yyyy-MM-dd"),
+                                null, null,
+                                collectionType, tx.FtthTransactionId, null,
+                                null, null,
+                                planPrice, 0, 0, 0, true);
+
+                            var jeId = await CreateAccountingEntry(log, accountingDto);
+                            if (jeId.HasValue)
+                            {
+                                log.JournalEntryId = jeId;
+                                _unitOfWork.SubscriptionLogs.Update(log);
+                            }
+                            await _unitOfWork.SaveChangesAsync();
+                        }
+                        catch (Exception accEx)
+                        {
+                            _logger.LogWarning(accEx, "فشل إنشاء قيد محاسبي للعملية {TxId}", tx.FtthTransactionId);
+                        }
+                    }
 
                     if (!string.IsNullOrEmpty(tx.FtthTransactionId))
                         existingSet.Add(tx.FtthTransactionId);
@@ -2345,7 +2501,13 @@ public record SyncFtthTransactionItem(
     DateTime? OccuredAt,
     string? ZoneId,
     string? DeviceUsername,
-    string? CollectionType
+    string? CollectionType,
+    string? OperatorUserId = null,
+    string? PaymentMethod = null,
+    DateTime? StartDate = null,
+    DateTime? EndDate = null,
+    decimal? RemainingBalance = null,
+    bool CreateAccounting = false
 );
 
 public record QuickDeliverDto(

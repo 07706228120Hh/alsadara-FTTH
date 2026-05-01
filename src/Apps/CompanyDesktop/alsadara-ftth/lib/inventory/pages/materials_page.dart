@@ -157,9 +157,15 @@ class _MaterialsPageState extends State<MaterialsPage> {
   //  إضافة/تعديل مادة
   // ═══════════════════════════════════════════
 
+  String _generateSku() {
+    final now = DateTime.now();
+    return 'M${now.year % 100}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _showAddEditDialog([InventoryItem? item]) async {
+    final isNew = item == null || item.id.isEmpty;
     final nameCtrl = TextEditingController(text: item?.name ?? '');
-    final skuCtrl = TextEditingController(text: item?.sku ?? '');
+    final skuCtrl = TextEditingController(text: isNew ? _generateSku() : item.sku);
     final descCtrl = TextEditingController(text: item?.description ?? '');
     final costCtrl = TextEditingController(text: item != null ? fmtN(item.costPrice) : '');
     final sellCtrl = TextEditingController(text: item?.sellingPrice != null ? fmtN(item!.sellingPrice!) : '');
@@ -175,7 +181,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setD) {
           return AlertDialog(
-            title: Text(item == null ? 'إضافة مادة' : 'تعديل مادة'),
+            title: Text(item == null || item.id.isEmpty ? 'إضافة مادة' : 'تعديل مادة'),
             content: SizedBox(
               width: 500,
               child: SingleChildScrollView(
@@ -183,8 +189,6 @@ class _MaterialsPageState extends State<MaterialsPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم المادة *', border: OutlineInputBorder())),
-                    const SizedBox(height: 10),
-                    TextField(controller: skuCtrl, decoration: const InputDecoration(labelText: 'رمز المادة (SKU)', border: OutlineInputBorder())),
                     const SizedBox(height: 10),
                     // التصنيف مع زر إضافة سريع
                     Row(
@@ -280,7 +284,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
     };
 
     try {
-      if (item == null) {
+      if (item == null || item.id.isEmpty) {
         await _api.createItem(data: data);
       } else {
         await _api.updateItem(item.id, data: data);
@@ -290,6 +294,28 @@ class _MaterialsPageState extends State<MaterialsPage> {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
     }
+  }
+
+  /// نسخ مادة — يفتح نافذة إضافة مادة جديدة بنفس البيانات مع تغيير الاسم
+  void _duplicateItem(InventoryItem item) {
+    // ننشئ نسخة وهمية بدون id لتُعامل كإضافة جديدة
+    final copy = InventoryItem(
+      id: '', // فارغ = إضافة جديدة
+      name: '${item.name} (نسخة)',
+      sku: '',
+      unit: item.unit,
+      costPrice: item.costPrice,
+      sellingPrice: item.sellingPrice,
+      wholesalePrice: item.wholesalePrice,
+      minStockLevel: item.minStockLevel,
+      maxStockLevel: item.maxStockLevel,
+      categoryId: item.categoryId,
+      categoryName: item.categoryName,
+      description: item.description,
+      isActive: true,
+      companyId: item.companyId,
+    );
+    _showAddEditDialog(copy);
   }
 
   Future<void> _confirmDelete(InventoryItem item) async {
@@ -322,8 +348,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), elevation: 0,
+        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
           title: const Text('المواد والأصناف'),
           actions: [
             IconButton(icon: const Icon(Icons.account_tree_rounded), tooltip: 'إدارة الأصناف', onPressed: _showCategoriesDialog),
@@ -351,7 +376,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           Expanded(flex: 3, child: TextField(
             controller: _searchCtrl,
             decoration: InputDecoration(
-              hintText: 'بحث بالاسم أو SKU...', prefixIcon: const Icon(Icons.search),
+              hintText: 'بحث بالاسم...', prefixIcon: const Icon(Icons.search),
               border: const OutlineInputBorder(), isDense: true,
               suffixIcon: _searchCtrl.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchCtrl.clear(); _onSearch(); }) : null,
             ),
@@ -397,7 +422,6 @@ class _MaterialsPageState extends State<MaterialsPage> {
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
           columns: const [
-            DataColumn(label: Text('SKU')),
             DataColumn(label: Text('الاسم')),
             DataColumn(label: Text('التصنيف')),
             DataColumn(label: Text('الوحدة')),
@@ -411,7 +435,6 @@ class _MaterialsPageState extends State<MaterialsPage> {
             final stock = item.totalStock ?? 0;
             final isLow = stock < item.minStockLevel && item.minStockLevel > 0;
             return DataRow(cells: [
-              DataCell(Text(item.sku)),
               DataCell(Text(item.name)),
               DataCell(Text(item.categoryName ?? '-')),
               DataCell(Text(_unitMap[item.unit] ?? item.unit)),
@@ -424,6 +447,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
                 child: Text('$stock', style: TextStyle(color: isLow ? Colors.red.shade800 : null, fontWeight: isLow ? FontWeight.bold : null)),
               )),
               DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(icon: const Icon(Icons.copy_rounded, size: 20, color: Colors.blue), tooltip: 'نسخ وتكرار', onPressed: () => _duplicateItem(item)),
                 IconButton(icon: const Icon(Icons.edit, size: 20), tooltip: 'تعديل', onPressed: () => _showAddEditDialog(item)),
                 IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'حذف', onPressed: () => _confirmDelete(item)),
               ])),

@@ -892,7 +892,7 @@ class _TaskCardState extends State<TaskCard> {
 
   Widget _buildCommentItem(Map<String, dynamic> comment) {
     final content = comment['Content']?.toString() ?? comment['content']?.toString() ?? '';
-    final author = comment['CreatedByName']?.toString() ?? comment['createdBy']?.toString() ?? '';
+    final author = comment['UserName']?.toString() ?? comment['userName']?.toString() ?? comment['CreatedByName']?.toString() ?? comment['createdBy']?.toString() ?? '';
     final dateStr = comment['CreatedAt']?.toString() ?? comment['createdAt']?.toString() ?? '';
     final date = DateTime.tryParse(dateStr);
 
@@ -1099,8 +1099,6 @@ class _TaskCardState extends State<TaskCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
-                if (sku.isNotEmpty)
-                  Text(sku, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
               ],
             ),
           ),
@@ -1139,32 +1137,24 @@ class _TaskCardState extends State<TaskCard> {
   Future<void> _showAddMaterialsDialog() async {
     final companyId = VpsAuthService.instance.currentCompanyId ?? '';
     final taskGuid = widget.task.guid;
+    final techId = widget.task.technicianId;
     if (companyId.isEmpty || taskGuid.isEmpty) return;
 
-    // تحميل المواد والمستودعات
-    List<Map<String, dynamic>> items = [];
-    List<Map<String, dynamic>> warehouses = [];
+    // تحميل عُهدة الفني (المواد المسلّمة له)
+    List<Map<String, dynamic>> holdings = [];
     bool loading = true;
-
-    // أسطر المواد المراد إضافتها
     final rows = <_MaterialRow>[];
-
-    String? selectedWarehouseId;
 
     await showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setD) {
-          // تحميل البيانات أول مرة
           if (loading) {
             Future.microtask(() async {
               try {
-                final itemsRes = await InventoryApiService.instance.getItems(companyId: companyId, pageSize: 200);
-                final whRes = await InventoryApiService.instance.getWarehouses(companyId: companyId);
-                items = ((itemsRes['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-                warehouses = ((whRes['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-                if (warehouses.isNotEmpty) {
-                  selectedWarehouseId = (warehouses.first['Id'] ?? warehouses.first['id'])?.toString();
+                if (techId.isNotEmpty) {
+                  final res = await InventoryApiService.instance.getTechnicianHoldings(techId);
+                  holdings = ((res['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
                 }
               } catch (_) {}
               if (ctx.mounted) setD(() => loading = false);
@@ -1177,123 +1167,114 @@ class _TaskCardState extends State<TaskCard> {
               title: const Row(children: [
                 Icon(Icons.inventory_2, color: Colors.orange, size: 20),
                 SizedBox(width: 8),
-                Text('إضافة مواد مصروفة', style: TextStyle(fontSize: 16)),
+                Text('صرف مواد للعميل', style: TextStyle(fontSize: 16)),
               ]),
               content: SizedBox(
-                width: 520,
+                width: 550,
                 child: loading
                     ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
-                    : SingleChildScrollView(child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // اختيار المستودع
-                          DropdownButtonFormField<String>(
-                            value: selectedWarehouseId,
-                            decoration: const InputDecoration(labelText: 'المستودع', border: OutlineInputBorder(), isDense: true),
-                            items: warehouses.map((w) {
-                              final id = (w['Id'] ?? w['id'])?.toString() ?? '';
-                              final name = (w['Name'] ?? w['name'])?.toString() ?? '';
-                              return DropdownMenuItem(value: id, child: Text(name));
-                            }).toList(),
-                            onChanged: (v) => setD(() => selectedWarehouseId = v),
-                          ),
-                          const SizedBox(height: 12),
+                    : holdings.isEmpty && rows.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Center(child: Text('لا توجد مواد بعُهدة الفني.\nيجب صرف مواد للفني أولاً من صفحة المخازن.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey))),
+                          )
+                        : SingleChildScrollView(child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // عرض المواد المتوفرة بعُهدة الفني
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                                child: Row(children: [
+                                  Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                                  const SizedBox(width: 6),
+                                  Text('اختر من المواد المسلّمة للفني:', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+                                ]),
+                              ),
+                              const SizedBox(height: 12),
 
-                          // أسطر المواد
-                          ...rows.asMap().entries.map((entry) {
-                            final idx = entry.key;
-                            final row = entry.value;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(children: [
-                                // اختيار المادة
-                                Expanded(
-                                  flex: 3,
-                                  child: DropdownButtonFormField<String>(
-                                    value: row.itemId.isEmpty ? null : row.itemId,
-                                    isExpanded: true,
-                                    decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
-                                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                                    items: items.map((i) {
-                                      final id = (i['Id'] ?? i['id'])?.toString() ?? '';
-                                      final name = (i['Name'] ?? i['name'])?.toString() ?? '';
-                                      final sku = (i['SKU'] ?? i['sku'])?.toString() ?? '';
-                                      return DropdownMenuItem(value: id, child: Text('$name ${sku.isNotEmpty ? "($sku)" : ""}', overflow: TextOverflow.ellipsis));
-                                    }).toList(),
-                                    onChanged: (v) => setD(() => row.itemId = v ?? ''),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // الكمية
-                                SizedBox(
-                                  width: 70,
-                                  child: TextFormField(
-                                    initialValue: '${row.quantity}',
-                                    keyboardType: TextInputType.number,
-                                    textAlign: TextAlign.center,
-                                    decoration: const InputDecoration(labelText: 'العدد', border: OutlineInputBorder(), isDense: true),
-                                    style: const TextStyle(fontSize: 13),
-                                    onChanged: (v) => row.quantity = int.tryParse(v) ?? 1,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                InkWell(
-                                  onTap: () => setD(() => rows.removeAt(idx)),
-                                  child: const Icon(Icons.remove_circle, size: 22, color: Colors.red),
-                                ),
-                              ]),
-                            );
-                          }),
+                              ...rows.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final row = entry.value;
+                                // حساب المتوفر
+                                final selected = holdings.where((h) => (h['InventoryItemId'] ?? h['inventoryItemId'])?.toString() == row.itemId);
+                                final available = selected.isNotEmpty ? (selected.first['RemainingQuantity'] ?? selected.first['remainingQuantity'] ?? 0) : 0;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(children: [
+                                    Expanded(
+                                      flex: 3,
+                                      child: DropdownButtonFormField<String>(
+                                        value: row.itemId.isEmpty ? null : row.itemId,
+                                        isExpanded: true,
+                                        decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
+                                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                        items: holdings.map((h) {
+                                          final id = (h['InventoryItemId'] ?? h['inventoryItemId'])?.toString() ?? '';
+                                          final name = (h['ItemName'] ?? h['itemName'])?.toString() ?? '';
+                                          final rem = h['RemainingQuantity'] ?? h['remainingQuantity'] ?? 0;
+                                          return DropdownMenuItem(value: id, child: Text('$name (متوفر: $rem)', overflow: TextOverflow.ellipsis));
+                                        }).toList(),
+                                        onChanged: (v) => setD(() => row.itemId = v ?? ''),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      width: 70,
+                                      child: TextFormField(
+                                        initialValue: '${row.quantity}',
+                                        keyboardType: TextInputType.number,
+                                        textAlign: TextAlign.center,
+                                        decoration: InputDecoration(labelText: 'العدد', border: const OutlineInputBorder(), isDense: true,
+                                          helperText: available > 0 ? 'من $available' : null, helperStyle: TextStyle(fontSize: 9, color: Colors.green.shade700)),
+                                        style: const TextStyle(fontSize: 13),
+                                        onChanged: (v) => row.quantity = int.tryParse(v) ?? 1,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    InkWell(onTap: () => setD(() => rows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: Colors.red)),
+                                  ]),
+                                );
+                              }),
 
-                          // زر إضافة سطر
-                          Center(
-                            child: TextButton.icon(
-                              onPressed: () => setD(() => rows.add(_MaterialRow())),
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text('إضافة مادة'),
-                            ),
-                          ),
+                              Center(child: TextButton.icon(
+                                onPressed: () => setD(() => rows.add(_MaterialRow())),
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('إضافة مادة'),
+                              )),
 
-                          if (rows.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Center(child: Text('اضغط "إضافة مادة" لتحديد المواد المستخدمة', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
-                            ),
-                        ],
-                      )),
+                              if (rows.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Center(child: Text('اضغط "إضافة مادة" لتحديد المواد المستخدمة', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+                                ),
+                            ],
+                          )),
               ),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-                  onPressed: rows.isEmpty || selectedWarehouseId == null ? null : () async {
+                  onPressed: rows.isEmpty ? null : () async {
                     final validItems = rows.where((r) => r.itemId.isNotEmpty && r.quantity > 0).toList();
                     if (validItems.isEmpty) return;
                     try {
-                      await InventoryApiService.instance.createDispensing(data: {
-                        'technicianId': widget.task.technicianId,
-                        'warehouseId': selectedWarehouseId,
+                      await InventoryApiService.instance.useFromTechnicianHoldings(data: {
+                        'technicianId': techId,
                         'serviceRequestId': taskGuid,
-                        'type': 0,
-                        'notes': 'صرف من المهمة #${widget.task.id}',
                         'companyId': companyId,
                         'items': validItems.map((r) => {'inventoryItemId': r.itemId, 'quantity': r.quantity}).toList(),
                       });
                       if (ctx.mounted) Navigator.pop(ctx);
-                      // إعادة تحميل المواد
                       _materialsLoaded = false;
                       _loadDispensedMaterials();
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('تم إضافة المواد بنجاح'), backgroundColor: Colors.green),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم صرف المواد من عُهدة الفني'), backgroundColor: Colors.green));
                       }
                     } catch (e) {
                       if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
-                        );
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
                       }
                     }
                   },
@@ -1913,8 +1894,66 @@ class _TaskCardState extends State<TaskCard> {
     ).then((_) => disposeControllers()); // تنظيف عند إغلاق الـ dialog بأي طريقة
   }
 
+  /// هل المهمة تتطلب ذكر المواد المصروفة؟
+  bool _requiresMaterials() {
+    final t = widget.task.title.toLowerCase();
+    return t.contains('صيانة') || t.contains('تركيب') || t.contains('تنصيب') ||
+           t.contains('إصلاح') || t.contains('اصلاح') || t.contains('شراء اشتراك');
+  }
+
   void _updateTaskStatus(String newStatus,
       {String amount = '', String notes = ''}) async {
+    // ── التحقق من المواد المصروفة عند إكمال مهمة صيانة/تنصيب ──
+    if (newStatus == 'مكتملة' && _requiresMaterials()) {
+      // تحميل المواد إن لم تُحمل
+      if (!_materialsLoaded) await _loadDispensedMaterials();
+
+      if (_dispensedMaterials.isEmpty) {
+        if (!mounted) return;
+        final choice = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: Row(children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('المواد المصروفة', style: TextStyle(fontSize: 16))),
+              ]),
+              content: const Text(
+                'لم يتم تسجيل أي مواد مصروفة لهذه المهمة.\nهل تريد إضافة مواد أم تأكيد عدم الصرف؟',
+                style: TextStyle(fontSize: 14),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, 'cancel'),
+                  child: const Text('إلغاء'),
+                ),
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx, 'no_materials'),
+                  child: const Text('لم يُصرف شيء'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+                  onPressed: () => Navigator.pop(ctx, 'add_materials'),
+                  child: const Text('إضافة مواد'),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        if (choice == 'add_materials') {
+          await _showAddMaterialsDialog();
+          // بعد الإضافة نكمل المهمة تلقائياً (المواد تُحمّل داخل _showAddMaterialsDialog)
+        } else if (choice == 'cancel' || choice == null) {
+          return; // إلغاء — لا يكمل المهمة
+        }
+        // choice == 'no_materials' → يكمل عادي
+      }
+    }
+
     debugPrint('🟦 [DEBUG] بدء تحديث المهمة - ID: ${widget.task.id}');
     debugPrint('🟦 [DEBUG] الحالة الجديدة: $newStatus');
 

@@ -8,6 +8,9 @@ dynamic _v(Map<String, dynamic> j, String key) {
   if (j.containsKey(key)) return j[key];
   final pascal = key[0].toUpperCase() + key.substring(1);
   if (j.containsKey(pascal)) return j[pascal];
+  // حالة UPPER_CASE (مثل SKU)
+  final upper = key.toUpperCase();
+  if (j.containsKey(upper)) return j[upper];
   // حالة خاصة: managerUserName → ManagerName
   if (key == 'managerUserName' && j.containsKey('ManagerName')) return j['ManagerName'];
   if (key == 'managerUserName' && j.containsKey('managerName')) return j['managerName'];

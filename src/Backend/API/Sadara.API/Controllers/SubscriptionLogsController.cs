@@ -47,10 +47,10 @@ public class SubscriptionLogsController : ControllerBase
             query = query.Where(x => x.OperationType == operationType);
 
         if (fromDate.HasValue)
-            query = query.Where(x => x.ActivationDate >= fromDate.Value);
+            query = query.Where(x => x.ActivationDate >= DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc));
 
         if (toDate.HasValue)
-            query = query.Where(x => x.ActivationDate <= toDate.Value);
+            query = query.Where(x => x.ActivationDate <= DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc));
 
         var total = await query.CountAsync();
         var logs = await query
@@ -415,7 +415,7 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> GetStats([FromQuery] DateTime? date = null)
     {
-        var targetDate = date?.Date ?? DateTime.UtcNow.Date;
+        var targetDate = date?.Date ?? DateTime.UtcNow.AddHours(3).Date;
         var query = _unitOfWork.SubscriptionLogs.AsQueryable()
             .Where(x => x.ActivationDate.HasValue && x.ActivationDate.Value.Date == targetDate);
 
@@ -459,10 +459,10 @@ public class SubscriptionLogsController : ControllerBase
             query = query.Where(x => x.OperationType == operationType);
 
         if (fromDate.HasValue)
-            query = query.Where(x => x.ActivationDate >= fromDate.Value);
+            query = query.Where(x => x.ActivationDate >= DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc));
 
         if (toDate.HasValue)
-            query = query.Where(x => x.ActivationDate <= toDate.Value);
+            query = query.Where(x => x.ActivationDate <= DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc));
 
         var total = await query.CountAsync();
         var logs = await query

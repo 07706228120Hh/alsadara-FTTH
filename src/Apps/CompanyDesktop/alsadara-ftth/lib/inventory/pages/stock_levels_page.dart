@@ -49,7 +49,15 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
         warehouseId: _selectedWarehouseId,
       );
       final list = (res['data'] as List<dynamic>?) ?? [];
-      _stockRows = list.cast<Map<String, dynamic>>();
+      // normalize keys: PascalCase → camelCase
+      _stockRows = list.map((e) {
+        final m = e as Map<String, dynamic>;
+        return <String, dynamic>{
+          for (final k in m.keys)
+            '${k[0].toLowerCase()}${k.substring(1)}': m[k],
+          ...m, // keep originals too
+        };
+      }).toList();
     } catch (e) {
       _error = e.toString();
     }
@@ -96,7 +104,7 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), elevation: 0,
+        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
           title: const Text('مستويات المخزون'),
           actions: [
             IconButton(
@@ -186,7 +194,6 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
           headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
           columns: const [
             DataColumn(label: Text('المادة')),
-            DataColumn(label: Text('SKU')),
             DataColumn(label: Text('المستودع')),
             DataColumn(label: Text('الكمية الحالية'), numeric: true),
             DataColumn(label: Text('المحجوز'), numeric: true),
@@ -206,7 +213,6 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
 
             return DataRow(cells: [
               DataCell(Text(row['itemName'] as String? ?? '-')),
-              DataCell(Text(row['itemSku'] as String? ?? '-')),
               DataCell(Text(row['warehouseName'] as String? ?? '-')),
               DataCell(Text('$current')),
               DataCell(Text('$reserved')),

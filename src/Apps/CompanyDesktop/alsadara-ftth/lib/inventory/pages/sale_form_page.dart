@@ -210,7 +210,7 @@ class _SaleFormPageState extends State<SaleFormPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), elevation: 0,title: const Text('بيع جديد')),
+        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,title: const Text('بيع جديد')),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : Form(
@@ -377,7 +377,7 @@ class _SaleFormPageState extends State<SaleFormPage> {
               items: _inventoryItems
                   .map((item) => DropdownMenuItem(
                         value: item.id,
-                        child: Text('${item.name} (${item.sku})',
+                        child: Text(item.name,
                             overflow: TextOverflow.ellipsis),
                       ))
                   .toList(),

@@ -42,7 +42,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   // ── بيانات مشتركة ──
   DateTime? _fromDate;
   DateTime? _toDate;
-  String _dateLabel = 'اليوم + أمس';
+  String _dateLabel = 'اليوم';
   bool _showDateFilter = false;
 
   String get _companyId =>
@@ -267,8 +267,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
-    // الافتراضي: اليوم + أمس
-    _setTodayAndYesterday();
+    // الافتراضي: اليوم
+    final now = DateTime.now();
+    _fromDate = DateTime(now.year, now.month, now.day);
+    _toDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    _dateLabel = 'اليوم';
     _loadOursData();
     _checkFtthAuth();
     _loadAvailableZones();
@@ -1173,6 +1176,32 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     if (!mounted) return;
 
     try {
+      // 2.5 جلب بصمات العمليات المحفوظة عندنا لتحديد العمليات الناقصة
+      Set<String> existingFtthIds = {};
+      Set<String> existingKeys = {};
+      try {
+        final result = await AccountingService.instance.getExistingFtthFingerprints(
+          companyId: _companyId,
+          from: _fromDate,
+          to: _toDate,
+        );
+        existingFtthIds = (result['ids'] ?? []).toSet();
+        existingKeys = (result['keys'] ?? []).toSet();
+        debugPrint('📊 بصمات محفوظة: ${existingFtthIds.length} IDs، ${existingKeys.length} keys');
+      } catch (e) {
+        debugPrint('⚠️ فشل جلب بصمات العمليات المحفوظة: $e');
+      }
+
+      // بناء خريطة (customerId|تاريخ → مبلغ) لكشف المبالغ الخاطئة
+      final Map<String, int> cidDateAmounts = {};
+      for (final key in existingKeys) {
+        final parts = key.split('|');
+        if (parts.length == 3) {
+          final cidDate = '${parts[0]}|${parts[2]}';
+          cidDateAmounts[cidDate] = int.tryParse(parts[1]) ?? 0;
+        }
+      }
+
       // 3. بناء خريطة مشغلينا مع عدة مفاتيح للمطابقة
       // كل مشغل يمكن مطابقته بـ ftthUsername أو username أو operatorName
       final Map<String, Map<String, dynamic>> oursMap = {};
@@ -1181,6 +1210,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
       for (final op in _oursOperators) {
         final m = op as Map<String, dynamic>;
+        // استبعاد الفنيين — المقارنة للمشغلين فقط
+        if (m['isTechnician'] == true) continue;
         final ftthUser = (m['ftthUsername'] ?? '').toString().trim();
         final username = (m['username'] ?? '').toString().trim();
         final opName = (m['operatorName'] ?? '').toString().trim();
@@ -1220,7 +1251,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         final primaryKey = entry.key;
         final oursOp = entry.value;
         final oursCount = (oursOp['totalCount'] ?? 0) as int;
-        final oursAmount = (oursOp['totalAmount'] ?? 0).toDouble();
+        final oursAmount = (oursOp['pageDeduction'] ?? oursOp['totalAmount'] ?? 0).toDouble();
         final oursName = oursOp['operatorName'] ?? primaryKey;
 
         // البحث بكل المفاتيح الممكنة
@@ -1240,28 +1271,59 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           processedFtth.add(ftthOp.name.toLowerCase());
 
           final ftthSubOps = ftthOp.subscriptionOps;
-          final matchCount = oursCount < ftthSubOps ? oursCount : ftthSubOps;
-          final oursOnlyCount = oursCount - matchCount;
-          final ftthOnlyCount = ftthSubOps - matchCount;
 
-          matched += matchCount;
-          oursOnly += oursOnlyCount;
-          ftthOnly += ftthOnlyCount;
+          // تصنيف عمليات FTTH: ناقصة أو خاطئة
+          final List<_FtthTransaction> missingTxs = [];
+          final List<_WrongTransaction> wrongTxs = [];
+          for (final tx in ftthOp.transactions) {
+            if (!_subscriptionTypeSet.contains(tx.type)) continue;
+            if (existingFtthIds.contains(tx.id)) continue;
+            final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
+            final amt = tx.amount.abs().toInt();
+            final cid = tx.customerId.trim();
+            // مطابقة بمعرّف العميل
+            final cidKey = '$cid|$amt|$dateStr';
+            if (existingKeys.contains(cidKey)) continue;
+            // تحقق: هل معرّف العميل موجود بنفس التاريخ لكن بمبلغ مختلف؟
+            final cidDate = '$cid|$dateStr';
+            if (cid.isNotEmpty && cidDateAmounts.containsKey(cidDate)) {
+              wrongTxs.add(_WrongTransaction(
+                ftthTx: tx,
+                oursAmount: cidDateAmounts[cidDate]!,
+                ftthAmount: amt,
+              ));
+            } else {
+              missingTxs.add(tx);
+            }
+          }
+
+          // حساب دقيق
+          final realFtthOnly = missingTxs.length;
+          final realMatched = ftthSubOps - realFtthOnly - wrongTxs.length;
+          final realOursOnly = oursCount > realMatched ? oursCount - realMatched : 0;
+
+          matched += realMatched > 0 ? realMatched : 0;
+          oursOnly += realOursOnly;
+          ftthOnly += realFtthOnly;
 
           rows.add(_ComparisonRow(
             operatorName: oursName.toString(),
+            operatorUserId: oursOp['userId']?.toString(),
             oursCount: oursCount,
             oursAmount: oursAmount,
             ftthCount: ftthSubOps,
             ftthAmount: ftthOp.negativeAmount.abs(),
-            matchedCount: matchCount,
-            oursOnlyCount: oursOnlyCount,
-            ftthOnlyCount: ftthOnlyCount,
+            matchedCount: realMatched > 0 ? realMatched : 0,
+            oursOnlyCount: realOursOnly,
+            ftthOnlyCount: realFtthOnly,
+            ftthTransactions: missingTxs,
+            wrongTransactions: wrongTxs,
           ));
         } else {
           oursOnly += oursCount;
           rows.add(_ComparisonRow(
             operatorName: oursName.toString(),
+            operatorUserId: oursOp['userId']?.toString(),
             oursCount: oursCount,
             oursAmount: oursAmount,
             ftthCount: 0,
@@ -1293,6 +1355,28 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         if (ftthOp.subscriptionOps == 0) continue;
         ftthOnly += ftthOp.subscriptionOps;
 
+        final List<_FtthTransaction> missingTxs = [];
+        final List<_WrongTransaction> wrongTxs = [];
+        for (final tx in ftthOp.transactions) {
+          if (!_subscriptionTypeSet.contains(tx.type)) continue;
+          if (existingFtthIds.contains(tx.id)) continue;
+          final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
+          final amt = tx.amount.abs().toInt();
+          final cid = tx.customerId.trim();
+          final cidKey = '$cid|$amt|$dateStr';
+          if (existingKeys.contains(cidKey)) continue;
+          final cidDate = '$cid|$dateStr';
+          if (cid.isNotEmpty && cidDateAmounts.containsKey(cidDate)) {
+            wrongTxs.add(_WrongTransaction(
+              ftthTx: tx,
+              oursAmount: cidDateAmounts[cidDate]!,
+              ftthAmount: amt,
+            ));
+          } else {
+            missingTxs.add(tx);
+          }
+        }
+
         rows.add(_ComparisonRow(
           operatorName: ftthOp.name,
           oursCount: 0,
@@ -1301,7 +1385,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ftthAmount: ftthOp.negativeAmount.abs(),
           matchedCount: 0,
           oursOnlyCount: 0,
-          ftthOnlyCount: ftthOp.subscriptionOps,
+          ftthOnlyCount: missingTxs.length,
+          ftthTransactions: missingTxs,
+          wrongTransactions: wrongTxs,
         ));
       }
 
@@ -1351,10 +1437,48 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           titleSpacing: 0,
           title: Row(
             children: [
-              // زر التاريخ المنسدل
-              InkWell(
-                onTap: () => setState(() => _showDateFilter = !_showDateFilter),
-                borderRadius: BorderRadius.circular(6),
+              // قائمة التاريخ المنسدلة
+              PopupMenuButton<String>(
+                tooltip: 'فلتر التاريخ',
+                offset: const Offset(0, 44),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                onSelected: (value) {
+                  if (value == 'مخصص') {
+                    _showCustomDatePicker();
+                  } else {
+                    _applyDateFilter(value);
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  for (final label in ['اليوم', 'أمس', 'اليوم + أمس', 'آخر 7 أيام', 'هذا الشهر', 'الكل'])
+                    PopupMenuItem<String>(
+                      value: label,
+                      child: Row(
+                        children: [
+                          if (_dateLabel == label)
+                            Icon(Icons.check, size: 16, color: AccountingTheme.neonBlue)
+                          else
+                            const SizedBox(width: 16),
+                          const SizedBox(width: 8),
+                          Text(label, style: GoogleFonts.cairo(
+                              fontSize: context.accR.small,
+                              fontWeight: _dateLabel == label ? FontWeight.w700 : FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem<String>(
+                    value: 'مخصص',
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_month, size: 16, color: Colors.grey.shade600),
+                        const SizedBox(width: 8),
+                        Text('مخصص', style: GoogleFonts.cairo(fontSize: context.accR.small)),
+                      ],
+                    ),
+                  ),
+                ],
                 child: Container(
                   padding: EdgeInsets.symmetric(
                       horizontal: context.accR.spaceS,
@@ -1366,11 +1490,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        _showDateFilter ? Icons.expand_less : Icons.date_range,
-                        size: context.accR.iconS,
-                        color: Colors.white70,
-                      ),
+                      Icon(Icons.date_range,
+                          size: context.accR.iconS, color: Colors.white70),
                       if (!isMobile) ...[
                         SizedBox(width: context.accR.spaceXS),
                         Text(
@@ -1556,33 +1677,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 36),
                 ),
-              if (_ftthAuthenticated)
-                Padding(
-                  padding: const EdgeInsets.only(left: 2),
-                  child: Icon(Icons.check_circle,
-                      color: Colors.greenAccent, size: context.accR.iconS),
-                ),
               IconButton(
                 icon: Icon(Icons.refresh,
                     color: Colors.white70, size: context.accR.iconM),
                 onPressed: _refreshAll,
                 tooltip: 'تحديث الكل',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36),
-              ),
-              IconButton(
-                icon: Icon(Icons.move_to_inbox,
-                    color: Colors.greenAccent, size: context.accR.iconM),
-                onPressed: _showReceiveCashDialog,
-                tooltip: 'استلام نقد من مشغل',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36),
-              ),
-              IconButton(
-                icon: Icon(Icons.price_change_outlined,
-                    color: Colors.amberAccent, size: context.accR.iconM),
-                onPressed: _showPlanPricingDialog,
-                tooltip: 'أسعار الباقات',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 36),
               ),
@@ -1611,81 +1710,38 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 36),
               ),
-              if (_ftthAuthenticated)
-                IconButton(
-                  icon: Icon(Icons.group,
-                      color: Colors.cyanAccent, size: context.accR.iconM),
-                  onPressed: _showTeamDialog,
-                  tooltip: 'الفريق',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36),
-                ),
-              if (_ftthAuthenticated)
-                IconButton(
-                  icon: Icon(Icons.link,
-                      color: Colors.limeAccent, size: context.accR.iconM),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          FtthOperatorLinkingPage(companyId: _companyId),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert,
+                    color: Colors.white70, size: context.accR.iconM),
+                tooltip: 'المزيد',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36),
+                onSelected: (v) {
+                  if (v == 'team') _showTeamDialog();
+                  if (v == 'pricing') _showPlanPricingDialog();
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'pricing',
+                    child: ListTile(
+                      leading: Icon(Icons.price_change_outlined, color: Colors.amber),
+                      title: Text('أسعار الباقات'),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                  tooltip: 'ربط المشغلين',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36),
-                ),
-              if (_ftthAuthenticated)
-                IconButton(
-                  icon: Icon(Icons.sync,
-                      color: Colors.lightGreenAccent, size: context.accR.iconM),
-                  onPressed: _syncFtthToOurServer,
-                  tooltip: 'مزامنة FTTH → خادمنا',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36),
-                ),
-              // زر إعادة نسب "بدون منشئ" + "Agent"
-              if (_ftthAuthenticated &&
-                  !_isResolvingOrphans &&
-                  _ftthOperators.isNotEmpty)
-                Builder(builder: (_) {
-                  final orphanCount =
-                      (_ftthOperators['بدون منشئ']?.transactions.length ?? 0) +
-                          (_ftthOperators['Agent']?.transactions.length ?? 0);
-                  return IconButton(
-                    icon: orphanCount > 0
-                        ? Badge(
-                            label: Text(
-                              '$orphanCount',
-                              style: TextStyle(
-                                  fontSize: context.accR.caption,
-                                  color: Colors.white),
-                            ),
-                            backgroundColor: Colors.orange,
-                            child: Icon(Icons.person_search,
-                                color: Colors.orangeAccent,
-                                size: context.accR.iconM),
-                          )
-                        : Icon(Icons.person_search,
-                            color: Colors.white54, size: context.accR.iconM),
-                    onPressed: _resolveOrphansInBackground,
-                    tooltip: 'إعادة نسب المعاملات ($orphanCount عملية)',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36),
-                  );
-                }),
-              if (_isResolvingOrphans)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.orangeAccent),
+                  if (_ftthAuthenticated)
+                    const PopupMenuItem(
+                      value: 'team',
+                      child: ListTile(
+                        leading: Icon(Icons.group, color: Colors.cyan),
+                        title: Text('الفريق'),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
-                  ),
-                ),
+                ],
+              ),
               SizedBox(width: context.accR.spaceXS),
             ],
           ],
@@ -1709,15 +1765,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   ],
                 ),
               ),
-            // ═══ شريط فلتر التاريخ السريع (منسدل) ═══
-            AnimatedCrossFade(
-              firstChild: _buildQuickDateFilter(),
-              secondChild: const SizedBox.shrink(),
-              crossFadeState: _showDateFilter
-                  ? CrossFadeState.showFirst
-                  : CrossFadeState.showSecond,
-              duration: const Duration(milliseconds: 200),
-            ),
+            // (فلتر التاريخ أصبح في القائمة المنسدلة)
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -3187,7 +3235,18 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   Widget _buildOursSummary() {
     if (_oursSummary == null) return const SizedBox();
     final isMobile = context.accR.isMobile;
-    final cards = <Widget>[
+
+    // الصف الأول: المستقطع + الإيرادات + المصاريف + الإجمالي + نقد
+    final row1 = <Widget>[
+      _summaryCard('المستقطع', (_oursSummary!['totalPageDeduction'] ?? 0).toDouble(), '',
+          Colors.indigo.shade600,
+          icon: Icons.account_balance),
+      _summaryCard('الإيرادات', (_oursSummary!['totalRevenue'] ?? 0).toDouble(), '',
+          Colors.green.shade700,
+          icon: Icons.trending_up),
+      _summaryCard('المصاريف', (_oursSummary!['totalExpense'] ?? 0).toDouble(), '',
+          Colors.red.shade600,
+          icon: Icons.trending_down),
       _summaryCard(
           'إجمالي العمليات',
           (_oursSummary!['totalAmount'] ?? 0).toDouble(),
@@ -3197,6 +3256,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       _summaryCard('نقد', (_oursSummary!['totalCash'] ?? 0).toDouble(), '',
           Colors.green.shade600,
           icon: Icons.attach_money),
+    ];
+
+    // الصف الثاني: تحصيل + مستحق
+    final row2 = <Widget>[
       _summaryCard('آجل', (_oursSummary!['totalCredit'] ?? 0).toDouble(), '',
           Colors.orange.shade600,
           icon: Icons.schedule),
@@ -3222,22 +3285,24 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     ];
 
     if (isMobile) {
-      // Mobile: 3 cards per row, compact
       final screenW = MediaQuery.of(context).size.width;
-      final cardW = (screenW - 32 - 12) / 3; // 32 padding + 2*6 spacing
-      return Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: cards.map((c) {
-          return SizedBox(
-            width: cardW,
-            child: c,
-          );
-        }).toList(),
+      final cardW = (screenW - 32 - 12) / 3;
+      return Column(
+        children: [
+          Wrap(
+            spacing: 6, runSpacing: 6,
+            children: row1.map((c) => SizedBox(width: cardW, child: c)).toList(),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6, runSpacing: 6,
+            children: row2.map((c) => SizedBox(width: cardW, child: c)).toList(),
+          ),
+        ],
       );
     }
 
-    return IntrinsicHeight(
+    Widget buildRow(List<Widget> cards) => IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: cards
@@ -3247,6 +3312,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     child: c)))
             .toList(),
       ),
+    );
+
+    return Column(
+      children: [
+        buildRow(row1),
+        const SizedBox(height: 8),
+        buildRow(row2),
+      ],
     );
   }
 
@@ -3538,41 +3611,50 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         fontWeight: FontWeight.bold,
                         fontSize: context.accR.small,
                         color: Colors.black87),
-                    columns: const [
-                      DataColumn(
+                    columns: [
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('#')))),
-                      DataColumn(
+                      const DataColumn(
                           label:
                               Expanded(child: Center(child: Text('المشغل')))),
-                      DataColumn(
+                      const DataColumn(
                           label:
                               Expanded(child: Center(child: Text('العمليات')))),
                       DataColumn(
-                          label:
-                              Expanded(child: Center(child: Text('الإجمالي')))),
+                          label: Expanded(child: Center(child: Text('المستقطع',
+                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.indigo.shade800))))),
                       DataColumn(
+                          label: Expanded(child: Center(child: Text('الإيرادات',
+                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green.shade800))))),
+                      DataColumn(
+                          label: Expanded(child: Center(child: Text('المصاريف',
+                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.red.shade800))))),
+                      DataColumn(
+                          label: Expanded(child: Center(child: Text('الإجمالي',
+                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blue.shade800))))),
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('شراء')))),
-                      DataColumn(
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('تجديد')))),
-                      DataColumn(
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('تغيير')))),
-                      DataColumn(
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('نقد')))),
-                      DataColumn(
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('آجل')))),
-                      DataColumn(
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('ماستر')))),
-                      DataColumn(
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('وكيل')))),
-                      DataColumn(
+                      const DataColumn(
                           label: Expanded(child: Center(child: Text('فني')))),
-                      DataColumn(
+                      const DataColumn(
                           label:
                               Expanded(child: Center(child: Text('المسلّم')))),
-                      DataColumn(
+                      const DataColumn(
                           label:
                               Expanded(child: Center(child: Text('المستحق')))),
-                      DataColumn(
+                      const DataColumn(
                           label:
                               Expanded(child: Center(child: Text('مطابقة')))),
                       DataColumn(
@@ -3641,10 +3723,32 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 style: TextStyle(
                                     fontSize: context.accR.small,
                                     fontWeight: FontWeight.w600)))),
-                        DataCell(Center(
-                            child: Text(
-                          _currencyFormat
-                              .format((op['totalAmount'] ?? 0).toDouble()),
+                        // المستقطع من الصفحة
+                        DataCell(Center(child: Text(
+                          _currencyFormat.format((op['pageDeduction'] ?? 0).toDouble()),
+                          style: TextStyle(
+                              fontSize: context.accR.small,
+                              fontWeight: FontWeight.w700),
+                        ))),
+                        // الإيرادات
+                        DataCell(Center(child: Text(
+                          _currencyFormat.format((op['revenue'] ?? 0).toDouble()),
+                          style: TextStyle(
+                              fontSize: context.accR.small,
+                              fontWeight: FontWeight.w600,
+                              color: (op['revenue'] ?? 0).toDouble() > 0 ? Colors.green.shade700 : Colors.grey.shade400),
+                        ))),
+                        // المصاريف
+                        DataCell(Center(child: Text(
+                          _currencyFormat.format((op['expense'] ?? 0).toDouble()),
+                          style: TextStyle(
+                              fontSize: context.accR.small,
+                              fontWeight: FontWeight.w600,
+                              color: (op['expense'] ?? 0).toDouble() > 0 ? Colors.red.shade700 : Colors.grey.shade400),
+                        ))),
+                        // الإجمالي
+                        DataCell(Center(child: Text(
+                          _currencyFormat.format((op['totalAmount'] ?? 0).toDouble()),
                           style: TextStyle(
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w700,
@@ -5258,6 +5362,29 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   backgroundColor: Colors.green.shade50,
                   onPressed: _exportToExcel,
                 ),
+                if (_ftthAuthenticated && _ftthOperators.isNotEmpty) ...[
+                  SizedBox(width: context.accR.spaceS),
+                  Builder(builder: (_) {
+                    final orphanCount =
+                        (_ftthOperators['بدون منشئ']?.transactions.length ?? 0) +
+                            (_ftthOperators['Agent']?.transactions.length ?? 0);
+                    return ActionChip(
+                      label: Text(
+                        'إعادة نسب المعاملات${orphanCount > 0 ? ' ($orphanCount)' : ''}',
+                        style: TextStyle(fontSize: context.accR.small),
+                      ),
+                      avatar: _isResolvingOrphans
+                          ? SizedBox(
+                              width: context.accR.iconS,
+                              height: context.accR.iconS,
+                              child: const CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.orange)),
+                            )
+                          : Icon(Icons.person_search, size: context.accR.iconS, color: Colors.orange.shade700),
+                      backgroundColor: Colors.orange.shade50,
+                      onPressed: _isResolvingOrphans ? null : _resolveOrphansInBackground,
+                    );
+                  }),
+                ],
               ],
             ),
           ),
@@ -6840,6 +6967,286 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     );
   }
 
+  void _showWrongTransactions(_ComparisonRow row) {
+    final txs = row.wrongTransactions;
+    if (txs.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber, color: Colors.orange.shade700),
+              SizedBox(width: context.accR.spaceS),
+              Expanded(
+                child: Text(
+                  'عمليات خاطئة — ${row.operatorName} (${txs.length})',
+                  style: GoogleFonts.cairo(
+                      fontSize: context.accR.headingSmall,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 900,
+            height: 500,
+            child: SingleChildScrollView(
+              child: DataTable(
+                border: TableBorder.all(color: Colors.grey.shade300),
+                dataRowMinHeight: 28,
+                dataRowMaxHeight: 40,
+                headingRowHeight: 32,
+                columnSpacing: 12,
+                horizontalMargin: 8,
+                headingRowColor:
+                    WidgetStateProperty.all(Colors.orange.shade50),
+                headingTextStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: context.accR.financialSmall,
+                    color: Colors.black87),
+                columns: const [
+                  DataColumn(label: Text('#')),
+                  DataColumn(label: Text('العميل')),
+                  DataColumn(label: Text('الباقة')),
+                  DataColumn(label: Text('مبلغنا')),
+                  DataColumn(label: Text('مبلغ FTTH')),
+                  DataColumn(label: Text('الفرق')),
+                  DataColumn(label: Text('التاريخ')),
+                ],
+                rows: txs.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final w = entry.value;
+                  final diff = w.ftthAmount - w.oursAmount;
+                  final dateStr = _formatTxDate(w.ftthTx.occuredAt);
+                  return DataRow(cells: [
+                    DataCell(Text('${i + 1}',
+                        style: TextStyle(fontSize: context.accR.small))),
+                    DataCell(Text(w.ftthTx.customerName,
+                        style: TextStyle(fontSize: context.accR.small))),
+                    DataCell(Text(w.ftthTx.planName,
+                        style: TextStyle(fontSize: context.accR.small))),
+                    DataCell(Text(_currencyFormat.format(w.oursAmount),
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.w600))),
+                    DataCell(Text(_currencyFormat.format(w.ftthAmount),
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.teal.shade700))),
+                    DataCell(Text(
+                        (diff > 0 ? '+' : '') +
+                            _currencyFormat.format(diff),
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade700))),
+                    DataCell(Text(dateStr,
+                        style: TextStyle(fontSize: context.accR.small))),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إغلاق'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCompareTransactions(_ComparisonRow row) {
+    final txs = row.ftthTransactions;
+    if (txs.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.compare_arrows, color: Colors.teal.shade700),
+              SizedBox(width: context.accR.spaceS),
+              Expanded(
+                child: Text(
+                  'عمليات ناقصة — ${row.operatorName} (${txs.length})',
+                  style: GoogleFonts.cairo(
+                      fontSize: context.accR.headingSmall,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 900,
+            height: 500,
+            child: SingleChildScrollView(
+              child: DataTable(
+                border: TableBorder.all(color: Colors.grey.shade300),
+                dataRowMinHeight: 28,
+                dataRowMaxHeight: 40,
+                headingRowHeight: 32,
+                columnSpacing: 12,
+                horizontalMargin: 8,
+                headingRowColor:
+                    WidgetStateProperty.all(Colors.teal.shade50),
+                headingTextStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: context.accR.financialSmall,
+                    color: Colors.black87),
+                columns: const [
+                  DataColumn(label: Text('#')),
+                  DataColumn(label: Text('العميل')),
+                  DataColumn(label: Text('الباقة')),
+                  DataColumn(label: Text('النوع')),
+                  DataColumn(label: Text('المبلغ')),
+                  DataColumn(label: Text('التاريخ')),
+                ],
+                rows: txs.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final tx = entry.value;
+                  final dateStr = _formatTxDate(tx.occuredAt);
+                  return DataRow(cells: [
+                    DataCell(Text('${i + 1}',
+                        style:
+                            TextStyle(fontSize: context.accR.small))),
+                    DataCell(Text(tx.customerName,
+                        style:
+                            TextStyle(fontSize: context.accR.small))),
+                    DataCell(Text(tx.planName,
+                        style:
+                            TextStyle(fontSize: context.accR.small))),
+                    DataCell(Text(_translateType(tx.type),
+                        style:
+                            TextStyle(fontSize: context.accR.small))),
+                    DataCell(Text(
+                        _currencyFormat.format(tx.amount.abs()),
+                        style: TextStyle(
+                            fontSize: context.accR.small,
+                            fontWeight: FontWeight.w600))),
+                    DataCell(Text(dateStr,
+                        style:
+                            TextStyle(fontSize: context.accR.small))),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إغلاق'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _syncSpecificTransactions(txs, row.operatorName, row.operatorUserId);
+              },
+              icon: Icon(Icons.sync, size: context.accR.iconM),
+              label: Text('مزامنة ${txs.length} عملية → خادمنا'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _syncSpecificTransactions(
+      List<_FtthTransaction> txs, String operatorName, String? operatorUserId) async {
+    final txList = txs
+        .map((tx) => {
+              'ftthTransactionId': tx.id,
+              'customerId': tx.customerId,
+              'customerName': tx.customerName,
+              'subscriptionId': tx.subscriptionId,
+              'planName': tx.planName,
+              'amount': tx.amount,
+              'operationType': tx.type,
+              'createdBy': tx.auditCreator,
+              'occuredAt': tx.occuredAt,
+              'zoneId': tx.zoneId,
+              'deviceUsername': tx.deviceUsername,
+              'collectionType': _mapPaymentMode(tx.paymentMode),
+              'paymentMethod': tx.paymentMethod,
+              'startDate': tx.startsAt,
+              'endDate': tx.endsAt,
+              'remainingBalance': tx.remainingBalance,
+              'createAccounting': true,
+              if (operatorUserId != null) 'operatorUserId': operatorUserId,
+            })
+        .toList();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('جاري مزامنة ${txList.length} عملية لـ $operatorName...'),
+          backgroundColor: Colors.teal,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+    }
+
+    try {
+      final result = await AccountingService.instance.syncFtthTransactions(
+        companyId: _companyId,
+        transactions: txList,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        final success = result['success'] == true;
+        final data = result['data'];
+        final saved = data is Map
+            ? data['saved'] ?? result['saved'] ?? 0
+            : result['saved'] ?? 0;
+        final skipped = data is Map
+            ? data['skipped'] ?? result['skipped'] ?? 0
+            : result['skipped'] ?? 0;
+        final failed = data is Map
+            ? data['failed'] ?? result['failed'] ?? 0
+            : result['failed'] ?? 0;
+        final updated = data is Map
+            ? data['updated'] ?? result['updated'] ?? 0
+            : result['updated'] ?? 0;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? '$operatorName: $saved محفوظ، ${updated > 0 ? '$updated محدّث، ' : ''}$skipped موجود مسبقاً، $failed فشل'
+                  : result['message'] ?? 'خطأ في المزامنة',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+
+        if (success) {
+          _loadOursData();
+          _comparisonRows.clear();
+          _buildComparison();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Widget _buildCompareTable() {
     if (_comparisonRows.isEmpty) {
       return _emptyCard('لا توجد بيانات للمقارنة');
@@ -6859,6 +7266,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             padding: EdgeInsets.all(context.accR.spaceL),
             child: Row(
               children: [
+                if (_ftthAuthenticated)
+                  IconButton(
+                    icon: Icon(Icons.cloud_download, size: context.accR.iconM, color: Colors.teal),
+                    onPressed: _syncFtthToOurServer,
+                    tooltip: 'مزامنة FTTH → خادمنا',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32),
+                  ),
+                Spacer(),
                 Text('مقارنة المشغلين (${_comparisonRows.length})',
                     style: GoogleFonts.cairo(
                         fontSize: context.accR.body,
@@ -6871,6 +7287,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     _buildComparison();
                   },
                   tooltip: 'إعادة بناء المقارنة',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32),
                 ),
               ],
             ),
@@ -6909,13 +7327,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               Expanded(child: Center(child: Text('عملياتنا')))),
                       DataColumn(
                           label:
-                              Expanded(child: Center(child: Text('مبالغنا')))),
+                              Expanded(child: Center(child: Text('المستقطع')))),
                       DataColumn(
                           label: Expanded(
                               child: Center(child: Text('عمليات FTTH')))),
                       DataColumn(
                           label: Expanded(
                               child: Center(child: Text('مبالغ FTTH')))),
+                      DataColumn(
+                          label: Expanded(
+                              child: Center(child: Text('ناقصة')))),
+                      DataColumn(
+                          label: Expanded(
+                              child: Center(child: Text('خاطئة')))),
+                      DataColumn(
+                          label: Expanded(
+                              child: Center(child: Text('فرق المبالغ')))),
                       DataColumn(
                           label:
                               Expanded(child: Center(child: Text('مطابقة')))),
@@ -6985,6 +7412,63 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 fontWeight: FontWeight.w600,
                                 color: Colors.teal.shade700),
                           ))),
+                          DataCell(
+                              Center(
+                                  child: Text(
+                                row.ftthTransactions.isEmpty
+                                    ? '0'
+                                    : '${row.ftthTransactions.length}',
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
+                                    fontWeight: FontWeight.bold,
+                                    color: row.ftthTransactions.isEmpty
+                                        ? Colors.green.shade700
+                                        : Colors.red.shade700,
+                                    decoration: row.ftthTransactions.isNotEmpty
+                                        ? TextDecoration.underline
+                                        : null),
+                              )),
+                              onTap: row.ftthTransactions.isNotEmpty
+                                  ? () => _showCompareTransactions(row)
+                                  : null),
+                          // خاطئة
+                          DataCell(
+                              Center(
+                                  child: Text(
+                                row.wrongTransactions.isEmpty
+                                    ? '0'
+                                    : '${row.wrongTransactions.length}',
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
+                                    fontWeight: FontWeight.bold,
+                                    color: row.wrongTransactions.isEmpty
+                                        ? Colors.green.shade700
+                                        : Colors.orange.shade700,
+                                    decoration:
+                                        row.wrongTransactions.isNotEmpty
+                                            ? TextDecoration.underline
+                                            : null),
+                              )),
+                              onTap: row.wrongTransactions.isNotEmpty
+                                  ? () => _showWrongTransactions(row)
+                                  : null),
+                          // فرق المبالغ (للناقصة فقط)
+                          DataCell(Center(
+                              child: () {
+                            final missingAmount = row.ftthTransactions.fold<double>(
+                                0, (s, tx) => s + tx.amount.abs());
+                            return Text(
+                              missingAmount == 0
+                                  ? '0'
+                                  : _currencyFormat.format(missingAmount),
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold,
+                                  color: missingAmount == 0
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700),
+                            );
+                          }())),
                           DataCell(Center(
                               child: Text('${row.matchedCount}',
                                   style: TextStyle(
@@ -7165,30 +7649,29 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       child: Padding(
         padding: EdgeInsets.all(pad),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 if (icon != null) ...[
                   Icon(icon, size: iconSz, color: color),
                   SizedBox(width: isMobile ? 3 : context.accR.spaceXS),
                 ],
-                Expanded(
-                  child: Text(title,
-                      style: GoogleFonts.cairo(
-                          fontSize: titleFs,
-                          fontWeight: FontWeight.w600,
-                          color: color),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ),
+                Text(title,
+                    style: GoogleFonts.cairo(
+                        fontSize: titleFs,
+                        fontWeight: FontWeight.w600,
+                        color: color),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ],
             ),
             SizedBox(height: isMobile ? 2 : context.accR.spaceS),
             FittedBox(
               fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerStart,
               child: Text(
                 isCount
                     ? '${value.toInt()}'
@@ -7204,6 +7687,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               Text(subtitle,
                   style:
                       TextStyle(fontSize: subFs, color: Colors.grey.shade600),
+                  textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ],
@@ -7672,9 +8156,23 @@ class _FtthTransaction {
   });
 }
 
+/// عملية بمبلغ خاطئ (موجودة عندنا لكن المبلغ مختلف)
+class _WrongTransaction {
+  final _FtthTransaction ftthTx;
+  final int oursAmount;
+  final int ftthAmount;
+
+  _WrongTransaction({
+    required this.ftthTx,
+    required this.oursAmount,
+    required this.ftthAmount,
+  });
+}
+
 /// صف مقارنة بين النظامين
 class _ComparisonRow {
   final String operatorName;
+  final String? operatorUserId;
   final int oursCount;
   final double oursAmount;
   final int ftthCount;
@@ -7682,9 +8180,12 @@ class _ComparisonRow {
   final int matchedCount;
   final int oursOnlyCount;
   final int ftthOnlyCount;
+  final List<_FtthTransaction> ftthTransactions;
+  final List<_WrongTransaction> wrongTransactions;
 
   _ComparisonRow({
     required this.operatorName,
+    this.operatorUserId,
     required this.oursCount,
     required this.oursAmount,
     required this.ftthCount,
@@ -7692,6 +8193,8 @@ class _ComparisonRow {
     required this.matchedCount,
     required this.oursOnlyCount,
     required this.ftthOnlyCount,
+    this.ftthTransactions = const [],
+    this.wrongTransactions = const [],
   });
 }
 
@@ -7898,15 +8401,7 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
                           padding: EdgeInsets.symmetric(
                               horizontal: context.accR.spaceM),
                           child: SingleChildScrollView(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width: context.accR.isMobile
-                                    ? null
-                                    : double.infinity,
-                                child: _buildTable(filtered),
-                              ),
-                            ),
+                            child: _buildTable(filtered),
                           ),
                         ),
                       ),
@@ -8453,8 +8948,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     try {
       String url = '$_baseUrl?pageSize=2000';
       if (widget.companyId.isNotEmpty) url += '&companyId=${widget.companyId}';
-      if (widget.fromDate != null) url += '&fromDate=${widget.fromDate!.toIso8601String()}';
-      if (widget.toDate != null) url += '&toDate=${widget.toDate!.toIso8601String()}';
+      if (widget.fromDate != null) url += '&fromDate=${widget.fromDate!.toIso8601String().split('T')[0]}';
+      if (widget.toDate != null) url += '&toDate=${widget.toDate!.toIso8601String().split('T')[0]}';
 
       final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': _apiKey});
       if (response.statusCode != 200) {

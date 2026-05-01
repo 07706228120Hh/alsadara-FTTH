@@ -1746,13 +1746,13 @@ public class InternalDataController : ControllerBase
 
         if (fromDate.HasValue)
         {
-            var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            var from = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
             query = query.Where(l => l.ActivationDate >= from);
         }
 
         if (toDate.HasValue)
         {
-            var to = DateTime.SpecifyKind(toDate.Value.AddDays(1), DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(toDate.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
             query = query.Where(l => l.ActivationDate <= to);
         }
 
@@ -2458,9 +2458,9 @@ public class InternalDataController : ControllerBase
         if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
             query = query.Where(l => l.CompanyId == cId);
         if (fromDate.HasValue)
-            query = query.Where(l => l.ActivationDate >= DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc));
+            query = query.Where(l => l.ActivationDate >= DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc));
         if (toDate.HasValue)
-            query = query.Where(l => l.ActivationDate <= DateTime.SpecifyKind(toDate.Value.AddDays(1), DateTimeKind.Utc));
+            query = query.Where(l => l.ActivationDate <= DateTime.SpecifyKind(toDate.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc));
         if (!string.IsNullOrEmpty(operatorName))
             query = query.Where(l => l.ActivatedBy == operatorName);
         if (!string.IsNullOrEmpty(collectionType))
@@ -2854,13 +2854,13 @@ public class InternalDataController : ControllerBase
 
         if (fromDate.HasValue)
         {
-            var from = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
+            var from = DateTime.SpecifyKind(fromDate.Value.Date.AddHours(-3), DateTimeKind.Utc);
             query = query.Where(r => r.ReportDate >= from);
         }
 
         if (toDate.HasValue)
         {
-            var to = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
             query = query.Where(r => r.ReportDate < to);
         }
 
@@ -2915,8 +2915,8 @@ public class InternalDataController : ControllerBase
             var operatorName = request.GetProperty("operatorName").GetString() ?? "";
             var reportDateStr = request.TryGetProperty("reportDate", out var rdProp) ? rdProp.GetString() : null;
             var reportDate = !string.IsNullOrEmpty(reportDateStr)
-                ? DateTime.SpecifyKind(DateTime.Parse(reportDateStr).Date, DateTimeKind.Utc)
-                : DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+                ? DateTime.SpecifyKind(DateTime.Parse(reportDateStr).Date.AddHours(-3), DateTimeKind.Utc)
+                : DateTime.SpecifyKind(DateTime.UtcNow.AddHours(3).Date.AddHours(-3), DateTimeKind.Utc);
 
             var operatorId = request.TryGetProperty("operatorId", out var oiProp) ? oiProp.GetString() : null;
             var notes = request.TryGetProperty("notes", out var nProp) ? nProp.GetString() : null;
@@ -3265,8 +3265,8 @@ public class InternalDataController : ControllerBase
             return Unauthorized(new { success = false, message = "Invalid API Key" });
 
         var checkDate = !string.IsNullOrEmpty(date)
-            ? DateTime.SpecifyKind(DateTime.Parse(date).Date, DateTimeKind.Utc)
-            : DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+            ? DateTime.SpecifyKind(DateTime.Parse(date).Date.AddHours(-3), DateTimeKind.Utc)
+            : DateTime.SpecifyKind(DateTime.UtcNow.AddHours(3).Date.AddHours(-3), DateTimeKind.Utc);
 
         var report = await _unitOfWork.DailySettlementReports.AsQueryable()
             .FirstOrDefaultAsync(r => !r.IsDeleted && r.OperatorName == operatorName && r.ReportDate == checkDate);

@@ -324,6 +324,18 @@ class InventoryApiService {
     return await _api.post('/inventory/dispensing/$id/approve', body: {});
   }
 
+  /// حذف سند صرف
+  Future<Map<String, dynamic>> deleteDispensing(String id) async {
+    return await _api.delete('/inventory/dispensing/$id');
+  }
+
+  /// صرف مواد من عُهدة الفني للعميل (من المهمة)
+  Future<Map<String, dynamic>> useFromTechnicianHoldings({
+    required Map<String, dynamic> data,
+  }) async {
+    return await _api.post('/inventory/dispensing/use-from-holdings', body: data);
+  }
+
   /// إرجاع مواد من فني
   Future<Map<String, dynamic>> returnDispensing(
     String id, {

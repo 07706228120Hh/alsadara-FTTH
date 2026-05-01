@@ -47,7 +47,7 @@ public class CitizenPortalController : ControllerBase
             if (companyId == null)
                 return Forbid("هذه الشركة غير مرتبطة بنظام المواطن");
 
-            var today = DateTime.UtcNow.Date;
+            var today = DateTime.UtcNow.AddHours(3).Date;
             var thisMonth = new DateTime(today.Year, today.Month, 1);
 
             // إحصائيات المواطنين
@@ -616,10 +616,10 @@ public class CitizenPortalController : ControllerBase
                 query = query.Where(p => p.Status == status.Value);
 
             if (fromDate.HasValue)
-                query = query.Where(p => p.CreatedAt >= fromDate.Value);
+                query = query.Where(p => p.CreatedAt >= DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc));
 
             if (toDate.HasValue)
-                query = query.Where(p => p.CreatedAt <= toDate.Value);
+                query = query.Where(p => p.CreatedAt <= DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc));
 
             var total = await query.CountAsync();
 

@@ -55,7 +55,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
   // ===== تعريفات الأعمدة =====
   static const _columnKeys = <String>[
     'index', 'customerId', 'customerName', 'phone', 'subscriptionId',
-    'plan', 'amount', 'commitment', 'renewal', 'type', 'collection',
+    'plan', 'amount', 'pageDeduction', 'revenue', 'expense', 'commitment', 'renewal', 'type', 'collection',
     'zone', 'technician', 'activatedBy', 'date', 'startDate', 'endDate',
     'status', 'payment', 'walletBefore', 'walletAfter', 'device',
     'printed', 'whatsapp', 'reconciled', 'accounting', 'notes',
@@ -69,6 +69,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     'subscriptionId': 'م.الاشتراك',
     'plan': 'الباقة',
     'amount': 'المبلغ',
+    'pageDeduction': 'المستقطع',
+    'revenue': 'الإيرادات',
+    'expense': 'المصاريف',
     'commitment': 'الالتزام',
     'renewal': 'التكرار',
     'type': 'النوع',
@@ -94,7 +97,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
   // حالة إظهار/إخفاء الأعمدة
   Set<String> _visibleColumns = {
     'index', 'customerId', 'customerName', 'phone', 'subscriptionId',
-    'plan', 'amount', 'commitment', 'renewal', 'type', 'collection',
+    'plan', 'amount', 'pageDeduction', 'revenue', 'expense', 'commitment', 'renewal', 'type', 'collection',
     'zone', 'technician', 'activatedBy', 'date', 'startDate', 'endDate',
     'status', 'payment', 'walletBefore', 'walletAfter', 'device',
     'printed', 'whatsapp', 'reconciled', 'accounting', 'notes',
@@ -516,6 +519,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       case 'subscriptionId': return tx['SubscriptionId']?.toString() ?? '';
       case 'plan': return tx['PlanName']?.toString() ?? '';
       case 'amount': return (tx['PlanPrice'] ?? 0).toString();
+      case 'pageDeduction': return (tx['PageDeduction'] ?? 0).toString();
+      case 'revenue': return (tx['Revenue'] ?? 0).toString();
+      case 'expense': return (tx['Expense'] ?? 0).toString();
       case 'commitment': return tx['CommitmentPeriod']?.toString() ?? '';
       case 'renewal': return tx['RenewalCycleMonths']?.toString() ?? '';
       case 'type':
@@ -555,6 +561,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
   dynamic _getSortValue(Map<String, dynamic> tx, String key) {
     switch (key) {
       case 'amount': return (tx['PlanPrice'] ?? 0).toDouble();
+      case 'pageDeduction': return (tx['PageDeduction'] ?? 0).toDouble();
+      case 'revenue': return (tx['Revenue'] ?? 0).toDouble();
+      case 'expense': return (tx['Expense'] ?? 0).toDouble();
       case 'commitment': return (tx['CommitmentPeriod'] ?? 0).toDouble();
       case 'renewal': return (tx['RenewalCycleMonths'] ?? 0).toDouble();
       case 'walletBefore': return (tx['WalletBalanceBefore'] ?? 0).toDouble();
@@ -639,6 +648,25 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         return DataCell(Center(child: Text(
           _currencyFormat.format((tx['PlanPrice'] ?? 0).toDouble()),
           style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w700, color: Colors.green.shade700),
+        )));
+      case 'pageDeduction':
+        return DataCell(Center(child: Text(
+          _currencyFormat.format((tx['PageDeduction'] ?? 0).toDouble()),
+          style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w700),
+        )));
+      case 'revenue':
+        final rev = (tx['Revenue'] ?? 0).toDouble();
+        return DataCell(Center(child: Text(
+          _currencyFormat.format(rev),
+          style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w600,
+              color: rev > 0 ? Colors.green.shade700 : Colors.grey.shade400),
+        )));
+      case 'expense':
+        final exp = (tx['Expense'] ?? 0).toDouble();
+        return DataCell(Center(child: Text(
+          _currencyFormat.format(exp),
+          style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w600,
+              color: exp > 0 ? Colors.red.shade700 : Colors.grey.shade400),
         )));
       case 'commitment':
         return DataCell(Center(child: Text(

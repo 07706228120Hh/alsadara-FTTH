@@ -171,12 +171,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       'pageSize': '2000',
     };
     if (fromDate != null) {
-      final fromUtc = DateTime.utc(fromDate.year, fromDate.month, fromDate.day);
-      params['fromDate'] = fromUtc.toIso8601String();
+      params['fromDate'] = '${fromDate.year.toString().padLeft(4, '0')}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}';
     }
     if (toDate != null) {
-      final toUtc = DateTime.utc(toDate.year, toDate.month, toDate.day);
-      params['toDate'] = toUtc.toIso8601String();
+      params['toDate'] = '${toDate.year.toString().padLeft(4, '0')}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}';
     }
     final uri = Uri.parse('$_vpsBaseUrl/subscriptionlogs')
         .replace(queryParameters: params);

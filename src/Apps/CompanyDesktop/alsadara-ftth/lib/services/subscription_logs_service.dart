@@ -251,8 +251,8 @@ class SubscriptionLogsService {
   }) async {
     try {
       String query = '/subscriptionlogs/connections?pageSize=$pageSize';
-      if (fromDate != null) query += '&fromDate=${fromDate.toIso8601String()}';
-      if (toDate != null) query += '&toDate=${toDate.toIso8601String()}';
+      if (fromDate != null) query += '&fromDate=${fromDate.toIso8601String().split('T')[0]}';
+      if (toDate != null) query += '&toDate=${toDate.toIso8601String().split('T')[0]}';
       if (technicianName != null && technicianName.isNotEmpty) {
         query += '&technicianName=${Uri.encodeComponent(technicianName)}';
       }

@@ -149,8 +149,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
           apiUrl = baseUrl; // بدون نطاق
         } else {
           final range = _computeDateRange();
-          final fromDate = range.fromDate.toIso8601String();
-          final toDate = range.toDate.toIso8601String();
+          final fromDate = range.fromDate.toIso8601String().split('T')[0];
+          final toDate = range.toDate.toIso8601String().split('T')[0];
           apiUrl =
               '$baseUrl&fromExpirationDate=$fromDate&toExpirationDate=$toDate';
         }
@@ -654,8 +654,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             apiUrl = baseUrl;
           } else {
             final range = _computeDateRange();
-            final fromDate = range.fromDate.toIso8601String();
-            final toDate = range.toDate.toIso8601String();
+            final fromDate = range.fromDate.toIso8601String().split('T')[0];
+            final toDate = range.toDate.toIso8601String().split('T')[0];
             apiUrl =
                 '$baseUrl&fromExpirationDate=$fromDate&toExpirationDate=$toDate';
           }

@@ -392,7 +392,7 @@ public class EmployeeLocationController : ControllerBase
                 .ToListAsync();
 
             // موظفين أوقفوا المشاركة اليوم
-            var todayStart = DateTime.UtcNow.Date;
+            var todayStart = DateTime.UtcNow.AddHours(3).Date;
             var stopped = await _unitOfWork.EmployeeLocations.AsQueryable()
                 .Where(e => !e.IsActive && e.UpdatedAt != null && e.UpdatedAt > todayStart)
                 .Select(e => new
@@ -635,7 +635,7 @@ public class EmployeeLocationController : ControllerBase
 
         try
         {
-            var targetDate = date != null ? DateTime.Parse(date).Date : DateTime.UtcNow.Date;
+            var targetDate = date != null ? DateTime.Parse(date).Date : DateTime.UtcNow.AddHours(3).Date;
             var dayStart = targetDate;
             var dayEnd = targetDate.AddDays(1);
 

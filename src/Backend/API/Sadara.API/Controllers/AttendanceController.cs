@@ -852,7 +852,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
             if (!string.IsNullOrEmpty(request.CheckInTime))
             {
                 var parts = request.CheckInTime.Split(':');
-                record.CheckInTime = DateTime.SpecifyKind(record.Date.ToDateTime(new TimeOnly(int.Parse(parts[0]), int.Parse(parts[1]))), DateTimeKind.Utc);
+                record.CheckInTime = DateTime.SpecifyKind(record.Date.ToDateTime(new TimeOnly(int.Parse(parts[0]), int.Parse(parts[1]))).AddHours(-3), DateTimeKind.Utc);
             }
             else if (request.ClearCheckIn == true)
                 record.CheckInTime = null;
@@ -860,7 +860,7 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
             if (!string.IsNullOrEmpty(request.CheckOutTime))
             {
                 var parts = request.CheckOutTime.Split(':');
-                record.CheckOutTime = DateTime.SpecifyKind(record.Date.ToDateTime(new TimeOnly(int.Parse(parts[0]), int.Parse(parts[1]))), DateTimeKind.Utc);
+                record.CheckOutTime = DateTime.SpecifyKind(record.Date.ToDateTime(new TimeOnly(int.Parse(parts[0]), int.Parse(parts[1]))).AddHours(-3), DateTimeKind.Utc);
             }
             else if (request.ClearCheckOut == true)
                 record.CheckOutTime = null;
@@ -950,12 +950,12 @@ public class AttendanceController(IUnitOfWork unitOfWork, ILogger<AttendanceCont
             if (!string.IsNullOrEmpty(request.CheckInTime))
             {
                 var timeParts = request.CheckInTime.Split(':');
-                record.CheckInTime = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(int.Parse(timeParts[0]), int.Parse(timeParts[1]))), DateTimeKind.Utc);
+                record.CheckInTime = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(int.Parse(timeParts[0]), int.Parse(timeParts[1]))).AddHours(-3), DateTimeKind.Utc);
             }
             if (!string.IsNullOrEmpty(request.CheckOutTime))
             {
                 var timeParts = request.CheckOutTime.Split(':');
-                record.CheckOutTime = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(int.Parse(timeParts[0]), int.Parse(timeParts[1]))), DateTimeKind.Utc);
+                record.CheckOutTime = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(int.Parse(timeParts[0]), int.Parse(timeParts[1]))).AddHours(-3), DateTimeKind.Utc);
             }
 
             if (record.CheckInTime.HasValue && record.CheckOutTime.HasValue)

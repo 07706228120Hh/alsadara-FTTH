@@ -78,8 +78,8 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
         if (_selectedZone != null) 'zoneId': _selectedZone!,
         if (_selectedOperationType != null)
           'operationType': _selectedOperationType!,
-        if (_fromDate != null) 'fromDate': _fromDate!.toIso8601String(),
-        if (_toDate != null) 'toDate': _toDate!.toIso8601String(),
+        if (_fromDate != null) 'fromDate': _fromDate!.toIso8601String().split('T')[0],
+        if (_toDate != null) 'toDate': _toDate!.toIso8601String().split('T')[0],
       };
 
       final uri = Uri.parse('${ApiService.baseUrl}/subscriptionlogs')

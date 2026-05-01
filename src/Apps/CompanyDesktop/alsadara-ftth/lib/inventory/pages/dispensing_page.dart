@@ -182,24 +182,34 @@ class _DispensingPageState extends State<DispensingPage>
   }
 
   List<Widget> _buildActions(TechnicianDispensingModel d) {
-    final actions = <Widget>[];
-    switch (d.status) {
-      case 'Pending':
-        actions.addAll([
-          _actionBtn(Icons.check_circle_outline, 'موافقة', Colors.green,
-              () => _approve(d)),
-          _actionBtn(
-              Icons.cancel_outlined, 'إلغاء', Colors.red, () => _cancel(d)),
-        ]);
-        break;
-      case 'Approved':
-        actions.add(
-          _actionBtn(Icons.assignment_return_outlined, 'إرجاع', Colors.blue,
-              () => _returnItems(d)),
-        );
-        break;
+    return [
+      _actionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _delete(d)),
+    ];
+  }
+
+  Future<void> _delete(TechnicianDispensingModel d) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف'),
+          content: Text('هل تريد حذف سند الصرف "${d.voucherNumber}"؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _api.deleteDispensing(d.id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحذف'), backgroundColor: Colors.green));
+      _loadData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
     }
-    return actions;
   }
 
   Widget _actionBtn(
@@ -329,7 +339,7 @@ class _DispensingPageState extends State<DispensingPage>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), elevation: 0,
+        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
           title: const Text('صرف الفنيين'),
           actions: [
             FilledButton.icon(

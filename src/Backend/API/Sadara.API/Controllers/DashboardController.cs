@@ -26,7 +26,7 @@ public class DashboardController : ControllerBase
         var totalProducts = await _unitOfWork.Products.CountAsync();
         var totalOrders = await _unitOfWork.Orders.CountAsync();
 
-        var todayOrders = await _unitOfWork.Orders.CountAsync(o => o.CreatedAt.Date == DateTime.UtcNow.Date);
+        var todayOrders = await _unitOfWork.Orders.CountAsync(o => o.CreatedAt.Date == DateTime.UtcNow.AddHours(3).Date);
         var pendingOrders = await _unitOfWork.Orders.CountAsync(o => o.Status == Sadara.Domain.Enums.OrderStatus.Pending);
 
         return Ok(new

@@ -765,6 +765,31 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// جلب بصمات العمليات المحفوظة في خادمنا (IDs + composite keys)
+  Future<Map<String, List<String>>> getExistingFtthFingerprints({
+    String? companyId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    String query = '/ftth-accounting/existing-ftth-ids';
+    final params = <String>[];
+    if (companyId != null) params.add('companyId=$companyId');
+    if (from != null)
+      params.add('from=${from.toIso8601String().split('T')[0]}');
+    if (to != null) params.add('to=${to.toIso8601String().split('T')[0]}');
+    if (params.isNotEmpty) query += '?${params.join('&')}';
+    final response = await _client.get(query, (json) => json);
+    final map = _toMap(response);
+    final data = map['data'];
+    final ids = data is Map && data['ids'] is List
+        ? (data['ids'] as List).cast<String>()
+        : <String>[];
+    final keys = data is Map && data['keys'] is List
+        ? (data['keys'] as List).cast<String>()
+        : <String>[];
+    return {'ids': ids, 'keys': keys};
+  }
+
   /// مزامنة عمليات FTTH دفعة واحدة
   Future<Map<String, dynamic>> syncFtthTransactions({
     String? companyId,

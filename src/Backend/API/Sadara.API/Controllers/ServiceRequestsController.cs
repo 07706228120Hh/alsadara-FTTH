@@ -868,8 +868,8 @@ public class ServiceRequestsController : ControllerBase
             Cancelled = await query.CountAsync(r => r.Status == ServiceRequestStatus.Cancelled),
             Rejected = await query.CountAsync(r => r.Status == ServiceRequestStatus.Rejected),
             OnHold = await query.CountAsync(r => r.Status == ServiceRequestStatus.OnHold),
-            TodayCreated = await query.CountAsync(r => r.CreatedAt >= DateTime.UtcNow.Date),
-            TodayCompleted = await query.CountAsync(r => r.CompletedAt >= DateTime.UtcNow.Date)
+            TodayCreated = await query.CountAsync(r => r.CreatedAt >= DateTime.UtcNow.AddHours(3).Date),
+            TodayCompleted = await query.CountAsync(r => r.CompletedAt >= DateTime.UtcNow.AddHours(3).Date)
         };
 
         return Ok(new { success = true, data = stats });
@@ -1081,7 +1081,7 @@ public class ServiceRequestsController : ControllerBase
             // مهمة "تركيب" لا تمنع "شراء اشتراك" — فقط نفس النوع يُمنع
             if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
             {
-                var todayUtc = DateTime.UtcNow.Date;
+                var todayUtc = DateTime.UtcNow.AddHours(3).Date;
                 var taskType = dto.TaskType ?? "";
                 var duplicate = await _unitOfWork.ServiceRequests.FirstOrDefaultAsync(r =>
                     r.ContactPhone == dto.CustomerPhone &&

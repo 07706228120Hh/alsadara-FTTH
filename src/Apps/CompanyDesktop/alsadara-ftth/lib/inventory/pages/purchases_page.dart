@@ -81,6 +81,7 @@ class _PurchasesPageState extends State<PurchasesPage> {
           _orders = list
               .map((e) =>
                   PurchaseOrder.fromJson(e as Map<String, dynamic>))
+              .where((o) => o.status != 'Cancelled') // إخفاء الملغي
               .toList();
           _totalCount = res['totalCount'] as int? ?? _orders.length;
           _loading = false;
@@ -143,33 +144,43 @@ class _PurchasesPageState extends State<PurchasesPage> {
   }
 
   List<Widget> _buildActions(PurchaseOrder order) {
-    final actions = <Widget>[];
-    switch (order.status) {
-      case 'Draft':
-        actions.addAll([
-          _actionBtn(Icons.edit, 'تعديل', Colors.blue, () => _editOrder(order)),
-          _actionBtn(Icons.check_circle_outline, 'اعتماد', Colors.green,
-              () => _approveOrder(order)),
-          _actionBtn(
-              Icons.cancel_outlined, 'إلغاء', Colors.red, () => _cancelOrder(order)),
-        ]);
-        break;
-      case 'Approved':
-        actions.addAll([
-          _actionBtn(Icons.inventory_2_outlined, 'استلام', Colors.teal,
-              () => _receiveOrder(order)),
-          _actionBtn(
-              Icons.cancel_outlined, 'إلغاء', Colors.red, () => _cancelOrder(order)),
-        ]);
-        break;
-      case 'PartiallyReceived':
-        actions.add(
-          _actionBtn(Icons.inventory_2_outlined, 'استلام', Colors.teal,
-              () => _receiveOrder(order)),
-        );
-        break;
+    return [
+      _actionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _deleteOrder(order)),
+    ];
+  }
+
+  Future<void> _deleteOrder(PurchaseOrder order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف'),
+          content: Text('هل تريد حذف أمر الشراء "${order.orderNumber}"؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('حذف'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      // نستخدم cancel كحذف ناعم (soft delete)
+      await _api.cancelPurchaseOrder(order.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحذف'), backgroundColor: Colors.green));
+      }
+      _loadData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      }
     }
-    return actions;
   }
 
   Widget _actionBtn(
@@ -300,7 +311,7 @@ class _PurchasesPageState extends State<PurchasesPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), elevation: 0,
+        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
           title: const Text('أوامر الشراء'),
           actions: [
             FilledButton.icon(

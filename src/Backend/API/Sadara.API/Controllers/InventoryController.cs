@@ -867,9 +867,9 @@ public class InventoryController : ControllerBase
             if (supplierId.HasValue)
                 query = query.Where(po => po.SupplierId == supplierId);
             if (from.HasValue)
-                query = query.Where(po => po.OrderDate >= from.Value);
+                query = query.Where(po => po.OrderDate >= DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc));
             if (to.HasValue)
-                query = query.Where(po => po.OrderDate <= to.Value);
+                query = query.Where(po => po.OrderDate <= DateTime.SpecifyKind(to.Value.AddHours(-3), DateTimeKind.Utc));
 
             var total = await query.CountAsync();
             var orders = await query
@@ -985,7 +985,9 @@ public class InventoryController : ControllerBase
                 SupplierId = request.SupplierId,
                 WarehouseId = request.WarehouseId,
                 OrderDate = DateTime.UtcNow,
-                ExpectedDeliveryDate = request.ExpectedDeliveryDate,
+                ExpectedDeliveryDate = request.ExpectedDeliveryDate.HasValue
+                    ? DateTime.SpecifyKind(request.ExpectedDeliveryDate.Value, DateTimeKind.Utc)
+                    : null,
                 Status = PurchaseOrderStatus.Draft,
                 Notes = request.Notes,
                 CreatedById = currentUserId,
@@ -1003,20 +1005,75 @@ public class InventoryController : ControllerBase
                     PurchaseOrderId = order.Id,
                     InventoryItemId = itemDto.InventoryItemId,
                     Quantity = itemDto.Quantity,
-                    ReceivedQuantity = 0,
+                    ReceivedQuantity = itemDto.Quantity, // مستلم بالكامل مباشرة
                     UnitPrice = itemDto.UnitPrice,
                     TotalPrice = lineTotal
                 };
                 await _unitOfWork.PurchaseOrderItems.AddAsync(orderItem);
+
+                // ── تحديث المخزون مباشرة ──
+                var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
+                    s => s.WarehouseId == order.WarehouseId && s.InventoryItemId == itemDto.InventoryItemId && !s.IsDeleted);
+
+                var isNewStock = false;
+                if (stock == null)
+                {
+                    isNewStock = true;
+                    stock = new WarehouseStock
+                    {
+                        WarehouseId = order.WarehouseId,
+                        InventoryItemId = itemDto.InventoryItemId,
+                        CurrentQuantity = 0,
+                        AverageCost = 0,
+                        CompanyId = request.CompanyId
+                    };
+                }
+
+                var oldQty = stock.CurrentQuantity;
+                var oldAvg = stock.AverageCost;
+                var newQty = oldQty + itemDto.Quantity;
+                stock.AverageCost = newQty > 0
+                    ? ((oldQty * oldAvg) + (itemDto.Quantity * itemDto.UnitPrice)) / newQty
+                    : itemDto.UnitPrice;
+                stock.CurrentQuantity = newQty;
+                stock.LastStockInDate = DateTime.UtcNow;
+
+                if (isNewStock)
+                    await _unitOfWork.WarehouseStocks.AddAsync(stock);
+                else
+                    _unitOfWork.WarehouseStocks.Update(stock);
+
+                // ── حركة مخزنية ──
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                {
+                    InventoryItemId = itemDto.InventoryItemId,
+                    WarehouseId = order.WarehouseId,
+                    MovementType = StockMovementType.PurchaseIn,
+                    Quantity = itemDto.Quantity,
+                    StockBefore = oldQty,
+                    StockAfter = newQty,
+                    UnitCost = itemDto.UnitPrice,
+                    ReferenceType = "PurchaseOrder",
+                    ReferenceId = order.Id.ToString(),
+                    ReferenceNumber = orderNumber,
+                    Description = $"شراء من {orderNumber}",
+                    CreatedById = currentUserId,
+                    CompanyId = request.CompanyId
+                });
             }
 
             order.TotalAmount = totalAmount;
-            order.NetAmount = totalAmount;
+            order.DiscountAmount = request.DiscountAmount ?? 0;
+            order.TaxAmount = request.TaxAmount ?? 0;
+            order.NetAmount = totalAmount - (request.DiscountAmount ?? 0) + (request.TaxAmount ?? 0);
+            order.Status = PurchaseOrderStatus.Received; // مستلم مباشرة
+            order.ReceivedDate = DateTime.UtcNow;
+            order.ApprovedById = currentUserId;
 
             await _unitOfWork.PurchaseOrders.AddAsync(order);
             await _unitOfWork.SaveChangesAsync();
 
-            return Ok(new { success = true, data = new { order.Id, order.OrderNumber }, message = "تم إنشاء أمر الشراء بنجاح" });
+            return Ok(new { success = true, data = new { order.Id, order.OrderNumber }, message = "تم إنشاء فاتورة الشراء وإضافة المواد للمخزون" });
         }
         catch (Exception ex)
         {
@@ -1038,8 +1095,9 @@ public class InventoryController : ControllerBase
             if (order == null || order.IsDeleted)
                 return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
 
-            if (order.Status != PurchaseOrderStatus.Draft)
-                return BadRequest(new { success = false, message = "لا يمكن تعديل أمر شراء غير مسودة" });
+            // السماح بتعديل المسودة والمستلمة
+            if (order.Status == PurchaseOrderStatus.Cancelled)
+                return BadRequest(new { success = false, message = "لا يمكن تعديل أمر شراء ملغي" });
 
             order.SupplierId = request.SupplierId ?? order.SupplierId;
             order.WarehouseId = request.WarehouseId ?? order.WarehouseId;
@@ -1304,9 +1362,9 @@ public class InventoryController : ControllerBase
             if (status.HasValue)
                 query = query.Where(so => so.Status == status);
             if (from.HasValue)
-                query = query.Where(so => so.OrderDate >= from.Value);
+                query = query.Where(so => so.OrderDate >= DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc));
             if (to.HasValue)
-                query = query.Where(so => so.OrderDate <= to.Value);
+                query = query.Where(so => so.OrderDate <= DateTime.SpecifyKind(to.Value.AddHours(-3), DateTimeKind.Utc));
 
             var total = await query.CountAsync();
             var orders = await query
@@ -1667,9 +1725,9 @@ public class InventoryController : ControllerBase
             if (status.HasValue)
                 query = query.Where(td => td.Status == status);
             if (from.HasValue)
-                query = query.Where(td => td.DispensingDate >= from.Value);
+                query = query.Where(td => td.DispensingDate >= DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc));
             if (to.HasValue)
-                query = query.Where(td => td.DispensingDate <= to.Value);
+                query = query.Where(td => td.DispensingDate <= DateTime.SpecifyKind(to.Value.AddHours(-3), DateTimeKind.Utc));
 
             var dispensings = await query
                 .OrderByDescending(td => td.DispensingDate)
@@ -1773,10 +1831,11 @@ public class InventoryController : ControllerBase
                 WarehouseId = request.WarehouseId,
                 ServiceRequestId = request.ServiceRequestId,
                 DispensingDate = DateTime.UtcNow,
-                Status = DispensingStatus.Pending,
+                Status = DispensingStatus.Approved, // مصروف مباشرة
                 Type = request.Type,
                 Notes = request.Notes,
                 CreatedById = currentUserId,
+                ApprovedById = currentUserId,
                 CompanyId = request.CompanyId
             };
 
@@ -1790,16 +1849,75 @@ public class InventoryController : ControllerBase
                     ReturnedQuantity = 0
                 };
                 await _unitOfWork.TechnicianDispensingItems.AddAsync(dispensingItem);
+
+                // ── تحديث المخزون مباشرة (خصم من المستودع) ──
+                var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
+                    s => s.WarehouseId == request.WarehouseId && s.InventoryItemId == itemDto.InventoryItemId && !s.IsDeleted);
+
+                var oldQty = stock?.CurrentQuantity ?? 0;
+                var newQty = oldQty - itemDto.Quantity;
+                if (newQty < 0) newQty = 0;
+
+                if (stock != null)
+                {
+                    stock.CurrentQuantity = newQty;
+                    stock.LastStockOutDate = DateTime.UtcNow;
+                    _unitOfWork.WarehouseStocks.Update(stock);
+                }
+
+                // ── حركة مخزنية ──
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                {
+                    InventoryItemId = itemDto.InventoryItemId,
+                    WarehouseId = request.WarehouseId,
+                    MovementType = StockMovementType.TechnicianDispensing,
+                    Quantity = itemDto.Quantity,
+                    StockBefore = oldQty,
+                    StockAfter = newQty,
+                    ReferenceType = "TechnicianDispensing",
+                    ReferenceId = dispensing.Id.ToString(),
+                    ReferenceNumber = voucherNumber,
+                    Description = $"صرف فني - {voucherNumber}",
+                    CreatedById = currentUserId,
+                    CompanyId = request.CompanyId
+                });
             }
 
             await _unitOfWork.TechnicianDispensings.AddAsync(dispensing);
             await _unitOfWork.SaveChangesAsync();
 
-            return Ok(new { success = true, data = new { dispensing.Id, dispensing.VoucherNumber }, message = "تم إنشاء عملية الصرف بنجاح" });
+            return Ok(new { success = true, data = new { dispensing.Id, dispensing.VoucherNumber }, message = "تم صرف المواد بنجاح" });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إنشاء عملية صرف");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// حذف سند صرف (soft delete)
+    /// </summary>
+    [HttpDelete("dispensing/{id}")]
+    [RequirePermission("inventory", "delete")]
+    public async Task<IActionResult> DeleteDispensing(Guid id)
+    {
+        try
+        {
+            var dispensing = await _unitOfWork.TechnicianDispensings.GetByIdAsync(id);
+            if (dispensing == null || dispensing.IsDeleted)
+                return NotFound(new { success = false, message = "سند الصرف غير موجود" });
+
+            dispensing.IsDeleted = true;
+            dispensing.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.TechnicianDispensings.Update(dispensing);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم حذف سند الصرف" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف سند صرف");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -2085,6 +2203,83 @@ public class InventoryController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في جلب مواد الفني");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// صرف مواد من عُهدة الفني للعميل (من المهمة)
+    /// يخصم من عُهدة الفني فقط ولا يؤثر على المخزون
+    /// </summary>
+    [HttpPost("dispensing/use-from-holdings")]
+    [RequirePermission("inventory", "add")]
+    public async Task<IActionResult> UseFromTechnicianHoldings([FromBody] UseFromHoldingsRequest request)
+    {
+        try
+        {
+            var currentUserId = GetCurrentUserId();
+            var errors = new List<string>();
+
+            foreach (var itemReq in request.Items)
+            {
+                // نبحث عن بنود الصرف المعتمدة للفني لهذه المادة
+                var holdingItems = await _unitOfWork.TechnicianDispensingItems.AsQueryable()
+                    .Where(tdi => tdi.TechnicianDispensing != null
+                        && tdi.TechnicianDispensing.TechnicianId == request.TechnicianId
+                        && tdi.TechnicianDispensing.Status == DispensingStatus.Approved
+                        && tdi.TechnicianDispensing.Type == DispensingType.Dispensing
+                        && !tdi.TechnicianDispensing.IsDeleted
+                        && tdi.InventoryItemId == itemReq.InventoryItemId
+                        && tdi.Quantity > tdi.ReturnedQuantity)
+                    .OrderBy(tdi => tdi.CreatedAt) // FIFO — الأقدم أولاً
+                    .ToListAsync();
+
+                var totalAvailable = holdingItems.Sum(h => h.Quantity - h.ReturnedQuantity);
+                if (totalAvailable < itemReq.Quantity)
+                {
+                    var itemName = (await _unitOfWork.InventoryItems.GetByIdAsync(itemReq.InventoryItemId))?.Name ?? "مادة";
+                    errors.Add($"رصيد {itemName} غير كافي (متوفر: {totalAvailable}, مطلوب: {itemReq.Quantity})");
+                    continue;
+                }
+
+                // خصم من العُهدة بنظام FIFO
+                var remaining = itemReq.Quantity;
+                foreach (var h in holdingItems)
+                {
+                    if (remaining <= 0) break;
+                    var canUse = h.Quantity - h.ReturnedQuantity;
+                    var used = Math.Min(canUse, remaining);
+                    h.ReturnedQuantity += used;
+                    remaining -= used;
+                    _unitOfWork.TechnicianDispensingItems.Update(h);
+                }
+
+                // حركة مخزنية للتوثيق
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                {
+                    InventoryItemId = itemReq.InventoryItemId,
+                    WarehouseId = Guid.Empty, // لا يؤثر على المستودع
+                    MovementType = StockMovementType.TechnicianDispensing,
+                    Quantity = itemReq.Quantity,
+                    StockBefore = totalAvailable,
+                    StockAfter = totalAvailable - itemReq.Quantity,
+                    ReferenceType = "TaskDispensing",
+                    ReferenceId = request.ServiceRequestId?.ToString(),
+                    Description = $"صرف من عُهدة الفني للعميل - مهمة",
+                    CreatedById = currentUserId,
+                    CompanyId = request.CompanyId
+                });
+            }
+
+            if (errors.Any())
+                return BadRequest(new { success = false, message = string.Join("\n", errors) });
+
+            await _unitOfWork.SaveChangesAsync();
+            return Ok(new { success = true, message = "تم صرف المواد من عُهدة الفني بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في صرف من عُهدة الفني");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -2383,9 +2578,9 @@ public class InventoryController : ControllerBase
             if (movementType.HasValue)
                 query = query.Where(sm => sm.MovementType == movementType);
             if (from.HasValue)
-                query = query.Where(sm => sm.CreatedAt >= from.Value);
+                query = query.Where(sm => sm.CreatedAt >= DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc));
             if (to.HasValue)
-                query = query.Where(sm => sm.CreatedAt <= to.Value);
+                query = query.Where(sm => sm.CreatedAt <= DateTime.SpecifyKind(to.Value.AddHours(-3), DateTimeKind.Utc));
 
             var total = await query.CountAsync();
             var movements = await query
@@ -2453,7 +2648,7 @@ public class InventoryController : ControllerBase
                 .Where(i => i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity) < i.MinStockLevel)
                 .CountAsync();
 
-            var today = DateTime.UtcNow.Date;
+            var today = DateTime.UtcNow.AddHours(3).Date;
             var todayMovementsCount = await _unitOfWork.StockMovements.CountAsync(
                 sm => sm.CompanyId == companyId && !sm.IsDeleted && sm.CreatedAt >= today);
 
@@ -2701,6 +2896,8 @@ public class CreatePurchaseOrderRequest
     public Guid WarehouseId { get; set; }
     public DateTime? ExpectedDeliveryDate { get; set; }
     public string? Notes { get; set; }
+    public decimal? DiscountAmount { get; set; }
+    public decimal? TaxAmount { get; set; }
     public Guid CompanyId { get; set; }
     public List<PurchaseOrderItemDto> Items { get; set; } = new();
 }
@@ -2795,6 +2992,20 @@ public class TransferStockRequest
 }
 
 public class TransferItemDto
+{
+    public Guid InventoryItemId { get; set; }
+    public int Quantity { get; set; }
+}
+
+public class UseFromHoldingsRequest
+{
+    public Guid TechnicianId { get; set; }
+    public Guid? ServiceRequestId { get; set; }
+    public Guid CompanyId { get; set; }
+    public List<UseFromHoldingsItemDto> Items { get; set; } = new();
+}
+
+public class UseFromHoldingsItemDto
 {
     public Guid InventoryItemId { get; set; }
     public int Quantity { get; set; }

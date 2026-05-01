@@ -366,12 +366,12 @@ public class AccountingController : ControllerBase
                 query = query.Where(j => j.Status == st);
             if (fromDate.HasValue)
             {
-                var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                var from = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(j => j.EntryDate >= from);
             }
             if (toDate.HasValue)
             {
-                var to = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                var to = DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(j => j.EntryDate <= to);
             }
 
@@ -797,9 +797,15 @@ public class AccountingController : ControllerBase
                 .Where(t => t.CashBoxId == id);
 
             if (fromDate.HasValue)
-                query = query.Where(t => t.CreatedAt >= fromDate.Value);
+            {
+                var fromUtc = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(t => t.CreatedAt >= fromUtc);
+            }
             if (toDate.HasValue)
-                query = query.Where(t => t.CreatedAt <= toDate.Value);
+            {
+                var toUtc = DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(t => t.CreatedAt <= toUtc);
+            }
 
             var total = await query.CountAsync();
             var transactions = await query
@@ -2321,9 +2327,15 @@ public class AccountingController : ControllerBase
             if (isDelivered.HasValue)
                 query = query.Where(c => c.IsDelivered == isDelivered);
             if (fromDate.HasValue)
-                query = query.Where(c => c.CollectionDate >= fromDate);
+            {
+                var fromUtc = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(c => c.CollectionDate >= fromUtc);
+            }
             if (toDate.HasValue)
-                query = query.Where(c => c.CollectionDate <= toDate);
+            {
+                var toUtc = DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(c => c.CollectionDate <= toUtc);
+            }
 
             var total = await query.CountAsync();
             var collections = await query
@@ -2575,9 +2587,15 @@ public class AccountingController : ControllerBase
             if (!string.IsNullOrEmpty(category))
                 query = query.Where(e => e.Category == category);
             if (fromDate.HasValue)
-                query = query.Where(e => e.ExpenseDate >= fromDate);
+            {
+                var fromUtc = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(e => e.ExpenseDate >= fromUtc);
+            }
             if (toDate.HasValue)
-                query = query.Where(e => e.ExpenseDate <= toDate);
+            {
+                var toUtc = DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(e => e.ExpenseDate <= toUtc);
+            }
 
             var total = await query.CountAsync();
             var expenses = await query
@@ -3689,9 +3707,15 @@ public class AccountingController : ControllerBase
                 .Where(l => l.AccountId == id);
 
             if (fromDate.HasValue)
-                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate >= fromDate);
+            {
+                var fromUtc = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate >= fromUtc);
+            }
             if (toDate.HasValue)
-                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate <= toDate);
+            {
+                var toUtc = DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate <= toUtc);
+            }
 
             var lines = await query
                 .Where(l => l.JournalEntry != null && l.JournalEntry.Status == JournalEntryStatus.Posted)

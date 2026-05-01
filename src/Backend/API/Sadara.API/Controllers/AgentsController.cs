@@ -405,12 +405,12 @@ public class AgentsController : ControllerBase
                 query = query.Where(t => t.Type == type.Value);
             if (from.HasValue)
             {
-                var fromUtc = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+                var fromUtc = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt >= fromUtc);
             }
             if (to.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt <= toUtc);
             }
 
@@ -518,13 +518,13 @@ public class AgentsController : ControllerBase
 
             if (from.HasValue)
             {
-                var fromUtc = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+                var fromUtc = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt >= fromUtc);
             }
 
             if (to.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt <= toUtc);
             }
 
@@ -1115,7 +1115,7 @@ public class AgentsController : ControllerBase
             if (agent == null)
                 return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
-            var todayStart = DateTime.UtcNow.Date;
+            var todayStart = DateTime.UtcNow.AddHours(3).Date;
             var transactions = await _unitOfWork.AgentTransactions.AsQueryable()
                 .Where(t => t.AgentId == agentId.Value)
                 .ToListAsync();
@@ -1174,13 +1174,13 @@ public class AgentsController : ControllerBase
 
             if (from.HasValue)
             {
-                var fromUtc = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+                var fromUtc = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt >= fromUtc);
             }
 
             if (to.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt <= toUtc);
             }
 

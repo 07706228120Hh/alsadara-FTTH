@@ -100,7 +100,7 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), elevation: 0,
+        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
           title: const Text('تقارير المخزون'),
           bottom: TabBar(
             controller: _tabController,
@@ -174,7 +174,6 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
                 columnSpacing: 24,
                 columns: const [
                   DataColumn(label: Text('المادة')),
-                  DataColumn(label: Text('SKU')),
                   DataColumn(label: Text('الكمية الكلية'), numeric: true),
                   DataColumn(
                       label: Text('متوسط التكلفة'), numeric: true),
@@ -183,7 +182,6 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
                 ],
                 rows: _valuationData.map((item) {
                   final name = item['itemName'] as String? ?? '-';
-                  final sku = item['sku'] as String? ?? '-';
                   final qty =
                       (item['totalQuantity'] as num?)?.toInt() ?? 0;
                   final avgCost =
@@ -192,7 +190,6 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
                       (item['totalValue'] as num?)?.toDouble() ?? 0.0;
                   return DataRow(cells: [
                     DataCell(Text(name)),
-                    DataCell(Text(sku)),
                     DataCell(Text('$qty')),
                     DataCell(Text(fmtN(avgCost))),
                     DataCell(Text(fmtN(totalVal),

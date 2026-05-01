@@ -39,8 +39,8 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
     try {
       String url = '$_baseUrl?';
       if (widget.companyId != null) url += 'companyId=${widget.companyId}&';
-      if (_fromDate != null) url += 'fromDate=${_fromDate!.toIso8601String()}&';
-      if (_toDate != null) url += 'toDate=${_toDate!.toIso8601String()}&';
+      if (_fromDate != null) url += 'fromDate=${_fromDate!.toIso8601String().split('T')[0]}&';
+      if (_toDate != null) url += 'toDate=${_toDate!.toIso8601String().split('T')[0]}&';
 
       final res = await http.get(Uri.parse(url), headers: {'X-Api-Key': _apiKey});
       if (res.statusCode == 200) {

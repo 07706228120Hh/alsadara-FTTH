@@ -234,16 +234,14 @@ class _ProfitsPageState extends State<ProfitsPage> {
       // التواريخ
       if (filterData['fromDate'] != null) {
         final fromDate = DateTime.parse(filterData['fromDate']);
-        final fromDateUtc =
-            DateTime.utc(fromDate.year, fromDate.month, fromDate.day, 21, 0, 0);
-        queryParams.add('fromDate=${fromDateUtc.toIso8601String()}');
+        final fromStr = '${fromDate.year.toString().padLeft(4, '0')}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}';
+        queryParams.add('fromDate=$fromStr');
       }
 
       if (filterData['toDate'] != null) {
         final toDate = DateTime.parse(filterData['toDate']);
-        final toDateUtc =
-            DateTime.utc(toDate.year, toDate.month, toDate.day, 20, 59, 59);
-        queryParams.add('toDate=${toDateUtc.toIso8601String()}');
+        final toStr = '${toDate.year.toString().padLeft(4, '0')}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}';
+        queryParams.add('toDate=$toStr');
       }
 
       // أنواع المحفظة

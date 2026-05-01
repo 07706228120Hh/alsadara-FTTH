@@ -260,9 +260,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var currentMonth = DateTime.UtcNow.Month;
-            var currentYear = DateTime.UtcNow.Year;
+            var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
+            var currentMonth = DateTime.UtcNow.AddHours(3).Month;
+            var currentYear = DateTime.UtcNow.AddHours(3).Year;
             var monthStart = new DateOnly(currentYear, currentMonth, 1);
             var monthEnd = monthStart.AddMonths(1).AddDays(-1);
 

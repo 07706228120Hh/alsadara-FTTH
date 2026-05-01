@@ -44,12 +44,12 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
 
             if (from.HasValue)
             {
-                var fromUtc = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+                var fromUtc = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt >= fromUtc);
             }
             if (to.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(to.Value.AddDays(1), DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt < toUtc);
             }
 
@@ -214,12 +214,12 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
 
             if (from.HasValue)
             {
-                var fromUtc = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+                var fromUtc = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt >= fromUtc);
             }
             if (to.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(to.Value.AddDays(1), DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
                 query = query.Where(t => t.CreatedAt < toUtc);
             }
 

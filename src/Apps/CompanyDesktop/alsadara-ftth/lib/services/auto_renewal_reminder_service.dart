@@ -106,8 +106,8 @@ class AutoRenewalReminderService {
             '?pageSize=$pageSize&pageNumber=$page'
             '&sortCriteria.property=expires&sortCriteria.direction=asc'
             '&status=Active&hierarchyLevel=0'
-            '&fromExpirationDate=${fromDate.toIso8601String()}'
-            '&toExpirationDate=${toDate.toIso8601String()}';
+            '&fromExpirationDate=${fromDate.toIso8601String().split('T')[0]}'
+            '&toExpirationDate=${toDate.toIso8601String().split('T')[0]}';
 
         final response = await AuthService.instance
             .authenticatedRequest('GET', url)
