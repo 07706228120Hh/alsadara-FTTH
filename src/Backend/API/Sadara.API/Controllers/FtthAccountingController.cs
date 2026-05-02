@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Constants;
 
 namespace Sadara.API.Controllers;
 
@@ -180,7 +181,7 @@ public class FtthAccountingController : ControllerBase
 
         // ═══ جلب الحسابات ═══
         // دائن: رصيد الصفحة الداخلي (11102)
-        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "11102", companyId);
+        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
         if (pageBalanceAccount == null)
         {
             _logger.LogWarning("حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId}", companyId);
@@ -191,7 +192,7 @@ public class FtthAccountingController : ControllerBase
         Account? maintenanceRevenueAccount = null;
         if (maintenanceFee > 0)
         {
-            maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4110", companyId);
+            maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
             if (maintenanceRevenueAccount == null)
                 _logger.LogWarning("حساب إيراد الصيانة 4110 غير موجود — سيتم تجاهل رسوم الصيانة في القيد");
         }
@@ -200,7 +201,7 @@ public class FtthAccountingController : ControllerBase
         Account? discountRevenueAccount = null;
         if (companyDiscountProfit > 0)
         {
-            discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4120", companyId);
+            discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);
             if (discountRevenueAccount == null)
                 _logger.LogWarning("حساب إيراد خصم الشركة 4120 غير موجود — سيتم تجاهل ربح الخصم في القيد");
         }
@@ -209,7 +210,7 @@ public class FtthAccountingController : ControllerBase
         Account? promotionExpenseAccount = null;
         if (manualDiscount > 0)
         {
-            promotionExpenseAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "5110", companyId);
+            promotionExpenseAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId);
             if (promotionExpenseAccount == null)
                 _logger.LogWarning("حساب مصاريف العروض 5110 غير موجود — سيتم تجاهل الخصم الاختياري في القيد");
         }
@@ -221,19 +222,19 @@ public class FtthAccountingController : ControllerBase
         switch (collectionType.ToLower())
         {
             case "cash":
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, userId, $"صندوق {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - نقد عبر {operatorName}";
                 break;
 
             case "credit":
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1160", userId, $"ذمة {operatorName}", companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.OperatorReceivables, userId, $"ذمة {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - آجل على {operatorName}";
                 break;
 
             case "master":
-                debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1170", companyId)
+                debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.ElectronicPayment, companyId)
                     ?? throw new Exception("حساب صندوق الدفع الإلكتروني 1170 غير موجود");
                 description = $"{opType} {planName} - {customerName} - ماستر (إلكتروني)";
                 break;
@@ -246,7 +247,7 @@ public class FtthAccountingController : ControllerBase
                 if (agent == null)
                     throw new Exception("الوكيل غير موجود");
 
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, agent.Name, companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
 
@@ -280,7 +281,7 @@ public class FtthAccountingController : ControllerBase
                 if (tech == null)
                     throw new Exception("الفني غير موجود");
 
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1140", tech.Id, tech.FullName, companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech.Id, tech.FullName, companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
 
@@ -306,7 +307,7 @@ public class FtthAccountingController : ControllerBase
                 break;
 
             default:
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, userId, $"صندوق {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - عبر {operatorName}";
                 break;
@@ -391,7 +392,8 @@ public class FtthAccountingController : ControllerBase
         Guid userId,
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
-        [FromQuery] Guid? companyId = null)
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] bool isTechnician = false)
     {
         try
         {
@@ -399,8 +401,11 @@ public class FtthAccountingController : ControllerBase
             if (user == null)
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
-            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
-                .Where(l => l.UserId == userId);
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable();
+            if (isTechnician)
+                query = query.Where(l => l.LinkedTechnicianId == userId && l.CollectionType == "technician");
+            else
+                query = query.Where(l => l.UserId == userId);
 
             if (companyId.HasValue)
                 query = query.Where(l => l.CompanyId == companyId);
@@ -435,13 +440,13 @@ public class FtthAccountingController : ControllerBase
             {
                 // البحث عن صندوق المشغل
                 var operatorCashAccount = await _unitOfWork.Accounts.AsQueryable()
-                    .FirstOrDefaultAsync(a => a.Code.StartsWith("1110")
+                    .FirstOrDefaultAsync(a => a.Code.StartsWith(AccountCodes.Cash)
                         && a.Description == userId.ToString()
                         && a.CompanyId == companyId);
 
                 // البحث عن ذمة المشغل
                 var operatorCreditAccount = await _unitOfWork.Accounts.AsQueryable()
-                    .FirstOrDefaultAsync(a => a.Code.StartsWith("1160")
+                    .FirstOrDefaultAsync(a => a.Code.StartsWith(AccountCodes.OperatorReceivables)
                         && a.Description == userId.ToString()
                         && a.CompanyId == companyId);
 
@@ -656,7 +661,7 @@ public class FtthAccountingController : ControllerBase
 
             // حسابات صناديق المشغلين (1110)
             var operatorCashAccounts = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.Code.StartsWith("1110") && a.Description != null
+                .Where(a => a.Code.StartsWith(AccountCodes.Cash) && a.Description != null
                     && userIdStrings.Contains(a.Description)
                     && (!companyId.HasValue || a.CompanyId == companyId))
                 .Select(a => new { a.Id, a.Description })
@@ -664,20 +669,32 @@ public class FtthAccountingController : ControllerBase
 
             // حسابات ذمم المشغلين (1160)
             var operatorCreditAccounts = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.Code.StartsWith("1160") && a.Description != null
+                .Where(a => a.Code.StartsWith(AccountCodes.OperatorReceivables) && a.Description != null
                     && userIdStrings.Contains(a.Description)
                     && (!companyId.HasValue || a.CompanyId == companyId))
                 .Select(a => new { a.Id, a.Description })
                 .ToListAsync();
 
             // النقد المسلّم لكل مشغل (CreditAmount في صندوقه عبر OperatorCashDelivery)
+            // فلترة بنفس نطاق التاريخ المحدد
+            var jeDateQuery = _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => j.Status != JournalEntryStatus.Voided);
+            if (from.HasValue)
+            {
+                var fromUtcJe = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
+                jeDateQuery = jeDateQuery.Where(j => j.CreatedAt >= fromUtcJe);
+            }
+            if (to.HasValue)
+            {
+                var toUtcJe = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                jeDateQuery = jeDateQuery.Where(j => j.CreatedAt <= toUtcJe);
+            }
+
             var cashAccountIds = operatorCashAccounts.Select(a => a.Id).ToList();
             var deliveredByAccount = cashAccountIds.Any()
                 ? await _unitOfWork.JournalEntryLines.AsQueryable()
                     .Where(l => cashAccountIds.Contains(l.AccountId) && l.CreditAmount > 0)
-                    .Join(_unitOfWork.JournalEntries.AsQueryable()
-                        .Where(j => j.ReferenceType == JournalReferenceType.OperatorCashDelivery
-                            && j.Status != JournalEntryStatus.Voided),
+                    .Join(jeDateQuery.Where(j => j.ReferenceType == JournalReferenceType.OperatorCashDelivery),
                         l => l.JournalEntryId, j => j.Id,
                         (l, j) => new { l.AccountId, l.CreditAmount })
                     .GroupBy(x => x.AccountId)
@@ -690,9 +707,7 @@ public class FtthAccountingController : ControllerBase
             var collectedByAccount = creditAccountIds.Any()
                 ? await _unitOfWork.JournalEntryLines.AsQueryable()
                     .Where(l => creditAccountIds.Contains(l.AccountId) && l.CreditAmount > 0)
-                    .Join(_unitOfWork.JournalEntries.AsQueryable()
-                        .Where(j => j.ReferenceType == JournalReferenceType.OperatorCreditCollection
-                            && j.Status != JournalEntryStatus.Voided),
+                    .Join(jeDateQuery.Where(j => j.ReferenceType == JournalReferenceType.OperatorCreditCollection),
                         l => l.JournalEntryId, j => j.Id,
                         (l, j) => new { l.AccountId, l.CreditAmount })
                     .GroupBy(x => x.AccountId)
@@ -788,9 +803,34 @@ public class FtthAccountingController : ControllerBase
                     .ToListAsync()
                 : new List<object>().Select(x => new { Id = Guid.Empty, FullName = "", Username = (string?)null }).ToList();
 
+            // ── حساب تسديدات الفنيين من TechnicianTransactions (مفلترة بالتاريخ) ──
+            var techPayQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => techUserIds.Contains(t.TechnicianId)
+                    && t.Type == TechnicianTransactionType.Payment
+                    && !t.IsDeleted);
+            if (from.HasValue)
+            {
+                var fromUtcTech = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
+                techPayQuery = techPayQuery.Where(t => t.CreatedAt >= fromUtcTech);
+            }
+            if (to.HasValue)
+            {
+                var toUtcTech = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                techPayQuery = techPayQuery.Where(t => t.CreatedAt <= toUtcTech);
+            }
+            var techPayments = techUserIds.Any()
+                ? await techPayQuery
+                    .GroupBy(t => t.TechnicianId)
+                    .Select(g => new { TechId = g.Key, TotalPayments = g.Sum(t => (decimal?)t.Amount) ?? 0 })
+                    .ToListAsync()
+                : new List<object>().Select(x => new { TechId = Guid.Empty, TotalPayments = 0m }).ToList();
+
             var technicianRows = techRows.Select(t =>
             {
                 var techUser = t.TechId.HasValue ? techUsers.FirstOrDefault(u => u.Id == t.TechId.Value) : null;
+                var paid = t.TechId.HasValue
+                    ? techPayments.FirstOrDefault(p => p.TechId == t.TechId.Value)?.TotalPayments ?? 0m
+                    : 0m;
                 return new
                 {
                     userId = t.TechId,
@@ -812,9 +852,9 @@ public class FtthAccountingController : ControllerBase
                     technicianCount = t.TotalCount,
                     unclassifiedAmount = 0m,
                     unclassifiedCount = 0,
-                    deliveredCash = 0m,
+                    deliveredCash = paid,
                     collectedCredit = 0m,
-                    netOwed = t.TotalAmount,
+                    netOwed = t.TotalAmount - paid,
                     purchaseCount = t.PurchaseCount,
                     purchaseAmount = t.PurchaseAmount,
                     renewalCount = t.RenewalCount,
@@ -952,7 +992,7 @@ public class FtthAccountingController : ControllerBase
 
             // صندوق المشغل (فرعي تحت 1110)
             var operatorAccount = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code.StartsWith("1110")
+                .FirstOrDefaultAsync(a => a.Code.StartsWith(AccountCodes.Cash)
                     && a.Description == dto.OperatorUserId.ToString()
                     && a.CompanyId == dto.CompanyId && a.IsActive);
 
@@ -960,7 +1000,7 @@ public class FtthAccountingController : ControllerBase
                 return BadRequest(new { success = false, message = "لا يوجد حساب صندوق لهذا المشغل" });
 
             // صندوق الشركة
-            var companyCashAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1110", dto.CompanyId);
+            var companyCashAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.Cash, dto.CompanyId);
             if (companyCashAccount == null)
                 return BadRequest(new { success = false, message = "حساب صندوق الشركة غير موجود" });
 
@@ -968,7 +1008,7 @@ public class FtthAccountingController : ControllerBase
             // لكن إذا 1110 أصبح أب (isLeaf=false) نحتاج نبحث عن فرعي للشركة
             if (!companyCashAccount.IsLeaf)
             {
-                var companySubCash = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", dto.CompanyId, "صندوق الشركة الرئيسي", dto.CompanyId);
+                var companySubCash = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, dto.CompanyId, "صندوق الشركة الرئيسي", dto.CompanyId);
                 await _unitOfWork.SaveChangesAsync();
                 companyCashAccount = companySubCash;
             }
@@ -1139,32 +1179,214 @@ public class FtthAccountingController : ControllerBase
             if (log == null)
                 return NotFound(new { success = false, message = "السجل غير موجود" });
 
-            bool changed = false;
+            // بيانات العميل
+            if (request.CustomerName != null) log.CustomerName = request.CustomerName;
+            if (request.PhoneNumber != null) log.PhoneNumber = request.PhoneNumber;
+            // بيانات الاشتراك
+            if (request.PlanName != null) log.PlanName = request.PlanName;
+            if (request.PlanPrice.HasValue) log.PlanPrice = request.PlanPrice.Value;
+            if (request.CommitmentPeriod != null) log.CommitmentPeriod = request.CommitmentPeriod;
+            if (request.OperationType != null) log.OperationType = request.OperationType;
+            if (request.ActivatedBy != null) log.ActivatedBy = request.ActivatedBy;
+            if (request.ActivationDate.HasValue)
+                log.ActivationDate = DateTime.SpecifyKind(request.ActivationDate.Value.Date.AddHours(12 - 3), DateTimeKind.Utc);
+            if (request.ZoneId != null) log.ZoneId = request.ZoneId;
+            // التحصيل والربط
+            _logger.LogInformation("📋 Update {Id}: CollType={CT}, HasTech={HT}, TechId={TI}, HasAgent={HA}, AgentId={AI}",
+                id, request.CollectionType, request.HasLinkedTechnicianId, request.LinkedTechnicianId, request.HasLinkedAgentId, request.LinkedAgentId);
+            if (request.CollectionType != null) log.CollectionType = request.CollectionType;
+            if (request.HasLinkedTechnicianId) log.LinkedTechnicianId = request.LinkedTechnicianId;
+            if (request.HasLinkedAgentId) log.LinkedAgentId = request.LinkedAgentId;
+            if (request.TechnicianName != null) log.TechnicianName = request.TechnicianName;
+            if (request.PaymentStatus != null) log.PaymentStatus = request.PaymentStatus;
+            if (request.PaymentMethod != null) log.PaymentMethod = request.PaymentMethod;
+            // حالات
+            if (request.IsPrinted.HasValue) log.IsPrinted = request.IsPrinted.Value;
+            if (request.IsWhatsAppSent.HasValue) log.IsWhatsAppSent = request.IsWhatsAppSent.Value;
+            if (request.IsReconciled.HasValue) log.IsReconciled = request.IsReconciled.Value;
+            if (request.ReconciliationNotes != null) log.ReconciliationNotes = request.ReconciliationNotes;
+            if (request.SubscriptionNotes != null) log.SubscriptionNotes = request.SubscriptionNotes;
+            // محاسبية
+            if (request.BasePrice.HasValue) log.BasePrice = request.BasePrice.Value;
+            if (request.CompanyDiscount.HasValue) log.CompanyDiscount = request.CompanyDiscount.Value;
+            if (request.ManualDiscount.HasValue) log.ManualDiscount = request.ManualDiscount.Value;
+            if (request.MaintenanceFee.HasValue) log.MaintenanceFee = request.MaintenanceFee.Value;
+            // تكرار
+            if (request.RenewalCycleMonths.HasValue) log.RenewalCycleMonths = request.RenewalCycleMonths.Value;
+            if (request.PaidMonths.HasValue) log.PaidMonths = request.PaidMonths.Value;
 
-            if (request.CollectionType != null)
+            log.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.SubscriptionLogs.Update(log);
+            await _unitOfWork.SaveChangesAsync(); // حفظ تغييرات السجل أولاً
+
+            // ═══ إعادة بناء القيد المحاسبي بالكامل ═══
+            string? accountingMessage = null;
+            if (log.JournalEntryId.HasValue && log.CompanyId.HasValue && log.UserId.HasValue)
             {
-                log.CollectionType = request.CollectionType;
-                changed = true;
-            }
-            if (request.TechnicianName != null)
-            {
-                log.TechnicianName = request.TechnicianName;
-                changed = true;
-            }
-            if (request.SubscriptionNotes != null)
-            {
-                log.SubscriptionNotes = request.SubscriptionNotes;
-                changed = true;
+                try
+                {
+                    var entry = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Include(j => j.Lines)
+                        .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value && j.Status == JournalEntryStatus.Posted);
+
+                    if (entry != null)
+                    {
+                        var companyId = log.CompanyId.Value;
+                        var collType = log.CollectionType?.ToLower() ?? "cash";
+                        var operatorName = log.ActivatedBy ?? "مشغل";
+                        var basePrice = log.BasePrice ?? log.PlanPrice ?? 0;
+                        var companyDiscount = log.CompanyDiscount ?? 0;
+                        var manualDiscount = log.ManualDiscount ?? 0;
+                        var maintenanceFee = log.MaintenanceFee ?? 0;
+                        var collectedAmount = log.PlanPrice ?? 0;
+                        var systemDiscountEnabled = log.SystemDiscountEnabled;
+
+                        decimal netFromCompany;
+                        if (basePrice > 0)
+                            netFromCompany = basePrice - companyDiscount;
+                        else if (systemDiscountEnabled)
+                            netFromCompany = collectedAmount + manualDiscount - maintenanceFee;
+                        else
+                            netFromCompany = collectedAmount + manualDiscount - maintenanceFee - companyDiscount;
+                        if (netFromCompany <= 0) netFromCompany = collectedAmount;
+
+                        var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
+
+                        // ── 1. عكس أرصدة الأسطر القديمة ──
+                        foreach (var oldLine in entry.Lines.Where(l => !l.IsDeleted))
+                        {
+                            var acct = await _unitOfWork.Accounts.GetByIdAsync(oldLine.AccountId);
+                            if (acct == null) continue;
+                            if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                                acct.CurrentBalance -= oldLine.DebitAmount - oldLine.CreditAmount;
+                            else
+                                acct.CurrentBalance -= oldLine.CreditAmount - oldLine.DebitAmount;
+                            _unitOfWork.Accounts.Update(acct);
+                            // حذف ناعم للسطر القديم
+                            oldLine.IsDeleted = true;
+                            oldLine.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.JournalEntryLines.Update(oldLine);
+                        }
+
+                        // ── 2. بناء الأسطر الجديدة ──
+                        var newLines = new List<(Guid AccountId, decimal Debit, decimal Credit, string Desc)>();
+
+                        // مدين: حساب التحصيل
+                        Account? debitAcct = null;
+                        switch (collType)
+                        {
+                            case "cash":
+                                debitAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, log.UserId.Value, $"صندوق {operatorName}", companyId);
+                                break;
+                            case "credit":
+                                debitAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.OperatorReceivables, log.UserId.Value, $"ذمة {operatorName}", companyId);
+                                break;
+                            case "master":
+                                debitAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.ElectronicPayment, companyId);
+                                break;
+                            case "technician":
+                                if (log.LinkedTechnicianId.HasValue)
+                                {
+                                    var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                                    debitAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, log.LinkedTechnicianId.Value, tech?.FullName ?? "فني", companyId);
+                                }
+                                break;
+                            case "agent":
+                                if (log.LinkedAgentId.HasValue)
+                                {
+                                    var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+                                    if (agent != null)
+                                        debitAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
+                                }
+                                break;
+                        }
+                        await _unitOfWork.SaveChangesAsync(); // حفظ الحسابات الجديدة إن أُنشئت
+
+                        _logger.LogInformation("📝 Rebuild entry {Id}: collType={CollType}, debitAcct={Acct}, amount={Amount}, techId={TechId}",
+                            id, collType, debitAcct?.Name, collectedAmount, log.LinkedTechnicianId);
+                        if (debitAcct != null)
+                            newLines.Add((debitAcct.Id, collectedAmount, 0, $"{log.CustomerName} - {collType}"));
+
+                        // مدين: خصم يدوي (مصاريف عروض)
+                        if (manualDiscount > 0)
+                        {
+                            var promoAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId);
+                            if (promoAcct != null)
+                                newLines.Add((promoAcct.Id, manualDiscount, 0, $"خصم يدوي - {log.CustomerName}"));
+                        }
+
+                        // دائن: رصيد الصفحة
+                        var pageAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+                        if (pageAcct != null && netFromCompany > 0)
+                            newLines.Add((pageAcct.Id, 0, netFromCompany, $"خصم من رصيد الصفحة - {log.PlanName}"));
+
+                        // دائن: إيراد صيانة
+                        if (maintenanceFee > 0)
+                        {
+                            var maintAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
+                            if (maintAcct != null)
+                                newLines.Add((maintAcct.Id, 0, maintenanceFee, $"إيراد صيانة - {log.CustomerName}"));
+                        }
+
+                        // دائن: إيراد خصم الشركة
+                        if (companyDiscountProfit > 0)
+                        {
+                            var discAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);
+                            if (discAcct != null)
+                                newLines.Add((discAcct.Id, 0, companyDiscountProfit, $"إيراد خصم الشركة - {log.CustomerName}"));
+                        }
+
+                        // ── 3. إضافة الأسطر الجديدة وتحديث الأرصدة ──
+                        if (newLines.Count >= 2)
+                        {
+                            foreach (var nl in newLines)
+                            {
+                                var newLine = new JournalEntryLine
+                                {
+                                    JournalEntryId = entry.Id,
+                                    AccountId = nl.AccountId,
+                                    DebitAmount = nl.Debit,
+                                    CreditAmount = nl.Credit,
+                                    Description = nl.Desc
+                                };
+                                await _unitOfWork.JournalEntryLines.AddAsync(newLine);
+
+                                var acct = await _unitOfWork.Accounts.GetByIdAsync(nl.AccountId);
+                                if (acct != null)
+                                {
+                                    if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                                        acct.CurrentBalance += nl.Debit - nl.Credit;
+                                    else
+                                        acct.CurrentBalance += nl.Credit - nl.Debit;
+                                    _unitOfWork.Accounts.Update(acct);
+                                }
+                            }
+
+                            entry.TotalDebit = newLines.Sum(l => l.Debit);
+                            entry.TotalCredit = newLines.Sum(l => l.Credit);
+                            _unitOfWork.JournalEntries.Update(entry);
+
+                            accountingMessage = "تم تحديث القيد المحاسبي بالكامل";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ فشل تحديث القيد المحاسبي للسجل {Id}", id);
+                    accountingMessage = "تم تحديث السجل لكن فشل تحديث القيد المحاسبي";
+                }
             }
 
-            if (changed)
-            {
-                log.UpdatedAt = DateTime.UtcNow;
-                _unitOfWork.SubscriptionLogs.Update(log);
-                await _unitOfWork.SaveChangesAsync();
-            }
+            await _unitOfWork.SaveChangesAsync();
 
-            return Ok(new { success = true, message = "تم تحديث السجل بنجاح" });
+            return Ok(new
+            {
+                success = true,
+                message = accountingMessage != null
+                    ? $"تم تحديث السجل — {accountingMessage}"
+                    : "تم تحديث السجل بنجاح",
+                accountingUpdated = accountingMessage != null
+            });
         }
         catch (Exception ex)
         {
@@ -1210,7 +1432,7 @@ public class FtthAccountingController : ControllerBase
 
             // ذمة المشغل
             var debtAccount = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code.StartsWith("1160")
+                .FirstOrDefaultAsync(a => a.Code.StartsWith(AccountCodes.OperatorReceivables)
                     && a.Description == log.UserId.ToString()
                     && a.CompanyId == dto.CompanyId && a.IsActive);
 
@@ -1219,7 +1441,7 @@ public class FtthAccountingController : ControllerBase
 
             // صندوق الشركة الرئيسي (11104)
             var mainCashBox = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code == "11104" && a.IsActive
+                .FirstOrDefaultAsync(a => a.Code == AccountCodes.CompanyMainCash && a.IsActive
                     && a.CompanyId == dto.CompanyId);
             if (mainCashBox == null)
                 return BadRequest(new { success = false, message = "لا يوجد حساب صندوق الشركة الرئيسي (11104)" });
@@ -1287,7 +1509,7 @@ public class FtthAccountingController : ControllerBase
 
             // ذمة المشغل (فرعي تحت 1160)
             var operatorDebtAccount = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code.StartsWith("1160")
+                .FirstOrDefaultAsync(a => a.Code.StartsWith(AccountCodes.OperatorReceivables)
                     && a.Description == dto.OperatorUserId.ToString()
                     && a.CompanyId == dto.CompanyId && a.IsActive);
 
@@ -1296,7 +1518,7 @@ public class FtthAccountingController : ControllerBase
 
             // صندوق الشركة الرئيسي (11104) - التحصيل يذهب مباشرة للشركة
             var mainCashBox = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code == "11104" && a.IsActive
+                .FirstOrDefaultAsync(a => a.Code == AccountCodes.CompanyMainCash && a.IsActive
                     && a.CompanyId == dto.CompanyId);
             if (mainCashBox == null)
                 return BadRequest(new { success = false, message = "لا يوجد حساب صندوق الشركة الرئيسي (11104)" });
@@ -1665,26 +1887,68 @@ public class FtthAccountingController : ControllerBase
                     var planPrice = tx.Amount != null ? Math.Abs(tx.Amount.Value) : (decimal?)null;
                     var collectionType = !string.IsNullOrEmpty(tx.CollectionType) ? tx.CollectionType : "cash";
 
+                    // تحديد ActivatedBy: أولوية FullName > CreatedBy
+                    var activatedByValue = tx.CreatedBy;
+                    if (userId.HasValue)
+                    {
+                        var matchedUser = userMap.FirstOrDefault(u => u.Id == userId.Value);
+                        if (matchedUser != null && !string.IsNullOrEmpty(matchedUser.FullName))
+                            activatedByValue = matchedUser.FullName;
+                    }
+
+                    // تحويل التاريخ لـ UTC بشكل صحيح (FTTH يرسل توقيت بغداد UTC+3)
+                    DateTime? activationDateUtc = null;
+                    if (tx.OccuredAt.HasValue)
+                    {
+                        var dt = tx.OccuredAt.Value;
+                        // إذا لم يكن UTC، نعتبره توقيت بغداد ونحوّله
+                        activationDateUtc = dt.Kind == DateTimeKind.Utc
+                            ? dt
+                            : DateTime.SpecifyKind(dt.AddHours(-3), DateTimeKind.Utc);
+                    }
+
+                    // تحويل القيم الإنجليزية للعربية
+                    var operationTypeAr = (tx.OperationType?.ToLower()) switch
+                    {
+                        "renewal" or "plan_renew" => "تجديد",
+                        "purchase" or "plan_purchase" => "شراء",
+                        "change" or "plan_change" => "تغيير",
+                        "schedule_change" => "جدولة",
+                        _ => tx.OperationType ?? "تجديد"
+                    };
+                    var paymentMethodAr = (tx.PaymentMethod?.ToLower()) switch
+                    {
+                        "wallet" or "cash" => collectionType == "technician" ? "فني" : collectionType == "agent" ? "وكيل" : collectionType == "master" ? "ماستر" : "نقد",
+                        "credit" => "آجل",
+                        _ => tx.PaymentMethod ?? (collectionType switch { "cash" => "نقد", "technician" => "فني", "agent" => "وكيل", "master" => "ماستر", "credit" => "آجل", _ => "نقد" })
+                    };
+
                     var log = new SubscriptionLog
                     {
                         CustomerId = tx.CustomerId,
                         CustomerName = tx.CustomerName,
+                        PhoneNumber = tx.PhoneNumber,
                         SubscriptionId = tx.SubscriptionId,
                         PlanName = tx.PlanName,
                         PlanPrice = planPrice,
-                        OperationType = tx.OperationType,
-                        ActivatedBy = tx.CreatedBy,
-                        ActivationDate = tx.OccuredAt,
+                        CommitmentPeriod = tx.CommitmentPeriod,
+                        OperationType = operationTypeAr,
+                        ActivatedBy = activatedByValue,
+                        ActivationDate = activationDateUtc,
                         ZoneId = tx.ZoneId,
+                        ZoneName = tx.ZoneName,
                         DeviceUsername = tx.DeviceUsername,
                         FtthTransactionId = tx.FtthTransactionId,
                         UserId = userId,
                         CompanyId = companyId,
                         CollectionType = collectionType,
-                        PaymentMethod = tx.PaymentMethod,
+                        PaymentMethod = paymentMethodAr,
+                        PaymentStatus = tx.PaymentStatus,
+                        TechnicianName = tx.TechnicianName,
                         StartDate = tx.StartDate?.ToString("yyyy-MM-dd"),
                         EndDate = tx.EndDate?.ToString("yyyy-MM-dd"),
                         WalletBalanceAfter = tx.RemainingBalance,
+                        CurrentStatus = "Active",
                         IsReconciled = true,
                         ReconciliationNotes = "مزامنة تلقائية من FTTH"
                     };
@@ -1775,7 +2039,7 @@ public class FtthAccountingController : ControllerBase
 
             // صندوق المشغل
             var operatorAccount = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code.StartsWith("1110")
+                .FirstOrDefaultAsync(a => a.Code.StartsWith(AccountCodes.Cash)
                     && a.Description == dto.OperatorUserId.ToString()
                     && a.CompanyId == dto.CompanyId && a.IsActive);
 
@@ -1783,22 +2047,16 @@ public class FtthAccountingController : ControllerBase
             {
                 // إنشاء حساب صندوق للمشغل تلقائياً
                 operatorAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                    _unitOfWork, "1110", dto.OperatorUserId, $"صندوق {user.FullName}", dto.CompanyId);
+                    _unitOfWork, AccountCodes.Cash, dto.OperatorUserId, $"صندوق {user.FullName}", dto.CompanyId);
                 await _unitOfWork.SaveChangesAsync();
             }
 
-            // صندوق الشركة الرئيسي
-            var mainCashAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1110", dto.CompanyId);
+            // صندوق الشركة (11104)
+            var mainCashAccount = await _unitOfWork.Accounts.AsQueryable()
+                .FirstOrDefaultAsync(a => a.Code == AccountCodes.CompanyMainCash && a.IsActive
+                    && a.CompanyId == dto.CompanyId);
             if (mainCashAccount == null)
-                return BadRequest(new { success = false, message = "حساب صندوق الشركة غير موجود" });
-
-            if (!mainCashAccount.IsLeaf)
-            {
-                var companySub = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                    _unitOfWork, "1110", dto.CompanyId, "صندوق الشركة الرئيسي", dto.CompanyId);
-                await _unitOfWork.SaveChangesAsync();
-                mainCashAccount = companySub;
-            }
+                return BadRequest(new { success = false, message = "لا يوجد حساب صندوق الشركة (11104)" });
 
             var description = $"تسليم نقد من {user.FullName} - مبلغ {dto.Amount:N0}";
             if (!string.IsNullOrEmpty(dto.Notes))
@@ -1840,7 +2098,7 @@ public class FtthAccountingController : ControllerBase
 
             // ذمة المشغل
             var debtAccount = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code.StartsWith("1160")
+                .FirstOrDefaultAsync(a => a.Code.StartsWith(AccountCodes.OperatorReceivables)
                     && a.Description == dto.OperatorUserId.ToString()
                     && a.CompanyId == dto.CompanyId && a.IsActive);
 
@@ -1849,7 +2107,7 @@ public class FtthAccountingController : ControllerBase
 
             // صندوق الشركة الرئيسي (11104) - التحصيل يذهب مباشرة للشركة
             var mainCashBox = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code == "11104" && a.IsActive
+                .FirstOrDefaultAsync(a => a.Code == AccountCodes.CompanyMainCash && a.IsActive
                     && a.CompanyId == dto.CompanyId);
             if (mainCashBox == null)
                 return BadRequest(new { success = false, message = "لا يوجد حساب صندوق الشركة الرئيسي (11104)" });
@@ -1968,23 +2226,23 @@ public class FtthAccountingController : ControllerBase
             }
 
             // 2. حسابات كل فئة
-            var cashBoxTotal = GetParentBalance("1110");
-            var cashBoxDetails = GetSubAccountDetails("1110", "صناديق المشغلين");
+            var cashBoxTotal = GetParentBalance(AccountCodes.Cash);
+            var cashBoxDetails = GetSubAccountDetails(AccountCodes.Cash, "صناديق المشغلين");
 
-            var operatorDebtTotal = GetParentBalance("1160");
-            var operatorDebtDetails = GetSubAccountDetails("1160", "ذمم المشغلين");
+            var operatorDebtTotal = GetParentBalance(AccountCodes.OperatorReceivables);
+            var operatorDebtDetails = GetSubAccountDetails(AccountCodes.OperatorReceivables, "ذمم المشغلين");
 
-            var agentDebtTotal = GetParentBalance("1150");
-            var agentDebtDetails = GetSubAccountDetails("1150", "ذمم الوكلاء");
+            var agentDebtTotal = GetParentBalance(AccountCodes.AgentReceivables);
+            var agentDebtDetails = GetSubAccountDetails(AccountCodes.AgentReceivables, "ذمم الوكلاء");
 
-            var techDebtTotal = GetParentBalance("1140");
-            var techDebtDetails = GetSubAccountDetails("1140", "ذمم الفنيين");
+            var techDebtTotal = GetParentBalance(AccountCodes.TechnicianReceivables);
+            var techDebtDetails = GetSubAccountDetails(AccountCodes.TechnicianReceivables, "ذمم الفنيين");
 
-            var electronicTotal = GetParentBalance("1170");
-            var electronicDetails = GetSubAccountDetails("1170", "الدفع الإلكتروني");
+            var electronicTotal = GetParentBalance(AccountCodes.ElectronicPayment);
+            var electronicDetails = GetSubAccountDetails(AccountCodes.ElectronicPayment, "الدفع الإلكتروني");
 
-            var renewalRevenue = GetParentBalance("4110");
-            var purchaseRevenue = GetParentBalance("4120");
+            var renewalRevenue = GetParentBalance(AccountCodes.MaintenanceRevenue);
+            var purchaseRevenue = GetParentBalance(AccountCodes.CompanyDiscountRevenue);
 
             // 3. إحصائيات العمليات (آخر 30 يوم)
             var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
@@ -2507,7 +2765,13 @@ public record SyncFtthTransactionItem(
     DateTime? StartDate = null,
     DateTime? EndDate = null,
     decimal? RemainingBalance = null,
-    bool CreateAccounting = false
+    bool CreateAccounting = false,
+    // حقول إضافية للمزامنة الشاملة
+    string? PhoneNumber = null,
+    string? ZoneName = null,
+    string? TechnicianName = null,
+    string? PaymentStatus = null,
+    int? CommitmentPeriod = null
 );
 
 public record QuickDeliverDto(
@@ -2526,8 +2790,41 @@ public record QuickCollectDto(
     string? CustomerName = null
 );
 
-public record UpdateFtthLogRequest(
-    string? CollectionType,
-    string? TechnicianName,
-    string? SubscriptionNotes
-);
+public class UpdateFtthLogRequest
+{
+    // بيانات العميل
+    public string? CustomerName { get; set; }
+    public string? PhoneNumber { get; set; }
+    // بيانات الاشتراك
+    public string? PlanName { get; set; }
+    public decimal? PlanPrice { get; set; }
+    public int? CommitmentPeriod { get; set; }
+    public string? OperationType { get; set; }
+    public string? ActivatedBy { get; set; }
+    public DateTime? ActivationDate { get; set; }
+    public string? ZoneId { get; set; }
+    // التحصيل والربط
+    public string? CollectionType { get; set; }
+    public Guid? LinkedTechnicianId { get; set; }
+    public Guid? LinkedAgentId { get; set; }
+    public string? TechnicianName { get; set; }
+    public string? PaymentStatus { get; set; }
+    public string? PaymentMethod { get; set; }
+    // حالات
+    public bool? IsPrinted { get; set; }
+    public bool? IsWhatsAppSent { get; set; }
+    public bool? IsReconciled { get; set; }
+    public string? ReconciliationNotes { get; set; }
+    public string? SubscriptionNotes { get; set; }
+    // محاسبية
+    public decimal? BasePrice { get; set; }
+    public decimal? CompanyDiscount { get; set; }
+    public decimal? ManualDiscount { get; set; }
+    public decimal? MaintenanceFee { get; set; }
+    // تكرار
+    public int? RenewalCycleMonths { get; set; }
+    public int? PaidMonths { get; set; }
+    // flag لتحديد إذا أُرسل الحقل فعلاً (لتمييز null المُرسل عن null غير المُرسل)
+    public bool HasLinkedTechnicianId { get; set; }
+    public bool HasLinkedAgentId { get; set; }
+}

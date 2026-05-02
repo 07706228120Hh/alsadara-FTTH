@@ -20,6 +20,7 @@ class FtthOperatorAccountPage extends StatefulWidget {
   final DateTime? initialFromDate;
   final DateTime? initialToDate;
   final String? initialDateLabel;
+  final bool isTechnician;
 
   const FtthOperatorAccountPage({
     super.key,
@@ -29,6 +30,7 @@ class FtthOperatorAccountPage extends StatefulWidget {
     this.initialFromDate,
     this.initialToDate,
     this.initialDateLabel,
+    this.isTechnician = false,
   });
 
   @override
@@ -54,7 +56,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   // ===== تعريفات الأعمدة =====
   static const _columnKeys = <String>[
-    'index', 'customerId', 'customerName', 'phone', 'subscriptionId',
+    'edit', 'index', 'customerId', 'customerName', 'phone', 'subscriptionId',
     'plan', 'amount', 'pageDeduction', 'revenue', 'expense', 'commitment', 'renewal', 'type', 'collection',
     'zone', 'technician', 'activatedBy', 'date', 'startDate', 'endDate',
     'status', 'payment', 'walletBefore', 'walletAfter', 'device',
@@ -92,11 +94,12 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     'reconciled': 'مطابقة',
     'accounting': 'محاسبة',
     'notes': 'ملاحظات',
+    'edit': 'تعديل',
   };
 
   // حالة إظهار/إخفاء الأعمدة
   Set<String> _visibleColumns = {
-    'index', 'customerId', 'customerName', 'phone', 'subscriptionId',
+    'edit', 'index', 'customerId', 'customerName', 'phone', 'subscriptionId',
     'plan', 'amount', 'pageDeduction', 'revenue', 'expense', 'commitment', 'renewal', 'type', 'collection',
     'zone', 'technician', 'activatedBy', 'date', 'startDate', 'endDate',
     'status', 'payment', 'walletBefore', 'walletAfter', 'device',
@@ -151,6 +154,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     try {
       var url =
           'https://api.ramzalsadara.tech/api/ftth-accounting/operator-summary/${widget.userId}?companyId=$_companyId';
+      if (widget.isTechnician) {
+        url += '&isTechnician=true';
+      }
       if (_fromDate != null) {
         url += '&from=${_fromDate!.toIso8601String().split('T')[0]}';
       }
@@ -712,7 +718,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       case 'status':
         return DataCell(Center(child: _buildStatusBadge(tx['CurrentStatus'] ?? '')));
       case 'payment':
-        return DataCell(Center(child: Text(tx['PaymentStatus'] ?? tx['PaymentMethod'] ?? '-', style: TextStyle(fontSize: ar.small))));
+        final payVal = tx['PaymentMethod']?.toString() ?? tx['PaymentStatus']?.toString() ?? '-';
+        return DataCell(Center(child: _buildCollectionBadge(payVal)));
       case 'walletBefore':
         final wb = (tx['WalletBalanceBefore'] as num?)?.toDouble();
         return DataCell(Center(child: Text(wb != null ? _currencyFormat.format(wb) : '-', style: TextStyle(fontSize: ar.caption))));
@@ -739,6 +746,29 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             : Icon(Icons.remove_circle_outline, size: ar.iconS, color: Colors.grey.shade400)));
       case 'notes':
         return DataCell(Center(child: Text(tx['SubscriptionNotes'] ?? '-', style: TextStyle(fontSize: ar.caption), overflow: TextOverflow.ellipsis)));
+      case 'edit':
+        return DataCell(Center(
+          child: InkWell(
+            onTap: () => _showEditTransactionDialog(tx),
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.edit, size: 12, color: Colors.blue.shade700),
+                  const SizedBox(width: 3),
+                  Text('تعديل', style: TextStyle(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+        ));
       default:
         return DataCell(Center(child: Text('-')));
     }
@@ -822,7 +852,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   Widget _buildTransactionsTable() {
     final processed = _getProcessedTransactions();
-    final visibleKeys = _columnKeys.where((k) => _visibleColumns.contains(k)).toList();
+    final visibleKeys = _columnKeys.where((k) => k == 'edit' || _visibleColumns.contains(k)).toList();
     final activeFilterCount = _columnFilters.values.where((v) => v.isNotEmpty).length;
 
     if (_transactions.isEmpty) {
@@ -887,26 +917,28 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                     dataRowMaxHeight: context.accR.tableRowMaxH,
                     columnSpacing: 0,
                     horizontalMargin: context.accR.spaceS,
-                    columns: visibleKeys.map((key) {
-                      return DataColumn(
-                        label: _buildColumnLabel(key),
-                        onSort: key == 'index' ? null : (_, __) {
-                          setState(() {
-                            if (_sortKey == key) {
-                              if (!_sortAscending) {
-                                _sortKey = null;
-                                _sortAscending = true;
+                    columns: [
+                      ...visibleKeys.map((key) {
+                        return DataColumn(
+                          label: _buildColumnLabel(key),
+                          onSort: (key == 'index' || key == 'edit') ? null : (_, __) {
+                            setState(() {
+                              if (_sortKey == key) {
+                                if (!_sortAscending) {
+                                  _sortKey = null;
+                                  _sortAscending = true;
+                                } else {
+                                  _sortAscending = false;
+                                }
                               } else {
-                                _sortAscending = false;
+                                _sortKey = key;
+                                _sortAscending = true;
                               }
-                            } else {
-                              _sortKey = key;
-                              _sortAscending = true;
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
+                            });
+                          },
+                        );
+                      }),
+                    ],
                     rows: processed.asMap().entries.map((entry) {
                       final i = entry.key;
                       final tx = entry.value;
@@ -915,7 +947,6 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                           if (states.contains(WidgetState.hovered)) return Colors.blue.shade50;
                           return i.isEven ? Colors.white : Colors.grey.shade50;
                         }),
-                        onSelectChanged: (_) => _showEditTransactionDialog(tx),
                         cells: visibleKeys.map((key) => _buildCell(key, tx, i)).toList(),
                       );
                     }).toList(),
@@ -934,22 +965,26 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     String label;
     Color bgColor;
     Color txtColor;
-    if (lower.contains('renew')) {
+    if (lower.contains('renew') || lower.contains('تجديد')) {
       label = 'تجديد';
       bgColor = Colors.blue.shade50;
       txtColor = Colors.blue.shade700;
-    } else if (lower.contains('change')) {
-      label = 'تغيير';
-      bgColor = Colors.orange.shade50;
-      txtColor = Colors.orange.shade700;
-    } else if (lower.contains('schedule')) {
+    } else if (lower.contains('schedule') || lower.contains('جدولة')) {
       label = 'جدولة';
       bgColor = Colors.purple.shade50;
       txtColor = Colors.purple.shade700;
-    } else {
+    } else if (lower.contains('change') || lower.contains('تغيير')) {
+      label = 'تغيير';
+      bgColor = Colors.orange.shade50;
+      txtColor = Colors.orange.shade700;
+    } else if (lower.contains('purchase') || lower.contains('شراء')) {
       label = 'شراء';
       bgColor = Colors.teal.shade50;
       txtColor = Colors.teal.shade700;
+    } else {
+      label = type.isNotEmpty ? type : 'تجديد';
+      bgColor = Colors.grey.shade50;
+      txtColor = Colors.grey.shade700;
     }
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1007,6 +1042,31 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         color = Colors.blue;
         label = 'وكيل';
         break;
+      case 'technician':
+      case 'فني':
+        color = Colors.teal;
+        label = 'فني';
+        break;
+      case 'نقد':
+        color = Colors.green;
+        label = 'نقد';
+        break;
+      case 'آجل':
+        color = Colors.orange;
+        label = 'آجل';
+        break;
+      case 'وكيل':
+        color = Colors.blue;
+        label = 'وكيل';
+        break;
+      case 'ماستر':
+        color = Colors.purple;
+        label = 'ماستر';
+        break;
+      case 'محفظة':
+        color = Colors.green;
+        label = 'محفظة';
+        break;
       default:
         color = Colors.grey;
         label = type.isNotEmpty ? type : '-';
@@ -1025,7 +1085,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
   String _formatDate(dynamic date) {
     if (date == null) return '-';
     try {
-      final dt = DateTime.parse(date.toString());
+      final dt = DateTime.parse(date.toString()).toLocal();
       return DateFormat('yyyy/MM/dd', 'ar').format(dt);
     } catch (_) {
       return date.toString();
@@ -1327,19 +1387,55 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   /// دايلوق تعديل بيانات المعاملة
   void _showEditTransactionDialog(Map<String, dynamic> tx) {
-    final logId = tx['Id'];
+    final logId = tx['Id']?.toString() ?? tx['id']?.toString();
     if (logId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا يمكن التعديل - معرف السجل غير متوفر')),
+        const SnackBar(content: Text('لا يمكن التعديل - معرف السجل غير متوفر'), backgroundColor: Colors.red),
       );
       return;
     }
 
     final ar = context.accR;
-    String selectedCollectionType = (tx['CollectionType'] ?? '').toString().toLowerCase();
-    final technicianController = TextEditingController(text: tx['TechnicianName'] ?? '');
-    final notesController = TextEditingController(text: tx['SubscriptionNotes'] ?? '');
+    // controllers لكل الحقول
+    final customerNameCtrl = TextEditingController(text: tx['CustomerName']?.toString() ?? '');
+    final phoneCtrl = TextEditingController(text: tx['PhoneNumber']?.toString() ?? '');
+    final planNameCtrl = TextEditingController(text: tx['PlanName']?.toString() ?? '');
+    final planPriceCtrl = TextEditingController(text: (tx['PlanPrice'] ?? 0).toString());
+    final commitmentCtrl = TextEditingController(text: tx['CommitmentPeriod']?.toString() ?? '');
+    final activatedByCtrl = TextEditingController(text: tx['ActivatedBy']?.toString() ?? '');
+    final zoneCtrl = TextEditingController(text: tx['ZoneId']?.toString() ?? '');
+    final techNameCtrl = TextEditingController(text: tx['TechnicianName']?.toString() ?? '');
+    final paymentMethodCtrl = TextEditingController(text: tx['PaymentMethod']?.toString() ?? '');
+    final notesCtrl = TextEditingController(text: tx['SubscriptionNotes']?.toString() ?? '');
+    final reconcNotesCtrl = TextEditingController(text: tx['ReconciliationNotes']?.toString() ?? '');
+    final basePriceCtrl = TextEditingController(text: (tx['BasePrice'] ?? 0).toString());
+    final compDiscountCtrl = TextEditingController(text: (tx['CompanyDiscount'] ?? 0).toString());
+    final manDiscountCtrl = TextEditingController(text: (tx['ManualDiscount'] ?? 0).toString());
+    final maintFeeCtrl = TextEditingController(text: (tx['MaintenanceFee'] ?? 0).toString());
+    final renewMonthsCtrl = TextEditingController(text: (tx['RenewalCycleMonths'] ?? 0).toString());
+    final paidMonthsCtrl = TextEditingController(text: (tx['PaidMonths'] ?? 0).toString());
+
+    String collectionType = (tx['CollectionType'] ?? '').toString().toLowerCase();
+    String operationType = (tx['OperationType'] ?? '').toString();
+    String paymentStatus = (tx['PaymentStatus'] ?? '').toString();
+    bool isPrinted = tx['IsPrinted'] == true;
+    bool isWhatsApp = tx['IsWhatsAppSent'] == true;
+    bool isReconciled = tx['IsReconciled'] == true;
+    String? linkedTechId = tx['LinkedTechnicianId']?.toString();
+    String? linkedAgentId = tx['LinkedAgentId']?.toString();
+
+    // تاريخ التفعيل
+    DateTime activationDate = (() {
+      try {
+        final p = DateTime.parse(tx['ActivationDate']?.toString() ?? '');
+        return p.isUtc ? p.toLocal() : p;
+      } catch (_) { return DateTime.now(); }
+    })();
+
     bool isSaving = false;
+    List<Map<String, dynamic>> techList = [];
+    List<Map<String, dynamic>> agentList = [];
+    bool listsLoaded = false;
 
     final collectionOptions = [
       {'value': '', 'label': 'غير محدد'},
@@ -1347,246 +1443,330 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       {'value': 'credit', 'label': 'آجل'},
       {'value': 'master', 'label': 'ماستر'},
       {'value': 'agent', 'label': 'وكيل'},
+      {'value': 'technician', 'label': 'فني'},
     ];
+
+    final opTypeValues = ['تجديد', 'شراء', 'تغيير', 'جدولة', 'purchase', 'renewal', 'change'];
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            titlePadding: EdgeInsets.zero,
-            title: Container(
-              padding: EdgeInsets.all(ar.spaceL),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2C3E50), Color(0xFF3498DB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.edit_note, color: Colors.white, size: 24),
-                  SizedBox(width: ar.spaceS),
-                  Text('تعديل المعاملة',
-                      style: GoogleFonts.cairo(
-                        fontSize: ar.body,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      )),
-                  const Spacer(),
-                  InkWell(
-                    onTap: () => Navigator.pop(ctx),
-                    child: const Icon(Icons.close, color: Colors.white70, size: 20),
-                  ),
-                ],
-              ),
+        builder: (ctx, setDialogState) {
+          // جلب الفنيين/الوكلاء مرة واحدة
+          if (!listsLoaded) {
+            listsLoaded = true;
+            AccountingService.instance.getTechniciansList(companyId: _companyId).then((list) {
+              if (ctx.mounted) setDialogState(() => techList = list);
+            });
+            AccountingService.instance.getAgentsList(companyId: _companyId).then((list) {
+              if (ctx.mounted) setDialogState(() => agentList = list);
+            });
+          }
+
+          Widget sectionTitle(String title) => Padding(
+            padding: EdgeInsets.only(top: ar.spaceM, bottom: ar.spaceXS),
+            child: Text(title, style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+          );
+
+          InputDecoration fieldDeco(String hint) => InputDecoration(
+            filled: true, fillColor: Colors.white, hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF3498DB), width: 2)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            isDense: true,
+          );
+
+          Widget fieldRow(String label, Widget child) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                SizedBox(width: 100, child: Text(label, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700))),
+                Expanded(child: child),
+              ],
             ),
-            content: SizedBox(
-              width: min(500, MediaQuery.of(context).size.width * 0.85),
-              child: SingleChildScrollView(
+          );
+
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: SizedBox(
+                width: min(600, MediaQuery.of(context).size.width * 0.9),
+                height: MediaQuery.of(context).size.height * 0.85,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ===== قسم المعلومات (قراءة فقط) =====
+                    // العنوان
                     Container(
                       padding: EdgeInsets.all(ar.spaceM),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF3498DB)]),
+                        borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
                       ),
-                      child: Column(
+                      child: Row(
                         children: [
-                          _infoRow(Icons.person, 'العميل', tx['CustomerName'] ?? '-'),
-                          _infoRow(Icons.wifi, 'الباقة', tx['PlanName'] ?? '-'),
-                          _infoRow(Icons.attach_money, 'المبلغ',
-                              '${_currencyFormat.format((tx['PlanPrice'] ?? 0).toDouble())} د.ع'),
-                          _infoRow(Icons.calendar_today, 'التاريخ',
-                              _formatDate(tx['ActivationDate'])),
-                          _infoRow(Icons.location_on, 'المنطقة',
-                              tx['ZoneName'] ?? tx['ZoneId'] ?? '-'),
+                          const Icon(Icons.edit_note, color: Colors.white, size: 22),
+                          SizedBox(width: ar.spaceS),
+                          Text('تعديل المعاملة', style: GoogleFonts.cairo(fontSize: ar.body, fontWeight: FontWeight.bold, color: Colors.white)),
+                          const Spacer(),
+                          InkWell(onTap: () => Navigator.pop(ctx), child: const Icon(Icons.close, color: Colors.white70, size: 20)),
                         ],
                       ),
                     ),
-                    SizedBox(height: ar.spaceL),
+                    // المحتوى
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(ar.spaceM),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ═══ بيانات العميل ═══
+                            sectionTitle('بيانات العميل'),
+                            fieldRow('اسم العميل', TextField(controller: customerNameCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('اسم العميل'))),
+                            fieldRow('الهاتف', TextField(controller: phoneCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('رقم الهاتف'))),
 
-                    // ===== حقول التعديل =====
-                    Text('نوع التحصيل',
-                        style: GoogleFonts.cairo(
-                          fontSize: ar.small,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
-                        )),
-                    SizedBox(height: ar.spaceXS),
-                    DropdownButtonFormField<String>(
-                      value: collectionOptions.any((o) => o['value'] == selectedCollectionType)
-                          ? selectedCollectionType
-                          : '',
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                            // ═══ بيانات الاشتراك ═══
+                            sectionTitle('بيانات الاشتراك'),
+                            fieldRow('الباقة', TextField(controller: planNameCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('اسم الباقة'))),
+                            fieldRow('السعر', TextField(controller: planPriceCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('سعر الباقة'))),
+                            fieldRow('الالتزام', TextField(controller: commitmentCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('فترة الالتزام'))),
+                            fieldRow('نوع العملية', Wrap(
+                              spacing: 6,
+                              children: ['تجديد', 'شراء', 'تغيير', 'جدولة'].map((v) => ChoiceChip(
+                                label: Text(v, style: GoogleFonts.cairo(fontSize: 11)),
+                                selected: operationType == v || operationType.toLowerCase() == v.toLowerCase(),
+                                onSelected: (_) => setDialogState(() => operationType = v),
+                                selectedColor: Colors.blue.shade100,
+                                visualDensity: VisualDensity.compact,
+                              )).toList(),
+                            )),
+                            fieldRow('المنفذ', TextField(controller: activatedByCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('منفذ العملية'))),
+                            fieldRow('التاريخ', InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(context: ctx, initialDate: activationDate, firstDate: DateTime(2024), lastDate: DateTime.now().add(const Duration(days: 1)), locale: const Locale('ar'));
+                                if (picked != null) setDialogState(() => activationDate = picked);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8), color: Colors.white),
+                                child: Row(children: [
+                                  Text('${activationDate.year}/${activationDate.month.toString().padLeft(2,'0')}/${activationDate.day.toString().padLeft(2,'0')}', style: GoogleFonts.cairo(fontSize: 12)),
+                                  const Spacer(),
+                                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                                ]),
+                              ),
+                            )),
+                            fieldRow('المنطقة', TextField(controller: zoneCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('معرف المنطقة'))),
+
+                            // ═══ التحصيل والربط ═══
+                            sectionTitle('التحصيل والربط'),
+                            fieldRow('نوع التحصيل', Wrap(
+                              spacing: 6,
+                              children: [
+                                {'value': 'cash', 'label': 'نقد'},
+                                {'value': 'credit', 'label': 'آجل'},
+                                {'value': 'technician', 'label': 'فني'},
+                                {'value': 'agent', 'label': 'وكيل'},
+                                {'value': 'master', 'label': 'ماستر'},
+                              ].map((o) => ChoiceChip(
+                                label: Text(o['label']!, style: GoogleFonts.cairo(fontSize: 11)),
+                                selected: collectionType == o['value'],
+                                onSelected: (_) => setDialogState(() {
+                                  collectionType = o['value']!;
+                                  linkedTechId = null;
+                                  linkedAgentId = null;
+                                  paymentMethodCtrl.text = o['label']!;
+                                  if (o['value'] != 'technician') techNameCtrl.clear();
+                                }),
+                                selectedColor: Colors.blue.shade100,
+                                visualDensity: VisualDensity.compact,
+                              )).toList(),
+                            )),
+                            // اختيار فني — قائمة منسدلة مضمونة
+                            if (collectionType == 'technician')
+                              fieldRow('الفني', techList.isEmpty
+                                ? const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                                : SizedBox(
+                                    height: 45,
+                                    child: DropdownButtonFormField<String>(
+                                      value: (linkedTechId != null && techList.any((t) => t['id']?.toString() == linkedTechId)) ? linkedTechId : null,
+                                      decoration: fieldDeco('اختر الفني'),
+                                      isExpanded: true,
+                                      style: GoogleFonts.cairo(fontSize: 12, color: Colors.black),
+                                      items: techList.map((t) => DropdownMenuItem<String>(
+                                        value: t['id']?.toString() ?? '',
+                                        child: Text(t['name'] ?? t['Name'] ?? '', style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis),
+                                      )).toList(),
+                                      onChanged: (v) => setDialogState(() {
+                                        linkedTechId = v;
+                                        final selected = techList.where((t) => t['id']?.toString() == v).firstOrNull;
+                                        techNameCtrl.text = selected?['name'] ?? selected?['Name'] ?? '';
+                                      }),
+                                    ),
+                                  )),
+                            // اختيار وكيل — قائمة منسدلة مضمونة
+                            if (collectionType == 'agent')
+                              fieldRow('الوكيل', agentList.isEmpty
+                                ? const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                                : SizedBox(
+                                    height: 45,
+                                    child: DropdownButtonFormField<String>(
+                                      value: (linkedAgentId != null && agentList.any((a) => a['id']?.toString() == linkedAgentId)) ? linkedAgentId : null,
+                                      decoration: fieldDeco('اختر الوكيل'),
+                                      isExpanded: true,
+                                      style: GoogleFonts.cairo(fontSize: 12, color: Colors.black),
+                                      items: agentList.map((a) => DropdownMenuItem<String>(
+                                        value: a['id']?.toString() ?? '',
+                                        child: Text(a['name'] ?? a['Name'] ?? '', style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis),
+                                      )).toList(),
+                                      onChanged: (v) => setDialogState(() {
+                                        linkedAgentId = v;
+                                        final selected = agentList.where((a) => a['id']?.toString() == v).firstOrNull;
+                                        techNameCtrl.text = selected?['name'] ?? selected?['Name'] ?? '';
+                                      }),
+                                    ),
+                                  )),
+                            fieldRow('حالة الدفع', TextField(
+                              controller: TextEditingController(text: paymentStatus),
+                              style: GoogleFonts.cairo(fontSize: 12),
+                              decoration: fieldDeco('مسدد / غير مسدد'),
+                              onChanged: (v) => paymentStatus = v,
+                            )),
+                            fieldRow('طريقة الدفع', TextField(controller: paymentMethodCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('طريقة الدفع'))),
+
+                            // ═══ الحالات ═══
+                            sectionTitle('الحالات'),
+                            Row(
+                              children: [
+                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('طباعة', style: GoogleFonts.cairo(fontSize: 12)), value: isPrinted, onChanged: (v) => setDialogState(() => isPrinted = v))),
+                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('واتساب', style: GoogleFonts.cairo(fontSize: 12)), value: isWhatsApp, onChanged: (v) => setDialogState(() => isWhatsApp = v))),
+                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('مطابقة', style: GoogleFonts.cairo(fontSize: 12)), value: isReconciled, onChanged: (v) => setDialogState(() => isReconciled = v))),
+                              ],
+                            ),
+
+                            // ═══ محاسبية ═══
+                            sectionTitle('بيانات محاسبية'),
+                            fieldRow('السعر الأساسي', TextField(controller: basePriceCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+                            fieldRow('خصم الشركة', TextField(controller: compDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+                            fieldRow('خصم يدوي', TextField(controller: manDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+                            fieldRow('رسوم صيانة', TextField(controller: maintFeeCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+
+                            // ═══ تكرار ═══
+                            sectionTitle('التكرار'),
+                            fieldRow('أشهر التكرار', TextField(controller: renewMonthsCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+                            fieldRow('أشهر مدفوعة', TextField(controller: paidMonthsCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+
+                            // ═══ ملاحظات ═══
+                            sectionTitle('ملاحظات'),
+                            TextField(controller: notesCtrl, style: GoogleFonts.cairo(fontSize: 12), maxLines: 2, decoration: fieldDeco('ملاحظات الاشتراك')),
+                            const SizedBox(height: 8),
+                            TextField(controller: reconcNotesCtrl, style: GoogleFonts.cairo(fontSize: 12), maxLines: 2, decoration: fieldDeco('ملاحظات المطابقة')),
+                          ],
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF3498DB), width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
-                      items: collectionOptions.map((o) => DropdownMenuItem(
-                        value: o['value'],
-                        child: Text(o['label']!, style: GoogleFonts.cairo(fontSize: ar.small)),
-                      )).toList(),
-                      onChanged: (val) {
-                        setDialogState(() => selectedCollectionType = val ?? '');
-                      },
                     ),
-                    SizedBox(height: ar.spaceM),
-
-                    Text('اسم الفني',
-                        style: GoogleFonts.cairo(
-                          fontSize: ar.small,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
-                        )),
-                    SizedBox(height: ar.spaceXS),
-                    TextField(
-                      controller: technicianController,
-                      style: GoogleFonts.cairo(fontSize: ar.small),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        hintText: 'اسم الفني المنفذ',
-                        hintStyle: TextStyle(color: Colors.grey.shade400),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF3498DB), width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      ),
-                    ),
-                    SizedBox(height: ar.spaceM),
-
-                    Text('ملاحظات',
-                        style: GoogleFonts.cairo(
-                          fontSize: ar.small,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
-                        )),
-                    SizedBox(height: ar.spaceXS),
-                    TextField(
-                      controller: notesController,
-                      style: GoogleFonts.cairo(fontSize: ar.small),
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        hintText: 'ملاحظات إضافية...',
-                        hintStyle: TextStyle(color: Colors.grey.shade400),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF3498DB), width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    // الأزرار
+                    Container(
+                      padding: EdgeInsets.all(ar.spaceM),
+                      decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600))),
+                          SizedBox(width: ar.spaceS),
+                          ElevatedButton(
+                            onPressed: isSaving ? null : () async {
+                              setDialogState(() => isSaving = true);
+                              try {
+                                // مطابقة الفني من الاسم إذا لم يُختر من القائمة
+                                if (collectionType == 'technician' && linkedTechId == null) {
+                                  final searchName = techNameCtrl.text.trim();
+                                  if (searchName.isNotEmpty && techList.isNotEmpty) {
+                                    final match = techList.where((t) => (t['name'] ?? t['Name'] ?? '').toString().contains(searchName) || searchName.contains((t['name'] ?? t['Name'] ?? '').toString())).firstOrNull;
+                                    if (match != null) linkedTechId = match['id']?.toString();
+                                  }
+                                  // إذا ما زال null، نبحث بالاسم القديم من المعاملة
+                                  if (linkedTechId == null) {
+                                    final origName = tx['TechnicianName']?.toString() ?? '';
+                                    if (origName.isNotEmpty && techList.isNotEmpty) {
+                                      final match = techList.where((t) => (t['name'] ?? t['Name'] ?? '') == origName).firstOrNull;
+                                      if (match != null) linkedTechId = match['id']?.toString();
+                                    }
+                                  }
+                                }
+                                // مطابقة الوكيل
+                                if (collectionType == 'agent' && linkedAgentId == null && agentList.isNotEmpty) {
+                                  final searchName = techNameCtrl.text.trim();
+                                  if (searchName.isNotEmpty) {
+                                    final match = agentList.where((a) => (a['name'] ?? a['Name'] ?? '').toString().contains(searchName)).firstOrNull;
+                                    if (match != null) linkedAgentId = match['id']?.toString();
+                                  }
+                                }
+                                debugPrint('📝 Save: collType=$collectionType, techId=$linkedTechId, techName=${techNameCtrl.text}');
+                                final fields = <String, dynamic>{
+                                  'CustomerName': customerNameCtrl.text.trim(),
+                                  'PhoneNumber': phoneCtrl.text.trim(),
+                                  'PlanName': planNameCtrl.text.trim(),
+                                  'PlanPrice': double.tryParse(planPriceCtrl.text) ?? 0,
+                                  'CommitmentPeriod': commitmentCtrl.text.trim(),
+                                  'OperationType': operationType,
+                                  'ActivatedBy': activatedByCtrl.text.trim(),
+                                  'ActivationDate': activationDate.toIso8601String(),
+                                  'ZoneId': zoneCtrl.text.trim(),
+                                  'CollectionType': collectionType,
+                                  'TechnicianName': techNameCtrl.text.trim(),
+                                  'PaymentStatus': paymentStatus,
+                                  'PaymentMethod': paymentMethodCtrl.text.trim().isNotEmpty
+                                      ? paymentMethodCtrl.text.trim()
+                                      : const {'cash': 'نقد', 'credit': 'آجل', 'technician': 'فني', 'agent': 'وكيل', 'master': 'ماستر'}[collectionType] ?? collectionType,
+                                  'IsPrinted': isPrinted,
+                                  'IsWhatsAppSent': isWhatsApp,
+                                  'IsReconciled': isReconciled,
+                                  'ReconciliationNotes': reconcNotesCtrl.text.trim(),
+                                  'SubscriptionNotes': notesCtrl.text.trim(),
+                                  'BasePrice': double.tryParse(basePriceCtrl.text) ?? 0,
+                                  'CompanyDiscount': double.tryParse(compDiscountCtrl.text) ?? 0,
+                                  'ManualDiscount': double.tryParse(manDiscountCtrl.text) ?? 0,
+                                  'MaintenanceFee': double.tryParse(maintFeeCtrl.text) ?? 0,
+                                  'RenewalCycleMonths': int.tryParse(renewMonthsCtrl.text) ?? 0,
+                                  'PaidMonths': int.tryParse(paidMonthsCtrl.text) ?? 0,
+                                };
+                                // دائماً أرسل الفني والوكيل
+                                fields['LinkedTechnicianId'] = linkedTechId;
+                                fields['HasLinkedTechnicianId'] = true;
+                                fields['LinkedAgentId'] = linkedAgentId;
+                                fields['HasLinkedAgentId'] = true;
+                                debugPrint('📝 Saving logId=$logId, CollectionType=${fields['CollectionType']}, LinkedTech=${fields['LinkedTechnicianId']}');
+                                final result = await AccountingService.instance.updateSubscriptionLog(logId: int.parse(logId.toString()), fields: fields);
+                                debugPrint('📝 Result: ${result['success']} - ${result['message']}');
+                                if (!ctx.mounted) return;
+                                Navigator.pop(ctx);
+                                if (result['success'] == true) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تحديث المعاملة بنجاح'), backgroundColor: Colors.green.shade600, duration: const Duration(seconds: 2)));
+                                  _loadData();
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'خطأ في التحديث'), backgroundColor: Colors.red.shade600));
+                                }
+                              } catch (e) {
+                                setDialogState(() => isSaving = false);
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade600));
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3498DB), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10)),
+                            child: isSaving
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : Text('حفظ', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            actionsPadding: EdgeInsets.all(ar.spaceM),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600)),
-              ),
-              ElevatedButton(
-                onPressed: isSaving ? null : () async {
-                  setDialogState(() => isSaving = true);
-                  try {
-                    final result = await AccountingService.instance.updateSubscriptionLog(
-                      logId: int.parse(logId.toString()),
-                      collectionType: selectedCollectionType.isNotEmpty ? selectedCollectionType : null,
-                      technicianName: technicianController.text.trim().isNotEmpty
-                          ? technicianController.text.trim()
-                          : null,
-                      subscriptionNotes: notesController.text.trim().isNotEmpty
-                          ? notesController.text.trim()
-                          : null,
-                    );
-                    if (!ctx.mounted) return;
-                    Navigator.pop(ctx);
-                    if (result['success'] == true) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('تم تحديث المعاملة بنجاح'),
-                          backgroundColor: Colors.green.shade600,
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                      _loadData();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(result['message'] ?? 'خطأ في التحديث'),
-                          backgroundColor: Colors.red.shade600,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    setDialogState(() => isSaving = false);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('خطأ: $e'),
-                        backgroundColor: Colors.red.shade600,
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3498DB),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                ),
-                child: isSaving
-                    ? const SizedBox(width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text('حفظ', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }

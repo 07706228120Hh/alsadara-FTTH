@@ -76,6 +76,8 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
   List<Map<String, dynamic>> _filteredEmployees = [];
   bool _showEmployeeDropdown = false;
   String? _selectedDeliveredToId;
+  String _operatorFullName = '';
+  String _operatorUserId = '';
 
   // === Tab 2: كشف العمليات ===
   bool _allLoading = false;
@@ -91,9 +93,13 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     _determineAdmin();
     _addEmptyItem();
     _checkReportForDate();
-    _loadSubscriptionData();
     _loadMissingDays();
-    _loadEmployees();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await _loadEmployees();
+    _loadSubscriptionData();
   }
 
   @override
@@ -421,7 +427,8 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     try {
       final client = HttpClient()
         ..badCertificateCallback = (cert, host, port) => true;
-      final request = await client.getUrl(Uri.parse('$_vpsBaseUrl/subscriptionlogs'));
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final request = await client.getUrl(Uri.parse('$_vpsBaseUrl/subscriptionlogs?fromDate=$dateStr&toDate=$dateStr&pageSize=2000'));
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('Accept', 'application/json');
       request.headers.set('X-Api-Key', _vpsApiKey);
@@ -444,7 +451,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         if (actDate.isEmpty) continue;
         DateTime? recordDate;
         try {
-          recordDate = DateTime.parse(actDate);
+          recordDate = DateTime.parse(actDate).toLocal();
         } catch (_) {
           continue;
         }
@@ -454,7 +461,12 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         // تصفية بالمشغل (غير المدير يرى سجلاته فقط)
         if (!isAdmin) {
           final activatedBy = (m['ActivatedBy'] ?? '').toString().trim().toLowerCase();
-          if (activatedBy != widget.activatedBy.trim().toLowerCase()) continue;
+          final userId = (m['UserId'] ?? '').toString();
+          final myUsername = widget.activatedBy.trim().toLowerCase();
+          // مطابقة بالاسم أو الاسم الكامل أو UserId
+          final matchByName = activatedBy == myUsername || activatedBy == _operatorFullName.toLowerCase();
+          final matchById = _operatorUserId.isNotEmpty && userId == _operatorUserId;
+          if (!matchByName && !matchById) continue;
         }
 
         filtered.add(m);
@@ -575,8 +587,18 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         for (final u in result) {
           final name = (u['FullName'] ?? u['fullName'] ?? '').toString().trim();
           final id = (u['Id'] ?? u['id'] ?? '').toString();
+          final ftthUser = (u['FtthUsername'] ?? u['ftthUsername'] ?? '').toString().trim();
+          final username = (u['Username'] ?? u['username'] ?? '').toString().trim();
           if (name.isNotEmpty && seen.add(name)) {
             list.add({'name': name, 'id': id, 'companyId': (u['CompanyId'] ?? u['companyId'] ?? '').toString()});
+          }
+          // حفظ الاسم الكامل ومعرف المشغل الحالي
+          if (_operatorFullName.isEmpty) {
+            final myUser = widget.activatedBy.trim().toLowerCase();
+            if (ftthUser.toLowerCase() == myUser || username.toLowerCase() == myUser) {
+              _operatorFullName = name;
+              _operatorUserId = id;
+            }
           }
         }
         list.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));

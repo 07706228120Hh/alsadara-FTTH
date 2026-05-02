@@ -356,6 +356,10 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<FixedExpensePayment, long> FixedExpensePayments =>
         _fixedExpensePayments ??= new Repository<FixedExpensePayment, long>(_context);
 
+    private IRepository<ClosedPeriod, long>? _closedPeriods;
+    public IRepository<ClosedPeriod, long> ClosedPeriods =>
+        _closedPeriods ??= new Repository<ClosedPeriod, long>(_context);
+
     // Task Audit (تدقيق المهام)
     public IRepository<TaskAudit, long> TaskAudits =>
         _taskAudits ??= new Repository<TaskAudit, long>(_context);

@@ -109,6 +109,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<EmployeeDeductionBonus, long> EmployeeDeductionBonuses { get; }
     IRepository<FixedExpense, long> FixedExpenses { get; }
     IRepository<FixedExpensePayment, long> FixedExpensePayments { get; }
+    IRepository<ClosedPeriod, long> ClosedPeriods { get; }
 
     // Task Audit (تدقيق المهام)
     IRepository<TaskAudit, long> TaskAudits { get; }

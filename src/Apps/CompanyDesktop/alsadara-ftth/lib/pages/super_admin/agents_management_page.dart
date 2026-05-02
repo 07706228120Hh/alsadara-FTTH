@@ -1951,17 +1951,18 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     final notesCtrl = TextEditingController();
     AgentType selectedType = AgentType.privateAgent;
 
-    // قائمة الشركات
+    // قائمة الشركات — تُعرض فقط لمدير النظام (بدون companyId)
+    final bool needCompanySelection = widget.companyId == null;
     List<Map<String, dynamic>> companies = [];
-    String? selectedCompanyId;
-    bool loadingCompanies = true;
-    bool companiesFetched = false;
+    String? selectedCompanyId = widget.companyId;
+    bool loadingCompanies = needCompanySelection;
+    bool companiesFetched = !needCompanySelection;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setDialogState) {
-        // جلب الشركات مرة واحدة فقط عند أول بناء
-        if (!companiesFetched) {
+        // جلب الشركات مرة واحدة فقط — فقط إذا كان مدير النظام
+        if (needCompanySelection && !companiesFetched) {
           companiesFetched = true;
           _agentService.getCompanies().then((list) {
             setDialogState(() {
@@ -2024,52 +2025,53 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                           () => selectedType = v ?? AgentType.privateAgent),
                     ),
                     const SizedBox(height: 10),
-                    // اختيار الشركة
-                    Builder(
-                      builder: (_) {
-                        if (loadingCompanies) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Center(
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2)),
+                    // اختيار الشركة — فقط لمدير النظام
+                    if (needCompanySelection)
+                      Builder(
+                        builder: (_) {
+                          if (loadingCompanies) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Center(
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2)),
+                            );
+                          }
+                          if (companies.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Text('لا توجد شركات',
+                                  style: TextStyle(color: Colors.orange)),
+                            );
+                          }
+                          return DropdownButtonFormField<String>(
+                            value: selectedCompanyId,
+                            decoration: InputDecoration(
+                              labelText: 'الشركة *',
+                              prefixIcon: const Icon(Icons.business, size: 18),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                            items: companies
+                                .map((c) => DropdownMenuItem(
+                                      value:
+                                          (c['Id'] ?? c['id'])?.toString() ?? '',
+                                      child: Text(
+                                          (c['Name'] ??
+                                                      c['name'] ??
+                                                      c['companyName'])
+                                                  ?.toString() ??
+                                              'بدون اسم',
+                                          style: const TextStyle(fontSize: 13)),
+                                    ))
+                                .toList(),
+                            onChanged: (v) =>
+                                setDialogState(() => selectedCompanyId = v),
                           );
-                        }
-                        if (companies.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text('لا توجد شركات',
-                                style: TextStyle(color: Colors.orange)),
-                          );
-                        }
-                        return DropdownButtonFormField<String>(
-                          value: selectedCompanyId,
-                          decoration: InputDecoration(
-                            labelText: 'الشركة *',
-                            prefixIcon: const Icon(Icons.business, size: 18),
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                          ),
-                          items: companies
-                              .map((c) => DropdownMenuItem(
-                                    value:
-                                        (c['Id'] ?? c['id'])?.toString() ?? '',
-                                    child: Text(
-                                        (c['Name'] ??
-                                                    c['name'] ??
-                                                    c['companyName'])
-                                                ?.toString() ??
-                                            'بدون اسم',
-                                        style: const TextStyle(fontSize: 13)),
-                                  ))
-                              .toList(),
-                          onChanged: (v) =>
-                              setDialogState(() => selectedCompanyId = v),
-                        );
-                      },
-                    ),
+                        },
+                      ),
                     const SizedBox(height: 10),
                     _dialogTextField(
                         emailCtrl, 'البريد الإلكتروني', Icons.email),
@@ -2110,7 +2112,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     );
                     return;
                   }
-                  if (selectedCompanyId == null || selectedCompanyId!.isEmpty) {
+                  if (needCompanySelection && (selectedCompanyId == null || selectedCompanyId!.isEmpty)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('يرجى اختيار الشركة')),
                     );

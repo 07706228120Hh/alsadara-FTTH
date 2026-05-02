@@ -5,6 +5,7 @@ using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.API.Authorization;
+using Sadara.API.Constants;
 
 namespace Sadara.API.Controllers;
 
@@ -103,15 +104,7 @@ public class AccountingController : ControllerBase
 
                 foreach (var p in unpaidPayments)
                 {
-                    var code = p.Category switch
-                    {
-                        FixedExpenseCategory.OfficeRent => "2210",
-                        FixedExpenseCategory.GeneratorCost => "2220",
-                        FixedExpenseCategory.Internet => "2230",
-                        FixedExpenseCategory.Electricity => "2240",
-                        FixedExpenseCategory.Water => "2250",
-                        _ => "2260"
-                    };
+                    var code = AccountCodes.GetFixedExpenseLiabilityCode(p.Category);
                     if (fixedExpenseBalances.ContainsKey(code))
                         fixedExpenseBalances[code] += p.Amount;
                     else
@@ -123,27 +116,33 @@ public class AccountingController : ControllerBase
                 _logger.LogWarning(ex, "Could not load fixed expense balances for tree");
             }
 
-            // حساب الرصيد التراكمي للشجرة الفرعية
-            decimal CalculateSubtreeBalance(Account account, List<Account> all)
+            // بناء فهرس الأبناء لتسريع البحث (O(1) بدل O(n) لكل عقدة)
+            var childrenLookup = allAccounts
+                .Where(a => a.ParentAccountId != null)
+                .GroupBy(a => a.ParentAccountId!.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // حساب الرصيد التراكمي للشجرة الفرعية (باستخدام الفهرس)
+            decimal CalculateSubtreeBalance(Account account)
             {
-                var children = all.Where(a => a.ParentAccountId == account.Id).ToList();
-                if (!children.Any())
+                if (!childrenLookup.TryGetValue(account.Id, out var children) || !children.Any())
                 {
                     var balance = account.CurrentBalance;
                     if (fixedExpenseBalances.TryGetValue(account.Code, out var feBalance))
                         balance += feBalance;
                     return balance;
                 }
-                return children.Sum(c => CalculateSubtreeBalance(c, all));
+                return children.Sum(c => CalculateSubtreeBalance(c));
             }
 
             object BuildTree(Account account)
             {
-                var children = allAccounts.Where(a => a.ParentAccountId == account.Id).ToList();
+                childrenLookup.TryGetValue(account.Id, out var children);
+                children ??= new List<Account>();
                 decimal subtreeBalance;
                 if (children.Any())
                 {
-                    subtreeBalance = children.Sum(c => CalculateSubtreeBalance(c, allAccounts));
+                    subtreeBalance = children.Sum(c => CalculateSubtreeBalance(c));
                 }
                 else
                 {
@@ -263,6 +262,30 @@ public class AccountingController : ControllerBase
                 var diff = dto.OpeningBalance.Value - account.OpeningBalance;
                 account.OpeningBalance = dto.OpeningBalance.Value;
                 account.CurrentBalance += diff;
+            }
+
+            // تغيير الكود
+            if (!string.IsNullOrEmpty(dto.Code) && dto.Code != account.Code)
+            {
+                var codeExists = await _unitOfWork.Accounts.AnyAsync(a => a.Code == dto.Code && a.CompanyId == account.CompanyId && a.Id != id);
+                if (codeExists)
+                    return BadRequest(new { success = false, message = "كود الحساب موجود مسبقاً" });
+                account.Code = dto.Code;
+            }
+
+            // تغيير الحساب الأب
+            if (dto.ClearParent == true)
+            {
+                account.ParentAccountId = null;
+                account.Level = 1;
+            }
+            else if (dto.ParentAccountId.HasValue && dto.ParentAccountId != account.ParentAccountId)
+            {
+                var newParent = await _unitOfWork.Accounts.GetByIdAsync(dto.ParentAccountId.Value);
+                if (newParent == null)
+                    return BadRequest(new { success = false, message = "الحساب الأب غير موجود" });
+                account.ParentAccountId = dto.ParentAccountId.Value;
+                account.Level = newParent.Level + 1;
             }
 
             _unitOfWork.Accounts.Update(account);
@@ -705,7 +728,7 @@ public class AccountingController : ControllerBase
         try
         {
             // البحث عن حساب النقد و الصندوق (1110) الأب
-            var parentCashAccount = await FindAccountByCode("1110", dto.CompanyId);
+            var parentCashAccount = await FindAccountByCode(AccountCodes.Cash, dto.CompanyId);
             
             // إنشاء حساب فرعي تحت 1110 لهذا الصندوق
             Guid? subAccountId = null;
@@ -867,34 +890,48 @@ public class AccountingController : ControllerBase
 
             await _unitOfWork.CashTransactions.AddAsync(transaction);
 
-            // === إنشاء قيد محاسبي: مدين النقدية (إيداع) ===
+            // === إنشاء قيد محاسبي: مدين حساب الصندوق / دائن الطرف المقابل ===
             bool accountingSuccess = false;
             try
             {
-                var cashAcct = await FindAccountByCode("1110", box.CompanyId);
-                if (cashAcct != null)
+                // تحديد حساب الصندوق (المرتبط أو الأب 1110)
+                Guid? boxAccountId = box.LinkedAccountId;
+                if (boxAccountId == null)
+                {
+                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                    boxAccountId = cashAcct?.Id;
+                }
+
+                // تحديد حساب الطرف المقابل (مصدر الإيداع)
+                Guid? counterAcctId = dto.CounterAccountId;
+                if (counterAcctId == null)
+                {
+                    // fallback: حساب النقد الأب 1110 (لضمان التوافق مع القيود القديمة)
+                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                    counterAcctId = cashAcct?.Id;
+                }
+
+                if (boxAccountId != null && counterAcctId != null && boxAccountId != counterAcctId)
                 {
                     var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                     {
-                        (cashAcct.Id, dto.Amount, 0, $"إيداع في {box.Name}"),
-                        (cashAcct.Id, 0, dto.Amount, $"مصدر الإيداع - {dto.Description ?? "إيداع"}")
+                        (boxAccountId.Value, dto.Amount, 0, $"إيداع في {box.Name}"),
+                        (counterAcctId.Value, 0, dto.Amount, $"مصدر الإيداع - {dto.Description ?? "إيداع"}")
                     };
-                    await CreateAndPostJournalEntry(
+                    var jeId = await CreateAndPostJournalEntryReturningId(
                         box.CompanyId, dto.CreatedById,
                         dto.Description ?? $"إيداع في صندوق {box.Name}",
                         JournalReferenceType.CashDeposit, transaction.Id.ToString(), lines);
-
-                    // ربط القيد بالعملية
-                    var je = await _unitOfWork.JournalEntries.AsQueryable()
-                        .Where(j => j.ReferenceType == JournalReferenceType.CashDeposit && j.CompanyId == box.CompanyId)
-                        .OrderByDescending(j => j.CreatedAt)
-                        .FirstOrDefaultAsync();
-                    if (je != null)
+                    if (jeId != null)
                     {
-                        transaction.JournalEntryId = je.Id;
+                        transaction.JournalEntryId = jeId.Value;
                         _unitOfWork.CashTransactions.Update(transaction);
                     }
                     accountingSuccess = true;
+                }
+                else if (boxAccountId != null)
+                {
+                    _logger.LogWarning("⚠️ إيداع بدون طرف مقابل مختلف — لم يُنشأ قيد (حسابا المصدر والوجهة متطابقان)");
                 }
             }
             catch (Exception ex)
@@ -955,33 +992,47 @@ public class AccountingController : ControllerBase
 
             await _unitOfWork.CashTransactions.AddAsync(transaction);
 
-            // === إنشاء قيد محاسبي: دائن النقدية (سحب) ===
+            // === إنشاء قيد محاسبي: مدين الطرف المقابل / دائن حساب الصندوق ===
             bool accountingSuccess = false;
             try
             {
-                var cashAcct = await FindAccountByCode("1110", box.CompanyId);
-                if (cashAcct != null)
+                // تحديد حساب الصندوق (المرتبط أو الأب 1110)
+                Guid? boxAccountId = box.LinkedAccountId;
+                if (boxAccountId == null)
+                {
+                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                    boxAccountId = cashAcct?.Id;
+                }
+
+                // تحديد حساب الطرف المقابل (وجهة السحب)
+                Guid? counterAcctId = dto.CounterAccountId;
+                if (counterAcctId == null)
+                {
+                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                    counterAcctId = cashAcct?.Id;
+                }
+
+                if (boxAccountId != null && counterAcctId != null && boxAccountId != counterAcctId)
                 {
                     var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                     {
-                        (cashAcct.Id, dto.Amount, 0, $"سحب - {dto.Description ?? "سحب من الصندوق"}"),
-                        (cashAcct.Id, 0, dto.Amount, $"سحب من {box.Name}")
+                        (counterAcctId.Value, dto.Amount, 0, $"سحب - {dto.Description ?? "سحب من الصندوق"}"),
+                        (boxAccountId.Value, 0, dto.Amount, $"سحب من {box.Name}")
                     };
-                    await CreateAndPostJournalEntry(
+                    var jeId = await CreateAndPostJournalEntryReturningId(
                         box.CompanyId, dto.CreatedById,
                         dto.Description ?? $"سحب من صندوق {box.Name}",
                         JournalReferenceType.CashWithdrawal, transaction.Id.ToString(), lines);
-
-                    var je = await _unitOfWork.JournalEntries.AsQueryable()
-                        .Where(j => j.ReferenceType == JournalReferenceType.CashWithdrawal && j.CompanyId == box.CompanyId)
-                        .OrderByDescending(j => j.CreatedAt)
-                        .FirstOrDefaultAsync();
-                    if (je != null)
+                    if (jeId != null)
                     {
-                        transaction.JournalEntryId = je.Id;
+                        transaction.JournalEntryId = jeId.Value;
                         _unitOfWork.CashTransactions.Update(transaction);
                     }
                     accountingSuccess = true;
+                }
+                else if (boxAccountId != null)
+                {
+                    _logger.LogWarning("⚠️ سحب بدون طرف مقابل مختلف — لم يُنشأ قيد (حسابا المصدر والوجهة متطابقان)");
                 }
             }
             catch (Exception ex)
@@ -1379,8 +1430,8 @@ public class AccountingController : ControllerBase
             Guid? accrualJournalId = null;
             if (totalNetAmount > 0)
             {
-                var salaryExpenseAcct = await FindAccountByCode("5100", dto.CompanyId);
-                var salaryPayableAcct = await FindAccountByCode("2120", dto.CompanyId);
+                var salaryExpenseAcct = await FindAccountByCode(AccountCodes.SalaryExpense, dto.CompanyId);
+                var salaryPayableAcct = await FindAccountByCode(AccountCodes.SalariesPayable, dto.CompanyId);
                 if (salaryExpenseAcct != null && salaryPayableAcct != null)
                 {
                     var accrualLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
@@ -1631,11 +1682,11 @@ public class AccountingController : ControllerBase
             // === إنشاء قيد محاسبي تلقائي للراتب ===
             // مدين: 2120 رواتب مستحقة (عكس الاستحقاق)
             // دائن: حساب النقدية 1110
-            var cashAcctSal = await FindAccountByCode("1110", salary.CompanyId);
+            var cashAcctSal = await FindAccountByCode(AccountCodes.Cash, salary.CompanyId);
             if (cashAcctSal != null)
             {
-                var salaryPayableAcctPay = await FindAccountByCode("2120", salary.CompanyId);
-                var payDebitAcct = salaryPayableAcctPay ?? await FindOrCreateSubAccount("5100", salary.UserId, empName, salary.CompanyId);
+                var salaryPayableAcctPay = await FindAccountByCode(AccountCodes.SalariesPayable, salary.CompanyId);
+                var payDebitAcct = salaryPayableAcctPay ?? await FindOrCreateSubAccount(AccountCodes.SalaryExpense, salary.UserId, empName, salary.CompanyId);
 
                 var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                 {
@@ -1645,7 +1696,7 @@ public class AccountingController : ControllerBase
                 if (duesDeducted > 0)
                 {
                     // جزء يذهب لتسديد ذمم الفني
-                    var techReceivableAcct = await FindAccountByCode("1140", salary.CompanyId);
+                    var techReceivableAcct = await FindAccountByCode(AccountCodes.TechnicianReceivables, salary.CompanyId);
                     if (techReceivableAcct != null)
                     {
                         journalLines.Add((techReceivableAcct.Id, 0, duesDeducted, $"تسديد ذمم {empName} من الراتب"));
@@ -1740,8 +1791,8 @@ public class AccountingController : ControllerBase
             // === إنشاء قيد محاسبي: عكس الاستحقاق ===
             // مدين: 2120 رواتب مستحقة (تقليل الالتزام)
             // دائن: 1110 النقدية (خروج المبلغ)
-            var cashAcctAll = await FindAccountByCode("1110", dto.CompanyId);
-            var salaryPayableAcctAll = await FindAccountByCode("2120", dto.CompanyId);
+            var cashAcctAll = await FindAccountByCode(AccountCodes.Cash, dto.CompanyId);
+            var salaryPayableAcctAll = await FindAccountByCode(AccountCodes.SalariesPayable, dto.CompanyId);
             if (cashAcctAll != null && salaryPayableAcctAll != null)
             {
                 var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
@@ -1992,8 +2043,8 @@ public class AccountingController : ControllerBase
             // عكس قيد الاستحقاق إذا وُجد
             if (totalNetAmount > 0)
             {
-                var salaryExpenseAcct = await FindAccountByCode("5100", companyId);
-                var salaryPayableAcct = await FindAccountByCode("2120", companyId);
+                var salaryExpenseAcct = await FindAccountByCode(AccountCodes.SalaryExpense, companyId);
+                var salaryPayableAcct = await FindAccountByCode(AccountCodes.SalariesPayable, companyId);
                 if (salaryExpenseAcct != null && salaryPayableAcct != null)
                 {
                     var reversalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
@@ -2077,8 +2128,8 @@ public class AccountingController : ControllerBase
                 if (totalNet <= 0) continue;
 
                 // البحث عن حسابات المصروف والالتزام
-                var salaryExpenseAcct = await FindAccountByCode("5100", companyId);
-                var salaryPayableAcct = await FindAccountByCode("2120", companyId);
+                var salaryExpenseAcct = await FindAccountByCode(AccountCodes.SalaryExpense, companyId);
+                var salaryPayableAcct = await FindAccountByCode(AccountCodes.SalariesPayable, companyId);
                 if (salaryExpenseAcct == null || salaryPayableAcct == null)
                 {
                     _logger.LogWarning("حساب 5100 أو 2120 غير موجود - تعذّر إصلاح رواتب {Month}/{Year}", month, year);
@@ -2504,9 +2555,9 @@ public class AccountingController : ControllerBase
             // دائن: حساب ذمم الفنيين 1140-sub (إقفال مستحقات الفني)
             // ملاحظة: الإيراد سُجّل مسبقاً عند تفعيل الاشتراك (Dr 1140 / Cr 4110|4120)
             var technician = await _unitOfWork.Users.GetByIdAsync(collection.TechnicianId);
-            var cashAcct = await FindAccountByCode("1110", collection.CompanyId);
+            var cashAcct = await FindAccountByCode(AccountCodes.Cash, collection.CompanyId);
             var techSubAcct = await FindOrCreateSubAccount(
-                "1140", collection.TechnicianId,
+                AccountCodes.TechnicianReceivables, collection.TechnicianId,
                 technician?.FullName ?? "فني", collection.CompanyId);
             if (cashAcct != null)
             {
@@ -2696,11 +2747,11 @@ public class AccountingController : ControllerBase
             if (expenseAccount == null)
             {
                 // fallback: حساب مصروفات متنوعة
-                var fallback = await FindAccountByCode("5700", dto.CompanyId);
+                var fallback = await FindAccountByCode(AccountCodes.MiscExpense, dto.CompanyId);
                 if (fallback != null) expenseAccountId = fallback.Id;
             }
 
-            var cashAccount = await FindAccountByCode("1110", dto.CompanyId);
+            var cashAccount = await FindAccountByCode(AccountCodes.Cash, dto.CompanyId);
             if (cashAccount != null)
             {
                 var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
@@ -3494,7 +3545,7 @@ public class AccountingController : ControllerBase
             // ═══ تعديل الالتزامات: إذا كانت رواتب غير مدفوعة لم تنعكس بعد في حساب 2120 ═══
             // حساب الفجوة بين الرواتب المستحقة الفعلية ورصيد 2120 المحاسبي
             var salaryPayable2120 = leafAccounts
-                .Where(a => a.Code != null && a.Code.StartsWith("2120"))
+                .Where(a => a.Code != null && a.Code.StartsWith(AccountCodes.SalariesPayable))
                 .Sum(a => a.CurrentBalance);
             var salaryGap = Math.Max(0, unpaidSalaries - salaryPayable2120);
 
@@ -3518,7 +3569,7 @@ public class AccountingController : ControllerBase
 
             // رصيد حساب النقد و الصندوق (1110 وفروعه)
             var cashAccount1110 = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.Code == "1110")
+                .Where(a => a.Code == AccountCodes.Cash)
                 .Select(a => a.Id)
                 .FirstOrDefaultAsync();
             decimal cashAccountBalance = 0;
@@ -3573,26 +3624,25 @@ public class AccountingController : ControllerBase
 
             // ═══ رصيد القاصة (11101) ═══
             var cashRegisterBalance = leafAccounts
-                .Where(a => a.Code == "11101")
+                .Where(a => a.Code == AccountCodes.PettyCash)
                 .Sum(a => a.CurrentBalance);
 
             // ═══ رصيد صندوق الشركة الرئيسي (11104) ═══
             var mainCashBoxBalance = leafAccounts
-                .Where(a => a.Code == "11104")
+                .Where(a => a.Code == AccountCodes.CompanyMainCash)
                 .Sum(a => a.CurrentBalance);
 
             // ═══ رصيد الصفحة (11102) ═══
             var pageBalance = leafAccounts
-                .Where(a => a.Code == "11102")
+                .Where(a => a.Code == AccountCodes.PageBalance)
                 .Sum(a => a.CurrentBalance);
 
             // ═══ مستحقات المشغلين = نقد في صناديقهم (1110) + آجل في ذمتهم (1160) ═══
-            var knownNonOperatorCodes = new HashSet<string> { "1110", "11101", "11102", "11103", "11104" };
             var operatorCashBoxes = leafAccounts
-                .Where(a => a.Code != null && a.Code.StartsWith("1110") && !knownNonOperatorCodes.Contains(a.Code))
+                .Where(a => a.Code != null && a.Code.StartsWith(AccountCodes.Cash) && !AccountCodes.KnownNonOperatorCashCodes.Contains(a.Code))
                 .Sum(a => a.CurrentBalance);
             var operatorCredit = leafAccounts
-                .Where(a => a.Code != null && a.Code.StartsWith("1160") && a.Code != "1160")
+                .Where(a => a.Code != null && a.Code.StartsWith(AccountCodes.OperatorReceivables) && a.Code != AccountCodes.OperatorReceivables)
                 .Sum(a => a.CurrentBalance);
             var operatorReceivables = operatorCashBoxes + operatorCredit;
 
@@ -3723,9 +3773,11 @@ public class AccountingController : ControllerBase
                 .Select(l => new
                 {
                     l.Id,
+                    JournalEntryId = l.JournalEntry != null ? l.JournalEntry.Id : Guid.Empty,
                     EntryNumber = l.JournalEntry != null ? l.JournalEntry.EntryNumber : "",
                     EntryDate = l.JournalEntry != null ? l.JournalEntry.EntryDate : DateTime.MinValue,
                     EntryDescription = l.JournalEntry != null ? l.JournalEntry.Description : "",
+                    ReferenceType = l.JournalEntry != null ? l.JournalEntry.ReferenceType.ToString() : "",
                     l.DebitAmount,
                     l.CreditAmount,
                     l.Description
@@ -4126,10 +4178,10 @@ public class AccountingController : ControllerBase
             // === إنشاء قيد محاسبي تلقائي ===
             // مدين: حساب فرعي للوكيل تحت 5900 عمولات الوكلاء
             // دائن: حساب النقدية 1110
-            var cashAcct = await FindAccountByCode("1110", dto.CompanyId);
+            var cashAcct = await FindAccountByCode(AccountCodes.Cash, dto.CompanyId);
             if (cashAcct != null)
             {
-                var agentSubAcct = await FindOrCreateSubAccount("5900", dto.AgentId, agent.Name, dto.CompanyId);
+                var agentSubAcct = await FindOrCreateSubAccount(AccountCodes.AgentCommissions, dto.AgentId, agent.Name, dto.CompanyId);
 
                 var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                 {
@@ -4169,6 +4221,15 @@ public class AccountingController : ControllerBase
     /// <summary>
     /// إنشاء قيد محاسبي تلقائي وترحيله فوراً مع تحديث أرصدة الحسابات
     /// </summary>
+    /// <summary>
+    /// فحص هل الفترة مقفلة لتاريخ معين
+    /// </summary>
+    private async Task<bool> IsPeriodClosed(Guid companyId, DateTime date)
+    {
+        return await _unitOfWork.ClosedPeriods.AnyAsync(
+            p => p.CompanyId == companyId && p.Year == date.Year && p.Month == date.Month && !p.IsDeleted);
+    }
+
     private async Task CreateAndPostJournalEntry(
         Guid companyId,
         Guid createdById,
@@ -4177,6 +4238,14 @@ public class AccountingController : ControllerBase
         string? referenceId,
         List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
     {
+        // فحص الفترة المقفلة
+        if (await IsPeriodClosed(companyId, DateTime.UtcNow))
+        {
+            _logger.LogWarning("⛔ محاولة إنشاء قيد في فترة مقفلة ({Year}/{Month}) - {Description}",
+                DateTime.UtcNow.Year, DateTime.UtcNow.Month, description);
+            throw new InvalidOperationException($"الفترة المحاسبية {DateTime.UtcNow:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
+        }
+
         var entryNumber = await GenerateEntryNumber(companyId);
         var entry = new JournalEntry
         {
@@ -4233,6 +4302,14 @@ public class AccountingController : ControllerBase
         string? referenceId,
         List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
     {
+        // فحص الفترة المقفلة
+        if (await IsPeriodClosed(companyId, DateTime.UtcNow))
+        {
+            _logger.LogWarning("⛔ محاولة إنشاء قيد في فترة مقفلة ({Year}/{Month}) - {Description}",
+                DateTime.UtcNow.Year, DateTime.UtcNow.Month, description);
+            throw new InvalidOperationException($"الفترة المحاسبية {DateTime.UtcNow:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
+        }
+
         var entryNumber = await GenerateEntryNumber(companyId);
         var entryId = Guid.NewGuid();
         var entry = new JournalEntry
@@ -4794,19 +4871,13 @@ public class AccountingController : ControllerBase
             try
             {
                 var fe = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == payment.FixedExpenseId);
-                var expenseCode = fe?.Category switch
-                {
-                    FixedExpenseCategory.OfficeRent => "5210",
-                    FixedExpenseCategory.GeneratorCost => "5220",
-                    FixedExpenseCategory.Internet => "5230",
-                    FixedExpenseCategory.Electricity => "5240",
-                    FixedExpenseCategory.Water => "5250",
-                    _ => "5200"
-                };
+                var expenseCode = fe != null
+                    ? AccountCodes.GetFixedExpenseAccountCode(fe.Category)
+                    : AccountCodes.RentExpense;
                 var expenseName = fe?.Name ?? "مصروف ثابت";
-                var cashAcct = await FindAccountByCode("1110", dto.CompanyId);
+                var cashAcct = await FindAccountByCode(AccountCodes.Cash, dto.CompanyId);
                 var expenseAcct = await FindAccountByCode(expenseCode, dto.CompanyId)
-                    ?? await FindAccountByCode("5200", dto.CompanyId);
+                    ?? await FindAccountByCode(AccountCodes.RentExpense, dto.CompanyId);
 
                 if (cashAcct != null && expenseAcct != null)
                 {
@@ -4926,6 +4997,67 @@ public class AccountingController : ControllerBase
         }
     }
 
+    // ==================== إقفال الفترات المحاسبية ====================
+
+    /// <summary>جلب الفترات المقفلة</summary>
+    [HttpGet("closed-periods")]
+    public async Task<IActionResult> GetClosedPeriods([FromQuery] Guid? companyId)
+    {
+        var query = _unitOfWork.ClosedPeriods.AsQueryable().Where(p => !p.IsDeleted);
+        if (companyId.HasValue) query = query.Where(p => p.CompanyId == companyId);
+        var periods = await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToListAsync();
+        return Ok(new { success = true, data = periods.Select(p => new { p.Id, p.Year, p.Month, p.ClosedAt, p.ClosedById, p.ClosingNotes, p.CompanyId }) });
+    }
+
+    /// <summary>إقفال فترة محاسبية</summary>
+    [HttpPost("closed-periods")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> ClosePeriod([FromBody] ClosePeriodDto dto)
+    {
+        var exists = await _unitOfWork.ClosedPeriods.AnyAsync(
+            p => p.CompanyId == dto.CompanyId && p.Year == dto.Year && p.Month == dto.Month && !p.IsDeleted);
+        if (exists)
+            return BadRequest(new { success = false, message = "الفترة مقفلة بالفعل" });
+
+        var period = new ClosedPeriod
+        {
+            Year = dto.Year,
+            Month = dto.Month,
+            ClosedById = dto.ClosedById,
+            ClosingNotes = dto.Notes,
+            CompanyId = dto.CompanyId
+        };
+        await _unitOfWork.ClosedPeriods.AddAsync(period);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = $"تم إقفال فترة {dto.Year}/{dto.Month}" });
+    }
+
+    /// <summary>إعادة فتح فترة مقفلة</summary>
+    [HttpDelete("closed-periods/{id}")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> ReopenPeriod(long id)
+    {
+        var period = await _unitOfWork.ClosedPeriods.GetByIdAsync(id);
+        if (period == null)
+            return NotFound(new { success = false, message = "الفترة غير موجودة" });
+
+        period.IsDeleted = true;
+        period.DeletedAt = DateTime.UtcNow;
+        _unitOfWork.ClosedPeriods.Update(period);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { success = true, message = $"تم إعادة فتح فترة {period.Year}/{period.Month}" });
+    }
+
+    /// <summary>فحص هل فترة معينة مقفلة</summary>
+    [HttpGet("closed-periods/check")]
+    public async Task<IActionResult> CheckPeriodClosed([FromQuery] Guid companyId, [FromQuery] int year, [FromQuery] int month)
+    {
+        var isClosed = await IsPeriodClosed(companyId, new DateTime(year, month, 1));
+        return Ok(new { success = true, isClosed });
+    }
+
     private static string GetCategoryArabic(FixedExpenseCategory cat) => cat switch
     {
         FixedExpenseCategory.OfficeRent => "إيجار مكتب",
@@ -4956,10 +5088,21 @@ public record UpdateAccountDto(
     string? NameEn,
     string? Description,
     bool? IsActive,
-    decimal? OpeningBalance
+    decimal? OpeningBalance,
+    string? Code,
+    Guid? ParentAccountId,
+    bool? ClearParent
 );
 
 public record SeedAccountsDto(Guid CompanyId);
+
+public record ClosePeriodDto(
+    int Year,
+    int Month,
+    Guid CompanyId,
+    Guid? ClosedById,
+    string? Notes
+);
 
 public record CreateJournalEntryDto(
     string Description,
@@ -4996,7 +5139,9 @@ public record CashBoxOperationDto(
     string? Description,
     JournalReferenceType ReferenceType,
     string? ReferenceId,
-    Guid CreatedById
+    Guid CreatedById,
+    /// <summary>حساب الطرف المقابل (مصدر الإيداع أو وجهة السحب)</summary>
+    Guid? CounterAccountId = null
 );
 
 public record GenerateSalariesDto(Guid CompanyId, int Month, int Year);

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Constants;
 
 namespace Sadara.API.Controllers;
 
@@ -478,6 +479,11 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
             _unitOfWork.Users.Update(technician);
 
+            // تحديد تاريخ المعاملة: إذا مُرر تاريخ مخصص نحوّله لـ UTC، وإلا نستخدم الآن
+            var txDate = request.TransactionDate.HasValue
+                ? DateTime.SpecifyKind(request.TransactionDate.Value.Date.AddHours(12 - 3), DateTimeKind.Utc)
+                : DateTime.UtcNow;
+
             var tx = new TechnicianTransaction
             {
                 TechnicianId = technician.Id,
@@ -490,7 +496,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 Notes = request.Notes,
                 CreatedById = GetCurrentUserId(),
                 CompanyId = technician.CompanyId ?? Guid.Empty,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = txDate
             };
             await _unitOfWork.TechnicianTransactions.AddAsync(tx);
 
@@ -500,20 +506,21 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             {
                 try
                 {
-                    var cashAcct = await ServiceRequestAccountingHelper.FindAccountByCode(
-                        _unitOfWork, "1110", companyId);
+                    // صندوق الشركة (11104) — مصدر النقد
+                    var cashAcct = await _unitOfWork.Accounts.AsQueryable()
+                        .FirstOrDefaultAsync(a => a.Code == AccountCodes.CompanyMainCash && a.IsActive && a.CompanyId == companyId);
                     var techSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                        _unitOfWork, "1140", technician.Id, technician.FullName ?? "فني", companyId);
+                        _unitOfWork, AccountCodes.TechnicianReceivables, technician.Id, technician.FullName ?? "فني", companyId);
 
                     if (cashAcct != null)
                     {
                         await _unitOfWork.SaveChangesAsync();
 
-                        // مدين: ذمة الفني (تخفيض) — دائن: النقدية (خروج كاش)
+                        // مدين: صندوق الشركة (كاش يدخل) — دائن: ذمة الفني (تنقص)
                         var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                         {
-                            (techSubAcct.Id, request.Amount, 0, $"تسديد ذمة فني {technician.FullName}"),
-                            (cashAcct.Id, 0, request.Amount, $"صرف نقدي للفني {technician.FullName}")
+                            (cashAcct.Id, request.Amount, 0, $"تسديد فني {technician.FullName} → صندوق الشركة"),
+                            (techSubAcct.Id, 0, request.Amount, $"تسديد ذمة فني {technician.FullName}")
                         };
                         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
                             _unitOfWork, companyId, GetCurrentUserId(),
@@ -590,6 +597,8 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             if (request.ReferenceNumber != null) tx.ReferenceNumber = request.ReferenceNumber;
             if (request.Type.HasValue) tx.Type = (TechnicianTransactionType)request.Type.Value;
             if (request.Category.HasValue) tx.Category = (TechnicianTransactionCategory)request.Category.Value;
+            if (request.TransactionDate.HasValue)
+                tx.CreatedAt = DateTime.SpecifyKind(request.TransactionDate.Value.Date.AddHours(12 - 3), DateTimeKind.Utc);
             tx.UpdatedAt = DateTime.UtcNow;
 
             // إعادة حساب الرصيد بالقيم الجديدة
@@ -602,6 +611,22 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
 
             _unitOfWork.TechnicianTransactions.Update(tx);
             _unitOfWork.Users.Update(technician);
+
+            // إلغاء القيد المحاسبي القديم إن وجد
+            if (tx.JournalEntryId.HasValue)
+            {
+                try
+                {
+                    await VoidJournalEntryInternal(tx.JournalEntryId.Value);
+                    tx.JournalEntryId = null;
+                    _logger.LogInformation("تم إلغاء القيد المحاسبي القديم للمعاملة {TxId}", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ فشل إلغاء القيد المحاسبي القديم للمعاملة {TxId}", id);
+                }
+            }
+
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("تم تعديل المعاملة {TxId} للفني {TechName}", id, technician.FullName);
@@ -645,13 +670,27 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
             _unitOfWork.Users.Update(technician);
 
+            // إلغاء القيد المحاسبي المرتبط إن وجد
+            if (tx.JournalEntryId.HasValue)
+            {
+                try
+                {
+                    await VoidJournalEntryInternal(tx.JournalEntryId.Value);
+                    _logger.LogInformation("تم إلغاء القيد المحاسبي المرتبط بالمعاملة {TxId}", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ فشل إلغاء القيد المحاسبي للمعاملة {TxId}", id);
+                }
+            }
+
             // حذف ناعم
             tx.IsDeleted = true;
             tx.DeletedAt = DateTime.UtcNow;
             _unitOfWork.TechnicianTransactions.Update(tx);
             await _unitOfWork.SaveChangesAsync();
 
-            _logger.LogInformation("تم حذف المعاملة {TxId} ({Amount} د.ع) للفني {TechName}", 
+            _logger.LogInformation("تم حذف المعاملة {TxId} ({Amount} د.ع) للفني {TechName}",
                 id, tx.Amount, technician.FullName);
 
             return Ok(new { success = true, message = "تم حذف المعاملة بنجاح" });
@@ -739,6 +778,39 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
         var claim = User.FindFirst("sub") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         return claim != null ? Guid.Parse(claim.Value) : Guid.Empty;
     }
+
+    /// <summary>
+    /// إلغاء قيد محاسبي وعكس أرصدة الحسابات المتأثرة
+    /// </summary>
+    private async Task VoidJournalEntryInternal(Guid journalEntryId)
+    {
+        var entry = await _unitOfWork.JournalEntries.AsQueryable()
+            .Include(j => j.Lines)
+            .FirstOrDefaultAsync(j => j.Id == journalEntryId);
+
+        if (entry == null || entry.Status == JournalEntryStatus.Voided)
+            return;
+
+        // عكس الأرصدة إذا كان القيد مُعتمداً
+        if (entry.Status == JournalEntryStatus.Posted)
+        {
+            foreach (var line in entry.Lines)
+            {
+                var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                if (account == null) continue;
+
+                if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                    account.CurrentBalance -= line.DebitAmount - line.CreditAmount;
+                else
+                    account.CurrentBalance -= line.CreditAmount - line.DebitAmount;
+
+                _unitOfWork.Accounts.Update(account);
+            }
+        }
+
+        entry.Status = JournalEntryStatus.Voided;
+        _unitOfWork.JournalEntries.Update(entry);
+    }
 }
 
 public class UpdateTechTransactionRequest
@@ -750,6 +822,7 @@ public class UpdateTechTransactionRequest
     public int? Type { get; set; }
     public int? Category { get; set; }
     public string? ReferenceNumber { get; set; }
+    public DateTime? TransactionDate { get; set; }
 }
 
 public class TechPaymentRequest
@@ -758,4 +831,5 @@ public class TechPaymentRequest
     public decimal Amount { get; set; }
     public string? Description { get; set; }
     public string? Notes { get; set; }
+    public DateTime? TransactionDate { get; set; }
 }

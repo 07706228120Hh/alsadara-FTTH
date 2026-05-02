@@ -729,3 +729,30 @@ public class FixedExpensePayment : BaseEntity<long>
     public Guid CompanyId { get; set; }
     public Company? Company { get; set; }
 }
+
+// ==================== إقفال الفترات المحاسبية - Period Closing ====================
+
+/// <summary>
+/// فترة محاسبية مقفلة - تمنع إنشاء أو تعديل قيود في هذه الفترة
+/// </summary>
+public class ClosedPeriod : BaseEntity<long>
+{
+    /// <summary>السنة</summary>
+    public int Year { get; set; }
+
+    /// <summary>الشهر</summary>
+    public int Month { get; set; }
+
+    /// <summary>تاريخ الإقفال</summary>
+    public DateTime ClosedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>من قام بالإقفال</summary>
+    public Guid? ClosedById { get; set; }
+
+    /// <summary>ملاحظات الإقفال</summary>
+    public string? ClosingNotes { get; set; }
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+}

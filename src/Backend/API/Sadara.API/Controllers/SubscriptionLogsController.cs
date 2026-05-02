@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Constants;
 
 namespace Sadara.API.Controllers;
 
@@ -17,6 +18,20 @@ public class SubscriptionLogsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SubscriptionLogsController> _logger;
+
+    /// <summary>
+    /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم العربي الكامل
+    /// </summary>
+    private async Task<string> _resolveFullName(string? activatedBy)
+    {
+        if (string.IsNullOrEmpty(activatedBy)) return activatedBy ?? "";
+        var key = activatedBy.Trim().ToLower();
+        var user = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => !u.IsDeleted &&
+                ((u.FtthUsername != null && u.FtthUsername.ToLower() == key) ||
+                 (u.Username != null && u.Username.ToLower() == key)));
+        return user?.FullName ?? activatedBy;
+    }
 
     public SubscriptionLogsController(IUnitOfWork unitOfWork, ILogger<SubscriptionLogsController> logger)
     {
@@ -50,7 +65,7 @@ public class SubscriptionLogsController : ControllerBase
             query = query.Where(x => x.ActivationDate >= DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc));
 
         if (toDate.HasValue)
-            query = query.Where(x => x.ActivationDate <= DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc));
+            query = query.Where(x => x.ActivationDate <= DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddSeconds(-1).AddHours(-3), DateTimeKind.Utc));
 
         var total = await query.CountAsync();
         var logs = await query
@@ -101,7 +116,7 @@ public class SubscriptionLogsController : ControllerBase
 
             // معلومات العملية
             OperationType = request.OperationType,
-            ActivatedBy = request.ActivatedBy,
+            ActivatedBy = await _resolveFullName(request.ActivatedBy),
             ActivationDate = request.ActivationDate ?? DateTime.UtcNow,
             ActivationTime = request.ActivationTime,
             SessionId = request.SessionId,
@@ -180,7 +195,7 @@ public class SubscriptionLogsController : ControllerBase
                 var isPurchase = log.OperationType?.ToLower() == "purchase";
                 var opType = isPurchase ? "شراء" : "تجديد";
 
-                var revenueCode = isPurchase ? "4120" : "4110";
+                var revenueCode = isPurchase ? AccountCodes.CompanyDiscountRevenue : AccountCodes.MaintenanceRevenue;
                 var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId)
                     ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
                 if (revenueAccount == null)
@@ -195,19 +210,19 @@ public class SubscriptionLogsController : ControllerBase
                 switch (log.CollectionType.ToLower())
                 {
                     case "cash":
-                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, userId, $"صندوق {operatorName}", companyId);
                         await _unitOfWork.SaveChangesAsync();
                         description = $"{opType} {planName} - {customerName} - نقد عبر {operatorName}";
                         break;
 
                     case "credit":
-                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1160", userId, $"ذمة {operatorName}", companyId);
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.OperatorReceivables, userId, $"ذمة {operatorName}", companyId);
                         await _unitOfWork.SaveChangesAsync();
                         description = $"{opType} {planName} - {customerName} - آجل على {operatorName}";
                         break;
 
                     case "master":
-                        debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1170", companyId);
+                        debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.ElectronicPayment, companyId);
                         if (debitAccount == null) goto noAccounting;
                         description = $"{opType} {planName} - {customerName} - ماستر";
                         break;
@@ -216,7 +231,7 @@ public class SubscriptionLogsController : ControllerBase
                         if (!log.LinkedAgentId.HasValue) goto noAccounting;
                         var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
                         if (agent == null) goto noAccounting;
-                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, agent.Name, companyId);
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
                         await _unitOfWork.SaveChangesAsync();
                         agent.TotalCharges += amount;
                         agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
@@ -231,7 +246,7 @@ public class SubscriptionLogsController : ControllerBase
                         // حفظ اسم الفني في سجل العملية للعرض لاحقاً
                         if (string.IsNullOrEmpty(log.TechnicianName))
                             log.TechnicianName = tech.FullName;
-                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1140", tech.Id, tech.FullName, companyId);
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech.Id, tech.FullName, companyId);
                         await _unitOfWork.SaveChangesAsync();
                         tech.TechTotalCharges += amount;
                         tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
@@ -462,7 +477,7 @@ public class SubscriptionLogsController : ControllerBase
             query = query.Where(x => x.ActivationDate >= DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc));
 
         if (toDate.HasValue)
-            query = query.Where(x => x.ActivationDate <= DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc));
+            query = query.Where(x => x.ActivationDate <= DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddSeconds(-1).AddHours(-3), DateTimeKind.Utc));
 
         var total = await query.CountAsync();
         var logs = await query

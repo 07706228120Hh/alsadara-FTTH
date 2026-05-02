@@ -105,6 +105,7 @@ public class SadaraDbContext : DbContext
     public DbSet<EmployeeDeductionBonus> EmployeeDeductionBonuses => Set<EmployeeDeductionBonus>();
     public DbSet<FixedExpense> FixedExpenses => Set<FixedExpense>();
     public DbSet<FixedExpensePayment> FixedExpensePayments => Set<FixedExpensePayment>();
+    public DbSet<ClosedPeriod> ClosedPeriods => Set<ClosedPeriod>();
 
     // ==================== Task Audit (تدقيق المهام) ====================
     public DbSet<TaskAudit> TaskAudits => Set<TaskAudit>();

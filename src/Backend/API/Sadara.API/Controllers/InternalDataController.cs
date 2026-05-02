@@ -8,6 +8,7 @@ using Sadara.Infrastructure.Data;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Sadara.API.Constants;
 
 namespace Sadara.API.Controllers;
 
@@ -1094,6 +1095,8 @@ public class InternalDataController : ControllerBase
             {
                 u.Id,
                 u.FullName,
+                u.Username,
+                u.FtthUsername,
                 u.PhoneNumber,
                 u.Email,
                 u.Role,
@@ -1798,10 +1801,37 @@ public class InternalDataController : ControllerBase
                 l.FbgInfo,
                 l.FatInfo,
                 l.FdtInfo,
+                l.UserId,
             })
             .ToListAsync();
 
-        return Ok(logs);
+        // إضافة FtthUsername من جدول Users
+        var userIds = logs.Where(l => l.UserId.HasValue).Select(l => l.UserId!.Value).Distinct().ToList();
+        var userLookup = userIds.Any()
+            ? await _unitOfWork.Users.AsQueryable()
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.FtthUsername })
+                .ToDictionaryAsync(u => u.Id, u => u.FtthUsername ?? "")
+            : new Dictionary<Guid, string>();
+
+        var result = logs.Select(l => new
+        {
+            l.Id, l.CustomerId, l.CustomerName, l.PhoneNumber,
+            l.SubscriptionId, l.PlanName, l.PlanPrice, l.CommitmentPeriod,
+            l.BundleId, l.CurrentStatus, l.DeviceUsername, l.OperationType,
+            l.ActivatedBy, l.ActivationDate, l.ZoneId, l.ZoneName,
+            l.WalletBalanceBefore, l.WalletBalanceAfter, l.PartnerName,
+            l.CompanyId, l.CollectionType, l.PaymentMethod,
+            l.IsPrinted, l.IsWhatsAppSent, l.PaymentStatus,
+            l.StartDate, l.EndDate, l.CreatedAt,
+            l.TechnicianName, l.LinkedTechnicianId, l.LinkedAgentId,
+            l.SubscriptionNotes, l.FbgInfo, l.FatInfo, l.FdtInfo,
+            l.UserId,
+            FtthUsername = l.UserId.HasValue && userLookup.ContainsKey(l.UserId.Value)
+                ? userLookup[l.UserId.Value] : ""
+        });
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -1943,7 +1973,7 @@ public class InternalDataController : ControllerBase
             if (newTech == null) throw new Exception("الفني الجديد غير موجود");
 
             newAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                _unitOfWork, "1140", newTech.Id, newTech.FullName, companyId);
+                _unitOfWork, AccountCodes.TechnicianReceivables, newTech.Id, newTech.FullName, companyId);
             await _unitOfWork.SaveChangesAsync();
             newDescription = $"{opType} {planName} - {customerName} - على فني {newTech.FullName} (معدّل)";
 
@@ -1997,7 +2027,7 @@ public class InternalDataController : ControllerBase
             if (newAgent == null) throw new Exception("الوكيل الجديد غير موجود");
 
             newAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                _unitOfWork, "1150", newAgent.Id, newAgent.Name, companyId);
+                _unitOfWork, AccountCodes.AgentReceivables, newAgent.Id, newAgent.Name, companyId);
             await _unitOfWork.SaveChangesAsync();
             newDescription = $"{opType} {planName} - {customerName} - على وكيل {newAgent.Name} (معدّل)";
 
@@ -2151,7 +2181,7 @@ public class InternalDataController : ControllerBase
                 OperationType = request.TryGetProperty("operationType", out var p11) ? p11.GetString() : null,
                 ActivatedBy = request.TryGetProperty("activatedBy", out var p12) ? p12.GetString() : null,
                 ActivationDate = request.TryGetProperty("activationDate", out var p13) && p13.ValueKind == JsonValueKind.String
-                    ? (DateTime.TryParse(p13.GetString(), out var dt) ? DateTime.SpecifyKind(dt, DateTimeKind.Utc) : DateTime.UtcNow)
+                    ? (DateTime.TryParse(p13.GetString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt) ? dt : DateTime.UtcNow)
                     : DateTime.UtcNow,
                 ActivationTime = request.TryGetProperty("activationTime", out var p14) ? p14.GetString() : null,
                 SessionId = request.TryGetProperty("sessionId", out var p15) ? p15.GetString() : null,
@@ -2584,7 +2614,7 @@ public class InternalDataController : ControllerBase
         var companyDiscountProfit = log.SystemDiscountEnabled ? 0 : companyDiscount;
 
         // ═══ جلب حسابات القيد ═══
-        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "11102", companyId);
+        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
         if (pageBalanceAccount == null)
         {
             _logger.LogWarning("حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId}", companyId);
@@ -2592,11 +2622,11 @@ public class InternalDataController : ControllerBase
         }
 
         Sadara.Domain.Entities.Account? maintenanceRevenueAccount = maintenanceFee > 0
-            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4110", companyId) : null;
+            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId) : null;
         Sadara.Domain.Entities.Account? discountRevenueAccount = companyDiscountProfit > 0
-            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4120", companyId) : null;
+            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId) : null;
         Sadara.Domain.Entities.Account? promotionExpenseAccount = manualDiscount > 0
-            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "5110", companyId) : null;
+            ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId) : null;
 
         var user = await _unitOfWork.Users.GetByIdAsync(userId);
         var operatorName = user?.FullName ?? "مشغل";
@@ -2610,19 +2640,19 @@ public class InternalDataController : ControllerBase
         switch (collectionType.ToLower())
         {
             case "cash":
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, userId, $"صندوق {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - نقد عبر {operatorName}";
                 break;
 
             case "credit":
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1160", userId, $"ذمة {operatorName}", companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.OperatorReceivables, userId, $"ذمة {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - آجل على {operatorName}";
                 break;
 
             case "master":
-                debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "1170", companyId)
+                debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.ElectronicPayment, companyId)
                     ?? throw new Exception("حساب 1170 غير موجود");
                 description = $"{opType} {planName} - {customerName} - ماستر (إلكتروني)";
                 break;
@@ -2631,7 +2661,7 @@ public class InternalDataController : ControllerBase
                 if (!log.LinkedAgentId.HasValue) throw new Exception("لا يوجد وكيل");
                 var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
                 if (agent == null) throw new Exception("الوكيل غير موجود");
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1150", agent.Id, agent.Name, companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
 
@@ -2663,7 +2693,7 @@ public class InternalDataController : ControllerBase
                 if (!log.LinkedTechnicianId.HasValue) throw new Exception("لا يوجد فني");
                 var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
                 if (tech == null) throw new Exception("الفني غير موجود");
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1140", tech.Id, tech.FullName, companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech.Id, tech.FullName, companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
 
@@ -2689,7 +2719,7 @@ public class InternalDataController : ControllerBase
                 break;
 
             default:
-                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, "1110", userId, $"صندوق {operatorName}", companyId);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, userId, $"صندوق {operatorName}", companyId);
                 await _unitOfWork.SaveChangesAsync();
                 description = $"{opType} {planName} - {customerName} - عبر {operatorName}";
                 break;
@@ -3152,12 +3182,12 @@ public class InternalDataController : ControllerBase
             // ═══ إنشاء القيد المحاسبي الجديد ═══
             // حساب صندوق المشغل (Credit — المبلغ يخرج)
             var operatorAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                _unitOfWork, "1110", opGuid, $"صندوق {report.OperatorName}", companyId);
+                _unitOfWork, AccountCodes.Cash, opGuid, $"صندوق {report.OperatorName}", companyId);
             await _unitOfWork.SaveChangesAsync();
 
             // حساب صندوق الشركة (Debit — المبلغ يدخل)
             var companyAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                _unitOfWork, "1110", companyId, "صندوق الشركة", companyId);
+                _unitOfWork, AccountCodes.Cash, companyId, "صندوق الشركة", companyId);
             await _unitOfWork.SaveChangesAsync();
 
             var description = $"استلام نقدي {receivedAmount:N0} من صندوق {report.OperatorName} — {report.ReportDate:yyyy-MM-dd}";

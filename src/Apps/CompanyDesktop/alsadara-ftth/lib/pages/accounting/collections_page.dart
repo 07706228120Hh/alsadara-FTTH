@@ -1032,115 +1032,152 @@ class _CollectionsPageState extends State<CollectionsPage> {
 
     final amountCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
+    DateTime selectedDate = DateTime.now();
 
     showDialog(
       context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(context.accR.cardRadius)),
-          title: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(context.accR.spaceS),
-                decoration: BoxDecoration(
-                  color: AccountingTheme.success.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: AccountingTheme.bgCard,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(context.accR.cardRadius)),
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(context.accR.spaceS),
+                  decoration: BoxDecoration(
+                    color: AccountingTheme.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.payments,
+                      color: AccountingTheme.success, size: context.accR.iconM),
                 ),
-                child: Icon(Icons.payments,
-                    color: AccountingTheme.success, size: context.accR.iconM),
+                SizedBox(width: context.accR.spaceM),
+                Expanded(
+                  child: Text('تسجيل تسديد - $name',
+                      style: GoogleFonts.cairo(
+                          fontSize: context.accR.headingSmall,
+                          fontWeight: FontWeight.bold,
+                          color: AccountingTheme.textPrimary)),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: context.accR.dialogSmallW,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(context.accR.spaceM),
+                    decoration: BoxDecoration(
+                      color: AccountingTheme.danger.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            color: AccountingTheme.danger,
+                            size: context.accR.iconM),
+                        SizedBox(width: context.accR.spaceS),
+                        Text('المبلغ المستحق: ${_fmt(netBalance.abs())} د.ع',
+                            style: const TextStyle(
+                                color: AccountingTheme.danger,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: context.accR.spaceXL),
+                  _field('مبلغ التسديد', amountCtrl, isNumber: true),
+                  SizedBox(height: context.accR.spaceM),
+                  // حقل التاريخ
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2024),
+                        lastDate: DateTime.now().add(const Duration(days: 1)),
+                        locale: const Locale('ar'),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today, color: AccountingTheme.accent, size: 18),
+                          SizedBox(width: 8),
+                          Text('التاريخ: ${selectedDate.year}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.day.toString().padLeft(2, '0')}',
+                              style: TextStyle(fontSize: 14)),
+                          const Spacer(),
+                          Icon(Icons.edit, color: Colors.grey, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: context.accR.spaceM),
+                  _field('ملاحظات (اختياري)', notesCtrl),
+                ],
               ),
-              SizedBox(width: context.accR.spaceM),
-              Expanded(
-                child: Text('تسجيل تسديد - $name',
-                    style: GoogleFonts.cairo(
-                        fontSize: context.accR.headingSmall,
-                        fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إلغاء',
+                    style: TextStyle(color: AccountingTheme.textMuted)),
+              ),
+              ElevatedButton.icon(
+                icon: Icon(Icons.check, size: context.accR.iconM),
+                label: const Text('تأكيد التسديد'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AccountingTheme.success,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text) ?? 0;
+                  if (amount <= 0) {
+                    _snack('الرجاء إدخال مبلغ صحيح', AccountingTheme.warning);
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  // فحص الفترة المحاسبية
+                  final payOk = await PeriodClosingService.checkAndWarnIfClosed(
+                    context, date: selectedDate, companyId: widget.companyId ?? '',
+                  );
+                  if (!payOk) return;
+                  final result =
+                      await AccountingService.instance.recordTechnicianPayment(
+                    technicianId: techId,
+                    amount: amount,
+                    notes: notesCtrl.text.isEmpty ? null : notesCtrl.text,
+                    transactionDate: selectedDate,
+                  );
+                  if (result['success'] == true) {
+                    _snack('تم تسجيل التسديد بنجاح', AccountingTheme.success);
+                    AuditTrailService.instance.log(
+                      action: AuditAction.create,
+                      entityType: AuditEntityType.collection,
+                      entityId: techId,
+                      entityDescription: 'تسديد: ${tech['name'] ?? ''}',
+                      details: 'مبلغ: $amount',
+                    );
+                    _loadDues();
+                  } else {
+                    _snack(result['message'] ?? 'خطأ في تسجيل التسديد',
+                        AccountingTheme.danger);
+                  }
+                },
               ),
             ],
           ),
-          content: SizedBox(
-            width: context.accR.dialogSmallW,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(context.accR.spaceM),
-                  decoration: BoxDecoration(
-                    color: AccountingTheme.danger.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline,
-                          color: AccountingTheme.danger,
-                          size: context.accR.iconM),
-                      SizedBox(width: context.accR.spaceS),
-                      Text('المبلغ المستحق: ${_fmt(netBalance.abs())} د.ع',
-                          style: const TextStyle(
-                              color: AccountingTheme.danger,
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-                SizedBox(height: context.accR.spaceXL),
-                _field('مبلغ التسديد', amountCtrl, isNumber: true),
-                SizedBox(height: context.accR.spaceM),
-                _field('ملاحظات (اختياري)', notesCtrl),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
-            ),
-            ElevatedButton.icon(
-              icon: Icon(Icons.check, size: context.accR.iconM),
-              label: const Text('تأكيد التسديد'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.success,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                final amount = double.tryParse(amountCtrl.text) ?? 0;
-                if (amount <= 0) {
-                  _snack('الرجاء إدخال مبلغ صحيح', AccountingTheme.warning);
-                  return;
-                }
-                Navigator.pop(ctx);
-                // فحص الفترة المحاسبية
-                final payOk = await PeriodClosingService.checkAndWarnIfClosed(
-                  context, date: DateTime.now(), companyId: widget.companyId ?? '',
-                );
-                if (!payOk) return;
-                final result =
-                    await AccountingService.instance.recordTechnicianPayment(
-                  technicianId: techId,
-                  amount: amount,
-                  notes: notesCtrl.text.isEmpty ? null : notesCtrl.text,
-                );
-                if (result['success'] == true) {
-                  _snack('تم تسجيل التسديد بنجاح', AccountingTheme.success);
-                  AuditTrailService.instance.log(
-                    action: AuditAction.create,
-                    entityType: AuditEntityType.collection,
-                    entityId: techId,
-                    entityDescription: 'تسديد: ${tech['name'] ?? ''}',
-                    details: 'مبلغ: $amount',
-                  );
-                  _loadDues();
-                } else {
-                  _snack(result['message'] ?? 'خطأ في تسجيل التسديد',
-                      AccountingTheme.danger);
-                }
-              },
-            ),
-          ],
         ),
       ),
     );
@@ -1559,7 +1596,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
   String _formatDate(dynamic date) {
     if (date == null) return '';
     try {
-      final d = DateTime.parse(date.toString());
+      final parsed = DateTime.parse(date.toString());
+      final d = parsed.isUtc ? parsed.toLocal() : parsed.toLocal();
       return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';
@@ -1848,136 +1886,179 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
     final notesCtrl = TextEditingController(text: tx['notes'] ?? '');
     final receivedByCtrl = TextEditingController(text: tx['receivedBy'] ?? '');
     final refNumber = tx['referenceNumber']?.toString() ?? '';
+    // تاريخ المعاملة الحالي
+    DateTime txDate = (() {
+      try {
+        final parsed = DateTime.parse(tx['createdAt']?.toString() ?? '');
+        return parsed.isUtc ? parsed.toLocal() : parsed;
+      } catch (_) {
+        return DateTime.now();
+      }
+    })();
 
     showDialog(
       context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
-          title: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(context.accR.spaceS),
-                decoration: BoxDecoration(
-                  gradient: AccountingTheme.neonBlueGradient,
-                  borderRadius: BorderRadius.circular(8),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: AccountingTheme.bgCard,
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(context.accR.spaceS),
+                  decoration: BoxDecoration(
+                    gradient: AccountingTheme.neonBlueGradient,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.edit,
+                      color: Colors.white, size: context.accR.iconM),
                 ),
-                child: Icon(Icons.edit,
-                    color: Colors.white, size: context.accR.iconM),
-              ),
-              SizedBox(width: context.accR.spaceM),
-              Text('تعديل تحصيل',
-                  style: GoogleFonts.cairo(
-                      fontSize: context.accR.headingSmall,
-                      fontWeight: FontWeight.bold,
-                      color: AccountingTheme.textPrimary)),
-            ],
-          ),
-          content: SizedBox(
-            width: context.accR.dialogMediumW,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _dialogField('المبلغ *', amountCtrl, isNumber: true),
-                  SizedBox(height: context.accR.spaceM),
-                  _dialogField('الوصف *', descCtrl),
-                  SizedBox(height: context.accR.spaceM),
-                  _dialogField('المستلم', receivedByCtrl),
-                  SizedBox(height: context.accR.spaceM),
-
-                  // رقم الإيصال (للعرض فقط)
-                  if (refNumber.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AccountingTheme.bgCardHover,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.receipt_long,
-                              color: AccountingTheme.textMuted,
-                              size: context.accR.iconM),
-                          SizedBox(width: context.accR.spaceS),
-                          Text('رقم الإيصال: ',
-                              style: TextStyle(
-                                  color: AccountingTheme.textMuted,
-                                  fontSize: context.accR.financialSmall)),
-                          Text(refNumber,
-                              style: TextStyle(
-                                  color: AccountingTheme.accent,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: context.accR.financialSmall)),
-                        ],
-                      ),
-                    ),
-                  if (refNumber.isNotEmpty)
+                SizedBox(width: context.accR.spaceM),
+                Text('تعديل تحصيل',
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.headingSmall,
+                        fontWeight: FontWeight.bold,
+                        color: AccountingTheme.textPrimary)),
+              ],
+            ),
+            content: SizedBox(
+              width: context.accR.dialogMediumW,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _dialogField('المبلغ *', amountCtrl, isNumber: true),
+                    SizedBox(height: context.accR.spaceM),
+                    _dialogField('الوصف *', descCtrl),
+                    SizedBox(height: context.accR.spaceM),
+                    _dialogField('المستلم', receivedByCtrl),
                     SizedBox(height: context.accR.spaceM),
 
-                  _dialogField('ملاحظات', notesCtrl),
-                ],
+                    // حقل تعديل التاريخ
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: txDate,
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime.now().add(const Duration(days: 1)),
+                          locale: const Locale('ar'),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => txDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: AccountingTheme.accent, size: 18),
+                            SizedBox(width: 8),
+                            Text('التاريخ: ${txDate.year}/${txDate.month.toString().padLeft(2, '0')}/${txDate.day.toString().padLeft(2, '0')}',
+                                style: TextStyle(fontSize: 14)),
+                            const Spacer(),
+                            Icon(Icons.edit, color: Colors.grey, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: context.accR.spaceM),
+
+                    // رقم الإيصال (للعرض فقط)
+                    if (refNumber.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AccountingTheme.bgCardHover,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.receipt_long,
+                                color: AccountingTheme.textMuted,
+                                size: context.accR.iconM),
+                            SizedBox(width: context.accR.spaceS),
+                            Text('رقم الإيصال: ',
+                                style: TextStyle(
+                                    color: AccountingTheme.textMuted,
+                                    fontSize: context.accR.financialSmall)),
+                            Text(refNumber,
+                                style: TextStyle(
+                                    color: AccountingTheme.accent,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: context.accR.financialSmall)),
+                          ],
+                        ),
+                      ),
+                    if (refNumber.isNotEmpty)
+                      SizedBox(height: context.accR.spaceM),
+
+                    _dialogField('ملاحظات', notesCtrl),
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted))),
-            ElevatedButton.icon(
-              icon: Icon(Icons.check, size: context.accR.iconM),
-              label: const Text('حفظ التعديل'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonBlue,
-                  foregroundColor: Colors.white),
-              onPressed: () async {
-                final amount = double.tryParse(amountCtrl.text);
-                if (amount == null || amount <= 0) {
-                  _snack('أدخل مبلغ صحيح', AccountingTheme.warning);
-                  return;
-                }
-                if (descCtrl.text.trim().isEmpty) {
-                  _snack('أدخل الوصف', AccountingTheme.warning);
-                  return;
-                }
-                Navigator.pop(ctx);
-                // فحص الفترة المحاسبية
-                final editDate = DateTime.tryParse(tx['createdAt']?.toString() ?? '');
-                if (editDate != null) {
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('إلغاء',
+                      style: TextStyle(color: AccountingTheme.textMuted))),
+              ElevatedButton.icon(
+                icon: Icon(Icons.check, size: context.accR.iconM),
+                label: const Text('حفظ التعديل'),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AccountingTheme.neonBlue,
+                    foregroundColor: Colors.white),
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text);
+                  if (amount == null || amount <= 0) {
+                    _snack('أدخل مبلغ صحيح', AccountingTheme.warning);
+                    return;
+                  }
+                  if (descCtrl.text.trim().isEmpty) {
+                    _snack('أدخل الوصف', AccountingTheme.warning);
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  // فحص الفترة المحاسبية
                   final editOk = await PeriodClosingService.checkAndWarnIfClosed(
-                    context, date: editDate, companyId: VpsAuthService.instance.currentCompanyId ?? '',
+                    context, date: txDate, companyId: VpsAuthService.instance.currentCompanyId ?? '',
                   );
                   if (!editOk) return;
-                }
-                final result = await AccountingService.instance
-                    .updateTechnicianTransaction(
-                  transactionId: txId,
-                  amount: amount,
-                  description: descCtrl.text,
-                  notes: notesCtrl.text,
-                  receivedBy:
-                      receivedByCtrl.text.isEmpty ? null : receivedByCtrl.text,
-                );
-                if (result['success'] == true) {
-                  _snack('تم تعديل المعاملة', AccountingTheme.success);
-                  AuditTrailService.instance.log(
-                    action: AuditAction.edit,
-                    entityType: AuditEntityType.collection,
-                    entityId: txId,
-                    entityDescription: 'تعديل تحصيل: ${descCtrl.text}',
+                  final result = await AccountingService.instance
+                      .updateTechnicianTransaction(
+                    transactionId: txId,
+                    amount: amount,
+                    description: descCtrl.text,
+                    notes: notesCtrl.text,
+                    receivedBy:
+                        receivedByCtrl.text.isEmpty ? null : receivedByCtrl.text,
+                    transactionDate: txDate,
                   );
-                  _loadTransactions();
-                  widget.onChanged?.call();
-                } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
-                }
-              },
-            ),
-          ],
+                  if (result['success'] == true) {
+                    _snack('تم تعديل المعاملة', AccountingTheme.success);
+                    AuditTrailService.instance.log(
+                      action: AuditAction.edit,
+                      entityType: AuditEntityType.collection,
+                      entityId: txId,
+                      entityDescription: 'تعديل تحصيل: ${descCtrl.text}',
+                    );
+                    _loadTransactions();
+                    widget.onChanged?.call();
+                  } else {
+                    _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2400,7 +2481,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
   String _formatDate(dynamic date) {
     if (date == null) return '';
     try {
-      final d = DateTime.parse(date.toString());
+      final parsed = DateTime.parse(date.toString());
+      final d = parsed.isUtc ? parsed.toLocal() : parsed.toLocal();
       return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';

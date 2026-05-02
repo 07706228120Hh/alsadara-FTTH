@@ -45,33 +45,57 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
     try {
+      debugPrint('📊 شجرة الحسابات: بدء تحميل البيانات (companyId=${widget.companyId})');
       final results = await Future.wait([
         AccountingService.instance.getAccounts(companyId: widget.companyId),
         AccountingService.instance.getAccountsTree(companyId: widget.companyId),
-      ]);
+      ]).timeout(const Duration(seconds: 15), onTimeout: () {
+        throw Exception('انتهت مهلة الاتصال');
+      });
+      debugPrint('📊 شجرة الحسابات: وصلت النتائج - accounts success=${results[0]['success']}, tree success=${results[1]['success']}');
 
       if (results[0]['success'] == true) {
         _accounts = (results[0]['data'] is List) ? results[0]['data'] : [];
+      } else {
+        debugPrint('⚠️ فشل جلب الحسابات: ${results[0]['message']}');
+        _accounts = [];
       }
       if (results[1]['success'] == true) {
         _treeData = (results[1]['data'] is List) ? results[1]['data'] : [];
+      } else {
+        debugPrint('⚠️ فشل جلب الشجرة: ${results[1]['message']}');
+        _treeData = [];
       }
+      debugPrint('📊 شجرة الحسابات: accounts=${_accounts.length}, tree=${_treeData.length}');
+
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
 
-      // إذا لم توجد حسابات، نعرض رسالة تهيئة
-      if (_accounts.isEmpty) {
+      // إذا لم توجد حسابات وكلا الطلبين نجح، نعرض رسالة تهيئة
+      if (_accounts.isEmpty &&
+          results[0]['success'] == true &&
+          results[1]['success'] == true) {
         _showSeedDialog();
+      } else if (_accounts.isEmpty &&
+          results[0]['success'] != true) {
+        // فشل في الاتصال
+        setState(() {
+          _errorMessage = results[0]['message']?.toString() ?? 'فشل في جلب البيانات';
+        });
       }
     } catch (e) {
+      debugPrint('❌ شجرة الحسابات: خطأ - $e');
+      if (!mounted) return;
       setState(() {
-        _errorMessage = 'خطأ في الاتصال';
+        _errorMessage = 'خطأ في الاتصال: $e';
         _isLoading = false;
       });
     }
@@ -146,31 +170,37 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(),
-              _buildStatsBar(),
-              Expanded(
-                child: _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
-                    : _errorMessage != null
-                        ? _buildError()
-                        : _showTree
-                            ? _buildTreeView()
-                            : _buildListView(),
-              ),
-            ],
+    try {
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: AccountingTheme.bgPrimary,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildToolbar(),
+                _buildStatsBar(),
+                Expanded(
+                  child: _isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                              color: AccountingTheme.neonGreen))
+                      : _errorMessage != null
+                          ? _buildError()
+                          : _showTree
+                              ? _buildTreeView()
+                              : _buildListView(),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      return Scaffold(
+        body: Center(child: Text('خطأ في عرض الصفحة: $e')),
+      );
+    }
   }
 
   Widget _buildToolbar() {
@@ -539,14 +569,20 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline,
-              color: AccountingTheme.textMuted.withOpacity(0.3),
+              color: AccountingTheme.danger.withOpacity(0.5),
               size: context.accR.iconXL),
           SizedBox(height: context.accR.spaceM),
           Text(_errorMessage!,
+              textAlign: TextAlign.center,
               style: GoogleFonts.cairo(
                   color: AccountingTheme.textSecondary,
                   fontSize: context.accR.body)),
-          SizedBox(height: context.accR.spaceM),
+          SizedBox(height: context.accR.spaceS),
+          Text('تحقق من الاتصال بالخادم وصلاحيات الحساب',
+              style: GoogleFonts.cairo(
+                  color: AccountingTheme.textMuted,
+                  fontSize: context.accR.small)),
+          SizedBox(height: context.accR.spaceL),
           ElevatedButton.icon(
             onPressed: _loadData,
             icon: Icon(Icons.refresh, size: context.accR.iconS),
@@ -572,9 +608,10 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             style: TextStyle(color: AccountingTheme.textMuted)),
       );
     }
-    return ListView(
+    return ListView.builder(
       padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM),
-      children: _treeData.map((node) => _buildTreeNode(node, 0)).toList(),
+      itemCount: _treeData.length,
+      itemBuilder: (context, index) => _buildTreeNode(_treeData[index], 0),
     );
   }
 
@@ -586,31 +623,17 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
     return children.any((c) => _hasMatchInSubtree(c, query));
   }
 
-  /// حساب الرصيد الكلي لعقدة (مجموع أرصدة الأبناء تصاعدياً)
-  double _calculateSubtreeBalance(dynamic node) {
-    final children = (node['Children'] as List?) ?? [];
-    if (children.isEmpty) {
-      // عقدة نهائية: نرجع رصيدها المباشر
-      final bal = node['CurrentBalance'];
-      return (bal is num) ? bal.toDouble() : 0.0;
-    }
-    // عقدة أب: مجموع أرصدة جميع الأبناء
-    double total = 0;
-    for (final child in children) {
-      total += _calculateSubtreeBalance(child);
-    }
-    return total;
-  }
-
   Widget _buildTreeNode(dynamic node, int depth) {
+    // حماية ضد العمق الزائد (تجنب infinite recursion)
+    if (depth > 20) return const SizedBox.shrink();
+
     final name = node['Name'] ?? '';
     final code = node['Code'] ?? '';
     final type = node['AccountType'] ?? '';
     final children = (node['Children'] as List?) ?? [];
     final isLeaf = children.isEmpty;
-    // للعقد الأب: نحسب مجموع أرصدة الأبناء. للعقد النهائية: الرصيد المباشر
-    final balance =
-        isLeaf ? (node['CurrentBalance'] ?? 0) : _calculateSubtreeBalance(node);
+    // الرصيد محسوب مسبقاً من البيكاند (يشمل مجموع الأبناء)
+    final balance = node['CurrentBalance'] ?? 0;
     final isActive = node['IsActive'] ?? true;
     final nodeId = node['Id']?.toString() ?? code.toString();
     final isExpanded = _expandedNodes.contains(nodeId);

@@ -1083,6 +1083,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           'zoneId': tx.zoneId,
           'deviceUsername': tx.deviceUsername,
           'collectionType': _mapPaymentMode(tx.paymentMode),
+          'paymentMethod': tx.paymentMethod,
+          'remainingBalance': tx.remainingBalance,
+          if (tx.startsAt.isNotEmpty) 'startDate': tx.startsAt,
+          if (tx.endsAt.isNotEmpty) 'endDate': tx.endsAt,
+          if (tx.planDuration > 0) 'commitmentPeriod': tx.planDuration,
         });
       }
     }
@@ -3891,8 +3896,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 icon: Icon(Icons.payments,
                                     size: context.accR.iconS,
                                     color: Colors.green.shade700),
-                                onPressed: () => _showQuickDeliverDialog(op),
-                                tooltip: 'تسليم نقد',
+                                onPressed: () => op['isTechnician'] == true
+                                    ? _showTechnicianPaymentDialog(op)
+                                    : _showQuickDeliverDialog(op),
+                                tooltip: op['isTechnician'] == true ? 'تسديد فني' : 'تسليم نقد',
                               ),
                               SizedBox(width: context.accR.spaceXS),
                               IconButton(
@@ -3908,7 +3915,31 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           ],
                         ))),
                       ]);
-                    }).toList();
+                    }).toList()
+                    ..add(DataRow(
+                      color: WidgetStateProperty.all(Colors.grey.shade200),
+                      cells: [
+                        DataCell(Center(child: Text('', style: TextStyle(fontSize: context.accR.small)))),
+                        DataCell(Center(child: Text('المجموع', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${filtered.fold<int>(0, (s, o) => s + ((o['totalCount'] ?? 0) as int))}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['pageDeduction'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.indigo.shade800)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['revenue'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.green.shade800)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['expense'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade800)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['totalAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.blue.shade800)))),
+                        DataCell(Center(child: Text('${filtered.fold<int>(0, (s, o) => s + ((o['purchaseCount'] ?? 0) as int))}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text('${filtered.fold<int>(0, (s, o) => s + ((o['renewalCount'] ?? 0) as int))}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text('${filtered.fold<int>(0, (s, o) => s + ((o['changeCount'] ?? 0) as int))}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['cashAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['creditAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['masterAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['agentAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['technicianAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['deliveredCash'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['netOwed'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade700)))),
+                        DataCell(Center(child: Text('', style: TextStyle(fontSize: context.accR.small)))),
+                        DataCell(Center(child: Text(''))),
+                      ],
+                    ));
                     })(),
                   ),
                 ),
@@ -4137,6 +4168,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           initialFromDate: _fromDate,
           initialToDate: _toDate,
           initialDateLabel: _dateLabel,
+          isTechnician: op['isTechnician'] == true,
         ),
       ),
     );
@@ -4569,6 +4601,159 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _showTechnicianPaymentDialog(Map<String, dynamic> op) async {
+    final userId = op['userId']?.toString();
+    if (userId == null || userId.isEmpty) return;
+    final name = op['operatorName'] ?? 'فني';
+    final totalAmount = (op['totalAmount'] ?? 0).toDouble();
+    final delivered = (op['deliveredCash'] ?? 0).toDouble();
+    final remaining = totalAmount - delivered;
+    final amountController = TextEditingController();
+    final notesController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.payments, color: Colors.green.shade700),
+              SizedBox(width: context.accR.spaceS),
+              Expanded(
+                child: Text('تسديد فني — $name',
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.body,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: context.accR.isMobile
+                ? MediaQuery.of(context).size.width * 0.9
+                : 350,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('المستحق: ${_currencyFormat.format(remaining)}',
+                    style: GoogleFonts.cairo(
+                        fontSize: context.accR.financialSmall,
+                        color: Colors.grey.shade700)),
+                SizedBox(height: context.accR.spaceM),
+                TextField(
+                  controller: amountController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'المبلغ',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.attach_money),
+                  ),
+                ),
+                SizedBox(height: context.accR.spaceS),
+                // حقل التاريخ
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2024),
+                      lastDate: DateTime.now().add(const Duration(days: 1)),
+                      locale: const Locale('ar'),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, color: Colors.blue, size: 18),
+                        const SizedBox(width: 8),
+                        Text('التاريخ: ${selectedDate.year}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.day.toString().padLeft(2, '0')}'),
+                        const Spacer(),
+                        Icon(Icons.edit, color: Colors.grey, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: context.accR.spaceS),
+                TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظات (اختياري)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.note),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, {'confirmed': true, 'date': selectedDate}),
+              icon: Icon(Icons.check, size: context.accR.iconM),
+              label: const Text('تسديد'),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null || result['confirmed'] != true) return;
+    final pickedDate = result['date'] as DateTime;
+    final amount = double.tryParse(amountController.text);
+    if (amount == null || amount <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('أدخل مبلغاً صحيحاً'),
+              backgroundColor: Colors.orange),
+        );
+      }
+      return;
+    }
+
+    try {
+      final res = await AccountingService.instance.recordTechnicianPayment(
+        technicianId: userId,
+        amount: amount,
+        description: 'تسديد نقدي',
+        notes: notesController.text.isEmpty ? null : notesController.text,
+        transactionDate: pickedDate,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['success'] == true
+                ? 'تم تسديد ${_currencyFormat.format(amount)} بنجاح'
+                : res['message'] ?? 'خطأ'),
+            backgroundColor: res['success'] == true ? Colors.green : Colors.red,
+          ),
+        );
+        if (res['success'] == true) _loadOursData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -7181,6 +7366,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               'startDate': tx.startsAt,
               'endDate': tx.endsAt,
               'remainingBalance': tx.remainingBalance,
+              if (tx.planDuration > 0) 'commitmentPeriod': tx.planDuration,
               'createAccounting': true,
               if (operatorUserId != null) 'operatorUserId': operatorUserId,
             })
@@ -8915,6 +9101,17 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     super.dispose();
   }
 
+  /// تحويل تاريخ UTC إلى التوقيت المحلي (العراق +3)
+  static String _toLocalDate(String? isoDate) {
+    if (isoDate == null || isoDate.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return isoDate;
+    }
+  }
+
   /// استخراج اسم الفني/الوكيل من الاستجابة (يجرب عدة أسماء للحقل)
   static String _extractTechName(dynamic item) {
     // أسماء محتملة للحقل في الـ JSON
@@ -8964,7 +9161,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       final result = items.map<Map<String, dynamic>>((item) {
         return {
           'id':               item['Id']?.toString() ?? '',
-          'تاريخ التفعيل':   item['ActivationDate']?.toString() ?? '',
+          'تاريخ التفعيل':   _toLocalDate(item['ActivationDate']?.toString()),
           'المُفعِّل':        item['ActivatedBy']?.toString() ?? '',
           'اسم العميل':      item['CustomerName']?.toString() ?? '',
           'اسم الباقة':      item['PlanName']?.toString() ?? '',
@@ -8982,8 +9179,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'واتساب':          item['IsWhatsAppSent'] == true,
           'اسم الجهاز':      item['DeviceUsername']?.toString() ?? '',
           'ملاحظات':         item['SubscriptionNotes']?.toString() ?? '',
-          'تاريخ البدء':     item['StartDate']?.toString() ?? '',
-          'تاريخ الانتهاء':  item['EndDate']?.toString() ?? '',
+          'تاريخ البدء':     _toLocalDate(item['StartDate']?.toString()),
+          'تاريخ الانتهاء':  _toLocalDate(item['EndDate']?.toString()),
           'fbg':             item['FbgInfo']?.toString() ?? '',
           'fat':             item['FatInfo']?.toString() ?? '',
           'fdt':             item['FdtInfo']?.toString() ?? '',

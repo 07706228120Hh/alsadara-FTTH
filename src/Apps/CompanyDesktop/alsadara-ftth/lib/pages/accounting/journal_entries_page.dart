@@ -133,19 +133,18 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
       String? fromDate;
       String? toDate;
       if (_dateFrom != null || _dateTo != null) {
-        // فلتر متقدم — yyyy-MM-dd + يوم إضافي لـ toDate ليشمل كامل اليوم
+        // فلتر متقدم (نضيف 3 ساعات لتعويض طرح السيرفر)
         if (_dateFrom != null) {
-          fromDate = _fmtDate(_dateFrom!);
+          fromDate = _fmtDate(_dateFrom!.add(const Duration(hours: 3)));
         }
         if (_dateTo != null) {
-          toDate = _fmtDate(_dateTo!.add(const Duration(days: 1)));
+          toDate = _fmtDate(_dateTo!.add(const Duration(days: 1, hours: 3)));
         }
       } else {
-        // افتراضي: أمس + اليوم
+        // افتراضي: اليوم فقط (نضيف 3 ساعات لتعويض طرح السيرفر)
         final now = DateTime.now();
-        final yesterday = now.subtract(const Duration(days: 1));
-        fromDate = _fmtDate(DateTime(yesterday.year, yesterday.month, yesterday.day));
-        toDate = _fmtDate(DateTime(now.year, now.month, now.day).add(const Duration(days: 1)));
+        fromDate = _fmtDate(DateTime(now.year, now.month, now.day).add(const Duration(hours: 3)));
+        toDate = _fmtDate(DateTime(now.year, now.month, now.day).add(const Duration(days: 1, hours: 3)));
       }
 
       final result = await AccountingService.instance
@@ -379,32 +378,6 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   }
 
   Widget _buildFilterBar() {
-    final filters = [
-      {
-        'value': 'all',
-        'label': 'الكل',
-        'icon': Icons.check,
-        'color': AccountingTheme.neonBlue
-      },
-      {
-        'value': 'Draft',
-        'label': 'مسودة',
-        'icon': Icons.drafts,
-        'color': AccountingTheme.textMuted
-      },
-      {
-        'value': 'Posted',
-        'label': 'مرحل',
-        'icon': Icons.check_circle,
-        'color': AccountingTheme.neonGreen
-      },
-      {
-        'value': 'Voided',
-        'label': 'ملغي',
-        'icon': Icons.cancel,
-        'color': AccountingTheme.danger
-      },
-    ];
     final isMobile = context.accR.isMobile;
 
     return Container(
@@ -416,74 +389,42 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
       ),
       child: Column(
         children: [
-          // السطر الأول: فلاتر الحالة
+          // السطر الأول: فلاتر نوع العملية + عداد
           Row(
             children: [
-              ...filters.map((f) {
-                final isSelected = _statusFilter == f['value'];
-                final color = f['color'] as Color;
-                return Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: InkWell(
-                    onTap: () {
-                      setState(() => _statusFilter = f['value'] as String);
-                      _loadData();
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 8 : context.accR.spaceM,
-                          vertical: context.accR.spaceXS),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? color.withOpacity(0.2)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected
-                              ? color.withOpacity(0.5)
-                              : AccountingTheme.borderColor,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isSelected) ...[
-                            Icon(f['icon'] as IconData,
-                                size: context.accR.iconS, color: color),
-                            SizedBox(width: context.accR.spaceXS),
-                          ],
-                          Text(f['label'] as String,
-                              style: GoogleFonts.cairo(
-                                fontSize: context.accR.small,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? color
-                                    : AccountingTheme.textSecondary,
-                              )),
-                        ],
-                      ),
-                    ),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _refChip('all', 'الكل', Icons.select_all, AccountingTheme.neonBlue),
+                      _refChip('FtthSubscription', 'تجديدات', Icons.wifi, const Color(0xFF2196F3)),
+                      _refChip('TechnicianCollection', 'قبض', Icons.arrow_downward, AccountingTheme.success),
+                      _refChip('Expense', 'صرف', Icons.arrow_upward, AccountingTheme.danger),
+                      _refChip('Salary', 'رواتب', Icons.payments, const Color(0xFFE91E63)),
+                      _refChip('CashDeposit', 'إيداع', Icons.add_circle_outline, const Color(0xFF4CAF50)),
+                      _refChip('CashWithdrawal', 'سحب', Icons.remove_circle_outline, const Color(0xFFFF9800)),
+                      _refChip('OperatorCashDelivery', 'تسليم كاش', Icons.local_shipping, const Color(0xFF009688)),
+                      _refChip('OperatorCreditCollection', 'تحصيل ذمم', Icons.receipt_long, const Color(0xFF673AB7)),
+                      _refChip('Manual', 'يدوي', Icons.edit_note, AccountingTheme.textMuted),
+                    ],
                   ),
-                );
-              }),
-              const Spacer(),
-              // عدد القيود في الصفحة + الإجمالي على السيرفر
-              Text('${_filteredEntries.length} من $_total قيد',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('${_filteredEntries.length} من $_total',
                   style: GoogleFonts.cairo(
                       color: AccountingTheme.textMuted,
-                      fontSize: context.accR.financialSmall)),
+                      fontSize: context.accR.small)),
               if (_dateFrom == null && _dateTo == null) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
                     color: AccountingTheme.info.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text('اليوم + أمس',
+                  child: Text('اليوم',
                       style: GoogleFonts.cairo(
                           color: AccountingTheme.info,
                           fontSize: 10,
@@ -493,7 +434,46 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
             ],
           ),
           SizedBox(height: context.accR.spaceS),
-          // السطر الثاني: بحث + تصفية متقدمة + تحديد
+          // مجموع المبالغ
+          Builder(builder: (_) {
+            final entries = _filteredEntries;
+            double totalDebit = 0;
+            for (final e in entries) {
+              final lines = (e['Lines'] as List?) ?? [];
+              for (final l in lines) {
+                totalDebit += ((l['DebitAmount'] ?? 0) as num).toDouble();
+              }
+            }
+            if (entries.isEmpty) return const SizedBox.shrink();
+            final fmt = totalDebit.round().toString().replaceAllMapped(
+                RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AccountingTheme.neonBlue.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AccountingTheme.neonBlue.withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.summarize, size: 16, color: AccountingTheme.neonBlue),
+                  const SizedBox(width: 6),
+                  Text('مجموع ${entries.length} قيد:',
+                      style: GoogleFonts.cairo(
+                          fontSize: 12, color: AccountingTheme.textSecondary)),
+                  const SizedBox(width: 8),
+                  Text('$fmt د.ع',
+                      style: GoogleFonts.cairo(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AccountingTheme.neonBlue)),
+                ],
+              ),
+            );
+          }),
+          SizedBox(height: context.accR.spaceS),
+          // السطر الثالث: بحث + تصفية متقدمة + تحديد
           Row(
             children: [
               // حقل البحث
@@ -674,8 +654,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         final status = entry['Status']?.toString() ?? 'Draft';
         final statusInfo = _statusInfo(status);
         final lines = (entry['Lines'] as List?) ?? [];
-        final totalDebit = lines.fold<double>(
-            0, (s, l) => s + ((l['DebitAmount'] ?? 0) as num).toDouble());
+        final totalDebit = lines.isNotEmpty
+            ? lines.fold<double>(0, (s, l) => s + ((l['DebitAmount'] ?? 0) as num).toDouble())
+            : ((entry['TotalDebit'] ?? 0) as num).toDouble();
 
         return Container(
           margin: EdgeInsets.only(bottom: context.accR.spaceS),
@@ -1779,18 +1760,62 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     }
   }
 
+  Widget _refChip(String value, String label, IconData icon, Color color) {
+    final isSelected = _refTypeFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: InkWell(
+        onTap: () => setState(() => _refTypeFilter = value),
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.18) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isSelected ? color.withOpacity(0.5) : AccountingTheme.borderColor,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: isSelected ? color : AccountingTheme.textMuted),
+              const SizedBox(width: 4),
+              Text(label,
+                  style: GoogleFonts.cairo(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? color : AccountingTheme.textSecondary,
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _refTypeLabel(dynamic refType) {
     switch (refType?.toString()) {
       case 'Manual':
         return 'يدوي';
       case 'CashTransaction':
         return 'حركة صندوق';
+      case 'CashDeposit':
+        return 'إيداع';
+      case 'CashWithdrawal':
+        return 'سحب';
       case 'Salary':
         return 'رواتب';
       case 'TechnicianCollection':
-        return 'تحصيل';
+        return 'قبض';
       case 'Expense':
-        return 'مصروف';
+        return 'صرف';
+      case 'FtthSubscription':
+        return 'تجديد';
+      case 'OperatorCashDelivery':
+        return 'تسليم كاش';
+      case 'OperatorCreditCollection':
+        return 'تحصيل ذمم';
       default:
         return refType?.toString() ?? '';
     }

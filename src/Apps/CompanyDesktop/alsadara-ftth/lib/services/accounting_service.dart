@@ -489,12 +489,14 @@ class AccountingService {
     required double amount,
     String? description,
     String? notes,
+    DateTime? transactionDate,
   }) async {
     final body = <String, dynamic>{
       'TechnicianId': technicianId,
       'Amount': amount,
       'Description': description,
       'Notes': notes,
+      'TransactionDate': transactionDate?.toIso8601String(),
     };
     body.removeWhere((key, value) => value == null);
     final response = await _client.post(
@@ -515,6 +517,7 @@ class AccountingService {
     int? category,
     String? referenceNumber,
     String? receivedBy,
+    DateTime? transactionDate,
   }) async {
     final body = <String, dynamic>{
       if (amount != null) 'Amount': amount,
@@ -524,6 +527,7 @@ class AccountingService {
       if (category != null) 'Category': category,
       if (referenceNumber != null) 'ReferenceNumber': referenceNumber,
       if (receivedBy != null) 'ReceivedBy': receivedBy,
+      if (transactionDate != null) 'TransactionDate': transactionDate.toIso8601String(),
     };
     final response = await _client.put(
       '/techniciantransactions/$transactionId',
@@ -931,21 +935,50 @@ class AccountingService {
   /// تعديل بيانات سجل اشتراك FTTH (نوع التحصيل، الفني، الملاحظات)
   Future<Map<String, dynamic>> updateSubscriptionLog({
     required int logId,
+    Map<String, dynamic>? fields,
+    // legacy params
     String? collectionType,
     String? technicianName,
     String? subscriptionNotes,
   }) async {
-    final body = <String, dynamic>{
-      if (collectionType != null) 'CollectionType': collectionType,
-      if (technicianName != null) 'TechnicianName': technicianName,
-      if (subscriptionNotes != null) 'SubscriptionNotes': subscriptionNotes,
-    };
+    final body = <String, dynamic>{};
+    if (fields != null) {
+      body.addAll(fields);
+    } else {
+      if (collectionType != null) body['CollectionType'] = collectionType;
+      if (technicianName != null) body['TechnicianName'] = technicianName;
+      if (subscriptionNotes != null) body['SubscriptionNotes'] = subscriptionNotes;
+    }
     final response = await _client.put(
       '/ftth-accounting/update-subscription-log/$logId',
       body,
       (json) => json,
     );
     return _toMap(response);
+  }
+
+  /// جلب قائمة الفنيين
+  Future<List<Map<String, dynamic>>> getTechniciansList({String? companyId}) async {
+    var url = '/ftth-accounting/technicians-list';
+    if (companyId != null) url += '?companyId=$companyId';
+    final response = await _client.get(url, (json) => json);
+    final map = _toMap(response);
+    if (map['success'] == true && map['data'] is List) {
+      return (map['data'] as List).cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  /// جلب قائمة الوكلاء
+  Future<List<Map<String, dynamic>>> getAgentsList({String? companyId}) async {
+    var url = '/ftth-accounting/agents-list';
+    if (companyId != null) url += '?companyId=$companyId';
+    final response = await _client.get(url, (json) => json);
+    final map = _toMap(response);
+    if (map['success'] == true && map['data'] is List) {
+      return (map['data'] as List).cast<Map<String, dynamic>>();
+    }
+    return [];
   }
 
   /// تحصيل شهر واحد من اشتراك مكرر

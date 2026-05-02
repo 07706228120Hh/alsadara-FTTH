@@ -61,7 +61,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   bool showFilters = false; // للتحكم في إظهار/إخفاء التصفية
 
   // تصفية سريعة بالتاريخ: 'today_yesterday' (افتراضي), 'today', 'yesterday', 'all'
-  String _quickDateFilter = 'today_yesterday';
+  String _quickDateFilter = 'today';
 
   // صلاحيات
   bool isAdmin = false; // يتم تحديده حسب اسم المستخدم
@@ -92,8 +92,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   void _setInitialDateFilter() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    fromDate = yesterday;
+    fromDate = today;
     toDate = today;
   }
 
@@ -239,6 +238,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         'نوع العملية': opType,
         'منفذ العملية': m['ActivatedBy'] ?? '',
         'المُفعِّل': m['ActivatedBy'] ?? '',
+        '_userId': m['UserId']?.toString() ?? '',
+        '_ftthUsername': m['FtthUsername']?.toString() ?? '',
         'تاريخ التفعيل': dateStr,
         'التاريخ': dateStr,
         'الوقت': timeStr,
@@ -299,15 +300,26 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
       // تطبيق تصفية الصلاحيات: المدير يرى كل شيء، غير المدير يرى سجلاته فقط
       if (!isAdmin) {
-        processed = processed.where((record) {
-          final executor =
-              record['منفذ العملية']?.toString().trim().toLowerCase() ?? '';
-          final activator =
-              record['المُفعِّل']?.toString().trim().toLowerCase() ?? '';
-          final currentUser = widget.activatedBy.trim().toLowerCase();
+        final currentUser = widget.activatedBy.trim().toLowerCase();
 
-          // إظهار السجل إذا كان المستخدم الحالي هو منفذ العملية أو المُفعِّل
-          return executor == currentUser || activator == currentUser;
+        // 1. أجد UserId من أي سجل يطابق اسم المستخدم أو الاسم العربي
+        String myUserId = '';
+        for (final r in processed) {
+          final act = r['منفذ العملية']?.toString().trim().toLowerCase() ?? '';
+          final uid = r['_userId']?.toString() ?? '';
+          final ftthUser = r['_ftthUsername']?.toString().trim().toLowerCase() ?? '';
+          if (uid.isNotEmpty && (act == currentUser || ftthUser == currentUser)) {
+            myUserId = uid;
+            break;
+          }
+        }
+
+        // 2. فلترة بـ UserId (الأدق) أو بالاسم كـ fallback
+        processed = processed.where((record) {
+          final uid = record['_userId']?.toString() ?? '';
+          if (myUserId.isNotEmpty && uid.isNotEmpty) return uid == myUserId;
+          final executor = record['منفذ العملية']?.toString().trim().toLowerCase() ?? '';
+          return executor == currentUser;
         }).toList();
 
         debugPrint(

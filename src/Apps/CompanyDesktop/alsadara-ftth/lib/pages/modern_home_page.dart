@@ -230,7 +230,7 @@ class _ModernHomePageState extends State<ModernHomePage>
       case 'sadara_portal':
         return const SadaraPortalPage();
       case 'accounting':
-        return const AccountingDashboardPage();
+        return AccountingDashboardPage(companyId: widget.tenantId);
       case 'follow_up':
         return FollowUpPage(
           username: widget.username,

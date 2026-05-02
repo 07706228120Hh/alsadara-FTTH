@@ -754,67 +754,67 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
       return const SizedBox.shrink();
     }
     final expanded = forceExpanded || _sidebarExpanded;
-    return Tooltip(
-      message: expanded ? '' : label,
-      preferBelow: false,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-            horizontal: expanded ? 8.0 : 4, vertical: 2),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
-            hoverColor: color.withOpacity(0.08),
-            splashColor: color.withOpacity(0.15),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: expanded ? 10.0 : 0,
-                  vertical: expanded ? 10.0 : 6),
-              child: expanded
-                  ? Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(icon, color: color, size: 16),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            label,
-                            style: GoogleFonts.cairo(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _textDark,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Icon(Icons.chevron_left,
-                            color: _textGray, size: 16),
-                      ],
-                    )
-                  : Center(
-                      child: Container(
-                        width: 32,
-                        height: 32,
+    Widget btn = Padding(
+      padding: EdgeInsets.symmetric(
+          horizontal: expanded ? 8.0 : 4, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: color.withOpacity(0.08),
+          splashColor: color.withOpacity(0.15),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: expanded ? 10.0 : 0,
+                vertical: expanded ? 10.0 : 6),
+            child: expanded
+                ? Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(icon, color: color, size: 18),
+                        child: Icon(icon, color: color, size: 16),
                       ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: GoogleFonts.cairo(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _textDark,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Icon(Icons.chevron_left,
+                          color: _textGray, size: 16),
+                    ],
+                  )
+                : Center(
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, color: color, size: 18),
                     ),
-            ),
+                  ),
           ),
         ),
       ),
     );
+    if (!expanded) {
+      return Tooltip(message: label, preferBelow: false, child: btn);
+    }
+    return btn;
   }
 
   Widget _buildPageToolbar() {
@@ -1056,6 +1056,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     final advances = data['Advances'] as Map<String, dynamic>? ?? {};
 
     final items = <_SummaryItem>[
+      _SummaryItem(
+        title: 'النقد والصندوق',
+        value: _formatCurrency(accountBalances['CashAccountBalance']),
+        subtitle: 'حساب 1110 وفروعه',
+        icon: Icons.savings,
+        color: const Color(0xFF1B5E20),
+      ),
       _SummaryItem(
         title: 'رصيد القاصة',
         value: _formatCurrency(accountBalances['CashRegisterBalance']),
@@ -1642,9 +1649,20 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     );
   }
 
-  void _navigateTo(Widget page) async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-    _loadDashboard();
+  void _navigateTo(Widget page) {
+    final nav = Navigator.of(context);
+    // إغلاق الدرج أولاً إن كان مفتوحاً
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold != null && scaffold.isDrawerOpen) {
+      nav.pop();
+    }
+    // تأخير التنقل للإطار التالي لضمان إغلاق الدرج
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      nav.push(MaterialPageRoute(builder: (_) => page)).then((_) {
+        if (mounted) _loadDashboard();
+      });
+    });
   }
 
   static final _currencyFmt = NumberFormat('#,##0', 'ar');

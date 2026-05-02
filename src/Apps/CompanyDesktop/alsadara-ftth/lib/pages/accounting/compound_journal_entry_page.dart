@@ -29,14 +29,105 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   // خطوط القيد المركب
   final List<_JournalLine> _lines = [];
 
+  // ── التنقل بين القيود ──
+  List<dynamic> _allEntries = [];
+  int _currentEntryIndex = -1; // -1 = قيد جديد
+  String? _viewingEntryId;
+  bool _isReadOnly = false;
+
   @override
   void initState() {
     super.initState();
     _loadAccounts();
+    _loadAllEntryIds();
     // إضافة 5 أسطر مبدئية
     for (int i = 0; i < 5; i++) {
       _lines.add(_JournalLine());
     }
+  }
+
+  /// جلب قائمة كل القيود للتنقل
+  Future<void> _loadAllEntryIds() async {
+    try {
+      final result = await AccountingService.instance.getJournalEntries(
+        companyId: widget.companyId,
+        pageSize: 10000,
+      );
+      if (result['success'] == true) {
+        List all;
+        if (result['data'] is Map) {
+          final dataMap = result['data'] as Map<String, dynamic>;
+          all = (dataMap['items'] ?? dataMap['entries'] ?? []) as List;
+        } else {
+          all = (result['data'] is List) ? result['data'] as List : [];
+        }
+        // استثناء قيود الاشتراكات (FtthSubscription=10, OperatorCashDelivery=11, OperatorCreditCollection=12)
+        final excluded = {10, 11, 12};
+        all = all.where((e) => !excluded.contains(e['ReferenceType'])).toList();
+        // ترتيب من الأحدث للأقدم
+        all.sort((a, b) => (b['EntryDate'] ?? b['CreatedAt'] ?? '')
+            .toString()
+            .compareTo((a['EntryDate'] ?? a['CreatedAt'] ?? '').toString()));
+        setState(() => _allEntries = all);
+      }
+    } catch (_) {}
+  }
+
+  /// تحميل قيد معين في الفورم
+  Future<void> _loadEntry(int index) async {
+    if (index < 0 || index >= _allEntries.length) return;
+    final entry = _allEntries[index];
+    final entryId = entry['Id']?.toString();
+    if (entryId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final result = await AccountingService.instance.getJournalEntry(entryId);
+      if (result['success'] == true) {
+        final data = result['data'];
+        final lines = (data['Lines'] as List?) ?? [];
+
+        // مسح الأسطر الحالية
+        for (final l in _lines) { l.dispose(); }
+        _lines.clear();
+
+        _descCtrl.text = data['Description'] ?? '';
+        _notesCtrl.text = data['Notes'] ?? '';
+
+        for (final l in lines) {
+          final line = _JournalLine();
+          line.accountId = l['AccountId']?.toString();
+          line.accountName = '${l['AccountCode'] ?? ''} - ${l['AccountName'] ?? ''}';
+          line.debit = ((l['DebitAmount'] ?? 0) as num).toDouble();
+          line.credit = ((l['CreditAmount'] ?? 0) as num).toDouble();
+          line.debitCtrl.text = line.debit > 0 ? _fmtNum(line.debit) : '';
+          line.creditCtrl.text = line.credit > 0 ? _fmtNum(line.credit) : '';
+          line.descCtrl.text = l['Description'] ?? '';
+          _lines.add(line);
+        }
+        // إضافة سطر فارغ إذا أقل من 2
+        while (_lines.length < 2) { _lines.add(_JournalLine()); }
+
+        _currentEntryIndex = index;
+        _viewingEntryId = entryId;
+        _isReadOnly = false;
+      }
+    } catch (_) {}
+    setState(() => _isLoading = false);
+  }
+
+  /// قيد جديد (مسح الفورم)
+  void _newEntry() {
+    for (final l in _lines) { l.dispose(); }
+    _lines.clear();
+    _descCtrl.clear();
+    _notesCtrl.clear();
+    for (int i = 0; i < 5; i++) { _lines.add(_JournalLine()); }
+    setState(() {
+      _currentEntryIndex = -1;
+      _viewingEntryId = null;
+      _isReadOnly = false;
+    });
   }
 
   @override
@@ -62,6 +153,18 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
       }
     } catch (_) {}
     setState(() => _isLoading = false);
+  }
+
+  /// تنسيق رقم بفواصل الآلاف
+  String _fmtNum(double n) {
+    if (n == 0) return '';
+    return n.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+  }
+
+  /// تحليل رقم منسق (إزالة الفواصل)
+  double _parseNum(String s) {
+    return double.tryParse(s.replaceAll(',', '')) ?? 0;
   }
 
   double get _totalDebit => _lines.fold(0, (s, l) => s + l.debit);
@@ -135,6 +238,72 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   fontSize: isMob ? 14 : ar.headingMedium,
                   fontWeight: FontWeight.bold,
                   color: Colors.black)),
+          if (_allEntries.isNotEmpty) ...[
+            SizedBox(width: isMob ? 8 : 16),
+            Container(
+              decoration: BoxDecoration(
+                color: AccountingTheme.bgCardHover,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AccountingTheme.borderColor),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ← الأقدم (index أكبر)
+                  IconButton(
+                    onPressed: _currentEntryIndex < _allEntries.length - 1
+                        ? () => _loadEntry(_currentEntryIndex == -1 ? 0 : _currentEntryIndex + 1)
+                        : null,
+                    icon: const Icon(Icons.chevron_right, size: 20),
+                    tooltip: 'الأقدم',
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                  // رقم القيد الحالي
+                  InkWell(
+                    onTap: _viewingEntryId != null ? _newEntry : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Text(
+                        _currentEntryIndex >= 0
+                            ? '${_allEntries[_currentEntryIndex]['EntryNumber'] ?? '${_currentEntryIndex + 1}'}'
+                            : 'جديد',
+                        style: GoogleFonts.cairo(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _currentEntryIndex >= 0 ? AccountingTheme.neonBlue : AccountingTheme.neonGreen,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // → الأحدث (index أصغر)
+                  IconButton(
+                    onPressed: _currentEntryIndex > 0
+                        ? () => _loadEntry(_currentEntryIndex - 1)
+                        : _currentEntryIndex == 0
+                            ? _newEntry
+                            : null,
+                    icon: const Icon(Icons.chevron_left, size: 20),
+                    tooltip: 'الأحدث',
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                ],
+              ),
+            ),
+            // زر قيد جديد
+            if (_isReadOnly) ...[
+              SizedBox(width: 6),
+              IconButton(
+                onPressed: _newEntry,
+                icon: const Icon(Icons.add_circle_outline, size: 22),
+                tooltip: 'قيد جديد',
+                style: IconButton.styleFrom(foregroundColor: AccountingTheme.neonGreen),
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ],
           const Spacer(),
           if (isMob) ...[
             // أيقونات القوالب على الهاتف
@@ -951,12 +1120,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       textAlign: TextAlign.center,
                       onChanged: (v) {
                         setState(() {
-                          line.debit = double.tryParse(v) ?? 0;
+                          line.debit = _parseNum(v);
                           if (line.debit > 0 && line.credit > 0) {
                             line.credit = 0;
                             line.creditCtrl.clear();
                           }
                         });
+                      },
+                      onEditingComplete: () {
+                        if (line.debit > 0) line.debitCtrl.text = _fmtNum(line.debit);
                       },
                       decoration: InputDecoration(
                         hintText: 'مدين',
@@ -1003,12 +1175,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       textAlign: TextAlign.center,
                       onChanged: (v) {
                         setState(() {
-                          line.credit = double.tryParse(v) ?? 0;
+                          line.credit = _parseNum(v);
                           if (line.credit > 0 && line.debit > 0) {
                             line.debit = 0;
                             line.debitCtrl.clear();
                           }
                         });
+                      },
+                      onEditingComplete: () {
+                        if (line.credit > 0) line.creditCtrl.text = _fmtNum(line.credit);
                       },
                       decoration: InputDecoration(
                         hintText: 'دائن',
@@ -1442,12 +1617,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               textAlign: TextAlign.center,
               onChanged: (v) {
                 setState(() {
-                  line.debit = double.tryParse(v) ?? 0;
+                  line.debit = _parseNum(v);
                   if (line.debit > 0 && line.credit > 0) {
                     line.credit = 0;
                     line.creditCtrl.clear();
                   }
                 });
+              },
+              onEditingComplete: () {
+                if (line.debit > 0) line.debitCtrl.text = _fmtNum(line.debit);
               },
               decoration: InputDecoration(
                 hintText: '0',
@@ -1486,12 +1664,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               textAlign: TextAlign.center,
               onChanged: (v) {
                 setState(() {
-                  line.credit = double.tryParse(v) ?? 0;
+                  line.credit = _parseNum(v);
                   if (line.credit > 0 && line.debit > 0) {
                     line.debit = 0;
                     line.debitCtrl.clear();
                   }
                 });
+              },
+              onEditingComplete: () {
+                if (line.credit > 0) line.creditCtrl.text = _fmtNum(line.credit);
               },
               decoration: InputDecoration(
                 hintText: '0',
@@ -2019,8 +2200,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           ? (tl['credit'] as num).toDouble()
           : double.tryParse(tl['credit']?.toString() ?? '') ?? 0;
       line.descCtrl.text = tl['description']?.toString() ?? '';
-      if (line.debit > 0) line.debitCtrl.text = line.debit.toStringAsFixed(0);
-      if (line.credit > 0) line.creditCtrl.text = line.credit.toStringAsFixed(0);
+      if (line.debit > 0) line.debitCtrl.text = _fmtNum(line.debit);
+      if (line.credit > 0) line.creditCtrl.text = _fmtNum(line.credit);
       _lines.add(line);
     }
 
@@ -2062,43 +2243,63 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
 
     try {
       final userId = VpsAuthService.instance.currentUser?.id;
-      // إنشاء القيد
-      final result = await AccountingService.instance.createJournalEntry(
-        description: _descCtrl.text.trim(),
-        lines: validLines
-            .map((l) => {
-                  'AccountId': l.accountId,
-                  'DebitAmount': l.debit,
-                  'CreditAmount': l.credit,
-                  'Description':
-                      l.descCtrl.text.isNotEmpty ? l.descCtrl.text : null,
-                })
-            .toList(),
-        notes: _notesCtrl.text.isEmpty ? null : _notesCtrl.text,
-        companyId: widget.companyId ?? '',
-        createdById: userId,
-      );
+      final linesData = validLines
+          .map((l) => {
+                'AccountId': l.accountId,
+                'DebitAmount': l.debit,
+                'CreditAmount': l.credit,
+                'Description':
+                    l.descCtrl.text.isNotEmpty ? l.descCtrl.text : null,
+              })
+          .toList();
 
-      if (result['success'] == true) {
-        if (post) {
-          // ترحيل القيد مباشرةً
-          final entryId = result['data']?['Id']?.toString();
-          if (entryId != null) {
-            final postResult = await AccountingService.instance
-                .postJournalEntry(entryId, approvedById: userId);
-            if (postResult['success'] == true) {
-              _snack('تم حفظ وترحيل القيد بنجاح', AccountingTheme.success);
-            } else {
-              _snack('تم الحفظ لكن فشل الترحيل: ${postResult['message']}',
-                  AccountingTheme.warning);
-            }
-          }
+      if (_viewingEntryId != null) {
+        // ── تعديل قيد موجود ──
+        final result = await AccountingService.instance.updateJournalEntry(
+          _viewingEntryId!,
+          {
+            'Description': _descCtrl.text.trim(),
+            'Notes': _notesCtrl.text.isEmpty ? null : _notesCtrl.text,
+            'Lines': linesData,
+          },
+        );
+        if (result['success'] == true) {
+          _snack('تم تعديل القيد بنجاح', AccountingTheme.success);
+          await _loadAllEntryIds();
+          await _loadEntry(_currentEntryIndex);
         } else {
-          _snack('تم حفظ القيد كمسودة', AccountingTheme.success);
+          _snack(result['message'] ?? 'خطأ في تعديل القيد', AccountingTheme.danger);
         }
-        if (mounted) Navigator.pop(context, true);
       } else {
-        _snack(result['message'] ?? 'خطأ في حفظ القيد', AccountingTheme.danger);
+        // ── إنشاء قيد جديد ──
+        final result = await AccountingService.instance.createJournalEntry(
+          description: _descCtrl.text.trim(),
+          lines: linesData,
+          notes: _notesCtrl.text.isEmpty ? null : _notesCtrl.text,
+          companyId: widget.companyId ?? '',
+          createdById: userId,
+        );
+
+        if (result['success'] == true) {
+          if (post) {
+            final entryId = result['data']?['Id']?.toString();
+            if (entryId != null) {
+              final postResult = await AccountingService.instance
+                  .postJournalEntry(entryId, approvedById: userId);
+              if (postResult['success'] == true) {
+                _snack('تم حفظ وترحيل القيد بنجاح', AccountingTheme.success);
+              } else {
+                _snack('تم الحفظ لكن فشل الترحيل: ${postResult['message']}',
+                    AccountingTheme.warning);
+              }
+            }
+          } else {
+            _snack('تم حفظ القيد كمسودة', AccountingTheme.success);
+          }
+          if (mounted) Navigator.pop(context, true);
+        } else {
+          _snack(result['message'] ?? 'خطأ في حفظ القيد', AccountingTheme.danger);
+        }
       }
     } catch (e) {
       _snack('خطأ', AccountingTheme.danger);
