@@ -1064,7 +1064,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
             'x-user-role': '0',
           },
           body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 20));
+        ).timeout(const Duration(seconds: 60));
 
       debugPrint('📥 الاستجابة: ${resp.statusCode}');
       debugPrint('📥 Headers: ${resp.headers}');

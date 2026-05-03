@@ -488,7 +488,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             final resp = await AuthService.instance.authenticatedRequest(
               'GET',
               url,
-            ).timeout(const Duration(seconds: 20));
+            ).timeout(const Duration(seconds: 60));
             if (resp.statusCode == 200) {
               final data = jsonDecode(resp.body);
               final items = (data['items'] ?? []) as List<dynamic>;
@@ -638,7 +638,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         final batch = customerIds.skip(i).take(customerBatch).toList();
         try {
           final summary = await fetchCustomersSummary(batch)
-              .timeout(const Duration(seconds: 20));
+              .timeout(const Duration(seconds: 60));
           final items = summary['items'] as List<dynamic>? ?? [];
           for (var s in list) {
             final cid = s['customer']?['id']?.toString();
