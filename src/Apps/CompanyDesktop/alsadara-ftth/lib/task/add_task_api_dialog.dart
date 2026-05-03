@@ -893,6 +893,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             if (_selectedTaskType == 'شراء اشتراك') ...[
               _buildSubscriptionSection(),
               const SizedBox(height: 8),
+              _buildMaterialsSection(),
+              const SizedBox(height: 8),
             ],
             _buildAdditionalSection(),
           ],
