@@ -553,7 +553,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
           final date = (r['ReportDate'] ?? r['reportDate'])?.toString() ?? '';
           if (date.isNotEmpty) {
             try {
-              final dt = DateTime.parse(date);
+              final dt = DateTime.parse(date).toLocal();
               submittedDates.add(DateFormat('yyyy-MM-dd').format(dt));
             } catch (_) {}
           }
@@ -1658,7 +1658,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     final date = (report['ReportDate'] ?? report['reportDate'])?.toString() ?? '';
     String formattedDate = date;
     try {
-      final dt = DateTime.parse(date);
+      final dt = DateTime.parse(date).toLocal();
       formattedDate = DateFormat('yyyy/MM/dd').format(dt);
     } catch (_) {}
 

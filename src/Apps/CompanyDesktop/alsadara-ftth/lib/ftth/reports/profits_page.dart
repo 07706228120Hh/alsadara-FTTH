@@ -946,11 +946,11 @@ class _ProfitsPageState extends State<ProfitsPage> {
     if (widget.filterData != null) {
       if (widget.filterData!['fromDate'] != null) {
         fromDateText = DateFormat('yyyy-MM-dd')
-            .format(DateTime.parse(widget.filterData!['fromDate']));
+            .format(DateTime.parse(widget.filterData!['fromDate']).toLocal());
       }
       if (widget.filterData!['toDate'] != null) {
         toDateText = DateFormat('yyyy-MM-dd')
-            .format(DateTime.parse(widget.filterData!['toDate']));
+            .format(DateTime.parse(widget.filterData!['toDate']).toLocal());
       }
     }
 
@@ -1207,7 +1207,11 @@ class _ProfitsPageState extends State<ProfitsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // جدول التفاصيل
-          Container(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 72, maxWidth: 900),
+              child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
@@ -1961,6 +1965,8 @@ class _ProfitsPageState extends State<ProfitsPage> {
               ],
             ),
           ),
+          ), // ConstrainedBox
+          ), // SingleChildScrollView
         ],
       ),
     );
@@ -2382,11 +2388,11 @@ class _ProfitsPageState extends State<ProfitsPage> {
     if (filterData['fromDate'] != null || filterData['toDate'] != null) {
       final fromDate = filterData['fromDate'] != null
           ? DateFormat('yyyy-MM-dd')
-              .format(DateTime.parse(filterData['fromDate']))
+              .format(DateTime.parse(filterData['fromDate']).toLocal())
           : 'غير محدد';
       final toDate = filterData['toDate'] != null
           ? DateFormat('yyyy-MM-dd')
-              .format(DateTime.parse(filterData['toDate']))
+              .format(DateTime.parse(filterData['toDate']).toLocal())
           : 'غير محدد';
 
       items.add(
@@ -3158,7 +3164,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
 
         final date = transaction['occuredAt'] != null
             ? DateFormat('yyyy-MM-dd HH:mm')
-                .format(DateTime.parse(transaction['occuredAt']))
+                .format(DateTime.parse(transaction['occuredAt']).toLocal())
             : 'غير محدد';
 
         final type =

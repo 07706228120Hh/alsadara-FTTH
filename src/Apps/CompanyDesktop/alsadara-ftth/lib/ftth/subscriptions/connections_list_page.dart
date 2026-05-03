@@ -1248,327 +1248,85 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               ),
               subtitle: Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // معلومات إضافية على اليسار (فارغة للحفاظ على المساحة)
-                    const SizedBox(width: 1),
-                    // المعلومات المالية على اليمين (مُبرزة)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // عدد الوصولات
-                        Container(
-                          height: 40,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                                color: Colors.blue.shade300, width: 1.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.shade100,
-                                blurRadius: 3,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.link,
-                                  color: Colors.blue.shade700, size: 16),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${technicianConnections.length}',
-                                style: TextStyle(
-                                  color: Colors.blue.shade800,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'عملية',
-                                style: TextStyle(
-                                  color: Colors.blue.shade600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
+                child: Builder(
+                  builder: (context) {
+                    final paymentStats =
+                        _calculatePaymentStats(technicianConnections);
+                    final paidAmount =
+                        paymentStats['paidAmount']! as double;
+                    final unpaidAmount =
+                        paymentStats['unpaidAmount']! as double;
+                    final paidCount = paymentStats['paidCount']! as int;
+                    final unpaidCount =
+                        paymentStats['unpaidCount']! as int;
+                    final totalAmount = paidAmount + unpaidAmount;
+                    final hasUnpaidConnections =
+                        technicianConnections.any(
+                            (connection) =>
+                                !_isConnectionPaid(connection));
+
+                    Widget badge(String label, String value, Color bgColor, Color borderColor, Color textColor, IconData icon) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: borderColor, width: 1),
                         ),
-                        const SizedBox(width: 10),
-                        // مؤشر حالة التسديد
-                        Builder(
-                          builder: (context) {
-                            final paymentStats =
-                                _calculatePaymentStats(technicianConnections);
-                            final paidAmount =
-                                paymentStats['paidAmount']! as double;
-                            final unpaidAmount =
-                                paymentStats['unpaidAmount']! as double;
-                            final paidCount = paymentStats['paidCount']! as int;
-                            final unpaidCount =
-                                paymentStats['unpaidCount']! as int;
-                            final totalAmount = paidAmount + unpaidAmount;
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, color: textColor, size: 14),
+                            const SizedBox(width: 4),
+                            Text(value,
+                                style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 3),
+                            Text(label,
+                                style: TextStyle(color: textColor.withValues(alpha: 0.8), fontSize: 10)),
+                          ],
+                        ),
+                      );
+                    }
 
-                            return Row(
-                              children: [
-                                // المجموع الكلي
-                                Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                        color: Colors.orange.shade300,
-                                        width: 1.5),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.orange.shade100,
-                                        blurRadius: 3,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.account_balance_wallet,
-                                          color: Colors.orange.shade700,
-                                          size: 16),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        _formatAmount(totalAmount),
-                                        style: TextStyle(
-                                          color: Colors.orange.shade800,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'الكلي',
-                                        style: TextStyle(
-                                          color: Colors.orange.shade600,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // عدد المسدد
-                                Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                        color: Colors.green.shade300,
-                                        width: 1.5),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.green.shade100,
-                                        blurRadius: 3,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.check_circle,
-                                          color: Colors.green.shade600,
-                                          size: 16),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '$paidCount',
-                                        style: TextStyle(
-                                          color: Colors.green.shade700,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'مسدد',
-                                        style: TextStyle(
-                                          color: Colors.green.shade600,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                // مبلغ المسدد
-                                Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                        color: Colors.green.shade300,
-                                        width: 1.5),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.attach_money,
-                                          color: Colors.green.shade600,
-                                          size: 14),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _formatAmount(paidAmount),
-                                        style: TextStyle(
-                                          color: Colors.green.shade700,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // عدد غير المسدد
-                                Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade50,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                        color: Colors.red.shade300, width: 1.5),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.red.shade100,
-                                        blurRadius: 3,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.pending,
-                                          color: Colors.red.shade600, size: 16),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '$unpaidCount',
-                                        style: TextStyle(
-                                          color: Colors.red.shade700,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'غير مسدد',
-                                        style: TextStyle(
-                                          color: Colors.red.shade600,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                // مبلغ غير المسدد
-                                Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade50,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                        color: Colors.red.shade300, width: 1.5),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.attach_money,
-                                          color: Colors.red.shade600, size: 14),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _formatAmount(unpaidAmount),
-                                        style: TextStyle(
-                                          color: Colors.red.shade700,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                // زر تسديد جميع العمليات
-                                Builder(
-                                  builder: (context) {
-                                    final hasUnpaidConnections =
-                                        technicianConnections.any(
-                                            (connection) =>
-                                                !_isConnectionPaid(connection));
-
-                                    return ElevatedButton.icon(
-                                      onPressed: hasUnpaidConnections
-                                          ? () {
-                                              _showPayAllConfirmation(
-                                                  context,
-                                                  technicianName,
-                                                  technicianConnections);
-                                            }
-                                          : null,
-                                      icon: Icon(
-                                        Icons.payment,
-                                        size: 16,
-                                        color: hasUnpaidConnections
-                                            ? Colors.white
-                                            : Colors.grey,
-                                      ),
-                                      label: Text(
-                                        'تسديد الكل',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: hasUnpaidConnections
-                                              ? Colors.white
-                                              : Colors.grey,
-                                        ),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: hasUnpaidConnections
-                                            ? Colors.green.shade600
-                                            : Colors.grey.shade300,
-                                        elevation: hasUnpaidConnections ? 2 : 0,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 8),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            );
-                          },
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        badge('عملية', '${technicianConnections.length}',
+                            Colors.blue.shade50, Colors.blue.shade300, Colors.blue.shade700, Icons.link),
+                        badge('الكلي', _formatAmount(totalAmount),
+                            Colors.orange.shade50, Colors.orange.shade300, Colors.orange.shade700, Icons.account_balance_wallet),
+                        badge('مسدد', '$paidCount (${_formatAmount(paidAmount)})',
+                            Colors.green.shade50, Colors.green.shade300, Colors.green.shade700, Icons.check_circle),
+                        badge('غير مسدد', '$unpaidCount (${_formatAmount(unpaidAmount)})',
+                            Colors.red.shade50, Colors.red.shade300, Colors.red.shade700, Icons.pending),
+                        ElevatedButton.icon(
+                          onPressed: hasUnpaidConnections
+                              ? () {
+                                  _showPayAllConfirmation(
+                                      context,
+                                      technicianName,
+                                      technicianConnections);
+                                }
+                              : null,
+                          icon: Icon(Icons.payment, size: 14,
+                              color: hasUnpaidConnections ? Colors.white : Colors.grey),
+                          label: Text('تسديد الكل',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                                  color: hasUnpaidConnections ? Colors.white : Colors.grey)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: hasUnpaidConnections
+                                ? Colors.green.shade600
+                                : Colors.grey.shade300,
+                            elevation: hasUnpaidConnections ? 2 : 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
                         ),
                       ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
               children: technicianConnections
@@ -1801,7 +1559,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
     if (dateStr.isEmpty) return '';
 
     try {
-      final date = DateTime.parse(dateStr);
+      final date = DateTime.parse(dateStr).toLocal();
       return DateFormat('yyyy/MM/dd').format(date);
     } catch (e) {
       return dateStr; // إرجاع النص الأصلي إذا فشل التحويل

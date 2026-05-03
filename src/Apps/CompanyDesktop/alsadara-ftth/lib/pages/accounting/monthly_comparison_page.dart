@@ -798,17 +798,25 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
         boxShadow: AccountingTheme.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          // رأس الجدول
-          _buildTableHeader(ar, isMob),
-          // صفوف البيانات
-          ...List.generate(_monthlyData.length, (i) {
-            return _buildTableRow(_monthlyData[i], i, ar, isMob);
-          }),
-          // صف الإجماليات
-          _buildTotalsRow(totalRevenue, totalExpenses, totalNetIncome, ar, isMob),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: isMob ? 400 : MediaQuery.of(context).size.width - 40,
+          ),
+          child: Column(
+            children: [
+              // رأس الجدول
+              _buildTableHeader(ar, isMob),
+              // صفوف البيانات
+              ...List.generate(_monthlyData.length, (i) {
+                return _buildTableRow(_monthlyData[i], i, ar, isMob);
+              }),
+              // صف الإجماليات
+              _buildTotalsRow(totalRevenue, totalExpenses, totalNetIncome, ar, isMob),
+            ],
+          ),
+        ),
       ),
     );
   }

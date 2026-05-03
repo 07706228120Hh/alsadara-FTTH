@@ -4897,9 +4897,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
     http.Response? lastResponse;
     Object? lastError;
+    bool ftthSuccess = false;
+    String ftthStatusNote = '';
 
     // بناء الطلب مرة واحدة بالصيغة الصحيحة
     final body = buildBody();
+    final opText = isNewSubscription ? 'شراء الاشتراك' : 'تجديد/تغيير الاشتراك';
     debugPrint('🔄 تنفيذ عملية التجديد/التغيير...');
     debugPrint('📤 Body: ${jsonEncode(body)}');
 
@@ -4913,101 +4916,92 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             'x-user-role': '0',
           },
           body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 20));
+        ).timeout(const Duration(seconds: 45));
       lastResponse = resp;
-      final requestId = resp.headers['requestid'];
-      debugPrint('📥 Status: ${resp.statusCode} (requestId=$requestId)');
-      debugPrint('📥 Body: ${resp.body}');
+      debugPrint('📥 Status: ${resp.statusCode}');
 
       if (resp.statusCode == 200) {
-        // نجاح
-        final responseData = jsonDecode(resp.body);
-        final opText =
-            isNewSubscription ? 'شراء الاشتراك' : 'تجديد/تغيير الاشتراك';
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'تم $opText بنجاح ✅',
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 4),
-            ),
-          );
+        ftthSuccess = true;
+        ftthStatusNote = '';
+        debugPrint('✅ نجح التفعيل في FTTH');
+      } else {
+        ftthStatusNote = 'FTTH رد ${resp.statusCode}';
+        if (resp.statusCode == 403) {
+          ftthStatusNote = 'ممنوع — لا صلاحية على هذا الاشتراك';
         }
-
-        debugPrint('✅ Response Data: $responseData');
-        // حفظ في VPS
-        if (widget.hasServerSavePermission) {
-          try {
-            await _saveToServer();
-          } catch (e) {
-            debugPrint('⚠️ فشل حفظ VPS');
-          }
-        }
-        // إرسال واتساب
-        if (widget.hasWhatsAppPermission) {
-          try {
-            await _sendAutoWhatsAppMessage();
-          } catch (e) {
-            debugPrint('⚠️ فشل واتساب');
-          }
-        }
-        await fetchSubscriptionDetails();
-        // إغلاق المؤشر
-        if (mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context, rootNavigator: false).pop();
-        }
-        return; // نجاح
       }
+    } on TimeoutException {
+      ftthStatusNote = 'انتهت مهلة الاتصال بسيرفر FTTH (45 ثانية)';
+      debugPrint('⏱️ timeout — سنكمل الحفظ');
     } catch (e) {
       lastError = e;
-      debugPrint('❌ خطأ شبكة/مهلة');
+      ftthStatusNote = 'خطأ اتصال: ${e.toString().split(':').first}';
+      debugPrint('⚠️ خطأ شبكة — سنكمل الحفظ');
     }
 
-    // فشل العملية
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context, rootNavigator: false).pop();
-    }
+    // ═══ إكمال كل المراحل بغض النظر عن نتيجة FTTH ═══
 
-    String failMsg = 'فشل تنفيذ العملية';
-    if (lastResponse != null) {
-      if (lastResponse.statusCode == 403) {
-        failMsg = 'ممنوع (403): لا تملك صلاحية تجديد هذا الاشتراك.\n'
-            'قد يكون المشترك تابع لمنطقة أو شريك آخر ليس لديك صلاحية عليه.';
-      } else {
-        failMsg += ' (HTTP ${lastResponse.statusCode})';
-      }
-      final rid = lastResponse.headers['requestid'];
-      if (rid != null) failMsg += ' | RequestId: $rid';
-      try {
-        final data = jsonDecode(lastResponse.body);
-        final msg = data['message'] ?? data['error'];
-        if (msg != null) failMsg += '\n$msg';
-      } catch (_) {}
-    } else if (lastError != null) {
-      failMsg += ': $lastError';
-    }
-
-    debugPrint('❌ فشل: $failMsg');
-    setState(() => errorMessage = failMsg);
+    // رسالة للمستخدم
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(failMsg, style: const TextStyle(fontSize: 13)),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 6),
+          content: Row(children: [
+            Icon(ftthSuccess ? Icons.check_circle : Icons.info_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(
+              ftthSuccess
+                  ? 'تم $opText بنجاح ✅'
+                  : 'العملية قد تحتاج وقتاً إضافياً — تم حفظ البيانات في النظام',
+              style: const TextStyle(fontSize: 13),
+            )),
+          ]),
+          backgroundColor: ftthSuccess ? Colors.green : Colors.orange.shade700,
+          duration: Duration(seconds: ftthSuccess ? 4 : 6),
         ),
       );
+    }
+
+    // حفظ في سيرفرنا (دائماً)
+    // عند فشل/timeout: نضيف علامة "بحاجة للتحقق" + ملاحظة
+    if (!ftthSuccess && ftthStatusNote.isNotEmpty) {
+      subscriptionNotes = '⚠️ بحاجة للتحقق: $ftthStatusNote${subscriptionNotes != null && subscriptionNotes!.isNotEmpty ? '\n$subscriptionNotes' : ''}';
+    }
+
+    if (widget.hasServerSavePermission) {
+      try {
+        await _saveToServer();
+        // تمييز العملية غير المؤكدة في السيرفر
+        if (!ftthSuccess && _vpsLogId != null && _vpsLogId! > 0) {
+          try {
+            await AccountingService.instance.updateSubscriptionLog(
+              logId: _vpsLogId!,
+              fields: {
+                'IsReconciled': false,
+                'ReconciliationNotes': '⚠️ بحاجة للتحقق: $ftthStatusNote',
+                'PaymentStatus': 'pending_verification',
+              },
+            );
+          } catch (_) {}
+        }
+      } catch (e) {
+        debugPrint('⚠️ فشل حفظ VPS: $e');
+      }
+    }
+
+    // إرسال واتساب (دائماً)
+    if (widget.hasWhatsAppPermission) {
+      try {
+        await _sendAutoWhatsAppMessage();
+      } catch (e) {
+        debugPrint('⚠️ فشل واتساب');
+      }
+    }
+
+    try { await fetchSubscriptionDetails(); } catch (_) {}
+
+    // إغلاق المؤشر
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context, rootNavigator: false).pop();
     }
   }
 

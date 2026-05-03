@@ -1138,9 +1138,11 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
             ),
             Expanded(
               child: SingleChildScrollView(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: DataTable(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 48),
+                    child: DataTable(
                     headingRowColor:
                         WidgetStateProperty.all(AccountingTheme.bgSecondary),
                     columnSpacing: 16,
@@ -1256,6 +1258,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                         )),
                       ]);
                     }).toList(),
+                  ),
                   ),
                 ),
               ),

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../utils/responsive_helper.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../services/auth_service.dart';
@@ -397,24 +398,54 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                       // بطاقات الملخص
                       Padding(
                         padding: EdgeInsets.all(context.accR.spaceM),
-                        child: Row(
-                          children: [
-                            _summaryCard('إجمالي المشغلين', '$_totalCount',
-                                Icons.people, Colors.teal),
-                            SizedBox(width: context.accR.spaceS),
-                            _summaryCard('مربوطون', '$linkedCount', Icons.link,
-                                Colors.green),
-                            SizedBox(width: context.accR.spaceS),
-                            _summaryCard('غير مربوطين', '$unlinkedCount',
-                                Icons.link_off, Colors.orange),
-                            SizedBox(width: context.accR.spaceS),
-                            _summaryCard(
-                                'إجمالي الأرصدة',
-                                _currencyFormat.format(totalBalance),
-                                Icons.monetization_on,
-                                totalBalance >= 0 ? Colors.blue : Colors.red),
-                          ],
-                        ),
+                        child: context.responsive.isMobile
+                            ? Wrap(
+                                spacing: context.accR.spaceS,
+                                runSpacing: context.accR.spaceS,
+                                children: [
+                                  SizedBox(
+                                    width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                                    child: _summaryCard('إجمالي المشغلين', '$_totalCount',
+                                        Icons.people, Colors.teal),
+                                  ),
+                                  SizedBox(
+                                    width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                                    child: _summaryCard('مربوطون', '$linkedCount', Icons.link,
+                                        Colors.green),
+                                  ),
+                                  SizedBox(
+                                    width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                                    child: _summaryCard('غير مربوطين', '$unlinkedCount',
+                                        Icons.link_off, Colors.orange),
+                                  ),
+                                  SizedBox(
+                                    width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                                    child: _summaryCard(
+                                        'إجمالي الأرصدة',
+                                        _currencyFormat.format(totalBalance),
+                                        Icons.monetization_on,
+                                        totalBalance >= 0 ? Colors.blue : Colors.red),
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  _summaryCard('إجمالي المشغلين', '$_totalCount',
+                                      Icons.people, Colors.teal),
+                                  SizedBox(width: context.accR.spaceS),
+                                  _summaryCard('مربوطون', '$linkedCount', Icons.link,
+                                      Colors.green),
+                                  SizedBox(width: context.accR.spaceS),
+                                  _summaryCard('غير مربوطين', '$unlinkedCount',
+                                      Icons.link_off, Colors.orange),
+                                  SizedBox(width: context.accR.spaceS),
+                                  _summaryCard(
+                                      'إجمالي الأرصدة',
+                                      _currencyFormat.format(totalBalance),
+                                      Icons.monetization_on,
+                                      totalBalance >= 0 ? Colors.blue : Colors.red),
+                                ],
+                              ),
                       ),
                       // فلتر الأدوار
                       Padding(
@@ -472,43 +503,46 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
   }
 
   Widget _summaryCard(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(
-            horizontal: context.accR.spaceM, vertical: context.accR.spaceM),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(context.accR.cardRadius),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: context.accR.iconM),
-            SizedBox(width: context.accR.spaceM),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
+    final card = Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: context.accR.spaceM, vertical: context.accR.spaceM),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(context.accR.cardRadius),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: context.accR.iconM),
+          SizedBox(width: context.accR.spaceM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontSize: context.accR.small,
+                        color: Colors.grey.shade600)),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(value,
                       style: TextStyle(
-                          fontSize: context.accR.small,
-                          color: Colors.grey.shade600)),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(value,
-                        style: TextStyle(
-                            fontSize: context.accR.body,
-                            fontWeight: FontWeight.bold,
-                            color: color)),
-                  ),
-                ],
-              ),
+                          fontSize: context.accR.body,
+                          fontWeight: FontWeight.bold,
+                          color: color)),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+    // When used in a Row (desktop), wrap with Expanded; in Wrap (mobile), return as-is
+    if (!context.responsive.isMobile) {
+      return Expanded(child: card);
+    }
+    return card;
   }
 
   Widget _buildTable(List<Map<String, dynamic>> list) {

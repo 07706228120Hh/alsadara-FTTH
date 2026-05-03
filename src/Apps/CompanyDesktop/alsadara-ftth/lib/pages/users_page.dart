@@ -145,15 +145,22 @@ class _UsersPageState extends State<UsersPage> {
       builder: (context) {
         return AlertDialog(
           title: const Text('تعديل بيانات المستخدم'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (String column in controllers.keys)
-                TextField(
-                  controller: controllers[column],
-                  decoration: InputDecoration(labelText: column),
-                ),
-            ],
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width > 600
+                ? 400
+                : MediaQuery.of(context).size.width * 0.85,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (String column in controllers.keys)
+                    TextField(
+                      controller: controllers[column],
+                      decoration: InputDecoration(labelText: column),
+                    ),
+                ],
+              ),
+            ),
           ),
           actions: [
             TextButton(

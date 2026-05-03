@@ -4,6 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/task_api_service.dart';
 import '../services/pending_subscribers_service.dart';
+import '../services/vps_auth_service.dart';
+import '../inventory/services/inventory_api_service.dart';
+import '../utils/responsive_helper.dart';
 
 /// حوار إضافة مهمة جديدة عبر API
 class AddTaskApiDialog extends StatefulWidget {
@@ -54,6 +57,12 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   final _notesController = TextEditingController();
   final _summaryController = TextEditingController();
   final _subscriptionAmountController = TextEditingController();
+  final _deliveryFeeController = TextEditingController();
+
+  // المواد المصروفة (لمهام شراء اشتراك)
+  List<Map<String, dynamic>> _allInventoryItems = [];
+  final List<_AddTaskMaterialRow> _materialRows = [];
+  bool _isLoadingItems = false;
 
   String _selectedDepartment = '';
   String _selectedLeader = '';
@@ -365,9 +374,33 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         subscriptionAmount: _subscriptionAmountController.text.trim().isNotEmpty
             ? double.tryParse(_subscriptionAmountController.text.replaceAll(',', '').trim())
             : null,
+        deliveryFee: _deliveryFeeController.text.trim().isNotEmpty
+            ? double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim())
+            : null,
       );
 
       if (result['success'] == true) {
+        // صرف المواد على المنشئ (لمهام شراء اشتراك)
+        final validMaterials = _materialRows.where((r) => r.itemId.isNotEmpty && r.quantity > 0).toList();
+        if (validMaterials.isNotEmpty && _selectedTaskType == 'شراء اشتراك') {
+          final taskId = result['data']?['Id']?.toString() ?? '';
+          final creatorId = VpsAuthService.instance.currentUser?.id ?? '';
+          final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+          if (taskId.isNotEmpty && creatorId.isNotEmpty) {
+            try {
+              await InventoryApiService.instance.useFromTechnicianHoldings(data: {
+                'technicianId': creatorId, // المنشئ وليس الفني
+                'serviceRequestId': taskId,
+                'companyId': companyId,
+                'items': validMaterials.map((r) => {'inventoryItemId': r.itemId, 'quantity': r.quantity}).toList(),
+              });
+            } catch (_) {
+              // لا نوقف العملية إذا فشل صرف المواد
+              debugPrint('⚠️ فشل صرف المواد على المنشئ');
+            }
+          }
+        }
+
         // حفظ المشترك محلياً للاستخدام أوفلاين
         PendingSubscribersService.add(PendingSubscriber(
           name: _usernameController.text.trim(),
@@ -473,6 +506,10 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       if (_subscriptionAmountController.text.trim().isNotEmpty) {
         message +=
             '• المبلغ المطلوب: ${_subscriptionAmountController.text.trim()} دينار\n';
+      }
+      if (_deliveryFeeController.text.trim().isNotEmpty) {
+        message +=
+            '• أجور التوصيل: ${_deliveryFeeController.text.trim()} دينار\n';
       }
       if (_locationController.text.trim().isNotEmpty) {
         message += '\n🌐 المعلومات التقنية:\n';
@@ -586,6 +623,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     _notesController.dispose();
     _summaryController.dispose();
     _subscriptionAmountController.dispose();
+    _deliveryFeeController.dispose();
     super.dispose();
   }
 
@@ -631,39 +669,48 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     }
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final availableHeight = MediaQuery.of(context).size.height - keyboardHeight;
+    final responsive = context.responsive;
     return Dialog(
-      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 40, vertical: isMobile ? 12 : 24),
+      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 40, vertical: isMobile ? 8 : 24),
       child: Container(
-        width: isMobile ? screenW - 16 : screenW * 0.9,
-        height: availableHeight * (isMobile ? 0.93 : 0.9),
+        width: isMobile ? screenW - 12 : (screenW * 0.9).clamp(0.0, responsive.dialogMaxWidth),
+        height: availableHeight * (isMobile ? 0.95 : 0.9),
         padding: EdgeInsets.all(isMobile ? 12 : 20),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(children: [
-                  Icon(Icons.add_task, color: Colors.blue.shade700, size: isSmall ? 18 : 24),
-                  SizedBox(width: isSmall ? 4 : 8),
-                  Text('إضافة مهمة جديدة',
-                      style:
-                          TextStyle(fontSize: isSmall ? 13 : (isMobile ? 16 : 24), fontWeight: FontWeight.bold)),
-                  SizedBox(width: isSmall ? 4 : 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Text('API',
-                        style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold)),
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_task, color: Colors.blue.shade700, size: isMobile ? 18 : 24),
+                      SizedBox(width: isMobile ? 4 : 8),
+                      Flexible(
+                        child: Text('إضافة مهمة جديدة',
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                TextStyle(fontSize: isMobile ? 14 : 24, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Text('API',
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
-                ]),
+                ),
                 IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.pop(context)),
@@ -757,6 +804,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             const SizedBox(height: 6),
             if (_selectedTaskType == 'شراء اشتراك') ...[
               _buildSubscriptionSection(),
+              const SizedBox(height: 6),
+              _buildMaterialsSection(),
               const SizedBox(height: 6),
             ],
             _buildAdditionalSection(),
@@ -1274,7 +1323,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             TextFormField(
               controller: _subscriptionAmountController,
               decoration: InputDecoration(
-                labelText: 'مبلغ الاشتراك *',
+                labelText: 'سعر الاشتراك *',
                 border: const OutlineInputBorder(),
                 prefixIcon:
                     Icon(Icons.attach_money, color: Colors.orange.shade600),
@@ -1293,8 +1342,160 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 return null;
               },
             ),
+            // الحقل 2: يظهر فقط لـ شراء/تجديد/تحصيل — مخفي للصيانة وباقي المهام
+            if (_selectedTaskType == 'شراء اشتراك' || _selectedTaskType == 'تجديد اشتراك' || _selectedTaskType.contains('تحصيل') || _selectedTaskType.contains('استحصال')) ...[
+              SizedBox(height: _isNarrow ? 3 : 6),
+              TextFormField(
+                controller: _deliveryFeeController,
+                decoration: InputDecoration(
+                  labelText: _selectedTaskType == 'شراء اشتراك'
+                      ? 'أجور التنصيب'
+                      : _selectedTaskType == 'تجديد اشتراك'
+                          ? 'أجور أخرى'
+                          : 'أجور التوصيل',
+                  border: const OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.local_shipping, color: Colors.teal.shade600),
+                  suffixText: 'دينار',
+                  hintText: 'مثال: 5,000',
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [_ThousandsSeparatorFormatter()],
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMaterialsSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.orange.shade200, width: 1.2),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: _isNarrow ? 8 : 12, vertical: _isNarrow ? 6 : 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.inventory_2, color: Colors.orange.shade700, size: _isNarrow ? 16 : 18),
+            const SizedBox(width: 6),
+            Expanded(child: Text('المواد المصروفة', style: TextStyle(fontSize: _isNarrow ? 11 : 13, fontWeight: FontWeight.w700, color: Colors.orange.shade800))),
+            TextButton.icon(
+              onPressed: () async {
+                if (_allInventoryItems.isEmpty && !_isLoadingItems) {
+                  setState(() => _isLoadingItems = true);
+                  try {
+                    final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+                    final res = await InventoryApiService.instance.getItems(companyId: companyId);
+                    _allInventoryItems = ((res['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+                  } catch (_) {}
+                  if (mounted) setState(() => _isLoadingItems = false);
+                }
+                setState(() => _materialRows.add(_AddTaskMaterialRow()));
+              },
+              icon: Icon(Icons.add, size: 14, color: Colors.orange.shade700),
+              label: Text('إضافة', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
+            ),
+          ]),
+          if (_isLoadingItems)
+            const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))),
+          if (_materialRows.isEmpty && !_isLoadingItems)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Center(child: Text('لا توجد مواد مضافة', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+            ),
+          ..._materialRows.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final row = entry.value;
+            final isVeryNarrow = MediaQuery.of(context).size.width < 360;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: isVeryNarrow
+                  // على الشاشات الضيقة جداً: عمودي
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: row.itemId.isEmpty ? null : row.itemId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
+                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                          items: _allInventoryItems.map((item) {
+                            final id = (item['Id'] ?? item['id'])?.toString() ?? '';
+                            final name = (item['Name'] ?? item['name'])?.toString() ?? '';
+                            return DropdownMenuItem<String>(value: id, child: Text(name, overflow: TextOverflow.ellipsis));
+                          }).toList(),
+                          onChanged: (v) {
+                            setState(() {
+                              row.itemId = v ?? '';
+                              final item = _allInventoryItems.firstWhere((i) => (i['Id'] ?? i['id'])?.toString() == v, orElse: () => {});
+                              row.itemName = (item['Name'] ?? item['name'])?.toString() ?? '';
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        Row(children: [
+                          SizedBox(
+                            width: 70,
+                            child: TextFormField(
+                              initialValue: '${row.quantity}',
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              decoration: const InputDecoration(labelText: 'العدد', border: OutlineInputBorder(), isDense: true),
+                              style: const TextStyle(fontSize: 13),
+                              onChanged: (v) => row.quantity = int.tryParse(v) ?? 1,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(onTap: () => setState(() => _materialRows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: Colors.red)),
+                        ]),
+                      ],
+                    )
+                  // الشاشات العادية: أفقي
+                  : Row(children: [
+                      Expanded(
+                        flex: 3,
+                        child: DropdownButtonFormField<String>(
+                          value: row.itemId.isEmpty ? null : row.itemId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
+                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                          items: _allInventoryItems.map((item) {
+                            final id = (item['Id'] ?? item['id'])?.toString() ?? '';
+                            final name = (item['Name'] ?? item['name'])?.toString() ?? '';
+                            return DropdownMenuItem<String>(value: id, child: Text(name, overflow: TextOverflow.ellipsis));
+                          }).toList(),
+                          onChanged: (v) {
+                            setState(() {
+                              row.itemId = v ?? '';
+                              final item = _allInventoryItems.firstWhere((i) => (i['Id'] ?? i['id'])?.toString() == v, orElse: () => {});
+                              row.itemName = (item['Name'] ?? item['name'])?.toString() ?? '';
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 70,
+                        child: TextFormField(
+                          initialValue: '${row.quantity}',
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          decoration: const InputDecoration(labelText: 'العدد', border: OutlineInputBorder(), isDense: true),
+                          style: const TextStyle(fontSize: 13),
+                          onChanged: (v) => row.quantity = int.tryParse(v) ?? 1,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(onTap: () => setState(() => _materialRows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: Colors.red)),
+                    ]),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -1523,4 +1724,10 @@ class _ThousandsSeparatorFormatter extends TextInputFormatter {
     }
     return buffer.toString();
   }
+}
+
+class _AddTaskMaterialRow {
+  String itemId = '';
+  String itemName = '';
+  int quantity = 1;
 }

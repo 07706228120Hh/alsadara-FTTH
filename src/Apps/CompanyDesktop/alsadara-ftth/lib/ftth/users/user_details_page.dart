@@ -5226,7 +5226,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
           title: Row(children: [
             Icon(Icons.wifi, color: w.is5Ghz ? Colors.purple : Colors.teal),
             const SizedBox(width: 8),
-            Text('تعديل WiFi ${w.bandLabel}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Expanded(child: Text('تعديل WiFi ${w.bandLabel}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16), overflow: TextOverflow.ellipsis)),
           ]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -5286,7 +5286,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         title: const Row(children: [
           Icon(Icons.speed, color: Colors.deepPurple),
           SizedBox(width: 8),
-          Text('تحديد سرعة المشترك', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Expanded(child: Text('تحديد سرعة المشترك', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16), overflow: TextOverflow.ellipsis)),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -5354,7 +5354,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         title: const Row(children: [
           Icon(Icons.dns, color: Colors.blue),
           SizedBox(width: 8),
-          Text('إعدادات DHCP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Expanded(child: Text('إعدادات DHCP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16), overflow: TextOverflow.ellipsis)),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -5405,7 +5405,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         title: Row(children: [
           const Icon(Icons.warning_amber_rounded, color: Colors.orange),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
         ]),
         content: Text(message),
         actions: [

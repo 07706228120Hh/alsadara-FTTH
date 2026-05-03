@@ -2767,7 +2767,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             children: [
               Icon(Icons.logout, color: Colors.red[600]),
               const SizedBox(width: 10),
-              const Text('تأكيد تسجيل الخروج'),
+              const Expanded(child: Text('تأكيد تسجيل الخروج')),
             ],
           ),
           content: Text(

@@ -154,6 +154,7 @@ class AccountingService {
     String? notes,
     String? createdById,
     required List<Map<String, dynamic>> lines,
+    DateTime? entryDate,
   }) async {
     final body = <String, dynamic>{
       'Description': description,
@@ -161,6 +162,7 @@ class AccountingService {
       'Notes': notes,
       'CreatedById': createdById,
       'Lines': lines,
+      'EntryDate': entryDate?.toIso8601String(),
     };
     body.removeWhere((key, value) => value == null);
     final response = await _client.post(
@@ -465,9 +467,16 @@ class AccountingService {
   // ═══════════════════════════════════════════
 
   /// جلب ملخص مستحقات جميع الفنيين
-  Future<Map<String, dynamic>> getTechnicianDues() async {
+  Future<Map<String, dynamic>> getTechnicianDues({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final params = <String>[];
+    if (from != null) params.add('from=${from.toIso8601String().split('T')[0]}');
+    if (to != null) params.add('to=${to.toIso8601String().split('T')[0]}');
+    final qs = params.isNotEmpty ? '?${params.join('&')}' : '';
     final response = await _client.get(
-      '/techniciantransactions/all-dues',
+      '/techniciantransactions/all-dues$qs',
       (json) => json,
     );
     return _toMap(response);

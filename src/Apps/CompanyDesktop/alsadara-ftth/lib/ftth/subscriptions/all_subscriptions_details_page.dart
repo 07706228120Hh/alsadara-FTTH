@@ -193,7 +193,7 @@ class _AllSubscriptionsDetailsPageState
   String _fmtDate(String? iso) {
     if (iso == null) return '—';
     try {
-      return DateFormat('yyyy-MM-dd').format(DateTime.parse(iso));
+      return DateFormat('yyyy-MM-dd').format(DateTime.parse(iso).toLocal());
     } catch (_) {
       return iso.split('T').first;
     }

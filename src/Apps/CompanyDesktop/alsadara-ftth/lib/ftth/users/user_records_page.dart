@@ -872,10 +872,11 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
 
   Widget _buildStatCard(
       String title, String value, String unit, MaterialColor color) {
+    final isMobile = MediaQuery.of(context).size.width < 400;
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isMobile ? 8 : 12),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
@@ -884,16 +885,19 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
         child: Column(
           children: [
             Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: isMobile ? 10 : 12,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(value,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isMobile ? 14 : 18,
+                      fontWeight: FontWeight.bold)),
+            ),
             Text(unit,
                 style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8), fontSize: 10)),
@@ -904,22 +908,132 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
   }
 
   Widget _buildFilterSection() {
+    final isNarrow = MediaQuery.of(context).size.width < 500;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isNarrow ? 12 : 16),
       color: Colors.grey[50],
       child: Column(
         children: [
           // الصف الأول: نوع العملية والزون
+          if (isNarrow) ...[
+            DropdownButtonFormField<String>(
+              initialValue: selectedOperationFilter,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'نوع العملية', border: OutlineInputBorder(), isDense: true),
+              items: operationFilterOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => selectedOperationFilter = value ?? 'الكل');
+                _applyFilters();
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedZoneFilter,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'الزون', border: OutlineInputBorder(), isDense: true),
+              items: zoneOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => selectedZoneFilter = value ?? 'الكل');
+                _applyFilters();
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedExecutorFilter,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'منفذ العملية', border: OutlineInputBorder(), isDense: true),
+              items: executorOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => selectedExecutorFilter = value ?? 'الكل');
+                _applyFilters();
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedSubscriptionTypeFilter,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'نوع الاشتراك', border: OutlineInputBorder(), isDense: true),
+              items: subscriptionTypeOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (value) {
+                setState(
+                    () => selectedSubscriptionTypeFilter = value ?? 'الكل');
+                _applyFilters();
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedPaymentTypeFilter,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'نوع الدفع', border: OutlineInputBorder(), isDense: true),
+              items: ['الكل', 'نقد', 'آجل']
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => selectedPaymentTypeFilter = value ?? 'الكل');
+                _applyFilters();
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedPrintStatusFilter,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'حالة الطباعة', border: OutlineInputBorder(), isDense: true),
+              items: ['الكل', 'تم', 'لم يتم']
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => selectedPrintStatusFilter = value ?? 'الكل');
+                _applyFilters();
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedWhatsAppStatusFilter,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'حالة الواتساب', border: OutlineInputBorder(), isDense: true),
+              items: ['الكل', 'تم', 'لم يتم']
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
+                  .toList(),
+              onChanged: (value) {
+                setState(
+                    () => selectedWhatsAppStatusFilter = value ?? 'الكل');
+                _applyFilters();
+              },
+            ),
+          ] else ...[
           Row(
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedOperationFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'نوع العملية', border: OutlineInputBorder()),
                   items: operationFilterOptions
                       .map((option) =>
-                          DropdownMenuItem(value: option, child: Text(option)))
+                          DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (value) {
                     setState(() => selectedOperationFilter = value ?? 'الكل');
@@ -931,11 +1045,12 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedZoneFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'الزون', border: OutlineInputBorder()),
                   items: zoneOptions
                       .map((option) =>
-                          DropdownMenuItem(value: option, child: Text(option)))
+                          DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (value) {
                     setState(() => selectedZoneFilter = value ?? 'الكل');
@@ -952,11 +1067,12 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedExecutorFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'منفذ العملية', border: OutlineInputBorder()),
                   items: executorOptions
                       .map((option) =>
-                          DropdownMenuItem(value: option, child: Text(option)))
+                          DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (value) {
                     setState(() => selectedExecutorFilter = value ?? 'الكل');
@@ -968,11 +1084,12 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedSubscriptionTypeFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'نوع الاشتراك', border: OutlineInputBorder()),
                   items: subscriptionTypeOptions
                       .map((option) =>
-                          DropdownMenuItem(value: option, child: Text(option)))
+                          DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (value) {
                     setState(
@@ -990,11 +1107,12 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedPaymentTypeFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'نوع الدفع', border: OutlineInputBorder()),
                   items: ['الكل', 'نقد', 'آجل']
                       .map((option) =>
-                          DropdownMenuItem(value: option, child: Text(option)))
+                          DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (value) {
                     setState(() => selectedPaymentTypeFilter = value ?? 'الكل');
@@ -1006,11 +1124,12 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedPrintStatusFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'حالة الطباعة', border: OutlineInputBorder()),
                   items: ['الكل', 'تم', 'لم يتم']
                       .map((option) =>
-                          DropdownMenuItem(value: option, child: Text(option)))
+                          DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (value) {
                     setState(() => selectedPrintStatusFilter = value ?? 'الكل');
@@ -1027,11 +1146,12 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedWhatsAppStatusFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'حالة الواتساب', border: OutlineInputBorder()),
                   items: ['الكل', 'تم', 'لم يتم']
                       .map((option) =>
-                          DropdownMenuItem(value: option, child: Text(option)))
+                          DropdownMenuItem(value: option, child: Text(option, overflow: TextOverflow.ellipsis)))
                       .toList(),
                   onChanged: (value) {
                     setState(
@@ -1045,6 +1165,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
               const Expanded(child: SizedBox()),
             ],
           ),
+          ],
           const SizedBox(height: 12),
           // أزرار التطبيق والمسح
           Row(

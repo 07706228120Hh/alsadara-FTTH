@@ -25,6 +25,7 @@ class Task {
   final List<StatusHistory> statusHistory; // سجل حالة المهمة
   final String createdBy; // الشخص الذي أنشأ المهمة
   final String amount; // المبلغ المرتبط بالمهمة (تمت إضافته)
+  final String deliveryFee; // أجور التوصيل (إيرادات - تُضاف على ذمة الموظف)
   final String technicianPhone; // رقم هاتف الفني (العمود T)
   final String agentName; // اسم الوكيل (إن كان طلب وكيل)
   final String agentCode; // رمز الوكيل
@@ -58,6 +59,7 @@ class Task {
     required this.statusHistory,
     required this.createdBy,
     this.amount = '', // تمت إضافة المبلغ مع قيمة افتراضية
+    this.deliveryFee = '', // أجور التوصيل
     this.technicianPhone = '', // تمت إضافة رقم هاتف الفني مع قيمة افتراضية
     this.agentName = '', // اسم الوكيل
     this.agentCode = '', // رمز الوكيل
@@ -92,6 +94,7 @@ class Task {
     List<StatusHistory>? statusHistory,
     String? createdBy,
     String? amount, // تمت إضافة المبلغ هنا
+    String? deliveryFee,
     String? technicianPhone, // تمت إضافة رقم هاتف الفني هنا
     String? agentName,
     String? agentCode,
@@ -124,6 +127,7 @@ class Task {
       statusHistory: statusHistory ?? this.statusHistory,
       createdBy: createdBy ?? this.createdBy,
       amount: amount ?? this.amount, // تمت إضافة المبلغ هنا
+      deliveryFee: deliveryFee ?? this.deliveryFee,
       technicianPhone: technicianPhone ??
           this.technicianPhone, // تمت إضافة رقم هاتف الفني هنا
       agentName: agentName ?? this.agentName,
@@ -229,6 +233,11 @@ class Task {
                 '')
             .toString();
         // إزالة الكسور العشرية (60000.0 → 60000) لمنع تحولها لـ 600000 عند التنسيق
+        final num? parsed = num.tryParse(raw);
+        return parsed != null ? parsed.toInt().toString() : raw;
+      }(),
+      deliveryFee: () {
+        final raw = (details['deliveryFee'] ?? '').toString();
         final num? parsed = num.tryParse(raw);
         return parsed != null ? parsed.toInt().toString() : raw;
       }(),
@@ -341,6 +350,7 @@ FAT: $fat
 الوكلاء: ${agents.join(', ')}
 أنشأها: $createdBy
 المبلغ: $amount
+أجور التوصيل: $deliveryFee
 رقم هاتف الفني: $technicianPhone
 سجل الحالة:
 ${statusHistory.map((history) => '  - $history').join('\n')}

@@ -266,7 +266,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
 
   String formatDate(String dateStr) {
     try {
-      final date = DateTime.parse(dateStr);
+      final date = DateTime.parse(dateStr).toLocal();
       return '${date.day}/${date.month}/${date.year}';
     } catch (e) {
       return dateStr;

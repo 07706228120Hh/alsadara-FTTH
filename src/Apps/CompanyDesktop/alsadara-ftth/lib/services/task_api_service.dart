@@ -50,6 +50,7 @@ class TaskApiService {
     String? serviceType,
     String? subscriptionDuration,
     double? subscriptionAmount,
+    double? deliveryFee,
     int serviceId = 9, // Internet FTTH
     int? operationTypeId,
   }) async {
@@ -70,6 +71,7 @@ class TaskApiService {
       'ServiceType': serviceType,
       'SubscriptionDuration': subscriptionDuration,
       'SubscriptionAmount': subscriptionAmount,
+      'DeliveryFee': deliveryFee,
       'ServiceId': serviceId,
       'OperationTypeId': operationTypeId,
     };
@@ -154,6 +156,7 @@ class TaskApiService {
     required String status,
     String? note,
     double? amount,
+    double? deliveryFee,
   }) async {
     final body = <String, dynamic>{
       'Status': status,
@@ -161,6 +164,9 @@ class TaskApiService {
     };
     if (amount != null && amount > 0) {
       body['Amount'] = amount;
+    }
+    if (deliveryFee != null && deliveryFee > 0) {
+      body['DeliveryFee'] = deliveryFee;
     }
     final response = await _client.patch(
       '/servicerequests/$requestId/status',
@@ -227,6 +233,7 @@ class TaskApiService {
     String? summary,
     String? priority,
     double? amount,
+    double? deliveryFee,
   }) async {
     final body = <String, dynamic>{
       'Status': status,
@@ -245,6 +252,9 @@ class TaskApiService {
     };
     if (amount != null && amount > 0) {
       body['Amount'] = amount;
+    }
+    if (deliveryFee != null && deliveryFee > 0) {
+      body['DeliveryFee'] = deliveryFee;
     }
     body.removeWhere((key, value) => value == null);
 

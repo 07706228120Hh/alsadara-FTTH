@@ -378,7 +378,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ],
           ),
           content: Container(
-            width: double.maxFinite,
+            width: MediaQuery.of(context).size.width < 400
+                ? MediaQuery.of(context).size.width * 0.85
+                : double.maxFinite,
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height * 0.5,
             ),
@@ -456,8 +458,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 100,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 60, maxWidth: 100),
             child: Text(
               label,
               style: TextStyle(

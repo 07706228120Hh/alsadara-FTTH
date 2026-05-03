@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/period_closing_service.dart';
@@ -27,6 +28,9 @@ class _CollectionsPageState extends State<CollectionsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _sortBy = 'net'; // 'net', 'name', 'charges', 'payments'
   bool _sortAsc = false; // false = تنازلي (الأعلى أولاً)
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
+  String _dateLabel = 'الكل'; // label للفلتر النشط
 
   @override
   void initState() {
@@ -46,7 +50,10 @@ class _CollectionsPageState extends State<CollectionsPage> {
       _error = null;
     });
     try {
-      final result = await AccountingService.instance.getTechnicianDues();
+      final result = await AccountingService.instance.getTechnicianDues(
+        from: _dateFrom,
+        to: _dateTo,
+      );
       if (result['success'] == true) {
         final data = result['data'];
         if (data is Map<String, dynamic>) {
@@ -203,6 +210,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
     return Column(
       children: [
         _buildSummaryBar(),
+        _buildDateFilterBar(),
         // مربع البحث + أزرار التصفية
         Container(
           padding: EdgeInsets.symmetric(
@@ -323,6 +331,115 @@ class _CollectionsPageState extends State<CollectionsPage> {
               : _buildTechnicianList(),
         ),
       ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  //  شريط تصفية التاريخ
+  // ═══════════════════════════════════════════════════
+  Widget _buildDateFilterBar() {
+    final ar = context.accR;
+    final isMobile = ar.isMobile;
+    final fmt = DateFormat('yyyy/MM/dd');
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    Widget chip(String label, DateTime? from, DateTime? to) {
+      final isActive = _dateLabel == label;
+      return Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: ChoiceChip(
+          label: Text(label,
+              style: GoogleFonts.cairo(
+                  fontSize: isMobile ? 11 : 13,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                  color: isActive ? Colors.white : AccountingTheme.textPrimary)),
+          selected: isActive,
+          selectedColor: AccountingTheme.neonBlue,
+          backgroundColor: AccountingTheme.bgCard,
+          side: BorderSide(
+              color: isActive
+                  ? AccountingTheme.neonBlue
+                  : AccountingTheme.borderColor),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          onSelected: (_) {
+            setState(() {
+              _dateFrom = from;
+              _dateTo = to;
+              _dateLabel = label;
+            });
+            _loadDues();
+          },
+        ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 10 : ar.paddingH, vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.calendar_month,
+              size: isMobile ? 16 : 20, color: AccountingTheme.textMuted),
+          SizedBox(width: isMobile ? 4 : 8),
+          chip('الكل', null, null),
+          chip('اليوم', today, today),
+          chip('أمس', yesterday, yesterday),
+          const SizedBox(width: 4),
+          ActionChip(
+            avatar: Icon(Icons.date_range,
+                size: isMobile ? 14 : 18,
+                color: _dateLabel == 'مخصص'
+                    ? Colors.white
+                    : AccountingTheme.textMuted),
+            label: Text(
+                _dateLabel == 'مخصص' && _dateFrom != null && _dateTo != null
+                    ? '${fmt.format(_dateFrom!)} — ${fmt.format(_dateTo!)}'
+                    : 'مخصص',
+                style: GoogleFonts.cairo(
+                    fontSize: isMobile ? 11 : 13,
+                    fontWeight:
+                        _dateLabel == 'مخصص' ? FontWeight.bold : FontWeight.w500,
+                    color: _dateLabel == 'مخصص'
+                        ? Colors.white
+                        : AccountingTheme.textPrimary)),
+            backgroundColor: _dateLabel == 'مخصص'
+                ? AccountingTheme.neonBlue
+                : AccountingTheme.bgCard,
+            side: BorderSide(
+                color: _dateLabel == 'مخصص'
+                    ? AccountingTheme.neonBlue
+                    : AccountingTheme.borderColor),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            onPressed: () async {
+              final picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2024),
+                lastDate: today,
+                initialDateRange: _dateFrom != null && _dateTo != null
+                    ? DateTimeRange(start: _dateFrom!, end: _dateTo!)
+                    : DateTimeRange(
+                        start: today.subtract(const Duration(days: 7)),
+                        end: today),
+                locale: const Locale('ar'),
+              );
+              if (picked != null && mounted) {
+                setState(() {
+                  _dateFrom = picked.start;
+                  _dateTo = picked.end;
+                  _dateLabel = 'مخصص';
+                });
+                _loadDues();
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 

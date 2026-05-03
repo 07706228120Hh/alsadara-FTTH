@@ -524,7 +524,11 @@ public class AccountingController : ControllerBase
             {
                 Id = Guid.NewGuid(),
                 EntryNumber = entryNumber,
-                EntryDate = dto.EntryDate ?? DateTime.UtcNow,
+                EntryDate = dto.EntryDate.HasValue
+                    ? DateTime.SpecifyKind(dto.EntryDate.Value.Date.AddHours(9), DateTimeKind.Utc)
+                    : DateTime.SpecifyKind(
+                        DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(9),
+                        DateTimeKind.Utc),
                 Description = dto.Description,
                 TotalDebit = totalDebit,
                 TotalCredit = totalCredit,
@@ -3070,7 +3074,12 @@ public class AccountingController : ControllerBase
 
             entry.Description = dto.Description ?? entry.Description;
             entry.Notes = dto.Notes ?? entry.Notes;
-            entry.EntryDate = dto.EntryDate ?? entry.EntryDate;
+            if (dto.EntryDate.HasValue)
+            {
+                // تحويل التاريخ لـ 09:00 UTC (= 12:00 بغداد) لتجنب مشاكل حدود التاريخ
+                var d = dto.EntryDate.Value;
+                entry.EntryDate = DateTime.SpecifyKind(d.Date.AddHours(9), DateTimeKind.Utc);
+            }
 
             // تحديث السطور إذا وُجدت
             if (dto.Lines != null && dto.Lines.Any())
@@ -3763,8 +3772,9 @@ public class AccountingController : ControllerBase
             }
             if (toDate.HasValue)
             {
-                var toUtc = DateTime.SpecifyKind(toDate.Value.AddHours(-3), DateTimeKind.Utc);
-                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate <= toUtc);
+                // نهاية اليوم بتوقيت بغداد: اليوم التالي 00:00 بغداد = اليوم التالي -3h UTC
+                var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate < toUtc);
             }
 
             var lines = await query
@@ -4238,12 +4248,17 @@ public class AccountingController : ControllerBase
         string? referenceId,
         List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
     {
+        // تاريخ القيد: اليوم بتوقيت بغداد (UTC+3)
+        var baghdadDate = DateTime.SpecifyKind(
+            DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
+            DateTimeKind.Utc);
+
         // فحص الفترة المقفلة
-        if (await IsPeriodClosed(companyId, DateTime.UtcNow))
+        if (await IsPeriodClosed(companyId, baghdadDate))
         {
             _logger.LogWarning("⛔ محاولة إنشاء قيد في فترة مقفلة ({Year}/{Month}) - {Description}",
-                DateTime.UtcNow.Year, DateTime.UtcNow.Month, description);
-            throw new InvalidOperationException($"الفترة المحاسبية {DateTime.UtcNow:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
+                baghdadDate.Year, baghdadDate.Month, description);
+            throw new InvalidOperationException($"الفترة المحاسبية {baghdadDate:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
         }
 
         var entryNumber = await GenerateEntryNumber(companyId);
@@ -4251,7 +4266,7 @@ public class AccountingController : ControllerBase
         {
             Id = Guid.NewGuid(),
             EntryNumber = entryNumber,
-            EntryDate = DateTime.UtcNow,
+            EntryDate = baghdadDate,
             Description = description,
             TotalDebit = lines.Sum(l => l.DebitAmount),
             TotalCredit = lines.Sum(l => l.CreditAmount),

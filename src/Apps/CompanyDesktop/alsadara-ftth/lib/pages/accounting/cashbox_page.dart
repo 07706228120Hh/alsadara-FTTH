@@ -5,6 +5,7 @@ import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../utils/responsive_helper.dart';
 
 /// صفحة إدارة الصناديق النقدية
 class CashBoxPage extends StatefulWidget {
@@ -103,20 +104,24 @@ class _CashBoxPageState extends State<CashBoxPage> {
                                     fontSize: context.accR.body)),
                           ],
                         ))
-                      : Row(
-                          children: [
-                            SizedBox(
-                              width: 320,
-                              child: _buildBoxesList(),
+                      : context.responsive.isMobile
+                          ? (_selectedBox != null
+                              ? _buildBoxDetail()
+                              : _buildBoxesList())
+                          : Row(
+                              children: [
+                                SizedBox(
+                                  width: 320,
+                                  child: _buildBoxesList(),
+                                ),
+                                VerticalDivider(
+                                    width: 1, color: AccountingTheme.borderColor),
+                                Expanded(
+                                    child: _selectedBox != null
+                                        ? _buildBoxDetail()
+                                        : _buildEmptyState()),
+                              ],
                             ),
-                            VerticalDivider(
-                                width: 1, color: AccountingTheme.borderColor),
-                            Expanded(
-                                child: _selectedBox != null
-                                    ? _buildBoxDetail()
-                                    : _buildEmptyState()),
-                          ],
-                        ),
             ),
           ],
         ),
@@ -126,9 +131,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
 
   Widget _buildToolbar() {
     final ar = context.accR;
+    final isMobile = context.responsive.isMobile;
     return Container(
-      padding:
-          EdgeInsets.symmetric(horizontal: ar.spaceXL, vertical: ar.spaceL),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : ar.spaceXL,
+          vertical: isMobile ? 6 : ar.spaceL),
       decoration: const BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -136,30 +143,41 @@ class _CashBoxPageState extends State<CashBoxPage> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              if (isMobile && _selectedBox != null) {
+                setState(() => _selectedBox = null);
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
             icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
+            tooltip: isMobile && _selectedBox != null ? 'رجوع للقائمة' : 'رجوع',
+            iconSize: isMobile ? 20 : 24,
+            constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+            padding: isMobile ? EdgeInsets.zero : null,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          SizedBox(width: ar.spaceS),
+          SizedBox(width: isMobile ? 4 : ar.spaceS),
           Container(
-            padding: EdgeInsets.all(ar.spaceS),
+            padding: EdgeInsets.all(isMobile ? 4 : ar.spaceS),
             decoration: BoxDecoration(
               gradient: AccountingTheme.neonGreenGradient,
               borderRadius: BorderRadius.circular(ar.btnRadius),
             ),
             child: Icon(Icons.account_balance_wallet_rounded,
-                color: Colors.white, size: ar.iconM),
+                color: Colors.white, size: isMobile ? 18 : ar.iconM),
           ),
-          SizedBox(width: ar.spaceM),
-          Text('الصناديق النقدية',
-              style: GoogleFonts.cairo(
-                fontSize: ar.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          SizedBox(width: ar.spaceS),
+          SizedBox(width: isMobile ? 6 : ar.spaceM),
+          Expanded(
+            child: Text('الصناديق النقدية',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.cairo(
+                  fontSize: isMobile ? 14 : ar.headingMedium,
+                  fontWeight: FontWeight.bold,
+                  color: AccountingTheme.textPrimary,
+                )),
+          ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: ar.spaceS, vertical: 2),
             decoration: BoxDecoration(
@@ -173,24 +191,28 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   color: AccountingTheme.neonPink,
                 )),
           ),
-          const Spacer(),
           IconButton(
             onPressed: _loadData,
-            icon: Icon(Icons.refresh, size: ar.iconM),
+            icon: Icon(Icons.refresh, size: isMobile ? 18 : ar.iconM),
             tooltip: 'تحديث',
+            constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+            padding: isMobile ? EdgeInsets.zero : null,
             style: IconButton.styleFrom(
                 foregroundColor: AccountingTheme.textSecondary),
           ),
-          SizedBox(width: ar.spaceXS),
+          SizedBox(width: isMobile ? 4 : ar.spaceXS),
           ElevatedButton.icon(
             onPressed: _showAddDialog,
-            icon: Icon(Icons.add, size: ar.iconS),
-            label: Text('إضافة صندوق',
-                style: GoogleFonts.cairo(fontSize: ar.buttonText)),
+            icon: Icon(Icons.add, size: isMobile ? 16 : ar.iconS),
+            label: Text(isMobile ? 'إضافة' : 'إضافة صندوق',
+                style: GoogleFonts.cairo(fontSize: isMobile ? 11 : ar.buttonText)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AccountingTheme.neonGreen,
               foregroundColor: Colors.white,
-              padding: ar.buttonPadding,
+              padding: isMobile
+                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                  : ar.buttonPadding,
+              minimumSize: isMobile ? const Size(0, 30) : null,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(ar.btnRadius)),
             ),
@@ -328,12 +350,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
 
   Widget _buildBoxDetail() {
     final box = _selectedBox!;
+    final isMobile = context.responsive.isMobile;
     return Column(
       children: [
         // بطاقة معلومات الصندوق
         Container(
-          margin: EdgeInsets.all(context.accR.spaceXL),
-          padding: EdgeInsets.all(context.accR.spaceXL),
+          margin: EdgeInsets.all(isMobile ? 8 : context.accR.spaceXL),
+          padding: EdgeInsets.all(isMobile ? 10 : context.accR.spaceXL),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -345,7 +368,61 @@ class _CashBoxPageState extends State<CashBoxPage> {
             border: Border.all(
                 color: AccountingTheme.accent.withValues(alpha: 0.5)),
           ),
-          child: Row(
+          child: isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.account_balance_wallet,
+                            color: AccountingTheme.accent, size: 24),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            box['Name'] ?? '',
+                            style: TextStyle(
+                                color: AccountingTheme.textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          _boxTypes[box['CashBoxType']] ?? '',
+                          style: TextStyle(
+                              color: AccountingTheme.textSecondary
+                                  .withValues(alpha: 0.5),
+                              fontSize: 11),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        '${_formatNumber(box['CurrentBalance'])} د.ع',
+                        style: TextStyle(
+                            color: AccountingTheme.accent,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _actionButton('إيداع', Icons.add, AccountingTheme.success,
+                              () => _showTransactionDialog(true)),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _actionButton('سحب', Icons.remove, AccountingTheme.danger,
+                              () => _showTransactionDialog(false)),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Row(
             children: [
               Icon(Icons.account_balance_wallet,
                   color: AccountingTheme.accent, size: context.accR.iconXL),
@@ -812,7 +889,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
   String _formatDate(dynamic date) {
     if (date == null) return '';
     try {
-      final d = DateTime.parse(date.toString());
+      final d = DateTime.parse(date.toString()).toLocal();
       return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return date.toString();

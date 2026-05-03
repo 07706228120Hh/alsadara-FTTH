@@ -63,7 +63,7 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
   String _fmtDate(dynamic d) {
     if (d == null) return '';
     try {
-      final dt = DateTime.parse(d.toString());
+      final dt = DateTime.parse(d.toString()).toLocal();
       return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
     } catch (_) { return ''; }
   }
@@ -93,8 +93,9 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
   }
 
   Widget _buildToolbar() {
+    final isMob = MediaQuery.of(context).size.width < 600;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.accR.spaceXL, vertical: context.accR.spaceL),
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : context.accR.spaceXL, vertical: isMob ? 6 : context.accR.spaceL),
       decoration: const BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -127,38 +128,41 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
 
   Widget _buildDateFilter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       color: AccountingTheme.bgCard,
-      child: Row(
-        children: [
-          _dateChip('اليوم', 0),
-          const SizedBox(width: 6),
-          _dateChip('أمس', 1),
-          const SizedBox(width: 6),
-          _dateChip('هذا الأسبوع', 7),
-          const SizedBox(width: 6),
-          _dateChip('هذا الشهر', 30),
-          const SizedBox(width: 6),
-          _dateChip('الكل', -1),
-          const Spacer(),
-          TextButton.icon(
-            onPressed: () async {
-              final picked = await showDateRangePicker(
-                context: context,
-                firstDate: DateTime(2024),
-                lastDate: DateTime.now().add(const Duration(days: 1)),
-                initialDateRange: _fromDate != null && _toDate != null ? DateTimeRange(start: _fromDate!, end: _toDate!) : null,
-              );
-              if (picked != null) {
-                setState(() { _fromDate = picked.start; _toDate = picked.end; });
-                _load();
-              }
-            },
-            icon: const Icon(Icons.date_range, size: 16),
-            label: Text('مخصص', style: GoogleFonts.cairo(fontSize: 11)),
-            style: TextButton.styleFrom(foregroundColor: AccountingTheme.info),
-          ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _dateChip('اليوم', 0),
+            const SizedBox(width: 6),
+            _dateChip('أمس', 1),
+            const SizedBox(width: 6),
+            _dateChip('هذا الأسبوع', 7),
+            const SizedBox(width: 6),
+            _dateChip('هذا الشهر', 30),
+            const SizedBox(width: 6),
+            _dateChip('الكل', -1),
+            const SizedBox(width: 12),
+            TextButton.icon(
+              onPressed: () async {
+                final picked = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2024),
+                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                  initialDateRange: _fromDate != null && _toDate != null ? DateTimeRange(start: _fromDate!, end: _toDate!) : null,
+                );
+                if (picked != null) {
+                  setState(() { _fromDate = picked.start; _toDate = picked.end; });
+                  _load();
+                }
+              },
+              icon: const Icon(Icons.date_range, size: 16),
+              label: Text('مخصص', style: GoogleFonts.cairo(fontSize: 11)),
+              style: TextButton.styleFrom(foregroundColor: AccountingTheme.info),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -206,8 +210,10 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
   }
 
   Widget _summaryCard(String label, String value, Color color) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth < 600 ? (screenWidth - 48) / 2 : 180.0;
     return Container(
-      width: 180,
+      width: cardWidth,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,

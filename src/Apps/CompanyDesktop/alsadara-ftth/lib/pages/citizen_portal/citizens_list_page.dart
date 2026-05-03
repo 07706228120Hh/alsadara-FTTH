@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../utils/responsive_helper.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
 import 'widgets/citizen_card.dart';
@@ -152,50 +153,63 @@ class _CitizensListPageState extends State<CitizensListPage> {
       child: Column(
         children: [
           // شريط البحث والفلترة
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // البحث
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'البحث بالاسم أو رقم الهاتف...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                _loadCitizens();
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onSubmitted: (_) => _loadCitizens(),
-                  ),
-                ),
-                const SizedBox(width: 16),
+          _buildSearchBar(),
 
-                // فلتر الحالة
+          // القائمة
+          Expanded(
+            child: _buildContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    final isMobile = context.responsive.isMobile;
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 10 : 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: isMobile ? 'بحث...' : 'البحث بالاسم أو رقم الهاتف...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _loadCitizens();
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 10 : 16,
+                      vertical: isMobile ? 8 : 12,
+                    ),
+                  ),
+                  onSubmitted: (_) => _loadCitizens(),
+                ),
+              ),
+              if (!isMobile) ...[
+                const SizedBox(width: 16),
                 DropdownButton<bool?>(
                   value: _filterActive,
                   hint: const Text('جميع الحالات'),
@@ -210,15 +224,14 @@ class _CitizensListPageState extends State<CitizensListPage> {
                   },
                 ),
                 const SizedBox(width: 16),
-
-                // زر التحديث
-                IconButton(
-                  onPressed: _loadCitizens,
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'تحديث',
-                ),
-
-                // زر إضافة
+              ],
+              IconButton(
+                onPressed: _loadCitizens,
+                icon: const Icon(Icons.refresh),
+                tooltip: 'تحديث',
+              ),
+              if (!isMobile) ...[
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: فتح نافذة إضافة مواطن
@@ -228,20 +241,48 @@ class _CitizensListPageState extends State<CitizensListPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (isMobile) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButton<bool?>(
+                    value: _filterActive,
+                    isExpanded: true,
+                    hint: const Text('جميع الحالات'),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('جميع الحالات')),
+                      DropdownMenuItem(value: true, child: Text('نشط فقط')),
+                      DropdownMenuItem(value: false, child: Text('غير نشط')),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _filterActive = value);
+                      _loadCitizens();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: فتح نافذة إضافة مواطن
+                  },
+                  icon: const Icon(Icons.person_add, size: 18),
+                  label: const Text('إضافة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
             ),
-          ),
-
-          // القائمة
-          Expanded(
-            child: _buildContent(),
-          ),
+          ],
         ],
       ),
     );
@@ -294,17 +335,18 @@ class _CitizensListPageState extends State<CitizensListPage> {
       );
     }
 
+    final isMobile = context.responsive.isMobile;
     return RefreshIndicator(
       onRefresh: _loadCitizens,
       color: Colors.teal,
       child: GridView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.4,
+        padding: EdgeInsets.all(isMobile ? 10 : 16),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: isMobile ? 1 : 2,
+          mainAxisSpacing: isMobile ? 10 : 16,
+          crossAxisSpacing: isMobile ? 10 : 16,
+          childAspectRatio: isMobile ? 2.0 : 1.4,
         ),
         itemCount: _citizens.length + (_isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {

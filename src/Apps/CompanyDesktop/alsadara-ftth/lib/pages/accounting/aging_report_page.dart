@@ -538,12 +538,20 @@ class _AgingReportPageState extends State<AgingReportPage> {
         boxShadow: AccountingTheme.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          _buildTableHeader(),
-          ...List.generate(debts.length, (i) => _buildTableRow(debts[i], i)),
-          _buildTableFooter(),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: context.responsive.isMobile ? 550 : MediaQuery.of(context).size.width - ar.paddingH * 2,
+          ),
+          child: Column(
+            children: [
+              _buildTableHeader(),
+              ...List.generate(debts.length, (i) => _buildTableRow(debts[i], i)),
+              _buildTableFooter(),
+            ],
+          ),
+        ),
       ),
     );
   }

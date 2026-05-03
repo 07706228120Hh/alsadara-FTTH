@@ -2218,7 +2218,6 @@ public class InventoryController : ControllerBase
         try
         {
             var currentUserId = GetCurrentUserId();
-            var errors = new List<string>();
 
             foreach (var itemReq in request.Items)
             {
@@ -2235,14 +2234,8 @@ public class InventoryController : ControllerBase
                     .ToListAsync();
 
                 var totalAvailable = holdingItems.Sum(h => h.Quantity - h.ReturnedQuantity);
-                if (totalAvailable < itemReq.Quantity)
-                {
-                    var itemName = (await _unitOfWork.InventoryItems.GetByIdAsync(itemReq.InventoryItemId))?.Name ?? "مادة";
-                    errors.Add($"رصيد {itemName} غير كافي (متوفر: {totalAvailable}, مطلوب: {itemReq.Quantity})");
-                    continue;
-                }
 
-                // خصم من العُهدة بنظام FIFO
+                // خصم من العُهدة بنظام FIFO (ما توفر منها)
                 var remaining = itemReq.Quantity;
                 foreach (var h in holdingItems)
                 {
@@ -2254,28 +2247,58 @@ public class InventoryController : ControllerBase
                     _unitOfWork.TechnicianDispensingItems.Update(h);
                 }
 
+                // إذا الكمية المطلوبة أكبر من المتوفرة → إنشاء سجل سالب (عجز)
+                // سيُستقطع تلقائياً عند تعزيز الفني من المستودع لاحقاً
+                if (remaining > 0)
+                {
+                    // إنشاء سجل صرف جديد بكمية سالبة (عجز) للفني
+                    var deficitDispensing = new TechnicianDispensing
+                    {
+                        Id = Guid.NewGuid(),
+                        VoucherNumber = $"TD-DEF-{DateTime.UtcNow:yyMMddHHmmss}",
+                        TechnicianId = request.TechnicianId,
+                        WarehouseId = Guid.Empty,
+                        ServiceRequestId = request.ServiceRequestId,
+                        DispensingDate = DateTime.UtcNow,
+                        Status = DispensingStatus.Approved,
+                        Type = DispensingType.Dispensing,
+                        Notes = $"صرف بعجز — الفني لا يملك رصيد كافٍ (عجز: {remaining})",
+                        CreatedById = currentUserId,
+                        CompanyId = request.CompanyId,
+                        Items = new List<TechnicianDispensingItem>
+                        {
+                            new TechnicianDispensingItem
+                            {
+                                InventoryItemId = itemReq.InventoryItemId,
+                                Quantity = remaining,
+                                ReturnedQuantity = remaining, // مصروف بالكامل
+                            }
+                        }
+                    };
+                    await _unitOfWork.TechnicianDispensings.AddAsync(deficitDispensing);
+                }
+
                 // حركة مخزنية للتوثيق
                 await _unitOfWork.StockMovements.AddAsync(new StockMovement
                 {
                     InventoryItemId = itemReq.InventoryItemId,
-                    WarehouseId = Guid.Empty, // لا يؤثر على المستودع
+                    WarehouseId = Guid.Empty,
                     MovementType = StockMovementType.TechnicianDispensing,
                     Quantity = itemReq.Quantity,
                     StockBefore = totalAvailable,
                     StockAfter = totalAvailable - itemReq.Quantity,
                     ReferenceType = "TaskDispensing",
                     ReferenceId = request.ServiceRequestId?.ToString(),
-                    Description = $"صرف من عُهدة الفني للعميل - مهمة",
+                    Description = totalAvailable >= itemReq.Quantity
+                        ? "صرف من عُهدة الفني للعميل - مهمة"
+                        : $"صرف من عُهدة الفني للعميل - مهمة (عجز: {itemReq.Quantity - totalAvailable})",
                     CreatedById = currentUserId,
                     CompanyId = request.CompanyId
                 });
             }
 
-            if (errors.Any())
-                return BadRequest(new { success = false, message = string.Join("\n", errors) });
-
             await _unitOfWork.SaveChangesAsync();
-            return Ok(new { success = true, message = "تم صرف المواد من عُهدة الفني بنجاح" });
+            return Ok(new { success = true, message = "تم صرف المواد بنجاح" });
         }
         catch (Exception ex)
         {

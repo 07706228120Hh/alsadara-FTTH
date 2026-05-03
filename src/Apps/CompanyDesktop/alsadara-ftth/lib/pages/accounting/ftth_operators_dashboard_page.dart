@@ -17,6 +17,7 @@ import '../../services/plan_pricing_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../permissions/permission_manager.dart';
 import '../../theme/accounting_responsive.dart';
+import 'client_accounts_page.dart';
 import 'ftth_operator_account_page.dart';
 import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
@@ -55,6 +56,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   String? _errorOurs;
   List<dynamic> _oursOperators = [];
   int _oursTabIndex = 0; // 0 = المشغلون, 1 = الفنيون
+  String _oursSortKey = 'totalAmount'; // مفتاح الترتيب
+  bool _oursSortAsc = false; // false = تنازلي
+  String _oursSearchQuery = '';
+  final _oursSearchController = TextEditingController();
   Map<String, dynamic>? _oursSummary;
   Map<String, dynamic>? _oursDistributions;
 
@@ -1066,11 +1071,29 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
     if (confirm != true) return;
 
-    // تحويل العمليات
+    // بناء خريطة ftthUsername → userId من بيانات المشغلين
+    final ftthToUserId = <String, String>{};
+    for (final op in _oursOperators) {
+      final uid = op['userId']?.toString();
+      final ftthUser = (op['ftthUsername'] ?? '').toString().toLowerCase().trim();
+      final username = (op['username'] ?? '').toString().toLowerCase().trim();
+      final opName = (op['operatorName'] ?? '').toString().toLowerCase().trim();
+      if (uid != null && uid.isNotEmpty) {
+        if (ftthUser.isNotEmpty) ftthToUserId[ftthUser] = uid;
+        if (username.isNotEmpty) ftthToUserId[username] = uid;
+        if (opName.isNotEmpty) ftthToUserId[opName] = uid;
+      }
+    }
+
+    // تحويل العمليات مع ربط كل عملية بالمشغل
     final List<Map<String, dynamic>> txList = [];
     for (final opEntry in _ftthOperators.entries) {
+      // البحث عن userId المشغل
+      final opKey = opEntry.key.toLowerCase().trim();
+      final matchedUserId = ftthToUserId[opKey];
+
       for (final tx in opEntry.value.transactions) {
-        txList.add({
+        final txMap = <String, dynamic>{
           'ftthTransactionId': tx.id,
           'customerId': tx.customerId,
           'customerName': tx.customerName,
@@ -1085,10 +1108,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           'collectionType': _mapPaymentMode(tx.paymentMode),
           'paymentMethod': tx.paymentMethod,
           'remainingBalance': tx.remainingBalance,
-          if (tx.startsAt.isNotEmpty) 'startDate': tx.startsAt,
-          if (tx.endsAt.isNotEmpty) 'endDate': tx.endsAt,
-          if (tx.planDuration > 0) 'commitmentPeriod': tx.planDuration,
-        });
+          'createAccounting': true,
+        };
+        if (tx.startsAt.isNotEmpty) txMap['startDate'] = tx.startsAt;
+        if (tx.endsAt.isNotEmpty) txMap['endDate'] = tx.endsAt;
+        if (tx.planDuration > 0) txMap['commitmentPeriod'] = tx.planDuration;
+        if (matchedUserId != null) txMap['operatorUserId'] = matchedUserId;
+        txList.add(txMap);
       }
     }
 
@@ -3566,6 +3592,48 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   color: Colors.teal,
                   onTap: () => setState(() => _oursTabIndex = 1),
                 ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 180,
+                  height: 34,
+                  child: TextField(
+                    controller: _oursSearchController,
+                    onChanged: (v) => setState(() => _oursSearchQuery = v.trim().toLowerCase()),
+                    style: GoogleFonts.cairo(fontSize: 12),
+                    textDirection: TextDirection.rtl,
+                    decoration: InputDecoration(
+                      hintText: _oursTabIndex == 0 ? 'بحث عن مشغل...' : 'بحث عن فني...',
+                      hintStyle: GoogleFonts.cairo(fontSize: 12, color: Colors.grey),
+                      prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                      suffixIcon: _oursSearchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close, size: 14),
+                              onPressed: () {
+                                _oursSearchController.clear();
+                                setState(() => _oursSearchQuery = '');
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.black, width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.black, width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.blue, width: 2),
+                      ),
+                    ),
+                  ),
+                ),
                 const Spacer(),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.push(
@@ -3617,59 +3685,41 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         fontSize: context.accR.small,
                         color: Colors.black87),
                     columns: [
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('#')))),
-                      const DataColumn(
-                          label:
-                              Expanded(child: Center(child: Text('المشغل')))),
-                      const DataColumn(
-                          label:
-                              Expanded(child: Center(child: Text('العمليات')))),
-                      DataColumn(
-                          label: Expanded(child: Center(child: Text('المستقطع',
-                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.indigo.shade800))))),
-                      DataColumn(
-                          label: Expanded(child: Center(child: Text('الإيرادات',
-                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green.shade800))))),
-                      DataColumn(
-                          label: Expanded(child: Center(child: Text('المصاريف',
-                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.red.shade800))))),
-                      DataColumn(
-                          label: Expanded(child: Center(child: Text('الإجمالي',
-                              style: TextStyle(fontWeight: FontWeight.w900, color: Colors.blue.shade800))))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('شراء')))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('تجديد')))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('تغيير')))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('نقد')))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('آجل')))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('ماستر')))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('وكيل')))),
-                      const DataColumn(
-                          label: Expanded(child: Center(child: Text('فني')))),
-                      const DataColumn(
-                          label:
-                              Expanded(child: Center(child: Text('المسلّم')))),
-                      const DataColumn(
-                          label:
-                              Expanded(child: Center(child: Text('المستحق')))),
-                      const DataColumn(
-                          label:
-                              Expanded(child: Center(child: Text('مطابقة')))),
-                      DataColumn(
-                          label:
-                              Expanded(child: Center(child: Text('إجراءات')))),
+                      const DataColumn(label: Expanded(child: Center(child: Text('#')))),
+                      DataColumn(label: _sortableHeader('المشغل', 'operatorName')),
+                      DataColumn(label: _sortableHeader('العمليات', 'totalCount')),
+                      DataColumn(label: _sortableHeader('المستقطع', 'pageDeduction', color: Colors.indigo.shade800)),
+                      DataColumn(label: _sortableHeader('الإيرادات', 'revenue', color: Colors.green.shade800)),
+                      DataColumn(label: _sortableHeader('المصاريف', 'expense', color: Colors.red.shade800)),
+                      DataColumn(label: _sortableHeader('الإجمالي', 'totalAmount', color: Colors.blue.shade800)),
+                      DataColumn(label: _sortableHeader('شراء', 'purchaseCount')),
+                      DataColumn(label: _sortableHeader('تجديد', 'renewalCount')),
+                      DataColumn(label: _sortableHeader('تغيير', 'changeCount')),
+                      DataColumn(label: _sortableHeader('نقد', 'cashAmount')),
+                      DataColumn(label: _sortableHeader('آجل', 'creditAmount')),
+                      DataColumn(label: _sortableHeader('ماستر', 'masterAmount')),
+                      DataColumn(label: _sortableHeader('وكيل', 'agentAmount')),
+                      DataColumn(label: _sortableHeader('فني', 'technicianAmount')),
+                      DataColumn(label: _sortableHeader('المسلّم', 'deliveredCash')),
+                      DataColumn(label: _sortableHeader('المستحق', 'netOwed')),
+                      if (_oursTabIndex == 0)
+                        DataColumn(label: _sortableHeader('ذمم فني', 'techDebt', color: Colors.deepOrange)),
+                      const DataColumn(label: Expanded(child: Center(child: Text('مطابقة')))),
+                      DataColumn(label: Expanded(child: Center(child: Text('إجراءات')))),
                     ],
                     rows: (() {
-                      final filtered = _oursTabIndex == 0
+                      var filtered = _oursTabIndex == 0
                           ? _oursOperators.where((o) => o['isTechnician'] != true).toList()
                           : _oursOperators.where((o) => o['isTechnician'] == true).toList();
+                      if (_oursSearchQuery.isNotEmpty) {
+                        filtered = filtered.where((o) {
+                          final name = (o['operatorName'] ?? '').toString().toLowerCase();
+                          final username = (o['username'] ?? '').toString().toLowerCase();
+                          final ftthUser = (o['ftthUsername'] ?? '').toString().toLowerCase();
+                          return name.contains(_oursSearchQuery) || username.contains(_oursSearchQuery) || ftthUser.contains(_oursSearchQuery);
+                        }).toList();
+                      }
+                      filtered = _sortOperators(filtered);
                       return filtered.asMap().entries.map((entry) {
                       final i = entry.key;
                       final op = entry.value as Map<String, dynamic>;
@@ -3691,38 +3741,42 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 style: TextStyle(
                                     fontSize: context.accR.small,
                                     fontWeight: FontWeight.w600)))),
-                        DataCell(Center(
-                            child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
+                        DataCell(
+                            Center(
+                                child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                if (isTech) ...[
-                                  Icon(Icons.engineering, size: 13, color: Colors.teal),
-                                  SizedBox(width: 3),
-                                ],
-                                Text(op['operatorName'] ?? '-',
-                                    style: TextStyle(
-                                        fontSize: context.accR.small,
-                                        fontWeight: FontWeight.w700,
-                                        color: isTech ? Colors.teal.shade700 : null)),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isTech) ...[
+                                      Icon(Icons.engineering, size: 13, color: Colors.teal),
+                                      SizedBox(width: 3),
+                                    ],
+                                    Text(op['operatorName'] ?? '-',
+                                        style: TextStyle(
+                                            fontSize: context.accR.small,
+                                            fontWeight: FontWeight.w700,
+                                            color: isTech ? Colors.teal.shade700 : null,
+                                            decoration: TextDecoration.underline,
+                                            decorationColor: isTech ? Colors.teal.shade300 : Colors.grey.shade400)),
+                                  ],
+                                ),
+                                if (!isTech && op['ftthUsername'] != null)
+                                  Text(op['ftthUsername'],
+                                      style: TextStyle(
+                                          fontSize: context.accR.caption,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey.shade600)),
+                                if (isTech)
+                                  Text('فني',
+                                      style: TextStyle(
+                                          fontSize: context.accR.caption,
+                                          color: Colors.teal.shade400)),
                               ],
-                            ),
-                            if (!isTech && op['ftthUsername'] != null)
-                              Text(op['ftthUsername'],
-                                  style: TextStyle(
-                                      fontSize: context.accR.caption,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey.shade600)),
-                            if (isTech)
-                              Text('فني',
-                                  style: TextStyle(
-                                      fontSize: context.accR.caption,
-                                      color: Colors.teal.shade400)),
-                          ],
-                        ))),
+                            )),
+                            onTap: () => _openAccountStatement(op)),
                         DataCell(Center(
                             child: Text('$totalCnt',
                                 style: TextStyle(
@@ -3864,6 +3918,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   ? Colors.red.shade700
                                   : Colors.green.shade700),
                         ))),
+                        // ذمم فني (فقط في تبويب المشغلون)
+                        if (_oursTabIndex == 0)
+                          DataCell(Center(
+                              child: () {
+                            final techDebt = (op['techDebt'] ?? 0).toDouble();
+                            if (techDebt == 0) {
+                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
+                            }
+                            return Text(
+                              _currencyFormat.format(techDebt),
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold,
+                                  color: techDebt > 0 ? Colors.deepOrange : Colors.green.shade700),
+                            );
+                          }())),
                         // مطابقة
                         DataCell(Center(
                             child: Text(
@@ -3901,16 +3971,18 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                     : _showQuickDeliverDialog(op),
                                 tooltip: op['isTechnician'] == true ? 'تسديد فني' : 'تسليم نقد',
                               ),
-                              SizedBox(width: context.accR.spaceXS),
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(),
-                                icon: Icon(Icons.request_quote,
-                                    size: context.accR.iconS,
-                                    color: Colors.orange.shade700),
-                                onPressed: () => _showQuickCollectDialog(op),
-                                tooltip: 'تحصيل آجل',
-                              ),
+                              if (op['isTechnician'] != true) ...[
+                                SizedBox(width: context.accR.spaceXS),
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: BoxConstraints(),
+                                  icon: Icon(Icons.request_quote,
+                                      size: context.accR.iconS,
+                                      color: Colors.orange.shade700),
+                                  onPressed: () => _showQuickCollectDialog(op),
+                                  tooltip: 'تحصيل آجل',
+                                ),
+                              ],
                             ],
                           ],
                         ))),
@@ -3936,6 +4008,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['technicianAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['deliveredCash'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['netOwed'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade700)))),
+                        if (_oursTabIndex == 0)
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['techDebt'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.deepOrange)))),
                         DataCell(Center(child: Text('', style: TextStyle(fontSize: context.accR.small)))),
                         DataCell(Center(child: Text(''))),
                       ],
@@ -4149,6 +4223,85 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ],
       ),
     );
+  }
+
+  Widget _sortableHeader(String label, String key, {Color? color}) {
+    final isActive = _oursSortKey == key;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() {
+          if (_oursSortKey == key) {
+            _oursSortAsc = !_oursSortAsc;
+          } else {
+            _oursSortKey = key;
+            _oursSortAsc = key == 'operatorName'; // الاسم تصاعدي افتراضياً، الأرقام تنازلي
+          }
+        }),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontWeight: isActive ? FontWeight.w900 : FontWeight.bold,
+                        color: color ?? (isActive ? Colors.blue.shade800 : Colors.black87))),
+              ),
+              if (isActive)
+                Icon(_oursSortAsc ? Icons.arrow_upward : Icons.arrow_downward,
+                    size: 12, color: color ?? Colors.blue.shade800),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<dynamic> _sortOperators(List<dynamic> list) {
+    final sorted = List<dynamic>.from(list);
+    sorted.sort((a, b) {
+      final av = a[_oursSortKey];
+      final bv = b[_oursSortKey];
+      int cmp;
+      if (av is String && bv is String) {
+        cmp = av.compareTo(bv);
+      } else {
+        cmp = ((av as num?)?.toDouble() ?? 0).compareTo((bv as num?)?.toDouble() ?? 0);
+      }
+      return _oursSortAsc ? cmp : -cmp;
+    });
+    return sorted;
+  }
+
+  /// فتح كشف حساب الصندوق (للمشغل) أو الذمم (للفني)
+  void _openAccountStatement(Map<String, dynamic> op) {
+    final userId = op['userId']?.toString();
+    if (userId == null || userId.isEmpty) return;
+    final isTech = op['isTechnician'] == true;
+
+    // البحث عن accountId المناسب من الحسابات المحملة
+    // المشغل → صندوق (1110xx)، الفني → ذمة (1140xx)
+    final prefix = isTech ? '1140' : '1110';
+    AccountingService.instance.getAccounts(companyId: _companyId).then((result) {
+      if (result['success'] != true || !mounted) return;
+      final accounts = (result['data'] as List?) ?? [];
+      final match = accounts.where((a) =>
+          (a['Code']?.toString() ?? '').startsWith(prefix) &&
+          a['Description']?.toString() == userId &&
+          a['IsLeaf'] == true).firstOrNull;
+      if (match != null) {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ClientAccountsPage(
+            companyId: _companyId,
+            initialAccountId: match['Id']?.toString(),
+          ),
+        ));
+      } else {
+        // إذا لم يُوجد حساب، افتح صفحة عمليات المشغل
+        _openOperatorAccount(op);
+      }
+    });
   }
 
   void _openOperatorAccount(Map<String, dynamic> op) {
@@ -4615,7 +4768,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final remaining = totalAmount - delivered;
     final amountController = TextEditingController();
     final notesController = TextEditingController();
-    DateTime selectedDate = DateTime.now();
+    DateTime selectedDate = _fromDate ?? DateTime.now();
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -4655,6 +4808,19 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.attach_money),
                   ),
+                  onChanged: (v) {
+                    final raw = v.replaceAll(',', '');
+                    final num = int.tryParse(raw);
+                    if (num != null) {
+                      final formatted = _currencyFormat.format(num);
+                      if (formatted != v) {
+                        amountController.value = TextEditingValue(
+                          text: formatted,
+                          selection: TextSelection.collapsed(offset: formatted.length),
+                        );
+                      }
+                    }
+                  },
                 ),
                 SizedBox(height: context.accR.spaceS),
                 // حقل التاريخ
@@ -4719,7 +4885,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
     if (result == null || result['confirmed'] != true) return;
     final pickedDate = result['date'] as DateTime;
-    final amount = double.tryParse(amountController.text);
+    final amount = double.tryParse(amountController.text.replaceAll(',', ''));
     if (amount == null || amount <= 0) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -5842,7 +6008,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           ),
                         )
                       : SingleChildScrollView(
-                          child: DataTable(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
                             headingRowColor: WidgetStateProperty.all(
                                 Colors.purple.shade50),
                             columnSpacing: 16,
@@ -5907,6 +6075,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               ]);
                             }).toList(),
                           ),
+                        ),
                         ),
                 ),
               ],
@@ -7142,8 +7311,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             isCount: true)),
         const SizedBox(width: 8),
         Expanded(child: _summaryCard('في خادمنا فقط', _totalOursOnly.toDouble(),
-            'غير موجودة في FTTH', Colors.orange.shade600,
-            icon: Icons.warning_amber, isCount: true)),
+            'غير موجودة في FTTH', Colors.blue.shade600,
+            icon: Icons.info_outline, isCount: true)),
         const SizedBox(width: 8),
         Expanded(child: _summaryCard('في FTTH فقط', _totalFtthOnly.toDouble(),
             'غير موجودة عندنا', Colors.red.shade600,
@@ -7175,10 +7344,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             ],
           ),
           content: SizedBox(
-            width: 900,
+            width: MediaQuery.of(context).size.width < 600 ? MediaQuery.of(context).size.width * 0.9 : 900,
             height: 500,
             child: SingleChildScrollView(
-              child: DataTable(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
                 border: TableBorder.all(color: Colors.grey.shade300),
                 dataRowMinHeight: 28,
                 dataRowMaxHeight: 40,
@@ -7233,6 +7404,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   ]);
                 }).toList(),
               ),
+              ),
             ),
           ),
           actions: [
@@ -7269,10 +7441,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             ],
           ),
           content: SizedBox(
-            width: 900,
+            width: MediaQuery.of(context).size.width < 600 ? MediaQuery.of(context).size.width * 0.9 : 900,
             height: 500,
             child: SingleChildScrollView(
-              child: DataTable(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
                 border: TableBorder.all(color: Colors.grey.shade300),
                 dataRowMinHeight: 28,
                 dataRowMaxHeight: 40,
@@ -7320,6 +7494,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             TextStyle(fontSize: context.accR.small))),
                   ]);
                 }).toList(),
+              ),
               ),
             ),
           ),
@@ -7638,21 +7813,46 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               onTap: row.wrongTransactions.isNotEmpty
                                   ? () => _showWrongTransactions(row)
                                   : null),
-                          // فرق المبالغ (للناقصة فقط)
+                          // فرق المبالغ (ناقصة + زيادة عندنا)
                           DataCell(Center(
                               child: () {
                             final missingAmount = row.ftthTransactions.fold<double>(
                                 0, (s, tx) => s + tx.amount.abs());
+                            final amountDiff = row.oursAmount - row.ftthAmount;
+                            // إذا عندنا زيادة في المبالغ (أزرق)، أو FTTH عنده زيادة (أحمر)
+                            if (missingAmount > 0) {
+                              // FTTH عنده معاملات ناقصة عندنا
+                              return Text(
+                                '-${_currencyFormat.format(missingAmount)}',
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade700),
+                              );
+                            } else if (amountDiff > 0) {
+                              // عندنا زيادة في المبالغ
+                              return Text(
+                                '+${_currencyFormat.format(amountDiff)}',
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade700),
+                              );
+                            } else if (amountDiff < 0) {
+                              return Text(
+                                _currencyFormat.format(amountDiff),
+                                style: TextStyle(
+                                    fontSize: context.accR.small,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade700),
+                              );
+                            }
                             return Text(
-                              missingAmount == 0
-                                  ? '0'
-                                  : _currencyFormat.format(missingAmount),
+                              '0',
                               style: TextStyle(
                                   fontSize: context.accR.small,
                                   fontWeight: FontWeight.bold,
-                                  color: missingAmount == 0
-                                      ? Colors.green.shade700
-                                      : Colors.red.shade700),
+                                  color: Colors.green.shade700),
                             );
                           }())),
                           DataCell(Center(
@@ -7670,7 +7870,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                     ? FontWeight.bold
                                     : FontWeight.w600,
                                 color: row.oursOnlyCount > 0
-                                    ? Colors.orange.shade700
+                                    ? Colors.blue.shade700
                                     : Colors.grey),
                           ))),
                           DataCell(Center(

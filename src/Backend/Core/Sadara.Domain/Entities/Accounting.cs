@@ -584,6 +584,15 @@ public enum TechnicianTransactionCategory
     /// <summary>خصم من الراتب</summary>
     SalaryDeduction = 5,
 
+    /// <summary>أجور توصيل — إيرادات تُضاف على ذمة الموظف</summary>
+    DeliveryFee = 6,
+
+    /// <summary>أجور تنصيب — إيرادات تُضاف على ذمة منشئ المهمة</summary>
+    InstallationFee = 7,
+
+    /// <summary>أجور أخرى — إيرادات تُضاف على ذمة الفني (تجديد اشتراك)</summary>
+    OtherFee = 8,
+
     /// <summary>أخرى</summary>
     Other = 99
 }

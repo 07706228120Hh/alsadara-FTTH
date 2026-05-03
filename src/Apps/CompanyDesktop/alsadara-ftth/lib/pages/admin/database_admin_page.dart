@@ -11,6 +11,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import '../../theme/energy_dashboard_theme.dart';
+import '../../utils/responsive_helper.dart';
 import '../super_admin/widgets/super_admin_widgets.dart';
 
 class DatabaseAdminPage extends StatefulWidget {
@@ -398,10 +399,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
             ),
           ],
         ),
-        content: SizedBox(
-          width: 500,
-          height: 400,
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.85,
+            maxHeight: 400,
+          ),
           child: ListView(
+            shrinkWrap: true,
             children: _buildReportItems(report),
           ),
         ),
@@ -577,6 +581,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.responsive;
     return Container(
       color: EnergyDashboardTheme.bgPrimary,
       child: _isLoadingTables
@@ -585,22 +590,53 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   color: EnergyDashboardTheme.neonGreen))
           : _showCleanupView
               ? _buildCleanupView()
-              : Row(
-                  children: [
-                    // Sidebar — Tables list
-                    SizedBox(
-                      width: 260,
-                      child: _buildTablesSidebar(),
+              : r.isMobile
+                  // Mobile: show sidebar or data view, not both
+                  ? (_selectedTableName == null
+                      ? _buildTablesSidebar()
+                      : Column(
+                          children: [
+                            // Back button to table list
+                            Container(
+                              color: EnergyDashboardTheme.bgCard,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              child: Row(
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        setState(() => _selectedTableName = null),
+                                    icon: const Icon(Icons.arrow_back_rounded,
+                                        size: 18),
+                                    label: Text('الجداول',
+                                        style: GoogleFonts.cairo(fontSize: 12)),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor:
+                                          EnergyDashboardTheme.neonGreen,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(child: _buildDataView()),
+                          ],
+                        ))
+                  : Row(
+                      children: [
+                        // Sidebar — Tables list
+                        SizedBox(
+                          width: 260,
+                          child: _buildTablesSidebar(),
+                        ),
+                        // Divider
+                        Container(
+                          width: 1,
+                          color: EnergyDashboardTheme.borderColor,
+                        ),
+                        // Main content — Data view
+                        Expanded(child: _buildDataView()),
+                      ],
                     ),
-                    // Divider
-                    Container(
-                      width: 1,
-                      color: EnergyDashboardTheme.borderColor,
-                    ),
-                    // Main content — Data view
-                    Expanded(child: _buildDataView()),
-                  ],
-                ),
     );
   }
 
@@ -997,52 +1033,65 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   // ═══════════════════════════════════════════════════════════════
 
   Widget _buildDataTable() {
-    // Show max 8 columns to fit
-    final visibleColumns = _columns.take(8).toList();
+    final r = context.responsive;
+    // Show fewer columns on mobile
+    final maxCols = r.isMobile ? 3 : 8;
+    final visibleColumns = _columns.take(maxCols).toList();
+    final minRowWidth = r.isMobile ? visibleColumns.length * 120.0 + 80 : 0.0;
 
     return Scrollbar(
       controller: _scrollController,
-      child: ListView(
+      child: SingleChildScrollView(
         controller: _scrollController,
-        children: [
-          // Header
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            color: EnergyDashboardTheme.bgSecondary,
-            child: Row(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: r.isMobile ? minRowWidth : MediaQuery.of(context).size.width - 262,
+            ),
+            child: Column(
               children: [
-                ...visibleColumns.map((col) => Expanded(
-                      child: Text(
-                        col['clrName']?.toString() ?? col['name']?.toString() ?? '',
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textMuted,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                // Header
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  color: EnergyDashboardTheme.bgSecondary,
+                  child: Row(
+                    children: [
+                      ...visibleColumns.map((col) => Expanded(
+                            child: Text(
+                              col['clrName']?.toString() ?? col['name']?.toString() ?? '',
+                              style: GoogleFonts.cairo(
+                                color: EnergyDashboardTheme.textMuted,
+                                fontSize: r.isMobile ? 9 : 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )),
+                      // Actions column
+                      SizedBox(
+                        width: 80,
+                        child: Text(
+                          'إجراءات',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.cairo(
+                            color: EnergyDashboardTheme.textMuted,
+                            fontSize: r.isMobile ? 9 : 10,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    )),
-                // Actions column
-                SizedBox(
-                  width: 80,
-                  child: Text(
-                    'إجراءات',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textMuted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    ],
                   ),
                 ),
+                // Rows
+                ..._tableData.map((row) => _buildDataRow(row, visibleColumns)),
               ],
             ),
           ),
-          // Rows
-          ..._tableData.map((row) => _buildDataRow(row, visibleColumns)),
-        ],
+        ),
       ),
     );
   }
@@ -1138,7 +1187,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     // Format dates
     if (str.length > 18 && str.contains('T')) {
       try {
-        final dt = DateTime.parse(str);
+        final dt = DateTime.parse(str).toLocal();
         return DateFormat('yyyy/MM/dd HH:mm').format(dt);
       } catch (_) {}
     }
@@ -1323,74 +1372,128 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                       ),
                     )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          // Cleanup cards grid
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                  child: _buildCleanupCard(
-                                'accounting',
-                                'المحاسبة والعمليات المالية',
-                                Icons.account_balance_rounded,
-                                EnergyDashboardTheme.neonBlue,
-                                [
-                                  'القيود المحاسبية وبنودها',
-                                  'معاملات وتحصيلات الفنيين',
-                                  'معاملات الوكلاء',
-                                  'حركات الصندوق',
-                                  'المصروفات ودفعات المصاريف',
-                                  'الرواتب والخصومات والمكافآت',
-                                  'تقارير التسوية اليومية',
-                                  'طلبات السحب',
-                                  'سجلات الاشتراكات',
-                                  'تصفير: أرصدة الحسابات + الصناديق + الفنيين + الوكلاء',
-                                ],
-                              )),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                  child: _buildCleanupCard(
-                                'attendance',
-                                'الحضور والبصمات والإجازات',
-                                Icons.fingerprint_rounded,
-                                EnergyDashboardTheme.neonPurple,
-                                [
-                                  'سجلات الحضور والانصراف',
-                                  'سجل تدقيق محاولات الحضور',
-                                  'طلبات الإجازة',
-                                  'أرصدة الإجازات',
-                                  'تصفير: بصمات الأجهزة المسجلة',
-                                ],
-                              )),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                  child: _buildCleanupCard(
-                                'inventory',
-                                'المخزون والمستودعات',
-                                Icons.warehouse_rounded,
-                                EnergyDashboardTheme.warning,
-                                [
-                                  'صرف مواد الفنيين وبنودها',
-                                  'أوامر الشراء وبنودها',
-                                  'عمليات البيع وبنودها',
-                                  'حركات المخزن',
-                                  'تصفير: أرصدة المخزون',
-                                ],
-                              )),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                  child: _buildCleanupAllCard()),
-                            ],
-                          ),
-                        ],
-                      ),
+                      padding: EdgeInsets.all(
+                          MediaQuery.of(context).size.width <= 600 ? 10 : 20),
+                      child: MediaQuery.of(context).size.width <= 600
+                          ? Column(
+                              children: [
+                                _buildCleanupCard(
+                                  'accounting',
+                                  'المحاسبة والعمليات المالية',
+                                  Icons.account_balance_rounded,
+                                  EnergyDashboardTheme.neonBlue,
+                                  [
+                                    'القيود المحاسبية وبنودها',
+                                    'معاملات وتحصيلات الفنيين',
+                                    'معاملات الوكلاء',
+                                    'حركات الصندوق',
+                                    'المصروفات ودفعات المصاريف',
+                                    'الرواتب والخصومات والمكافآت',
+                                    'تقارير التسوية اليومية',
+                                    'طلبات السحب',
+                                    'سجلات الاشتراكات',
+                                    'تصفير: أرصدة الحسابات + الصناديق + الفنيين + الوكلاء',
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _buildCleanupCard(
+                                  'attendance',
+                                  'الحضور والبصمات والإجازات',
+                                  Icons.fingerprint_rounded,
+                                  EnergyDashboardTheme.neonPurple,
+                                  [
+                                    'سجلات الحضور والانصراف',
+                                    'سجل تدقيق محاولات الحضور',
+                                    'طلبات الإجازة',
+                                    'أرصدة الإجازات',
+                                    'تصفير: بصمات الأجهزة المسجلة',
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _buildCleanupCard(
+                                  'inventory',
+                                  'المخزون والمستودعات',
+                                  Icons.warehouse_rounded,
+                                  EnergyDashboardTheme.warning,
+                                  [
+                                    'صرف مواد الفنيين وبنودها',
+                                    'أوامر الشراء وبنودها',
+                                    'عمليات البيع وبنودها',
+                                    'حركات المخزن',
+                                    'تصفير: أرصدة المخزون',
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _buildCleanupAllCard(),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                // Cleanup cards grid
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                        child: _buildCleanupCard(
+                                      'accounting',
+                                      'المحاسبة والعمليات المالية',
+                                      Icons.account_balance_rounded,
+                                      EnergyDashboardTheme.neonBlue,
+                                      [
+                                        'القيود المحاسبية وبنودها',
+                                        'معاملات وتحصيلات الفنيين',
+                                        'معاملات الوكلاء',
+                                        'حركات الصندوق',
+                                        'المصروفات ودفعات المصاريف',
+                                        'الرواتب والخصومات والمكافآت',
+                                        'تقارير التسوية اليومية',
+                                        'طلبات السحب',
+                                        'سجلات الاشتراكات',
+                                        'تصفير: أرصدة الحسابات + الصناديق + الفنيين + الوكلاء',
+                                      ],
+                                    )),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                        child: _buildCleanupCard(
+                                      'attendance',
+                                      'الحضور والبصمات والإجازات',
+                                      Icons.fingerprint_rounded,
+                                      EnergyDashboardTheme.neonPurple,
+                                      [
+                                        'سجلات الحضور والانصراف',
+                                        'سجل تدقيق محاولات الحضور',
+                                        'طلبات الإجازة',
+                                        'أرصدة الإجازات',
+                                        'تصفير: بصمات الأجهزة المسجلة',
+                                      ],
+                                    )),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                        child: _buildCleanupCard(
+                                      'inventory',
+                                      'المخزون والمستودعات',
+                                      Icons.warehouse_rounded,
+                                      EnergyDashboardTheme.warning,
+                                      [
+                                        'صرف مواد الفنيين وبنودها',
+                                        'أوامر الشراء وبنودها',
+                                        'عمليات البيع وبنودها',
+                                        'حركات المخزن',
+                                        'تصفير: أرصدة المخزون',
+                                      ],
+                                    )),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                        child: _buildCleanupAllCard()),
+                                  ],
+                                ),
+                              ],
+                            ),
                     ),
         ),
       ],
@@ -1823,52 +1926,96 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     fontWeight: FontWeight.bold)),
           ],
         ),
-        content: SizedBox(
-          width: 500,
-          height: 400,
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.85,
+            maxHeight: 400,
+          ),
           child: ListView(
+            shrinkWrap: true,
             children: row.entries.map((e) {
+              final isMobile = MediaQuery.of(context).size.width <= 600;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 140,
-                      child: Text(
-                        e.key,
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textMuted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                child: isMobile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  e.key,
+                                  style: GoogleFonts.cairo(
+                                    color: EnergyDashboardTheme.textMuted,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(
+                                      text: e.value?.toString() ?? ''));
+                                  EnergyDashboardTheme.showSnack(ctx,
+                                      'تم النسخ', EnergyDashboardTheme.success);
+                                },
+                                child: Icon(Icons.copy_rounded,
+                                    size: 14,
+                                    color: EnergyDashboardTheme.textMuted),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          SelectableText(
+                            _formatValue(e.value),
+                            style: GoogleFonts.cairo(
+                              color: EnergyDashboardTheme.textPrimary,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 140,
+                            child: Text(
+                              e.key,
+                              style: GoogleFonts.cairo(
+                                color: EnergyDashboardTheme.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: SelectableText(
+                              _formatValue(e.value),
+                              style: GoogleFonts.cairo(
+                                color: EnergyDashboardTheme.textPrimary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(
+                                  text: e.value?.toString() ?? ''));
+                              EnergyDashboardTheme.showSnack(ctx,
+                                  'تم النسخ', EnergyDashboardTheme.success);
+                            },
+                            icon: Icon(Icons.copy_rounded,
+                                size: 14,
+                                color: EnergyDashboardTheme.textMuted),
+                            constraints: const BoxConstraints(
+                                minWidth: 28, minHeight: 28),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
                       ),
-                    ),
-                    Expanded(
-                      child: SelectableText(
-                        _formatValue(e.value),
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textPrimary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        Clipboard.setData(
-                            ClipboardData(text: e.value?.toString() ?? ''));
-                        EnergyDashboardTheme.showSnack(
-                            ctx, 'تم النسخ', EnergyDashboardTheme.success);
-                      },
-                      icon: Icon(Icons.copy_rounded,
-                          size: 14,
-                          color: EnergyDashboardTheme.textMuted),
-                      constraints:
-                          const BoxConstraints(minWidth: 28, minHeight: 28),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
               );
             }).toList(),
           ),
@@ -1929,14 +2076,61 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     fontWeight: FontWeight.bold)),
           ],
         ),
-        content: SizedBox(
-          width: 500,
-          height: 400,
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.85,
+            maxHeight: 400,
+          ),
           child: ListView(
+            shrinkWrap: true,
             children: editableEntries.map((e) {
+              final isMobile = MediaQuery.of(context).size.width <= 600;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
+                child: isMobile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            e.key,
+                            style: GoogleFonts.cairo(
+                              color: EnergyDashboardTheme.textMuted,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: controllers[e.key],
+                            style: GoogleFonts.cairo(
+                                color: EnergyDashboardTheme.textPrimary,
+                                fontSize: 12),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: EnergyDashboardTheme.bgPrimary,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                    color: EnergyDashboardTheme.borderColor),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                    color: EnergyDashboardTheme.borderColor),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                    color: EnergyDashboardTheme.neonGreen),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(
@@ -2061,10 +2255,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     fontWeight: FontWeight.bold)),
           ],
         ),
-        content: SizedBox(
-          width: 400,
-          height: 300,
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.85,
+            maxHeight: 300,
+          ),
           child: ListView(
+            shrinkWrap: true,
             children: _columns.map((col) {
               final isPK = col['isPrimaryKey'] == true;
               return Container(

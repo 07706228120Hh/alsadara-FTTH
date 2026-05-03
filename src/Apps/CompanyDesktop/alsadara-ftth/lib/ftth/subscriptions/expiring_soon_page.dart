@@ -418,7 +418,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         final expiryStr = item['expires']?.toString();
         DateTime? expiryDate;
         try {
-          if (expiryStr != null) expiryDate = DateTime.parse(expiryStr);
+          if (expiryStr != null) expiryDate = DateTime.parse(expiryStr).toLocal();
         } catch (_) {}
         String status = 'غير معروف';
         if (expiryDate != null) {
@@ -435,7 +435,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         ]) {
           if (item[key] != null) {
             try {
-              startDate = DateTime.parse(item[key]);
+              startDate = DateTime.parse(item[key]).toLocal();
               break;
             } catch (_) {}
           }
@@ -488,7 +488,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         String createdOnFormatted = '';
         if (item['createdOn'] != null) {
           try {
-            final created = DateTime.parse(item['createdOn']);
+            final created = DateTime.parse(item['createdOn']).toLocal();
             createdOnFormatted = fmt(created);
           } catch (_) {}
         }
@@ -1219,7 +1219,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
 
   String _shortDate(String iso) {
     try {
-      final dt = DateTime.parse(iso);
+      final dt = DateTime.parse(iso).toLocal();
       return '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';
@@ -2227,7 +2227,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
     String remainingExact = '';
     if (item['expires'] != null) {
       try {
-        final expiry = DateTime.parse(item['expires']);
+        final expiry = DateTime.parse(item['expires']).toLocal();
         final now = DateTime.now();
         final difference = expiry.difference(now);
         final daysDiff = difference.inDays;

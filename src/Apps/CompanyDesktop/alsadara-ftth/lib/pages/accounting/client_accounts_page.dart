@@ -8,8 +8,9 @@ import '../../theme/accounting_responsive.dart';
 /// صفحة كشف الحسابات - عرض جميع الحسابات الفرعية مع كشف حساب مفصّل
 class ClientAccountsPage extends StatefulWidget {
   final String? companyId;
+  final String? initialAccountId;
 
-  const ClientAccountsPage({super.key, this.companyId});
+  const ClientAccountsPage({super.key, this.companyId, this.initialAccountId});
 
   @override
   State<ClientAccountsPage> createState() => _ClientAccountsPageState();
@@ -75,7 +76,15 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       if (!mounted) return;
       _errorMessage = 'خطأ';
     }
-    if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+      // فتح حساب محدد تلقائياً
+      if (widget.initialAccountId != null && _allAccounts.isNotEmpty) {
+        final match = _allAccounts.where((a) =>
+            a['Id']?.toString() == widget.initialAccountId).firstOrNull;
+        if (match != null) _loadStatement(match);
+      }
+    }
   }
 
   List<Map<String, dynamic>> get _filteredAccounts {
@@ -656,6 +665,20 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     hasValue: _toDate != null,
                   ),
                 ),
+                const SizedBox(width: 6),
+                _quickDateChip('اليوم', () {
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+                  setState(() { _fromDate = today; _toDate = today; });
+                  _reloadStatement();
+                }),
+                const SizedBox(width: 4),
+                _quickDateChip('أمس', () {
+                  final yesterday = DateTime.now().subtract(const Duration(days: 1));
+                  final d = DateTime(yesterday.year, yesterday.month, yesterday.day);
+                  setState(() { _fromDate = d; _toDate = d; });
+                  _reloadStatement();
+                }),
                 if (_fromDate != null || _toDate != null) ...[
                   const SizedBox(width: 4),
                   GestureDetector(
@@ -695,7 +718,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   hasValue: _fromDate != null,
                 ),
                 SizedBox(width: ar.spaceS),
-                Text('→',
+                Text('←',
                     style: GoogleFonts.cairo(
                         color: AccountingTheme.textMuted, fontSize: ar.body)),
                 SizedBox(width: ar.spaceS),
@@ -706,6 +729,25 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   onTap: () => _pickDate(false),
                   hasValue: _toDate != null,
                 ),
+                SizedBox(width: ar.spaceM),
+                _quickDateChip('اليوم', () {
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+                  setState(() { _fromDate = today; _toDate = today; });
+                  _reloadStatement();
+                }),
+                const SizedBox(width: 6),
+                _quickDateChip('أمس', () {
+                  final yesterday = DateTime.now().subtract(const Duration(days: 1));
+                  final d = DateTime(yesterday.year, yesterday.month, yesterday.day);
+                  setState(() { _fromDate = d; _toDate = d; });
+                  _reloadStatement();
+                }),
+                const SizedBox(width: 6),
+                _quickDateChip('الكل', () {
+                  setState(() { _fromDate = null; _toDate = null; });
+                  _reloadStatement();
+                }),
                 if (_fromDate != null || _toDate != null) ...[
                   SizedBox(width: ar.spaceS),
                   InkWell(
@@ -742,6 +784,22 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 const Spacer(),
               ],
             ),
+    );
+  }
+
+  Widget _quickDateChip(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AccountingTheme.neonBlue.withAlpha(15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AccountingTheme.neonBlue.withAlpha(60)),
+        ),
+        child: Text(label, style: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.neonBlue, fontWeight: FontWeight.w600)),
+      ),
     );
   }
 
@@ -1038,7 +1096,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     String formattedDate = '';
     try {
-      final dt = DateTime.parse(dateStr);
+      final dt = DateTime.parse(dateStr).toLocal();
       formattedDate = _displayDateFmt.format(dt);
     } catch (_) {
       formattedDate = dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;
@@ -1268,24 +1326,27 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   }
 
   void _showFullEntryDialog(Map<String, dynamic> entry) {
+    final status = entry['Status']?.toString() ?? 'Draft';
+    final isVoided = status == 'Voided';
+    final effectiveReadOnly = isVoided;
+
     final descCtrl = TextEditingController(text: entry['Description'] ?? '');
     final notesCtrl = TextEditingController(text: entry['Notes'] ?? '');
-    final entryNum = entry['EntryNumber']?.toString() ?? '';
-    final entryId = entry['Id']?.toString() ?? '';
-    final status = entry['Status']?.toString() ?? 'Draft';
-    final isPosted = status == 'Posted';
+    DateTime entryDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? '') ?? DateTime.now();
 
     final lines = <Map<String, dynamic>>[];
     for (final l in ((entry['Lines'] as List?) ?? [])) {
       lines.add({
         'accountId': l['AccountId']?.toString() ?? '',
-        'accountLabel': '${l['AccountCode'] ?? ''} - ${l['AccountName'] ?? ''}',
-        'debit': ((l['DebitAmount'] ?? 0) as num).toDouble(),
-        'credit': ((l['CreditAmount'] ?? 0) as num).toDouble(),
-        'desc': l['Description']?.toString() ?? '',
+        'accountName': l['AccountName']?.toString() ?? l['Account']?['Name']?.toString() ?? '',
+        'debitCtrl': TextEditingController(text: ((l['DebitAmount'] ?? 0) as num).toDouble() > 0 ? ((l['DebitAmount'] ?? 0) as num).toStringAsFixed(0) : ''),
+        'creditCtrl': TextEditingController(text: ((l['CreditAmount'] ?? 0) as num).toDouble() > 0 ? ((l['CreditAmount'] ?? 0) as num).toStringAsFixed(0) : ''),
+        'descCtrl': TextEditingController(text: l['Description']?.toString() ?? ''),
       });
     }
 
+    List<Map<String, dynamic>> accounts = [];
+    bool accountsLoaded = false;
     bool isSaving = false;
 
     showDialog(
@@ -1293,174 +1354,267 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDState) {
-          final totalDebit = lines.fold<double>(0, (s, l) => s + (l['debit'] as double));
-          final totalCredit = lines.fold<double>(0, (s, l) => s + (l['credit'] as double));
-          final isBalanced = totalDebit > 0 && (totalDebit - totalCredit).abs() < 0.01;
+          if (!accountsLoaded && !effectiveReadOnly) {
+            accountsLoaded = true;
+            AccountingService.instance.getAccounts(companyId: widget.companyId).then((res) {
+              if (res['success'] == true && ctx.mounted) {
+                final data = res['data'];
+                final list = data is List ? data : (data is Map ? (data['items'] ?? []) as List : []);
+                final leafAccounts = <Map<String, dynamic>>[];
+                for (final a in list) {
+                  if (a['IsLeaf'] == true || a['isLeaf'] == true) {
+                    leafAccounts.add({
+                      'id': (a['Id'] ?? a['id'])?.toString() ?? '',
+                      'name': '${a['Code'] ?? a['code'] ?? ''} - ${a['Name'] ?? a['name'] ?? ''}',
+                      'code': (a['Code'] ?? a['code'])?.toString() ?? '',
+                    });
+                  }
+                }
+                leafAccounts.sort((a, b) => a['code'].compareTo(b['code']));
+                setDState(() => accounts = leafAccounts);
+              }
+            });
+          }
+
+          double totalDebit = 0, totalCredit = 0;
+          for (final l in lines) {
+            totalDebit += double.tryParse(l['debitCtrl'].text) ?? 0;
+            totalCredit += double.tryParse(l['creditCtrl'].text) ?? 0;
+          }
+          final isBalanced = (totalDebit - totalCredit).abs() < 0.01;
 
           return Directionality(
             textDirection: TextDirection.rtl,
             child: Dialog(
               backgroundColor: AccountingTheme.bgCard,
-              insetPadding: EdgeInsets.symmetric(
-                horizontal: context.accR.isMobile ? 12 : MediaQuery.of(context).size.width * 0.15,
-                vertical: 24,
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-                    decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_note, color: AccountingTheme.neonBlue, size: 24),
-                        const SizedBox(width: 8),
-                        Text('تعديل القيد', style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        Text('#$entryNum', style: GoogleFonts.cairo(fontSize: 13, color: AccountingTheme.neonBlue)),
-                        if (isPosted) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AccountingTheme.success.withAlpha(30),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text('مرحل', style: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.success, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                        const Spacer(),
-                        IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
-                      ],
-                    ),
-                  ),
-                  // Body
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 750, maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // العنوان
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      decoration: const BoxDecoration(
+                        color: AccountingTheme.bgCardHover,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+                      ),
+                      child: Row(
                         children: [
-                          TextField(
-                            controller: descCtrl,
-                            style: const TextStyle(color: AccountingTheme.textPrimary),
-                            decoration: InputDecoration(
-                              labelText: 'وصف القيد',
-                              labelStyle: const TextStyle(color: AccountingTheme.textMuted),
-                              filled: true, fillColor: AccountingTheme.bgCardHover,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          // أسطر القيد
-                          ...lines.asMap().entries.map((e) {
-                            final i = e.key;
-                            final l = e.value;
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AccountingTheme.bgCardHover,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AccountingTheme.borderColor),
-                              ),
-                              child: Row(
-                                children: [
-                                  Text('${i + 1}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textMuted)),
-                                  const SizedBox(width: 8),
-                                  Expanded(flex: 3, child: Text(l['accountLabel'] ?? '', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textPrimary))),
-                                  const SizedBox(width: 8),
-                                  SizedBox(width: 100, child: Text(l['debit'] > 0 ? _fmt(l['debit']) : '-', textAlign: TextAlign.center, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: l['debit'] > 0 ? AccountingTheme.success : AccountingTheme.textMuted))),
-                                  const SizedBox(width: 8),
-                                  SizedBox(width: 100, child: Text(l['credit'] > 0 ? _fmt(l['credit']) : '-', textAlign: TextAlign.center, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: l['credit'] > 0 ? AccountingTheme.danger : AccountingTheme.textMuted))),
-                                  const SizedBox(width: 8),
-                                  Expanded(flex: 2, child: Text(l['desc'] ?? '', style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.textSecondary))),
-                                ],
-                              ),
-                            );
-                          }),
-                          const SizedBox(height: 8),
-                          // ملخص
+                          Icon(Icons.edit_note, color: AccountingTheme.info, size: 22),
+                          const SizedBox(width: 10),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(effectiveReadOnly ? 'تفاصيل القيد' : 'تعديل القيد', style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text('#${entry['EntryNumber'] ?? ''}', style: GoogleFonts.cairo(color: AccountingTheme.neonBlue, fontSize: 12)),
+                          ])),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                             decoration: BoxDecoration(
-                              color: isBalanced ? AccountingTheme.success.withAlpha(15) : AccountingTheme.warning.withAlpha(20),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: isBalanced ? AccountingTheme.success.withAlpha(60) : AccountingTheme.warning.withAlpha(60)),
+                              color: (status == 'Posted' ? AccountingTheme.success : AccountingTheme.warning).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(isBalanced ? '✓ متوازن' : '⚠ غير متوازن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: isBalanced ? AccountingTheme.success : AccountingTheme.warning)),
-                                Text('مدين: ${_fmt(totalDebit)}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.success)),
-                                Text('دائن: ${_fmt(totalCredit)}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.danger)),
-                              ],
-                            ),
+                            child: Text(status == 'Posted' ? 'مرحّل' : status == 'Voided' ? 'ملغي' : 'مسودة',
+                                style: GoogleFonts.cairo(color: status == 'Posted' ? AccountingTheme.success : AccountingTheme.warning, fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: notesCtrl,
-                            style: const TextStyle(color: AccountingTheme.textPrimary),
-                            maxLines: 2,
-                            decoration: InputDecoration(
-                              labelText: 'ملاحظات',
-                              labelStyle: const TextStyle(color: AccountingTheme.textMuted),
-                              filled: true, fillColor: AccountingTheme.bgCardHover,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                            ),
-                          ),
+                          const SizedBox(width: 8),
+                          IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, size: 20)),
                         ],
                       ),
                     ),
-                  ),
-                  // Footer
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-                    decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: AccountingTheme.borderColor)),
+                    // المحتوى
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Expanded(flex: 2, child: TextField(
+                              controller: descCtrl, readOnly: effectiveReadOnly,
+                              style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 13),
+                              decoration: InputDecoration(labelText: 'الوصف', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
+                            )),
+                            const SizedBox(width: 12),
+                            Expanded(child: InkWell(
+                              onTap: effectiveReadOnly ? null : () async {
+                                final picked = await showDatePicker(context: ctx, initialDate: entryDate, firstDate: DateTime(2020), lastDate: DateTime(2030));
+                                if (picked != null) setDState(() => entryDate = picked);
+                              },
+                              child: InputDecorator(
+                                decoration: InputDecoration(labelText: 'التاريخ', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                                    suffixIcon: const Icon(Icons.calendar_today, size: 16),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
+                                child: Text('${entryDate.year}/${entryDate.month.toString().padLeft(2, '0')}/${entryDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontSize: 13)),
+                              ),
+                            )),
+                          ]),
+                          const SizedBox(height: 12),
+                          TextField(controller: notesCtrl, readOnly: effectiveReadOnly, maxLines: 2,
+                              style: const TextStyle(fontSize: 13),
+                              decoration: InputDecoration(labelText: 'ملاحظات', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none))),
+                          if (entry['ReferenceType'] != null || entry['ReferenceId'] != null) ...[
+                            const SizedBox(height: 8),
+                            Wrap(spacing: 16, children: [
+                              if (entry['ReferenceType'] != null) Text('النوع: ${_refTypeLabel(entry['ReferenceType'])}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textMuted)),
+                              if (entry['ReferenceId'] != null) Text('مرجع: ${entry['ReferenceId']}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.neonBlue)),
+                            ]),
+                          ],
+                          const SizedBox(height: 18),
+                          const Divider(color: AccountingTheme.borderColor),
+                          const SizedBox(height: 10),
+                          Row(children: [
+                            Text('أسطر القيد', style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            if (!effectiveReadOnly) TextButton.icon(
+                              onPressed: () => setDState(() => lines.add({
+                                'accountId': '', 'accountName': '',
+                                'debitCtrl': TextEditingController(), 'creditCtrl': TextEditingController(), 'descCtrl': TextEditingController(),
+                              })),
+                              icon: const Icon(Icons.add_circle_outline, size: 16),
+                              label: Text('إضافة سطر', style: GoogleFonts.cairo(fontSize: 12)),
+                              style: TextButton.styleFrom(foregroundColor: AccountingTheme.neonGreen),
+                            ),
+                          ]),
+                          const SizedBox(height: 8),
+                          // رأس الجدول
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(color: AccountingTheme.bgCardHover, borderRadius: BorderRadius.circular(6)),
+                            child: Row(children: [
+                              const SizedBox(width: 30),
+                              Expanded(flex: 3, child: Text('الحساب', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold))),
+                              SizedBox(width: 100, child: Center(child: Text('مدين', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.success)))),
+                              SizedBox(width: 100, child: Center(child: Text('دائن', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.danger)))),
+                              Expanded(flex: 2, child: Text('البيان', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold))),
+                            ]),
+                          ),
+                          const SizedBox(height: 4),
+                          ...lines.asMap().entries.map((e) {
+                            final i = e.key; final l = e.value;
+                            final accId = l['accountId'] as String;
+                            final accName = accId.isNotEmpty ? (accounts.where((a) => a['id'] == accId).firstOrNull?['name'] ?? l['accountName'] ?? '') : l['accountName'] ?? '';
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: i % 2 == 0 ? Colors.white : AccountingTheme.bgCardHover,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: AccountingTheme.borderColor.withOpacity(0.5)),
+                              ),
+                              child: Row(children: [
+                                SizedBox(width: 30, child: Text('${i + 1}', style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.neonBlue, fontWeight: FontWeight.bold))),
+                                Expanded(flex: 3, child: effectiveReadOnly
+                                    ? Text(accName, style: GoogleFonts.cairo(fontSize: 12))
+                                    : DropdownButtonFormField<String>(
+                                        value: accId.isNotEmpty && accounts.any((a) => a['id'] == accId) ? accId : null,
+                                        isExpanded: true,
+                                        decoration: InputDecoration(hintText: 'اختر حساب', isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor))),
+                                        style: GoogleFonts.cairo(fontSize: 11, color: Colors.black),
+                                        items: accounts.map((a) => DropdownMenuItem(value: a['id'] as String, child: Text(a['name'] as String, style: GoogleFonts.cairo(fontSize: 11), overflow: TextOverflow.ellipsis))).toList(),
+                                        onChanged: (v) => setDState(() { l['accountId'] = v ?? ''; l['accountName'] = accounts.where((a) => a['id'] == v).firstOrNull?['name'] ?? ''; }),
+                                      )),
+                                const SizedBox(width: 4),
+                                SizedBox(width: 100, child: TextField(
+                                    controller: l['debitCtrl'], readOnly: effectiveReadOnly,
+                                    keyboardType: TextInputType.number, textAlign: TextAlign.center,
+                                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AccountingTheme.success),
+                                    decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: AccountingTheme.success.withOpacity(0.05),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
+                                    onChanged: (_) => setDState(() {}))),
+                                const SizedBox(width: 4),
+                                SizedBox(width: 100, child: TextField(
+                                    controller: l['creditCtrl'], readOnly: effectiveReadOnly,
+                                    keyboardType: TextInputType.number, textAlign: TextAlign.center,
+                                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AccountingTheme.danger),
+                                    decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: AccountingTheme.danger.withOpacity(0.05),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
+                                    onChanged: (_) => setDState(() {}))),
+                                const SizedBox(width: 4),
+                                Expanded(flex: 2, child: TextField(
+                                    controller: l['descCtrl'], readOnly: effectiveReadOnly,
+                                    style: GoogleFonts.cairo(fontSize: 11),
+                                    decoration: InputDecoration(hintText: 'بيان السطر', isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor))))),
+                              ]),
+                            );
+                          }),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isBalanced ? AccountingTheme.success.withOpacity(0.08) : AccountingTheme.warning.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: isBalanced ? AccountingTheme.success.withOpacity(0.3) : AccountingTheme.warning.withOpacity(0.3)),
+                            ),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                              Text(isBalanced ? '✓ القيد متوازن' : '⚠ غير متوازن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: isBalanced ? AccountingTheme.success : AccountingTheme.warning)),
+                              Text('مدين: ${_fmt(totalDebit)}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.success, fontWeight: FontWeight.bold)),
+                              Text('دائن: ${_fmt(totalCredit)}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.danger, fontWeight: FontWeight.bold)),
+                            ]),
+                          ),
+                        ]),
+                      ),
                     ),
-                    child: Row(
-                      children: [
+                    // زر الحفظ
+                    if (!effectiveReadOnly) Container(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AccountingTheme.borderColor))),
+                      child: Row(children: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted))),
+                        const SizedBox(width: 8),
                         ElevatedButton.icon(
-                          onPressed: isSaving ? null : () async {
+                          onPressed: isSaving || !isBalanced ? null : () async {
+                            for (final l in lines) { if ((l['accountId'] as String).isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يجب اختيار حساب لكل سطر'), backgroundColor: AccountingTheme.warning)); return; } }
                             setDState(() => isSaving = true);
-                            final updateResult = await AccountingService.instance.updateJournalEntry(entryId, {
-                              'Description': descCtrl.text.trim(),
-                              'Notes': notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                            final linesDtos = lines.map((l) => {
+                              'AccountId': l['accountId'],
+                              'DebitAmount': double.tryParse(l['debitCtrl'].text) ?? 0,
+                              'CreditAmount': double.tryParse(l['creditCtrl'].text) ?? 0,
+                              'Description': l['descCtrl'].text,
+                            }).toList();
+                            final result = await AccountingService.instance.updateJournalEntry(entry['Id'].toString(), {
+                              'Description': descCtrl.text,
+                              'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
+                              'EntryDate': entryDate.toIso8601String(),
+                              'Lines': linesDtos,
                             });
+                            if (!ctx.mounted) return;
                             setDState(() => isSaving = false);
-                            if (updateResult['success'] == true) {
-                              if (mounted) Navigator.pop(ctx);
+                            if (result['success'] == true) {
+                              Navigator.pop(ctx);
                               if (_selectedAccount != null) _loadStatement(_selectedAccount!, resetDates: false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('تم حفظ التعديلات'), backgroundColor: AccountingTheme.success),
-                              );
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث القيد بنجاح'), backgroundColor: AccountingTheme.success));
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(updateResult['message'] ?? 'خطأ'), backgroundColor: AccountingTheme.danger),
-                              );
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'خطأ'), backgroundColor: AccountingTheme.danger));
                             }
                           },
                           icon: isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save, size: 18),
-                          label: Text('حفظ التعديلات', style: GoogleFonts.cairo()),
-                          style: ElevatedButton.styleFrom(backgroundColor: AccountingTheme.neonGreen, foregroundColor: Colors.white),
+                          label: Text(isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات', style: GoogleFonts.cairo(fontSize: 13)),
+                          style: ElevatedButton.styleFrom(backgroundColor: AccountingTheme.info, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                         ),
-                        const SizedBox(width: 12),
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted))),
-                      ],
+                      ]),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
         },
       ),
     );
+  }
+
+  String _refTypeLabel(dynamic type) {
+    final t = type is int ? type : int.tryParse(type?.toString() ?? '') ?? 0;
+    const map = {0: 'يدوي', 1: 'قبض', 2: 'راتب', 3: 'صندوق', 4: 'سحب', 5: 'إيداع', 6: 'بوليصة', 7: 'صرف', 8: 'وكيل', 9: 'خدمة', 10: 'تجديد', 11: 'تسليم كاش', 12: 'تحصيل آجل'};
+    return map[t] ?? type.toString();
   }
 
   String _translateStatus(String status) {
@@ -1496,7 +1650,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     String formattedDate = '';
     try {
-      final dt = DateTime.parse(dateStr);
+      final dt = DateTime.parse(dateStr).toLocal();
       formattedDate = _displayDateFmt.format(dt);
     } catch (_) {
       formattedDate = dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;

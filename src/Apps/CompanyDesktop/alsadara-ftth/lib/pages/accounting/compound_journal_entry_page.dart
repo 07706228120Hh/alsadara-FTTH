@@ -28,6 +28,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
 
   // خطوط القيد المركب
   final List<_JournalLine> _lines = [];
+  DateTime _entryDate = DateTime.now();
 
   // ── التنقل بين القيود ──
   List<dynamic> _allEntries = [];
@@ -93,6 +94,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
 
         _descCtrl.text = data['Description'] ?? '';
         _notesCtrl.text = data['Notes'] ?? '';
+        _entryDate = DateTime.tryParse(data['EntryDate']?.toString() ?? '') ?? DateTime.now();
 
         for (final l in lines) {
           final line = _JournalLine();
@@ -127,6 +129,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
       _currentEntryIndex = -1;
       _viewingEntryId = null;
       _isReadOnly = false;
+      _entryDate = DateTime.now();
     });
   }
 
@@ -440,13 +443,26 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
       child: Row(
         children: [
           // التاريخ
-          Icon(Icons.calendar_today_rounded,
-              color: const Color(0xFF1565C0), size: 15),
-          const SizedBox(width: 5),
-          Text(
-            _formatDate(DateTime.now()),
-            style: GoogleFonts.cairo(
-                color: Colors.black, fontSize: 12, fontWeight: FontWeight.w600),
+          InkWell(
+            onTap: _isReadOnly ? null : _pickDate,
+            borderRadius: BorderRadius.circular(6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.calendar_today_rounded,
+                    color: const Color(0xFF1565C0), size: 15),
+                const SizedBox(width: 5),
+                Text(
+                  _formatDate(_entryDate),
+                  style: GoogleFonts.cairo(
+                      color: Colors.black, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                if (!_isReadOnly) ...[
+                  const SizedBox(width: 3),
+                  Icon(Icons.edit, size: 12, color: const Color(0xFF1565C0).withValues(alpha: 0.6)),
+                ],
+              ],
+            ),
           ),
           const SizedBox(width: 6),
           // شارة مسودة
@@ -710,28 +726,36 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           EdgeInsets.symmetric(horizontal: ar.spaceM, vertical: ar.spaceXS),
       child: Row(
         children: [
-          // بطاقة التاريخ (يمين)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.calendar_today_rounded,
-                    color: AccountingTheme.accent, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDate(DateTime.now()),
-                  style: GoogleFonts.cairo(
-                      color: Colors.black,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600),
-                ),
-              ],
+          // بطاقة التاريخ (يمين) — قابلة للنقر لاختيار تاريخ
+          InkWell(
+            onTap: _isReadOnly ? null : _pickDate,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.calendar_today_rounded,
+                      color: AccountingTheme.accent, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatDate(_entryDate),
+                    style: GoogleFonts.cairo(
+                        color: Colors.black,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  if (!_isReadOnly) ...[
+                    const SizedBox(width: 6),
+                    Icon(Icons.edit, size: 14, color: AccountingTheme.accent.withValues(alpha: 0.6)),
+                  ],
+                ],
+              ),
             ),
           ),
           const Spacer(),
@@ -2006,6 +2030,18 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
     );
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _entryDate,
+      firstDate: DateTime(2024),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null && mounted) {
+      setState(() => _entryDate = picked);
+    }
+  }
+
   void _addLine() {
     setState(() => _lines.add(_JournalLine()));
   }
@@ -2260,6 +2296,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           {
             'Description': _descCtrl.text.trim(),
             'Notes': _notesCtrl.text.isEmpty ? null : _notesCtrl.text,
+            'EntryDate': _entryDate.toIso8601String(),
             'Lines': linesData,
           },
         );
@@ -2278,6 +2315,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           notes: _notesCtrl.text.isEmpty ? null : _notesCtrl.text,
           companyId: widget.companyId ?? '',
           createdById: userId,
+          entryDate: _entryDate,
         );
 
         if (result['success'] == true) {

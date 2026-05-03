@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../utils/responsive_helper.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/plan_pricing_service.dart';
 
@@ -450,58 +451,93 @@ class _FtthOperatorTransactionsPageState
   }
 
   Widget _buildStatsBar() {
+    final isMob = context.responsive.isMobile;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM, vertical: context.accR.spaceS),
       color: Colors.grey.shade50,
-      child: Row(
-        children: [
-          _statCard('الإجمالي', '${_filtered.length}', Colors.teal),
-          SizedBox(width: context.accR.spaceS),
-          _statCard(
-              'السالب',
-              '${_currencyFormat.format(_negativeAmount.abs())} د.ع',
-              Colors.red),
-          SizedBox(width: context.accR.spaceS),
-          _statCard('الموجب', '${_currencyFormat.format(_positiveAmount)} د.ع',
-              Colors.green),
-          if (widget.attributedOps > 0) ...[
-            SizedBox(width: context.accR.spaceS),
-            _statCard(
-                'منسوب تلقائياً', '${widget.attributedOps}', Colors.indigo),
-          ],
-        ],
-      ),
+      child: isMob
+          ? Wrap(
+              spacing: context.accR.spaceS,
+              runSpacing: context.accR.spaceS,
+              children: [
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                  child: _statCard('الإجمالي', '${_filtered.length}', Colors.teal),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                  child: _statCard(
+                      'السالب',
+                      '${_currencyFormat.format(_negativeAmount.abs())} د.ع',
+                      Colors.red),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                  child: _statCard('الموجب', '${_currencyFormat.format(_positiveAmount)} د.ع',
+                      Colors.green),
+                ),
+                if (widget.attributedOps > 0)
+                  SizedBox(
+                    width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
+                    child: _statCard(
+                        'منسوب تلقائياً', '${widget.attributedOps}', Colors.indigo),
+                  ),
+              ],
+            )
+          : Row(
+              children: [
+                _statCard('الإجمالي', '${_filtered.length}', Colors.teal),
+                SizedBox(width: context.accR.spaceS),
+                _statCard(
+                    'السالب',
+                    '${_currencyFormat.format(_negativeAmount.abs())} د.ع',
+                    Colors.red),
+                SizedBox(width: context.accR.spaceS),
+                _statCard('الموجب', '${_currencyFormat.format(_positiveAmount)} د.ع',
+                    Colors.green),
+                if (widget.attributedOps > 0) ...[
+                  SizedBox(width: context.accR.spaceS),
+                  _statCard(
+                      'منسوب تلقائياً', '${widget.attributedOps}', Colors.indigo),
+                ],
+              ],
+            ),
     );
   }
 
   Widget _statCard(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: context.accR.spaceS, horizontal: context.accR.spaceS),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: context.accR.caption,
-                    color: color.shade700,
-                    fontWeight: FontWeight.w600)),
-            SizedBox(height: 2),
-            Text(value,
+    final card = Container(
+      padding: EdgeInsets.symmetric(vertical: context.accR.spaceS, horizontal: context.accR.spaceS),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: context.accR.caption,
+                  color: color.shade700,
+                  fontWeight: FontWeight.w600)),
+          SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value,
                 style: TextStyle(
                     fontSize: context.accR.small,
                     fontWeight: FontWeight.bold,
                     color: color.shade800),
                 textAlign: TextAlign.center),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+    if (!context.responsive.isMobile) {
+      return Expanded(child: card);
+    }
+    return card;
   }
 
   Widget _buildSearchAndFilters(List<String> categories) {

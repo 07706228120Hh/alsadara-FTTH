@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../utils/responsive_helper.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
 import 'widgets/request_status_badge.dart';
@@ -210,22 +211,23 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
 
   Widget _buildInfoTab() {
     if (_citizen == null) return const SizedBox();
+    final isMobile = context.responsive.isMobile;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isMobile ? 10 : 16),
       child: Column(
         children: [
           // بطاقة المعلومات الأساسية
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isMobile ? 12 : 20),
               child: Column(
                 children: [
                   // الصورة والاسم
                   Row(
                     children: [
                       CircleAvatar(
-                        radius: 40,
+                        radius: isMobile ? 28 : 40,
                         backgroundColor: Colors.teal.shade100,
                         backgroundImage: _citizen!.profileImageUrl != null
                             ? NetworkImage(_citizen!.profileImageUrl!)
@@ -243,7 +245,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                               )
                             : null,
                       ),
-                      const SizedBox(width: 20),
+                      SizedBox(width: isMobile ? 12 : 20),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,8 +255,8 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                                 Expanded(
                                   child: Text(
                                     _citizen!.fullName,
-                                    style: const TextStyle(
-                                      fontSize: 24,
+                                    style: TextStyle(
+                                      fontSize: isMobile ? 18 : 24,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -317,8 +319,10 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                   const SizedBox(height: 20),
 
                   // الإحصائيات
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  Wrap(
+                    alignment: WrapAlignment.spaceAround,
+                    spacing: isMobile ? 8 : 16,
+                    runSpacing: 8,
                     children: [
                       _buildStatItem(
                         label: 'الطلبات',

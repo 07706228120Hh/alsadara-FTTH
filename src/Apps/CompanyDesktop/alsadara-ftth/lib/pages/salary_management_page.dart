@@ -326,7 +326,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
   String _formatDate(dynamic date) {
     if (date == null) return '';
     try {
-      final dt = DateTime.parse(date.toString());
+      final dt = DateTime.parse(date.toString()).toLocal();
       return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
     } catch (_) {
       return date.toString();
@@ -400,12 +400,13 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               offset: const Offset(0, 2)),
         ],
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           const Icon(Icons.calendar_month, color: Colors.teal),
-          const SizedBox(width: 12),
           const Text('الشهر:', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
           DropdownButton<int>(
             value: _selectedMonth,
             items: List.generate(12, (i) {
@@ -432,9 +433,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               }
             },
           ),
-          const SizedBox(width: 16),
           const Text('السنة:', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
           DropdownButton<int>(
             value: _selectedYear,
             items: List.generate(5, (i) {
@@ -448,7 +447,6 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               }
             },
           ),
-          const Spacer(),
           IconButton(
             onPressed: _loadSalaries,
             icon: const Icon(Icons.refresh, color: Colors.teal),
@@ -542,71 +540,82 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
 
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withValues(alpha: 0.8), color],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(10),
+    final r = context.responsive;
+    return Container(
+      padding: EdgeInsets.all(r.isMobile ? 8 : 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withValues(alpha: 0.8), color],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(height: 4),
-            Text(value,
-                style: const TextStyle(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white, size: r.isMobile ? 20 : 24),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value,
+                style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: r.isMobile ? 13 : 16,
                     fontWeight: FontWeight.bold)),
-            Text(title,
-                style: const TextStyle(color: Colors.white70, fontSize: 11)),
-          ],
-        ),
+          ),
+          Text(title,
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: r.isMobile ? 9 : 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ],
       ),
     );
   }
 
   Widget _buildActionButtons() {
+    final r = context.responsive;
     final hasSalaries = _salaries.isNotEmpty;
     final hasPending = _salaries.any((s) => s['Status'] == 'Pending');
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      child: Row(
+      margin: EdgeInsets.all(r.isMobile ? 10 : 16),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
           if (!hasSalaries)
             ElevatedButton.icon(
               onPressed: _generatePayroll,
               icon: const Icon(Icons.auto_fix_high, size: 18),
-              label: const Text('إنشاء مسيّر الرواتب'),
+              label: Text('إنشاء مسيّر الرواتب',
+                  style: TextStyle(fontSize: r.isMobile ? 12 : 14)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: EdgeInsets.symmetric(
+                    horizontal: r.isMobile ? 12 : 20, vertical: 12),
               ),
             ),
           if (hasSalaries && hasPending) ...[
             ElevatedButton.icon(
               onPressed: _payAllSalaries,
               icon: const Icon(Icons.payments, size: 18),
-              label: const Text('صرف جميع الرواتب'),
+              label: Text('صرف جميع الرواتب',
+                  style: TextStyle(fontSize: r.isMobile ? 12 : 14)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[700],
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: EdgeInsets.symmetric(
+                    horizontal: r.isMobile ? 12 : 20, vertical: 12),
               ),
             ),
-            const SizedBox(width: 12),
             OutlinedButton.icon(
               onPressed: _deletePayroll,
               icon: const Icon(Icons.delete_outline, size: 18),
-              label: const Text('حذف المسيّر'),
+              label: Text('حذف المسيّر',
+                  style: TextStyle(fontSize: r.isMobile ? 12 : 14)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 side: const BorderSide(color: Colors.red),
@@ -712,7 +721,10 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                 ],
               ),
               const Divider(height: 16),
-              Row(
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   // أيام الحضور
                   _buildInfoChip(
@@ -720,14 +732,12 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                     '${salary['AttendanceDays'] ?? 0} حضور',
                     Colors.green,
                   ),
-                  const SizedBox(width: 8),
                   // أيام الغياب
                   _buildInfoChip(
                     Icons.cancel,
                     '${salary['AbsentDays'] ?? 0} غياب',
                     Colors.red,
                   ),
-                  const SizedBox(width: 8),
                   // التأخير
                   if ((salary['TotalLateMinutes'] ?? 0) > 0)
                     _buildInfoChip(
@@ -735,7 +745,6 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                       '${salary['TotalLateMinutes']} د تأخير',
                       Colors.orange,
                     ),
-                  const Spacer(),
                   // الخصومات
                   if (hasDeductions)
                     Text(
@@ -745,7 +754,6 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                           fontWeight: FontWeight.bold,
                           fontSize: 13),
                     ),
-                  if (hasDeductions && hasBonuses) const SizedBox(width: 8),
                   // المكافآت
                   if (hasBonuses)
                     Text(
@@ -755,7 +763,6 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                           fontWeight: FontWeight.bold,
                           fontSize: 13),
                     ),
-                  const SizedBox(width: 16),
                   // صافي الراتب
                   Container(
                     padding:
@@ -774,8 +781,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                     ),
                   ),
                   // زر صرف فردي
-                  if (!isPaid) ...[
-                    const SizedBox(width: 8),
+                  if (!isPaid)
                     IconButton(
                       icon: const Icon(Icons.payment, color: Colors.teal),
                       tooltip: 'صرف هذا الراتب',
@@ -785,7 +791,6 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                       constraints:
                           const BoxConstraints(minWidth: 32, minHeight: 32),
                     ),
-                  ],
                 ],
               ),
             ],
@@ -992,14 +997,17 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text('سياسات خصم ومكافأة الرواتب',
                   style: TextStyle(
-                      fontSize: 18,
+                      fontSize: context.responsive.isMobile ? 14 : 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.teal[700])),
-              const Spacer(),
               ElevatedButton.icon(
                 onPressed: _showCreatePolicyDialog,
                 icon: const Icon(Icons.add, size: 18),
@@ -1136,15 +1144,20 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
   }
 
   Widget _buildPolicyItem(String label, String value) {
+    final r = context.responsive;
     return SizedBox(
-      width: 180,
+      width: r.isMobile ? 150 : 180,
       child: Row(
         children: [
-          Text('$label: ',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Flexible(
+            child: Text('$label: ',
+                style: TextStyle(fontSize: r.isMobile ? 10 : 12, color: Colors.grey[600]),
+                overflow: TextOverflow.ellipsis),
+          ),
           Text(value,
-              style:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  fontSize: r.isMobile ? 11 : 13,
+                  fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -1213,116 +1226,40 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                     const Text('قواعد خصم التأخير',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: lateMinCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'خصم لكل دقيقة تأخير (د.ع)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: maxLateCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'حد أقصى خصم تأخير (%)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
+                    _buildFormFieldRow(
+                      lateMinCtrl,
+                      'خصم لكل دقيقة تأخير (د.ع)',
+                      maxLateCtrl,
+                      'حد أقصى خصم تأخير (%)',
                     ),
                     const SizedBox(height: 16),
                     const Text('قواعد الغياب والمغادرة المبكرة',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: absentMultCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'معامل خصم الغياب',
-                              helperText: '1 = خصم يوم واحد, 2 = يومين',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: earlyDepCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'خصم كل دقيقة مغادرة مبكرة',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
+                    _buildFormFieldRow(
+                      absentMultCtrl,
+                      'معامل خصم الغياب',
+                      earlyDepCtrl,
+                      'خصم كل دقيقة مغادرة مبكرة',
+                      helperText1: '1 = خصم يوم واحد, 2 = يومين',
                     ),
                     const SizedBox(height: 16),
                     const Text('قواعد الساعات الإضافية',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: overtimeMultCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'معامل أجر الساعة الإضافية',
-                              helperText: '1.5 = ساعة ونصف',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: maxOvertimeCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'حد ساعات إضافية/شهر',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
+                    _buildFormFieldRow(
+                      overtimeMultCtrl,
+                      'معامل أجر الساعة الإضافية',
+                      maxOvertimeCtrl,
+                      'حد ساعات إضافية/شهر',
+                      helperText1: '1.5 = ساعة ونصف',
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: unpaidMultCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'معامل خصم إجازة بدون راتب',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: workDaysCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'أيام العمل في الشهر',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
+                    _buildFormFieldRow(
+                      unpaidMultCtrl,
+                      'معامل خصم إجازة بدون راتب',
+                      workDaysCtrl,
+                      'أيام العمل في الشهر',
                     ),
                   ],
                 ),
@@ -1411,6 +1348,51 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFormFieldRow(
+    TextEditingController ctrl1,
+    String label1,
+    TextEditingController ctrl2,
+    String label2, {
+    String? helperText1,
+    String? helperText2,
+  }) {
+    final isMobile = MediaQuery.of(context).size.width <= 600;
+    final field1 = TextField(
+      controller: ctrl1,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label1,
+        helperText: helperText1,
+        border: const OutlineInputBorder(),
+      ),
+    );
+    final field2 = TextField(
+      controller: ctrl2,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label2,
+        helperText: helperText2,
+        border: const OutlineInputBorder(),
+      ),
+    );
+    if (isMobile) {
+      return Column(
+        children: [
+          field1,
+          const SizedBox(height: 10),
+          field2,
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: field1),
+        const SizedBox(width: 12),
+        Expanded(child: field2),
+      ],
     );
   }
 

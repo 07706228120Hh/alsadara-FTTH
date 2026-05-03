@@ -170,8 +170,9 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
 
   Widget _buildToolbar() {
     final ar = context.accR;
+    final isMob = MediaQuery.of(context).size.width < 600;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: ar.spaceL, vertical: ar.spaceM),
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : ar.spaceL, vertical: isMob ? 6 : ar.spaceM),
       decoration: const BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
@@ -207,13 +208,90 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
 
   Widget _buildFilters() {
     final fmt = DateFormat('yyyy/MM/dd');
+    final isMob = MediaQuery.of(context).size.width < 600;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 16, vertical: 8),
       decoration: BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
       ),
-      child: Row(
+      child: isMob
+          ? Column(
+              children: [
+                // فلتر المشغل
+                DropdownButtonFormField<String>(
+                  value: _filterOperator,
+                  isDense: true,
+                  style: GoogleFonts.cairo(fontSize: 13, color: Colors.black87),
+                  decoration: InputDecoration(
+                    labelText: 'المشغل',
+                    labelStyle: GoogleFonts.cairo(fontSize: 12),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  items: _operators.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                  onChanged: (v) { _filterOperator = v ?? 'الكل'; _loadReports(); },
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _filterFrom ?? DateTime.now(),
+                            firstDate: DateTime(2024),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) { _filterFrom = picked; _loadReports(); }
+                        },
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'من',
+                            labelStyle: GoogleFonts.cairo(fontSize: 12),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            suffixIcon: const Icon(Icons.calendar_today, size: 16),
+                          ),
+                          child: Text(_filterFrom != null ? fmt.format(_filterFrom!) : 'الكل',
+                              style: GoogleFonts.cairo(fontSize: 13)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _filterTo ?? DateTime.now(),
+                            firstDate: DateTime(2024),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) { _filterTo = picked; _loadReports(); }
+                        },
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'إلى',
+                            labelStyle: GoogleFonts.cairo(fontSize: 12),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            suffixIcon: const Icon(Icons.calendar_today, size: 16),
+                          ),
+                          child: Text(_filterTo != null ? fmt.format(_filterTo!) : 'الكل',
+                              style: GoogleFonts.cairo(fontSize: 13)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          : Row(
         children: [
           // فلتر المشغل
           Expanded(
@@ -296,9 +374,33 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
 
   Widget _buildStatsRow() {
     final fmt = NumberFormat('#,###');
+    final isMob = MediaQuery.of(context).size.width < 600;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: IntrinsicHeight(
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 16, vertical: 8),
+      child: isMob
+          ? Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 22) / 2,
+                  child: _statCard('التقارير', '$_totalReports', Icons.description, const Color(0xFF880E4F), expanded: false),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 22) / 2,
+                  child: _statCard('نقد النظام', '${fmt.format(_totalSystemCash)} د.ع', Icons.attach_money, const Color(0xFF2E7D32), expanded: false),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 22) / 2,
+                  child: _statCard('المصاريف', '${fmt.format(_totalExpenses)} د.ع', Icons.remove_circle_outline, const Color(0xFFE65100), expanded: false),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 22) / 2,
+                  child: _statCard('النقد الصافي', '${fmt.format(_totalNetCash)} د.ع', Icons.account_balance_wallet, const Color(0xFF1565C0), expanded: false),
+                ),
+              ],
+            )
+          : IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -315,9 +417,8 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     );
   }
 
-  Widget _statCard(String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
+  Widget _statCard(String title, String value, IconData icon, Color color, {bool expanded = true}) {
+    final content = Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [color, color.withOpacity(0.8)]),
@@ -342,8 +443,9 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
             ),
           ],
         ),
-      ),
-    );
+      );
+    if (expanded) return Expanded(child: content);
+    return content;
   }
 
   Widget _buildBody() {
@@ -410,7 +512,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     // تاريخ مُنسّق
     String dateDisplay = reportDate;
     try {
-      final dt = DateTime.parse(reportDate);
+      final dt = DateTime.parse(reportDate).toLocal();
       dateDisplay = DateFormat('yyyy/MM/dd (E)', 'ar').format(dt);
     } catch (_) {}
 
@@ -507,22 +609,17 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                   children: [
                     Text('تفاصيل اشتراكات اليوم', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
-                    IntrinsicHeight(
-                      child: Row(
-                        children: [
-                          _miniCard('إجمالي', sysTotal, fmt, const Color(0xFF880E4F)),
-                          const SizedBox(width: 4),
-                          _miniCard('نقد', sysCash, fmt, const Color(0xFF2E7D32)),
-                          const SizedBox(width: 4),
-                          _miniCard('آجل', sysCredit, fmt, const Color(0xFFE65100)),
-                          const SizedBox(width: 4),
-                          _miniCard('ماستر', sysMaster, fmt, const Color(0xFF4A148C)),
-                          const SizedBox(width: 4),
-                          _miniCard('وكيل', sysAgent, fmt, const Color(0xFF1565C0)),
-                          const SizedBox(width: 4),
-                          _miniCard('فني', sysTech, fmt, const Color(0xFF00695C)),
-                        ],
-                      ),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        _miniCard('إجمالي', sysTotal, fmt, const Color(0xFF880E4F)),
+                        _miniCard('نقد', sysCash, fmt, const Color(0xFF2E7D32)),
+                        _miniCard('آجل', sysCredit, fmt, const Color(0xFFE65100)),
+                        _miniCard('ماستر', sysMaster, fmt, const Color(0xFF4A148C)),
+                        _miniCard('وكيل', sysAgent, fmt, const Color(0xFF1565C0)),
+                        _miniCard('فني', sysTech, fmt, const Color(0xFF00695C)),
+                      ],
                     ),
                   ],
                 ),
@@ -786,24 +883,26 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
   }
 
   Widget _miniCard(String label, double value, NumberFormat fmt, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Text(label, style: GoogleFonts.cairo(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(value > 0 ? fmt.format(value) : '0',
-                  style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w900, color: color)),
-            ),
-          ],
-        ),
+    // Calculate width to fit 3 per row on mobile, 6 on desktop
+    final screenW = MediaQuery.of(context).size.width;
+    final cardW = screenW < 600 ? (screenW - 72) / 3 : (screenW - 100) / 6;
+    return Container(
+      width: cardW.clamp(60, 140),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: GoogleFonts.cairo(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value > 0 ? fmt.format(value) : '0',
+                style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w900, color: color)),
+          ),
+        ],
       ),
     );
   }

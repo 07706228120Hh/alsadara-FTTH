@@ -1520,12 +1520,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'معلومات الشريك التفصيلية',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A237E),
+              Expanded(
+                child: Text(
+                  'معلومات الشريك التفصيلية',
+                  style: TextStyle(
+                    fontSize: MediaQuery.of(context).size.width < 400 ? 15 : 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A237E),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -1624,12 +1627,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               color: Colors.blue[700],
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'نظام FTTH - المعلومات الأساسية',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[800],
+                            Expanded(
+                              child: Text(
+                                'نظام FTTH - المعلومات الأساسية',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[800],
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -1698,12 +1704,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 color: Colors.purple[700],
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                'صلاحيات النظام (${userPermissions.length})',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.purple[800],
+                              Expanded(
+                                child: Text(
+                                  'صلاحيات النظام (${userPermissions.length})',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.purple[800],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -1774,12 +1783,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 color: Colors.orange[700],
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                'الأدوار والمناصب (${userRoles.length})',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange[800],
+                              Expanded(
+                                child: Text(
+                                  'الأدوار والمناصب (${userRoles.length})',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange[800],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -2508,7 +2520,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                   const SizedBox(width: 8),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 220),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width < 400 ? 150 : 220),
                     child: Text(
                       vps.statusMessage,
                       style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),

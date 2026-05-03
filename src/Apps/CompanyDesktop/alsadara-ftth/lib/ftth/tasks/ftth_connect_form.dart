@@ -666,7 +666,7 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
   String _formatDateTime(String iso) {
     if (iso.isEmpty) return '-';
     try {
-      final dt = DateTime.parse(iso);
+      final dt = DateTime.parse(iso).toLocal();
       return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return iso;

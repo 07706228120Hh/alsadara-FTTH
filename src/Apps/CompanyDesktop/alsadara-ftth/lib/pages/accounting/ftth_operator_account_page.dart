@@ -53,6 +53,56 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       widget.companyId ?? VpsAuthService.instance.currentCompanyId ?? '';
 
   final _currencyFormat = NumberFormat('#,###', 'ar');
+  String _txSearchQuery = '';
+  final _txSearchController = TextEditingController();
+
+  /// حقل بحث قابل للتصفية — يعمل داخل Dialog بدون مشاكل Overlay
+  Widget _buildSearchableField({
+    required String label,
+    required String hint,
+    required List<dynamic> list,
+    required String? selectedId,
+    required InputDecoration Function(String) fieldDeco,
+    required Widget Function(String, Widget) fieldRow,
+    required void Function(String? id, String name) onSelected,
+    required VoidCallback onClear,
+    required StateSetter setDialogState,
+  }) {
+    if (list.isEmpty) {
+      return fieldRow(label, const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+      ));
+    }
+    // تصفية العناصر بدون ID + إزالة التكرار (API يرجع Id أو id)
+    final valid = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final item in list) {
+      final id = (item['id'] ?? item['Id'])?.toString() ?? '';
+      if (id.isNotEmpty && seen.add(id)) {
+        // توحيد المفاتيح
+        valid.add({
+          'id': id,
+          'name': (item['name'] ?? item['Name'] ?? item['FullName'] ?? '').toString(),
+        });
+      }
+    }
+    // الاسم المختار حالياً
+    String selectedName = '';
+    if (selectedId != null) {
+      final match = valid.where((i) => i['id'] == selectedId).firstOrNull;
+      if (match != null) selectedName = match['name'] ?? '';
+    }
+
+    return fieldRow(label, _SearchableDropdownField(
+      hint: hint,
+      items: valid,
+      selectedName: selectedName,
+      fieldDeco: fieldDeco,
+      onSelected: onSelected,
+      onClear: onClear,
+    ));
+  }
 
   // ===== تعريفات الأعمدة =====
   static const _columnKeys = <String>[
@@ -581,6 +631,19 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
   List<Map<String, dynamic>> _getProcessedTransactions() {
     var list = _transactions.map((e) => e as Map<String, dynamic>).toList();
 
+    // بحث نصي
+    if (_txSearchQuery.isNotEmpty) {
+      final q = _txSearchQuery.toLowerCase();
+      list = list.where((tx) {
+        final name = (tx['CustomerName'] ?? '').toString().toLowerCase();
+        final phone = (tx['PhoneNumber'] ?? '').toString().toLowerCase();
+        final tech = (tx['TechnicianName'] ?? '').toString().toLowerCase();
+        final zone = (tx['ZoneId'] ?? '').toString().toLowerCase();
+        final subId = (tx['SubscriptionId'] ?? '').toString().toLowerCase();
+        return name.contains(q) || phone.contains(q) || tech.contains(q) || zone.contains(q) || subId.contains(q);
+      }).toList();
+    }
+
     // تطبيق الفلاتر
     for (final entry in _columnFilters.entries) {
       if (entry.value.isEmpty) continue;
@@ -826,26 +889,64 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     );
   }
 
+  // controllers للفلاتر في رأس الأعمدة
+  final Map<String, TextEditingController> _headerFilterControllers = {};
+
+  TextEditingController _getFilterCtrl(String key) {
+    return _headerFilterControllers.putIfAbsent(key, () {
+      final ctrl = TextEditingController(text: _columnFilters[key] ?? '');
+      return ctrl;
+    });
+  }
+
   Widget _buildColumnLabel(String key) {
     final label = _columnLabels[key] ?? key;
-    final hasFilter = _columnFilters.containsKey(key) && _columnFilters[key]!.isNotEmpty;
+    if (key == 'edit' || key == 'index') {
+      return Expanded(child: Center(child: Text(label,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: context.accR.small, color: Colors.white),
+          overflow: TextOverflow.ellipsis)));
+    }
+    final ctrl = _getFilterCtrl(key);
     return Expanded(
-      child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(label,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: context.accR.small, color: Colors.white),
-                  overflow: TextOverflow.ellipsis),
-            ),
-            if (hasFilter)
-              Padding(
-                padding: const EdgeInsets.only(right: 2),
-                child: Icon(Icons.filter_alt, size: 12, color: Colors.amber),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: context.accR.small, color: Colors.white),
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 3),
+          SizedBox(
+            height: 24,
+            child: TextField(
+              controller: ctrl,
+              style: const TextStyle(fontSize: 10, color: Colors.white),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                hintText: '...',
+                hintStyle: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4)),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.15),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
+                suffixIcon: ctrl.text.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () { ctrl.clear(); setState(() => _columnFilters.remove(key)); },
+                        child: Icon(Icons.close, size: 10, color: Colors.white.withOpacity(0.7)))
+                    : null,
+                suffixIconConstraints: const BoxConstraints(maxWidth: 16, maxHeight: 16),
               ),
-          ],
-        ),
+              onChanged: (v) => setState(() {
+                if (v.trim().isEmpty) {
+                  _columnFilters.remove(key);
+                } else {
+                  _columnFilters[key] = v.trim();
+                }
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -872,26 +973,58 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // الفلاتر النشطة
-          if (activeFilterCount > 0)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.accR.spaceL),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: _columnFilters.entries
-                    .where((e) => e.value.isNotEmpty)
-                    .map((e) => Chip(
-                      label: Text('${_columnLabels[e.key]}: ${e.value}', style: GoogleFonts.cairo(fontSize: 11)),
-                      deleteIcon: const Icon(Icons.close, size: 14),
-                      onDeleted: () => setState(() => _columnFilters.remove(e.key)),
-                      backgroundColor: Colors.blue.shade50,
-                      side: BorderSide(color: Colors.blue.shade200),
-                    ))
-                    .toList(),
+          // حقل البحث
+          Padding(
+            padding: EdgeInsets.fromLTRB(context.accR.spaceL, context.accR.spaceS, context.accR.spaceL, 0),
+            child: SizedBox(
+              height: 36,
+              child: TextField(
+                controller: _txSearchController,
+                onChanged: (v) => setState(() => _txSearchQuery = v.trim()),
+                style: GoogleFonts.cairo(fontSize: 12),
+                textDirection: TextDirection.rtl,
+                decoration: InputDecoration(
+                  hintText: 'بحث عن عميل، هاتف، فني، وكيل، منطقة...',
+                  hintStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                  prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                  suffixIcon: _txSearchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close, size: 14),
+                          onPressed: () {
+                            _txSearchController.clear();
+                            setState(() => _txSearchQuery = '');
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blue, width: 2)),
+                ),
               ),
             ),
-          if (activeFilterCount > 0) const SizedBox(height: 8),
+          ),
+          // عدد النتائج المفلترة
+          if (activeFilterCount > 0)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.accR.spaceL, vertical: 4),
+              child: Row(children: [
+                Icon(Icons.filter_alt, size: 14, color: Colors.blue.shade700),
+                const SizedBox(width: 4),
+                Text('${processed.length} نتيجة من ${_transactions.length}', style: GoogleFonts.cairo(fontSize: 11, color: Colors.blue.shade700)),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => setState(() { _columnFilters.clear(); _headerFilterControllers.forEach((_, c) => c.clear()); }),
+                  icon: const Icon(Icons.clear_all, size: 14),
+                  label: Text('مسح الكل', style: GoogleFonts.cairo(fontSize: 11)),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red.shade600, padding: EdgeInsets.zero, minimumSize: const Size(0, 28)),
+                ),
+              ]),
+            ),
           if (processed.isEmpty)
             Padding(
               padding: EdgeInsets.all(context.accR.spaceXXL),
@@ -912,7 +1045,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                     sortAscending: _sortAscending,
                     border: TableBorder.all(color: Colors.grey.shade300, width: 0.5),
                     headingRowColor: WidgetStateProperty.all(const Color(0xFF2C3E50)),
-                    headingRowHeight: context.accR.tableHeaderH,
+                    headingRowHeight: 56,
                     dataRowMinHeight: context.accR.tableRowMinH,
                     dataRowMaxHeight: context.accR.tableRowMaxH,
                     columnSpacing: 0,
@@ -1529,7 +1662,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                             // ═══ بيانات الاشتراك ═══
                             sectionTitle('بيانات الاشتراك'),
                             fieldRow('الباقة', TextField(controller: planNameCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('اسم الباقة'))),
-                            fieldRow('السعر', TextField(controller: planPriceCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('سعر الباقة'))),
+                            fieldRow('السعر', TextField(controller: planPriceCtrl, readOnly: true, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade700), decoration: fieldDeco('سعر الباقة').copyWith(filled: true, fillColor: Colors.green.shade50))),
                             fieldRow('الالتزام', TextField(controller: commitmentCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('فترة الالتزام'))),
                             fieldRow('نوع العملية', Wrap(
                               spacing: 6,
@@ -1583,50 +1716,44 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 visualDensity: VisualDensity.compact,
                               )).toList(),
                             )),
-                            // اختيار فني — قائمة منسدلة مضمونة
+                            // اختيار فني — بحث وتصفية
                             if (collectionType == 'technician')
-                              fieldRow('الفني', techList.isEmpty
-                                ? const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-                                : SizedBox(
-                                    height: 45,
-                                    child: DropdownButtonFormField<String>(
-                                      value: (linkedTechId != null && techList.any((t) => t['id']?.toString() == linkedTechId)) ? linkedTechId : null,
-                                      decoration: fieldDeco('اختر الفني'),
-                                      isExpanded: true,
-                                      style: GoogleFonts.cairo(fontSize: 12, color: Colors.black),
-                                      items: techList.map((t) => DropdownMenuItem<String>(
-                                        value: t['id']?.toString() ?? '',
-                                        child: Text(t['name'] ?? t['Name'] ?? '', style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis),
-                                      )).toList(),
-                                      onChanged: (v) => setDialogState(() {
-                                        linkedTechId = v;
-                                        final selected = techList.where((t) => t['id']?.toString() == v).firstOrNull;
-                                        techNameCtrl.text = selected?['name'] ?? selected?['Name'] ?? '';
-                                      }),
-                                    ),
-                                  )),
-                            // اختيار وكيل — قائمة منسدلة مضمونة
+                              _buildSearchableField(
+                                label: 'الفني',
+                                hint: 'ابحث عن فني...',
+                                list: techList,
+                                selectedId: linkedTechId,
+                                fieldDeco: fieldDeco,
+                                fieldRow: fieldRow,
+                                onSelected: (id, name) => setDialogState(() {
+                                  linkedTechId = id;
+                                  techNameCtrl.text = name;
+                                }),
+                                onClear: () => setDialogState(() {
+                                  linkedTechId = null;
+                                  techNameCtrl.clear();
+                                }),
+                                setDialogState: setDialogState,
+                              ),
+                            // اختيار وكيل — بحث وتصفية
                             if (collectionType == 'agent')
-                              fieldRow('الوكيل', agentList.isEmpty
-                                ? const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-                                : SizedBox(
-                                    height: 45,
-                                    child: DropdownButtonFormField<String>(
-                                      value: (linkedAgentId != null && agentList.any((a) => a['id']?.toString() == linkedAgentId)) ? linkedAgentId : null,
-                                      decoration: fieldDeco('اختر الوكيل'),
-                                      isExpanded: true,
-                                      style: GoogleFonts.cairo(fontSize: 12, color: Colors.black),
-                                      items: agentList.map((a) => DropdownMenuItem<String>(
-                                        value: a['id']?.toString() ?? '',
-                                        child: Text(a['name'] ?? a['Name'] ?? '', style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis),
-                                      )).toList(),
-                                      onChanged: (v) => setDialogState(() {
-                                        linkedAgentId = v;
-                                        final selected = agentList.where((a) => a['id']?.toString() == v).firstOrNull;
-                                        techNameCtrl.text = selected?['name'] ?? selected?['Name'] ?? '';
-                                      }),
-                                    ),
-                                  )),
+                              _buildSearchableField(
+                                label: 'الوكيل',
+                                hint: 'ابحث عن وكيل...',
+                                list: agentList,
+                                selectedId: linkedAgentId,
+                                fieldDeco: fieldDeco,
+                                fieldRow: fieldRow,
+                                onSelected: (id, name) => setDialogState(() {
+                                  linkedAgentId = id;
+                                  techNameCtrl.text = name;
+                                }),
+                                onClear: () => setDialogState(() {
+                                  linkedAgentId = null;
+                                  techNameCtrl.clear();
+                                }),
+                                setDialogState: setDialogState,
+                              ),
                             fieldRow('حالة الدفع', TextField(
                               controller: TextEditingController(text: paymentStatus),
                               style: GoogleFonts.cairo(fontSize: 12),
@@ -1647,10 +1774,24 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
                             // ═══ محاسبية ═══
                             sectionTitle('بيانات محاسبية'),
-                            fieldRow('السعر الأساسي', TextField(controller: basePriceCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
-                            fieldRow('خصم الشركة', TextField(controller: compDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
-                            fieldRow('خصم يدوي', TextField(controller: manDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
-                            fieldRow('رسوم صيانة', TextField(controller: maintFeeCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+                            fieldRow('السعر الأساسي', TextField(controller: basePriceCtrl, readOnly: true, style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600), decoration: fieldDeco('0').copyWith(filled: true, fillColor: Colors.grey.shade100))),
+                            fieldRow('خصم الشركة', TextField(controller: compDiscountCtrl, readOnly: true, style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600), decoration: fieldDeco('0').copyWith(filled: true, fillColor: Colors.grey.shade100))),
+                            fieldRow('خصم يدوي', TextField(controller: manDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
+                              onChanged: (_) => setDialogState(() {
+                                final base = double.tryParse(basePriceCtrl.text) ?? 0;
+                                final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
+                                final manDisc = double.tryParse(manDiscountCtrl.text) ?? 0;
+                                final maint = double.tryParse(maintFeeCtrl.text) ?? 0;
+                                planPriceCtrl.text = (base - compDisc - manDisc + maint).toStringAsFixed(0);
+                              }))),
+                            fieldRow('رسوم صيانة', TextField(controller: maintFeeCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
+                              onChanged: (_) => setDialogState(() {
+                                final base = double.tryParse(basePriceCtrl.text) ?? 0;
+                                final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
+                                final manDisc = double.tryParse(manDiscountCtrl.text) ?? 0;
+                                final maint = double.tryParse(maintFeeCtrl.text) ?? 0;
+                                planPriceCtrl.text = (base - compDisc - manDisc + maint).toStringAsFixed(0);
+                              }))),
 
                             // ═══ تكرار ═══
                             sectionTitle('التكرار'),
@@ -1709,7 +1850,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                   'PhoneNumber': phoneCtrl.text.trim(),
                                   'PlanName': planNameCtrl.text.trim(),
                                   'PlanPrice': double.tryParse(planPriceCtrl.text) ?? 0,
-                                  'CommitmentPeriod': commitmentCtrl.text.trim(),
+                                  'CommitmentPeriod': int.tryParse(commitmentCtrl.text.trim()) ?? 0,
                                   'OperationType': operationType,
                                   'ActivatedBy': activatedByCtrl.text.trim(),
                                   'ActivationDate': activationDate.toIso8601String(),
@@ -1732,10 +1873,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                   'RenewalCycleMonths': int.tryParse(renewMonthsCtrl.text) ?? 0,
                                   'PaidMonths': int.tryParse(paidMonthsCtrl.text) ?? 0,
                                 };
-                                // دائماً أرسل الفني والوكيل
-                                fields['LinkedTechnicianId'] = linkedTechId;
+                                // دائماً أرسل الفني والوكيل — إزالة القيم الفارغة لتجنب خطأ Guid parsing
+                                if (linkedTechId != null && linkedTechId!.isNotEmpty) {
+                                  fields['LinkedTechnicianId'] = linkedTechId;
+                                }
                                 fields['HasLinkedTechnicianId'] = true;
-                                fields['LinkedAgentId'] = linkedAgentId;
+                                if (linkedAgentId != null && linkedAgentId!.isNotEmpty) {
+                                  fields['LinkedAgentId'] = linkedAgentId;
+                                }
                                 fields['HasLinkedAgentId'] = true;
                                 debugPrint('📝 Saving logId=$logId, CollectionType=${fields['CollectionType']}, LinkedTech=${fields['LinkedTechnicianId']}');
                                 final result = await AccountingService.instance.updateSubscriptionLog(logId: int.parse(logId.toString()), fields: fields);
@@ -1951,6 +2096,140 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         Navigator.pop(context);
         _loadData();
       },
+    );
+  }
+}
+
+/// ويدجت بحث قابل للتصفية — يستخدم بدلاً من DropdownButtonFormField
+class _SearchableDropdownField extends StatefulWidget {
+  final String hint;
+  final List<Map<String, dynamic>> items;
+  final String selectedName;
+  final InputDecoration Function(String) fieldDeco;
+  final void Function(String? id, String name) onSelected;
+  final VoidCallback onClear;
+
+  const _SearchableDropdownField({
+    required this.hint,
+    required this.items,
+    required this.selectedName,
+    required this.fieldDeco,
+    required this.onSelected,
+    required this.onClear,
+  });
+
+  @override
+  State<_SearchableDropdownField> createState() => _SearchableDropdownFieldState();
+}
+
+class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
+  late TextEditingController _ctrl;
+  bool _showList = false;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.selectedName);
+    _query = '';
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchableDropdownField old) {
+    super.didUpdateWidget(old);
+    if (old.selectedName != widget.selectedName) {
+      _ctrl.text = widget.selectedName;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    if (_query.isEmpty) return widget.items;
+    final q = _query.toLowerCase();
+    return widget.items.where((i) {
+      final name = (i['name'] ?? i['Name'] ?? '').toString().toLowerCase();
+      return name.contains(q);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 45,
+          child: TextField(
+            controller: _ctrl,
+            style: GoogleFonts.cairo(fontSize: 12, color: Colors.black),
+            decoration: widget.fieldDeco(widget.hint).copyWith(
+              suffixIcon: _ctrl.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: () {
+                        _ctrl.clear();
+                        setState(() {
+                          _query = '';
+                          _showList = false;
+                        });
+                        widget.onClear();
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    )
+                  : const Icon(Icons.search, size: 16, color: Colors.grey),
+            ),
+            onTap: () => setState(() => _showList = true),
+            onChanged: (v) => setState(() {
+              _query = v.trim();
+              _showList = true;
+            }),
+          ),
+        ),
+        if (_showList && _filtered.isNotEmpty)
+          Container(
+            constraints: const BoxConstraints(maxHeight: 160),
+            margin: const EdgeInsets.only(top: 2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 2)),
+              ],
+            ),
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: _filtered.length,
+              itemBuilder: (_, i) {
+                final item = _filtered[i];
+                final name = item['name'] ?? item['Name'] ?? '';
+                final isSelected = item['id']?.toString() == widget.selectedName;
+                return InkWell(
+                  onTap: () {
+                    _ctrl.text = name;
+                    setState(() {
+                      _showList = false;
+                      _query = '';
+                    });
+                    widget.onSelected(item['id']?.toString(), name);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    color: isSelected ? const Color(0xFF3498DB).withValues(alpha: 0.1) : null,
+                    child: Text(name, style: GoogleFonts.cairo(fontSize: 12)),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

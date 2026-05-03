@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../utils/responsive_helper.dart';
 import '../../services/accounting_service.dart';
 import '../../services/budget_service.dart';
 
@@ -317,75 +318,84 @@ class _BudgetPageState extends State<BudgetPage> {
         icon: Icons.calculate_outlined,
       );
     }
+    final isMob = context.responsive.isMobile;
     return SingleChildScrollView(
       padding: r.contentPadding,
       child: Container(
         decoration: AccountingTheme.card,
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            // رأس الجدول
-            Container(
-              decoration: AccountingTheme.tableHeader,
-              padding: EdgeInsets.symmetric(
-                  horizontal: r.tableCellPadH, vertical: r.tableCellPadV + 4),
-              child: Row(
-                children: [
-                  _headerCell('كود الحساب', r, flex: 2),
-                  _headerCell('اسم الحساب', r, flex: 3),
-                  _headerCell('المبلغ المخطط', r, flex: 2),
-                  _headerCell('ملاحظات', r, flex: 2),
-                  _headerCell('إجراءات', r, flex: 2),
-                ],
-              ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: isMob ? 550 : MediaQuery.of(context).size.width - r.paddingH * 2,
             ),
-            // صفوف البيانات
-            ...List.generate(_budgets.length, (i) {
-              final b = _budgets[i];
-              final isAlt = i.isOdd;
-              return Container(
-                color: isAlt
-                    ? AccountingTheme.tableRowAlt
-                    : Colors.transparent,
-                padding: EdgeInsets.symmetric(
-                    horizontal: r.tableCellPadH, vertical: r.tableCellPadV),
-                child: Row(
-                  children: [
-                    _dataCell(b['accountCode']?.toString() ?? '', r, flex: 2),
-                    _dataCell(b['accountName']?.toString() ?? '', r, flex: 3),
-                    _dataCell(_formatNumber(b['budgetAmount']), r,
-                        flex: 2,
-                        color: AccountingTheme.neonBlue,
-                        bold: true),
-                    _dataCell(b['notes']?.toString() ?? '', r, flex: 2),
-                    Expanded(
-                      flex: 2,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _actionBtn(
-                            icon: Icons.edit,
-                            color: AccountingTheme.neonBlue,
-                            tooltip: 'تعديل',
-                            r: r,
-                            onTap: () => _showEditBudgetDialog(b),
-                          ),
-                          SizedBox(width: r.spaceXS),
-                          _actionBtn(
-                            icon: Icons.delete_outline,
-                            color: AccountingTheme.danger,
-                            tooltip: 'حذف',
-                            r: r,
-                            onTap: () => _confirmDelete(b),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            child: Column(
+              children: [
+                // رأس الجدول
+                Container(
+                  decoration: AccountingTheme.tableHeader,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: r.tableCellPadH, vertical: r.tableCellPadV + 4),
+                  child: Row(
+                    children: [
+                      _headerCell('كود الحساب', r, flex: 2),
+                      _headerCell('اسم الحساب', r, flex: 3),
+                      _headerCell('المبلغ المخطط', r, flex: 2),
+                      _headerCell('ملاحظات', r, flex: 2),
+                      _headerCell('إجراءات', r, flex: 2),
+                    ],
+                  ),
                 ),
-              );
-            }),
-          ],
+                // صفوف البيانات
+                ...List.generate(_budgets.length, (i) {
+                  final b = _budgets[i];
+                  final isAlt = i.isOdd;
+                  return Container(
+                    color: isAlt
+                        ? AccountingTheme.tableRowAlt
+                        : Colors.transparent,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: r.tableCellPadH, vertical: r.tableCellPadV),
+                    child: Row(
+                      children: [
+                        _dataCell(b['accountCode']?.toString() ?? '', r, flex: 2),
+                        _dataCell(b['accountName']?.toString() ?? '', r, flex: 3),
+                        _dataCell(_formatNumber(b['budgetAmount']), r,
+                            flex: 2,
+                            color: AccountingTheme.neonBlue,
+                            bold: true),
+                        _dataCell(b['notes']?.toString() ?? '', r, flex: 2),
+                        Expanded(
+                          flex: 2,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _actionBtn(
+                                icon: Icons.edit,
+                                color: AccountingTheme.neonBlue,
+                                tooltip: 'تعديل',
+                                r: r,
+                                onTap: () => _showEditBudgetDialog(b),
+                              ),
+                              SizedBox(width: r.spaceXS),
+                              _actionBtn(
+                                icon: Icons.delete_outline,
+                                color: AccountingTheme.danger,
+                                tooltip: 'حذف',
+                                r: r,
+                                onTap: () => _confirmDelete(b),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -466,62 +476,70 @@ class _BudgetPageState extends State<BudgetPage> {
           Container(
             decoration: AccountingTheme.card,
             clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                Container(
-                  decoration: AccountingTheme.tableHeader,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: r.tableCellPadH,
-                      vertical: r.tableCellPadV + 4),
-                  child: Row(
-                    children: [
-                      _headerCell('كود', r, flex: 1),
-                      _headerCell('اسم الحساب', r, flex: 3),
-                      _headerCell('المخطط', r, flex: 2),
-                      _headerCell('الفعلي', r, flex: 2),
-                      _headerCell('الانحراف', r, flex: 2),
-                      _headerCell('النسبة %', r, flex: 1),
-                    ],
-                  ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: context.responsive.isMobile ? 550 : MediaQuery.of(context).size.width - r.paddingH * 2,
                 ),
-                ...List.generate(_varianceData.length, (i) {
-                  final v = _varianceData[i];
-                  final overBudget = v['overBudget'] == true;
-                  final rowColor = overBudget
-                      ? AccountingTheme.danger.withValues(alpha: 0.06)
-                      : AccountingTheme.success.withValues(alpha: 0.06);
-                  return Container(
-                    color: rowColor,
-                    padding: EdgeInsets.symmetric(
-                        horizontal: r.tableCellPadH,
-                        vertical: r.tableCellPadV),
-                    child: Row(
-                      children: [
-                        _dataCell(v['accountCode']?.toString() ?? '', r,
-                            flex: 1),
-                        _dataCell(v['accountName']?.toString() ?? '', r,
-                            flex: 3),
-                        _dataCell(_formatNumber(v['budget']), r, flex: 2),
-                        _dataCell(_formatNumber(v['actual']), r, flex: 2),
-                        _dataCell(_formatNumber(v['variance']), r,
-                            flex: 2,
-                            color: overBudget
-                                ? AccountingTheme.danger
-                                : AccountingTheme.success,
-                            bold: true),
-                        _dataCell(
-                          '${(v['variancePercent'] as num).toStringAsFixed(1)}%',
-                          r,
-                          flex: 1,
-                          color: overBudget
-                              ? AccountingTheme.danger
-                              : AccountingTheme.success,
-                        ),
-                      ],
+                child: Column(
+                  children: [
+                    Container(
+                      decoration: AccountingTheme.tableHeader,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: r.tableCellPadH,
+                          vertical: r.tableCellPadV + 4),
+                      child: Row(
+                        children: [
+                          _headerCell('كود', r, flex: 1),
+                          _headerCell('اسم الحساب', r, flex: 3),
+                          _headerCell('المخطط', r, flex: 2),
+                          _headerCell('الفعلي', r, flex: 2),
+                          _headerCell('الانحراف', r, flex: 2),
+                          _headerCell('النسبة %', r, flex: 1),
+                        ],
+                      ),
                     ),
-                  );
-                }),
-              ],
+                    ...List.generate(_varianceData.length, (i) {
+                      final v = _varianceData[i];
+                      final overBudget = v['overBudget'] == true;
+                      final rowColor = overBudget
+                          ? AccountingTheme.danger.withValues(alpha: 0.06)
+                          : AccountingTheme.success.withValues(alpha: 0.06);
+                      return Container(
+                        color: rowColor,
+                        padding: EdgeInsets.symmetric(
+                            horizontal: r.tableCellPadH,
+                            vertical: r.tableCellPadV),
+                        child: Row(
+                          children: [
+                            _dataCell(v['accountCode']?.toString() ?? '', r,
+                                flex: 1),
+                            _dataCell(v['accountName']?.toString() ?? '', r,
+                                flex: 3),
+                            _dataCell(_formatNumber(v['budget']), r, flex: 2),
+                            _dataCell(_formatNumber(v['actual']), r, flex: 2),
+                            _dataCell(_formatNumber(v['variance']), r,
+                                flex: 2,
+                                color: overBudget
+                                    ? AccountingTheme.danger
+                                    : AccountingTheme.success,
+                                bold: true),
+                            _dataCell(
+                              '${(v['variancePercent'] as num).toStringAsFixed(1)}%',
+                              r,
+                              flex: 1,
+                              color: overBudget
+                                  ? AccountingTheme.danger
+                                  : AccountingTheme.success,
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
             ),
           ),
           SizedBox(height: r.spaceXL),

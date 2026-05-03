@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../utils/responsive_helper.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
 import 'widgets/citizen_stats_card.dart';
@@ -181,15 +182,17 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
     return RefreshIndicator(
       onRefresh: _loadStats,
       color: Colors.teal,
-      child: SingleChildScrollView(
+      child: Builder(builder: (context) {
+        final isMobile = context.responsive.isMobile;
+        return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isMobile ? 10 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // العنوان
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isMobile ? 12 : 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.teal.shade400, Colors.teal.shade600],
@@ -377,7 +380,8 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
             ),
           ],
         ),
-      ),
+      );
+      }),
     );
   }
 

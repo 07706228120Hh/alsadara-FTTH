@@ -5,6 +5,7 @@ import '../services/task_api_service.dart';
 import '../services/departments_data_service.dart';
 import '../services/vps_auth_service.dart';
 import '../inventory/services/inventory_api_service.dart';
+import '../utils/responsive_helper.dart';
 
 /// نافذة تعديل المهمة الشاملة - جميع الحقول قابلة للتعديل
 class EditTaskDialog extends StatefulWidget {
@@ -31,6 +32,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
   late TextEditingController _notesController;
   late TextEditingController _summaryController;
   late TextEditingController _amountController;
+  late TextEditingController _deliveryFeeController;
 
   String _selectedStatus = '';
   String _selectedPriority = '';
@@ -67,6 +69,22 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     _loadInventoryData();
   }
 
+  bool get _isPurchase => widget.task.title.contains('شراء اشتراك');
+  bool get _isRenewal => widget.task.title.contains('تجديد اشتراك');
+  bool get _isCollection => widget.task.title.contains('تحصيل مبلغ') || widget.task.title.contains('استحصال مبلغ');
+  bool get _isMaintenance => !_isPurchase && !_isRenewal && !_isCollection;
+
+  String _getAmountLabel() {
+    if (_isPurchase || _isRenewal || _isCollection) return 'سعر الاشتراك';
+    return 'أجور الصيانة';
+  }
+
+  String _getFeeLabel() {
+    if (_isPurchase) return 'أجور التنصيب';
+    if (_isRenewal) return 'أجور أخرى';
+    return 'أجور التوصيل';
+  }
+
   void _initializeControllers() {
     _titleController = TextEditingController(text: widget.task.title);
     _usernameController = TextEditingController(text: widget.task.username);
@@ -76,6 +94,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     _notesController = TextEditingController(text: widget.task.notes);
     _summaryController = TextEditingController(text: widget.task.summary);
     _amountController = TextEditingController(text: _ThousandsSeparatorFormatter.format(widget.task.amount));
+    _deliveryFeeController = TextEditingController(text: _ThousandsSeparatorFormatter.format(widget.task.deliveryFee));
 
     _selectedStatus = widget.task.status;
     _selectedPriority = widget.task.priority;
@@ -95,6 +114,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     _notesController.dispose();
     _summaryController.dispose();
     _amountController.dispose();
+    _deliveryFeeController.dispose();
     super.dispose();
   }
 
@@ -209,20 +229,22 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final screenW = MediaQuery.of(context).size.width;
+    final r = ResponsiveHelper(context);
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final availableHeight = MediaQuery.of(context).size.height - keyboardHeight;
-    final isMobile = screenW < 600;
+    final isMobile = r.isMobile;
+    final hPad = isMobile ? 10.0 : 16.0;
+    final innerPad = isMobile ? 10.0 : 16.0;
     return Dialog(
-      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 10 : 16),
+      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 16, vertical: isMobile ? 8 : 16),
       child: SizedBox(
-        width: isMobile ? screenW - 20 : 600,
+        width: isMobile ? r.availableWidth - 16 : 600,
         height: availableHeight * 0.9,
         child: Column(
           children: [
             // شريط العنوان
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isMobile ? 10 : 16),
               decoration: BoxDecoration(
                 color: Colors.blue.shade700,
                 borderRadius: const BorderRadius.only(
@@ -232,14 +254,14 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.edit, color: Colors.white),
+                  Icon(Icons.edit, color: Colors.white, size: isMobile ? 18 : 24),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'تعديل المهمة',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: r.scaled(15, 17, 18),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -247,6 +269,8 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close, color: Colors.white),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
@@ -266,7 +290,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                       ),
                     )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(innerPad),
                       child: Form(
                         key: _formKey,
                         child: Column(
@@ -352,7 +376,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
 
                             _buildTextFormField(
                               controller: _amountController,
-                              label: 'المبلغ',
+                              label: _getAmountLabel(),
                               icon: Icons.attach_money,
                               keyboardType: TextInputType.number,
                               inputFormatters: [_ThousandsSeparatorFormatter()],
@@ -365,6 +389,18 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                                 return null;
                               },
                             ),
+                            const SizedBox(height: 12),
+
+                            if (!_isMaintenance) ...[
+                              _buildTextFormField(
+                                controller: _deliveryFeeController,
+                                label: _getFeeLabel(),
+                                icon: Icons.local_shipping,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [_ThousandsSeparatorFormatter()],
+                                suffixText: 'دينار',
+                              ),
+                            ],
                             const SizedBox(height: 20),
 
                             // المعلومات التقنية
@@ -433,7 +469,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
 
             // أزرار الإجراءات
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isMobile ? 10 : 16),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
                 borderRadius: const BorderRadius.only(
@@ -458,7 +494,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 14),
                       ),
                       child: _isLoading
                           ? const SizedBox(
@@ -482,9 +518,10 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final r = ResponsiveHelper(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      padding: EdgeInsets.symmetric(vertical: r.isMobile ? 6 : 8, horizontal: r.isMobile ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.blue.shade50,
         borderRadius: BorderRadius.circular(8),
@@ -493,7 +530,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 16,
+          fontSize: r.sectionTitleSize,
           fontWeight: FontWeight.bold,
           color: Colors.blue.shade800,
         ),
@@ -723,6 +760,8 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                 ..._newMaterialRows.asMap().entries.map((entry) {
                   final idx = entry.key;
                   final row = entry.value;
+                  final r = ResponsiveHelper(context);
+                  final isMob = r.isMobile;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
@@ -735,13 +774,13 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                             isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'المادة',
-                              labelStyle: const TextStyle(fontSize: 12),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              labelStyle: TextStyle(fontSize: isMob ? 11 : 12),
+                              contentPadding: EdgeInsets.symmetric(horizontal: isMob ? 6 : 10, vertical: 8),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            style: const TextStyle(fontSize: 12, color: Colors.black87),
+                            style: TextStyle(fontSize: isMob ? 11 : 12, color: Colors.black87),
                             items: _availableItems.map((item) {
                               return DropdownMenuItem<String>(
                                 value: item['id']?.toString() ?? '',
@@ -763,10 +802,10 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: isMob ? 4 : 8),
                         // الكمية
                         SizedBox(
-                          width: 80,
+                          width: isMob ? 56 : 80,
                           child: TextFormField(
                             initialValue: '${row['quantity'] ?? 1}',
                             keyboardType: TextInputType.number,
@@ -836,15 +875,25 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     String? suffixText,
     String? Function(String?)? validator,
   }) {
+    final r = ResponsiveHelper(context);
+    final isMobile = r.isMobile;
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
       inputFormatters: inputFormatters,
+      style: TextStyle(fontSize: r.bodySize),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
+        labelStyle: TextStyle(fontSize: isMobile ? 13 : null),
+        prefixIcon: Icon(icon, size: isMobile ? 18 : null),
+        prefixIconConstraints: isMobile ? const BoxConstraints(minWidth: 36) : null,
         suffixText: suffixText,
+        suffixStyle: isMobile ? const TextStyle(fontSize: 11) : null,
+        isDense: isMobile,
+        contentPadding: isMobile
+            ? const EdgeInsets.symmetric(horizontal: 10, vertical: 10)
+            : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -884,15 +933,24 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     if (current.isNotEmpty && !items.contains(current)) {
       items.insert(0, current);
     }
+    final r = ResponsiveHelper(context);
+    final isMobile = r.isMobile;
     return DropdownButtonFormField<String>(
       value: items.contains(current) ? current : null,
       decoration: InputDecoration(
         labelText: 'نوع المهمة',
-        prefixIcon: const Icon(Icons.category),
+        labelStyle: TextStyle(fontSize: isMobile ? 13 : null),
+        prefixIcon: Icon(Icons.category, size: isMobile ? 18 : null),
+        prefixIconConstraints: isMobile ? const BoxConstraints(minWidth: 36) : null,
+        isDense: isMobile,
+        contentPadding: isMobile
+            ? const EdgeInsets.symmetric(horizontal: 10, vertical: 10)
+            : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         filled: true,
         fillColor: Colors.grey.shade50,
       ),
+      style: TextStyle(fontSize: r.bodySize, color: Colors.black87),
       items: items.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
       onChanged: (v) {
         if (v != null) {
@@ -904,6 +962,8 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
   }
 
   Widget _buildSearchableTechnicianField() {
+    final r = ResponsiveHelper(context);
+    final isMobile = r.isMobile;
     return Autocomplete<String>(
       initialValue: TextEditingValue(text: _selectedTechnician),
       optionsBuilder: (textEditingValue) {
@@ -916,9 +976,16 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
+          style: TextStyle(fontSize: r.bodySize),
           decoration: InputDecoration(
             labelText: 'الفني المسؤول',
-            prefixIcon: const Icon(Icons.engineering),
+            labelStyle: TextStyle(fontSize: isMobile ? 13 : null),
+            prefixIcon: Icon(Icons.engineering, size: isMobile ? 18 : null),
+            prefixIconConstraints: isMobile ? const BoxConstraints(minWidth: 36) : null,
+            isDense: isMobile,
+            contentPadding: isMobile
+                ? const EdgeInsets.symmetric(horizontal: 10, vertical: 10)
+                : null,
             suffixIcon: controller.text.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear, size: 18),
@@ -937,13 +1004,15 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
+        final screenW = MediaQuery.of(context).size.width;
+        final optMaxW = screenW < 600 ? screenW - 36 : 350.0;
         return Align(
           alignment: Alignment.topRight,
           child: Material(
             elevation: 4,
             borderRadius: BorderRadius.circular(8),
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 200, maxWidth: MediaQuery.of(context).size.width < 400 ? MediaQuery.of(context).size.width - 40 : 350),
+              constraints: BoxConstraints(maxHeight: 200, maxWidth: optMaxW),
               child: ListView.builder(
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
@@ -978,17 +1047,26 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         ? value
         : (items.isNotEmpty ? items.first : '');
 
+    final r = ResponsiveHelper(context);
+    final isMobile = r.isMobile;
     return DropdownButtonFormField<String>(
       initialValue: selectedValue.isNotEmpty ? selectedValue : null,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
+        labelStyle: TextStyle(fontSize: isMobile ? 13 : null),
+        prefixIcon: Icon(icon, size: isMobile ? 18 : null),
+        prefixIconConstraints: isMobile ? const BoxConstraints(minWidth: 36) : null,
+        isDense: isMobile,
+        contentPadding: isMobile
+            ? const EdgeInsets.symmetric(horizontal: 10, vertical: 10)
+            : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
         filled: true,
         fillColor: Colors.grey.shade50,
       ),
+      style: TextStyle(fontSize: r.bodySize, color: Colors.black87),
       items: items.where((item) => item.isNotEmpty).map((item) {
         return DropdownMenuItem(
           value: item,
@@ -1029,6 +1107,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         summary: _summaryController.text.trim(),
         priority: _selectedPriority,
         amount: _amountController.text.replaceAll(',', '').trim(),
+        deliveryFee: _deliveryFeeController.text.replaceAll(',', '').trim(),
         closedAt: (_selectedStatus == 'مكتملة' || _selectedStatus == 'ملغية')
             ? DateTime.now()
             : null,
@@ -1054,6 +1133,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         summary: updatedTask.summary,
         priority: updatedTask.priority,
         amount: parsedAmount,
+        deliveryFee: double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim()),
       );
 
       if (result['success'] == true) {

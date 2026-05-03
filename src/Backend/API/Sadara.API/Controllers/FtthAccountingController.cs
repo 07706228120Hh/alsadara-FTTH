@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -145,7 +146,12 @@ public class FtthAccountingController : ControllerBase
         var userId = dto.UserId!.Value;
         var collectionType = dto.CollectionType ?? "cash";
 
-        var operatorName = dto.ActivatedBy ?? "مشغل";
+        // اسم المشغل: أولوية FullName من User > ActivatedBy
+        var operatorUser = await _unitOfWork.Users.AsQueryable()
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.FullName })
+            .FirstOrDefaultAsync();
+        var operatorName = operatorUser?.FullName ?? dto.ActivatedBy ?? "مشغل";
         var planName = dto.PlanName ?? "اشتراك";
         var customerName = dto.CustomerName ?? "عميل";
         var opType = dto.OperationType?.ToLower() == "purchase" ? "شراء" : "تجديد";
@@ -450,26 +456,24 @@ public class FtthAccountingController : ControllerBase
                         && a.Description == userId.ToString()
                         && a.CompanyId == companyId);
 
-                // النقد المسلّم = المبالغ الدائنة في صندوق المشغل (تحويل للشركة)
+                // النقد المسلّم = المبالغ الدائنة في صندوق المشغل — من أي نوع قيد
                 if (operatorCashAccount != null)
                 {
                     deliveredCash = await _unitOfWork.JournalEntryLines.AsQueryable()
-                        .Where(l => l.AccountId == operatorCashAccount.Id && l.CreditAmount > 0)
+                        .Where(l => l.AccountId == operatorCashAccount.Id && l.CreditAmount > 0 && !l.IsDeleted)
                         .Join(_unitOfWork.JournalEntries.AsQueryable()
-                            .Where(j => j.ReferenceType == JournalReferenceType.OperatorCashDelivery
-                                && j.Status != JournalEntryStatus.Voided),
+                            .Where(j => j.Status != JournalEntryStatus.Voided && !j.IsDeleted),
                             l => l.JournalEntryId, j => j.Id, (l, j) => l.CreditAmount)
                         .SumAsync(x => x);
                 }
 
-                // الآجل المحصّل = المبالغ الدائنة في ذمة المشغل
+                // الآجل المحصّل = المبالغ الدائنة في ذمة المشغل — من أي نوع قيد
                 if (operatorCreditAccount != null)
                 {
                     collectedCredit = await _unitOfWork.JournalEntryLines.AsQueryable()
-                        .Where(l => l.AccountId == operatorCreditAccount.Id && l.CreditAmount > 0)
+                        .Where(l => l.AccountId == operatorCreditAccount.Id && l.CreditAmount > 0 && !l.IsDeleted)
                         .Join(_unitOfWork.JournalEntries.AsQueryable()
-                            .Where(j => j.ReferenceType == JournalReferenceType.OperatorCreditCollection
-                                && j.Status != JournalEntryStatus.Voided),
+                            .Where(j => j.Status != JournalEntryStatus.Voided && !j.IsDeleted),
                             l => l.JournalEntryId, j => j.Id, (l, j) => l.CreditAmount)
                         .SumAsync(x => x);
                 }
@@ -675,45 +679,83 @@ public class FtthAccountingController : ControllerBase
                 .Select(a => new { a.Id, a.Description })
                 .ToListAsync();
 
-            // النقد المسلّم لكل مشغل (CreditAmount في صندوقه عبر OperatorCashDelivery)
-            // فلترة بنفس نطاق التاريخ المحدد
+            // ── النقد المسلّم + الآجل المحصّل: من أي قيد محاسبي (يدوي أو تلقائي) ──
+            // المبدأ: CreditAmount في حساب المشغل/الفني = تسديد، بغض النظر عن ReferenceType
             var jeDateQuery = _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.Status != JournalEntryStatus.Voided);
+                .Where(j => j.Status != JournalEntryStatus.Voided && !j.IsDeleted);
             if (from.HasValue)
             {
                 var fromUtcJe = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
-                jeDateQuery = jeDateQuery.Where(j => j.CreatedAt >= fromUtcJe);
+                jeDateQuery = jeDateQuery.Where(j => j.EntryDate >= fromUtcJe);
             }
             if (to.HasValue)
             {
                 var toUtcJe = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
-                jeDateQuery = jeDateQuery.Where(j => j.CreatedAt <= toUtcJe);
+                jeDateQuery = jeDateQuery.Where(j => j.EntryDate <= toUtcJe);
             }
 
+            // النقد المسلّم: CreditAmount في صندوق المشغل (1110xx) — من أي نوع قيد
             var cashAccountIds = operatorCashAccounts.Select(a => a.Id).ToList();
             var deliveredByAccount = cashAccountIds.Any()
                 ? await _unitOfWork.JournalEntryLines.AsQueryable()
-                    .Where(l => cashAccountIds.Contains(l.AccountId) && l.CreditAmount > 0)
-                    .Join(jeDateQuery.Where(j => j.ReferenceType == JournalReferenceType.OperatorCashDelivery),
-                        l => l.JournalEntryId, j => j.Id,
+                    .Where(l => cashAccountIds.Contains(l.AccountId) && l.CreditAmount > 0 && !l.IsDeleted)
+                    .Join(jeDateQuery, l => l.JournalEntryId, j => j.Id,
                         (l, j) => new { l.AccountId, l.CreditAmount })
                     .GroupBy(x => x.AccountId)
                     .Select(g => new { AccountId = g.Key, Total = g.Sum(x => x.CreditAmount) })
                     .ToListAsync()
                 : new List<dynamic>().Select(x => new { AccountId = Guid.Empty, Total = 0m }).ToList();
 
-            // الآجل المحصّل لكل مشغل (CreditAmount في ذمته عبر OperatorCreditCollection)
+            // الآجل المحصّل: CreditAmount في ذمة المشغل (1160xx) — من أي نوع قيد
             var creditAccountIds = operatorCreditAccounts.Select(a => a.Id).ToList();
             var collectedByAccount = creditAccountIds.Any()
                 ? await _unitOfWork.JournalEntryLines.AsQueryable()
-                    .Where(l => creditAccountIds.Contains(l.AccountId) && l.CreditAmount > 0)
-                    .Join(jeDateQuery.Where(j => j.ReferenceType == JournalReferenceType.OperatorCreditCollection),
-                        l => l.JournalEntryId, j => j.Id,
+                    .Where(l => creditAccountIds.Contains(l.AccountId) && l.CreditAmount > 0 && !l.IsDeleted)
+                    .Join(jeDateQuery, l => l.JournalEntryId, j => j.Id,
                         (l, j) => new { l.AccountId, l.CreditAmount })
                     .GroupBy(x => x.AccountId)
                     .Select(g => new { AccountId = g.Key, Total = g.Sum(x => x.CreditAmount) })
                     .ToListAsync()
                 : new List<dynamic>().Select(x => new { AccountId = Guid.Empty, Total = 0m }).ToList();
+
+            // ── ذمم الفنيين للمشغلين: حسابات 1140xx المرتبطة بنفس userId ──
+            var operatorTechDebtAccounts = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.Code.StartsWith(AccountCodes.TechnicianReceivables) && a.Description != null
+                    && userIdStrings.Contains(a.Description)
+                    && (!companyId.HasValue || a.CompanyId == companyId))
+                .Select(a => new { a.Id, a.Description })
+                .ToListAsync();
+
+            var opTechAccIds = operatorTechDebtAccounts.Select(a => a.Id).ToList();
+            // رصيد ذمة الفني = Debit - Credit (حسب فلتر التاريخ المحدد)
+            var operatorTechDebtByAccount = opTechAccIds.Any()
+                ? await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => opTechAccIds.Contains(l.AccountId) && !l.IsDeleted)
+                    .Join(jeDateQuery, l => l.JournalEntryId, j => j.Id,
+                        (l, j) => new { l.AccountId, l.DebitAmount, l.CreditAmount })
+                    .GroupBy(x => x.AccountId)
+                    .Select(g => new { AccountId = g.Key, Balance = g.Sum(x => x.DebitAmount) - g.Sum(x => x.CreditAmount) })
+                    .ToListAsync()
+                : new List<object>().Select(x => new { AccountId = Guid.Empty, Balance = 0m }).ToList();
+
+            // ── إيرادات الأجور الإضافية فقط (تنصيب + توصيل + أخرى) — بدون Maintenance ──
+            var feeCategories = new[] { TechnicianTransactionCategory.InstallationFee, TechnicianTransactionCategory.DeliveryFee, TechnicianTransactionCategory.OtherFee };
+            var techRevenueQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => t.Type == TechnicianTransactionType.Charge && feeCategories.Contains(t.Category) && !t.IsDeleted);
+            if (from.HasValue)
+            {
+                var fromUtcDf = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
+                techRevenueQuery = techRevenueQuery.Where(t => t.CreatedAt >= fromUtcDf);
+            }
+            if (to.HasValue)
+            {
+                var toUtcDf = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                techRevenueQuery = techRevenueQuery.Where(t => t.CreatedAt <= toUtcDf);
+            }
+            var techRevenueByUser = await techRevenueQuery
+                .GroupBy(t => t.TechnicianId)
+                .Select(g => new { TechnicianId = g.Key, Total = g.Sum(t => t.Amount) })
+                .ToListAsync();
 
             var result = grouped.Select(g =>
             {
@@ -734,6 +776,14 @@ public class FtthAccountingController : ControllerBase
 
                 var remainingCash = g.CashAmount - delivered;
                 var remainingCredit = g.CreditAmount - collected;
+
+                // ذمم فني: إذا كان المشغل عنده حساب فني (1140xx) نحسب رصيده
+                var techDebtAccId = g.UserId.HasValue
+                    ? operatorTechDebtAccounts.FirstOrDefault(a => a.Description == g.UserId.Value.ToString())?.Id
+                    : (Guid?)null;
+                var techDebtTotal = techDebtAccId.HasValue
+                    ? operatorTechDebtByAccount.FirstOrDefault(d => d.AccountId == techDebtAccId.Value)?.Balance ?? 0m
+                    : 0m;
 
                 return new
                 {
@@ -758,6 +808,7 @@ public class FtthAccountingController : ControllerBase
                     deliveredCash = delivered,
                     collectedCredit = collected,
                     netOwed = remainingCash + remainingCredit,
+                    techDebt = techDebtTotal,
                     // أنواع العمليات
                     purchaseCount = g.PurchaseCount,
                     purchaseAmount = g.PurchaseAmount,
@@ -773,6 +824,7 @@ public class FtthAccountingController : ControllerBase
                     maintenanceFee = g.TotalMaintenanceFee,
                     manualDiscount = g.TotalManualDiscount,
                     companyDiscountProfit = g.TotalCompanyDiscountProfit,
+                    techRevenue = 0m,
                     revenue = g.TotalMaintenanceFee + g.TotalCompanyDiscountProfit,
                     expense = g.TotalManualDiscount
                 };
@@ -803,33 +855,49 @@ public class FtthAccountingController : ControllerBase
                     .ToListAsync()
                 : new List<object>().Select(x => new { Id = Guid.Empty, FullName = "", Username = (string?)null }).ToList();
 
-            // ── حساب تسديدات الفنيين من TechnicianTransactions (مفلترة بالتاريخ) ──
-            var techPayQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => techUserIds.Contains(t.TechnicianId)
-                    && t.Type == TechnicianTransactionType.Payment
-                    && !t.IsDeleted);
+            // ── حساب تسديدات الفنيين من القيود المحاسبية (CreditAmount في حساب 1140xx) ──
+            var techAccIds = techUserIds.Select(id => id.ToString()).ToList();
+            var techAccounts = techAccIds.Any()
+                ? await _unitOfWork.Accounts.AsQueryable()
+                    .Where(a => a.Code.StartsWith(AccountCodes.TechnicianReceivables) && a.Description != null
+                        && techAccIds.Contains(a.Description)
+                        && (!companyId.HasValue || a.CompanyId == companyId))
+                    .Select(a => new { a.Id, a.Description })
+                    .ToListAsync()
+                : new List<object>().Select(x => new { Id = Guid.Empty, Description = "" }).ToList();
+
+            var techAccountIds = techAccounts.Select(a => a.Id).ToList();
+            // جلب CreditAmount من القيود المرحّلة (تسديدات) مع فلتر التاريخ
+            var techJeQuery = _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => j.Status != JournalEntryStatus.Voided && !j.IsDeleted);
             if (from.HasValue)
             {
                 var fromUtcTech = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
-                techPayQuery = techPayQuery.Where(t => t.CreatedAt >= fromUtcTech);
+                techJeQuery = techJeQuery.Where(j => j.EntryDate >= fromUtcTech);
             }
             if (to.HasValue)
             {
                 var toUtcTech = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
-                techPayQuery = techPayQuery.Where(t => t.CreatedAt <= toUtcTech);
+                techJeQuery = techJeQuery.Where(j => j.EntryDate <= toUtcTech);
             }
-            var techPayments = techUserIds.Any()
-                ? await techPayQuery
-                    .GroupBy(t => t.TechnicianId)
-                    .Select(g => new { TechId = g.Key, TotalPayments = g.Sum(t => (decimal?)t.Amount) ?? 0 })
+            var techPayments = techAccountIds.Any()
+                ? await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => techAccountIds.Contains(l.AccountId) && l.CreditAmount > 0 && !l.IsDeleted)
+                    .Join(techJeQuery, l => l.JournalEntryId, j => j.Id,
+                        (l, j) => new { l.AccountId, l.CreditAmount })
+                    .GroupBy(x => x.AccountId)
+                    .Select(g => new { AccountId = g.Key, TotalPayments = g.Sum(x => x.CreditAmount) })
                     .ToListAsync()
-                : new List<object>().Select(x => new { TechId = Guid.Empty, TotalPayments = 0m }).ToList();
+                : new List<object>().Select(x => new { AccountId = Guid.Empty, TotalPayments = 0m }).ToList();
 
             var technicianRows = techRows.Select(t =>
             {
                 var techUser = t.TechId.HasValue ? techUsers.FirstOrDefault(u => u.Id == t.TechId.Value) : null;
-                var paid = t.TechId.HasValue
-                    ? techPayments.FirstOrDefault(p => p.TechId == t.TechId.Value)?.TotalPayments ?? 0m
+                var techAccId = t.TechId.HasValue
+                    ? techAccounts.FirstOrDefault(a => a.Description == t.TechId.Value.ToString())?.Id
+                    : (Guid?)null;
+                var paid = techAccId.HasValue
+                    ? techPayments.FirstOrDefault(p => p.AccountId == techAccId.Value)?.TotalPayments ?? 0m
                     : 0m;
                 return new
                 {
@@ -863,7 +931,14 @@ public class FtthAccountingController : ControllerBase
                     changeAmount = 0m,
                     scheduleCount = 0,
                     scheduleAmount = 0m,
-                    reconciledCount = t.ReconciledCount
+                    reconciledCount = t.ReconciledCount,
+                    techRevenue = t.TechId.HasValue
+                        ? techRevenueByUser.FirstOrDefault(d => d.TechnicianId == t.TechId.Value)?.Total ?? 0m
+                        : 0m,
+                    revenue = t.TechId.HasValue
+                        ? techRevenueByUser.FirstOrDefault(d => d.TechnicianId == t.TechId.Value)?.Total ?? 0m
+                        : 0m,
+                    expense = 0m
                 };
             }).OrderByDescending(x => x.totalAmount).ToList();
 
@@ -1171,13 +1246,26 @@ public class FtthAccountingController : ControllerBase
     /// تعديل بيانات سجل اشتراك FTTH (نوع التحصيل، الفني، الملاحظات)
     /// </summary>
     [HttpPut("update-subscription-log/{id}")]
-    public async Task<IActionResult> UpdateSubscriptionLog(long id, [FromBody] UpdateFtthLogRequest request)
+    public async Task<IActionResult> UpdateSubscriptionLog(long id, [FromBody] JsonElement body)
     {
         try
         {
             var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
             if (log == null)
                 return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            UpdateFtthLogRequest? request;
+            try
+            {
+                request = System.Text.Json.JsonSerializer.Deserialize<UpdateFtthLogRequest>(body.GetRawText(),
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                return BadRequest(new { success = false, message = "بيانات غير صالحة" });
+            }
+            if (request == null)
+                return BadRequest(new { success = false, message = "الطلب فارغ" });
 
             // بيانات العميل
             if (request.CustomerName != null) log.CustomerName = request.CustomerName;
@@ -1364,6 +1452,10 @@ public class FtthAccountingController : ControllerBase
 
                             entry.TotalDebit = newLines.Sum(l => l.Debit);
                             entry.TotalCredit = newLines.Sum(l => l.Credit);
+                            // مزامنة تاريخ القيد مع تاريخ المعاملة
+                            if (log.ActivationDate.HasValue)
+                                entry.EntryDate = log.ActivationDate.Value;
+                            entry.Description = $"{log.OperationType ?? "تجديد"} {log.PlanName ?? ""} - {log.CustomerName ?? ""} - {(collType switch { "cash" => "نقد", "credit" => "آجل", "technician" => "فني", "agent" => "وكيل", "master" => "ماستر", _ => collType })} عبر {operatorName}";
                             _unitOfWork.JournalEntries.Update(entry);
 
                             accountingMessage = "تم تحديث القيد المحاسبي بالكامل";
@@ -1808,14 +1900,32 @@ public class FtthAccountingController : ControllerBase
                 .ToListAsync();
             var existingSet = new HashSet<string>(existingIds);
 
-            // خريطة FtthUsername → UserId
+            // خريطة شاملة: FtthUsername / Username / FullName → UserId
             var userMap = await _unitOfWork.Users.AsQueryable()
-                .Where(u => u.FtthUsername != null && u.FtthUsername != "" && !u.IsDeleted)
-                .Select(u => new { u.Id, u.FtthUsername, u.FullName, u.CompanyId })
+                .Where(u => !u.IsDeleted)
+                .Select(u => new { u.Id, u.FtthUsername, u.Username, u.FullName, u.CompanyId })
                 .ToListAsync();
-            var ftthToUser = userMap.ToDictionary(
-                u => u.FtthUsername!.ToLower().Trim(),
-                u => new { u.Id, u.FullName, u.CompanyId });
+            var ftthToUser = new Dictionary<string, dynamic>();
+            foreach (var u in userMap)
+            {
+                var val = new { u.Id, u.FullName, u.CompanyId };
+                // أولوية: FtthUsername > Username > FullName
+                if (!string.IsNullOrWhiteSpace(u.FtthUsername))
+                {
+                    var k = u.FtthUsername.ToLower().Trim();
+                    ftthToUser.TryAdd(k, val);
+                }
+                if (!string.IsNullOrWhiteSpace(u.Username))
+                {
+                    var k = u.Username.ToLower().Trim();
+                    ftthToUser.TryAdd(k, val);
+                }
+                if (!string.IsNullOrWhiteSpace(u.FullName))
+                {
+                    var k = u.FullName.ToLower().Trim();
+                    ftthToUser.TryAdd(k, val);
+                }
+            }
 
             int saved = 0, skipped = 0, failed = 0, updated = 0;
             var errors = new List<string>();
@@ -1842,12 +1952,26 @@ public class FtthAccountingController : ControllerBase
                             if (string.IsNullOrEmpty(existing.ActivatedBy) && !string.IsNullOrEmpty(tx.CreatedBy))
                             {
                                 existing.ActivatedBy = tx.CreatedBy;
-                                var key = tx.CreatedBy.ToLower().Trim();
-                                if (ftthToUser.TryGetValue(key, out var u))
+                                // ربط بالمشغل: أولاً operatorUserId، ثانياً بحث بالاسم
+                                if (!string.IsNullOrEmpty(tx.OperatorUserId) && Guid.TryParse(tx.OperatorUserId, out var directId))
                                 {
-                                    existing.UserId = u.Id;
-                                    existing.CompanyId ??= u.CompanyId;
+                                    existing.UserId = directId;
                                 }
+                                else
+                                {
+                                    var key = tx.CreatedBy.ToLower().Trim();
+                                    if (ftthToUser.TryGetValue(key, out var u))
+                                    {
+                                        existing.UserId = u.Id;
+                                        existing.CompanyId ??= u.CompanyId;
+                                    }
+                                }
+                                needsUpdate = true;
+                            }
+                            // إذا لا يزال بدون مشغل، حاول الربط من operatorUserId
+                            if (existing.UserId == null && !string.IsNullOrEmpty(tx.OperatorUserId) && Guid.TryParse(tx.OperatorUserId, out var opId))
+                            {
+                                existing.UserId = opId;
                                 needsUpdate = true;
                             }
                             if (needsUpdate)
@@ -2573,6 +2697,67 @@ public class FtthAccountingController : ControllerBase
         {
             _logger.LogError(ex, "خطأ في تعيين السجلات");
             return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+        }
+    }
+
+    [HttpPost("fix-missing-accounting")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> FixMissingAccounting([FromQuery] Guid? companyId)
+    {
+        try
+        {
+            var logsWithout = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.FtthTransactionId != null && l.JournalEntryId == null
+                    && !l.IsDeleted && l.UserId.HasValue && l.CompanyId.HasValue
+                    && l.PlanPrice > 0 && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"))
+                .ToListAsync();
+
+            if (!logsWithout.Any())
+                return Ok(new { success = true, message = "لا توجد عمليات بدون قيود", fixed_count = 0 });
+
+            int fixedCount = 0;
+            foreach (var log in logsWithout)
+            {
+                try
+                {
+                    var dto = new FtthLogWithAccountingDto(
+                        log.CustomerId, log.CustomerName, null,
+                        log.SubscriptionId, log.PlanName, log.PlanPrice,
+                        null, null, null,
+                        log.DeviceUsername, log.OperationType, log.ActivatedBy,
+                        log.ActivationDate, null, null,
+                        log.ZoneId, null, null, null, null,
+                        null, log.WalletBalanceAfter,
+                        null, null,
+                        null, log.PaymentMethod, null, null,
+                        log.UserId, log.CompanyId, false, false,
+                        null, log.StartDate, log.EndDate,
+                        null, null,
+                        log.CollectionType ?? "cash", log.FtthTransactionId, null,
+                        null, null,
+                        log.PlanPrice ?? 0, 0, 0, 0, true);
+
+                    var jeId = await CreateAccountingEntry(log, dto);
+                    if (jeId.HasValue)
+                    {
+                        log.JournalEntryId = jeId;
+                        _unitOfWork.SubscriptionLogs.Update(log);
+                        await _unitOfWork.SaveChangesAsync();
+                        fixedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "فشل إصلاح قيد للسجل {LogId}", log.Id);
+                }
+            }
+
+            return Ok(new { success = true, message = $"تم إصلاح {fixedCount} من {logsWithout.Count} عملية", fixed_count = fixedCount, total = logsWithout.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إصلاح القيود المفقودة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 

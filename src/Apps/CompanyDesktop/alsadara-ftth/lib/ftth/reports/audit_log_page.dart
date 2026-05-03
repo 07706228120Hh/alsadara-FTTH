@@ -198,7 +198,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
   String _fmtDateTime(String? d) {
     if (d == null || d.isEmpty) return 'غير معروف';
     try {
-      final dt = DateTime.parse(d);
+      final dt = DateTime.parse(d).toLocal();
       final date =
           '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
       final hh = dt.hour.toString().padLeft(2, '0');

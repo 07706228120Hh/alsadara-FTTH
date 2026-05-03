@@ -875,7 +875,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String _formatDate(dynamic date) {
     if (date == null) return '';
     try {
-      final d = DateTime.parse(date.toString());
+      final d = DateTime.parse(date.toString()).toLocal();
       return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';

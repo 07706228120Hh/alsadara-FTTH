@@ -138,7 +138,7 @@ class _RevenuePageState extends State<RevenuePage> {
         final dateStr = entry['EntryDate'] ?? entry['CreatedAt'];
         if (dateStr == null) return false;
         try {
-          final d = DateTime.parse(dateStr.toString());
+          final d = DateTime.parse(dateStr.toString()).toLocal();
           if (_dateFrom != null && d.isBefore(_dateFrom!)) return false;
           if (_dateTo != null &&
               d.isAfter(_dateTo!.add(const Duration(days: 1)))) return false;
@@ -1235,7 +1235,7 @@ class _RevenuePageState extends State<RevenuePage> {
   String _formatDate(dynamic date) {
     if (date == null) return '';
     try {
-      final d = DateTime.parse(date.toString());
+      final d = DateTime.parse(date.toString()).toLocal();
       return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';

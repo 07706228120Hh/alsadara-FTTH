@@ -428,9 +428,10 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
 
   Widget _buildStatCard(
       String title, String value, Color color, IconData icon) {
+    final isMobile = MediaQuery.of(context).size.width < 400;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(isMobile ? 8 : 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
@@ -439,27 +440,31 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: isMobile ? 20 : 24),
+          SizedBox(height: isMobile ? 4 : 8),
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: isMobile ? 10 : 12,
               fontWeight: FontWeight.w500,
               color: Colors.grey.shade700,
             ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: color,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: isMobile ? 12 : 14,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -493,12 +498,15 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                     ),
                   ),
                 ),
-                Text(
-                  '${_formatAmount(amount)} ${transaction['transactionAmount']?['currency'] ?? 'IQD'}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: _getAmountColor(amount),
+                Flexible(
+                  child: Text(
+                    '${_formatAmount(amount)} ${transaction['transactionAmount']?['currency'] ?? 'IQD'}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _getAmountColor(amount),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

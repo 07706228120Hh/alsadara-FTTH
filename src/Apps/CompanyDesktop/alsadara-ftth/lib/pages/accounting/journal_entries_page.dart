@@ -12,8 +12,9 @@ import '../../permissions/permissions.dart';
 /// صفحة القيود المحاسبية
 class JournalEntriesPage extends StatefulWidget {
   final String? companyId;
+  final String? initialEntryId;
 
-  const JournalEntriesPage({super.key, this.companyId});
+  const JournalEntriesPage({super.key, this.companyId, this.initialEntryId});
 
   @override
   State<JournalEntriesPage> createState() => _JournalEntriesPageState();
@@ -181,6 +182,24 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     setState(() {
       _isLoading = false;
     });
+
+    // فتح قيد محدد تلقائياً (من كشف الحسابات)
+    if (widget.initialEntryId != null && _entries.isNotEmpty) {
+      final match = _entries.where((e) => e['Id']?.toString() == widget.initialEntryId).firstOrNull;
+      if (match != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showFullEditDialog(Map<String, dynamic>.from(match));
+        });
+      } else {
+        // القيد ليس في الفترة الحالية — جلبه مباشرة
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          final res = await AccountingService.instance.getJournalEntry(widget.initialEntryId!);
+          if (res['success'] == true && mounted) {
+            _showFullEditDialog(Map<String, dynamic>.from(res['data']));
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -2322,16 +2341,13 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                       }
                                       setDState(() => isSaving = true);
 
-                                      // فحص الفترة المحاسبية
-                                      final editDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? entry['CreatedAt']?.toString() ?? '');
-                                      if (editDate != null) {
-                                        final allowed = await PeriodClosingService.checkAndWarnIfClosed(
-                                          ctx, date: editDate, companyId: widget.companyId ?? '',
-                                        );
-                                        if (!allowed) {
-                                          setDState(() => isSaving = false);
-                                          return;
-                                        }
+                                      // فحص الفترة المحاسبية — نفحص التاريخ الجديد الذي اختاره المستخدم
+                                      final allowed = await PeriodClosingService.checkAndWarnIfClosed(
+                                        ctx, date: entryDate, companyId: widget.companyId ?? '',
+                                      );
+                                      if (!allowed) {
+                                        setDState(() => isSaving = false);
+                                        return;
                                       }
 
                                       // تجهيز البيانات
@@ -2863,7 +2879,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   String _formatDate(dynamic date) {
     if (date == null) return '';
     try {
-      final d = DateTime.parse(date.toString());
+      final d = DateTime.parse(date.toString()).toLocal();
       return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
     } catch (_) {
       return '';

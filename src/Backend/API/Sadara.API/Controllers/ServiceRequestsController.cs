@@ -323,6 +323,19 @@ public class ServiceRequestsController : ControllerBase
             request.FinalCost = dto.Amount.Value;
         }
 
+        // تحديث أجور التوصيل في Details JSON
+        if (dto.DeliveryFee.HasValue && dto.DeliveryFee.Value > 0)
+        {
+            var details = new Dictionary<string, object?>();
+            if (!string.IsNullOrEmpty(request.Details))
+            {
+                try { details = JsonSerializer.Deserialize<Dictionary<string, object?>>(request.Details) ?? new(); }
+                catch { details = new(); }
+            }
+            details["deliveryFee"] = dto.DeliveryFee.Value;
+            request.Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+        }
+
         // تحديث التواريخ حسب الحالة
         switch (newStatus)
         {
@@ -492,9 +505,30 @@ public class ServiceRequestsController : ControllerBase
             }
             catch { }
 
-            // أقسام الحسابات — لا تُسجَّل هنا (تُسجَّل من شاشة التجديد)
-            bool isAccountingDept = departmentStr == "الحسابات" || departmentStr == "الوكلاء" ||
-                                    taskTypeStr == "شراء اشتراك" || taskTypeStr == "تجديد اشتراك";
+            // تصنيف نوع المهمة
+            bool isSubscriptionPurchase = taskTypeStr == "شراء اشتراك";
+            bool isSubscriptionRenewal = taskTypeStr == "تجديد اشتراك";
+            bool isCollectionTask = taskTypeStr.Contains("تحصيل مبلغ") || taskTypeStr.Contains("استحصال مبلغ");
+            bool isMaintenanceTask = !isSubscriptionPurchase && !isSubscriptionRenewal && !isCollectionTask;
+
+            // استخراج deliveryFee من Details JSON (يُستخدم كـ: أجور تنصيب / أجور أخرى / أجور توصيل حسب نوع المهمة)
+            var deliveryFee = 0m;
+            string? createdByIdStr = null;
+            if (!string.IsNullOrEmpty(request.Details))
+            {
+                try
+                {
+                    var det = JsonSerializer.Deserialize<Dictionary<string, object?>>(request.Details);
+                    if (det != null)
+                    {
+                        if (det.TryGetValue("deliveryFee", out var dfVal) && dfVal != null)
+                            decimal.TryParse(dfVal.ToString(), out deliveryFee);
+                        if (det.TryGetValue("createdById", out var cbVal) && cbVal != null)
+                            createdByIdStr = cbVal.ToString();
+                    }
+                }
+                catch { /* ignore parse errors */ }
+            }
 
             var shouldHandleTechCancellation = chargeTargetId.HasValue;
 
@@ -502,50 +536,171 @@ public class ServiceRequestsController : ControllerBase
             {
                 bool hasTechFinancialChanges = false;
 
-                if (newStatus == ServiceRequestStatus.Completed && !isAccountingDept)
+                if (newStatus == ServiceRequestStatus.Completed)
                 {
-                    // مهمة صيانة/فني مكتملة مع مبلغ → سجّل على الفني
-                    var chargeAmount = request.FinalCost ?? request.EstimatedCost ?? 0;
-                    if (chargeAmount > 0 && chargeTargetId.HasValue)
+                    // ══════ صيانة: المبلغ (أجور الصيانة) → ذمة الفني ══════
+                    if (isMaintenanceTask)
+                    {
+                        var chargeAmount = request.FinalCost ?? request.EstimatedCost ?? 0;
+                        if (chargeAmount > 0 && chargeTargetId.HasValue)
+                        {
+                            var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId.Value);
+                            if (technician != null)
+                            {
+                                var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                                    .AnyAsync(t => t.ServiceRequestId == id && t.Type == TechnicianTransactionType.Charge && t.Category == TechnicianTransactionCategory.Maintenance && !t.IsDeleted);
+
+                                if (!existingTx)
+                                {
+                                    technician.TechTotalCharges += chargeAmount;
+                                    technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
+                                    _unitOfWork.Users.Update(technician);
+
+                                    var techTx = new TechnicianTransaction
+                                    {
+                                        TechnicianId = technician.Id,
+                                        Type = TechnicianTransactionType.Charge,
+                                        Category = TechnicianTransactionCategory.Maintenance,
+                                        Amount = chargeAmount,
+                                        BalanceAfter = technician.TechNetBalance,
+                                        Description = $"أجور صيانة - {request.RequestNumber}",
+                                        ServiceRequestId = id,
+                                        CreatedById = request.CompanyId ?? Guid.Empty,
+                                        CompanyId = request.CompanyId ?? Guid.Empty,
+                                        CreatedAt = DateTime.UtcNow,
+                                    };
+                                    await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
+                                    hasTechFinancialChanges = true;
+
+                                    _logger.LogInformation("تم تسجيل أجور صيانة {Amount} على الفني {TechId} — مهمة {RequestNumber}",
+                                        chargeAmount, technician.Id, request.RequestNumber);
+                                }
+                            }
+                        }
+                        // صيانة: لا حقل ثاني (لا deliveryFee)
+                    }
+
+                    // ══════ شراء اشتراك: أجور التنصيب → ذمة منشئ المهمة ══════
+                    else if (isSubscriptionPurchase && deliveryFee > 0)
+                    {
+                        // تحديد منشئ المهمة
+                        Guid? creatorId = null;
+                        if (!string.IsNullOrEmpty(createdByIdStr))
+                            Guid.TryParse(createdByIdStr, out var parsedCreatorId);
+
+                        if (!string.IsNullOrEmpty(createdByIdStr) && Guid.TryParse(createdByIdStr, out var creatorGuid))
+                            creatorId = creatorGuid;
+
+                        if (creatorId.HasValue)
+                        {
+                            var creator = await _unitOfWork.Users.GetByIdAsync(creatorId.Value);
+                            if (creator != null)
+                            {
+                                var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                                    .AnyAsync(t => t.ServiceRequestId == id && t.Category == TechnicianTransactionCategory.InstallationFee && !t.IsDeleted);
+
+                                if (!existingTx)
+                                {
+                                    creator.TechTotalCharges += deliveryFee;
+                                    creator.TechNetBalance = creator.TechTotalPayments - creator.TechTotalCharges;
+                                    _unitOfWork.Users.Update(creator);
+
+                                    var installTx = new TechnicianTransaction
+                                    {
+                                        TechnicianId = creator.Id,
+                                        Type = TechnicianTransactionType.Charge,
+                                        Category = TechnicianTransactionCategory.InstallationFee,
+                                        Amount = deliveryFee,
+                                        BalanceAfter = creator.TechNetBalance,
+                                        Description = $"أجور تنصيب - {request.RequestNumber}",
+                                        ServiceRequestId = id,
+                                        CreatedById = request.CompanyId ?? Guid.Empty,
+                                        CompanyId = request.CompanyId ?? Guid.Empty,
+                                        CreatedAt = DateTime.UtcNow,
+                                    };
+                                    await _unitOfWork.TechnicianTransactions.AddAsync(installTx);
+                                    hasTechFinancialChanges = true;
+
+                                    _logger.LogInformation("تم تسجيل أجور تنصيب {Fee} على منشئ المهمة {CreatorId} — مهمة {RequestNumber}",
+                                        deliveryFee, creator.Id, request.RequestNumber);
+                                }
+                            }
+                        }
+                    }
+
+                    // ══════ تجديد اشتراك: أجور أخرى → ذمة الفني ══════
+                    else if (isSubscriptionRenewal && deliveryFee > 0 && chargeTargetId.HasValue)
                     {
                         var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId.Value);
                         if (technician != null)
                         {
-                            // تحقق من عدم وجود معاملة سابقة لنفس الطلب
                             var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                                .AnyAsync(t => t.ServiceRequestId == id && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted);
+                                .AnyAsync(t => t.ServiceRequestId == id && t.Category == TechnicianTransactionCategory.OtherFee && !t.IsDeleted);
 
                             if (!existingTx)
                             {
-                                technician.TechTotalCharges += chargeAmount;
+                                technician.TechTotalCharges += deliveryFee;
                                 technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
                                 _unitOfWork.Users.Update(technician);
 
-                                var techTx = new TechnicianTransaction
+                                var otherTx = new TechnicianTransaction
                                 {
                                     TechnicianId = technician.Id,
                                     Type = TechnicianTransactionType.Charge,
-                                    Category = TechnicianTransactionCategory.Maintenance,
-                                    Amount = chargeAmount,
+                                    Category = TechnicianTransactionCategory.OtherFee,
+                                    Amount = deliveryFee,
                                     BalanceAfter = technician.TechNetBalance,
-                                    Description = $"{taskTypeStr} - {request.RequestNumber}",
+                                    Description = $"أجور أخرى - {request.RequestNumber}",
                                     ServiceRequestId = id,
                                     CreatedById = request.CompanyId ?? Guid.Empty,
                                     CompanyId = request.CompanyId ?? Guid.Empty,
                                     CreatedAt = DateTime.UtcNow,
                                 };
-                                await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
+                                await _unitOfWork.TechnicianTransactions.AddAsync(otherTx);
                                 hasTechFinancialChanges = true;
 
-                                _logger.LogInformation("تم تسجيل {Amount} على الفني {TechId} — مهمة {RequestNumber} ({TaskType})",
-                                    chargeAmount, technician.Id, request.RequestNumber, taskTypeStr);
+                                _logger.LogInformation("تم تسجيل أجور أخرى {Fee} على الفني {TechId} — مهمة {RequestNumber}",
+                                    deliveryFee, technician.Id, request.RequestNumber);
                             }
                         }
                     }
-                }
-                else if (newStatus == ServiceRequestStatus.Completed && isAccountingDept)
-                {
-                    _logger.LogInformation("طلب {RequestNumber} (حسابات) مكتمل — التسجيل المالي يتم عند تفعيل الاشتراك", request.RequestNumber);
+
+                    // ══════ تحصيل مبلغ: أجور التوصيل → ذمة الفني ══════
+                    else if (isCollectionTask && deliveryFee > 0 && chargeTargetId.HasValue)
+                    {
+                        var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId.Value);
+                        if (technician != null)
+                        {
+                            var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                                .AnyAsync(t => t.ServiceRequestId == id && t.Category == TechnicianTransactionCategory.DeliveryFee && !t.IsDeleted);
+
+                            if (!existingTx)
+                            {
+                                technician.TechTotalCharges += deliveryFee;
+                                technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
+                                _unitOfWork.Users.Update(technician);
+
+                                var deliveryTx = new TechnicianTransaction
+                                {
+                                    TechnicianId = technician.Id,
+                                    Type = TechnicianTransactionType.Charge,
+                                    Category = TechnicianTransactionCategory.DeliveryFee,
+                                    Amount = deliveryFee,
+                                    BalanceAfter = technician.TechNetBalance,
+                                    Description = $"أجور توصيل - {request.RequestNumber}",
+                                    ServiceRequestId = id,
+                                    CreatedById = request.CompanyId ?? Guid.Empty,
+                                    CompanyId = request.CompanyId ?? Guid.Empty,
+                                    CreatedAt = DateTime.UtcNow,
+                                };
+                                await _unitOfWork.TechnicianTransactions.AddAsync(deliveryTx);
+                                hasTechFinancialChanges = true;
+
+                                _logger.LogInformation("تم تسجيل أجور توصيل {Fee} على الفني {TechId} — مهمة {RequestNumber}",
+                                    deliveryFee, technician.Id, request.RequestNumber);
+                            }
+                        }
+                    }
                 }
                 else if (newStatus == ServiceRequestStatus.Cancelled || newStatus == ServiceRequestStatus.Rejected)
                 {
@@ -637,6 +792,30 @@ public class ServiceRequestsController : ControllerBase
 
                             _logger.LogInformation("تم استرداد {Amount} من الفني {TechName} بسبب {Status} المهمة {RequestNumber}",
                                 existingTechCharge.Amount, technician.FullName, newStatus, request.RequestNumber);
+                        }
+                    }
+
+                    // ═══ استرداد أجور إضافية عند الإلغاء (توصيل/تنصيب/أخرى) ═══
+                    var feeCategories = new[] { TechnicianTransactionCategory.DeliveryFee, TechnicianTransactionCategory.InstallationFee, TechnicianTransactionCategory.OtherFee };
+                    var existingFeeCharges = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                        .Where(t => t.ServiceRequestId == id && feeCategories.Contains(t.Category) && !t.IsDeleted)
+                        .ToListAsync();
+                    foreach (var feeCharge in existingFeeCharges)
+                    {
+                        var techForFee = await _unitOfWork.Users.GetByIdAsync(feeCharge.TechnicianId);
+                        if (techForFee != null)
+                        {
+                            techForFee.TechTotalCharges -= feeCharge.Amount;
+                            techForFee.TechNetBalance = techForFee.TechTotalPayments - techForFee.TechTotalCharges;
+                            _unitOfWork.Users.Update(techForFee);
+
+                            feeCharge.IsDeleted = true;
+                            feeCharge.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.TechnicianTransactions.Update(feeCharge);
+                            hasTechFinancialChanges = true;
+
+                            _logger.LogInformation("تم استرداد {Category} {Amount} من {TechName} بسبب إلغاء المهمة {RequestNumber}",
+                                feeCharge.Category, feeCharge.Amount, techForFee.FullName, request.RequestNumber);
                         }
                     }
                 }
@@ -1158,6 +1337,8 @@ public class ServiceRequestsController : ControllerBase
                 details["subscriptionDuration"] = dto.SubscriptionDuration;
             if (dto.SubscriptionAmount.HasValue)
                 details["subscriptionAmount"] = dto.SubscriptionAmount.Value;
+            if (dto.DeliveryFee.HasValue)
+                details["deliveryFee"] = dto.DeliveryFee.Value;
 
             var request = new ServiceRequest
             {
@@ -1369,6 +1550,7 @@ public class ServiceRequestsController : ControllerBase
         if (dto.CustomerPhone != null) { details["customerPhone"] = dto.CustomerPhone; request.ContactPhone = dto.CustomerPhone; }
         if (dto.Location != null) request.Address = dto.Location;
         if (dto.Amount.HasValue) request.FinalCost = dto.Amount.Value;
+        if (dto.DeliveryFee.HasValue) details["deliveryFee"] = dto.DeliveryFee.Value;
 
         // تحديث الحالة إن أُرسلت
         var oldStatus = request.Status;
@@ -2056,6 +2238,8 @@ public class UpdateStatusDto
     public string? Note { get; set; }
     /// <summary>المبلغ النهائي (اختياري - يُستخدم لتحديث التكلفة النهائية عند الإكمال)</summary>
     public decimal? Amount { get; set; }
+    /// <summary>أجور التوصيل</summary>
+    public decimal? DeliveryFee { get; set; }
 }
 
 public class AssignRequestDto
@@ -2121,7 +2305,10 @@ public class CreateTaskDto
     
     /// <summary>مبلغ الاشتراك</summary>
     public decimal? SubscriptionAmount { get; set; }
-    
+
+    /// <summary>أجور التوصيل - تُعتبر إيرادات وتُضاف على ذمة الموظف</summary>
+    public decimal? DeliveryFee { get; set; }
+
     /// <summary>معرف الخدمة (اختياري - افتراضي 9 = Internet FTTH)</summary>
     public int ServiceId { get; set; } = 9;
     
@@ -2148,6 +2335,8 @@ public class UpdateTaskDto
     public string? Summary { get; set; }
     public string? Priority { get; set; }
     public decimal? Amount { get; set; }
+    /// <summary>أجور التوصيل</summary>
+    public decimal? DeliveryFee { get; set; }
 }
 
 /// <summary>
@@ -2273,9 +2462,15 @@ public static class ServiceRequestAccountingHelper
         string description,
         JournalReferenceType referenceType,
         string? referenceId,
-        List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
+        List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines,
+        DateTime? entryDate = null)
     {
-        var year = DateTime.UtcNow.Year;
+        // تاريخ القيد: إذا مُرر نستخدمه، وإلا نستخدم تاريخ اليوم بتوقيت بغداد (UTC+3) محوّلاً لـ UTC
+        // هذا يضمن أن القيود المنشأة بعد 21:00 UTC (= 00:00 بغداد) تُسجل في اليوم الصحيح
+        var now = entryDate ?? DateTime.SpecifyKind(
+            DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
+            DateTimeKind.Utc);
+        var year = now.Year;
         // IgnoreQueryFilters لعدّ جميع القيود بما فيها المحذوفة ناعمياً لتجنب تعارض الأرقام
         var count = await unitOfWork.JournalEntries.AsQueryable()
             .IgnoreQueryFilters()
@@ -2287,7 +2482,7 @@ public static class ServiceRequestAccountingHelper
         {
             Id = entryId,
             EntryNumber = entryNumber,
-            EntryDate = DateTime.UtcNow,
+            EntryDate = now,
             Description = description,
             TotalDebit = lines.Sum(l => l.DebitAmount),
             TotalCredit = lines.Sum(l => l.CreditAmount),

@@ -1114,23 +1114,22 @@ class HomePageTasksState extends State<HomePageTasks> {
               ),
               const SizedBox(height: 8),
               // إحصائيات الحالات
-              Row(
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                alignment: WrapAlignment.start,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _buildMiniStatChip('مفتوحة', open, const Color(0xFF2196F3)),
-                  const SizedBox(width: 6),
                   _buildMiniStatChip(
                       'تنفيذ', progress, const Color(0xFFFF9800)),
-                  const SizedBox(width: 6),
                   _buildMiniStatChip('مكتملة', done, const Color(0xFF4CAF50)),
-                  const SizedBox(width: 6),
                   _buildMiniStatChip(
                       'ملغية', canceled, const Color(0xFFE53935)),
-                  const SizedBox(width: 6),
                   _buildMiniStatChip(
                       'تحصيل',
                       _filteredTasks.where((t) => t.title.contains('تحصيل مبلغ') || t.title.contains('استحصال مبلغ')).length,
                       const Color(0xFFFF8F00)),
-                  const Spacer(),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1643,12 +1642,17 @@ class HomePageTasksState extends State<HomePageTasks> {
 
     // إذا كنا في تبويب المهام المكتملة (index == 3) نضيف أزرار (اليوم / الكل)
     if (currentIndex == 3) {
+      final isSmallScreen = MediaQuery.of(context).size.width < 420;
+      final btnIconSize = isSmallScreen ? 18.0 : 24.0;
+      final btnFontSize = isSmallScreen ? 12.0 : 14.0;
+      final btnPadV = isSmallScreen ? 10.0 : 16.0;
+      final btnHeight = isSmallScreen ? 44.0 : 54.0;
       return Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            padding: EdgeInsets.fromLTRB(isSmallScreen ? 8 : 12, 8, isSmallScreen ? 8 : 12, 4),
             child: Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(isSmallScreen ? 6 : 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
@@ -1671,21 +1675,24 @@ class HomePageTasksState extends State<HomePageTasks> {
                               _completedTodayOnly = true;
                               _filterTasksByStatus('مكتملة');
                             },
-                      icon: const Icon(Icons.today, size: 24),
+                      icon: Icon(Icons.today, size: btnIconSize),
                       label: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('اليوم فقط',
-                              style: TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text('اليوم فقط',
+                                style: TextStyle(
+                                    fontSize: btnFontSize, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          const SizedBox(width: 4),
                           _buildCountChip(_countToday('مكتملة')),
                         ],
                       ),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 12),
-                        minimumSize: const Size.fromHeight(54),
+                        padding: EdgeInsets.symmetric(
+                            vertical: btnPadV, horizontal: isSmallScreen ? 6 : 12),
+                        minimumSize: Size.fromHeight(btnHeight),
                         backgroundColor: _completedTodayOnly
                             ? Colors.green[700]
                             : Colors.green[500],
@@ -1698,7 +1705,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: isSmallScreen ? 6 : 12),
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _completedTodayOnly
@@ -1707,14 +1714,14 @@ class HomePageTasksState extends State<HomePageTasks> {
                               _filterTasksByStatus('مكتملة');
                             }
                           : null,
-                      icon: const Icon(Icons.all_inbox, size: 24),
-                      label: const Text('الكل',
+                      icon: Icon(Icons.all_inbox, size: btnIconSize),
+                      label: Text('الكل',
                           style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
+                              fontSize: btnFontSize, fontWeight: FontWeight.w600)),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 12),
-                        minimumSize: const Size.fromHeight(54),
+                        padding: EdgeInsets.symmetric(
+                            vertical: btnPadV, horizontal: isSmallScreen ? 6 : 12),
+                        minimumSize: Size.fromHeight(btnHeight),
                         backgroundColor: _completedTodayOnly
                             ? Colors.blue[600]
                             : Colors.blue[800],
@@ -1738,12 +1745,17 @@ class HomePageTasksState extends State<HomePageTasks> {
 
     // تبويب المهام الملغية (index == 4)
     if (currentIndex == 4) {
+      final isSmallScreen = MediaQuery.of(context).size.width < 420;
+      final btnIconSize = isSmallScreen ? 18.0 : 24.0;
+      final btnFontSize = isSmallScreen ? 12.0 : 14.0;
+      final btnPadV = isSmallScreen ? 10.0 : 16.0;
+      final btnHeight = isSmallScreen ? 44.0 : 54.0;
       return Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            padding: EdgeInsets.fromLTRB(isSmallScreen ? 8 : 12, 8, isSmallScreen ? 8 : 12, 4),
             child: Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(isSmallScreen ? 6 : 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
@@ -1766,21 +1778,24 @@ class HomePageTasksState extends State<HomePageTasks> {
                               _cancelledTodayOnly = true;
                               _filterTasksByStatus('ملغية');
                             },
-                      icon: const Icon(Icons.today, size: 24),
+                      icon: Icon(Icons.today, size: btnIconSize),
                       label: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('اليوم فقط',
-                              style: TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text('اليوم فقط',
+                                style: TextStyle(
+                                    fontSize: btnFontSize, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          const SizedBox(width: 4),
                           _buildCountChip(_countToday('ملغية')),
                         ],
                       ),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 12),
-                        minimumSize: const Size.fromHeight(54),
+                        padding: EdgeInsets.symmetric(
+                            vertical: btnPadV, horizontal: isSmallScreen ? 6 : 12),
+                        minimumSize: Size.fromHeight(btnHeight),
                         backgroundColor: _cancelledTodayOnly
                             ? Colors.red[700]
                             : Colors.red[500],
@@ -1793,7 +1808,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: isSmallScreen ? 6 : 12),
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _cancelledTodayOnly
@@ -1802,14 +1817,14 @@ class HomePageTasksState extends State<HomePageTasks> {
                               _filterTasksByStatus('ملغية');
                             }
                           : null,
-                      icon: const Icon(Icons.all_inbox, size: 24),
-                      label: const Text('الكل',
+                      icon: Icon(Icons.all_inbox, size: btnIconSize),
+                      label: Text('الكل',
                           style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
+                              fontSize: btnFontSize, fontWeight: FontWeight.w600)),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 12),
-                        minimumSize: const Size.fromHeight(54),
+                        padding: EdgeInsets.symmetric(
+                            vertical: btnPadV, horizontal: isSmallScreen ? 6 : 12),
+                        minimumSize: Size.fromHeight(btnHeight),
                         backgroundColor: _cancelledTodayOnly
                             ? Colors.blue[600]
                             : Colors.blue[800],
@@ -2033,17 +2048,18 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   /// شريط تصفية التاريخ
   Widget _buildDateFilterBar() {
+    final isSmall = MediaQuery.of(context).size.width < 420;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 20, vertical: 8),
       color: const Color(0xFFF5F7FA),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildDateFilterButton('اليوم', 'today', Icons.today),
-          const SizedBox(width: 10),
-          _buildDateFilterButton('أمس', 'yesterday', Icons.history),
-          const SizedBox(width: 10),
-          _buildDateFilterButton('الكل', 'all', Icons.all_inclusive),
+          _buildDateFilterButton('اليوم', 'today', Icons.today, compact: isSmall),
+          SizedBox(width: isSmall ? 6 : 10),
+          _buildDateFilterButton('أمس', 'yesterday', Icons.history, compact: isSmall),
+          SizedBox(width: isSmall ? 6 : 10),
+          _buildDateFilterButton('الكل', 'all', Icons.all_inclusive, compact: isSmall),
         ],
       ),
     );
@@ -2214,107 +2230,110 @@ class HomePageTasksState extends State<HomePageTasks> {
             Padding(
               padding: EdgeInsets.fromLTRB(
                   r.contentPaddingH, 0, r.contentPaddingH, 8),
-              child: Row(
-                children: [
-                  // فلتر التاريخ — chips مدمجة
-                  _buildDateFilterChip('اليوم', 'today'),
-                  const SizedBox(width: 6),
-                  _buildDateFilterChip('أمس', 'yesterday'),
-                  const SizedBox(width: 6),
-                  _buildDateFilterChip('الكل', 'all'),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // فلتر التاريخ — chips مدمجة
+                    _buildDateFilterChip('اليوم', 'today'),
+                    const SizedBox(width: 6),
+                    _buildDateFilterChip('أمس', 'yesterday'),
+                    const SizedBox(width: 6),
+                    _buildDateFilterChip('الكل', 'all'),
 
-                  // زر "مهامي" — يظهر للمدير والليدر فقط
-                  if (_normalizeRole(widget.currentUserRole) == 'مدير' ||
-                      _normalizeRole(widget.currentUserRole) == 'ليدر') ...[
+                    // زر "مهامي" — يظهر للمدير والليدر فقط
+                    if (_normalizeRole(widget.currentUserRole) == 'مدير' ||
+                        _normalizeRole(widget.currentUserRole) == 'ليدر') ...[
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _myTasksOnly = !_myTasksOnly);
+                          _filterTasksByStatus(_getStatusByIndex(currentIndex));
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _myTasksOnly
+                                ? Colors.amber.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                            border: _myTasksOnly
+                                ? Border.all(color: Colors.amber, width: 1.5)
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _myTasksOnly ? Icons.person : Icons.person_outline,
+                                color: _myTasksOnly ? Colors.amber : Colors.white70,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'مهامي',
+                                style: TextStyle(
+                                  color: _myTasksOnly ? Colors.amber : Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: _myTasksOnly ? FontWeight.bold : FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(width: 10),
+
+                    // فلتر متقدم
                     GestureDetector(
-                      onTap: () {
-                        setState(() => _myTasksOnly = !_myTasksOnly);
-                        _filterTasksByStatus(_getStatusByIndex(currentIndex));
-                      },
+                      onTap: () => _showFilterPopup(context),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _myTasksOnly
-                              ? Colors.amber.withValues(alpha: 0.3)
+                          color: (_filterDepartment != null ||
+                                  _filterTechnician != null ||
+                                  _filterPriority != null ||
+                                  _filterTaskType != null)
+                              ? Colors.orangeAccent.withValues(alpha: 0.3)
                               : Colors.white.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(16),
-                          border: _myTasksOnly
-                              ? Border.all(color: Colors.amber, width: 1.5)
+                          border: (_filterDepartment != null ||
+                                  _filterTechnician != null ||
+                                  _filterPriority != null ||
+                                  _filterTaskType != null)
+                              ? Border.all(color: Colors.orangeAccent, width: 1)
                               : null,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              _myTasksOnly ? Icons.person : Icons.person_outline,
-                              color: _myTasksOnly ? Colors.amber : Colors.white70,
-                              size: 16,
-                            ),
+                            Icon(Icons.tune_rounded,
+                                size: 14,
+                                color: (_filterDepartment != null ||
+                                        _filterTechnician != null ||
+                                        _filterPriority != null)
+                                    ? Colors.orangeAccent
+                                    : Colors.white70),
                             const SizedBox(width: 4),
-                            Text(
-                              'مهامي',
-                              style: TextStyle(
-                                color: _myTasksOnly ? Colors.amber : Colors.white70,
-                                fontSize: 12,
-                                fontWeight: _myTasksOnly ? FontWeight.bold : FontWeight.w500,
-                              ),
-                            ),
+                            Text('فلتر',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: (_filterDepartment != null ||
+                                          _filterTechnician != null ||
+                                          _filterPriority != null)
+                                      ? Colors.orangeAccent
+                                      : Colors.white70,
+                                )),
                           ],
                         ),
                       ),
                     ),
                   ],
-
-                  const Spacer(),
-
-                  // فلتر متقدم
-                  GestureDetector(
-                    onTap: () => _showFilterPopup(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: (_filterDepartment != null ||
-                                _filterTechnician != null ||
-                                _filterPriority != null ||
-                                _filterTaskType != null)
-                            ? Colors.orangeAccent.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: (_filterDepartment != null ||
-                                _filterTechnician != null ||
-                                _filterPriority != null ||
-                                _filterTaskType != null)
-                            ? Border.all(color: Colors.orangeAccent, width: 1)
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.tune_rounded,
-                              size: 14,
-                              color: (_filterDepartment != null ||
-                                      _filterTechnician != null ||
-                                      _filterPriority != null)
-                                  ? Colors.orangeAccent
-                                  : Colors.white70),
-                          const SizedBox(width: 4),
-                          Text('فلتر',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: (_filterDepartment != null ||
-                                        _filterTechnician != null ||
-                                        _filterPriority != null)
-                                    ? Colors.orangeAccent
-                                    : Colors.white70,
-                              )),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -2808,7 +2827,13 @@ class HomePageTasksState extends State<HomePageTasks> {
           ),
         ],
       ),
-      bottomNavigationBar: Container(
+      bottomNavigationBar: Builder(builder: (context) {
+        final navScreenWidth = MediaQuery.of(context).size.width;
+        final navIsSmall = navScreenWidth < 420;
+        final navHeight = navIsSmall ? 60.0 : 75.0;
+        final navPadV = navIsSmall ? 4.0 : 8.0;
+        final navPadH = navIsSmall ? 2.0 : 6.0;
+        return Container(
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -2827,8 +2852,8 @@ class HomePageTasksState extends State<HomePageTasks> {
         ),
         child: SafeArea(
           child: Container(
-            height: 75,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            height: navHeight,
+            padding: EdgeInsets.symmetric(horizontal: navPadH, vertical: navPadV),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -2872,7 +2897,8 @@ class HomePageTasksState extends State<HomePageTasks> {
             ),
           ),
         ),
-      ),
+      );
+      }),
     );
   }
 

@@ -16,6 +16,7 @@ import '../services/dual_auth_service.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../inventory/services/inventory_api_service.dart';
 import '../services/vps_auth_service.dart';
+import '../utils/responsive_helper.dart';
 
 /// TaskCard محسن مع عرض جميل لعنوان المهم�� وحل لجميع ����لأخطاء
 class TaskCard extends StatefulWidget {
@@ -68,6 +69,21 @@ class _TaskCardState extends State<TaskCard> {
   // هل المهمة من نوع تحصيل
   bool _isCollectionTask() =>
       widget.task.title.contains('تحصيل مبلغ') || widget.task.title.contains('استحصال مبلغ');
+
+  bool _isPurchaseTask() => widget.task.title.contains('شراء اشتراك');
+  bool _isRenewalTask() => widget.task.title.contains('تجديد اشتراك');
+  bool _isMaintenanceTask() => !_isPurchaseTask() && !_isRenewalTask() && !_isCollectionTask();
+
+  String _getAmountLabel() {
+    if (_isPurchaseTask() || _isRenewalTask() || _isCollectionTask()) return 'سعر الاشتراك';
+    return 'أجور الصيانة';
+  }
+
+  String _getFeeLabel() {
+    if (_isPurchaseTask()) return 'أجور التنصيب';
+    if (_isRenewalTask()) return 'أجور أخرى';
+    return 'أجور التوصيل';
+  }
 
   // متغيرات لجلب بيانات الوكلاء
   List<Map<String, dynamic>> agents = [];
@@ -147,11 +163,12 @@ class _TaskCardState extends State<TaskCard> {
                   padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
                   child: _buildCommentsSection(),
                 ),
-                // المواد المصروفة
-                Padding(
-                  padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
-                  child: _buildDispensedMaterialsSection(),
-                ),
+                // المواد المصروفة — تظهر في كل المهام ما عدا التحصيل
+                if (!_isCollectionTask())
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
+                    child: _buildDispensedMaterialsSection(),
+                  ),
                 // المرفقات
                 Padding(
                   padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
@@ -250,6 +267,20 @@ class _TaskCardState extends State<TaskCard> {
                       ),
                       child: Text(
                         '${widget.task.amount} د.ع',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                  if (!_isMaintenanceTask() && widget.task.deliveryFee.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00897B),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_getFeeLabel()} ${widget.task.deliveryFee} د.ع',
                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
@@ -361,7 +392,9 @@ class _TaskCardState extends State<TaskCard> {
                 })
               : null),
       if (widget.task.amount.isNotEmpty)
-        _buildInfoTile(Icons.payments_outlined, 'المبلغ', '${_formatAmount(widget.task.amount)} د.ع', const Color(0xFFE74C3C), compact: compact),
+        _buildInfoTile(Icons.payments_outlined, _getAmountLabel(), '${_formatAmount(widget.task.amount)} د.ع', const Color(0xFFE74C3C), compact: compact),
+      if (widget.task.deliveryFee.isNotEmpty && !_isMaintenanceTask())
+        _buildInfoTile(Icons.local_shipping, _getFeeLabel(), '${_formatAmount(widget.task.deliveryFee)} د.ع', const Color(0xFF00897B), compact: compact),
       if (widget.task.createdByName.isNotEmpty)
         _buildInfoTile(Icons.person_add_outlined, 'أنشأها', widget.task.createdByName, const Color(0xFF2E86C1), compact: compact),
       if (widget.task.serviceType.isNotEmpty)
@@ -1140,8 +1173,9 @@ class _TaskCardState extends State<TaskCard> {
     final techId = widget.task.technicianId;
     if (companyId.isEmpty || taskGuid.isEmpty) return;
 
-    // تحميل عُهدة الفني (المواد المسلّمة له)
+    // تحميل عُهدة الفني + كل المواد المتاحة
     List<Map<String, dynamic>> holdings = [];
+    List<Map<String, dynamic>> allItems = [];
     bool loading = true;
     final rows = <_MaterialRow>[];
 
@@ -1152,10 +1186,14 @@ class _TaskCardState extends State<TaskCard> {
           if (loading) {
             Future.microtask(() async {
               try {
+                // جلب عُهدة الفني
                 if (techId.isNotEmpty) {
                   final res = await InventoryApiService.instance.getTechnicianHoldings(techId);
                   holdings = ((res['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
                 }
+                // جلب كل المواد المتاحة بالنظام
+                final itemsRes = await InventoryApiService.instance.getItems(companyId: companyId);
+                allItems = ((itemsRes['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
               } catch (_) {}
               if (ctx.mounted) setD(() => loading = false);
             });
@@ -1170,13 +1208,13 @@ class _TaskCardState extends State<TaskCard> {
                 Text('صرف مواد للعميل', style: TextStyle(fontSize: 16)),
               ]),
               content: SizedBox(
-                width: 550,
+                width: context.responsive.isMobile ? context.responsive.availableWidth * 0.9 : 550,
                 child: loading
                     ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
-                    : holdings.isEmpty && rows.isEmpty
+                    : allItems.isEmpty && holdings.isEmpty && rows.isEmpty
                         ? const Padding(
                             padding: EdgeInsets.all(20),
-                            child: Center(child: Text('لا توجد مواد بعُهدة الفني.\nيجب صرف مواد للفني أولاً من صفحة المخازن.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey))),
+                            child: Center(child: Text('لا توجد مواد في النظام.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey))),
                           )
                         : SingleChildScrollView(child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -1189,7 +1227,7 @@ class _TaskCardState extends State<TaskCard> {
                                 child: Row(children: [
                                   Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
                                   const SizedBox(width: 6),
-                                  Text('اختر من المواد المسلّمة للفني:', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+                                  Expanded(child: Text('اختر المواد المستخدمة (يمكن الصرف حتى بدون رصيد بالعُهدة)', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600))),
                                 ]),
                               ),
                               const SizedBox(height: 12),
@@ -1210,12 +1248,29 @@ class _TaskCardState extends State<TaskCard> {
                                         isExpanded: true,
                                         decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
                                         style: const TextStyle(fontSize: 12, color: Colors.black87),
-                                        items: holdings.map((h) {
-                                          final id = (h['InventoryItemId'] ?? h['inventoryItemId'])?.toString() ?? '';
-                                          final name = (h['ItemName'] ?? h['itemName'])?.toString() ?? '';
-                                          final rem = h['RemainingQuantity'] ?? h['remainingQuantity'] ?? 0;
-                                          return DropdownMenuItem(value: id, child: Text('$name (متوفر: $rem)', overflow: TextOverflow.ellipsis));
-                                        }).toList(),
+                                        items: () {
+                                          // دمج كل المواد مع رصيد العُهدة
+                                          final Map<String, Map<String, dynamic>> merged = {};
+                                          for (final item in allItems) {
+                                            final id = (item['Id'] ?? item['id'])?.toString() ?? '';
+                                            if (id.isEmpty) continue;
+                                            merged[id] = {'id': id, 'name': (item['Name'] ?? item['name'])?.toString() ?? '', 'holding': 0};
+                                          }
+                                          for (final h in holdings) {
+                                            final id = (h['InventoryItemId'] ?? h['inventoryItemId'])?.toString() ?? '';
+                                            final rem = (h['RemainingQuantity'] ?? h['remainingQuantity'] ?? 0) as num;
+                                            if (merged.containsKey(id)) {
+                                              merged[id]!['holding'] = rem;
+                                            } else {
+                                              merged[id] = {'id': id, 'name': (h['ItemName'] ?? h['itemName'])?.toString() ?? '', 'holding': rem};
+                                            }
+                                          }
+                                          return merged.values.map((m) {
+                                            final hld = m['holding'] as num;
+                                            final suffix = hld > 0 ? ' (عُهدة: $hld)' : '';
+                                            return DropdownMenuItem<String>(value: m['id'] as String, child: Text('${m['name']}$suffix', overflow: TextOverflow.ellipsis));
+                                          }).toList();
+                                        }(),
                                         onChanged: (v) => setD(() => row.itemId = v ?? ''),
                                       ),
                                     ),
@@ -1227,7 +1282,7 @@ class _TaskCardState extends State<TaskCard> {
                                         keyboardType: TextInputType.number,
                                         textAlign: TextAlign.center,
                                         decoration: InputDecoration(labelText: 'العدد', border: const OutlineInputBorder(), isDense: true,
-                                          helperText: available > 0 ? 'من $available' : null, helperStyle: TextStyle(fontSize: 9, color: Colors.green.shade700)),
+                                          helperText: available > 0 ? 'عُهدة: $available' : 'بدون عُهدة', helperStyle: TextStyle(fontSize: 9, color: available > 0 ? Colors.green.shade700 : Colors.orange.shade700)),
                                         style: const TextStyle(fontSize: 13),
                                         onChanged: (v) => row.quantity = int.tryParse(v) ?? 1,
                                       ),
@@ -1290,7 +1345,7 @@ class _TaskCardState extends State<TaskCard> {
 
   /// شريط الإجراءات — على الموبايل: أزرار رئيسية + قائمة منبثقة
   Widget _buildCompactActionBar() {
-    final isMobile = MediaQuery.of(context).size.width < 500;
+    final isMobile = context.responsive.isMobile;
 
     // الأزرار الرئيسية (تظهر دائماً)
     final primaryButtons = <Widget>[];
@@ -1410,6 +1465,7 @@ class _TaskCardState extends State<TaskCard> {
 
   Widget _buildCompactActionButton(
       IconData icon, String label, Color color, VoidCallback onPressed) {
+    final isNarrow = context.responsive.availableWidth < 360;
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -1427,21 +1483,26 @@ class _TaskCardState extends State<TaskCard> {
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 16, color: color),
-                  const SizedBox(width: 4),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: color,
-                      fontWeight: FontWeight.w600,
+              child: isNarrow
+                  ? Icon(icon, size: 18, color: color)
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 16, color: color),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -1526,8 +1587,25 @@ class _TaskCardState extends State<TaskCard> {
         initialAmount = buf.toString();
       }
     }
+    // تنسيق أجور التوصيل المبدئية بفواصل المراتب
+    String initialDeliveryFee = widget.task.deliveryFee.replaceAll(',', '');
+    if (initialDeliveryFee.isEmpty) {
+      initialDeliveryFee = '1,000';
+    } else {
+      final digits = initialDeliveryFee.replaceAll(RegExp(r'[^\d]'), '');
+      if (digits.isNotEmpty) {
+        final buf = StringBuffer();
+        for (int i = 0; i < digits.length; i++) {
+          if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
+          buf.write(digits[i]);
+        }
+        initialDeliveryFee = buf.toString();
+      }
+    }
     final TextEditingController amountController =
         TextEditingController(text: initialAmount);
+    final TextEditingController deliveryFeeController =
+        TextEditingController(text: initialDeliveryFee);
     final TextEditingController notesController =
         TextEditingController(text: widget.task.notes);
     bool controllersDisposed = false;
@@ -1535,6 +1613,7 @@ class _TaskCardState extends State<TaskCard> {
       if (controllersDisposed) return;
       controllersDisposed = true;
       amountController.dispose();
+      deliveryFeeController.dispose();
       notesController.dispose();
     }
 
@@ -1547,13 +1626,13 @@ class _TaskCardState extends State<TaskCard> {
             final statusColor = _getStatusColor(selectedStatus);
             final dialogWidth = MediaQuery.of(context).size.width;
             return Dialog(
-              insetPadding: EdgeInsets.symmetric(horizontal: dialogWidth < 420 ? 12 : 40, vertical: 24),
+              insetPadding: EdgeInsets.symmetric(horizontal: context.responsive.isMobile ? 12 : 40, vertical: 24),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               elevation: 8,
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: dialogWidth < 420 ? dialogWidth - 24 : 420),
+                constraints: BoxConstraints(maxWidth: context.responsive.dialogMaxWidth),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1651,8 +1730,8 @@ class _TaskCardState extends State<TaskCard> {
 
                             const SizedBox(height: 16),
 
-                            // 2. المبلغ
-                            Text('المبلغ',
+                            // 2. المبلغ — الاسم يتغير حسب نوع المهمة
+                            Text(_getAmountLabel(),
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -1731,6 +1810,93 @@ class _TaskCardState extends State<TaskCard> {
                                         width: 1.5)),
                               ),
                             ),
+
+                            const SizedBox(height: 16),
+
+                            // 2.5 حقل الأجور الثاني — يتغير حسب نوع المهمة (يختفي في الصيانة)
+                            if (!_isMaintenanceTask()) ...[
+                            Text(_getFeeLabel(),
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade700)),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: deliveryFeeController,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.left,
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.w600),
+                              inputFormatters: [
+                                TextInputFormatter.withFunction(
+                                    (oldValue, newValue) {
+                                  String converted = newValue.text
+                                      .replaceAll('٠', '0')
+                                      .replaceAll('١', '1')
+                                      .replaceAll('٢', '2')
+                                      .replaceAll('٣', '3')
+                                      .replaceAll('٤', '4')
+                                      .replaceAll('٥', '5')
+                                      .replaceAll('٦', '6')
+                                      .replaceAll('٧', '7')
+                                      .replaceAll('٨', '8')
+                                      .replaceAll('٩', '9');
+                                  final digits = converted.replaceAll(RegExp(r'[^\d]'), '');
+                                  if (digits.isEmpty) {
+                                    return const TextEditingValue(text: '', selection: TextSelection.collapsed(offset: 0));
+                                  }
+                                  final buffer = StringBuffer();
+                                  final len = digits.length;
+                                  for (int i = 0; i < len; i++) {
+                                    if (i > 0 && (len - i) % 3 == 0) buffer.write(',');
+                                    buffer.write(digits[i]);
+                                  }
+                                  final formatted = buffer.toString();
+                                  return TextEditingValue(
+                                      text: formatted,
+                                      selection: TextSelection.collapsed(
+                                          offset: formatted.length));
+                                }),
+                              ],
+                              decoration: InputDecoration(
+                                hintText: '0',
+                                hintStyle:
+                                    TextStyle(color: Colors.grey.shade400),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                prefixIcon: Container(
+                                  width: 36,
+                                  alignment: Alignment.center,
+                                  child: Icon(Icons.local_shipping,
+                                      size: 18, color: Colors.teal.shade600),
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(Icons.close_rounded,
+                                      size: 18, color: Colors.red.shade400),
+                                  tooltip: 'بدون أجور توصيل',
+                                  onPressed: () {
+                                    deliveryFeeController.clear();
+                                  },
+                                ),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300)),
+                                enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.grey.shade300)),
+                                focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                        color: Colors.teal.shade400,
+                                        width: 1.5)),
+                              ),
+                            ),
+                            ],
 
                             const SizedBox(height: 16),
 
@@ -1858,11 +2024,14 @@ class _TaskCardState extends State<TaskCard> {
                                     return;
                                   }
 
+                                  final String deliveryFee =
+                                      deliveryFeeController.text.trim();
+
                                   disposeControllers();
                                   Navigator.of(dialogContext).pop();
 
                                   _updateTaskStatus(newStatus,
-                                      amount: amount, notes: notes);
+                                      amount: amount, notes: notes, deliveryFee: deliveryFee);
                                 },
                                 icon: const Icon(Icons.check_rounded, size: 20),
                                 label: const Text('تحديث المهمة',
@@ -1894,15 +2063,13 @@ class _TaskCardState extends State<TaskCard> {
     ).then((_) => disposeControllers()); // تنظيف عند إغلاق الـ dialog بأي طريقة
   }
 
-  /// هل المهمة تتطلب ذكر المواد المصروفة؟
+  /// هل المهمة تتطلب ذكر المواد المصروفة؟ (كل المهام ما عدا التحصيل والتجديد)
   bool _requiresMaterials() {
-    final t = widget.task.title.toLowerCase();
-    return t.contains('صيانة') || t.contains('تركيب') || t.contains('تنصيب') ||
-           t.contains('إصلاح') || t.contains('اصلاح') || t.contains('شراء اشتراك');
+    return !_isCollectionTask() && !_isRenewalTask();
   }
 
   void _updateTaskStatus(String newStatus,
-      {String amount = '', String notes = ''}) async {
+      {String amount = '', String notes = '', String deliveryFee = ''}) async {
     // ── التحقق من المواد المصروفة عند إكمال مهمة صيانة/تنصيب ──
     if (newStatus == 'مكتملة' && _requiresMaterials()) {
       // تحميل المواد إن لم تُحمل
@@ -1963,6 +2130,7 @@ class _TaskCardState extends State<TaskCard> {
       final updatedTask = widget.task.copyWith(
         status: newStatus,
         amount: amount,
+        deliveryFee: deliveryFee,
         notes: notes,
         closedAt: newStatus == 'مكتملة' || newStatus == 'ملغية'
             ? DateTime.now()
@@ -2023,6 +2191,7 @@ class _TaskCardState extends State<TaskCard> {
         taskId,
         status: apiStatus,
         amount: task.amount.isNotEmpty ? double.tryParse(task.amount.replaceAll(',', '')) : null,
+        deliveryFee: task.deliveryFee.isNotEmpty ? double.tryParse(task.deliveryFee.replaceAll(',', '')) : null,
       );
 
       debugPrint('🌐 [API] النتيجة الكاملة: $result');

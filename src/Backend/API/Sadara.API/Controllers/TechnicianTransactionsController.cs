@@ -365,7 +365,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpGet("all-dues")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
-    public async Task<IActionResult> GetAllTechnicianDues()
+    public async Task<IActionResult> GetAllTechnicianDues([FromQuery] DateTime? from, [FromQuery] DateTime? to)
     {
         try
         {
@@ -375,8 +375,14 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             var userCompanyId = currentUser?.CompanyId;
 
             // === المصدر الموحّد: حساب الأرصدة من جدول المعاملات مباشرة ===
-            var techSummaries = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => !t.IsDeleted)
+            var baseQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => !t.IsDeleted);
+            if (from.HasValue)
+                baseQuery = baseQuery.Where(t => t.CreatedAt >= from.Value.Date);
+            if (to.HasValue)
+                baseQuery = baseQuery.Where(t => t.CreatedAt < to.Value.Date.AddDays(1));
+
+            var techSummaries = await baseQuery
                 .GroupBy(t => t.TechnicianId)
                 .Select(g => new
                 {
@@ -526,7 +532,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                             _unitOfWork, companyId, GetCurrentUserId(),
                             $"تسديد فني {technician.FullName} - {request.Amount:N0} دينار",
                             JournalReferenceType.TechnicianCollection, technician.Id.ToString(),
-                            journalLines);
+                            journalLines, txDate);
 
                         // ربط القيد بالمعاملة
                         var je = await _unitOfWork.JournalEntries.AsQueryable()
