@@ -196,6 +196,129 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     return VpsAuthService.instance.accessToken;
   }
 
+  Future<void> _fixPageDeductions() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تصحيح المستقطع'),
+        content: Text(
+          'سيتم إعادة حساب المستقطع (BasePrice) لجميع عمليات هذا المشغل'
+          '${_fromDate != null || _toDate != null ? ' في الفترة المحددة' : ''}'
+          ' ليطابق مبالغ FTTH.\n\n'
+          'سيتم إلغاء القيود المحاسبية القديمة وإنشاء قيود جديدة بالأرقام الصحيحة.\n\n'
+          'هل تريد المتابعة؟',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('تصحيح', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('جارٍ تصحيح المستقطع...'), duration: Duration(seconds: 30)),
+    );
+
+    try {
+      final result = await AccountingService.instance.recalculateSyncRevenues(
+        companyId: widget.companyId,
+        userId: widget.userId,
+        from: _fromDate,
+        to: _toDate,
+        forceAll: true,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      final updated = result['updated'] ?? 0;
+      final accCreated = result['accountingCreated'] ?? 0;
+      final accUpdated = result['accountingUpdated'] ?? 0;
+      final failed = result['failed'] ?? 0;
+      final totalFound = result['totalFound'] ?? 0;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(children: [
+            Icon(updated > 0 ? Icons.check_circle : Icons.info, color: updated > 0 ? Colors.green : Colors.blue),
+            const SizedBox(width: 8),
+            const Text('نتيجة التصحيح'),
+          ]),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('العمليات المفحوصة: $totalFound'),
+            Text('تم تحديث: $updated', style: TextStyle(color: updated > 0 ? Colors.green.shade700 : null, fontWeight: FontWeight.bold)),
+            if (accCreated > 0) Text('قيود جديدة: $accCreated', style: TextStyle(color: Colors.blue.shade700)),
+            if (accUpdated > 0) Text('قيود ملغية: $accUpdated', style: TextStyle(color: Colors.orange.shade700)),
+            if (failed > 0) Text('فشل: $failed', style: TextStyle(color: Colors.red.shade700)),
+          ]),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً'))],
+        ),
+      );
+
+      if (updated > 0 || accCreated > 0) _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade700),
+      );
+    }
+  }
+
+  Future<void> _recalculateSyncRevenues() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إعادة حساب الإيرادات'),
+        content: const Text(
+          'سيتم إعادة حساب خصم الشركة وأجور الصيانة لجميع العمليات المتزامنة التي ليس لديها إيرادات.\n\n'
+          'سيتم إلغاء القيود المحاسبية القديمة وإنشاء قيود جديدة بالأرقام الصحيحة.\n\n'
+          'هل تريد المتابعة؟',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تنفيذ')),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('جارٍ إعادة حساب الإيرادات...'), duration: Duration(seconds: 30)),
+    );
+
+    try {
+      final result = await AccountingService.instance.recalculateSyncRevenues(companyId: widget.companyId, userId: widget.userId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      final msg = result['message'] ?? 'تم';
+      final updated = result['updated'] ?? 0;
+      final accCreated = result['accountingCreated'] ?? 0;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$msg'),
+          backgroundColor: updated > 0 ? Colors.green.shade700 : Colors.blueGrey,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+
+      if (updated > 0 || accCreated > 0) _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade700),
+      );
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -317,6 +440,16 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   ],
                 ),
               ),
+            IconButton(
+              icon: Icon(Icons.compare_arrows, color: Colors.orangeAccent, size: context.accR.iconAppBar),
+              onPressed: _fixPageDeductions,
+              tooltip: 'تصحيح المستقطع (مطابقة FTTH)',
+            ),
+            IconButton(
+              icon: Icon(Icons.calculate_outlined, color: Colors.purpleAccent, size: context.accR.iconAppBar),
+              onPressed: _recalculateSyncRevenues,
+              tooltip: 'إعادة حساب الإيرادات',
+            ),
             IconButton(
               icon: Icon(Icons.date_range, color: Colors.white70, size: context.accR.iconAppBar),
               onPressed: _showDateFilterDialog,
@@ -1774,8 +1907,24 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
                             // ═══ محاسبية ═══
                             sectionTitle('بيانات محاسبية'),
-                            fieldRow('السعر الأساسي', TextField(controller: basePriceCtrl, readOnly: true, style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600), decoration: fieldDeco('0').copyWith(filled: true, fillColor: Colors.grey.shade100))),
-                            fieldRow('خصم الشركة', TextField(controller: compDiscountCtrl, readOnly: true, style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600), decoration: fieldDeco('0').copyWith(filled: true, fillColor: Colors.grey.shade100))),
+                            fieldRow('السعر الأساسي', TextField(controller: basePriceCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('سعر الباقة من جدول الأسعار'),
+                              onChanged: (_) => setDialogState(() {
+                                final base = double.tryParse(basePriceCtrl.text) ?? 0;
+                                final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
+                                final manDisc = double.tryParse(manDiscountCtrl.text) ?? 0;
+                                final maint = double.tryParse(maintFeeCtrl.text) ?? 0;
+                                planPriceCtrl.text = (base - compDisc - manDisc + maint).toStringAsFixed(0);
+                              }),
+                            )),
+                            fieldRow('خصم الشركة', TextField(controller: compDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
+                              onChanged: (_) => setDialogState(() {
+                                final base = double.tryParse(basePriceCtrl.text) ?? 0;
+                                final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
+                                final manDisc = double.tryParse(manDiscountCtrl.text) ?? 0;
+                                final maint = double.tryParse(maintFeeCtrl.text) ?? 0;
+                                planPriceCtrl.text = (base - compDisc - manDisc + maint).toStringAsFixed(0);
+                              }),
+                            )),
                             fieldRow('خصم يدوي', TextField(controller: manDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
                               onChanged: (_) => setDialogState(() {
                                 final base = double.tryParse(basePriceCtrl.text) ?? 0;

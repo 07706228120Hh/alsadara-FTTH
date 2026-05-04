@@ -414,7 +414,8 @@ public class FtthAccountingController : ControllerBase
                 query = query.Where(l => l.UserId == userId);
 
             if (companyId.HasValue)
-                query = query.Where(l => l.CompanyId == companyId);
+                // تضمين السجلات القديمة التي لم يُحدد لها CompanyId (للتوافق مع البيانات السابقة)
+                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
             if (from.HasValue)
             {
                 var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -550,6 +551,7 @@ public class FtthAccountingController : ControllerBase
                         l.LinkedTechnicianId,
                         l.RenewalCycleMonths,
                         l.PaidMonths,
+                        l.FtthTransactionId,
                         // حقول محاسبية
                         l.BasePrice,
                         l.CompanyDiscount,
@@ -562,7 +564,8 @@ public class FtthAccountingController : ControllerBase
                                 ? (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0)
                                 : (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0) - (l.CompanyDiscount ?? 0),
                         Revenue = (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0)),
-                        Expense = l.ManualDiscount ?? 0
+                        Expense = l.ManualDiscount ?? 0,
+                        CollectedAmount = (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0))
                     })
                 }
             });
@@ -1862,9 +1865,17 @@ public class FtthAccountingController : ControllerBase
             var keys = fingerprints.Select(f =>
             {
                 var cid = f.CustomerId!.Trim();
-                // استخدام PlanPrice مباشرة — يطابق amount من FTTH
-                var price = (int)(f.PlanPrice ?? 0);
-                var date = f.ActivationDate?.ToString("yyyy-MM-dd") ?? "";
+                // استخدام المستقطع (PageDeduction) — يطابق المبلغ المخصوم في FTTH
+                var pageDeduction = (f.BasePrice ?? 0) > 0
+                    ? (f.BasePrice ?? 0) - (f.CompanyDiscount ?? 0)
+                    : f.SystemDiscountEnabled
+                        ? (f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0)
+                        : (f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0) - (f.CompanyDiscount ?? 0);
+                var price = (int)pageDeduction;
+                // تحويل التاريخ من UTC إلى توقيت بغداد (+3) ليطابق تاريخ FTTH
+                var date = f.ActivationDate.HasValue
+                    ? f.ActivationDate.Value.AddHours(3).ToString("yyyy-MM-dd")
+                    : "";
                 return $"{cid}|{price}|{date}";
             }).ToList();
 
@@ -1926,6 +1937,33 @@ public class FtthAccountingController : ControllerBase
                     var k = u.FullName.ToLower().Trim();
                     ftthToUser.TryAdd(k, val);
                 }
+            }
+
+            // ═══ جلب أسعار الباقات وأجور الصيانة لحساب الإيرادات تلقائياً ═══
+            var allPlans = await _unitOfWork.InternetPlans.AsQueryable()
+                .Where(p => !p.IsDeleted && p.IsActive)
+                .Select(p => new { p.Name, p.MonthlyPrice, p.CompanyId })
+                .ToListAsync();
+            // خريطة: اسم الباقة (lowercase) → السعر الشهري
+            var planPriceMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in allPlans)
+            {
+                planPriceMap.TryAdd(p.Name, p.MonthlyPrice);
+            }
+
+            var allZoneFees = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
+                .Where(z => !z.IsDeleted && z.IsEnabled)
+                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount })
+                .ToListAsync();
+            // خريطة: اسم الزون أو معرفه → مبلغ الصيانة
+            var zoneFeeByName = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            var zoneFeeById = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var z in allZoneFees)
+            {
+                if (!string.IsNullOrWhiteSpace(z.ZoneName))
+                    zoneFeeByName.TryAdd(z.ZoneName, z.MaintenanceAmount);
+                if (!string.IsNullOrWhiteSpace(z.ZoneId))
+                    zoneFeeById.TryAdd(z.ZoneId, z.MaintenanceAmount);
             }
 
             int saved = 0, skipped = 0, failed = 0, updated = 0;
@@ -2028,6 +2066,45 @@ public class FtthAccountingController : ControllerBase
                     var planPrice = tx.Amount != null ? Math.Abs(tx.Amount.Value) : (decimal?)null;
                     var collectionType = !string.IsNullOrEmpty(tx.CollectionType) ? tx.CollectionType : "cash";
 
+                    // ═══ حساب الإيرادات تلقائياً ═══
+                    // 1. خصم الشركة = سعر الباقة (من جدول الأسعار) - المبلغ المستقطع (من FTTH)
+                    decimal autoCompanyDiscount = 0;
+                    decimal autoBasePrice = planPrice ?? 0;
+                    if (planPrice.HasValue && !string.IsNullOrEmpty(tx.PlanName))
+                    {
+                        // بحث مباشر بالاسم
+                        if (planPriceMap.TryGetValue(tx.PlanName, out var configuredPrice))
+                        {
+                            autoBasePrice = configuredPrice;
+                            if (configuredPrice > planPrice.Value)
+                                autoCompanyDiscount = configuredPrice - planPrice.Value;
+                        }
+                        else
+                        {
+                            // بحث جزئي (مثلاً "FIBER 35" في "FIBER 35 - 1 Month")
+                            foreach (var kv in planPriceMap)
+                            {
+                                if (tx.PlanName.Contains(kv.Key, StringComparison.OrdinalIgnoreCase)
+                                    || kv.Key.Contains(tx.PlanName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    autoBasePrice = kv.Value;
+                                    if (kv.Value > planPrice.Value)
+                                        autoCompanyDiscount = kv.Value - planPrice.Value;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. أجور الصيانة = من جدول أجور الزونات حسب المنطقة
+                    decimal autoMaintenanceFee = 0;
+                    if (!string.IsNullOrEmpty(tx.ZoneName) && zoneFeeByName.TryGetValue(tx.ZoneName, out var feeByName))
+                        autoMaintenanceFee = feeByName;
+                    else if (!string.IsNullOrEmpty(tx.ZoneId) && zoneFeeById.TryGetValue(tx.ZoneId, out var feeById))
+                        autoMaintenanceFee = feeById;
+                    else if (!string.IsNullOrEmpty(tx.ZoneId) && zoneFeeByName.TryGetValue(tx.ZoneId, out var feeByZoneIdInName))
+                        autoMaintenanceFee = feeByZoneIdInName;
+
                     // تحديد ActivatedBy: أولوية FullName > CreatedBy
                     var activatedByValue = tx.CreatedBy;
                     if (userId.HasValue)
@@ -2091,21 +2168,28 @@ public class FtthAccountingController : ControllerBase
                         WalletBalanceAfter = tx.RemainingBalance,
                         CurrentStatus = "Active",
                         IsReconciled = true,
-                        ReconciliationNotes = "مزامنة تلقائية من FTTH"
+                        ReconciliationNotes = "مزامنة تلقائية من FTTH",
+                        // إيرادات محسوبة تلقائياً — BasePrice = السعر الأساسي من جدول الأسعار
+                        BasePrice = autoBasePrice > 0 ? autoBasePrice : planPrice,
+                        CompanyDiscount = autoCompanyDiscount > 0 ? autoCompanyDiscount : null,
+                        MaintenanceFee = autoMaintenanceFee > 0 ? autoMaintenanceFee : null,
                     };
 
                     await _unitOfWork.SubscriptionLogs.AddAsync(log);
                     await _unitOfWork.SaveChangesAsync();
                     saved++;
 
-                    // إنشاء قيد محاسبي (افتراضي: نقد، بدون خصومات)
-                    if (tx.CreateAccounting && userId.HasValue && companyId.HasValue && planPrice > 0)
+                    // إنشاء قيد محاسبي تلقائياً لكل عملية مزامنة
+                    if (userId.HasValue && companyId.HasValue && planPrice > 0)
                     {
                         try
                         {
+                            // المبلغ المحصّل من العميل = المستقطع + أجور الصيانة
+                            var totalCollected = (planPrice ?? 0) + autoMaintenanceFee;
+
                             var accountingDto = new FtthLogWithAccountingDto(
                                 tx.CustomerId, tx.CustomerName, null,
-                                tx.SubscriptionId, tx.PlanName, planPrice,
+                                tx.SubscriptionId, tx.PlanName, totalCollected,   // PlanPrice = ما يدفعه العميل كاملاً
                                 null, null, null,
                                 tx.DeviceUsername, tx.OperationType, tx.CreatedBy,
                                 tx.OccuredAt, null, null,
@@ -2118,7 +2202,11 @@ public class FtthAccountingController : ControllerBase
                                 null, null,
                                 collectionType, tx.FtthTransactionId, null,
                                 null, null,
-                                planPrice, 0, 0, 0, true);
+                                autoBasePrice > 0 ? autoBasePrice : planPrice,    // BasePrice = سعر الباقة (من جدول الأسعار)
+                                autoCompanyDiscount,                               // خصم الشركة (معلومات فقط)
+                                0,                                                 // ManualDiscount يبقى يدوي فقط
+                                autoMaintenanceFee,                                // أجور الصيانة (إيراد)
+                                true);                                             // SystemDiscountEnabled=true (الخصم مفعّل = ممرَّر للعميل = ليس إيراد)
 
                             var jeId = await CreateAccountingEntry(log, accountingDto);
                             if (jeId.HasValue)
@@ -2160,6 +2248,419 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في مزامنة عمليات FTTH");
+            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+        }
+    }
+
+    // ==================== 9.55 تصحيح المستقطع دفعة واحدة ====================
+
+    /// <summary>
+    /// تصحيح BasePrice (المستقطع) لعدة سجلات دفعة واحدة حسب مبلغ FTTH الفعلي
+    /// </summary>
+    [HttpPost("fix-base-prices")]
+    public async Task<IActionResult> FixBasePrices([FromBody] List<FixBasePriceItem> items)
+    {
+        if (items == null || items.Count == 0)
+            return BadRequest(new { success = false, message = "لا توجد بيانات" });
+
+        int updated = 0, failed = 0;
+        foreach (var item in items)
+        {
+            try
+            {
+                var log = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .FirstOrDefaultAsync(l => l.Id == item.LogId && !l.IsDeleted);
+                if (log == null) { failed++; continue; }
+
+                // المستقطع = BasePrice - CompanyDiscount = FtthAmount
+                // ∴ BasePrice = FtthAmount + CompanyDiscount
+                log.BasePrice = item.FtthAmount + (log.CompanyDiscount ?? 0);
+                log.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.SubscriptionLogs.Update(log);
+                updated++;
+            }
+            catch { failed++; }
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return Ok(new { success = true, message = $"تم تصحيح {updated} سجل، {failed} فشل", updated, failed });
+    }
+
+    // ==================== 9.6 إعادة حساب الإيرادات للعمليات المتزامنة ====================
+
+    /// <summary>
+    /// إعادة حساب الإيرادات (خصم الشركة + أجور الصيانة) للعمليات المتزامنة الموجودة
+    /// يُحدّث SubscriptionLog ويُعيد إنشاء القيود المحاسبية بالأرقام الصحيحة
+    /// </summary>
+    [HttpPost("recalculate-sync-revenues")]
+    public async Task<IActionResult> RecalculateSyncRevenues(
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] Guid? userId = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] bool forceAll = false)
+    {
+        try
+        {
+            // 1. جلب أسعار الباقات وأجور الصيانة
+            var allPlans = await _unitOfWork.InternetPlans.AsQueryable()
+                .Where(p => !p.IsDeleted && p.IsActive)
+                .Select(p => new { p.Name, p.MonthlyPrice })
+                .ToListAsync();
+            var planPriceMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in allPlans)
+                planPriceMap.TryAdd(p.Name, p.MonthlyPrice);
+
+            var allZoneFees = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
+                .Where(z => !z.IsDeleted && z.IsEnabled)
+                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount })
+                .ToListAsync();
+            var zoneFeeByName = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            var zoneFeeById = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var z in allZoneFees)
+            {
+                if (!string.IsNullOrWhiteSpace(z.ZoneName))
+                    zoneFeeByName.TryAdd(z.ZoneName, z.MaintenanceAmount);
+                if (!string.IsNullOrWhiteSpace(z.ZoneId))
+                    zoneFeeById.TryAdd(z.ZoneId, z.MaintenanceAmount);
+            }
+
+            if (!planPriceMap.Any() && !zoneFeeByName.Any())
+                return BadRequest(new { success = false, message = "لا توجد أسعار باقات أو أجور صيانة مُعرّفة — أضفها أولاً" });
+
+            // 2. جلب العمليات
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted
+                    && l.PlanPrice > 0
+                    && l.UserId.HasValue && l.CompanyId.HasValue);
+
+            if (companyId.HasValue)
+                query = query.Where(l => l.CompanyId == companyId);
+
+            if (userId.HasValue)
+                query = query.Where(l => l.UserId == userId);
+
+            // فلتر التاريخ (توقيت بغداد → UTC)
+            if (from.HasValue)
+            {
+                var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate >= fromUtc);
+            }
+            if (to.HasValue)
+            {
+                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate <= toUtc);
+            }
+
+            // إذا لم يُحدد forceAll أو تاريخ، فقط العمليات بدون إيرادات
+            if (!forceAll && !from.HasValue && !to.HasValue)
+            {
+                query = query.Where(l =>
+                    (l.MaintenanceFee == null || l.MaintenanceFee == 0)
+                    && (l.CompanyDiscount == null || l.CompanyDiscount == 0));
+            }
+
+            // فلترة خدمات الإنترنت فقط
+            query = query.Where(l => l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+
+            var logs = await query.ToListAsync();
+
+            if (!logs.Any())
+                return Ok(new { success = true, message = "لا توجد عمليات تحتاج تحديث", updated = 0 });
+
+            int updated = 0, accountingCreated = 0, accountingUpdated = 0, failed = 0;
+            var errors = new List<string>();
+
+            foreach (var log in logs)
+            {
+                try
+                {
+                    var planPrice = log.PlanPrice ?? 0;
+
+                    // حساب خصم الشركة
+                    decimal autoCompanyDiscount = 0;
+                    decimal autoBasePrice = planPrice;
+                    if (!string.IsNullOrEmpty(log.PlanName))
+                    {
+                        if (planPriceMap.TryGetValue(log.PlanName, out var configuredPrice))
+                        {
+                            autoBasePrice = configuredPrice;
+                            if (configuredPrice > planPrice)
+                                autoCompanyDiscount = configuredPrice - planPrice;
+                        }
+                        else
+                        {
+                            foreach (var kv in planPriceMap)
+                            {
+                                if (log.PlanName.Contains(kv.Key, StringComparison.OrdinalIgnoreCase)
+                                    || kv.Key.Contains(log.PlanName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    autoBasePrice = kv.Value;
+                                    if (kv.Value > planPrice)
+                                        autoCompanyDiscount = kv.Value - planPrice;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // حساب أجور الصيانة
+                    decimal autoMaintenanceFee = 0;
+                    if (!string.IsNullOrEmpty(log.ZoneName) && zoneFeeByName.TryGetValue(log.ZoneName, out var feeByName))
+                        autoMaintenanceFee = feeByName;
+                    else if (!string.IsNullOrEmpty(log.ZoneId) && zoneFeeById.TryGetValue(log.ZoneId, out var feeById))
+                        autoMaintenanceFee = feeById;
+                    else if (!string.IsNullOrEmpty(log.ZoneId) && zoneFeeByName.TryGetValue(log.ZoneId, out var feeByZoneIdInName))
+                        autoMaintenanceFee = feeByZoneIdInName;
+
+                    // تخطي إذا لا يوجد أي تغيير (لا إيرادات ولا تصحيح BasePrice)
+                    var basePriceChanged = autoBasePrice != (log.BasePrice ?? 0) && autoBasePrice > 0;
+                    if (autoCompanyDiscount == 0 && autoMaintenanceFee == 0 && !basePriceChanged)
+                        continue;
+
+                    // تحديث SubscriptionLog
+                    log.BasePrice = autoBasePrice > 0 ? autoBasePrice : log.BasePrice;
+                    log.CompanyDiscount = autoCompanyDiscount > 0 ? autoCompanyDiscount : null;
+                    log.MaintenanceFee = autoMaintenanceFee > 0 ? autoMaintenanceFee : null;
+                    log.SystemDiscountEnabled = autoCompanyDiscount <= 0;
+                    _unitOfWork.SubscriptionLogs.Update(log);
+                    updated++;
+
+                    // إلغاء القيد القديم إن وُجد
+                    if (log.JournalEntryId.HasValue)
+                    {
+                        var oldJe = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
+                        if (oldJe != null && oldJe.Status != JournalEntryStatus.Voided)
+                        {
+                            oldJe.Status = JournalEntryStatus.Voided;
+                            oldJe.Notes = (oldJe.Notes ?? "") + " | ملغي — إعادة حساب الإيرادات";
+                            _unitOfWork.JournalEntries.Update(oldJe);
+                            accountingUpdated++;
+                        }
+                    }
+
+                    // إنشاء قيد محاسبي جديد بالأرقام الصحيحة
+                    // المبلغ المحصّل = المستقطع + أجور الصيانة (خصم الشركة مفعّل = ليس إيراد)
+                    var sde = log.SystemDiscountEnabled;
+                    var totalCollected = planPrice + autoMaintenanceFee + (sde ? 0 : autoCompanyDiscount);
+                    var collectionType = log.CollectionType ?? "cash";
+
+                    var accountingDto = new FtthLogWithAccountingDto(
+                        log.CustomerId, log.CustomerName, null,
+                        log.SubscriptionId, log.PlanName, totalCollected,
+                        null, null, null,
+                        log.DeviceUsername, log.OperationType, log.ActivatedBy,
+                        log.ActivationDate, null, null,
+                        log.ZoneId, log.ZoneName, null, null, null,
+                        null, log.WalletBalanceAfter,
+                        null, null,
+                        null, log.PaymentMethod, null, null,
+                        log.UserId, log.CompanyId, false, false,
+                        null, log.StartDate, log.EndDate,
+                        log.TechnicianName, null,
+                        collectionType, log.FtthTransactionId, null,
+                        null, log.LinkedTechnicianId,
+                        autoBasePrice,
+                        autoCompanyDiscount,
+                        log.ManualDiscount ?? 0,
+                        autoMaintenanceFee,
+                        sde);                                      // يحافظ على قيمة SystemDiscountEnabled الحالية
+
+                    var jeId = await CreateAccountingEntry(log, accountingDto);
+                    if (jeId.HasValue)
+                    {
+                        log.JournalEntryId = jeId;
+                        _unitOfWork.SubscriptionLogs.Update(log);
+                        accountingCreated++;
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    errors.Add($"Log #{log.Id}: {ex.Message}");
+                    _logger.LogWarning(ex, "فشل إعادة حساب الإيرادات للسجل {LogId}", log.Id);
+                }
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم التحديث: {updated} سجل، {accountingCreated} قيد جديد، {accountingUpdated} قيد ملغي، {failed} فشل",
+                totalFound = logs.Count,
+                updated,
+                accountingCreated,
+                accountingUpdated,
+                failed,
+                errors = errors.Take(10).ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إعادة حساب إيرادات المزامنة");
+            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+        }
+    }
+
+    // ==================== 9.5 دمج العمليات المكررة ====================
+
+    /// <summary>
+    /// دمج عملية مُزامنة (لها FtthTransactionId) مع عملية أصلية (لها بيانات محاسبية)
+    /// ينقل FtthTransactionId و CustomerId والمنطقة من المُزامنة للأصلية ثم يحذف المُزامنة
+    /// </summary>
+    [HttpPost("merge-duplicate")]
+    public async Task<IActionResult> MergeDuplicate([FromBody] MergeDuplicateDto dto)
+    {
+        try
+        {
+            if (dto.OriginalId <= 0 || dto.DuplicateId <= 0)
+                return BadRequest(new { success = false, message = "معرّفات غير صالحة" });
+
+            var original = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .FirstOrDefaultAsync(l => l.Id == dto.OriginalId && !l.IsDeleted);
+            var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .FirstOrDefaultAsync(l => l.Id == dto.DuplicateId && !l.IsDeleted);
+
+            if (original == null)
+                return NotFound(new { success = false, message = "العملية الأصلية غير موجودة" });
+            if (duplicate == null)
+                return NotFound(new { success = false, message = "العملية المكررة غير موجودة" });
+
+            // نقل المعلومات الناقصة من المكررة للأصلية
+            if (string.IsNullOrEmpty(original.FtthTransactionId) && !string.IsNullOrEmpty(duplicate.FtthTransactionId))
+                original.FtthTransactionId = duplicate.FtthTransactionId;
+            if (string.IsNullOrEmpty(original.CustomerId) && !string.IsNullOrEmpty(duplicate.CustomerId))
+                original.CustomerId = duplicate.CustomerId;
+            if (string.IsNullOrEmpty(original.SubscriptionId) && !string.IsNullOrEmpty(duplicate.SubscriptionId))
+                original.SubscriptionId = duplicate.SubscriptionId;
+            if (string.IsNullOrEmpty(original.ZoneId) && !string.IsNullOrEmpty(duplicate.ZoneId))
+                original.ZoneId = duplicate.ZoneId;
+            if (string.IsNullOrEmpty(original.ZoneName) && !string.IsNullOrEmpty(duplicate.ZoneName))
+                original.ZoneName = duplicate.ZoneName;
+            if (string.IsNullOrEmpty(original.DeviceUsername) && !string.IsNullOrEmpty(duplicate.DeviceUsername))
+                original.DeviceUsername = duplicate.DeviceUsername;
+            if (string.IsNullOrEmpty(original.PhoneNumber) && !string.IsNullOrEmpty(duplicate.PhoneNumber))
+                original.PhoneNumber = duplicate.PhoneNumber;
+            if (string.IsNullOrEmpty(original.StartDate) && !string.IsNullOrEmpty(duplicate.StartDate))
+                original.StartDate = duplicate.StartDate;
+            if (string.IsNullOrEmpty(original.EndDate) && !string.IsNullOrEmpty(duplicate.EndDate))
+                original.EndDate = duplicate.EndDate;
+            if (original.WalletBalanceAfter == null && duplicate.WalletBalanceAfter != null)
+                original.WalletBalanceAfter = duplicate.WalletBalanceAfter;
+
+            original.IsReconciled = true;
+            original.ReconciliationNotes = $"دمج تلقائي — حُذفت المكررة #{duplicate.Id}";
+
+            _unitOfWork.SubscriptionLogs.Update(original);
+
+            // حذف المكررة (soft delete)
+            duplicate.IsDeleted = true;
+            _unitOfWork.SubscriptionLogs.Update(duplicate);
+
+            // إذا المكررة لها قيد محاسبي — إلغاؤه
+            if (duplicate.JournalEntryId.HasValue)
+            {
+                var je = await _unitOfWork.JournalEntries.GetByIdAsync(duplicate.JournalEntryId.Value);
+                if (je != null && je.Status != JournalEntryStatus.Voided)
+                {
+                    je.Status = JournalEntryStatus.Voided;
+                    je.Notes = (je.Notes ?? "") + " | ملغي — دمج مكررات";
+                    _unitOfWork.JournalEntries.Update(je);
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = $"تم الدمج: الأصلية #{original.Id} ← المكررة #{duplicate.Id}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في دمج العمليات المكررة");
+            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// دمج مجموعة عمليات مكررة دفعة واحدة
+    /// </summary>
+    [HttpPost("merge-duplicates-batch")]
+    public async Task<IActionResult> MergeDuplicatesBatch([FromBody] List<MergeDuplicateDto> items)
+    {
+        try
+        {
+            if (items == null || items.Count == 0)
+                return BadRequest(new { success = false, message = "لا توجد عمليات للدمج" });
+
+            int merged = 0, failed = 0;
+            var errors = new List<string>();
+
+            foreach (var dto in items)
+            {
+                try
+                {
+                    var original = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                        .FirstOrDefaultAsync(l => l.Id == dto.OriginalId && !l.IsDeleted);
+                    var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                        .FirstOrDefaultAsync(l => l.Id == dto.DuplicateId && !l.IsDeleted);
+
+                    if (original == null || duplicate == null) { failed++; continue; }
+
+                    if (string.IsNullOrEmpty(original.FtthTransactionId) && !string.IsNullOrEmpty(duplicate.FtthTransactionId))
+                        original.FtthTransactionId = duplicate.FtthTransactionId;
+                    if (string.IsNullOrEmpty(original.CustomerId) && !string.IsNullOrEmpty(duplicate.CustomerId))
+                        original.CustomerId = duplicate.CustomerId;
+                    if (string.IsNullOrEmpty(original.SubscriptionId) && !string.IsNullOrEmpty(duplicate.SubscriptionId))
+                        original.SubscriptionId = duplicate.SubscriptionId;
+                    if (string.IsNullOrEmpty(original.ZoneId) && !string.IsNullOrEmpty(duplicate.ZoneId))
+                        original.ZoneId = duplicate.ZoneId;
+                    if (string.IsNullOrEmpty(original.ZoneName) && !string.IsNullOrEmpty(duplicate.ZoneName))
+                        original.ZoneName = duplicate.ZoneName;
+                    if (string.IsNullOrEmpty(original.DeviceUsername) && !string.IsNullOrEmpty(duplicate.DeviceUsername))
+                        original.DeviceUsername = duplicate.DeviceUsername;
+                    if (string.IsNullOrEmpty(original.PhoneNumber) && !string.IsNullOrEmpty(duplicate.PhoneNumber))
+                        original.PhoneNumber = duplicate.PhoneNumber;
+                    if (string.IsNullOrEmpty(original.StartDate) && !string.IsNullOrEmpty(duplicate.StartDate))
+                        original.StartDate = duplicate.StartDate;
+                    if (string.IsNullOrEmpty(original.EndDate) && !string.IsNullOrEmpty(duplicate.EndDate))
+                        original.EndDate = duplicate.EndDate;
+                    if (original.WalletBalanceAfter == null && duplicate.WalletBalanceAfter != null)
+                        original.WalletBalanceAfter = duplicate.WalletBalanceAfter;
+
+                    original.IsReconciled = true;
+                    original.ReconciliationNotes = $"دمج تلقائي — حُذفت المكررة #{duplicate.Id}";
+                    _unitOfWork.SubscriptionLogs.Update(original);
+
+                    duplicate.IsDeleted = true;
+                    _unitOfWork.SubscriptionLogs.Update(duplicate);
+
+                    if (duplicate.JournalEntryId.HasValue)
+                    {
+                        var je = await _unitOfWork.JournalEntries.GetByIdAsync(duplicate.JournalEntryId.Value);
+                        if (je != null && je.Status != JournalEntryStatus.Voided)
+                        {
+                            je.Status = JournalEntryStatus.Voided;
+                            je.Notes = (je.Notes ?? "") + " | ملغي — دمج مكررات";
+                            _unitOfWork.JournalEntries.Update(je);
+                        }
+                    }
+
+                    merged++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    errors.Add($"#{dto.OriginalId}←#{dto.DuplicateId}: {ex.Message}");
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = $"تم دمج {merged} عملية، فشل {failed}", merged, failed, errors = errors.Take(5).ToList() });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في دمج العمليات المكررة");
             return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
         }
     }
@@ -2990,6 +3491,16 @@ public record QuickCollectDto(
     string? Notes,
     List<long>? SubscriptionLogIds = null,
     string? CustomerName = null
+);
+
+public record FixBasePriceItem(
+    long LogId,
+    decimal FtthAmount
+);
+
+public record MergeDuplicateDto(
+    long OriginalId,
+    long DuplicateId
 );
 
 public class UpdateFtthLogRequest

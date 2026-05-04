@@ -187,6 +187,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     'SCHEDULE_CHANGE',
     'PurchaseSubscriptionFromTrial',
     'PLAN_EMI_RENEW',
+    'PLAN_C_RENEW',
   };
   static const _commissionTypeSet = {
     'PURCHASE_COMMISSION',
@@ -994,6 +995,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       _ftthOperators['بدون منشئ'] = orphanOp;
     }
 
+    // إعادة بناء المقارنة بعد نسب العمليات اليتيمة (البيانات تغيرت)
+    _comparisonRows.clear();
+
     if (mounted) {
       setState(() {
         _isResolvingOrphans = false;
@@ -1003,6 +1007,60 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   }
 
   // ════════════════════════════════════════════════════════════════
+  //  إعادة حساب الإيرادات للعمليات المتزامنة
+  // ════════════════════════════════════════════════════════════════
+
+  Future<void> _recalculateSyncRevenues() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إعادة حساب الإيرادات'),
+        content: const Text(
+          'سيتم إعادة حساب خصم الشركة وأجور الصيانة لجميع العمليات المتزامنة التي ليس لديها إيرادات.\n\n'
+          'سيتم إلغاء القيود المحاسبية القديمة وإنشاء قيود جديدة بالأرقام الصحيحة.\n\n'
+          'هل تريد المتابعة؟',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تنفيذ')),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('جارٍ إعادة حساب الإيرادات...'), duration: Duration(seconds: 30)),
+    );
+
+    try {
+      final result = await AccountingService.instance.recalculateSyncRevenues(companyId: _companyId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      final msg = result['message'] ?? 'تم';
+      final updated = result['updated'] ?? 0;
+      final accCreated = result['accountingCreated'] ?? 0;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$msg'),
+          backgroundColor: updated > 0 ? Colors.green.shade700 : Colors.blueGrey,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+
+      if (updated > 0 || accCreated > 0) {
+        _refreshAll();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade700),
+      );
+    }
+  }
+
   //  مزامنة عمليات FTTH → خادمنا
   // ════════════════════════════════════════════════════════════════
 
@@ -1214,9 +1272,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     while (_isLoadingFtth && mounted) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
-    // انتظار انتهاء نسب العمليات اليتيمة (مهم للحصول على أسماء المشغلين الصحيحة)
+    // انتظار انتهاء نسب العمليات اليتيمة (مهم للحصول على أعداد المشغلين الصحيحة)
     while (_isResolvingOrphans && mounted) {
       await Future.delayed(const Duration(milliseconds: 200));
+    }
+    // إذا كانت هناك عمليات "بدون منشئ" لم تُنسب بعد — انتظر
+    if (_ftthOperators.containsKey('بدون منشئ') || _ftthOperators.containsKey('Agent')) {
+      // نسب العمليات لم يبدأ بعد — نشغّله ونننتظر
+      _resolveOrphansInBackground();
+      while (_isResolvingOrphans && mounted) {
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
     }
 
     if (!mounted) return;
@@ -1238,13 +1304,27 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         debugPrint('⚠️ فشل جلب بصمات العمليات المحفوظة: $e');
       }
 
-      // بناء خريطة (customerId|تاريخ → مبلغ) لكشف المبالغ الخاطئة
-      final Map<String, int> cidDateAmounts = {};
+      // بناء خريطة (customerId|تاريخ → قائمة مبالغ) لكشف المبالغ الخاطئة
+      // نستخدم List لأن نفس العميل قد يكون لديه عدة عمليات بنفس اليوم
+      final Map<String, List<int>> cidDateAmounts = {};
+      // أيضاً نبني مفاتيح بتاريخ ±1 يوم لمعالجة فرق التوقيت UTC/بغداد
+      final Set<String> existingKeysExpanded = Set<String>.from(existingKeys);
       for (final key in existingKeys) {
         final parts = key.split('|');
         if (parts.length == 3) {
-          final cidDate = '${parts[0]}|${parts[2]}';
-          cidDateAmounts[cidDate] = int.tryParse(parts[1]) ?? 0;
+          final cid = parts[0];
+          final amt = int.tryParse(parts[1]) ?? 0;
+          final dateStr = parts[2];
+          final cidDate = '$cid|$dateStr';
+          cidDateAmounts.putIfAbsent(cidDate, () => []).add(amt);
+          // إضافة مفاتيح بتاريخ ±1 يوم لمعالجة فرق التوقيت
+          final parsed = DateTime.tryParse(dateStr);
+          if (parsed != null) {
+            final prevDay = parsed.subtract(const Duration(days: 1)).toString().substring(0, 10);
+            final nextDay = parsed.add(const Duration(days: 1)).toString().substring(0, 10);
+            existingKeysExpanded.add('$cid|$amt|$prevDay');
+            existingKeysExpanded.add('$cid|$amt|$nextDay');
+          }
         }
       }
 
@@ -1318,26 +1398,56 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
           final ftthSubOps = ftthOp.subscriptionOps;
 
-          // تصنيف عمليات FTTH: ناقصة أو خاطئة
+          // تصنيف عمليات FTTH: مطابقة أو ناقصة أو خاطئة
           final List<_FtthTransaction> missingTxs = [];
           final List<_WrongTransaction> wrongTxs = [];
+          final List<_FtthTransaction> matchedTxs = [];
           for (final tx in ftthOp.transactions) {
             if (!_subscriptionTypeSet.contains(tx.type)) continue;
-            if (existingFtthIds.contains(tx.id)) continue;
+            if (existingFtthIds.contains(tx.id)) {
+              matchedTxs.add(tx);
+              continue;
+            }
             final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
             final amt = tx.amount.abs().toInt();
             final cid = tx.customerId.trim();
-            // مطابقة بمعرّف العميل
+            // مطابقة بمعرّف العميل (مع توسيع ±1 يوم لفرق التوقيت)
             final cidKey = '$cid|$amt|$dateStr';
-            if (existingKeys.contains(cidKey)) continue;
+            if (existingKeysExpanded.contains(cidKey)) {
+              matchedTxs.add(tx);
+              continue;
+            }
             // تحقق: هل معرّف العميل موجود بنفس التاريخ لكن بمبلغ مختلف؟
             final cidDate = '$cid|$dateStr';
-            if (cid.isNotEmpty && cidDateAmounts.containsKey(cidDate)) {
+            final oursAmounts = cidDateAmounts[cidDate];
+            // أيضاً تحقق بتاريخ ±1 يوم
+            List<int>? oursAmountsFallback;
+            if (oursAmounts == null) {
+              final parsed = DateTime.tryParse(dateStr);
+              if (parsed != null) {
+                final prevDay = parsed.subtract(const Duration(days: 1)).toString().substring(0, 10);
+                final nextDay = parsed.add(const Duration(days: 1)).toString().substring(0, 10);
+                oursAmountsFallback = cidDateAmounts['$cid|$prevDay'] ?? cidDateAmounts['$cid|$nextDay'];
+              }
+            }
+            final effectiveAmounts = oursAmounts ?? oursAmountsFallback;
+            if (cid.isNotEmpty && effectiveAmounts != null && effectiveAmounts.isNotEmpty) {
+              // تحقق: هل أي من المبالغ المحفوظة تطابق مبلغ FTTH؟
+              if (effectiveAmounts.contains(amt)) {
+                // مطابقة تامة — إزالة المبلغ المستخدم لتجنب المطابقة المزدوجة
+                effectiveAmounts.remove(amt);
+                matchedTxs.add(tx);
+                continue;
+              }
+              // المبلغ مختلف — عملية "خاطئة"
+              // نأخذ أقرب مبلغ للمقارنة
+              final closest = effectiveAmounts.reduce((a, b) => (a - amt).abs() < (b - amt).abs() ? a : b);
               wrongTxs.add(_WrongTransaction(
                 ftthTx: tx,
-                oursAmount: cidDateAmounts[cidDate]!,
+                oursAmount: closest,
                 ftthAmount: amt,
               ));
+              effectiveAmounts.remove(closest);
             } else {
               missingTxs.add(tx);
             }
@@ -1352,18 +1462,24 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           oursOnly += realOursOnly;
           ftthOnly += realFtthOnly;
 
+          // حساب مبالغ الاشتراكات فقط (بدلاً من كل السالب)
+          final ftthSubAmount = ftthOp.transactions
+              .where((t) => _subscriptionTypeSet.contains(t.type) && t.amount < 0)
+              .fold<double>(0, (s, t) => s + t.amount.abs());
+
           rows.add(_ComparisonRow(
             operatorName: oursName.toString(),
             operatorUserId: oursOp['userId']?.toString(),
             oursCount: oursCount,
             oursAmount: oursAmount,
             ftthCount: ftthSubOps,
-            ftthAmount: ftthOp.negativeAmount.abs(),
+            ftthAmount: ftthSubAmount,
             matchedCount: realMatched > 0 ? realMatched : 0,
             oursOnlyCount: realOursOnly,
             ftthOnlyCount: realFtthOnly,
             ftthTransactions: missingTxs,
             wrongTransactions: wrongTxs,
+            matchedTransactions: matchedTxs,
           ));
         } else {
           oursOnly += oursCount;
@@ -1409,15 +1525,33 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
           final amt = tx.amount.abs().toInt();
           final cid = tx.customerId.trim();
+          // مطابقة مع توسيع ±1 يوم لفرق التوقيت
           final cidKey = '$cid|$amt|$dateStr';
-          if (existingKeys.contains(cidKey)) continue;
+          if (existingKeysExpanded.contains(cidKey)) continue;
           final cidDate = '$cid|$dateStr';
-          if (cid.isNotEmpty && cidDateAmounts.containsKey(cidDate)) {
+          final oursAmounts2 = cidDateAmounts[cidDate];
+          List<int>? oursAmountsFb2;
+          if (oursAmounts2 == null) {
+            final parsed = DateTime.tryParse(dateStr);
+            if (parsed != null) {
+              final prevDay = parsed.subtract(const Duration(days: 1)).toString().substring(0, 10);
+              final nextDay = parsed.add(const Duration(days: 1)).toString().substring(0, 10);
+              oursAmountsFb2 = cidDateAmounts['$cid|$prevDay'] ?? cidDateAmounts['$cid|$nextDay'];
+            }
+          }
+          final eff2 = oursAmounts2 ?? oursAmountsFb2;
+          if (cid.isNotEmpty && eff2 != null && eff2.isNotEmpty) {
+            if (eff2.contains(amt)) {
+              eff2.remove(amt);
+              continue;
+            }
+            final closest = eff2.reduce((a, b) => (a - amt).abs() < (b - amt).abs() ? a : b);
             wrongTxs.add(_WrongTransaction(
               ftthTx: tx,
-              oursAmount: cidDateAmounts[cidDate]!,
+              oursAmount: closest,
               ftthAmount: amt,
             ));
+            eff2.remove(closest);
           } else {
             missingTxs.add(tx);
           }
@@ -1436,13 +1570,16 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           }
         }
 
+        final unmatchedSubAmt = ftthOp.transactions
+            .where((t) => _subscriptionTypeSet.contains(t.type) && t.amount < 0)
+            .fold<double>(0, (s, t) => s + t.amount.abs());
         rows.add(_ComparisonRow(
           operatorName: ftthOp.name,
           operatorUserId: unmatchedUserId,
           oursCount: 0,
           oursAmount: 0,
           ftthCount: ftthOp.subscriptionOps,
-          ftthAmount: ftthOp.negativeAmount.abs(),
+          ftthAmount: unmatchedSubAmt,
           matchedCount: 0,
           oursOnlyCount: 0,
           ftthOnlyCount: missingTxs.length,
@@ -1633,6 +1770,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     case 'resolveOrphans':
                       _resolveOrphansInBackground();
                       break;
+                    case 'recalcRevenues':
+                      _recalculateSyncRevenues();
+                      break;
                   }
                 },
                 itemBuilder: (_) => [
@@ -1705,6 +1845,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               dense: true,
                               contentPadding: EdgeInsets.zero)),
                   ],
+                  const PopupMenuItem(
+                      value: 'recalcRevenues',
+                      child: ListTile(
+                          leading: Icon(Icons.calculate_outlined,
+                              color: Colors.purpleAccent),
+                          title: Text('إعادة حساب الإيرادات'),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero)),
                 ],
               ),
               if (_ftthAuthenticated)
@@ -1779,6 +1927,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 onSelected: (v) {
                   if (v == 'team') _showTeamDialog();
                   if (v == 'pricing') _showPlanPricingDialog();
+                  if (v == 'recalcRevenues') _recalculateSyncRevenues();
                 },
                 itemBuilder: (_) => [
                   const PopupMenuItem(
@@ -1800,6 +1949,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
+                  const PopupMenuItem(
+                    value: 'recalcRevenues',
+                    child: ListTile(
+                      leading: Icon(Icons.calculate_outlined, color: Colors.purpleAccent),
+                      title: Text('إعادة حساب الإيرادات'),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
                 ],
               ),
               SizedBox(width: context.accR.spaceXS),
@@ -7447,6 +7605,328 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     );
   }
 
+  // ════════════════════════════════════════════════════════════════
+  //  تفاصيل مقارنة مشغل — كل المعاملات من الخادمين
+  // ════════════════════════════════════════════════════════════════
+
+  void _showOperatorComparisonDetail(_ComparisonRow row) {
+    if (row.operatorUserId == null && row.ftthCount == 0) return;
+
+    final List<_DetailTx> ftthTxs = [];
+    for (final tx in row.matchedTransactions) ftthTxs.add(_DetailTx(tx: tx, status: 'matched'));
+    for (final w in row.wrongTransactions) ftthTxs.add(_DetailTx(tx: w.ftthTx, status: 'wrong', oursAmount: w.oursAmount, ftthAmount: w.ftthAmount));
+    for (final tx in row.ftthTransactions) ftthTxs.add(_DetailTx(tx: tx, status: 'missing'));
+    ftthTxs.sort((a, b) => b.tx.occuredAt.compareTo(a.tx.occuredAt));
+
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => _ComparisonDetailPage(
+        row: row,
+        ftthTxs: ftthTxs,
+        companyId: _companyId,
+        fromDate: _fromDate,
+        toDate: _toDate,
+        buildUnifiedRows: _buildUnifiedRows,
+        fieldReader: _f,
+        formatTxDate: _formatTxDate,
+        subscriptionTypeLabel: _subscriptionTypeLabel,
+        currencyFormat: _currencyFormat,
+      ),
+    ));
+  }
+
+  Widget _colHeader(String label, String? server, [Color? color]) {
+    if (server == null) {
+      return Text(label, textAlign: TextAlign.center);
+    }
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(server, style: TextStyle(fontSize: 8, color: color ?? Colors.grey, fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(fontSize: 10)),
+      ],
+    );
+  }
+
+  /// تحويل تاريخ UTC من خادمنا إلى توقيت بغداد (+3 ساعات)
+  String _utcToBaghdad(String? dateRaw) {
+    if (dateRaw == null || dateRaw.isEmpty) return '';
+    final parsed = DateTime.tryParse(dateRaw);
+    if (parsed == null) return dateRaw;
+    final baghdad = parsed.toUtc().add(const Duration(hours: 3));
+    return '${baghdad.hour.toString().padLeft(2, '0')}:${baghdad.minute.toString().padLeft(2, '0')} ${baghdad.month.toString().padLeft(2, '0')}/${baghdad.day.toString().padLeft(2, '0')}';
+  }
+
+  /// قراءة حقل من Map بدعم camelCase و PascalCase
+  dynamic _f(Map<String, dynamic> m, String key) {
+    if (m.containsKey(key)) return m[key];
+    // PascalCase: أول حرف كبير
+    final pascal = key[0].toUpperCase() + key.substring(1);
+    if (m.containsKey(pascal)) return m[pascal];
+    return null;
+  }
+
+  List<DataRow> _buildUnifiedRows(List<_DetailTx> ftthTxs, List<Map<String, dynamic>> oursTxs, bool oursLoading) {
+    final List<DataRow> rows = [];
+    int idx = 0;
+
+    // بناء خرائط لربط معاملات خادمنا بمعاملات FTTH
+    final Map<String, Map<String, dynamic>> oursByFtthId = {};
+    final Map<String, List<Map<String, dynamic>>> oursByCid = {};
+    final Map<String, List<Map<String, dynamic>>> oursByName = {};
+    final Set<int> usedOursIndices = {};
+
+    // ترتيب معاملات خادمنا حسب التاريخ (الأحدث أولاً) — للمطابقة الزمنية
+    final sortedOurs = List<Map<String, dynamic>>.from(oursTxs);
+    sortedOurs.sort((a, b) {
+      final da = (_f(a, 'activationDate') ?? '').toString();
+      final db = (_f(b, 'activationDate') ?? '').toString();
+      return db.compareTo(da);
+    });
+
+    for (int i = 0; i < oursTxs.length; i++) {
+      final tx = oursTxs[i];
+      final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
+      if (ftthId.isNotEmpty) oursByFtthId[ftthId] = tx;
+      final cid = (_f(tx, 'customerId') ?? '').toString().trim();
+      if (cid.isNotEmpty) oursByCid.putIfAbsent(cid, () => []).add(tx);
+      final name = (_f(tx, 'customerName') ?? '').toString().trim();
+      if (name.isNotEmpty) oursByName.putIfAbsent(name, () => []).add(tx);
+    }
+
+    // مطابقة مسبقة: ربط كل معاملة FTTH بنظيرها في خادمنا
+    final Map<int, Map<String, dynamic>> ftthToOurs = {};
+
+    for (int fi = 0; fi < ftthTxs.length; fi++) {
+      final d = ftthTxs[fi];
+      final tx = d.tx;
+      final ftthAmt = tx.amount.abs().toInt();
+      Map<String, dynamic>? oursTx;
+
+      // 1. بـ ftthTransactionId
+      if (oursByFtthId.containsKey(tx.id)) {
+        oursTx = oursByFtthId[tx.id];
+        final oIdx = oursTxs.indexOf(oursTx!);
+        if (oIdx >= 0) usedOursIndices.add(oIdx);
+      }
+      // 2. بـ customerId
+      if (oursTx == null && tx.customerId.trim().isNotEmpty) {
+        final cid = tx.customerId.trim();
+        final candidates = oursByCid[cid];
+        if (candidates != null) {
+          for (final c in candidates) {
+            final oIdx = oursTxs.indexOf(c);
+            if (usedOursIndices.contains(oIdx)) continue;
+            oursTx = c;
+            usedOursIndices.add(oIdx);
+            candidates.remove(c);
+            break;
+          }
+        }
+      }
+      // 3. باسم العميل
+      if (oursTx == null && tx.customerName.trim().isNotEmpty) {
+        final name = tx.customerName.trim();
+        final candidates = oursByName[name];
+        if (candidates != null) {
+          for (final c in candidates) {
+            final oIdx = oursTxs.indexOf(c);
+            if (usedOursIndices.contains(oIdx)) continue;
+            oursTx = c;
+            usedOursIndices.add(oIdx);
+            candidates.remove(c);
+            break;
+          }
+        }
+      }
+
+      if (oursTx != null) ftthToOurs[fi] = oursTx;
+    }
+
+    // 4. fallback: المطابقة الزمنية — ربط المعاملات المتبقية بالترتيب
+    if (oursTxs.isNotEmpty) {
+      final unmatchedFtth = <int>[];
+      for (int fi = 0; fi < ftthTxs.length; fi++) {
+        if (!ftthToOurs.containsKey(fi)) unmatchedFtth.add(fi);
+      }
+      final unmatchedOurs = <Map<String, dynamic>>[];
+      for (int oi = 0; oi < sortedOurs.length; oi++) {
+        final origIdx = oursTxs.indexOf(sortedOurs[oi]);
+        if (!usedOursIndices.contains(origIdx)) unmatchedOurs.add(sortedOurs[oi]);
+      }
+      // ربط بالترتيب الزمني (كلاهما مرتب بالأحدث أولاً)
+      final matchCount = unmatchedFtth.length < unmatchedOurs.length ? unmatchedFtth.length : unmatchedOurs.length;
+      for (int i = 0; i < matchCount; i++) {
+        final fi = unmatchedFtth[i];
+        final oTx = unmatchedOurs[i];
+        ftthToOurs[fi] = oTx;
+        usedOursIndices.add(oursTxs.indexOf(oTx));
+      }
+    }
+
+    // helper: خلية نص بالوسط وغليظة
+    DataCell cc(String text, {Color? color, double fs = 11}) =>
+        DataCell(Center(child: Text(text, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w700, color: color), textAlign: TextAlign.center)));
+
+    double sn(dynamic v) => v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
+
+    // ترتيب: المشكلة أولاً (wrong → missing → oursOnly → matched)
+    final sortOrder = {'wrong': 0, 'missing': 1, 'matched': 3};
+
+    // تجميع كل الصفوف مع أولوية الترتيب
+    final List<MapEntry<int, DataRow>> sortedRows = [];
+
+    // 1. معاملات FTTH
+    for (int fi = 0; fi < ftthTxs.length; fi++) {
+      final d = ftthTxs[fi];
+      final tx = d.tx;
+      final ftthAmt = tx.amount.abs().toInt();
+      final dateStr = _formatTxDate(tx.occuredAt);
+      final opType = _subscriptionTypeLabel(tx.type);
+      final oursTx = ftthToOurs[fi];
+
+      Color rowBg;
+      String statusLabel;
+      Color statusColor;
+      IconData statusIcon;
+      switch (d.status) {
+        case 'matched':
+          rowBg = Colors.green.shade50; statusLabel = 'مطابقة';
+          statusColor = Colors.green.shade700; statusIcon = Icons.check_circle;
+          break;
+        case 'wrong':
+          rowBg = Colors.orange.shade50; statusLabel = 'خاطئة';
+          statusColor = Colors.orange.shade700; statusIcon = Icons.warning_amber;
+          break;
+        default:
+          rowBg = Colors.red.shade50; statusLabel = 'ناقصة';
+          statusColor = Colors.red.shade700; statusIcon = Icons.cancel;
+      }
+
+      final oursAmt = oursTx != null ? sn(_f(oursTx, 'planPrice')) : 0.0;
+      final oursPD = oursAmt; // المستقطع = المبلغ للمقارنة مع FTTH
+      final diff = oursTx != null ? (ftthAmt - oursAmt).toInt() : 0;
+      final oursCollType = oursTx != null ? (_f(oursTx, 'collectionType') ?? '').toString() : '';
+      final oursDateStr = oursTx != null ? _utcToBaghdad(_f(oursTx, 'activationDate')?.toString()) : '';
+
+      sortedRows.add(MapEntry(sortOrder[d.status] ?? 3, DataRow(
+        color: WidgetStateProperty.all(rowBg),
+        cells: [
+          DataCell(Center(child: Text('', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)))), // placeholder — سيُعاد ترقيمه
+          DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(statusIcon, size: 14, color: statusColor),
+            const SizedBox(width: 3),
+            Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
+          ]))),
+          DataCell(Center(child: Text(tx.customerName, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis))),
+          cc(tx.planName),
+          cc(_currencyFormat.format(ftthAmt), color: Colors.teal.shade700),
+          cc(opType),
+          cc(dateStr),
+          cc(diff == 0 ? '-' : '${diff > 0 ? '+' : ''}${_currencyFormat.format(diff)}',
+              color: diff == 0 ? Colors.grey : Colors.red.shade700),
+          cc(oursTx != null ? _currencyFormat.format(oursAmt) : '-'),
+          cc(oursTx != null ? _currencyFormat.format(oursPD) : '-', color: Colors.indigo.shade700),
+          cc(oursCollType),
+          cc(oursDateStr),
+        ],
+      )));
+    }
+
+    // 2. معاملات "عندنا فقط"
+    if (!oursLoading) {
+      for (int i = 0; i < oursTxs.length; i++) {
+        if (usedOursIndices.contains(i)) continue;
+        final tx = oursTxs[i];
+        final planPrice = sn(_f(tx, 'planPrice'));
+        final pageDeduction = sn(_f(tx, 'pageDeduction')).abs() > 0 ? sn(_f(tx, 'pageDeduction')) : planPrice;
+        final customerName = (_f(tx, 'customerName') ?? '').toString();
+        final collType = (_f(tx, 'collectionType') ?? '').toString();
+        final dateRaw = (_f(tx, 'activationDate') ?? '').toString();
+        final dateStr = dateRaw.length >= 16 ? dateRaw.substring(0, 16).replaceAll('T', ' ') : dateRaw;
+
+        sortedRows.add(MapEntry(2, DataRow(
+          color: WidgetStateProperty.all(Colors.blue.shade50),
+          cells: [
+            DataCell(Center(child: Text('', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)))),
+            DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.arrow_back, size: 14, color: Colors.blue.shade700),
+              const SizedBox(width: 3),
+              Text('عندنا فقط', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.blue.shade700)),
+            ]))),
+            DataCell(Center(child: Text(customerName, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis))),
+            cc('-', color: Colors.grey),
+            cc('-', color: Colors.grey),
+            cc('-', color: Colors.grey),
+            cc('-', color: Colors.grey),
+            cc('-', color: Colors.grey),
+            cc(_currencyFormat.format(planPrice)),
+            cc(_currencyFormat.format(pageDeduction), color: Colors.indigo.shade700),
+            cc(collType),
+            cc(dateStr),
+          ],
+        )));
+      }
+    }
+
+    // ترتيب: المشكلة أولاً
+    sortedRows.sort((a, b) => a.key.compareTo(b.key));
+
+    // إعادة ترقيم
+    for (int i = 0; i < sortedRows.length; i++) {
+      final cells = sortedRows[i].value.cells.toList();
+      cells[0] = DataCell(Center(child: Text('${i + 1}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700))));
+      rows.add(DataRow(
+        color: sortedRows[i].value.color,
+        cells: cells,
+      ));
+    }
+
+    return rows;
+  }
+
+  Widget _detailChip(String label, int count, Color color, bool selected, VoidCallback? onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: selected ? color.withOpacity(0.2) : color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? color : color.withOpacity(0.3), width: selected ? 1.5 : 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 10, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _subscriptionTypeLabel(String type) {
+    switch (type) {
+      case 'PLAN_PURCHASE':
+      case 'PurchaseSubscriptionFromTrial':
+      case 'PLAN_SUBSCRIBE':
+        return 'شراء';
+      case 'PLAN_RENEW':
+      case 'AUTO_RENEW':
+      case 'PLAN_EMI_RENEW':
+        return 'تجديد';
+      case 'PLAN_CHANGE':
+      case 'SCHEDULE_CHANGE':
+        return 'تغيير';
+      case 'PLAN_SCHEDULE':
+        return 'جدولة';
+      default:
+        return type;
+    }
+  }
+
   void _showCompareTransactions(_ComparisonRow row) {
     final txs = row.ftthTransactions;
     if (txs.isEmpty) return;
@@ -7694,6 +8174,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   child: DataTable(
                     border: TableBorder.all(color: Colors.black, width: 1.5),
                     dividerThickness: 0,
+                    showCheckboxColumn: false,
                     headingRowColor:
                         WidgetStateProperty.all(Colors.indigo.shade50),
                     dataRowMinHeight: 28,
@@ -7765,6 +8246,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
                       return DataRow(
                         color: WidgetStateProperty.all(rowColor),
+                        onSelectChanged: (_) => _showOperatorComparisonDetail(row),
                         cells: [
                           DataCell(Center(
                               child: Text('${i + 1}',
@@ -7842,46 +8324,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               onTap: row.wrongTransactions.isNotEmpty
                                   ? () => _showWrongTransactions(row)
                                   : null),
-                          // فرق المبالغ (ناقصة + زيادة عندنا)
+                          // فرق المبالغ — المستقطع vs FTTH للعمليات المطابقة فقط
                           DataCell(Center(
                               child: () {
-                            final missingAmount = row.ftthTransactions.fold<double>(
-                                0, (s, tx) => s + tx.amount.abs());
-                            final amountDiff = row.oursAmount - row.ftthAmount;
-                            // إذا عندنا زيادة في المبالغ (أزرق)، أو FTTH عنده زيادة (أحمر)
-                            if (missingAmount > 0) {
-                              // FTTH عنده معاملات ناقصة عندنا
-                              return Text(
-                                '-${_currencyFormat.format(missingAmount)}',
-                                style: TextStyle(
-                                    fontSize: context.accR.small,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red.shade700),
-                              );
-                            } else if (amountDiff > 0) {
-                              // عندنا زيادة في المبالغ
-                              return Text(
-                                '+${_currencyFormat.format(amountDiff)}',
-                                style: TextStyle(
-                                    fontSize: context.accR.small,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue.shade700),
-                              );
-                            } else if (amountDiff < 0) {
-                              return Text(
-                                _currencyFormat.format(amountDiff),
-                                style: TextStyle(
-                                    fontSize: context.accR.small,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red.shade700),
-                              );
+                            // حساب الفرق من العمليات الخاطئة فقط (المطابقة فرقها = 0)
+                            final wrongDiff = row.wrongTransactions.fold<double>(
+                                0, (s, w) => s + (w.ftthAmount - w.oursAmount));
+                            if (wrongDiff.abs() < 1) {
+                              return Text('0',
+                                style: TextStyle(fontSize: context.accR.small,
+                                    fontWeight: FontWeight.bold, color: Colors.green.shade700));
                             }
                             return Text(
-                              '0',
-                              style: TextStyle(
-                                  fontSize: context.accR.small,
+                              '${wrongDiff > 0 ? '+' : ''}${_currencyFormat.format(wrongDiff)}',
+                              style: TextStyle(fontSize: context.accR.small,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green.shade700),
+                                  color: wrongDiff > 0 ? Colors.blue.shade700 : Colors.red.shade700),
                             );
                           }())),
                           DataCell(Center(
@@ -8342,6 +8800,717 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   }
 }
 
+/// عملية مع حالتها في المقارنة التفصيلية
+// ════════════════════════════════════════════════════════════════
+//  صفحة تفاصيل المقارنة — شاشة كاملة مع ترتيب
+// ════════════════════════════════════════════════════════════════
+
+class _ComparisonDetailPage extends StatefulWidget {
+  final _ComparisonRow row;
+  final List<_DetailTx> ftthTxs;
+  final String _companyId;
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  final List<DataRow> Function(List<_DetailTx>, List<Map<String, dynamic>>, bool) buildUnifiedRows;
+  final dynamic Function(Map<String, dynamic>, String) fieldReader;
+  final String Function(String) formatTxDate;
+  final String Function(String) subscriptionTypeLabel;
+  final NumberFormat currencyFormat;
+
+  const _ComparisonDetailPage({
+    required this.row,
+    required this.ftthTxs,
+    required String companyId,
+    required this.fromDate,
+    required this.toDate,
+    required this.buildUnifiedRows,
+    required this.fieldReader,
+    required this.formatTxDate,
+    required this.subscriptionTypeLabel,
+    required this.currencyFormat,
+  }) : _companyId = companyId;
+
+  @override
+  State<_ComparisonDetailPage> createState() => _ComparisonDetailPageState();
+}
+
+class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
+  List<Map<String, dynamic>> _oursTxs = [];
+  bool _oursLoading = true;
+  int _sortColIndex = 0;
+  bool _sortAsc = true;
+  String _filter = 'all';
+  bool _isMerging = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOurData();
+  }
+
+  void _loadOurData() {
+    if (widget.row.operatorUserId == null) {
+      setState(() => _oursLoading = false);
+      return;
+    }
+    AccountingService.instance.getOperatorSummary(
+      widget.row.operatorUserId!,
+      companyId: widget._companyId,
+      from: widget.fromDate,
+      to: widget.toDate,
+    ).then((result) {
+      if (result['success'] == true && result['data'] != null) {
+        final txList = result['data']['transactions'] as List? ?? [];
+        if (mounted) setState(() { _oursTxs = txList.cast<Map<String, dynamic>>(); _oursLoading = false; });
+      } else {
+        if (mounted) setState(() => _oursLoading = false);
+      }
+    }).catchError((_) { if (mounted) setState(() => _oursLoading = false); });
+  }
+
+  dynamic _f(Map<String, dynamic> m, String key) => widget.fieldReader(m, key);
+  double _sn(dynamic v) => v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
+  String _utcToBaghdad(String? dateRaw) {
+    if (dateRaw == null || dateRaw.isEmpty) return '';
+    final parsed = DateTime.tryParse(dateRaw);
+    if (parsed == null) return dateRaw;
+    final b = parsed.toUtc().add(const Duration(hours: 3));
+    return '${b.hour.toString().padLeft(2, '0')}:${b.minute.toString().padLeft(2, '0')} ${b.month.toString().padLeft(2, '0')}/${b.day.toString().padLeft(2, '0')}';
+  }
+
+  void _openEditDialog(Map<String, dynamic> oursTx) {
+    final userId = widget.row.operatorUserId;
+    if (userId == null) return;
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => FtthOperatorAccountPage(
+        userId: userId,
+        operatorName: widget.row.operatorName,
+        companyId: widget._companyId,
+        initialFromDate: widget.fromDate,
+        initialToDate: widget.toDate,
+      ),
+    )).then((_) => _loadOurData()); // إعادة تحميل بعد العودة
+  }
+
+  Future<void> _fixBasePrices(_ComparisonRow row) async {
+    // بناء خرائط مطابقة متعددة للعثور على logId
+    final Map<String, Map<String, dynamic>> oursByFtthId = {};
+    final Map<String, List<Map<String, dynamic>>> oursByCid = {};
+    final Map<String, List<Map<String, dynamic>>> oursByName = {};
+    final Set<int> usedIds = {};
+
+    for (final tx in _oursTxs) {
+      final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
+      if (ftthId.isNotEmpty) oursByFtthId[ftthId] = tx;
+      final cid = (_f(tx, 'customerId') ?? '').toString().trim();
+      if (cid.isNotEmpty) oursByCid.putIfAbsent(cid, () => []).add(tx);
+      final name = (_f(tx, 'customerName') ?? '').toString().trim();
+      if (name.isNotEmpty) oursByName.putIfAbsent(name, () => []).add(tx);
+    }
+
+    Map<String, dynamic>? findOursTx(_WrongTransaction w) {
+      final ftth = w.ftthTx;
+      final targetPD = w.oursAmount; // المبلغ المطابق من طرفنا
+
+      // 1. بـ FtthTransactionId
+      final byId = oursByFtthId[ftth.id];
+      if (byId != null) {
+        final id = (_f(byId, 'id') as num?)?.toInt();
+        if (id != null && !usedIds.contains(id)) { usedIds.add(id); return byId; }
+      }
+
+      // 2. بـ CustomerId + المبلغ المطابق
+      final byCid = oursByCid[ftth.customerId.trim()];
+      if (byCid != null) {
+        for (final tx in byCid) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id == null || usedIds.contains(id)) continue;
+          final pd = _sn(_f(tx, 'pageDeduction')).toInt();
+          if (pd == targetPD) { usedIds.add(id); return tx; }
+        }
+        // fallback: أي عملية لنفس العميل
+        for (final tx in byCid) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id != null && !usedIds.contains(id)) { usedIds.add(id); return tx; }
+        }
+      }
+
+      // 3. بـ اسم العميل + المبلغ
+      final byName = oursByName[ftth.customerName.trim()];
+      if (byName != null) {
+        for (final tx in byName) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id == null || usedIds.contains(id)) continue;
+          final pd = _sn(_f(tx, 'pageDeduction')).toInt();
+          if (pd == targetPD) { usedIds.add(id); return tx; }
+        }
+        for (final tx in byName) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id != null && !usedIds.contains(id)) { usedIds.add(id); return tx; }
+        }
+      }
+
+      return null;
+    }
+
+    final List<Map<String, dynamic>> fixes = [];
+    int notFound = 0;
+    for (final w in row.wrongTransactions) {
+      final oursTx = findOursTx(w);
+      if (oursTx != null) {
+        final logId = _f(oursTx, 'id');
+        if (logId != null) {
+          fixes.add({
+            'logId': (logId is int) ? logId : int.tryParse(logId.toString()) ?? 0,
+            'ftthAmount': w.ftthTx.amount.abs(),
+          });
+        }
+      } else {
+        notFound++;
+      }
+    }
+
+    if (fixes.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لم يتم العثور على عمليات للتصحيح ($notFound غير مطابقة)')));
+      return;
+    }
+
+    try {
+      final result = await AccountingService.instance.fixBasePrices(fixes);
+      if (!mounted) return;
+      final updated = result['updated'] ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم تصحيح $updated سجل${notFound > 0 ? ' ($notFound لم يُعثر عليها)' : ''}'),
+          backgroundColor: updated > 0 ? Colors.green.shade700 : Colors.orange.shade700,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      _loadOurData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade700));
+    }
+  }
+
+  Future<void> _mergeDuplicates(List<List<dynamic>> rawData, Set<String> duplicateNames) async {
+    // العثور على أزواج المكررات: لكل اسم مكرر، الأصلية = عندنا فقط (لها إيرادات/مصاريف)، المكررة = مطابقة (لها FtthTransactionId)
+    final List<Map<String, int>> mergeItems = [];
+
+    for (final name in duplicateNames) {
+      final rows = rawData.where((d) => d[2].toString().trim() == name).toList();
+      // البحث عن الأصلية (عندنا فقط — فيها بيانات محاسبية)
+      final originals = rows.where((d) => d[1] == 'oursOnly').toList();
+      // البحث عن المكررة (مطابقة — فيها FtthTransactionId)
+      final duplicates = rows.where((d) => d[1] == 'matched').toList();
+
+      // ربط كل أصلية بمكررة (بنفس المبلغ أو أقرب)
+      for (final orig in originals) {
+        if (duplicates.isEmpty) break;
+        // نحتاج IDs من خادمنا — المخزنة في البيانات
+        // orig يحتوي على بيانات خادمنا (المستقطع في [9])، نحتاج ID
+        // البحث في _oursTxs عن المعاملة المطابقة
+        final origPD = (orig[9] as num).toDouble();
+        final origColl = orig[12].toString();
+        Map<String, dynamic>? origTx;
+        for (final tx in _oursTxs) {
+          final pd = _sn(_f(tx, 'pageDeduction'));
+          final coll = (_f(tx, 'collectionType') ?? '').toString();
+          final name2 = (_f(tx, 'customerName') ?? '').toString().trim();
+          final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
+          if (name2 == name && (pd - origPD).abs() < 1 && coll == origColl && ftthId.isEmpty) {
+            origTx = tx;
+            break;
+          }
+        }
+
+        // البحث عن المكررة (المُزامنة)
+        final dupAmt = (duplicates.first[4] as num).toDouble();
+        Map<String, dynamic>? dupTx;
+        for (final tx in _oursTxs) {
+          final pp = _sn(_f(tx, 'planPrice'));
+          final name2 = (_f(tx, 'customerName') ?? '').toString().trim();
+          final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
+          if (name2 == name && ftthId.isNotEmpty && (pp - dupAmt).abs() < 1) {
+            dupTx = tx;
+            break;
+          }
+        }
+
+        if (origTx != null && dupTx != null) {
+          final origId = (_f(origTx, 'id') as num?)?.toInt();
+          final dupId = (_f(dupTx, 'id') as num?)?.toInt();
+          if (origId != null && dupId != null && origId != dupId) {
+            mergeItems.add({'originalId': origId, 'duplicateId': dupId});
+            duplicates.removeAt(0);
+          }
+        }
+      }
+    }
+
+    if (mergeItems.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لم يتم العثور على أزواج قابلة للدمج'), backgroundColor: Colors.orange));
+      }
+      return;
+    }
+
+    // تأكيد
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('دمج ${mergeItems.length} عملية مكررة', style: TextStyle(fontWeight: FontWeight.w700)),
+          content: Text('سيتم نقل معلومات FTTH (معرّف العملية، معرّف العميل، المنطقة) إلى العملية الأصلية وحذف المكررة.\n\nهل تريد المتابعة؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade700, foregroundColor: Colors.white),
+              child: Text('دمج ${mergeItems.length} عملية'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isMerging = true);
+    try {
+      final result = await AccountingService.instance.mergeDuplicatesBatch(mergeItems);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] ?? 'تم الدمج', style: TextStyle(fontWeight: FontWeight.w600)),
+          backgroundColor: result['success'] == true ? Colors.green : Colors.red,
+        ));
+        // إعادة تحميل البيانات
+        setState(() { _oursLoading = true; _oursTxs = []; });
+        _loadOurData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      }
+    }
+    if (mounted) setState(() => _isMerging = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final row = widget.row;
+    final total = row.matchedCount + row.oursOnlyCount + row.ftthOnlyCount;
+    final percent = total > 0 ? (row.matchedCount / total * 100).toStringAsFixed(0) : '0';
+    final fmt = widget.currencyFormat;
+
+    // بناء بيانات الصفوف
+    var rawData = _buildSortableData();
+
+    // كشف العملاء المكررين
+    final nameCount = <String, int>{};
+    for (final d in rawData) {
+      final name = d[2].toString().trim();
+      if (name.isNotEmpty) nameCount[name] = (nameCount[name] ?? 0) + 1;
+    }
+    final duplicateNames = nameCount.entries.where((e) => e.value > 1).map((e) => e.key).toSet();
+    final duplicateCount = rawData.where((d) => duplicateNames.contains(d[2].toString().trim())).length;
+
+    // تصفية
+    if (_filter == 'duplicate') {
+      rawData = rawData.where((d) => duplicateNames.contains(d[2].toString().trim())).toList();
+    } else if (_filter != 'all') {
+      rawData = rawData.where((d) => d[1] == _filter).toList();
+    }
+
+    // ترتيب
+    if (_sortColIndex > 0 && rawData.isNotEmpty) {
+      rawData.sort((a, b) {
+        final va = a[_sortColIndex];
+        final vb = b[_sortColIndex];
+        int cmp;
+        if (va is num && vb is num) {
+          cmp = va.compareTo(vb);
+        } else {
+          cmp = va.toString().compareTo(vb.toString());
+        }
+        return _sortAsc ? cmp : -cmp;
+      });
+    }
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('${row.operatorName} — مقارنة المعاملات', style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 16)),
+          backgroundColor: Colors.indigo.shade700,
+          foregroundColor: Colors.white,
+          actions: [
+            _filterChip('مطابقة', row.matchedCount, Colors.green, 'matched'),
+            _filterChip('خاطئة', row.wrongTransactions.length, Colors.orange, 'wrong'),
+            _filterChip('ناقصة', row.ftthTransactions.length, Colors.red, 'missing'),
+            _filterChip('عندنا فقط', row.oursOnlyCount, Colors.blue, 'oursOnly'),
+            _filterChip('مكرر', duplicateCount, Colors.purple, 'duplicate'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: InkWell(
+                onTap: () => setState(() => _filter = 'all'),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _filter == 'all' ? Colors.white : Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _filter == 'all' ? Colors.indigo : Colors.transparent, width: 2),
+                  ),
+                  child: Text('$percent%', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: int.parse(percent) == 100 ? Colors.green.shade700 : Colors.orange.shade700)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // ملخص
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.grey.shade100,
+              child: Row(
+                children: [
+                  Icon(Icons.dns, size: 16, color: Colors.indigo),
+                  const SizedBox(width: 4),
+                  Text('خادمنا: ${row.oursCount} عملية  ${fmt.format(row.oursAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo)),
+                  const SizedBox(width: 24),
+                  Icon(Icons.cloud, size: 16, color: Colors.teal),
+                  const SizedBox(width: 4),
+                  Text('FTTH: ${row.ftthCount} عملية  ${fmt.format(row.ftthAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.teal)),
+                  const SizedBox(width: 24),
+                  Builder(builder: (_) {
+                    final diff = row.oursAmount - row.ftthAmount;
+                    return Text('الفرق: ${diff > 0 ? '+' : ''}${fmt.format(diff)}',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: diff == 0 ? Colors.green.shade700 : Colors.red.shade700));
+                  }),
+                  const Spacer(),
+                  if (row.wrongTransactions.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _fixBasePrices(row),
+                        icon: Icon(Icons.auto_fix_high, size: 16),
+                        label: Text('تصحيح المستقطع (${row.wrongTransactions.length})', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        ),
+                      ),
+                    ),
+                  if (duplicateCount > 0)
+                    ElevatedButton.icon(
+                      onPressed: _isMerging ? null : () => _mergeDuplicates(rawData, duplicateNames),
+                      icon: _isMerging
+                          ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Icon(Icons.merge, size: 16),
+                      label: Text(_isMerging ? 'جاري الدمج...' : 'دمج المكررات ($duplicateCount)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // الجدول
+            Expanded(
+              child: _oursLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : rawData.isEmpty
+                      ? Center(child: Text('لا توجد معاملات', style: TextStyle(color: Colors.grey)))
+                      : LayoutBuilder(builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                              child: DataTable(
+                                sortColumnIndex: _sortColIndex > 0 ? _sortColIndex : null,
+                                sortAscending: _sortAsc,
+                                border: TableBorder(
+                                  top: BorderSide(color: Colors.grey.shade400),
+                                  bottom: BorderSide(color: Colors.grey.shade400),
+                                  left: BorderSide(color: Colors.grey.shade400),
+                                  right: BorderSide(color: Colors.grey.shade400),
+                                  horizontalInside: BorderSide(color: Colors.grey.shade300),
+                                  verticalInside: BorderSide(color: Colors.grey.shade200),
+                                ),
+                                dataRowMinHeight: 28,
+                                dataRowMaxHeight: 38,
+                                headingRowHeight: 48,
+                                columnSpacing: 0,
+                                horizontalMargin: 4,
+                                headingTextStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.black87),
+                                columns: _buildColumns(),
+                                rows: _buildDataRows(rawData, fmt, duplicateNames),
+                              ),
+                            ),
+                          );
+                        }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, int count, Color color, String filterKey) {
+    final isActive = _filter == filterKey;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 12),
+      child: InkWell(
+        onTap: () => setState(() => _filter = _filter == filterKey ? 'all' : filterKey),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white : color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isActive ? color : color.withOpacity(0.4), width: isActive ? 2 : 1),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('$count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: isActive ? color : Colors.white)),
+            const SizedBox(width: 3),
+            Text(label, style: TextStyle(fontSize: 10, color: isActive ? color : Colors.white.withOpacity(0.9))),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _colH(String label, String? server, [Color? color]) {
+    if (server == null) return Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 11));
+    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Text(server, style: TextStyle(fontSize: 8, color: color ?? Colors.grey, fontWeight: FontWeight.w600)),
+      Text(label, style: TextStyle(fontSize: 11)),
+    ]);
+  }
+
+  List<DataColumn> _buildColumns() {
+    DataColumn col(int idx, Widget label, {bool numeric = false}) =>
+        DataColumn(label: Expanded(child: Center(child: label)), numeric: numeric, onSort: (i, asc) {
+          setState(() { _sortColIndex = idx; _sortAsc = asc; });
+        });
+
+    return [
+      col(0, Text('#')),
+      col(1, _colH('الحالة', null)),
+      col(2, _colH('العميل', null)),
+      col(3, _colH('الباقة', 'FTTH', Colors.teal)),
+      col(5, _colH('النوع', 'FTTH', Colors.teal)),
+      col(14, _colH('المنطقة', 'FTTH', Colors.teal)),
+      col(4, _colH('المبلغ', 'FTTH', Colors.teal), numeric: true),
+      col(7, _colH('الفرق', null, Colors.red), numeric: true),
+      col(9, _colH('المستقطع', 'خادمنا', Colors.indigo), numeric: true),
+      col(8, _colH('المبلغ', 'خادمنا', Colors.indigo), numeric: true),
+      col(10, _colH('الإيرادات', 'خادمنا', Colors.indigo), numeric: true),
+      col(11, _colH('المصاريف', 'خادمنا', Colors.indigo), numeric: true),
+      col(12, _colH('التحصيل', 'خادمنا', Colors.indigo)),
+      col(13, _colH('التاريخ', 'خادمنا', Colors.indigo)),
+      col(6, _colH('التاريخ', 'FTTH', Colors.teal)),
+      DataColumn(label: Center(child: Text('تعديل', style: TextStyle(fontSize: 11)))),
+    ];
+  }
+
+  // بناء بيانات قابلة للترتيب: كل صف = List<dynamic> [#, حالة, عميل, باقة, مبلغFTTH, نوع, تاريخFTTH, فرق, مبلغنا, مستقطع, تحصيل, تاريخنا, rowColor, statusIcon, statusColor]
+  List<List<dynamic>> _buildSortableData() {
+    final unifiedRows = widget.buildUnifiedRows(widget.ftthTxs, _oursTxs, _oursLoading);
+    // لا نستخدم DataRows مباشرة — نبني بيانات خام
+    final List<List<dynamic>> data = [];
+    final sortOrder = {'wrong': 0, 'missing': 1, 'matched': 3};
+
+    // FTTH transactions
+    // بناء خرائط الربط (نفس منطق _buildUnifiedRows)
+    final Map<String, Map<String, dynamic>> oursByFtthId = {};
+    final Map<String, List<Map<String, dynamic>>> oursByCid = {};
+    final Map<String, List<Map<String, dynamic>>> oursByName = {};
+    final Set<int> usedOursIndices = {};
+
+    for (int i = 0; i < _oursTxs.length; i++) {
+      final tx = _oursTxs[i];
+      final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
+      if (ftthId.isNotEmpty) oursByFtthId[ftthId] = tx;
+      final cid = (_f(tx, 'customerId') ?? '').toString().trim();
+      if (cid.isNotEmpty) oursByCid.putIfAbsent(cid, () => []).add(tx);
+      final name = (_f(tx, 'customerName') ?? '').toString().trim();
+      if (name.isNotEmpty) oursByName.putIfAbsent(name, () => []).add(tx);
+    }
+
+    // مطابقة مسبقة
+    final Map<int, Map<String, dynamic>> ftthToOurs = {};
+    for (int fi = 0; fi < widget.ftthTxs.length; fi++) {
+      final tx = widget.ftthTxs[fi].tx;
+      Map<String, dynamic>? oursTx;
+      if (oursByFtthId.containsKey(tx.id)) {
+        oursTx = oursByFtthId[tx.id]; usedOursIndices.add(_oursTxs.indexOf(oursTx!));
+      }
+      if (oursTx == null && tx.customerId.trim().isNotEmpty) {
+        final c = oursByCid[tx.customerId.trim()];
+        if (c != null) for (final x in c) { final i = _oursTxs.indexOf(x); if (!usedOursIndices.contains(i)) { oursTx = x; usedOursIndices.add(i); c.remove(x); break; } }
+      }
+      if (oursTx == null && tx.customerName.trim().isNotEmpty) {
+        final c = oursByName[tx.customerName.trim()];
+        if (c != null) for (final x in c) { final i = _oursTxs.indexOf(x); if (!usedOursIndices.contains(i)) { oursTx = x; usedOursIndices.add(i); c.remove(x); break; } }
+      }
+      if (oursTx != null) ftthToOurs[fi] = oursTx;
+    }
+    // fallback زمني
+    final sortedOurs = List<Map<String, dynamic>>.from(_oursTxs);
+    sortedOurs.sort((a, b) => (_f(b, 'activationDate') ?? '').toString().compareTo((_f(a, 'activationDate') ?? '').toString()));
+    final unmatchedFtth = [for (int i = 0; i < widget.ftthTxs.length; i++) if (!ftthToOurs.containsKey(i)) i];
+    final unmatchedOurs = [for (final o in sortedOurs) if (!usedOursIndices.contains(_oursTxs.indexOf(o))) o];
+    for (int i = 0; i < unmatchedFtth.length && i < unmatchedOurs.length; i++) {
+      ftthToOurs[unmatchedFtth[i]] = unmatchedOurs[i];
+      usedOursIndices.add(_oursTxs.indexOf(unmatchedOurs[i]));
+    }
+
+    for (int fi = 0; fi < widget.ftthTxs.length; fi++) {
+      final d = widget.ftthTxs[fi];
+      final tx = d.tx;
+      final ftthAmt = tx.amount.abs();
+      final oursTx = ftthToOurs[fi];
+      final oursAmt = oursTx != null ? _sn(_f(oursTx, 'planPrice')) : 0.0;
+      final oursPD = oursAmt; // المستقطع = المبلغ (PlanPrice) للمقارنة مع FTTH
+      final diff = oursTx != null ? (ftthAmt - oursAmt) : 0.0;
+      final oursCollType = oursTx != null ? (_f(oursTx, 'collectionType') ?? '').toString() : '';
+      final oursDateStr = oursTx != null ? _utcToBaghdad(_f(oursTx, 'activationDate')?.toString()) : '';
+
+      data.add([
+        sortOrder[d.status] ?? 3, // [0] sort priority
+        d.status, // [1] status
+        tx.customerName, // [2] customer
+        tx.planName, // [3] plan
+        ftthAmt, // [4] ftth amount
+        widget.subscriptionTypeLabel(tx.type), // [5] type
+        widget.formatTxDate(tx.occuredAt), // [6] ftth date
+        diff, // [7] diff
+        oursAmt, // [8] ours amount
+        oursPD, // [9] ours pageDeduction
+        oursTx != null ? _sn(_f(oursTx, 'revenue')) : 0.0, // [10] إيرادات
+        oursTx != null ? _sn(_f(oursTx, 'expense')) : 0.0, // [11] مصاريف
+        oursCollType, // [12] collection type
+        oursDateStr, // [13] ours date
+        tx.zoneId, // [14] zone (FTTH)
+        oursTx, // [15] بيانات عمليتنا الكاملة (للتعديل)
+      ]);
+    }
+
+    // عندنا فقط
+    if (!_oursLoading) {
+      for (int i = 0; i < _oursTxs.length; i++) {
+        if (usedOursIndices.contains(i)) continue;
+        final tx = _oursTxs[i];
+        final planPrice = _sn(_f(tx, 'planPrice'));
+        final pd = planPrice;
+        data.add([
+          2, 'oursOnly', (_f(tx, 'customerName') ?? '').toString(), '',
+          0.0, '', '', 0.0, planPrice, pd,
+          _sn(_f(tx, 'revenue')), // [10]
+          _sn(_f(tx, 'expense')), // [11]
+          (_f(tx, 'collectionType') ?? '').toString(), // [12]
+          _utcToBaghdad((_f(tx, 'activationDate') ?? '').toString()), // [13]
+          '', // [14] zone
+          tx, // [15] بيانات عمليتنا الكاملة (للتعديل)
+        ]);
+      }
+    }
+
+    // ترتيب افتراضي: المشكلة أولاً
+    if (_sortColIndex == 0) {
+      data.sort((a, b) => (a[0] as int).compareTo(b[0] as int));
+    }
+
+    return data;
+  }
+
+  List<DataRow> _buildDataRows(List<List<dynamic>> data, NumberFormat fmt, Set<String> duplicateNames) {
+    return data.asMap().entries.map((entry) {
+      final i = entry.key;
+      final d = entry.value;
+      final status = d[1] as String;
+
+      final isDuplicate = duplicateNames.contains(d[2].toString().trim());
+      Color rowBg; String statusLabel; Color statusColor; IconData statusIcon;
+      switch (status) {
+        case 'matched': rowBg = Colors.green.shade50; statusLabel = 'مطابقة'; statusColor = Colors.green.shade700; statusIcon = Icons.check_circle; break;
+        case 'wrong': rowBg = Colors.orange.shade50; statusLabel = 'خاطئة'; statusColor = Colors.orange.shade700; statusIcon = Icons.warning_amber; break;
+        case 'missing': rowBg = Colors.red.shade50; statusLabel = 'ناقصة'; statusColor = Colors.red.shade700; statusIcon = Icons.cancel; break;
+        default: rowBg = Colors.blue.shade50; statusLabel = 'عندنا فقط'; statusColor = Colors.blue.shade700; statusIcon = Icons.arrow_back;
+      }
+      // تمييز العملاء المكررين
+      if (isDuplicate) rowBg = Colors.purple.shade50;
+
+      final ftthAmt = (d[4] as num).toDouble();
+      final diff = (d[7] as num).toDouble();
+      final oursAmt = (d[8] as num).toDouble();
+      final oursPD = (d[9] as num).toDouble();
+      final oursRevenue = (d[10] as num).toDouble();
+      final oursExpense = (d[11] as num).toDouble();
+      const ts = TextStyle(fontSize: 11, fontWeight: FontWeight.w700);
+      Widget cl(String text, {Color? color}) => Center(child: Text(text, style: ts.copyWith(color: color), textAlign: TextAlign.center));
+
+      // ترجمة التحصيل للعربي
+      String collAr(String v) {
+        switch (v) {
+          case 'cash': return 'نقد';
+          case 'technician': return 'فني';
+          case 'agent': return 'وكيل';
+          case 'master': return 'ماستر';
+          case 'credit': return 'آجل';
+          default: return v;
+        }
+      }
+      final collType = collAr(d[12].toString());
+
+      // ترتيب الأعمدة: #, حالة, عميل, باقة, نوع, منطقة, مبلغFTTH, فرق, مبلغنا, مستقطع, إيرادات, مصاريف, تحصيل, تاريخنا, تاريخFTTH
+      return DataRow(
+        color: WidgetStateProperty.all(rowBg),
+        cells: [
+          DataCell(cl('${i + 1}')),
+          DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(statusIcon, size: 14, color: statusColor), const SizedBox(width: 3),
+            Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
+          ]))),
+          DataCell(Center(child: Text(d[2], style: ts, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center))),
+          DataCell(cl(d[3].toString().isNotEmpty ? d[3] : '-', color: d[3].toString().isEmpty ? Colors.grey : null)),
+          DataCell(cl(d[5].toString().isNotEmpty ? d[5] : '-', color: d[5].toString().isEmpty ? Colors.grey : null)),
+          DataCell(cl(d[14].toString().isNotEmpty ? d[14] : '-', color: d[14].toString().isEmpty ? Colors.grey : null)),
+          DataCell(cl(ftthAmt > 0 ? fmt.format(ftthAmt) : '-', color: ftthAmt > 0 ? Colors.teal.shade700 : Colors.grey)),
+          DataCell(cl(diff.abs() < 1 ? '-' : '${diff > 0 ? '+' : ''}${fmt.format(diff)}', color: diff.abs() < 1 ? Colors.grey : Colors.red.shade700)),
+          DataCell(cl(oursPD > 0 ? fmt.format(oursPD) : '-', color: oursPD > 0 ? Colors.indigo.shade700 : Colors.grey)),
+          DataCell(cl(oursAmt > 0 ? fmt.format(oursAmt) : '-', color: oursAmt > 0 ? null : Colors.grey)),
+          DataCell(cl(oursRevenue > 0 ? fmt.format(oursRevenue) : '-', color: oursRevenue > 0 ? Colors.green.shade700 : Colors.grey)),
+          DataCell(cl(oursExpense > 0 ? fmt.format(oursExpense) : '-', color: oursExpense > 0 ? Colors.red.shade700 : Colors.grey)),
+          DataCell(cl(collType.isNotEmpty ? collType : '-', color: collType.isEmpty ? Colors.grey : null)),
+          DataCell(cl(d[13].toString().isNotEmpty ? d[13] : '-', color: d[13].toString().isEmpty ? Colors.grey : null)),
+          DataCell(cl(d[6].toString().isNotEmpty ? d[6] : '-', color: d[6].toString().isEmpty ? Colors.grey : null)),
+          DataCell(d.length > 15 && d[15] != null
+              ? Center(child: TextButton(
+                  onPressed: () => _openEditDialog(d[15] as Map<String, dynamic>),
+                  child: Text('تعديل', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                ))
+              : const SizedBox()),
+        ],
+      );
+    }).toList();
+  }
+}
+
+class _DetailTx {
+  final _FtthTransaction tx;
+  final String status; // 'matched', 'wrong', 'missing'
+  final int? oursAmount;
+  final int? ftthAmount;
+
+  _DetailTx({required this.tx, required this.status, this.oursAmount, this.ftthAmount});
+}
+
 // ════════════════════════════════════════════════════════════════
 //  DATA MODELS
 // ════════════════════════════════════════════════════════════════
@@ -8595,8 +9764,9 @@ class _ComparisonRow {
   final int matchedCount;
   final int oursOnlyCount;
   final int ftthOnlyCount;
-  final List<_FtthTransaction> ftthTransactions;
-  final List<_WrongTransaction> wrongTransactions;
+  final List<_FtthTransaction> ftthTransactions; // ناقصة (FTTH فقط)
+  final List<_WrongTransaction> wrongTransactions; // خاطئة (مبلغ مختلف)
+  final List<_FtthTransaction> matchedTransactions; // مطابقة
 
   _ComparisonRow({
     required this.operatorName,
@@ -8610,6 +9780,7 @@ class _ComparisonRow {
     required this.ftthOnlyCount,
     this.ftthTransactions = const [],
     this.wrongTransactions = const [],
+    this.matchedTransactions = const [],
   });
 }
 

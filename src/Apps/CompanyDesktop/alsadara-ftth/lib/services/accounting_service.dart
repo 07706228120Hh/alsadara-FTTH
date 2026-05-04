@@ -819,6 +819,47 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// إعادة حساب الإيرادات للعمليات المتزامنة (خصم الشركة + أجور الصيانة)
+  Future<Map<String, dynamic>> recalculateSyncRevenues({
+    String? companyId,
+    String? userId,
+    DateTime? from,
+    DateTime? to,
+    bool forceAll = false,
+  }) async {
+    final params = <String>[];
+    if (companyId != null) params.add('companyId=$companyId');
+    if (userId != null) params.add('userId=$userId');
+    if (from != null) params.add('from=${from.toIso8601String().split('T')[0]}');
+    if (to != null) params.add('to=${to.toIso8601String().split('T')[0]}');
+    if (forceAll) params.add('forceAll=true');
+    final query = params.isNotEmpty ? '?${params.join('&')}' : '';
+    final response = await _client.post(
+      '/ftth-accounting/recalculate-sync-revenues$query',
+      {},
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// تصحيح المستقطع (BasePrice) حسب مبلغ FTTH الفعلي
+  Future<Map<String, dynamic>> fixBasePrices(List<Map<String, dynamic>> items) async {
+    final response = await _client.post(
+      '/ftth-accounting/fix-base-prices',
+      items,
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// دمج عمليات مكررة دفعة واحدة
+  Future<Map<String, dynamic>> mergeDuplicatesBatch(List<Map<String, int>> items) async {
+    final response = await _client.post('/ftth-accounting/merge-duplicates-batch',
+        items.map((i) => {'originalId': i['originalId'], 'duplicateId': i['duplicateId']}).toList(),
+        (json) => json);
+    return _toMap(response);
+  }
+
   /// تسليم نقد سريع من مشغل
   Future<Map<String, dynamic>> quickDeliver({
     required String operatorUserId,
