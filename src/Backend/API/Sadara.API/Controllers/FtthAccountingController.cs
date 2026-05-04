@@ -1862,17 +1862,10 @@ public class FtthAccountingController : ControllerBase
             var keys = fingerprints.Select(f =>
             {
                 var cid = f.CustomerId!.Trim();
-                // حساب المستقطع من الصفحة (نفس منطق القيد المحاسبي)
-                int pageDeduction;
-                if ((f.BasePrice ?? 0) > 0)
-                    pageDeduction = (int)((f.BasePrice ?? 0) - (f.CompanyDiscount ?? 0));
-                else if (f.SystemDiscountEnabled)
-                    pageDeduction = (int)((f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0));
-                else
-                    pageDeduction = (int)((f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0) - (f.CompanyDiscount ?? 0));
-                if (pageDeduction <= 0) pageDeduction = (int)(f.PlanPrice ?? 0);
+                // استخدام PlanPrice مباشرة — يطابق amount من FTTH
+                var price = (int)(f.PlanPrice ?? 0);
                 var date = f.ActivationDate?.ToString("yyyy-MM-dd") ?? "";
-                return $"{cid}|{pageDeduction}|{date}";
+                return $"{cid}|{price}|{date}";
             }).ToList();
 
             return Ok(new { success = true, ids, keys });
@@ -2006,7 +1999,7 @@ public class FtthAccountingController : ControllerBase
                         userId = directUserId;
                     }
                     // ثانياً: البحث بـ CreatedBy (اسم المستخدم في FTTH)
-                    else if (!string.IsNullOrEmpty(tx.CreatedBy))
+                    if (userId == null && !string.IsNullOrEmpty(tx.CreatedBy))
                     {
                         var key = tx.CreatedBy.ToLower().Trim();
                         if (ftthToUser.TryGetValue(key, out var user))
@@ -2014,6 +2007,22 @@ public class FtthAccountingController : ControllerBase
                             userId = user.Id;
                             companyId ??= user.CompanyId;
                         }
+                    }
+                    // ثالثاً: البحث بـ TechnicianName (أحياناً اسم الفني/المشغل هنا)
+                    if (userId == null && !string.IsNullOrEmpty(tx.TechnicianName))
+                    {
+                        var key = tx.TechnicianName.ToLower().Trim();
+                        if (ftthToUser.TryGetValue(key, out var user))
+                        {
+                            userId = user.Id;
+                            companyId ??= user.CompanyId;
+                        }
+                    }
+                    // رابعاً: إذا لم يُربط بأي طريقة — استخدم CompanyId الافتراضي ولا تترك فارغاً
+                    if (userId == null)
+                    {
+                        _logger.LogWarning("عملية {TxId} بدون مشغل: CreatedBy='{CreatedBy}', OperatorUserId='{OpId}'",
+                            tx.FtthTransactionId, tx.CreatedBy, tx.OperatorUserId);
                     }
 
                     var planPrice = tx.Amount != null ? Math.Abs(tx.Amount.Value) : (decimal?)null;

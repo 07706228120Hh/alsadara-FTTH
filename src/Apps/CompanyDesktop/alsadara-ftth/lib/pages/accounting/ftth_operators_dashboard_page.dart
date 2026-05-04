@@ -1100,6 +1100,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       final matchedUserId = ftthToUserId[opKey];
 
       for (final tx in opEntry.value.transactions) {
+        // createdBy: أولوية auditCreator → اسم المشغل في FTTH
+        final createdBy = tx.auditCreator.isNotEmpty ? tx.auditCreator : opEntry.key;
         final txMap = <String, dynamic>{
           'ftthTransactionId': tx.id,
           'customerId': tx.customerId,
@@ -1108,7 +1110,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           'planName': tx.planName,
           'amount': tx.amount,
           'operationType': tx.type,
-          'createdBy': tx.auditCreator,
+          'createdBy': createdBy,
           'occuredAt': tx.occuredAt,
           'zoneId': tx.zoneId,
           'deviceUsername': tx.deviceUsername,
