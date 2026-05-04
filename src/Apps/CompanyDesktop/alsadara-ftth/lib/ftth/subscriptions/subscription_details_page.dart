@@ -4941,24 +4941,88 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
     // ═══ إكمال كل المراحل بغض النظر عن نتيجة FTTH ═══
 
+    // إغلاق مؤشر التحميل
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context, rootNavigator: false).pop();
+    }
+
     // رسالة للمستخدم
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(children: [
-            Icon(ftthSuccess ? Icons.check_circle : Icons.info_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(
-              ftthSuccess
-                  ? 'تم $opText بنجاح ✅'
-                  : 'العملية قد تحتاج وقتاً إضافياً — تم حفظ البيانات في النظام',
-              style: const TextStyle(fontSize: 13),
-            )),
-          ]),
-          backgroundColor: ftthSuccess ? Colors.green : Colors.orange.shade700,
-          duration: Duration(seconds: ftthSuccess ? 4 : 6),
-        ),
-      );
+      if (ftthSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text('تم $opText بنجاح ✅', style: const TextStyle(fontSize: 13))),
+            ]),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(children: [
+              Icon(Icons.info_outline, color: Colors.orange.shade700, size: 28),
+              const SizedBox(width: 10),
+              const Expanded(child: Text('تنبيه', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('العملية قد تستغرق وقتاً إضافياً في سيرفر FTTH.',
+                    style: TextStyle(fontSize: 14)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(child: Text('تم حفظ البيانات في النظام بنجاح',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                  ]),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('السبب:', style: TextStyle(fontSize: 12, color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(ftthStatusNote, style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('العملية مميزة بـ "بحاجة للتحقق" ويمكنك مراجعتها لاحقاً.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700, foregroundColor: Colors.white),
+                child: const Text('فهمت'),
+              ),
+            ],
+          ),
+        );
+      }
     }
 
     // حفظ في سيرفرنا (دائماً)
@@ -4998,11 +5062,6 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     }
 
     try { await fetchSubscriptionDetails(); } catch (_) {}
-
-    // إغلاق المؤشر
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context, rootNavigator: false).pop();
-    }
   }
 
   /// حفظ البيانات في VPS (الحفظ الأساسي والوحيد)

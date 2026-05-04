@@ -738,10 +738,15 @@ public class FtthAccountingController : ControllerBase
                     .ToListAsync()
                 : new List<object>().Select(x => new { AccountId = Guid.Empty, Balance = 0m }).ToList();
 
-            // ── إيرادات الأجور الإضافية فقط (تنصيب + توصيل + أخرى) — بدون Maintenance ──
-            var feeCategories = new[] { TechnicianTransactionCategory.InstallationFee, TechnicianTransactionCategory.DeliveryFee, TechnicianTransactionCategory.OtherFee };
+            // ── إيرادات الفنيين: الأجور فقط (صيانة + تنصيب + توصيل + أخرى) — بدون مبالغ الاشتراكات ──
+            var revenueCategories = new[] {
+                TechnicianTransactionCategory.Maintenance,      // أجور الصيانة
+                TechnicianTransactionCategory.InstallationFee,  // أجور التنصيب
+                TechnicianTransactionCategory.DeliveryFee,      // أجور التوصيل
+                TechnicianTransactionCategory.OtherFee           // أجور أخرى
+            };
             var techRevenueQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => t.Type == TechnicianTransactionType.Charge && feeCategories.Contains(t.Category) && !t.IsDeleted);
+                .Where(t => t.Type == TechnicianTransactionType.Charge && revenueCategories.Contains(t.Category) && !t.IsDeleted);
             if (from.HasValue)
             {
                 var fromUtcDf = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -1886,10 +1891,13 @@ public class FtthAccountingController : ControllerBase
     /// يتجاهل العمليات المحفوظة مسبقاً (بناءً على FtthTransactionId)
     /// </summary>
     [HttpPost("sync-ftth-transactions")]
-    public async Task<IActionResult> SyncFtthTransactions([FromBody] SyncFtthTransactionsDto dto)
+    [DisableRequestSizeLimit]
+    public async Task<IActionResult> SyncFtthTransactions([FromBody] SyncFtthTransactionsDto? dto)
     {
         try
         {
+            if (dto == null)
+                return BadRequest(new { success = false, message = "البيانات المرسلة فارغة أو بصيغة خاطئة" });
             if (dto.Transactions == null || dto.Transactions.Count == 0)
                 return BadRequest(new { success = false, message = "لا توجد عمليات للمزامنة" });
 

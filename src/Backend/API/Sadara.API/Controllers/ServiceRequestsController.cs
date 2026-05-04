@@ -505,13 +505,16 @@ public class ServiceRequestsController : ControllerBase
             }
             catch { }
 
-            // تصنيف نوع المهمة
+            // ══════════════════════════════════════════════════════════════
+            // تصنيف نوع المهمة — شامل لكل الأنواع الموجودة بالنظام
+            // ══════════════════════════════════════════════════════════════
             bool isSubscriptionPurchase = taskTypeStr == "شراء اشتراك";
             bool isSubscriptionRenewal = taskTypeStr == "تجديد اشتراك";
-            bool isCollectionTask = taskTypeStr.Contains("تحصيل مبلغ") || taskTypeStr.Contains("استحصال مبلغ");
+            bool isCollectionTask = taskTypeStr.Contains("تحصيل") || taskTypeStr.Contains("استحصال") || taskTypeStr.Contains("تسديد");
+            // كل ما عدا شراء/تجديد/تحصيل = صيانة (صيانة، صيانة دورية، إصلاح، تركيب، تنصيب، فحص، استبدال، طوارئ، إلخ)
             bool isMaintenanceTask = !isSubscriptionPurchase && !isSubscriptionRenewal && !isCollectionTask;
 
-            // استخراج deliveryFee من Details JSON (يُستخدم كـ: أجور تنصيب / أجور أخرى / أجور توصيل حسب نوع المهمة)
+            // استخراج deliveryFee + createdById من Details JSON
             var deliveryFee = 0m;
             string? createdByIdStr = null;
             if (!string.IsNullOrEmpty(request.Details))
@@ -530,6 +533,40 @@ public class ServiceRequestsController : ControllerBase
                 catch { /* ignore parse errors */ }
             }
 
+            // ══════ دالة مساعدة لتسجيل أجور على ذمة شخص ══════
+            async Task<bool> RegisterFeeOnUser(Guid userId, decimal amount, TechnicianTransactionCategory category, string description)
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null) return false;
+
+                // تحقق من عدم التكرار
+                var exists = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                    .AnyAsync(t => t.ServiceRequestId == id && t.Category == category && !t.IsDeleted);
+                if (exists) return false;
+
+                user.TechTotalCharges += amount;
+                user.TechNetBalance = user.TechTotalPayments - user.TechTotalCharges;
+                _unitOfWork.Users.Update(user);
+
+                await _unitOfWork.TechnicianTransactions.AddAsync(new TechnicianTransaction
+                {
+                    TechnicianId = user.Id,
+                    Type = TechnicianTransactionType.Charge,
+                    Category = category,
+                    Amount = amount,
+                    BalanceAfter = user.TechNetBalance,
+                    Description = description,
+                    ServiceRequestId = id,
+                    CreatedById = request.CompanyId ?? Guid.Empty,
+                    CompanyId = request.CompanyId ?? Guid.Empty,
+                    CreatedAt = DateTime.UtcNow,
+                });
+
+                _logger.LogInformation("تم تسجيل {Category} {Amount} على {UserId} — مهمة {RequestNumber}",
+                    category, amount, user.Id, request.RequestNumber);
+                return true;
+            }
+
             var shouldHandleTechCancellation = chargeTargetId.HasValue;
 
             if (shouldHandleTechCancellation)
@@ -538,168 +575,53 @@ public class ServiceRequestsController : ControllerBase
 
                 if (newStatus == ServiceRequestStatus.Completed)
                 {
-                    // ══════ صيانة: المبلغ (أجور الصيانة) → ذمة الفني ══════
-                    if (isMaintenanceTask)
+                    // ═══════════════════════════════════════════════════
+                    // صيانة (صيانة/إصلاح/تركيب/تنصيب/فحص/استبدال/طوارئ):
+                    //   الحقل الوحيد = deliveryFee → أجور صيانة → ذمة الفني
+                    // ═══════════════════════════════════════════════════
+                    if (isMaintenanceTask && deliveryFee > 0 && chargeTargetId.HasValue)
                     {
-                        var chargeAmount = request.FinalCost ?? request.EstimatedCost ?? 0;
-                        if (chargeAmount > 0 && chargeTargetId.HasValue)
-                        {
-                            var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId.Value);
-                            if (technician != null)
-                            {
-                                var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                                    .AnyAsync(t => t.ServiceRequestId == id && t.Type == TechnicianTransactionType.Charge && t.Category == TechnicianTransactionCategory.Maintenance && !t.IsDeleted);
-
-                                if (!existingTx)
-                                {
-                                    technician.TechTotalCharges += chargeAmount;
-                                    technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
-                                    _unitOfWork.Users.Update(technician);
-
-                                    var techTx = new TechnicianTransaction
-                                    {
-                                        TechnicianId = technician.Id,
-                                        Type = TechnicianTransactionType.Charge,
-                                        Category = TechnicianTransactionCategory.Maintenance,
-                                        Amount = chargeAmount,
-                                        BalanceAfter = technician.TechNetBalance,
-                                        Description = $"أجور صيانة - {request.RequestNumber}",
-                                        ServiceRequestId = id,
-                                        CreatedById = request.CompanyId ?? Guid.Empty,
-                                        CompanyId = request.CompanyId ?? Guid.Empty,
-                                        CreatedAt = DateTime.UtcNow,
-                                    };
-                                    await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
-                                    hasTechFinancialChanges = true;
-
-                                    _logger.LogInformation("تم تسجيل أجور صيانة {Amount} على الفني {TechId} — مهمة {RequestNumber}",
-                                        chargeAmount, technician.Id, request.RequestNumber);
-                                }
-                            }
-                        }
-                        // صيانة: لا حقل ثاني (لا deliveryFee)
+                        if (await RegisterFeeOnUser(chargeTargetId.Value, deliveryFee, TechnicianTransactionCategory.Maintenance, $"أجور صيانة - {request.RequestNumber}"))
+                            hasTechFinancialChanges = true;
                     }
 
-                    // ══════ شراء اشتراك: أجور التنصيب → ذمة منشئ المهمة ══════
+                    // ═══════════════════════════════════════════════════
+                    // شراء اشتراك:
+                    //   الحقل الثاني = deliveryFee → أجور تنصيب → ذمة المنشئ
+                    // ═══════════════════════════════════════════════════
                     else if (isSubscriptionPurchase && deliveryFee > 0)
                     {
-                        // تحديد منشئ المهمة
                         Guid? creatorId = null;
-                        if (!string.IsNullOrEmpty(createdByIdStr))
-                            Guid.TryParse(createdByIdStr, out var parsedCreatorId);
-
                         if (!string.IsNullOrEmpty(createdByIdStr) && Guid.TryParse(createdByIdStr, out var creatorGuid))
                             creatorId = creatorGuid;
 
-                        if (creatorId.HasValue)
+                        // fallback: إذا لم يوجد createdById → الفني
+                        var targetId = creatorId ?? chargeTargetId;
+                        if (targetId.HasValue)
                         {
-                            var creator = await _unitOfWork.Users.GetByIdAsync(creatorId.Value);
-                            if (creator != null)
-                            {
-                                var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                                    .AnyAsync(t => t.ServiceRequestId == id && t.Category == TechnicianTransactionCategory.InstallationFee && !t.IsDeleted);
-
-                                if (!existingTx)
-                                {
-                                    creator.TechTotalCharges += deliveryFee;
-                                    creator.TechNetBalance = creator.TechTotalPayments - creator.TechTotalCharges;
-                                    _unitOfWork.Users.Update(creator);
-
-                                    var installTx = new TechnicianTransaction
-                                    {
-                                        TechnicianId = creator.Id,
-                                        Type = TechnicianTransactionType.Charge,
-                                        Category = TechnicianTransactionCategory.InstallationFee,
-                                        Amount = deliveryFee,
-                                        BalanceAfter = creator.TechNetBalance,
-                                        Description = $"أجور تنصيب - {request.RequestNumber}",
-                                        ServiceRequestId = id,
-                                        CreatedById = request.CompanyId ?? Guid.Empty,
-                                        CompanyId = request.CompanyId ?? Guid.Empty,
-                                        CreatedAt = DateTime.UtcNow,
-                                    };
-                                    await _unitOfWork.TechnicianTransactions.AddAsync(installTx);
-                                    hasTechFinancialChanges = true;
-
-                                    _logger.LogInformation("تم تسجيل أجور تنصيب {Fee} على منشئ المهمة {CreatorId} — مهمة {RequestNumber}",
-                                        deliveryFee, creator.Id, request.RequestNumber);
-                                }
-                            }
+                            if (await RegisterFeeOnUser(targetId.Value, deliveryFee, TechnicianTransactionCategory.InstallationFee, $"أجور تنصيب - {request.RequestNumber}"))
+                                hasTechFinancialChanges = true;
                         }
                     }
 
-                    // ══════ تجديد اشتراك: أجور أخرى → ذمة الفني ══════
+                    // ═══════════════════════════════════════════════════
+                    // تجديد اشتراك:
+                    //   الحقل الثاني = deliveryFee → أجور أخرى → ذمة الفني
+                    // ═══════════════════════════════════════════════════
                     else if (isSubscriptionRenewal && deliveryFee > 0 && chargeTargetId.HasValue)
                     {
-                        var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId.Value);
-                        if (technician != null)
-                        {
-                            var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                                .AnyAsync(t => t.ServiceRequestId == id && t.Category == TechnicianTransactionCategory.OtherFee && !t.IsDeleted);
-
-                            if (!existingTx)
-                            {
-                                technician.TechTotalCharges += deliveryFee;
-                                technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
-                                _unitOfWork.Users.Update(technician);
-
-                                var otherTx = new TechnicianTransaction
-                                {
-                                    TechnicianId = technician.Id,
-                                    Type = TechnicianTransactionType.Charge,
-                                    Category = TechnicianTransactionCategory.OtherFee,
-                                    Amount = deliveryFee,
-                                    BalanceAfter = technician.TechNetBalance,
-                                    Description = $"أجور أخرى - {request.RequestNumber}",
-                                    ServiceRequestId = id,
-                                    CreatedById = request.CompanyId ?? Guid.Empty,
-                                    CompanyId = request.CompanyId ?? Guid.Empty,
-                                    CreatedAt = DateTime.UtcNow,
-                                };
-                                await _unitOfWork.TechnicianTransactions.AddAsync(otherTx);
-                                hasTechFinancialChanges = true;
-
-                                _logger.LogInformation("تم تسجيل أجور أخرى {Fee} على الفني {TechId} — مهمة {RequestNumber}",
-                                    deliveryFee, technician.Id, request.RequestNumber);
-                            }
-                        }
+                        if (await RegisterFeeOnUser(chargeTargetId.Value, deliveryFee, TechnicianTransactionCategory.OtherFee, $"أجور أخرى - {request.RequestNumber}"))
+                            hasTechFinancialChanges = true;
                     }
 
-                    // ══════ تحصيل مبلغ: أجور التوصيل → ذمة الفني ══════
+                    // ═══════════════════════════════════════════════════
+                    // تحصيل/استحصال/تسديد:
+                    //   الحقل الثاني = deliveryFee → أجور توصيل → ذمة الفني
+                    // ═══════════════════════════════════════════════════
                     else if (isCollectionTask && deliveryFee > 0 && chargeTargetId.HasValue)
                     {
-                        var technician = await _unitOfWork.Users.GetByIdAsync(chargeTargetId.Value);
-                        if (technician != null)
-                        {
-                            var existingTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                                .AnyAsync(t => t.ServiceRequestId == id && t.Category == TechnicianTransactionCategory.DeliveryFee && !t.IsDeleted);
-
-                            if (!existingTx)
-                            {
-                                technician.TechTotalCharges += deliveryFee;
-                                technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
-                                _unitOfWork.Users.Update(technician);
-
-                                var deliveryTx = new TechnicianTransaction
-                                {
-                                    TechnicianId = technician.Id,
-                                    Type = TechnicianTransactionType.Charge,
-                                    Category = TechnicianTransactionCategory.DeliveryFee,
-                                    Amount = deliveryFee,
-                                    BalanceAfter = technician.TechNetBalance,
-                                    Description = $"أجور توصيل - {request.RequestNumber}",
-                                    ServiceRequestId = id,
-                                    CreatedById = request.CompanyId ?? Guid.Empty,
-                                    CompanyId = request.CompanyId ?? Guid.Empty,
-                                    CreatedAt = DateTime.UtcNow,
-                                };
-                                await _unitOfWork.TechnicianTransactions.AddAsync(deliveryTx);
-                                hasTechFinancialChanges = true;
-
-                                _logger.LogInformation("تم تسجيل أجور توصيل {Fee} على الفني {TechId} — مهمة {RequestNumber}",
-                                    deliveryFee, technician.Id, request.RequestNumber);
-                            }
-                        }
+                        if (await RegisterFeeOnUser(chargeTargetId.Value, deliveryFee, TechnicianTransactionCategory.DeliveryFee, $"أجور توصيل - {request.RequestNumber}"))
+                            hasTechFinancialChanges = true;
                     }
                 }
                 else if (newStatus == ServiceRequestStatus.Cancelled || newStatus == ServiceRequestStatus.Rejected)

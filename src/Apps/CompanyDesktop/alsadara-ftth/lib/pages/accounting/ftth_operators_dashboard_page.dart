@@ -1085,6 +1085,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       }
     }
 
+    // إضافة ربط من _comparisonRows (يشمل المشغلين الذين ليس لهم عمليات عندنا)
+    for (final row in _comparisonRows) {
+      if (row.operatorUserId != null && row.operatorUserId!.isNotEmpty) {
+        ftthToUserId[row.operatorName.toLowerCase().trim()] = row.operatorUserId!;
+      }
+    }
+
     // تحويل العمليات مع ربط كل عملية بالمشغل
     final List<Map<String, dynamic>> txList = [];
     for (final opEntry in _ftthOperators.entries) {
@@ -1110,8 +1117,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           'remainingBalance': tx.remainingBalance,
           'createAccounting': true,
         };
-        if (tx.startsAt.isNotEmpty) txMap['startDate'] = tx.startsAt;
-        if (tx.endsAt.isNotEmpty) txMap['endDate'] = tx.endsAt;
+        if (tx.startsAt.isNotEmpty) {
+          final parsed = DateTime.tryParse(tx.startsAt);
+          if (parsed != null) txMap['startDate'] = parsed.toIso8601String();
+        }
+        if (tx.endsAt.isNotEmpty) {
+          final parsed = DateTime.tryParse(tx.endsAt);
+          if (parsed != null) txMap['endDate'] = parsed.toIso8601String();
+        }
         if (tx.planDuration > 0) txMap['commitmentPeriod'] = tx.planDuration;
         if (matchedUserId != null) txMap['operatorUserId'] = matchedUserId;
         txList.add(txMap);
@@ -1408,8 +1421,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           }
         }
 
+        // محاولة ربط المشغل بـ userId من كل المستخدمين (بحث بـ ftthUsername أو username أو fullName)
+        String? unmatchedUserId;
+        final ftthKey = entry.key.toLowerCase().trim();
+        for (final op in _oursOperators) {
+          final fUser = (op['ftthUsername'] ?? '').toString().toLowerCase().trim();
+          final uName = (op['username'] ?? '').toString().toLowerCase().trim();
+          final oName = (op['operatorName'] ?? '').toString().toLowerCase().trim();
+          if (ftthKey == fUser || ftthKey == uName || ftthKey == oName) {
+            unmatchedUserId = op['userId']?.toString();
+            break;
+          }
+        }
+
         rows.add(_ComparisonRow(
           operatorName: ftthOp.name,
+          operatorUserId: unmatchedUserId,
           oursCount: 0,
           oursAmount: 0,
           ftthCount: ftthOp.subscriptionOps,
@@ -7538,8 +7565,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               'deviceUsername': tx.deviceUsername,
               'collectionType': _mapPaymentMode(tx.paymentMode),
               'paymentMethod': tx.paymentMethod,
-              'startDate': tx.startsAt,
-              'endDate': tx.endsAt,
+              if (tx.startsAt.isNotEmpty && DateTime.tryParse(tx.startsAt) != null) 'startDate': DateTime.tryParse(tx.startsAt)!.toIso8601String(),
+              if (tx.endsAt.isNotEmpty && DateTime.tryParse(tx.endsAt) != null) 'endDate': DateTime.tryParse(tx.endsAt)!.toIso8601String(),
               'remainingBalance': tx.remainingBalance,
               if (tx.planDuration > 0) 'commitmentPeriod': tx.planDuration,
               'createAccounting': true,
