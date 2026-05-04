@@ -432,12 +432,23 @@ public class FtthAccountingController : ControllerBase
 
             var logs = await query.OrderByDescending(l => l.ActivationDate).ToListAsync();
 
-            var totalAmount = logs.Sum(l => l.PlanPrice ?? 0);
-            var cashAmount = logs.Where(l => l.CollectionType == "cash").Sum(l => l.PlanPrice ?? 0);
-            var creditAmount = logs.Where(l => l.CollectionType == "credit").Sum(l => l.PlanPrice ?? 0);
-            var masterAmount = logs.Where(l => l.CollectionType == "master").Sum(l => l.PlanPrice ?? 0);
-            var agentAmount = logs.Where(l => l.CollectionType == "agent").Sum(l => l.PlanPrice ?? 0);
-            var technicianAmount = logs.Where(l => l.CollectionType == "technician").Sum(l => l.PlanPrice ?? 0);
+            // حساب المستقطع لكل عملية (السعر - خصم الشركة)
+            // المستقطع = السعر - خصم الشركة (دائماً)
+            decimal calcPageDeduction(Sadara.Domain.Entities.SubscriptionLog l) =>
+                ((l.BasePrice ?? 0) > 0 ? (l.BasePrice ?? 0) : (l.PlanPrice ?? 0)) - (l.CompanyDiscount ?? 0);
+
+            // الإجمالي لكل عملية = المستقطع + إيرادات - مصاريف
+            decimal calcTotal(Sadara.Domain.Entities.SubscriptionLog l) =>
+                calcPageDeduction(l)
+                + (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0))
+                - (l.ManualDiscount ?? 0);
+
+            var totalAmount = logs.Sum(l => calcTotal(l));
+            var cashAmount = logs.Where(l => l.CollectionType == "cash").Sum(l => calcTotal(l));
+            var creditAmount = logs.Where(l => l.CollectionType == "credit").Sum(l => calcTotal(l));
+            var masterAmount = logs.Where(l => l.CollectionType == "master").Sum(l => calcTotal(l));
+            var agentAmount = logs.Where(l => l.CollectionType == "agent").Sum(l => calcTotal(l));
+            var technicianAmount = logs.Where(l => l.CollectionType == "technician").Sum(l => calcTotal(l));
 
             // حساب النقد المسلّم والآجل المحصّل من CashTransactions
             decimal deliveredCash = 0;
@@ -505,7 +516,7 @@ public class FtthAccountingController : ControllerBase
                     technicianAmount,
                     technicianCount = logs.Count(l => l.CollectionType == "technician"),
                     // عمليات بدون تصنيف (قديمة)
-                    unclassifiedAmount = logs.Where(l => string.IsNullOrEmpty(l.CollectionType)).Sum(l => l.PlanPrice ?? 0),
+                    unclassifiedAmount = logs.Where(l => string.IsNullOrEmpty(l.CollectionType)).Sum(l => calcTotal(l)),
                     unclassifiedCount = logs.Count(l => string.IsNullOrEmpty(l.CollectionType)),
                     deliveredCash,
                     collectedCredit,
@@ -558,11 +569,8 @@ public class FtthAccountingController : ControllerBase
                         l.ManualDiscount,
                         l.MaintenanceFee,
                         l.SystemDiscountEnabled,
-                        PageDeduction = (l.BasePrice ?? 0) > 0
-                            ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
-                            : l.SystemDiscountEnabled
-                                ? (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0)
-                                : (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0) - (l.CompanyDiscount ?? 0),
+                        // المستقطع = السعر - خصم الشركة (دائماً، بغض النظر عن SystemDiscountEnabled)
+                        PageDeduction = ((l.BasePrice ?? 0) > 0 ? (l.BasePrice ?? 0) : (l.PlanPrice ?? 0)) - (l.CompanyDiscount ?? 0),
                         Revenue = (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0)),
                         Expense = l.ManualDiscount ?? 0,
                         CollectedAmount = (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0))
@@ -616,42 +624,71 @@ public class FtthAccountingController : ControllerBase
                 {
                     UserId = g.Key,
                     TotalCount = g.Count(),
-                    TotalAmount = g.Sum(l => l.PlanPrice ?? 0),
+                    TotalCount2 = g.Count(), // placeholder — totalAmount يُحسب لاحقاً
+                    // ═══ صيغة الإجمالي لكل عملية = المستقطع + إيرادات - مصاريف ═══
+                    // عندما BasePrice=0: PlanPrice + MaintenanceFee - ManualDiscount (خصم الشركة يُلغي نفسه)
+                    // عندما BasePrice>0: BasePrice - CompanyDiscount(إن مفعّل) + MaintenanceFee - ManualDiscount
                     // حسب نوع التحصيل
-                    CashAmount = g.Where(l => l.CollectionType == "cash").Sum(l => l.PlanPrice ?? 0),
+                    CashAmount = g.Where(l => l.CollectionType == "cash").Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     CashCount = g.Count(l => l.CollectionType == "cash"),
-                    CreditAmount = g.Where(l => l.CollectionType == "credit").Sum(l => l.PlanPrice ?? 0),
+                    CreditAmount = g.Where(l => l.CollectionType == "credit").Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     CreditCount = g.Count(l => l.CollectionType == "credit"),
-                    MasterAmount = g.Where(l => l.CollectionType == "master").Sum(l => l.PlanPrice ?? 0),
+                    MasterAmount = g.Where(l => l.CollectionType == "master").Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     MasterCount = g.Count(l => l.CollectionType == "master"),
-                    AgentAmount = g.Where(l => l.CollectionType == "agent").Sum(l => l.PlanPrice ?? 0),
+                    AgentAmount = g.Where(l => l.CollectionType == "agent").Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     AgentCount = g.Count(l => l.CollectionType == "agent"),
-                    TechnicianAmount = g.Where(l => l.CollectionType == "technician").Sum(l => l.PlanPrice ?? 0),
+                    TechnicianAmount = g.Where(l => l.CollectionType == "technician").Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     TechnicianCount = g.Count(l => l.CollectionType == "technician"),
-                    UnclassifiedAmount = g.Where(l => l.CollectionType == null || l.CollectionType == "").Sum(l => l.PlanPrice ?? 0),
+                    UnclassifiedAmount = g.Where(l => l.CollectionType == null || l.CollectionType == "").Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     UnclassifiedCount = g.Count(l => l.CollectionType == null || l.CollectionType == ""),
                     // حسب نوع العملية
                     PurchaseCount = g.Count(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))),
-                    PurchaseAmount = g.Where(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))).Sum(l => l.PlanPrice ?? 0),
+                    PurchaseAmount = g.Where(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))).Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     RenewalCount = g.Count(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")),
-                    RenewalAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")).Sum(l => l.PlanPrice ?? 0),
+                    RenewalAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")).Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     ChangeCount = g.Count(l => l.OperationType != null && l.OperationType.ToUpper().Contains("CHANGE") && !l.OperationType.ToUpper().Contains("SCHEDULE")),
-                    ChangeAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("CHANGE") && !l.OperationType.ToUpper().Contains("SCHEDULE")).Sum(l => l.PlanPrice ?? 0),
+                    ChangeAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("CHANGE") && !l.OperationType.ToUpper().Contains("SCHEDULE")).Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     ScheduleCount = g.Count(l => l.OperationType != null && l.OperationType.ToUpper().Contains("SCHEDULE")),
-                    ScheduleAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("SCHEDULE")).Sum(l => l.PlanPrice ?? 0),
+                    ScheduleAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("SCHEDULE")).Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     // مطابقة
                     ReconciledCount = g.Count(l => l.IsReconciled),
                     // حقول محاسبية: المستقطع والإيرادات والمصاريف
                     TotalMaintenanceFee = g.Sum(l => l.MaintenanceFee ?? 0),
                     TotalManualDiscount = g.Sum(l => l.ManualDiscount ?? 0),
                     TotalCompanyDiscountProfit = g.Where(l => !l.SystemDiscountEnabled).Sum(l => l.CompanyDiscount ?? 0),
-                    // المستقطع من الصفحة = BasePrice - CompanyDiscount (أو PlanPrice + ManualDiscount - MaintenanceFee إذا لم يوجد BasePrice)
+                    // المستقطع = السعر - خصم الشركة (دائماً، بغض النظر عن SystemDiscountEnabled)
                     PageDeduction = g.Sum(l =>
-                        (l.BasePrice ?? 0) > 0
-                            ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
-                            : l.SystemDiscountEnabled
-                                ? (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0)
-                                : (l.PlanPrice ?? 0) + (l.ManualDiscount ?? 0) - (l.MaintenanceFee ?? 0) - (l.CompanyDiscount ?? 0)
+                        ((l.BasePrice ?? 0) > 0 ? (l.BasePrice ?? 0) : (l.PlanPrice ?? 0)) - (l.CompanyDiscount ?? 0)
                     )
                 })
                 .ToListAsync();
@@ -800,7 +837,8 @@ public class FtthAccountingController : ControllerBase
                     username = user?.Username,
                     ftthUsername = user?.FtthUsername,
                     totalCount = g.TotalCount,
-                    totalAmount = g.TotalAmount,
+                    // الإجمالي = المستقطع + الإيرادات - المصاريف (ما يدفعه العميل ويُرحّل على المشغل)
+                    totalAmount = g.PageDeduction + (g.TotalMaintenanceFee + g.TotalCompanyDiscountProfit) - g.TotalManualDiscount,
                     cashAmount = g.CashAmount,
                     cashCount = g.CashCount,
                     creditAmount = g.CreditAmount,
@@ -846,11 +884,21 @@ public class FtthAccountingController : ControllerBase
                 {
                     TechId = g.Key,
                     TotalCount = g.Count(),
-                    TotalAmount = g.Sum(l => l.PlanPrice ?? 0),
+                    // الإجمالي = المستقطع + إيرادات - مصاريف
+                    TotalAmount = g.Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     PurchaseCount = g.Count(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))),
-                    PurchaseAmount = g.Where(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))).Sum(l => l.PlanPrice ?? 0),
+                    PurchaseAmount = g.Where(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))).Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     RenewalCount = g.Count(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")),
-                    RenewalAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")).Sum(l => l.PlanPrice ?? 0),
+                    RenewalAmount = g.Where(l => l.OperationType != null && l.OperationType.ToUpper().Contains("RENEW")).Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                            : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
                     ReconciledCount = g.Count(l => l.IsReconciled)
                 })
                 .ToListAsync();
@@ -955,10 +1003,18 @@ public class FtthAccountingController : ControllerBase
 
             // ── توزيعات إضافية ──
 
+            // ═══ صيغة الإجمالي لكل عملية (مُعاد استخدامها في التوزيعات) ═══
+            // BasePrice>0: BasePrice - CompanyDiscount(إن مفعّل) + MaintenanceFee - ManualDiscount
+            // BasePrice=0: PlanPrice + MaintenanceFee - ManualDiscount (خصم الشركة يُلغي نفسه)
+            System.Linq.Expressions.Expression<Func<Sadara.Domain.Entities.SubscriptionLog, decimal>> totalExpr = l =>
+                (l.BasePrice ?? 0) > 0
+                    ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                    : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0);
+
             // توزيع أنواع العمليات
             var operationTypes = await query
                 .GroupBy(l => l.OperationType ?? "غير محدد")
-                .Select(g => new { type = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .Select(g => new { type = g.Key, count = g.Count(), amount = g.AsQueryable().Sum(totalExpr) })
                 .OrderByDescending(x => x.count)
                 .ToListAsync();
 
@@ -966,7 +1022,7 @@ public class FtthAccountingController : ControllerBase
             var zones = await query
                 .Where(l => l.ZoneName != null && l.ZoneName != "")
                 .GroupBy(l => l.ZoneName!)
-                .Select(g => new { zone = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .Select(g => new { zone = g.Key, count = g.Count(), amount = g.AsQueryable().Sum(totalExpr) })
                 .OrderByDescending(x => x.count)
                 .Take(20)
                 .ToListAsync();
@@ -975,7 +1031,7 @@ public class FtthAccountingController : ControllerBase
             var plans = await query
                 .Where(l => l.PlanName != null && l.PlanName != "")
                 .GroupBy(l => l.PlanName!)
-                .Select(g => new { plan = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .Select(g => new { plan = g.Key, count = g.Count(), amount = g.AsQueryable().Sum(totalExpr) })
                 .OrderByDescending(x => x.count)
                 .Take(20)
                 .ToListAsync();
@@ -984,7 +1040,7 @@ public class FtthAccountingController : ControllerBase
             var technicians = await query
                 .Where(l => l.TechnicianName != null && l.TechnicianName != "")
                 .GroupBy(l => l.TechnicianName!)
-                .Select(g => new { technician = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .Select(g => new { technician = g.Key, count = g.Count(), amount = g.AsQueryable().Sum(totalExpr) })
                 .OrderByDescending(x => x.count)
                 .Take(15)
                 .ToListAsync();
@@ -993,7 +1049,7 @@ public class FtthAccountingController : ControllerBase
             var daily = await query
                 .Where(l => l.ActivationDate != null)
                 .GroupBy(l => l.ActivationDate!.Value.Date)
-                .Select(g => new { date = g.Key, count = g.Count(), amount = g.Sum(l => l.PlanPrice ?? 0) })
+                .Select(g => new { date = g.Key, count = g.Count(), amount = g.AsQueryable().Sum(totalExpr) })
                 .OrderBy(x => x.date)
                 .ToListAsync();
 
@@ -1865,12 +1921,8 @@ public class FtthAccountingController : ControllerBase
             var keys = fingerprints.Select(f =>
             {
                 var cid = f.CustomerId!.Trim();
-                // استخدام المستقطع (PageDeduction) — يطابق المبلغ المخصوم في FTTH
-                var pageDeduction = (f.BasePrice ?? 0) > 0
-                    ? (f.BasePrice ?? 0) - (f.CompanyDiscount ?? 0)
-                    : f.SystemDiscountEnabled
-                        ? (f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0)
-                        : (f.PlanPrice ?? 0) + (f.ManualDiscount ?? 0) - (f.MaintenanceFee ?? 0) - (f.CompanyDiscount ?? 0);
+                // المستقطع = السعر - خصم الشركة (دائماً، بغض النظر عن SystemDiscountEnabled)
+                var pageDeduction = ((f.BasePrice ?? 0) > 0 ? (f.BasePrice ?? 0) : (f.PlanPrice ?? 0)) - (f.CompanyDiscount ?? 0);
                 var price = (int)pageDeduction;
                 // تحويل التاريخ من UTC إلى توقيت بغداد (+3) ليطابق تاريخ FTTH
                 var date = f.ActivationDate.HasValue
@@ -2891,7 +2943,10 @@ public class FtthAccountingController : ControllerBase
             var recentLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => !l.IsDeleted && l.ActivationDate >= thirtyDaysAgo)
                 .GroupBy(l => l.CollectionType)
-                .Select(g => new { Type = g.Key, Count = g.Count(), Total = g.Sum(l => l.PlanPrice ?? 0) })
+                .Select(g => new { Type = g.Key, Count = g.Count(), Total = g.Sum(l =>
+                    (l.BasePrice ?? 0) > 0
+                        ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                        : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)) })
                 .ToListAsync();
 
             var result = new

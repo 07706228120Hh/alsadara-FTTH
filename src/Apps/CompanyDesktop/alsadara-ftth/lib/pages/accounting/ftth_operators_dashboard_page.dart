@@ -8992,6 +8992,108 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     }
   }
 
+  /// تصحيح المستقطع لكل العمليات (مطابقة + خاطئة) — يجعل BasePrice = مبلغ FTTH
+  Future<void> _fixAllBasePrices(_ComparisonRow row) async {
+    final Map<String, Map<String, dynamic>> oursByFtthId = {};
+    final Map<String, List<Map<String, dynamic>>> oursByCid = {};
+    final Map<String, List<Map<String, dynamic>>> oursByName = {};
+    final Set<int> usedIds = {};
+
+    for (final tx in _oursTxs) {
+      final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
+      if (ftthId.isNotEmpty) oursByFtthId[ftthId] = tx;
+      final cid = (_f(tx, 'customerId') ?? '').toString().trim();
+      if (cid.isNotEmpty) oursByCid.putIfAbsent(cid, () => []).add(tx);
+      final name = (_f(tx, 'customerName') ?? '').toString().trim();
+      if (name.isNotEmpty) oursByName.putIfAbsent(name, () => []).add(tx);
+    }
+
+    Map<String, dynamic>? findOursTx(_FtthTransaction ftth) {
+      // 1. بـ FtthTransactionId
+      final byId = oursByFtthId[ftth.id];
+      if (byId != null) {
+        final id = (_f(byId, 'id') as num?)?.toInt();
+        if (id != null && !usedIds.contains(id)) { usedIds.add(id); return byId; }
+      }
+      // 2. بـ CustomerId
+      final byCid = oursByCid[ftth.customerId.trim()];
+      if (byCid != null) {
+        final amt = ftth.amount.abs().toInt();
+        for (final tx in byCid) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id == null || usedIds.contains(id)) continue;
+          final pd = _sn(_f(tx, 'pageDeduction')).toInt();
+          if (pd == amt) { usedIds.add(id); return tx; }
+        }
+        for (final tx in byCid) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id != null && !usedIds.contains(id)) { usedIds.add(id); return tx; }
+        }
+      }
+      // 3. بـ اسم العميل
+      final byName = oursByName[ftth.customerName.trim()];
+      if (byName != null) {
+        final amt = ftth.amount.abs().toInt();
+        for (final tx in byName) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id == null || usedIds.contains(id)) continue;
+          final pd = _sn(_f(tx, 'pageDeduction')).toInt();
+          if (pd == amt) { usedIds.add(id); return tx; }
+        }
+        for (final tx in byName) {
+          final id = (_f(tx, 'id') as num?)?.toInt();
+          if (id != null && !usedIds.contains(id)) { usedIds.add(id); return tx; }
+        }
+      }
+      return null;
+    }
+
+    final List<Map<String, dynamic>> fixes = [];
+    int notFound = 0;
+
+    // معالجة كل العمليات: المطابقة + الخاطئة
+    final allFtthTxs = <_FtthTransaction>[
+      ...row.matchedTransactions,
+      ...row.wrongTransactions.map((w) => w.ftthTx),
+    ];
+
+    for (final ftthTx in allFtthTxs) {
+      final oursTx = findOursTx(ftthTx);
+      if (oursTx != null) {
+        final logId = _f(oursTx, 'id');
+        if (logId != null) {
+          fixes.add({
+            'logId': (logId is int) ? logId : int.tryParse(logId.toString()) ?? 0,
+            'ftthAmount': ftthTx.amount.abs(),
+          });
+        }
+      } else {
+        notFound++;
+      }
+    }
+
+    if (fixes.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لم يتم العثور على عمليات للتصحيح ($notFound غير مطابقة)')));
+      return;
+    }
+
+    try {
+      final result = await AccountingService.instance.fixBasePrices(fixes);
+      if (!mounted) return;
+      final updated = result['updated'] ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم تصحيح $updated سجل من ${fixes.length}${notFound > 0 ? ' ($notFound لم يُعثر عليها)' : ''}'),
+          backgroundColor: updated > 0 ? Colors.green.shade700 : Colors.orange.shade700,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      _loadOurData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade700));
+    }
+  }
+
   Future<void> _mergeDuplicates(List<List<dynamic>> rawData, Set<String> duplicateNames) async {
     // العثور على أزواج المكررات: لكل اسم مكرر، الأصلية = عندنا فقط (لها إيرادات/مصاريف)، المكررة = مطابقة (لها FtthTransactionId)
     final List<Map<String, int>> mergeItems = [];
@@ -9190,13 +9292,13 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: diff == 0 ? Colors.green.shade700 : Colors.red.shade700));
                   }),
                   const Spacer(),
-                  if (row.wrongTransactions.isNotEmpty)
+                  if (row.matchedTransactions.isNotEmpty || row.wrongTransactions.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ElevatedButton.icon(
-                        onPressed: () => _fixBasePrices(row),
+                        onPressed: () => _fixAllBasePrices(row),
                         icon: Icon(Icons.auto_fix_high, size: 16),
-                        label: Text('تصحيح المستقطع (${row.wrongTransactions.length})', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                        label: Text('تصحيح المستقطع (${row.matchedTransactions.length + row.wrongTransactions.length})', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange.shade700,
                           foregroundColor: Colors.white,
@@ -9375,9 +9477,11 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       final tx = d.tx;
       final ftthAmt = tx.amount.abs();
       final oursTx = ftthToOurs[fi];
-      final oursAmt = oursTx != null ? _sn(_f(oursTx, 'planPrice')) : 0.0;
-      final oursPD = oursAmt; // المستقطع = المبلغ (PlanPrice) للمقارنة مع FTTH
-      final diff = oursTx != null ? (ftthAmt - oursAmt) : 0.0;
+      final oursPD = oursTx != null ? _sn(_f(oursTx, 'pageDeduction')) : 0.0;
+      final oursRev = oursTx != null ? _sn(_f(oursTx, 'revenue')) : 0.0;
+      final oursExp = oursTx != null ? _sn(_f(oursTx, 'expense')) : 0.0;
+      final oursTotal = oursPD + oursRev - oursExp; // الإجمالي = المستقطع + إيرادات - مصاريف
+      final diff = oursTx != null ? (ftthAmt - oursPD) : 0.0; // الفرق = FTTH - المستقطع
       final oursCollType = oursTx != null ? (_f(oursTx, 'collectionType') ?? '').toString() : '';
       final oursDateStr = oursTx != null ? _utcToBaghdad(_f(oursTx, 'activationDate')?.toString()) : '';
 
@@ -9390,10 +9494,10 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
         widget.subscriptionTypeLabel(tx.type), // [5] type
         widget.formatTxDate(tx.occuredAt), // [6] ftth date
         diff, // [7] diff
-        oursAmt, // [8] ours amount
-        oursPD, // [9] ours pageDeduction
-        oursTx != null ? _sn(_f(oursTx, 'revenue')) : 0.0, // [10] إيرادات
-        oursTx != null ? _sn(_f(oursTx, 'expense')) : 0.0, // [11] مصاريف
+        oursPD, // [8] المستقطع (pageDeduction)
+        oursTotal, // [9] المبلغ الإجمالي (المستقطع + إيرادات - مصاريف)
+        oursRev, // [10] إيرادات
+        oursExp, // [11] مصاريف
         oursCollType, // [12] collection type
         oursDateStr, // [13] ours date
         tx.zoneId, // [14] zone (FTTH)
@@ -9406,13 +9510,15 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       for (int i = 0; i < _oursTxs.length; i++) {
         if (usedOursIndices.contains(i)) continue;
         final tx = _oursTxs[i];
-        final planPrice = _sn(_f(tx, 'planPrice'));
-        final pd = planPrice;
+        final pd = _sn(_f(tx, 'pageDeduction'));
+        final rev = _sn(_f(tx, 'revenue'));
+        final exp = _sn(_f(tx, 'expense'));
+        final total = pd + rev - exp;
         data.add([
           2, 'oursOnly', (_f(tx, 'customerName') ?? '').toString(), '',
-          0.0, '', '', 0.0, planPrice, pd,
-          _sn(_f(tx, 'revenue')), // [10]
-          _sn(_f(tx, 'expense')), // [11]
+          0.0, '', '', 0.0, pd, total,
+          rev, // [10]
+          exp, // [11]
           (_f(tx, 'collectionType') ?? '').toString(), // [12]
           _utcToBaghdad((_f(tx, 'activationDate') ?? '').toString()), // [13]
           '', // [14] zone
@@ -9448,8 +9554,8 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
       final ftthAmt = (d[4] as num).toDouble();
       final diff = (d[7] as num).toDouble();
-      final oursAmt = (d[8] as num).toDouble();
-      final oursPD = (d[9] as num).toDouble();
+      final oursPD = (d[8] as num).toDouble();  // [8] = PageDeduction (المستقطع)
+      final oursAmt = (d[9] as num).toDouble(); // [9] = PlanPrice (المبلغ)
       final oursRevenue = (d[10] as num).toDouble();
       final oursExpense = (d[11] as num).toDouble();
       const ts = TextStyle(fontSize: 11, fontWeight: FontWeight.w700);

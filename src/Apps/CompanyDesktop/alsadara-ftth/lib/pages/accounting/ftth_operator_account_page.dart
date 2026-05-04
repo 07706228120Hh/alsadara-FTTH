@@ -707,7 +707,12 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       case 'phone': return tx['PhoneNumber']?.toString() ?? '';
       case 'subscriptionId': return tx['SubscriptionId']?.toString() ?? '';
       case 'plan': return tx['PlanName']?.toString() ?? '';
-      case 'amount': return (tx['PlanPrice'] ?? 0).toString();
+      case 'amount':
+        // الإجمالي = المستقطع + إيرادات - مصاريف
+        final pd = (tx['PageDeduction'] ?? 0).toDouble();
+        final rev = (tx['Revenue'] ?? 0).toDouble();
+        final exp = (tx['Expense'] ?? 0).toDouble();
+        return (pd + rev - exp).toStringAsFixed(0);
       case 'pageDeduction': return (tx['PageDeduction'] ?? 0).toString();
       case 'revenue': return (tx['Revenue'] ?? 0).toString();
       case 'expense': return (tx['Expense'] ?? 0).toString();
@@ -749,7 +754,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   dynamic _getSortValue(Map<String, dynamic> tx, String key) {
     switch (key) {
-      case 'amount': return (tx['PlanPrice'] ?? 0).toDouble();
+      case 'amount': return (tx['PageDeduction'] ?? 0).toDouble() + (tx['Revenue'] ?? 0).toDouble() - (tx['Expense'] ?? 0).toDouble();
       case 'pageDeduction': return (tx['PageDeduction'] ?? 0).toDouble();
       case 'revenue': return (tx['Revenue'] ?? 0).toDouble();
       case 'expense': return (tx['Expense'] ?? 0).toDouble();
@@ -847,8 +852,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       case 'plan':
         return DataCell(Center(child: Text(tx['PlanName'] ?? '-', style: TextStyle(fontSize: ar.small))));
       case 'amount':
+        final totalAmt = (tx['PageDeduction'] ?? 0).toDouble() + (tx['Revenue'] ?? 0).toDouble() - (tx['Expense'] ?? 0).toDouble();
         return DataCell(Center(child: Text(
-          _currencyFormat.format((tx['PlanPrice'] ?? 0).toDouble()),
+          _currencyFormat.format(totalAmt),
           style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w700, color: Colors.green.shade700),
         )));
       case 'pageDeduction':
