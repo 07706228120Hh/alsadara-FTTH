@@ -2316,10 +2316,11 @@ public static class ServiceRequestAccountingHelper
         if (parent == null)
             throw new Exception($"الحساب الأب {parentCode} غير موجود");
 
+        var pid = personId.ToString();
         var existing = await unitOfWork.Accounts.AsQueryable()
             .FirstOrDefaultAsync(a => a.ParentAccountId == parent.Id
                 && a.CompanyId == companyId
-                && a.Description == personId.ToString()
+                && (a.Description == pid || a.Name.Contains(personName))
                 && a.IsActive);
 
         if (existing != null)
@@ -2393,11 +2394,19 @@ public static class ServiceRequestAccountingHelper
             DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
             DateTimeKind.Utc);
         var year = now.Year;
-        // IgnoreQueryFilters لعدّ جميع القيود بما فيها المحذوفة ناعمياً لتجنب تعارض الأرقام
-        var count = await unitOfWork.JournalEntries.AsQueryable()
+        // استخدام MAX بدل COUNT لتجنب تعارض الأرقام عند حذف قيود
+        var maxEntry = await unitOfWork.JournalEntries.AsQueryable()
             .IgnoreQueryFilters()
-            .CountAsync(j => j.CompanyId == companyId && j.EntryDate.Year == year);
-        var entryNumber = $"JE-{year}-{(count + 1):D4}";
+            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
+            .Select(j => j.EntryNumber)
+            .MaxAsync();
+        int nextNum = 1;
+        if (maxEntry != null && maxEntry.StartsWith($"JE-{year}-"))
+        {
+            if (int.TryParse(maxEntry.Substring($"JE-{year}-".Length), out var maxNum))
+                nextNum = maxNum + 1;
+        }
+        var entryNumber = $"JE-{year}-{nextNum:D4}";
 
         var entryId = Guid.NewGuid();
         var entry = new JournalEntry

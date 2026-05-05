@@ -8994,6 +8994,71 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
   dynamic _f(Map<String, dynamic> m, String key) => widget.fieldReader(m, key);
   double _sn(dynamic v) => v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
 
+  Future<void> _exportToExcel(List<List<dynamic>> data, NumberFormat fmt) async {
+    try {
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['مقارنة المعاملات'];
+      excel.delete('Sheet1');
+
+      // Headers
+      final headers = ['#', 'الحالة', 'المشغل', 'العميل', 'الباقة FTTH', 'النوع FTTH', 'المنطقة FTTH',
+        'مبلغ FTTH', 'الفرق', 'المستقطع', 'المبلغ', 'الإيرادات', 'المصاريف', 'التحصيل',
+        'التاريخ خادمنا', 'التاريخ FTTH', 'الاشتراك', 'مزامنة'];
+
+      for (int c = 0; c < headers.length; c++) {
+        sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0)).value = xl.TextCellValue(headers[c]);
+      }
+
+      for (int i = 0; i < data.length; i++) {
+        final d = data[i];
+        final status = d[1] as String;
+        final statusAr = status == 'matched' ? 'مطابقة' : status == 'wrong' ? 'خاطئة' : status == 'missing' ? 'ناقصة' : 'عندنا فقط';
+        final ftthAmt = (d[4] as num).toDouble();
+        final diff = (d[7] as num).toDouble();
+        final oursPD = (d[8] as num).toDouble();
+        final oursAmt = (d[9] as num).toDouble();
+        final oursRev = (d[10] as num).toDouble();
+        final oursExp = (d[11] as num).toDouble();
+        final isSynced = d.length > 16 && d[16] == true;
+        final subscription = d.length > 18 ? d[18].toString() : '';
+        final operator = d.length > 17 ? d[17].toString() : '';
+
+        final vals = [i + 1, statusAr, operator, d[2], d[3], d[5], d[14],
+          ftthAmt, diff, oursPD, oursAmt, oursRev, oursExp, d[12], d[13], d[6],
+          subscription, isSynced ? 'نعم' : 'لا'];
+
+        for (int c = 0; c < vals.length; c++) {
+          final v = vals[c];
+          sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1)).value =
+              v is num ? xl.DoubleCellValue(v.toDouble()) : xl.TextCellValue(v.toString());
+        }
+      }
+
+      final bytes = excel.encode();
+      if (bytes == null) return;
+
+      final dir = await getTemporaryDirectory();
+      final fileName = 'مقارنة_${widget.row.operatorName}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(bytes);
+      await OpenFilex.open(file.path);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('تم التصدير: $fileName', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.green.shade700,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('خطأ في التصدير: $e', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
+
   /// مزامنة العمليات الناقصة المحددة
   Future<void> _syncSelectedMissing(List<List<dynamic>> rawData) async {
     if (_selectedMissing.isEmpty) return;
@@ -9719,6 +9784,17 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       ),
                     ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _exportToExcel(rawData, fmt),
+                    icon: const Icon(Icons.file_download, size: 16),
+                    label: Text('تصدير Excel', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                  ),
                 ],
               ),
             ),

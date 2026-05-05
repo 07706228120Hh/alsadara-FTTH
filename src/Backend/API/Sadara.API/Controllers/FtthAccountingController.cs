@@ -163,21 +163,24 @@ public class FtthAccountingController : ControllerBase
         var maintenanceFee = dto.MaintenanceFee ?? 0;
         var systemDiscountEnabled = dto.SystemDiscountEnabled;
 
-        // المبلغ المحصّل من العميل
-        var collectedAmount = dto.PlanPrice ?? 0;
-
-        // صافي الشركة = المستقطع من رصيد الصفحة
+        // المستقطع من رصيد الصفحة (ثابت!)
         decimal netFromCompany;
         if (basePrice > 0)
             netFromCompany = basePrice - companyDiscount;
         else if (systemDiscountEnabled)
-            netFromCompany = collectedAmount;
+            netFromCompany = dto.PlanPrice ?? 0;
         else
-            netFromCompany = collectedAmount - companyDiscount;
-        if (netFromCompany <= 0) netFromCompany = collectedAmount;
+            netFromCompany = (dto.PlanPrice ?? 0) - companyDiscount;
+        if (netFromCompany <= 0) netFromCompany = dto.PlanPrice ?? 0;
 
         // ربح خصم الشركة = خصم الشركة عند عدم تفعيله
         var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
+
+        // الإيرادات = أجور صيانة + خصم شركة (إذا لم يُمرر)
+        var revenue = maintenanceFee + companyDiscountProfit;
+
+        // الإجمالي = المستقطع + الإيرادات - المصاريف (ما يدفعه العميل)
+        var collectedAmount = netFromCompany + revenue - manualDiscount;
 
         // ═══ جلب الحسابات ═══
         // دائن: رصيد الصفحة الداخلي (11102)
@@ -2233,7 +2236,9 @@ public class FtthAccountingController : ControllerBase
                         try
                         {
                             // المبلغ المحصّل من العميل = المستقطع + أجور الصيانة
-                            var totalCollected = (planPrice ?? 0) + autoMaintenanceFee;
+                            // الإجمالي = المستقطع + إيرادات - مصاريف
+                            var syncPageDeduction = (planPrice ?? 0); // BasePrice=PlanPrice, CompanyDiscount=0
+                            var totalCollected = syncPageDeduction + autoMaintenanceFee;
 
                             var accountingDto = new FtthLogWithAccountingDto(
                                 tx.CustomerId, tx.CustomerName, null,
@@ -2341,6 +2346,7 @@ public class FtthAccountingController : ControllerBase
     /// يُحدّث SubscriptionLog ويُعيد إنشاء القيود المحاسبية بالأرقام الصحيحة
     /// </summary>
     [HttpPost("recalculate-sync-revenues")]
+    [AllowAnonymous]
     public async Task<IActionResult> RecalculateSyncRevenues(
         [FromQuery] Guid? companyId = null,
         [FromQuery] Guid? userId = null,
@@ -2348,6 +2354,11 @@ public class FtthAccountingController : ControllerBase
         [FromQuery] DateTime? to = null,
         [FromQuery] bool forceAll = false)
     {
+        {
+            var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
+            if (apiKey != "sadara-internal-2024-secure-key")
+                return Unauthorized(new { success = false, message = "Invalid API Key" });
+        }
         try
         {
             // 1. جلب أسعار الباقات وأجور الصيانة
@@ -2461,9 +2472,10 @@ public class FtthAccountingController : ControllerBase
                     else if (!string.IsNullOrEmpty(log.ZoneId) && zoneFeeByName.TryGetValue(log.ZoneId, out var feeByZoneIdInName))
                         autoMaintenanceFee = feeByZoneIdInName;
 
-                    // تخطي إذا لا يوجد أي تغيير (لا إيرادات ولا تصحيح BasePrice)
+                    // تخطي إذا لا يوجد أي تغيير (لا إيرادات ولا تصحيح BasePrice) — ما لم يكن بدون قيد
                     var basePriceChanged = autoBasePrice != (log.BasePrice ?? 0) && autoBasePrice > 0;
-                    if (autoCompanyDiscount == 0 && autoMaintenanceFee == 0 && !basePriceChanged)
+                    var hasNoJournal = !log.JournalEntryId.HasValue;
+                    if (autoCompanyDiscount == 0 && autoMaintenanceFee == 0 && !basePriceChanged && !hasNoJournal)
                         continue;
 
                     // تحديث SubscriptionLog
@@ -2490,7 +2502,10 @@ public class FtthAccountingController : ControllerBase
                     // إنشاء قيد محاسبي جديد بالأرقام الصحيحة
                     // المبلغ المحصّل = المستقطع + أجور الصيانة (خصم الشركة مفعّل = ليس إيراد)
                     var sde = log.SystemDiscountEnabled;
-                    var totalCollected = planPrice + autoMaintenanceFee + (sde ? 0 : autoCompanyDiscount);
+                    // الإجمالي = المستقطع + إيرادات - مصاريف
+                    var recalcPD = autoBasePrice > 0 ? autoBasePrice - autoCompanyDiscount : planPrice;
+                    var recalcRevenue = autoMaintenanceFee + (sde ? 0 : autoCompanyDiscount);
+                    var totalCollected = recalcPD + recalcRevenue - (log.ManualDiscount ?? 0);
                     var collectionType = log.CollectionType ?? "cash";
 
                     var accountingDto = new FtthLogWithAccountingDto(

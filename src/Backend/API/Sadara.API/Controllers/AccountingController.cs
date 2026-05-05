@@ -4221,11 +4221,19 @@ public class AccountingController : ControllerBase
     private async Task<string> GenerateEntryNumber(Guid companyId)
     {
         var year = DateTime.UtcNow.Year;
-        // IgnoreQueryFilters لعدّ جميع القيود بما فيها المحذوفة ناعمياً لتجنب تعارض الأرقام
-        var count = await _unitOfWork.JournalEntries.AsQueryable()
+        var prefix = $"JE-{year}-";
+        var maxEntry = await _unitOfWork.JournalEntries.AsQueryable()
             .IgnoreQueryFilters()
-            .CountAsync(j => j.CompanyId == companyId && j.EntryDate.Year == year);
-        return $"JE-{year}-{(count + 1):D4}";
+            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
+            .Select(j => j.EntryNumber)
+            .MaxAsync();
+        int nextNum = 1;
+        if (maxEntry != null && maxEntry.StartsWith(prefix))
+        {
+            if (int.TryParse(maxEntry.Substring(prefix.Length), out var maxNum))
+                nextNum = maxNum + 1;
+        }
+        return $"{prefix}{nextNum:D4}";
     }
 
     /// <summary>
