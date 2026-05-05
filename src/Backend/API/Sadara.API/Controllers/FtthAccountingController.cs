@@ -166,21 +166,15 @@ public class FtthAccountingController : ControllerBase
         // المبلغ المحصّل من العميل
         var collectedAmount = dto.PlanPrice ?? 0;
 
-        // صافي الشركة = السعر الأساسي - خصم الشركة (ثابت دائماً)
+        // صافي الشركة = المستقطع من رصيد الصفحة
         decimal netFromCompany;
         if (basePrice > 0)
-        {
             netFromCompany = basePrice - companyDiscount;
-        }
+        else if (systemDiscountEnabled)
+            netFromCompany = collectedAmount;
         else
-        {
-            if (systemDiscountEnabled)
-                netFromCompany = collectedAmount + manualDiscount - maintenanceFee;
-            else
-                netFromCompany = collectedAmount + manualDiscount - maintenanceFee - companyDiscount;
-
-            if (netFromCompany <= 0) netFromCompany = collectedAmount;
-        }
+            netFromCompany = collectedAmount - companyDiscount;
+        if (netFromCompany <= 0) netFromCompany = collectedAmount;
 
         // ربح خصم الشركة = خصم الشركة عند عدم تفعيله
         var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
@@ -194,32 +188,20 @@ public class FtthAccountingController : ControllerBase
             return null;
         }
 
-        // دائن: إيراد صيانة (4110)
-        Account? maintenanceRevenueAccount = null;
-        if (maintenanceFee > 0)
-        {
-            maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
-            if (maintenanceRevenueAccount == null)
-                _logger.LogWarning("حساب إيراد الصيانة 4110 غير موجود — سيتم تجاهل رسوم الصيانة في القيد");
-        }
+        // دائن: إيراد صيانة (4110) — دائماً نجلب الحساب حتى لو القيمة 0 (لتسهيل التعديل لاحقاً)
+        var maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
+        if (maintenanceRevenueAccount == null)
+            _logger.LogWarning("حساب إيراد الصيانة 4110 غير موجود — سيتم تجاهل رسوم الصيانة في القيد");
 
         // دائن: إيراد خصم الشركة (4120)
-        Account? discountRevenueAccount = null;
-        if (companyDiscountProfit > 0)
-        {
-            discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);
-            if (discountRevenueAccount == null)
-                _logger.LogWarning("حساب إيراد خصم الشركة 4120 غير موجود — سيتم تجاهل ربح الخصم في القيد");
-        }
+        var discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);
+        if (discountRevenueAccount == null)
+            _logger.LogWarning("حساب إيراد خصم الشركة 4120 غير موجود — سيتم تجاهل ربح الخصم في القيد");
 
         // مدين: مصاريف عروض (5110)
-        Account? promotionExpenseAccount = null;
-        if (manualDiscount > 0)
-        {
-            promotionExpenseAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId);
-            if (promotionExpenseAccount == null)
-                _logger.LogWarning("حساب مصاريف العروض 5110 غير موجود — سيتم تجاهل الخصم الاختياري في القيد");
-        }
+        var promotionExpenseAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId);
+        if (promotionExpenseAccount == null)
+            _logger.LogWarning("حساب مصاريف العروض 5110 غير موجود — سيتم تجاهل الخصم الاختياري في القيد");
 
         // ═══ تحديد حساب التحصيل (الطرف المدين الرئيسي) ═══
         Account debitAccount;
@@ -326,20 +308,20 @@ public class FtthAccountingController : ControllerBase
         if (collectedAmount > 0)
             lines.Add((debitAccount.Id, collectedAmount, 0, $"{debitAccount.Name} - {opType} {planName}"));
 
-        // مدين: مصاريف عروض (الخصم الاختياري)
-        if (manualDiscount > 0 && promotionExpenseAccount != null)
+        // مدين: مصاريف عروض (الخصم الاختياري) — دائماً (حتى لو 0) لتسهيل التعديل لاحقاً
+        if (promotionExpenseAccount != null)
             lines.Add((promotionExpenseAccount.Id, manualDiscount, 0, $"خصم اختياري - {customerName}"));
 
         // دائن: رصيد الصفحة (صافي الشركة)
         if (netFromCompany > 0)
             lines.Add((pageBalanceAccount.Id, 0, netFromCompany, $"خصم من رصيد الصفحة - {opType} {planName}"));
 
-        // دائن: إيراد صيانة
-        if (maintenanceFee > 0 && maintenanceRevenueAccount != null)
+        // دائن: إيراد صيانة — دائماً (حتى لو 0) لتسهيل التعديل لاحقاً
+        if (maintenanceRevenueAccount != null)
             lines.Add((maintenanceRevenueAccount.Id, 0, maintenanceFee, $"إيراد صيانة - {customerName}"));
 
-        // دائن: إيراد خصم الشركة (ربح عدم تمرير الخصم)
-        if (companyDiscountProfit > 0 && discountRevenueAccount != null)
+        // دائن: إيراد خصم الشركة — دائماً (حتى لو 0) لتسهيل التعديل لاحقاً
+        if (discountRevenueAccount != null)
             lines.Add((discountRevenueAccount.Id, 0, companyDiscountProfit, $"إيراد خصم الشركة - {customerName}"));
 
         if (lines.Count < 2)
@@ -435,7 +417,11 @@ public class FtthAccountingController : ControllerBase
             // حساب المستقطع لكل عملية (السعر - خصم الشركة)
             // المستقطع = السعر - خصم الشركة (دائماً)
             decimal calcPageDeduction(Sadara.Domain.Entities.SubscriptionLog l) =>
-                ((l.BasePrice ?? 0) > 0 ? (l.BasePrice ?? 0) : (l.PlanPrice ?? 0)) - (l.CompanyDiscount ?? 0);
+                (l.BasePrice ?? 0) > 0
+                    ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
+                    : l.SystemDiscountEnabled
+                        ? (l.PlanPrice ?? 0)
+                        : (l.PlanPrice ?? 0) - (l.CompanyDiscount ?? 0);
 
             // الإجمالي لكل عملية = المستقطع + إيرادات - مصاريف
             decimal calcTotal(Sadara.Domain.Entities.SubscriptionLog l) =>
@@ -569,8 +555,12 @@ public class FtthAccountingController : ControllerBase
                         l.ManualDiscount,
                         l.MaintenanceFee,
                         l.SystemDiscountEnabled,
-                        // المستقطع = السعر - خصم الشركة (دائماً، بغض النظر عن SystemDiscountEnabled)
-                        PageDeduction = ((l.BasePrice ?? 0) > 0 ? (l.BasePrice ?? 0) : (l.PlanPrice ?? 0)) - (l.CompanyDiscount ?? 0),
+                        // المستقطع: BasePrice>0 → BasePrice-CompanyDiscount، وإلا خصم مفعّل → PlanPrice، وإلا → PlanPrice-CompanyDiscount
+                        PageDeduction = (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
+                            : l.SystemDiscountEnabled
+                                ? (l.PlanPrice ?? 0)
+                                : (l.PlanPrice ?? 0) - (l.CompanyDiscount ?? 0),
                         Revenue = (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0)),
                         Expense = l.ManualDiscount ?? 0,
                         CollectedAmount = (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0))
@@ -686,9 +676,13 @@ public class FtthAccountingController : ControllerBase
                     TotalMaintenanceFee = g.Sum(l => l.MaintenanceFee ?? 0),
                     TotalManualDiscount = g.Sum(l => l.ManualDiscount ?? 0),
                     TotalCompanyDiscountProfit = g.Where(l => !l.SystemDiscountEnabled).Sum(l => l.CompanyDiscount ?? 0),
-                    // المستقطع = السعر - خصم الشركة (دائماً، بغض النظر عن SystemDiscountEnabled)
+                    // المستقطع: BasePrice>0 → BasePrice-CompanyDiscount، وإلا خصم مفعّل → PlanPrice، وإلا → PlanPrice-CompanyDiscount
                     PageDeduction = g.Sum(l =>
-                        ((l.BasePrice ?? 0) > 0 ? (l.BasePrice ?? 0) : (l.PlanPrice ?? 0)) - (l.CompanyDiscount ?? 0)
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
+                            : l.SystemDiscountEnabled
+                                ? (l.PlanPrice ?? 0)
+                                : (l.PlanPrice ?? 0) - (l.CompanyDiscount ?? 0)
                     )
                 })
                 .ToListAsync();
@@ -1393,13 +1387,14 @@ public class FtthAccountingController : ControllerBase
                         var collectedAmount = log.PlanPrice ?? 0;
                         var systemDiscountEnabled = log.SystemDiscountEnabled;
 
+                        // صافي الشركة = المستقطع من رصيد الصفحة
                         decimal netFromCompany;
                         if (basePrice > 0)
                             netFromCompany = basePrice - companyDiscount;
                         else if (systemDiscountEnabled)
-                            netFromCompany = collectedAmount + manualDiscount - maintenanceFee;
+                            netFromCompany = collectedAmount;
                         else
-                            netFromCompany = collectedAmount + manualDiscount - maintenanceFee - companyDiscount;
+                            netFromCompany = collectedAmount - companyDiscount;
                         if (netFromCompany <= 0) netFromCompany = collectedAmount;
 
                         var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
@@ -1459,8 +1454,7 @@ public class FtthAccountingController : ControllerBase
                         if (debitAcct != null)
                             newLines.Add((debitAcct.Id, collectedAmount, 0, $"{log.CustomerName} - {collType}"));
 
-                        // مدين: خصم يدوي (مصاريف عروض)
-                        if (manualDiscount > 0)
+                        // مدين: خصم يدوي (مصاريف عروض) — دائماً حتى لو 0
                         {
                             var promoAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId);
                             if (promoAcct != null)
@@ -1472,16 +1466,14 @@ public class FtthAccountingController : ControllerBase
                         if (pageAcct != null && netFromCompany > 0)
                             newLines.Add((pageAcct.Id, 0, netFromCompany, $"خصم من رصيد الصفحة - {log.PlanName}"));
 
-                        // دائن: إيراد صيانة
-                        if (maintenanceFee > 0)
+                        // دائن: إيراد صيانة — دائماً حتى لو 0
                         {
                             var maintAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
                             if (maintAcct != null)
                                 newLines.Add((maintAcct.Id, 0, maintenanceFee, $"إيراد صيانة - {log.CustomerName}"));
                         }
 
-                        // دائن: إيراد خصم الشركة
-                        if (companyDiscountProfit > 0)
+                        // دائن: إيراد خصم الشركة — دائماً حتى لو 0
                         {
                             var discAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);
                             if (discAcct != null)
@@ -1921,8 +1913,12 @@ public class FtthAccountingController : ControllerBase
             var keys = fingerprints.Select(f =>
             {
                 var cid = f.CustomerId!.Trim();
-                // المستقطع = السعر - خصم الشركة (دائماً، بغض النظر عن SystemDiscountEnabled)
-                var pageDeduction = ((f.BasePrice ?? 0) > 0 ? (f.BasePrice ?? 0) : (f.PlanPrice ?? 0)) - (f.CompanyDiscount ?? 0);
+                // المستقطع: BasePrice>0 → BasePrice-CompanyDiscount، وإلا خصم مفعّل → PlanPrice، وإلا → PlanPrice-CompanyDiscount
+                var pageDeduction = (f.BasePrice ?? 0) > 0
+                    ? (f.BasePrice ?? 0) - (f.CompanyDiscount ?? 0)
+                    : f.SystemDiscountEnabled
+                        ? (f.PlanPrice ?? 0)
+                        : (f.PlanPrice ?? 0) - (f.CompanyDiscount ?? 0);
                 var price = (int)pageDeduction;
                 // تحويل التاريخ من UTC إلى توقيت بغداد (+3) ليطابق تاريخ FTTH
                 var date = f.ActivationDate.HasValue
@@ -2221,9 +2217,9 @@ public class FtthAccountingController : ControllerBase
                         CurrentStatus = "Active",
                         IsReconciled = true,
                         ReconciliationNotes = "مزامنة تلقائية من FTTH",
-                        // إيرادات محسوبة تلقائياً — BasePrice = السعر الأساسي من جدول الأسعار
-                        BasePrice = autoBasePrice > 0 ? autoBasePrice : planPrice,
-                        CompanyDiscount = autoCompanyDiscount > 0 ? autoCompanyDiscount : null,
+                        // المستقطع = مبلغ FTTH بالضبط (بدون طرح خصم الشركة)
+                        BasePrice = planPrice,
+                        CompanyDiscount = 0,
                         MaintenanceFee = autoMaintenanceFee > 0 ? autoMaintenanceFee : null,
                     };
 
@@ -2241,7 +2237,7 @@ public class FtthAccountingController : ControllerBase
 
                             var accountingDto = new FtthLogWithAccountingDto(
                                 tx.CustomerId, tx.CustomerName, null,
-                                tx.SubscriptionId, tx.PlanName, totalCollected,   // PlanPrice = ما يدفعه العميل كاملاً
+                                tx.SubscriptionId, tx.PlanName, (planPrice ?? 0) + autoMaintenanceFee,
                                 null, null, null,
                                 tx.DeviceUsername, tx.OperationType, tx.CreatedBy,
                                 tx.OccuredAt, null, null,
@@ -2254,11 +2250,11 @@ public class FtthAccountingController : ControllerBase
                                 null, null,
                                 collectionType, tx.FtthTransactionId, null,
                                 null, null,
-                                autoBasePrice > 0 ? autoBasePrice : planPrice,    // BasePrice = سعر الباقة (من جدول الأسعار)
-                                autoCompanyDiscount,                               // خصم الشركة (معلومات فقط)
+                                planPrice,                                         // BasePrice = مبلغ FTTH بالضبط
+                                0,                                                 // CompanyDiscount = 0 (المستقطع = FTTH)
                                 0,                                                 // ManualDiscount يبقى يدوي فقط
                                 autoMaintenanceFee,                                // أجور الصيانة (إيراد)
-                                true);                                             // SystemDiscountEnabled=true (الخصم مفعّل = ممرَّر للعميل = ليس إيراد)
+                                true);                                             // SystemDiscountEnabled=true
 
                             var jeId = await CreateAccountingEntry(log, accountingDto);
                             if (jeId.HasValue)
@@ -2762,10 +2758,15 @@ public class FtthAccountingController : ControllerBase
                 (operatorAccount.Id, 0, dto.Amount, $"تسليم نقد من صندوق {user.FullName}")
             };
 
+            // تاريخ القيد: من الطلب أو اليوم
+            DateTime? entryDate = null;
+            if (!string.IsNullOrEmpty(dto.Date) && DateTime.TryParse(dto.Date, out var parsed))
+                entryDate = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+
             await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
                 _unitOfWork, dto.CompanyId, dto.OperatorUserId,
                 description, JournalReferenceType.OperatorCashDelivery,
-                dto.OperatorUserId.ToString(), lines);
+                dto.OperatorUserId.ToString(), lines, entryDate);
 
             await _unitOfWork.SaveChangesAsync();
 
@@ -3536,7 +3537,8 @@ public record QuickDeliverDto(
     Guid OperatorUserId,
     decimal Amount,
     Guid CompanyId,
-    string? Notes
+    string? Notes,
+    string? Date = null
 );
 
 public record QuickCollectDto(

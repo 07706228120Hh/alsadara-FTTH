@@ -1802,6 +1802,14 @@ public class InternalDataController : ControllerBase
                 l.FatInfo,
                 l.FdtInfo,
                 l.UserId,
+                l.BasePrice,
+                l.CompanyDiscount,
+                l.ManualDiscount,
+                l.MaintenanceFee,
+                l.SystemDiscountEnabled,
+                l.IsReconciled,
+                l.JournalEntryId,
+                l.FtthTransactionId,
             })
             .ToListAsync();
 
@@ -1827,6 +1835,17 @@ public class InternalDataController : ControllerBase
             l.TechnicianName, l.LinkedTechnicianId, l.LinkedAgentId,
             l.SubscriptionNotes, l.FbgInfo, l.FatInfo, l.FdtInfo,
             l.UserId,
+            l.BasePrice, l.CompanyDiscount, l.ManualDiscount,
+            l.MaintenanceFee, l.SystemDiscountEnabled,
+            l.IsReconciled, l.JournalEntryId, l.FtthTransactionId,
+            // حقول مالية محسوبة (نفس منطق FtthAccountingController)
+            PageDeduction = (l.BasePrice ?? 0) > 0
+                ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
+                : l.SystemDiscountEnabled
+                    ? (l.PlanPrice ?? 0)
+                    : (l.PlanPrice ?? 0) - (l.CompanyDiscount ?? 0),
+            Revenue = (l.MaintenanceFee ?? 0) + (l.SystemDiscountEnabled ? 0 : (l.CompanyDiscount ?? 0)),
+            Expense = l.ManualDiscount ?? 0,
             FtthUsername = l.UserId.HasValue && userLookup.ContainsKey(l.UserId.Value)
                 ? userLookup[l.UserId.Value] : ""
         });
@@ -1863,13 +1882,26 @@ public class InternalDataController : ControllerBase
         if (request.TryGetProperty("ActivatedBy", out var pab) && pab.ValueKind == JsonValueKind.String)
             log.ActivatedBy = pab.GetString();
         if (request.TryGetProperty("PlanPrice", out var ppr) && ppr.ValueKind == JsonValueKind.Number)
+        {
             log.PlanPrice = ppr.GetDecimal();
+            // تحديث BasePrice أيضاً ليطابق المستقطع الجديد
+            log.BasePrice = ppr.GetDecimal();
+            log.CompanyDiscount = 0;
+        }
         if (request.TryGetProperty("CollectionType", out var pct) && pct.ValueKind == JsonValueKind.String)
             log.CollectionType = pct.GetString();
         if (request.TryGetProperty("TechnicianName", out var ptn) && ptn.ValueKind == JsonValueKind.String)
             log.TechnicianName = ptn.GetString();
         if (request.TryGetProperty("PaymentMethod", out var ppm) && ppm.ValueKind == JsonValueKind.String)
             log.PaymentMethod = ppm.GetString();
+        if (request.TryGetProperty("ManualDiscount", out var pmd) && pmd.ValueKind == JsonValueKind.Number)
+            log.ManualDiscount = pmd.GetDecimal();
+        if (request.TryGetProperty("MaintenanceFee", out var pmf) && pmf.ValueKind == JsonValueKind.Number)
+            log.MaintenanceFee = pmf.GetDecimal();
+        if (request.TryGetProperty("PhoneNumber", out var ppn) && ppn.ValueKind == JsonValueKind.String)
+            log.PhoneNumber = ppn.GetString();
+        if (request.TryGetProperty("CommitmentPeriod", out var pcp) && pcp.ValueKind == JsonValueKind.Number)
+            log.CommitmentPeriod = pcp.GetInt32();
 
         // ═══ تحديث الفني/الوكيل المرتبط + تعديل القيد المحاسبي ═══
         Guid? newLinkedTechnicianId = null;

@@ -18,7 +18,6 @@ import '../../theme/accounting_theme.dart';
 import '../../permissions/permission_manager.dart';
 import '../../theme/accounting_responsive.dart';
 import 'client_accounts_page.dart';
-import 'ftth_operator_account_page.dart';
 import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
 
@@ -3968,7 +3967,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                             child: Text('$totalCnt',
                                 style: TextStyle(
                                     fontSize: context.accR.small,
-                                    fontWeight: FontWeight.w600)))),
+                                    fontWeight: FontWeight.w600))),
+                            onTap: () => _openOperatorAccount(op)),
                         // المستقطع من الصفحة
                         DataCell(Center(child: Text(
                           _currencyFormat.format((op['pageDeduction'] ?? 0).toDouble()),
@@ -4010,7 +4010,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: purchaseCnt > 0
                                   ? Colors.green.shade700
                                   : Colors.grey.shade400),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, operationType: 'purchase')),
                         // تجديد
                         DataCell(Center(
                             child: Text(
@@ -4021,7 +4021,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: renewalCnt > 0
                                   ? Colors.blue.shade700
                                   : Colors.grey.shade400),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, operationType: 'renewal')),
                         // تغيير
                         DataCell(Center(
                             child: Text(
@@ -4032,7 +4032,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: changeCnt > 0
                                   ? Colors.orange.shade700
                                   : Colors.grey.shade400),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, operationType: 'change')),
                         // نقد
                         DataCell(Center(
                             child: Text(
@@ -4042,7 +4042,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.green.shade700),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, collectionType: 'cash')),
                         // آجل
                         DataCell(Center(
                             child: Text(
@@ -4052,7 +4052,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.orange.shade700),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, collectionType: 'credit')),
                         // ماستر
                         DataCell(Center(
                             child: Text(
@@ -4062,7 +4062,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.purple.shade700),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, collectionType: 'master')),
                         // وكيل
                         DataCell(Center(
                             child: Text(
@@ -4072,7 +4072,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.blue.shade700),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, collectionType: 'agent')),
                         // فني
                         DataCell(Center(
                             child: Text(
@@ -4082,7 +4082,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.teal.shade700),
-                        ))),
+                        )), onTap: () => _openOperatorAccount(op, collectionType: 'technician')),
                         // المسلّم
                         DataCell(Center(
                             child: Text(
@@ -4491,24 +4491,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     });
   }
 
-  void _openOperatorAccount(Map<String, dynamic> op) {
-    final userId = op['userId']?.toString();
-    if (userId == null || userId.isEmpty) {
-      _showUnassignedLogsInfo(op);
-      return;
-    }
+  void _openOperatorAccount(Map<String, dynamic> op, {String? collectionType, String? operationType}) {
+    final ftthUser = (op['ftthUsername'] ?? '').toString();
+    final operatorName = op['operatorName']?.toString() ?? 'مشغل';
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => FtthOperatorAccountPage(
-          userId: userId,
-          operatorName: op['operatorName'] ?? 'مشغل',
+        builder: (_) => _AllOperationsPage(
           companyId: _companyId,
-          initialFromDate: _fromDate,
-          initialToDate: _toDate,
-          initialDateLabel: _dateLabel,
-          isTechnician: op['isTechnician'] == true,
+          fromDate: _fromDate,
+          toDate: _toDate,
+          operators: _oursOperators.map((o) => (o['ftthUsername'] ?? '').toString()).where((s) => s.isNotEmpty).toList(),
+          filterOperatorName: operatorName,
+          filterOperatorFtthUsername: ftthUser,
+          filterCollectionType: collectionType,
+          filterOperationType: operationType,
         ),
       ),
     );
@@ -4839,10 +4837,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final cashAmount = (op['cashAmount'] ?? 0).toDouble();
     final amountController = TextEditingController();
     final notesController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
         title: Row(
           children: [
             Icon(Icons.payments, color: Colors.green.shade700),
@@ -4887,6 +4887,30 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   prefixIcon: Icon(Icons.note),
                 ),
               ),
+              SizedBox(height: context.accR.spaceS),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2024),
+                    lastDate: DateTime.now().add(const Duration(days: 1)),
+                    locale: const Locale('ar'),
+                  );
+                  if (picked != null) setDlgState(() => selectedDate = picked);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'التاريخ',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
+                    style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -4903,7 +4927,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 backgroundColor: Colors.green, foregroundColor: Colors.white),
           ),
         ],
-      ),
+      )),
     );
 
     if (result != true) return;
@@ -4925,6 +4949,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         amount: amount,
         companyId: _companyId,
         notes: notesController.text.isEmpty ? null : notesController.text,
+        date: selectedDate,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -8144,6 +8169,48 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 32),
                   ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.list_alt, size: 16),
+                  label: Text('كل', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1),
+                  onPressed: () {
+                    // دمج كل المشغلين في ComparisonRow واحد
+                    final allMatched = <_FtthTransaction>[];
+                    final allWrong = <_WrongTransaction>[];
+                    final allMissing = <_FtthTransaction>[];
+                    int totalOurs = 0, totalFtth = 0;
+                    double totalOursAmt = 0, totalFtthAmt = 0;
+                    for (final r in _comparisonRows) {
+                      allMatched.addAll(r.matchedTransactions);
+                      allWrong.addAll(r.wrongTransactions);
+                      allMissing.addAll(r.ftthTransactions);
+                      totalOurs += r.oursCount;
+                      totalFtth += r.ftthCount;
+                      totalOursAmt += r.oursAmount;
+                      totalFtthAmt += r.ftthAmount;
+                    }
+                    final combinedRow = _ComparisonRow(
+                      operatorName: 'كل المشغلين',
+                      oursCount: totalOurs,
+                      oursAmount: totalOursAmt,
+                      ftthCount: totalFtth,
+                      ftthAmount: totalFtthAmt,
+                      matchedCount: allMatched.length,
+                      oursOnlyCount: 0,
+                      ftthOnlyCount: 0,
+                      ftthTransactions: allMissing,
+                      wrongTransactions: allWrong,
+                      matchedTransactions: allMatched,
+                    );
+                    _showOperatorComparisonDetail(combinedRow);
+                  },
+                ),
                 Spacer(),
                 Text('مقارنة المشغلين (${_comparisonRows.length})',
                     style: GoogleFonts.cairo(
@@ -8841,6 +8908,9 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
   bool _sortAsc = true;
   String _filter = 'all';
   bool _isMerging = false;
+  // تحديد العمليات الناقصة للمزامنة
+  final Set<int> _selectedMissing = {};
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -8850,7 +8920,8 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
   void _loadOurData() {
     if (widget.row.operatorUserId == null) {
-      setState(() => _oursLoading = false);
+      // كل المشغلين — نحمل من internal API
+      _loadAllOurData();
       return;
     }
     AccountingService.instance.getOperatorSummary(
@@ -8868,8 +8939,124 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     }).catchError((_) { if (mounted) setState(() => _oursLoading = false); });
   }
 
+  Future<void> _loadAllOurData() async {
+    try {
+      String url = 'https://api.ramzalsadara.tech/api/internal/subscriptionlogs?pageSize=2000';
+      if (widget._companyId.isNotEmpty) url += '&companyId=${widget._companyId}';
+      if (widget.fromDate != null) url += '&fromDate=${widget.fromDate!.toIso8601String().split('T')[0]}';
+      if (widget.toDate != null) url += '&toDate=${widget.toDate!.toIso8601String().split('T')[0]}';
+      final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'});
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final List<dynamic> items = body is List ? body : ((body['data'] ?? body['items'] ?? []) as List<dynamic>);
+        // تحويل إلى نفس بنية operator-summary transactions
+        final txList = items.map<Map<String, dynamic>>((item) {
+          final planPrice = (item['PlanPrice'] as num?)?.toDouble() ?? 0;
+          final basePrice = (item['BasePrice'] as num?)?.toDouble() ?? 0;
+          final companyDiscount = (item['CompanyDiscount'] as num?)?.toDouble() ?? 0;
+          final manualDiscount = (item['ManualDiscount'] as num?)?.toDouble() ?? 0;
+          final maintenanceFee = (item['MaintenanceFee'] as num?)?.toDouble() ?? 0;
+          final sysDiscount = item['SystemDiscountEnabled'] == true;
+          final pd = basePrice > 0 ? basePrice - companyDiscount : sysDiscount ? planPrice : planPrice - companyDiscount;
+          final rev = maintenanceFee + (sysDiscount ? 0 : companyDiscount);
+          final exp = manualDiscount;
+          return {
+            'Id': item['Id'], 'id': item['Id'],
+            'CustomerId': item['CustomerId'], 'customerId': item['CustomerId'],
+            'CustomerName': item['CustomerName'], 'customerName': item['CustomerName'],
+            'PhoneNumber': item['PhoneNumber'],
+            'SubscriptionId': item['SubscriptionId'],
+            'PlanName': item['PlanName'], 'planName': item['PlanName'],
+            'PlanPrice': planPrice,
+            'PageDeduction': pd, 'pageDeduction': pd,
+            'Revenue': rev, 'revenue': rev,
+            'Expense': exp, 'expense': exp,
+            'CollectionType': item['CollectionType'], 'collectionType': item['CollectionType'],
+            'ActivatedBy': item['ActivatedBy'], 'activatedBy': item['ActivatedBy'],
+            'ActivationDate': item['ActivationDate'], 'activationDate': item['ActivationDate'],
+            'OperationType': item['OperationType'],
+            'FtthTransactionId': item['FtthTransactionId'] ?? '',
+            'ftthTransactionId': item['FtthTransactionId'] ?? '',
+            'CompanyDiscount': companyDiscount, 'companyDiscount': companyDiscount,
+            'SystemDiscountEnabled': sysDiscount, 'systemDiscountEnabled': sysDiscount,
+            'IsReconciled': item['IsReconciled'] == true, 'isReconciled': item['IsReconciled'] == true,
+          };
+        }).toList();
+        if (mounted) setState(() { _oursTxs = txList; _oursLoading = false; });
+      } else {
+        if (mounted) setState(() => _oursLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _oursLoading = false);
+    }
+  }
+
   dynamic _f(Map<String, dynamic> m, String key) => widget.fieldReader(m, key);
   double _sn(dynamic v) => v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
+
+  /// مزامنة العمليات الناقصة المحددة
+  Future<void> _syncSelectedMissing(List<List<dynamic>> rawData) async {
+    if (_selectedMissing.isEmpty) return;
+    setState(() => _isSyncing = true);
+    try {
+      // جمع بيانات FTTH transactions المحددة
+      final txsToSync = <Map<String, dynamic>>[];
+      for (final idx in _selectedMissing) {
+        if (idx >= rawData.length) continue;
+        final d = rawData[idx];
+        if (d[1] != 'missing') continue;
+        // إيجاد الـ _DetailTx الأصلي
+        final ftthTx = widget.ftthTxs.firstWhere(
+          (dt) => dt.tx.customerName == d[2] && dt.status == 'missing',
+          orElse: () => widget.ftthTxs[idx < widget.ftthTxs.length ? idx : 0],
+        );
+        final tx = ftthTx.tx;
+        txsToSync.add({
+          'ftthTransactionId': tx.id,
+          'customerId': tx.customerId,
+          'customerName': tx.customerName,
+          'subscriptionId': tx.subscriptionId,
+          'planName': tx.planName,
+          'amount': tx.amount.abs(),
+          'operationType': tx.type,
+          'createdBy': tx.createdBy,
+          'occuredAt': tx.occuredAt,
+          'zoneId': tx.zoneId,
+          'deviceUsername': tx.deviceUsername,
+          'paymentMethod': tx.paymentMethod,
+          'remainingBalance': tx.remainingBalance,
+          'startDate': tx.startsAt,
+          'endDate': tx.endsAt,
+          'commitmentPeriod': tx.planDuration,
+        });
+      }
+      if (txsToSync.isEmpty) {
+        if (mounted) setState(() => _isSyncing = false);
+        return;
+      }
+      final result = await AccountingService.instance.syncFtthTransactions(
+        transactions: txsToSync,
+        companyId: widget._companyId,
+      );
+      if (!mounted) return;
+      final saved = result['data']?['saved'] ?? result['saved'] ?? 0;
+      final failed = result['data']?['failed'] ?? result['failed'] ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('تمت المزامنة: $saved محفوظ${failed > 0 ? '، $failed فشل' : ''}', style: GoogleFonts.cairo()),
+        backgroundColor: saved > 0 ? Colors.green.shade700 : Colors.orange,
+        duration: const Duration(seconds: 4),
+      ));
+      _selectedMissing.clear();
+      _loadOurData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
   String _utcToBaghdad(String? dateRaw) {
     if (dateRaw == null || dateRaw.isEmpty) return '';
     final parsed = DateTime.tryParse(dateRaw);
@@ -8878,18 +9065,220 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     return '${b.hour.toString().padLeft(2, '0')}:${b.minute.toString().padLeft(2, '0')} ${b.month.toString().padLeft(2, '0')}/${b.day.toString().padLeft(2, '0')}';
   }
 
+  /// قراءة حقل من oursTx بغض النظر عن حالة الأحرف
+  dynamic _readField(Map<String, dynamic> tx, String key) {
+    return tx[key] ?? tx[key[0].toUpperCase() + key.substring(1)] ?? tx[key.toLowerCase()];
+  }
+
   void _openEditDialog(Map<String, dynamic> oursTx) {
-    final userId = widget.row.operatorUserId;
-    if (userId == null) return;
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => FtthOperatorAccountPage(
-        userId: userId,
-        operatorName: widget.row.operatorName,
-        companyId: widget._companyId,
-        initialFromDate: widget.fromDate,
-        initialToDate: widget.toDate,
+    final logId = (_readField(oursTx, 'id') ?? _readField(oursTx, 'Id'))?.toString();
+    if (logId == null || logId.isEmpty) return;
+
+    final pdCtrl = TextEditingController(text: (_sn(_f(oursTx, 'pageDeduction'))).toStringAsFixed(0));
+    final revCtrl = TextEditingController(text: (_sn(_f(oursTx, 'revenue'))).toStringAsFixed(0));
+    final expCtrl = TextEditingController(text: (_sn(_f(oursTx, 'expense'))).toStringAsFixed(0));
+    final phoneCtrl = TextEditingController(text: (_f(oursTx, 'phoneNumber') ?? '').toString());
+    var collType = (_f(oursTx, 'collectionType') ?? '').toString();
+    if (!['cash', 'credit', 'agent', 'master', 'technician'].contains(collType)) collType = 'cash';
+    final commitRaw = (_f(oursTx, 'commitmentPeriod') ?? 0);
+    var commitment = (commitRaw is num ? commitRaw.toInt() : int.tryParse(commitRaw.toString()) ?? 0);
+    if (![0, 1, 2, 3, 6, 12].contains(commitment)) commitment = 0;
+    final fmt = NumberFormat('#,###', 'ar');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) {
+          final pd = double.tryParse(pdCtrl.text.trim()) ?? 0;
+          final rev = double.tryParse(revCtrl.text.trim()) ?? 0;
+          final exp = double.tryParse(expCtrl.text.trim()) ?? 0;
+          final total = pd + rev - exp;
+
+          Widget field(String label, TextEditingController ctrl, {Color? color}) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(children: [
+                SizedBox(width: 80, child: Text(label, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600))),
+                const SizedBox(width: 8),
+                Expanded(child: TextField(
+                  controller: ctrl,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+                  onChanged: (_) => setDlg(() {}),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.teal.shade600, width: 2)),
+                  ),
+                )),
+              ]),
+            );
+          }
+
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              titlePadding: EdgeInsets.zero,
+              title: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF3498DB)]),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.edit, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(
+                    'تعديل: ${(_f(oursTx, 'customerName') ?? '-')}',
+                    style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  )),
+                ]),
+              ),
+              content: SizedBox(
+                width: 350,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // الإجمالي المحسوب
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.green.shade300),
+                      ),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Text('الإجمالي', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                        Text('${fmt.format(total)} د.ع', style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.green.shade800)),
+                      ]),
+                    ),
+                    field('المستقطع', pdCtrl),
+                    field('الإيرادات', revCtrl, color: Colors.green.shade700),
+                    field('المصاريف', expCtrl, color: Colors.red.shade700),
+                    field('الهاتف', phoneCtrl),
+                    const SizedBox(height: 8),
+                    // التحصيل
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(children: [
+                        SizedBox(width: 80, child: Text('التحصيل', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600))),
+                        const SizedBox(width: 8),
+                        Expanded(child: DropdownButtonFormField<String>(
+                          value: collType,
+                          isDense: true,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'cash', child: Text('نقد')),
+                            DropdownMenuItem(value: 'credit', child: Text('آجل')),
+                            DropdownMenuItem(value: 'agent', child: Text('وكيل')),
+                            DropdownMenuItem(value: 'master', child: Text('ماستر')),
+                            DropdownMenuItem(value: 'technician', child: Text('فني')),
+                          ],
+                          onChanged: (v) => setDlg(() => collType = v ?? collType),
+                        )),
+                      ]),
+                    ),
+                    // الالتزام
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(children: [
+                        SizedBox(width: 80, child: Text('الالتزام', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600))),
+                        const SizedBox(width: 8),
+                        Expanded(child: DropdownButtonFormField<int>(
+                          value: commitment,
+                          isDense: true,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 0, child: Text('بدون')),
+                            DropdownMenuItem(value: 1, child: Text('شهر')),
+                            DropdownMenuItem(value: 2, child: Text('شهران')),
+                            DropdownMenuItem(value: 3, child: Text('3 أشهر')),
+                            DropdownMenuItem(value: 6, child: Text('6 أشهر')),
+                            DropdownMenuItem(value: 12, child: Text('12 شهر')),
+                          ],
+                          onChanged: (v) => setDlg(() => commitment = v ?? commitment),
+                        )),
+                      ]),
+                    ),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600)),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2C3E50), foregroundColor: Colors.white),
+                  icon: const Icon(Icons.save, size: 16),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      final newPD = double.tryParse(pdCtrl.text.trim()) ?? 0;
+                      final newRev = double.tryParse(revCtrl.text.trim()) ?? 0;
+                      final newExp = double.tryParse(expCtrl.text.trim()) ?? 0;
+                      // حساب MaintenanceFee من Revenue
+                      final compDiscount = (_sn(_f(oursTx, 'companyDiscount'))).toDouble();
+                      final sysEnabled = _f(oursTx, 'systemDiscountEnabled') == true;
+                      final maintenanceFee = newRev - (sysEnabled ? 0 : compDiscount);
+
+                      final body = jsonEncode({
+                        'PlanPrice': newPD,
+                        'CollectionType': collType,
+                        'ManualDiscount': newExp,
+                        'MaintenanceFee': maintenanceFee > 0 ? maintenanceFee : 0,
+                        'PhoneNumber': phoneCtrl.text.trim(),
+                        'CommitmentPeriod': commitment,
+                      });
+                      final res = await http.put(
+                        Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+                        headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
+                        body: body,
+                      );
+                      if (!mounted) return;
+                      if (res.statusCode == 200 || res.statusCode == 204) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('تم الحفظ', style: GoogleFonts.cairo()),
+                          backgroundColor: Colors.green.shade700,
+                          duration: const Duration(seconds: 2),
+                        ));
+                        setState(() => _oursLoading = true);
+                        _loadOurData(); // إعادة تحميل البيانات
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('فشل: ${res.statusCode}', style: GoogleFonts.cairo()),
+                          backgroundColor: Colors.red,
+                        ));
+                      }
+                    } catch (e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('خطأ: $e', style: GoogleFonts.cairo()),
+                        backgroundColor: Colors.red,
+                      ));
+                    }
+                  },
+                  label: Text('حفظ', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        },
       ),
-    )).then((_) => _loadOurData()); // إعادة تحميل بعد العودة
+    );
   }
 
   Future<void> _fixBasePrices(_ComparisonRow row) async {
@@ -9201,12 +9590,26 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
   @override
   Widget build(BuildContext context) {
     final row = widget.row;
-    final total = row.matchedCount + row.oursOnlyCount + row.ftthOnlyCount;
-    final percent = total > 0 ? (row.matchedCount / total * 100).toStringAsFixed(0) : '0';
     final fmt = widget.currencyFormat;
 
     // بناء بيانات الصفوف
     var rawData = _buildSortableData();
+
+    // حساب الأعداد الحية من البيانات الحالية
+    int liveMatched = 0, liveWrong = 0, liveMissing = 0, liveOursOnly = 0, liveSynced = 0;
+    double liveOursAmount = 0;
+    for (final d in rawData) {
+      switch (d[1]) {
+        case 'matched': liveMatched++; break;
+        case 'wrong': liveWrong++; break;
+        case 'missing': liveMissing++; break;
+        case 'oursOnly': liveOursOnly++; break;
+      }
+      if (d.length > 16 && d[16] == true) liveSynced++;
+      liveOursAmount += (d[8] as num).toDouble(); // المستقطع
+    }
+    final liveTotal = liveMatched + liveMissing + liveWrong + liveOursOnly;
+    final percent = liveTotal > 0 ? (liveMatched / liveTotal * 100).toStringAsFixed(0) : '0';
 
     // كشف العملاء المكررين
     final nameCount = <String, int>{};
@@ -9220,6 +9623,8 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     // تصفية
     if (_filter == 'duplicate') {
       rawData = rawData.where((d) => duplicateNames.contains(d[2].toString().trim())).toList();
+    } else if (_filter == 'synced') {
+      rawData = rawData.where((d) => d.length > 16 && d[16] == true).toList();
     } else if (_filter != 'all') {
       rawData = rawData.where((d) => d[1] == _filter).toList();
     }
@@ -9247,26 +9652,20 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           backgroundColor: Colors.indigo.shade700,
           foregroundColor: Colors.white,
           actions: [
-            _filterChip('مطابقة', row.matchedCount, Colors.green, 'matched'),
-            _filterChip('خاطئة', row.wrongTransactions.length, Colors.orange, 'wrong'),
-            _filterChip('ناقصة', row.ftthTransactions.length, Colors.red, 'missing'),
-            _filterChip('عندنا فقط', row.oursOnlyCount, Colors.blue, 'oursOnly'),
+            _filterChip('مطابقة', liveMatched, Colors.green, 'matched'),
+            _filterChip('خاطئة', liveWrong, Colors.orange, 'wrong'),
+            _filterChip('ناقصة', liveMissing, Colors.red, 'missing'),
+            _filterChip('عندنا فقط', liveOursOnly, Colors.blue, 'oursOnly'),
+            _filterChip('مزامنة', liveSynced, Colors.cyan, 'synced'),
             _filterChip('مكرر', duplicateCount, Colors.purple, 'duplicate'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: InkWell(
-                onTap: () => setState(() => _filter = 'all'),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _filter == 'all' ? Colors.white : Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _filter == 'all' ? Colors.indigo : Colors.transparent, width: 2),
-                  ),
-                  child: Text('$percent%', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: int.parse(percent) == 100 ? Colors.green.shade700 : Colors.orange.shade700)),
-                ),
-              ),
+            _filterChip('الكل', liveTotal, Colors.indigo, 'all'),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                setState(() => _oursLoading = true);
+                _loadOurData();
+              },
+              tooltip: 'تحديث',
             ),
           ],
         ),
@@ -9280,16 +9679,17 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                 children: [
                   Icon(Icons.dns, size: 16, color: Colors.indigo),
                   const SizedBox(width: 4),
-                  Text('خادمنا: ${row.oursCount} عملية  ${fmt.format(row.oursAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo)),
+                  Text('خادمنا: ${liveTotal - liveMissing} عملية  ${fmt.format(liveOursAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo)),
                   const SizedBox(width: 24),
                   Icon(Icons.cloud, size: 16, color: Colors.teal),
                   const SizedBox(width: 4),
                   Text('FTTH: ${row.ftthCount} عملية  ${fmt.format(row.ftthAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.teal)),
                   const SizedBox(width: 24),
                   Builder(builder: (_) {
-                    final diff = row.oursAmount - row.ftthAmount;
+                    final liveFtthAmount = rawData.fold<double>(0, (s, d) => s + (d[4] as num).toDouble());
+                    final diff = liveOursAmount - liveFtthAmount;
                     return Text('الفرق: ${diff > 0 ? '+' : ''}${fmt.format(diff)}',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: diff == 0 ? Colors.green.shade700 : Colors.red.shade700));
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: diff.abs() < 1 ? Colors.green.shade700 : Colors.red.shade700));
                   }),
                   const Spacer(),
                   if (row.matchedTransactions.isNotEmpty || row.wrongTransactions.isNotEmpty)
@@ -9322,6 +9722,50 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                 ],
               ),
             ),
+            // شريط المزامنة — يظهر فقط عند تحديد عمليات ناقصة
+            if (_selectedMissing.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                color: Colors.red.shade50,
+                child: Row(children: [
+                  Icon(Icons.cloud_download, size: 18, color: Colors.teal.shade700),
+                  const SizedBox(width: 8),
+                  Text('محدد: ${_selectedMissing.length} عملية ناقصة', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red.shade700)),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isSyncing ? null : () => _syncSelectedMissing(rawData),
+                    icon: _isSyncing
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.sync, size: 16),
+                    label: Text(_isSyncing ? 'جاري المزامنة...' : 'مزامنة المحدد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.shade700, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => setState(() => _selectedMissing.clear()),
+                    child: Text('إلغاء التحديد', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600)),
+                  ),
+                  const Spacer(),
+                  // تحديد الكل
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        final missingIndices = <int>[];
+                        for (int i = 0; i < rawData.length; i++) {
+                          if (rawData[i][1] == 'missing') missingIndices.add(i);
+                        }
+                        if (_selectedMissing.length == missingIndices.length) {
+                          _selectedMissing.clear();
+                        } else {
+                          _selectedMissing.addAll(missingIndices);
+                        }
+                      });
+                    },
+                    icon: const Icon(Icons.select_all, size: 16),
+                    label: Text('تحديد الكل', style: GoogleFonts.cairo(fontSize: 11)),
+                  ),
+                ]),
+              ),
             // الجدول
             Expanded(
               child: _oursLoading
@@ -9401,8 +9845,10 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
         });
 
     return [
+      DataColumn(label: Center(child: Text('☐', style: TextStyle(fontSize: 11)))),
       col(0, Text('#')),
       col(1, _colH('الحالة', null)),
+      col(17, _colH('المشغل', null)),
       col(2, _colH('العميل', null)),
       col(3, _colH('الباقة', 'FTTH', Colors.teal)),
       col(5, _colH('النوع', 'FTTH', Colors.teal)),
@@ -9416,6 +9862,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       col(12, _colH('التحصيل', 'خادمنا', Colors.indigo)),
       col(13, _colH('التاريخ', 'خادمنا', Colors.indigo)),
       col(6, _colH('التاريخ', 'FTTH', Colors.teal)),
+      col(18, _colH('الاشتراك', 'FTTH', Colors.teal)),
       DataColumn(label: Center(child: Text('تعديل', style: TextStyle(fontSize: 11)))),
     ];
   }
@@ -9485,9 +9932,20 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       final oursCollType = oursTx != null ? (_f(oursTx, 'collectionType') ?? '').toString() : '';
       final oursDateStr = oursTx != null ? _utcToBaghdad(_f(oursTx, 'activationDate')?.toString()) : '';
 
+      // إعادة حساب الحالة بناءً على البيانات الحالية
+      final String recalcStatus;
+      if (oursTx == null) {
+        recalcStatus = 'missing';
+      } else if ((ftthAmt - oursPD).abs() < 1) {
+        recalcStatus = 'matched';
+      } else {
+        recalcStatus = 'wrong';
+      }
+
+      final isSynced = oursTx != null && (oursTx['IsReconciled'] == true || oursTx['isReconciled'] == true || _f(oursTx, 'isReconciled') == true);
       data.add([
-        sortOrder[d.status] ?? 3, // [0] sort priority
-        d.status, // [1] status
+        sortOrder[recalcStatus] ?? 3, // [0] sort priority
+        recalcStatus, // [1] status (محسوبة ديناميكياً)
         tx.customerName, // [2] customer
         tx.planName, // [3] plan
         ftthAmt, // [4] ftth amount
@@ -9502,6 +9960,21 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
         oursDateStr, // [13] ours date
         tx.zoneId, // [14] zone (FTTH)
         oursTx, // [15] بيانات عمليتنا الكاملة (للتعديل)
+        isSynced, // [16] هل تمت مزامنتها؟
+        oursTx != null ? (_f(oursTx, 'activatedBy') ?? '').toString() : tx.createdBy, // [17] المشغل
+        () { // [18] فترة الاشتراك بالأشهر
+          if (tx.startsAt.isEmpty || tx.endsAt.isEmpty) return '';
+          final s = DateTime.tryParse(tx.startsAt);
+          final e = DateTime.tryParse(tx.endsAt);
+          if (s == null || e == null) return '';
+          final days = e.difference(s).inDays;
+          final months = (days / 30).round();
+          if (months <= 0) return '$days يوم';
+          if (months == 1) return 'شهر';
+          if (months == 2) return 'شهران';
+          if (months <= 10) return '$months أشهر';
+          return '$months شهر';
+        }(),
       ]);
     }
 
@@ -9514,6 +9987,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
         final rev = _sn(_f(tx, 'revenue'));
         final exp = _sn(_f(tx, 'expense'));
         final total = pd + rev - exp;
+        final isSynced = tx['IsReconciled'] == true || tx['isReconciled'] == true || _f(tx, 'isReconciled') == true;
         data.add([
           2, 'oursOnly', (_f(tx, 'customerName') ?? '').toString(), '',
           0.0, '', '', 0.0, pd, total,
@@ -9523,6 +9997,9 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           _utcToBaghdad((_f(tx, 'activationDate') ?? '').toString()), // [13]
           '', // [14] zone
           tx, // [15] بيانات عمليتنا الكاملة (للتعديل)
+          isSynced, // [16] هل تمت مزامنتها؟
+          (_f(tx, 'activatedBy') ?? '').toString(), // [17] المشغل
+          '', // [18] فترة الاشتراك
         ]);
       }
     }
@@ -9574,15 +10051,37 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       }
       final collType = collAr(d[12].toString());
 
-      // ترتيب الأعمدة: #, حالة, عميل, باقة, نوع, منطقة, مبلغFTTH, فرق, مبلغنا, مستقطع, إيرادات, مصاريف, تحصيل, تاريخنا, تاريخFTTH
+      // ترتيب الأعمدة: ☐, #, حالة, عميل, باقة, نوع, منطقة, مبلغFTTH, فرق, مبلغنا, مستقطع, إيرادات, مصاريف, تحصيل, تاريخنا, تاريخFTTH
       return DataRow(
         color: WidgetStateProperty.all(rowBg),
         cells: [
+          // checkbox للناقصة فقط
+          DataCell(status == 'missing'
+              ? Center(child: Checkbox(
+                  value: _selectedMissing.contains(i),
+                  onChanged: (_) => setState(() {
+                    if (_selectedMissing.contains(i)) _selectedMissing.remove(i);
+                    else _selectedMissing.add(i);
+                  }),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  activeColor: Colors.teal.shade700,
+                ))
+              : const SizedBox()),
           DataCell(cl('${i + 1}')),
           DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(statusIcon, size: 14, color: statusColor), const SizedBox(width: 3),
             Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
+            if (d.length > 16 && d[16] == true) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(color: Colors.cyan.shade50, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.cyan.shade300)),
+                child: Text('مزامنة', style: TextStyle(fontSize: 8, color: Colors.cyan.shade800, fontWeight: FontWeight.w700)),
+              ),
+            ],
           ]))),
+          DataCell(cl(d.length > 17 ? d[17].toString() : '-')), // المشغل
           DataCell(Center(child: Text(d[2], style: ts, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center))),
           DataCell(cl(d[3].toString().isNotEmpty ? d[3] : '-', color: d[3].toString().isEmpty ? Colors.grey : null)),
           DataCell(cl(d[5].toString().isNotEmpty ? d[5] : '-', color: d[5].toString().isEmpty ? Colors.grey : null)),
@@ -9596,6 +10095,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           DataCell(cl(collType.isNotEmpty ? collType : '-', color: collType.isEmpty ? Colors.grey : null)),
           DataCell(cl(d[13].toString().isNotEmpty ? d[13] : '-', color: d[13].toString().isEmpty ? Colors.grey : null)),
           DataCell(cl(d[6].toString().isNotEmpty ? d[6] : '-', color: d[6].toString().isEmpty ? Colors.grey : null)),
+          DataCell(cl(d.length > 18 && d[18].toString().isNotEmpty ? d[18].toString() : '-', color: d.length > 18 && d[18].toString().isNotEmpty ? null : Colors.grey)),
           DataCell(d.length > 15 && d[15] != null
               ? Center(child: TextButton(
                   onPressed: () => _openEditDialog(d[15] as Map<String, dynamic>),
@@ -10351,12 +10851,23 @@ class _AllOperationsPage extends StatefulWidget {
   final DateTime? fromDate;
   final DateTime? toDate;
   final List<String> operators;
+  /// فلتر مشغل محدد — إذا موجود يُطبّق تلقائياً عند الفتح
+  final String? filterOperatorName;
+  final String? filterOperatorFtthUsername;
+  /// فلتر نوع التحصيل (cash/credit/master/agent/technician)
+  final String? filterCollectionType;
+  /// فلتر نوع العملية (purchase/renewal/change)
+  final String? filterOperationType;
 
   const _AllOperationsPage({
     required this.companyId,
     this.fromDate,
     this.toDate,
     this.operators = const [],
+    this.filterOperatorName,
+    this.filterOperatorFtthUsername,
+    this.filterCollectionType,
+    this.filterOperationType,
   });
 
   @override
@@ -10375,12 +10886,17 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   // ── Inline edit ──
   String? _editingId;
   final _editOperatorCtrl = TextEditingController();
-  final _editPriceCtrl = TextEditingController();
+  final _editPriceCtrl = TextEditingController();     // المستقطع
+  final _editRevenueCtrl = TextEditingController();    // الإيرادات
+  final _editExpenseCtrl = TextEditingController();    // المصاريف
   final _editTechnicianCtrl = TextEditingController();
   final _editAgentCtrl = TextEditingController();
   String _editCollType = 'cash';
   String _editPaymentMethod = '';
   bool _isSaving = false;
+  // القيم الخام للسجل أثناء التعديل (لحساب MaintenanceFee)
+  double _editCompanyDiscount = 0;
+  bool _editSysDiscountEnabled = false;
 
   // ── Linking ──
   Map<String, String> _linkingMap = {};
@@ -10406,6 +10922,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
 
   // ── Column visibility (saved locally) ──
   Set<String> _hiddenCols = {};
+  bool _showSyncedOnly = false;
   static const _prefKey = 'allops_hidden_cols_v2';
 
   static const _baseUrl =
@@ -10419,23 +10936,35 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     ['التاريخ',     'تاريخ التفعيل',     3],
     ['المشغل',      'المُفعِّل',          4],
     ['العميل',      'اسم العميل',        5],
+    ['م.العميل',    'م.العميل',          3],
+    ['م.الاشتراك',  'م.الاشتراك',        3],
     ['الباقة',      'اسم الباقة',        3],
-    ['المبلغ',      'سعر الباقة',        3],
+    ['الإجمالي',    'الإجمالي',          3],
+    ['المستقطع',    'المستقطع',          3],
+    ['الإيرادات',   'الإيرادات',         2],
+    ['المصاريف',    'المصاريف',          2],
+    ['الالتزام',    'الالتزام',          2],
     ['نوع العملية', 'نوع العملية',       3],
     ['التحصيل',     'نوع التحصيل',       3],
+    ['الدفع',       'الدفع',             2],
     ['الفني',       'الفني',             3],
     ['الوكيل',      'الوكيل',            3],
     ['المنطقة',     'اسم المنطقة',       2],
     ['الهاتف',      'رقم الهاتف',        3],
     ['بداية',       'تاريخ البدء',       3],
     ['نهاية',       'تاريخ الانتهاء',    3],
+    ['الحالة',      'الحالة الحالية',     2],
     ['ر.قبل',       'الرصيد قبل',        2],
     ['ر.بعد',       'الرصيد بعد',        2],
+    ['الجهاز',      'الجهاز',            3],
     ['FBG',         'fbg',               2],
     ['FAT',         'fat',               2],
     ['FDT',         'fdt',               2],
+    ['طباعة',       'طباعة',             1],
+    ['واتساب',      'واتساب_col',        1],
+    ['مطابقة',      'مطابقة',            1],
+    ['محاسبة',      'محاسبة',            1],
     ['ملاحظات',     'ملاحظات',           4],
-    ['الحالة',      'الحالة الحالية',     2],
     ['✓',           '_icons',            2],
   ];
 
@@ -10446,7 +10975,10 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   void initState() {
     super.initState();
     _loadColVisibility().then((_) {
-      _load();
+      _load().then((_) {
+        // تطبيق الفلاتر التلقائية
+        _applyAutoFilters();
+      });
       _loadLinking();
     });
     _searchCtrl.addListener(_applyFilters);
@@ -10604,6 +11136,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     _searchCtrl.dispose();
     _editOperatorCtrl.dispose();
     _editPriceCtrl.dispose();
+    _editRevenueCtrl.dispose();
+    _editExpenseCtrl.dispose();
     super.dispose();
   }
 
@@ -10665,13 +11199,48 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           : ((body['data'] ?? body['items'] ?? []) as List<dynamic>);
 
       final result = items.map<Map<String, dynamic>>((item) {
+        // حساب الحقول المالية (نفس منطق FtthAccountingController)
+        final planPrice = (item['PlanPrice'] as num?)?.toDouble() ?? 0;
+        final basePrice = (item['BasePrice'] as num?)?.toDouble() ?? 0;
+        final companyDiscount = (item['CompanyDiscount'] as num?)?.toDouble() ?? 0;
+        final manualDiscount = (item['ManualDiscount'] as num?)?.toDouble() ?? 0;
+        final maintenanceFee = (item['MaintenanceFee'] as num?)?.toDouble() ?? 0;
+        final sysDiscountEnabled = item['SystemDiscountEnabled'] == true;
+
+        // المستقطع: ما يُخصم من صفحة FTTH
+        final pageDeduction = basePrice > 0
+            ? basePrice - companyDiscount
+            : sysDiscountEnabled ? planPrice : planPrice - companyDiscount;
+        // الإيرادات: صيانة + خصم الشركة (إذا لم يكن ممرراً للعميل)
+        final revenue = maintenanceFee + (sysDiscountEnabled ? 0 : companyDiscount);
+        // المصاريف: الخصم اليدوي
+        final expense = manualDiscount;
+        // الإجمالي = المستقطع + الإيرادات - المصاريف
+        final totalAmount = pageDeduction + revenue - expense;
+
+        // إذا لم يرجع API الحقول المحسوبة، نستخدم الحساب المحلي
+        final apiPageDeduction = (item['PageDeduction'] as num?)?.toDouble();
+        final apiRevenue = (item['Revenue'] as num?)?.toDouble();
+        final apiExpense = (item['Expense'] as num?)?.toDouble();
+
+        final finalPD = apiPageDeduction ?? pageDeduction;
+        final finalRev = apiRevenue ?? revenue;
+        final finalExp = apiExpense ?? expense;
+        final finalTotal = finalPD + finalRev - finalExp;
+
         return {
           'id':               item['Id']?.toString() ?? '',
           'تاريخ التفعيل':   _toLocalDate(item['ActivationDate']?.toString()),
           'المُفعِّل':        item['ActivatedBy']?.toString() ?? '',
           'اسم العميل':      item['CustomerName']?.toString() ?? '',
+          'م.العميل':         item['CustomerId']?.toString() ?? '',
+          'م.الاشتراك':       item['SubscriptionId']?.toString() ?? '',
           'اسم الباقة':      item['PlanName']?.toString() ?? '',
-          'سعر الباقة':      item['PlanPrice']?.toString() ?? '',
+          'سعر الباقة':      planPrice.toString(),
+          'الإجمالي':         finalTotal,
+          'المستقطع':         finalPD,
+          'الإيرادات':        finalRev,
+          'المصاريف':         finalExp,
           'نوع العملية':     _mapOperationType(item['OperationType']?.toString() ?? ''),
           'طريقة الدفع':     item['PaymentMethod']?.toString() ?? '',
           'الحالة الحالية':  item['CurrentStatus']?.toString() ?? '',
@@ -10683,7 +11252,11 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'الرصيد بعد':      item['WalletBalanceAfter']?.toString() ?? '',
           'مطبوع':           item['IsPrinted'] == true,
           'واتساب':          item['IsWhatsAppSent'] == true,
-          'اسم الجهاز':      item['DeviceUsername']?.toString() ?? '',
+          'مطابقة_raw':      item['IsReconciled'] == true,
+          'محاسبة_raw':      item['JournalEntryId'] != null,
+          'الالتزام':        item['CommitmentPeriod']?.toString() ?? '',
+          'الدفع':           item['PaymentMethod']?.toString() ?? item['PaymentStatus']?.toString() ?? '',
+          'الجهاز':          item['DeviceUsername']?.toString() ?? '',
           'ملاحظات':         item['SubscriptionNotes']?.toString() ?? '',
           'تاريخ البدء':     _toLocalDate(item['StartDate']?.toString()),
           'تاريخ الانتهاء':  _toLocalDate(item['EndDate']?.toString()),
@@ -10696,6 +11269,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               ? _extractTechName(item) : '',
           'linkedTechnicianId': item['LinkedTechnicianId']?.toString() ?? '',
           'linkedAgentId':      item['LinkedAgentId']?.toString() ?? '',
+          // حقول خام للتعديل
+          '_companyDiscount': companyDiscount,
+          '_sysDiscountEnabled': sysDiscountEnabled,
         };
       }).toList();
 
@@ -10715,6 +11291,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   void _applyFiltersFromRecords(List<Map<String, dynamic>> source) {
     final q = _searchCtrl.text.trim().toLowerCase();
     var result = source.where((r) {
+      // فلتر المزامنة
+      if (_showSyncedOnly && r['مطابقة_raw'] != true) return false;
       // بحث نصي عام
       if (q.isNotEmpty &&
           !r.values.any((v) => v.toString().toLowerCase().contains(q))) {
@@ -10746,6 +11324,48 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   }
 
   void _applyFilters() => _applyFiltersFromRecords(_records);
+
+  /// تطبيق الفلاتر التلقائية (مشغل / تحصيل / نوع عملية)
+  void _applyAutoFilters() {
+    bool changed = false;
+    // فلتر المشغل
+    if (widget.filterOperatorFtthUsername != null && widget.filterOperatorFtthUsername!.isNotEmpty) {
+      final ftthUser = widget.filterOperatorFtthUsername!.toLowerCase();
+      final matchingValues = _records
+          .map((r) => r['المُفعِّل']?.toString() ?? '')
+          .where((v) => v.toLowerCase() == ftthUser)
+          .toSet();
+      if (matchingValues.isNotEmpty) {
+        _colFilters['المُفعِّل'] = matchingValues;
+        changed = true;
+      }
+    }
+    // فلتر التحصيل
+    if (widget.filterCollectionType != null && widget.filterCollectionType!.isNotEmpty) {
+      final mapped = _mapCollectionType(widget.filterCollectionType!);
+      final matchingValues = _records
+          .map((r) => r['نوع التحصيل']?.toString() ?? '')
+          .where((v) => v == mapped)
+          .toSet();
+      if (matchingValues.isNotEmpty) {
+        _colFilters['نوع التحصيل'] = matchingValues;
+        changed = true;
+      }
+    }
+    // فلتر نوع العملية
+    if (widget.filterOperationType != null && widget.filterOperationType!.isNotEmpty) {
+      final mapped = _mapOperationType(widget.filterOperationType!);
+      final matchingValues = _records
+          .map((r) => r['نوع العملية']?.toString() ?? '')
+          .where((v) => v == mapped)
+          .toSet();
+      if (matchingValues.isNotEmpty) {
+        _colFilters['نوع العملية'] = matchingValues;
+        changed = true;
+      }
+    }
+    if (changed) _applyFiltersFromRecords(_records);
+  }
 
   void _onSortCol(String key) {
     if (_sortKey == key) {
@@ -10978,9 +11598,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     'ماستر' => 'master', 'فني' => 'technician', _ => v,
   };
   static String _mapOperationType(String v) => switch (v) {
-    'renewal' => 'تجديد', 'change' => 'تغيير', 'new' => 'جديد',
-    'upgrade' => 'ترقية', 'downgrade' => 'تخفيض', 'cancel' => 'إلغاء',
-    'suspend' => 'تعليق', 'resume' => 'استئناف', _ => v,
+    'purchase' => 'شراء', 'renewal' => 'تجديد', 'change' => 'تغيير',
+    'new' => 'جديد', 'upgrade' => 'ترقية', 'downgrade' => 'تخفيض',
+    'cancel' => 'إلغاء', 'suspend' => 'تعليق', 'resume' => 'استئناف', _ => v,
   };
 
   // ── Inline edit ──
@@ -11036,10 +11656,15 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     _loadStaffForEditing();
     final collTypeRaw = r['نوع التحصيل_raw']?.toString() ?? _mapCollectionTypeReverse(r['نوع التحصيل']?.toString() ?? 'cash');
     final payMethod = r['طريقة الدفع']?.toString() ?? '';
+    final pd = (r['المستقطع'] as num?)?.toDouble() ?? 0;
+    final rev = (r['الإيرادات'] as num?)?.toDouble() ?? 0;
+    final exp = (r['المصاريف'] as num?)?.toDouble() ?? 0;
     setState(() {
       _editingId = r['id']?.toString();
       _editOperatorCtrl.text = r['المُفعِّل']?.toString() ?? '';
-      _editPriceCtrl.text = r['سعر الباقة']?.toString() ?? '';
+      _editPriceCtrl.text = pd > 0 ? pd.toStringAsFixed(0) : '';
+      _editRevenueCtrl.text = rev > 0 ? rev.toStringAsFixed(0) : '0';
+      _editExpenseCtrl.text = exp > 0 ? exp.toStringAsFixed(0) : '0';
       _editTechnicianCtrl.text = r['الفني']?.toString() ?? '';
       _editAgentCtrl.text = r['الوكيل']?.toString() ?? '';
       _editCollType = ['cash', 'credit', 'agent', 'master', 'technician']
@@ -11047,6 +11672,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           ? collTypeRaw
           : 'cash';
       _editPaymentMethod = payMethod;
+      _editCompanyDiscount = (r['_companyDiscount'] as num?)?.toDouble() ?? 0;
+      _editSysDiscountEnabled = r['_sysDiscountEnabled'] == true;
     });
   }
 
@@ -11059,13 +11686,20 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     try {
       final techName = _editTechnicianCtrl.text.trim();
       final agentName = _editAgentCtrl.text.trim();
+      final newPD = double.tryParse(_editPriceCtrl.text.trim()) ?? 0;
+      final newRevenue = double.tryParse(_editRevenueCtrl.text.trim()) ?? 0;
+      final newExpense = double.tryParse(_editExpenseCtrl.text.trim()) ?? 0;
+      // حساب MaintenanceFee من Revenue
+      final maintenanceFee = newRevenue - (_editSysDiscountEnabled ? 0 : _editCompanyDiscount);
       final bodyMap = <String, dynamic>{
         'ActivatedBy': _editOperatorCtrl.text.trim(),
-        'PlanPrice': double.tryParse(_editPriceCtrl.text.trim()) ?? 0,
+        'PlanPrice': newPD,
         'CollectionType': _editCollType,
         'TechnicianName': techName,
         'AgentName': agentName,
         'PaymentMethod': _editPaymentMethod,
+        'ManualDiscount': newExpense,
+        'MaintenanceFee': maintenanceFee > 0 ? maintenanceFee : 0,
       };
       // إرسال LinkedTechnicianId إذا تغيّر الفني
       if (techName.isNotEmpty && _staffTechIdMap.containsKey(techName)) {
@@ -11083,9 +11717,14 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       );
       if (!mounted) return;
       if (res.statusCode == 200 || res.statusCode == 204) {
+        final newTotal = newPD + newRevenue - newExpense;
         final updated = {
           'المُفعِّل': _editOperatorCtrl.text.trim(),
-          'سعر الباقة': _editPriceCtrl.text.trim(),
+          'سعر الباقة': newPD.toString(),
+          'المستقطع': newPD,
+          'الإيرادات': newRevenue,
+          'المصاريف': newExpense,
+          'الإجمالي': newTotal,
           'نوع التحصيل': _mapCollectionType(_editCollType),
           'نوع التحصيل_raw': _editCollType,
           'الفني': _editTechnicianCtrl.text.trim(),
@@ -11264,6 +11903,221 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     });
   }
 
+  // ── بطاقات الملخص (مثل كشف حساب) ──
+  Widget _buildAllOpsSummaryCards() {
+    final ar = context.accR;
+    int totalCount = 0, cashCount = 0, creditCount = 0, masterCount = 0, agentCount = 0;
+    double totalAmount = 0, cashAmount = 0, creditAmount = 0, masterAmount = 0, agentAmount = 0;
+
+    for (final r in _filtered) {
+      final amount = (r['الإجمالي'] as num?)?.toDouble() ?? 0;
+      totalCount++;
+      totalAmount += amount;
+      final coll = (r['نوع التحصيل_raw'] ?? r['نوع التحصيل'] ?? '').toString().toLowerCase();
+      switch (coll) {
+        case 'cash':   cashCount++;   cashAmount   += amount; break;
+        case 'credit': creditCount++; creditAmount += amount; break;
+        case 'master': masterCount++; masterAmount += amount; break;
+        case 'agent':  agentCount++;  agentAmount  += amount; break;
+      }
+    }
+
+    final cards = <Map<String, dynamic>>[
+      {'title': 'إجمالي العمليات', 'amount': totalAmount, 'count': totalCount,
+       'icon': Icons.receipt_long, 'colors': [const Color(0xFF3498DB), const Color(0xFF2980B9)]},
+      {'title': 'نقد', 'amount': cashAmount, 'count': cashCount,
+       'icon': Icons.attach_money, 'colors': [const Color(0xFF2ECC71), const Color(0xFF27AE60)]},
+      {'title': 'آجل', 'amount': creditAmount, 'count': creditCount,
+       'icon': Icons.schedule, 'colors': [const Color(0xFFE67E22), const Color(0xFFD35400)]},
+      {'title': 'ماستر', 'amount': masterAmount, 'count': masterCount,
+       'icon': Icons.credit_card, 'colors': [const Color(0xFF8E44AD), const Color(0xFF7D3C98)]},
+      {'title': 'وكيل', 'amount': agentAmount, 'count': agentCount,
+       'icon': Icons.store, 'colors': [const Color(0xFF2C3E50), const Color(0xFF1A252F)]},
+    ];
+
+    return Row(
+      children: cards.map((c) => Expanded(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: ar.spaceXS / 2),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: ar.spaceM, vertical: ar.spaceS),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: c['colors'] as List<Color>, begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(ar.cardRadius),
+              boxShadow: [BoxShadow(color: (c['colors'] as List<Color>)[0].withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(c['icon'] as IconData, color: Colors.white.withValues(alpha: 0.8), size: ar.iconM),
+                SizedBox(width: ar.spaceS),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(c['title'] as String, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w500)),
+                      Text('${_fmt.format(c['amount'] as double)} د.ع',
+                          style: GoogleFonts.cairo(fontSize: ar.small, color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text('${c['count']} عملية', style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.7))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      )).toList(),
+    );
+  }
+
+  // ── badge ملوّن لنوع التحصيل ──
+  Widget _collBadge(String collType) {
+    String label;
+    Color bg, fg;
+    switch (collType.toLowerCase()) {
+      case 'cash':   label = 'نقد';   bg = Colors.green.shade50;  fg = Colors.green.shade700;  break;
+      case 'credit': label = 'آجل';   bg = Colors.orange.shade50; fg = Colors.orange.shade700; break;
+      case 'master': label = 'ماستر'; bg = Colors.purple.shade50; fg = Colors.purple.shade700; break;
+      case 'agent':  label = 'وكيل';  bg = Colors.blue.shade50;   fg = Colors.blue.shade700;   break;
+      case 'technician': label = 'فني'; bg = Colors.teal.shade50; fg = Colors.teal.shade700; break;
+      default:
+        final mapped = collType;
+        label = mapped.isEmpty ? '-' : mapped;
+        bg = Colors.grey.shade50;
+        fg = Colors.grey.shade700;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      child: Text(label, style: GoogleFonts.cairo(fontSize: 10, color: fg, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  // ── badge ملوّن لنوع العملية ──
+  Widget _opTypeBadge(String opType) {
+    String label;
+    Color bg, fg;
+    if (opType.contains('تجديد') || opType.toLowerCase().contains('renew')) {
+      label = 'تجديد'; bg = Colors.blue.shade50; fg = Colors.blue.shade700;
+    } else if (opType.contains('شراء') || opType.toLowerCase().contains('purchase')) {
+      label = 'شراء'; bg = Colors.teal.shade50; fg = Colors.teal.shade700;
+    } else if (opType.contains('تغيير') || opType.toLowerCase().contains('change')) {
+      label = 'تغيير'; bg = Colors.orange.shade50; fg = Colors.orange.shade700;
+    } else if (opType.contains('جدولة') || opType.toLowerCase().contains('schedule')) {
+      label = 'جدولة'; bg = Colors.purple.shade50; fg = Colors.purple.shade700;
+    } else {
+      label = opType.isEmpty ? 'تجديد' : opType; bg = Colors.grey.shade50; fg = Colors.grey.shade700;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      child: Text(label, style: GoogleFonts.cairo(fontSize: 10, color: fg, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  // ── تصحيح المستقطع (لكل العمليات) ──
+  Future<void> _allOpsFixDeductions() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تصحيح المستقطع', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          content: Text(
+            'سيتم إعادة حساب المستقطع (BasePrice) لجميع العمليات ليطابق مبالغ FTTH.\n\n'
+            'سيتم إلغاء القيود المحاسبية القديمة وإنشاء قيود جديدة بالأرقام الصحيحة.\n\n'
+            'هل تريد المتابعة؟',
+            style: GoogleFonts.cairo(),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700, foregroundColor: Colors.white),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('تصحيح', style: GoogleFonts.cairo()),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('جارٍ تصحيح المستقطع...', style: GoogleFonts.cairo()), duration: const Duration(seconds: 30)),
+    );
+    try {
+      final result = await AccountingService.instance.recalculateSyncRevenues(
+        companyId: widget.companyId,
+        from: widget.fromDate,
+        to: widget.toDate,
+        forceAll: true,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      final updated = result['updated'] ?? 0;
+      final accCreated = result['accountingCreated'] ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('تم تصحيح $updated عملية — $accCreated قيد جديد', style: GoogleFonts.cairo()),
+        backgroundColor: updated > 0 ? Colors.green.shade700 : Colors.blueGrey,
+        duration: const Duration(seconds: 5),
+      ));
+      if (updated > 0 || accCreated > 0) _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e', style: GoogleFonts.cairo()), backgroundColor: Colors.red.shade700),
+      );
+    }
+  }
+
+  // ── إعادة حساب الإيرادات (لكل العمليات) ──
+  Future<void> _allOpsRecalcRevenues() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('إعادة حساب الإيرادات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          content: Text(
+            'سيتم إعادة حساب خصم الشركة وأجور الصيانة لجميع العمليات المتزامنة التي ليس لديها إيرادات.\n\n'
+            'سيتم إلغاء القيود المحاسبية القديمة وإنشاء قيود جديدة بالأرقام الصحيحة.\n\n'
+            'هل تريد المتابعة؟',
+            style: GoogleFonts.cairo(),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text('تنفيذ', style: GoogleFonts.cairo())),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('جارٍ إعادة حساب الإيرادات...', style: GoogleFonts.cairo()), duration: const Duration(seconds: 30)),
+    );
+    try {
+      final result = await AccountingService.instance.recalculateSyncRevenues(companyId: widget.companyId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      final msg = result['message'] ?? 'تم';
+      final updated = result['updated'] ?? 0;
+      final accCreated = result['accountingCreated'] ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$msg', style: GoogleFonts.cairo()),
+        backgroundColor: updated > 0 ? Colors.green.shade700 : Colors.blueGrey,
+        duration: const Duration(seconds: 5),
+      ));
+      if (updated > 0 || accCreated > 0) _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e', style: GoogleFonts.cairo()), backgroundColor: Colors.red.shade700),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeFiltersCount = _colFilters.values
@@ -11272,14 +12126,19 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: AccountingTheme.bgPrimary,
         appBar: AppBar(
+          backgroundColor: AccountingTheme.bgSidebar,
+          iconTheme: const IconThemeData(color: Colors.white),
           title: Text(
-            'كل العمليات (${_filtered.length})'
+            '${widget.filterOperatorName != null ? 'عمليات: ${widget.filterOperatorName}' : 'كل العمليات'} (${_filtered.length})'
             '${_selectedIds.isNotEmpty ? ' — محدد: ${_selectedIds.length}' : ''}',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+            style: GoogleFonts.cairo(
+              color: Colors.white,
+              fontSize: context.accR.headingSmall,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          backgroundColor: Colors.teal.shade700,
-          foregroundColor: Colors.white,
           actions: [
             // حذف المحددة
             if (_selectedIds.isNotEmpty)
@@ -11291,125 +12150,166 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2)),
                     )
-                  : TextButton.icon(
-                      onPressed: _deleteSelected,
-                      icon: Icon(Icons.delete_sweep,
-                          color: Colors.red.shade300, size: 18),
-                      label: Text('حذف (${_selectedIds.length})',
-                          style: GoogleFonts.cairo(
-                              color: Colors.red.shade300,
-                              fontWeight: FontWeight.w600)),
-                    ),
+                  : _allOpsAppBarBtn(Icons.delete_sweep, 'حذف (${_selectedIds.length})', _deleteSelected, highlighted: true),
             // عدد الفلاتر النشطة
             if (activeFiltersCount > 0)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: Tooltip(
-                  message: 'إزالة كل الفلاتر',
-                  child: ActionChip(
-                    label: Text('$activeFiltersCount فلتر نشط',
-                        style: GoogleFonts.cairo(fontSize: 11, color: Colors.white)),
-                    avatar: const Icon(Icons.filter_alt, size: 14, color: Colors.white),
-                    backgroundColor: Colors.orange.shade700,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => setState(() {
-                      _colFilters.clear();
-                      _applyFiltersFromRecords(_records);
-                    }),
-                  ),
-                ),
-              ),
+              _allOpsAppBarBtn(Icons.filter_alt, '$activeFiltersCount فلتر', () {
+                setState(() {
+                  _colFilters.clear();
+                  _applyFiltersFromRecords(_records);
+                });
+              }, highlighted: true),
             // الترتيب النشط
             if (_sortKey != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: Chip(
-                  label: Text(
-                    '${_cols.firstWhere((c) => c[1] == _sortKey, orElse: () => [_sortKey!, _sortKey!, 0])[0]}'
-                    ' ${_sortAsc ? '↑' : '↓'}',
-                    style: GoogleFonts.cairo(fontSize: 11, color: Colors.white),
-                  ),
-                  deleteIcon:
-                      const Icon(Icons.close, size: 14, color: Colors.white70),
-                  onDeleted: () => setState(() {
-                    _sortKey = null;
-                    _applyFiltersFromRecords(_records);
-                  }),
-                  backgroundColor: Colors.teal.shade600,
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                ),
+              _allOpsAppBarBtn(
+                _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
+                '${_cols.firstWhere((c) => c[1] == _sortKey, orElse: () => [_sortKey!, _sortKey!, 0])[0]}',
+                () => setState(() {
+                  _sortKey = null;
+                  _applyFiltersFromRecords(_records);
+                }),
               ),
-            // زر اختيار الأعمدة
-            Tooltip(
-              message: 'اختيار الأعمدة',
-              child: IconButton(
-                icon: Badge(
-                  isLabelVisible: _hiddenCols.isNotEmpty,
-                  label: Text('${_hiddenCols.length}',
-                      style: const TextStyle(fontSize: 9)),
-                  backgroundColor: Colors.orange.shade600,
-                  child: const Icon(Icons.view_column),
-                ),
-                onPressed: _showColPickerDialog,
-              ),
+            _allOpsAppBarBtn(Icons.view_column, 'الأعمدة', _showColPickerDialog),
+            IconButton(
+              icon: Icon(Icons.calculate_outlined, color: Colors.purpleAccent, size: context.accR.iconAppBar),
+              onPressed: _allOpsRecalcRevenues,
+              tooltip: 'إعادة حساب الإيرادات',
             ),
             IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _load,
-                tooltip: 'تحديث'),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(48),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: TextField(
-                controller: _searchCtrl,
-                style: GoogleFonts.cairo(color: Colors.black87),
-                decoration: InputDecoration(
-                  hintText: 'بحث في كل الحقول...',
-                  hintStyle: GoogleFonts.cairo(color: Colors.grey.shade500),
-                  prefixIcon: Icon(Icons.search, color: Colors.teal.shade400),
-                  suffixIcon: _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear, color: Colors.grey.shade500),
-                          onPressed: () => _searchCtrl.clear())
-                      : null,
-                  filled: true,
-                  fillColor: Colors.teal.shade50,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.teal.shade200)),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.teal.shade200)),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.teal.shade400)),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                ),
-              ),
+              icon: Icon(Icons.refresh, color: Colors.white70, size: context.accR.iconAppBar),
+              onPressed: _load,
+              tooltip: 'تحديث',
             ),
-          ),
+          ],
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
                 ? Center(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text(_error!, style: GoogleFonts.cairo(color: Colors.red)),
-                    const SizedBox(height: 12),
+                    Icon(Icons.error_outline, size: context.accR.iconXL, color: Colors.red.shade300),
+                    SizedBox(height: context.accR.spaceM),
+                    Text(_error!, style: GoogleFonts.cairo(color: Colors.red.shade700)),
+                    SizedBox(height: context.accR.spaceM),
                     ElevatedButton(
                         onPressed: _load,
                         child: Text('إعادة المحاولة', style: GoogleFonts.cairo())),
                   ]))
-                : _filtered.isEmpty
-                    ? Center(
-                        child: Text('لا توجد سجلات',
-                            style: GoogleFonts.cairo(fontSize: 16)))
-                    : _buildTable(),
+                : _buildAllOpsBody(),
       ),
+    );
+  }
+
+  Widget _allOpsAppBarBtn(IconData icon, String label, VoidCallback onTap, {bool highlighted = false}) {
+    final ar = context.accR;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: highlighted ? Colors.amber.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: highlighted ? Colors.amber.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: ar.iconXS, color: highlighted ? Colors.amber : Colors.white70),
+              const SizedBox(width: 4),
+              Text(label, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAllOpsBody() {
+    if (_filtered.isEmpty && _records.isEmpty) {
+      return Center(child: Text('لا توجد سجلات', style: GoogleFonts.cairo(fontSize: 16)));
+    }
+    final ar = context.accR;
+    return Column(
+      children: [
+        // بطاقات الملخص
+        Padding(
+          padding: EdgeInsets.fromLTRB(ar.spaceS, ar.spaceS, ar.spaceS, 0),
+          child: _buildAllOpsSummaryCards(),
+        ),
+        SizedBox(height: ar.spaceS),
+        // حقل البحث
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: ar.spaceS),
+          child: SizedBox(
+            height: 36,
+            child: TextField(
+              controller: _searchCtrl,
+              style: GoogleFonts.cairo(fontSize: 12),
+              decoration: InputDecoration(
+                hintText: 'بحث في كل الحقول...',
+                hintStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                suffixIcon: _searchCtrl.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close, size: 14),
+                        onPressed: () => _searchCtrl.clear(),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blue, width: 2)),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: ar.spaceXS),
+        // تبويب المزامنة
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: ar.spaceS),
+          child: Row(children: [
+            InkWell(
+              onTap: () { setState(() { _showSyncedOnly = false; }); _applyFilters(); },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: !_showSyncedOnly ? const Color(0xFF2C3E50) : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text('الكل (${_records.length})', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600, color: !_showSyncedOnly ? Colors.white : Colors.black54)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () { setState(() { _showSyncedOnly = true; }); _applyFilters(); },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _showSyncedOnly ? Colors.cyan.shade600 : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text('مزامنة (${_records.where((r) => r['مطابقة_raw'] == true).length})', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600, color: _showSyncedOnly ? Colors.white : Colors.black54)),
+              ),
+            ),
+          ]),
+        ),
+        SizedBox(height: ar.spaceXS),
+        // الجدول
+        Expanded(
+          child: _filtered.isEmpty
+              ? Center(child: Text('لا توجد نتائج مطابقة', style: GoogleFonts.cairo(color: Colors.grey.shade500)))
+              : _buildTable(),
+        ),
+      ],
     );
   }
 
@@ -11421,8 +12321,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
 
     final baseDeco = BoxDecoration(
       border: Border(
-        bottom: BorderSide(color: Colors.black54, width: 1.5),
-        left: BorderSide(color: Colors.black26),
+        bottom: BorderSide(color: Colors.white24, width: 0.5),
+        left: BorderSide(color: Colors.white12),
       ),
     );
 
@@ -11452,8 +12352,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               }),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
-              side: BorderSide(color: Colors.teal.shade700),
-              activeColor: Colors.teal.shade700,
+              side: const BorderSide(color: Colors.white70),
+              activeColor: Colors.white,
+              checkColor: const Color(0xFF2C3E50),
             ),
           ),
         ),
@@ -11472,7 +12373,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                 style: GoogleFonts.cairo(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: Colors.teal.shade900)),
+                    color: Colors.white)),
           ),
         ),
       );
@@ -11510,8 +12411,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: hasFilter
-                                ? Colors.orange.shade800
-                                : Colors.teal.shade900,
+                                ? Colors.amber.shade300
+                                : Colors.white,
                           ),
                         ),
                       ),
@@ -11522,7 +12423,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                               ? Icons.arrow_upward
                               : Icons.arrow_downward,
                           size: 9,
-                          color: Colors.teal.shade700,
+                          color: Colors.white70,
                         ),
                       ],
                     ],
@@ -11543,8 +12444,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                       hasFilter ? Icons.filter_alt : Icons.filter_list,
                       size: 13,
                       color: hasFilter
-                          ? Colors.orange.shade600
-                          : Colors.grey.shade500,
+                          ? Colors.amber.shade300
+                          : Colors.white38,
                     ),
                     if (filterCount > 1)
                       Positioned(
@@ -11577,21 +12478,29 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   }
 
   Widget _buildTable() {
-    return Column(
-      children: [
-        // رأس الجدول
-        Container(
-          color: Colors.teal.shade50,
-          child: Row(children: _visibleCols.map(_buildHeaderCell).toList()),
-        ),
-        // الصفوف
-        Expanded(
-          child: ListView.builder(
-            itemCount: _filtered.length,
-            itemBuilder: (ctx, i) => _buildRow(ctx, _filtered[i], i),
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.symmetric(horizontal: context.accR.spaceS),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.accR.cardRadius)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // رأس الجدول — داكن مثل كشف حساب
+          Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF2C3E50),
+            ),
+            child: Row(children: _visibleCols.map(_buildHeaderCell).toList()),
           ),
-        ),
-      ],
+          // الصفوف
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filtered.length,
+              itemBuilder: (ctx, i) => _buildRow(ctx, _filtered[i], i),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -11609,7 +12518,6 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     final displayDate  = fmtDate(r['تاريخ التفعيل']?.toString());
     final displayStart = fmtDate(r['تاريخ البدء']?.toString());
     final displayEnd   = fmtDate(r['تاريخ الانتهاء']?.toString());
-    final price        = double.tryParse(r['سعر الباقة']?.toString() ?? '') ?? 0;
     final operator0    = r['المُفعِّل']?.toString() ?? '';
     final isUnknown    = operator0.isEmpty;
     final collType     = r['نوع التحصيل']?.toString() ?? '';
@@ -11633,8 +12541,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
 
     final rowH = isEditing ? 52.0 : 34.0;
 
-    // helper: خلية flex
-    Widget cell(int flex, Widget child, {bool start = false}) {
+    // helper: خلية flex — دائماً في الوسط
+    Widget cell(int flex, Widget child) {
       return Expanded(
         flex: flex,
         child: ClipRect(
@@ -11642,43 +12550,43 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
             height: rowH,
             padding: const EdgeInsets.symmetric(horizontal: 3),
             decoration: BoxDecoration(
-              border: Border(left: BorderSide(color: Colors.black26)),
+              border: Border(left: BorderSide(color: Colors.grey.shade300)),
             ),
-            alignment: start
-                ? AlignmentDirectional.centerStart
-                : Alignment.center,
+            alignment: Alignment.center,
             child: child,
           ),
         ),
       );
     }
 
-    // helper: نص بسيط
+    // helper: نص بسيط — أسود، في الوسط
     Widget txt(int flex, String text,
-        {Color? color, bool bold = false, bool start = false}) {
+        {Color? color, bool bold = false}) {
       return cell(
         flex,
         Text(
           text.isEmpty ? '-' : text,
           overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: GoogleFonts.cairo(
-            fontSize: 10,
-            color: text.isEmpty ? Colors.grey.shade400 : color,
-            fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 11,
+            color: text.isEmpty ? Colors.grey.shade400 : (color ?? Colors.black87),
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
-        start: start,
       );
     }
 
-    // helper: حقل تعديل
+    // helper: حقل تعديل — يحدّث الإجمالي فوراً عند التغيير
     Widget editField(TextEditingController ctrl,
         {TextInputType keyboard = TextInputType.text}) {
       return TextField(
         controller: ctrl,
         keyboardType: keyboard,
         style: GoogleFonts.cairo(fontSize: 10),
+        textAlign: TextAlign.center,
         onSubmitted: (_) => _saveEditing(),
+        onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
           isDense: true,
           contentPadding:
@@ -11723,9 +12631,25 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
             )),
             // #  flex=1  (لا يُخفى)
             cell(1, Text('${i + 1}',
-                style: GoogleFonts.cairo(fontSize: 9, color: Colors.grey.shade500))),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black54))),
             // التاريخ
-            if (!_hiddenCols.contains('تاريخ التفعيل')) txt(3, displayDate),
+            if (!_hiddenCols.contains('تاريخ التفعيل'))
+              cell(3, Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(displayDate.isEmpty ? '-' : displayDate, style: GoogleFonts.cairo(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w500)),
+                  if (r['مطابقة_raw'] == true) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      decoration: BoxDecoration(color: Colors.cyan.shade50, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.cyan.shade300)),
+                      child: Text('مزامنة', style: TextStyle(fontSize: 7, color: Colors.cyan.shade800, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ],
+              )),
             // المشغل
             if (!_hiddenCols.contains('المُفعِّل'))
               cell(4,
@@ -11763,58 +12687,117 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                       })
                     : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             _linkingMap[operator0.toLowerCase()] ??
                                 (isUnknown ? '⚠️ غير معروف' : operator0),
                             overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.cairo(
-                              fontSize: 10,
+                              fontSize: 11,
                               color: isUnknown
                                   ? Colors.orange.shade800
-                                  : Colors.teal.shade800,
+                                  : Colors.black87,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (!isUnknown &&
                               _linkingMap.containsKey(operator0.toLowerCase()))
                             Text(operator0,
+                                textAlign: TextAlign.center,
                                 style: GoogleFonts.cairo(
                                     fontSize: 8, color: Colors.grey.shade500)),
                         ],
                       ),
-                start: true,
               ),
             // العميل
             if (!_hiddenCols.contains('اسم العميل'))
-              txt(5, r['اسم العميل']?.toString() ?? '', start: true),
+              txt(5, r['اسم العميل']?.toString() ?? ''),
+            // م.العميل
+            if (!_hiddenCols.contains('م.العميل'))
+              txt(3, r['م.العميل']?.toString() ?? ''),
+            // م.الاشتراك
+            if (!_hiddenCols.contains('م.الاشتراك'))
+              txt(3, r['م.الاشتراك']?.toString() ?? ''),
             // الباقة
             if (!_hiddenCols.contains('اسم الباقة'))
               txt(3, r['اسم الباقة']?.toString() ?? ''),
-            // المبلغ
-            if (!_hiddenCols.contains('سعر الباقة'))
-              cell(3,
-                isEditing
+            // الإجمالي — يُحسب تلقائياً أثناء التعديل
+            if (!_hiddenCols.contains('الإجمالي'))
+              cell(3, () {
+                if (isEditing) {
+                  final pd = double.tryParse(_editPriceCtrl.text.trim()) ?? 0;
+                  final rev = double.tryParse(_editRevenueCtrl.text.trim()) ?? 0;
+                  final exp = double.tryParse(_editExpenseCtrl.text.trim()) ?? 0;
+                  final liveTotal = pd + rev - exp;
+                  return Text(
+                    _fmt.format(liveTotal),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.green.shade800),
+                  );
+                }
+                final total = (r['الإجمالي'] as num?)?.toDouble() ?? 0;
+                return Text(
+                  total > 0 ? _fmt.format(total) : '-',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.green.shade800),
+                );
+              }()),
+            // المستقطع — قابل للتعديل
+            if (!_hiddenCols.contains('المستقطع'))
+              cell(3, () {
+                final pd = (r['المستقطع'] as num?)?.toDouble() ?? 0;
+                return isEditing
                     ? editField(_editPriceCtrl, keyboard: TextInputType.number)
                     : Text(
-                        price > 0 ? '${_fmt.format(price)} د.ع' : '-',
-                        style: GoogleFonts.cairo(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.green.shade800),
-                      ),
-              ),
-            // نوع العملية
+                        pd > 0 ? _fmt.format(pd) : '-',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
+                      );
+              }()),
+            // الإيرادات — قابل للتعديل
+            if (!_hiddenCols.contains('الإيرادات'))
+              cell(2, () {
+                if (isEditing) {
+                  return editField(_editRevenueCtrl, keyboard: TextInputType.number);
+                }
+                final rev = (r['الإيرادات'] as num?)?.toDouble() ?? 0;
+                return Text(
+                  rev > 0 ? _fmt.format(rev) : '-',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600,
+                      color: rev > 0 ? Colors.green.shade700 : Colors.grey.shade400),
+                );
+              }()),
+            // المصاريف — قابل للتعديل
+            if (!_hiddenCols.contains('المصاريف'))
+              cell(2, () {
+                if (isEditing) {
+                  return editField(_editExpenseCtrl, keyboard: TextInputType.number);
+                }
+                final exp = (r['المصاريف'] as num?)?.toDouble() ?? 0;
+                return Text(
+                  exp > 0 ? _fmt.format(exp) : '-',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600,
+                      color: exp > 0 ? Colors.red.shade700 : Colors.grey.shade400),
+                );
+              }()),
+            // الالتزام
+            if (!_hiddenCols.contains('الالتزام'))
+              txt(2, () {
+                final c = r['الالتزام']?.toString() ?? '';
+                return (c.isNotEmpty && c != '0') ? '$c شهر' : '-';
+              }()),
+            // نوع العملية — badge ملوّن
             if (!_hiddenCols.contains('نوع العملية'))
-              txt(3, r['نوع العملية']?.toString() ?? ''),
-            // التحصيل (مدمج مع طريقة الدفع)
+              cell(3, _opTypeBadge(r['نوع العملية']?.toString() ?? '')),
+            // التحصيل — badge ملوّن (مدمج مع طريقة الدفع)
             if (!_hiddenCols.contains('نوع التحصيل'))
               cell(3,
                 isEditing
                     ? StatefulBuilder(
                         builder: (_, sl) {
-                          // تأكد أن القيمة موجودة في القائمة
                           const validValues = ['cash', 'credit', 'agent', 'master', 'technician'];
                           final safeValue = validValues.contains(_editCollType)
                               ? _editCollType
@@ -11838,14 +12821,11 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                           );
                         },
                       )
-                    : Text(
-                        collType.isNotEmpty ? collType : '-',
-                        style: GoogleFonts.cairo(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: collColor),
-                      ),
+                    : _collBadge(r['نوع التحصيل_raw']?.toString() ?? collType),
               ),
+            // الدفع
+            if (!_hiddenCols.contains('الدفع'))
+              cell(2, _collBadge(r['الدفع']?.toString() ?? '')),
             if (!_hiddenCols.contains('الفني'))
               cell(3,
                 isEditing
@@ -11857,9 +12837,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                     : Text(
                         (r['الفني']?.toString() ?? '').isEmpty ? '-' : r['الفني'].toString(),
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(fontSize: 10),
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cairo(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w500),
                       ),
-                start: true,
               ),
             if (!_hiddenCols.contains('الوكيل'))
               cell(3,
@@ -11872,9 +12852,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                     : Text(
                         (r['الوكيل']?.toString() ?? '').isEmpty ? '-' : r['الوكيل'].toString(),
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(fontSize: 10),
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cairo(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w500),
                       ),
-                start: true,
               ),
             // طريقة الدفع — مدمجة في عمود التحصيل
             if (!_hiddenCols.contains('اسم المنطقة'))
@@ -11889,17 +12869,37 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               txt(2, r['الرصيد قبل']?.toString() ?? ''),
             if (!_hiddenCols.contains('الرصيد بعد'))
               txt(2, r['الرصيد بعد']?.toString() ?? ''),
+            // الجهاز
+            if (!_hiddenCols.contains('الجهاز'))
+              txt(3, r['الجهاز']?.toString() ?? ''),
             if (!_hiddenCols.contains('fbg'))
               txt(2, r['fbg']?.toString() ?? ''),
             if (!_hiddenCols.contains('fat'))
               txt(2, r['fat']?.toString() ?? ''),
             if (!_hiddenCols.contains('fdt'))
               txt(2, r['fdt']?.toString() ?? ''),
+            // طباعة
+            if (!_hiddenCols.contains('طباعة'))
+              cell(1, Icon(Icons.print, size: 14,
+                  color: isPrinted ? Colors.green.shade600 : Colors.grey.shade300)),
+            // واتساب
+            if (!_hiddenCols.contains('واتساب_col'))
+              cell(1, Icon(Icons.check_circle, size: 14,
+                  color: isWa ? Colors.green.shade600 : Colors.grey.shade300)),
+            // مطابقة
+            if (!_hiddenCols.contains('مطابقة'))
+              cell(1, Icon(
+                  r['مطابقة_raw'] == true ? Icons.check_circle : Icons.cancel_outlined,
+                  size: 14,
+                  color: r['مطابقة_raw'] == true ? Colors.green.shade600 : Colors.grey.shade300)),
+            // محاسبة
+            if (!_hiddenCols.contains('محاسبة'))
+              cell(1, Icon(
+                  r['محاسبة_raw'] == true ? Icons.check_circle : Icons.remove_circle_outline,
+                  size: 14,
+                  color: r['محاسبة_raw'] == true ? Colors.green.shade600 : Colors.grey.shade300)),
             if (!_hiddenCols.contains('ملاحظات'))
-              txt(4, r['ملاحظات']?.toString() ?? '',
-                  color: Colors.grey.shade700, start: true),
-            if (!_hiddenCols.contains('الحالة الحالية'))
-              txt(2, r['الحالة الحالية']?.toString() ?? ''),
+              txt(4, r['ملاحظات']?.toString() ?? ''),
             // ✓  (لا يُخفى)
             cell(2,
               isEditing

@@ -866,15 +866,18 @@ class AccountingService {
     required double amount,
     required String companyId,
     String? notes,
+    DateTime? date,
   }) async {
+    final body = <String, dynamic>{
+      'operatorUserId': operatorUserId,
+      'amount': amount,
+      'companyId': companyId,
+      'notes': notes,
+    };
+    if (date != null) body['date'] = date.toIso8601String().split('T')[0];
     final response = await _client.post(
       '/ftth-accounting/quick-deliver',
-      {
-        'operatorUserId': operatorUserId,
-        'amount': amount,
-        'companyId': companyId,
-        'notes': notes,
-      },
+      body,
       (json) => json,
     );
     return _toMap(response);
