@@ -12811,84 +12811,46 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         child: Container(
           decoration: baseDeco,
           height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
           alignment: Alignment.center,
-          child: InkWell(
-            onTap: () => _onSortCol(key),
-            child: Stack(
-              clipBehavior: Clip.hardEdge,
-              alignment: Alignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: hasFilter
-                              ? Colors.amber.shade300
-                              : Colors.white,
-                        ),
-                      ),
-                    ),
-                    if (isSorted) ...[
-                      const SizedBox(width: 1),
-                      Icon(
-                        _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
-                        size: 10,
-                        color: Colors.white70,
-                      ),
-                    ],
-                  ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // أيقونة الفلتر — يسار
+              InkWell(
+                onTap: () => _showFilterDialog(key, label),
+                borderRadius: BorderRadius.circular(4),
+                child: Icon(
+                  hasFilter ? Icons.filter_alt : Icons.filter_list,
+                  size: 10,
+                  color: hasFilter ? Colors.amber.shade300 : Colors.white24,
                 ),
-                // أيقونة الفلتر — في الزاوية
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: InkWell(
-                    onTap: () => _showFilterDialog(key, label),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(
-                          hasFilter ? Icons.filter_alt : Icons.filter_list,
-                          size: 11,
-                          color: hasFilter
-                              ? Colors.amber.shade300
-                              : Colors.white24,
-                        ),
-                        if (filterCount > 1)
-                          Positioned(
-                            top: -4,
-                            left: -4,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade700,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '$filterCount',
-                                style: const TextStyle(
-                                    fontSize: 7,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                      ],
+              ),
+              const SizedBox(width: 2),
+              // النص — يتمدد
+              Flexible(
+                child: InkWell(
+                  onTap: () => _onSortCol(key),
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.cairo(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: hasFilter ? Colors.amber.shade300 : Colors.white,
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              // سهم الترتيب — يمين
+              if (isSorted)
+                Icon(
+                  _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
+                  size: 10,
+                  color: Colors.white70,
+                ),
+            ],
           ),
         ),
       ),
