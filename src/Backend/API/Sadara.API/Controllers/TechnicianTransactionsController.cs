@@ -93,17 +93,43 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 foreach (var j in jes) jeDict[j.Id] = j.EntryNumber;
             }
 
-            // حساب الإجماليات
+            // حساب الإجماليات من SubscriptionLogs (المصدر الموثوق — نفس بقية النظام)
+            var slQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.LinkedTechnicianId == userId && l.CollectionType == "technician"
+                    && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+            if (from.HasValue)
+            {
+                var fromUtcSl = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
+                slQuery = slQuery.Where(l => l.ActivationDate >= fromUtcSl);
+            }
+            if (to.HasValue)
+            {
+                var toUtcSl = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                slQuery = slQuery.Where(l => l.ActivationDate <= toUtcSl);
+            }
+
+            // الإجمالي = المستقطع + إيرادات - مصاريف (نفس صيغة الداشبورد وكل العمليات)
+            var slTotalAmount = await slQuery.SumAsync(l =>
+                (decimal?)((l.BasePrice ?? 0) > 0
+                    ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                    : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0))) ?? 0;
+            var slCount = await slQuery.CountAsync();
+
+            // التسديدات: من TechnicianTransactions (Payment) — هذا الجدول الوحيد الذي يسجل التسديدات
             var allTechTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
                 .Where(t => t.TechnicianId == userId);
-
-            var totalCharges = await allTechTxQuery
-                .Where(t => t.Type == TechnicianTransactionType.Charge)
-                .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
             var totalPayments = await allTechTxQuery
                 .Where(t => t.Type == TechnicianTransactionType.Payment)
                 .SumAsync(t => (decimal?)t.Amount) ?? 0;
+
+            // أجور الصيانة (من طلبات الخدمة) — ليست اشتراكات
+            var maintenanceCharges = await allTechTxQuery
+                .Where(t => t.Type == TechnicianTransactionType.Charge && t.Category == TechnicianTransactionCategory.Maintenance)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0;
+
+            // الأجور الحقيقية = إجمالي الاشتراكات + أجور الصيانة
+            var totalCharges = slTotalAmount + maintenanceCharges;
 
             return Ok(new
             {
@@ -180,8 +206,12 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 {
                     totalCharges,
                     totalPayments,
-                    netBalance = totalPayments - totalCharges, // محسوب من المعاملات مباشرة
-                    technicianName = user.FullName
+                    netBalance = totalPayments - totalCharges,
+                    technicianName = user.FullName,
+                    // تفاصيل إضافية للشفافية
+                    subscriptionTotal = slTotalAmount,
+                    subscriptionCount = slCount,
+                    maintenanceCharges
                 }
             });
         }
@@ -263,16 +293,38 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 foreach (var j in jes) jeDict[j.Id] = j.EntryNumber;
             }
 
+            // حساب الإجماليات من SubscriptionLogs (المصدر الموثوق)
+            var slQuery2 = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.LinkedTechnicianId == technicianId && l.CollectionType == "technician"
+                    && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+            if (from.HasValue)
+            {
+                var fromUtcSl2 = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
+                slQuery2 = slQuery2.Where(l => l.ActivationDate >= fromUtcSl2);
+            }
+            if (to.HasValue)
+            {
+                var toUtcSl2 = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                slQuery2 = slQuery2.Where(l => l.ActivationDate <= toUtcSl2);
+            }
+            var slTotalAmount2 = await slQuery2.SumAsync(l =>
+                (decimal?)((l.BasePrice ?? 0) > 0
+                    ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
+                    : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0))) ?? 0;
+            var slCount2 = await slQuery2.CountAsync();
+
             var allTechTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
                 .Where(t => t.TechnicianId == technicianId);
-
-            var totalCharges = await allTechTxQuery
-                .Where(t => t.Type == TechnicianTransactionType.Charge)
-                .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
             var totalPayments = await allTechTxQuery
                 .Where(t => t.Type == TechnicianTransactionType.Payment)
                 .SumAsync(t => (decimal?)t.Amount) ?? 0;
+
+            var maintenanceCharges2 = await allTechTxQuery
+                .Where(t => t.Type == TechnicianTransactionType.Charge && t.Category == TechnicianTransactionCategory.Maintenance)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0;
+
+            var totalCharges = slTotalAmount2 + maintenanceCharges2;
 
             return Ok(new
             {
@@ -348,8 +400,11 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 {
                     totalCharges,
                     totalPayments,
-                    netBalance = totalPayments - totalCharges, // محسوب من المعاملات مباشرة
-                    technicianName = technician.FullName
+                    netBalance = totalPayments - totalCharges,
+                    technicianName = technician.FullName,
+                    subscriptionTotal = slTotalAmount2,
+                    subscriptionCount = slCount2,
+                    maintenanceCharges = maintenanceCharges2
                 }
             });
         }
