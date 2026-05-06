@@ -886,6 +886,18 @@ public class FtthAccountingController : ControllerBase
                         (l.BasePrice ?? 0) > 0
                             ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
                             : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)),
+                    // المستقطع
+                    PageDeduction = g.Sum(l =>
+                        (l.BasePrice ?? 0) > 0
+                            ? (l.BasePrice ?? 0) - (l.CompanyDiscount ?? 0)
+                            : l.SystemDiscountEnabled
+                                ? (l.PlanPrice ?? 0)
+                                : (l.PlanPrice ?? 0) - (l.CompanyDiscount ?? 0)
+                    ),
+                    // الإيرادات والمصاريف المحاسبية
+                    TotalMaintenanceFee = g.Sum(l => l.MaintenanceFee ?? 0),
+                    TotalManualDiscount = g.Sum(l => l.ManualDiscount ?? 0),
+                    TotalCompanyDiscountProfit = g.Where(l => !l.SystemDiscountEnabled).Sum(l => l.CompanyDiscount ?? 0),
                     PurchaseCount = g.Count(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))),
                     PurchaseAmount = g.Where(l => l.OperationType != null && (l.OperationType.ToUpper().Contains("PURCHASE") || l.OperationType.ToUpper().Contains("SUBSCRIBE"))).Sum(l =>
                         (l.BasePrice ?? 0) > 0
@@ -952,6 +964,9 @@ public class FtthAccountingController : ControllerBase
                 var paid = techAccId.HasValue
                     ? techPayments.FirstOrDefault(p => p.AccountId == techAccId.Value)?.TotalPayments ?? 0m
                     : 0m;
+                var techExtraRevenue = t.TechId.HasValue
+                    ? techRevenueByUser.FirstOrDefault(d => d.TechnicianId == t.TechId.Value)?.Total ?? 0m
+                    : 0m;
                 return new
                 {
                     userId = t.TechId,
@@ -985,13 +1000,14 @@ public class FtthAccountingController : ControllerBase
                     scheduleCount = 0,
                     scheduleAmount = 0m,
                     reconciledCount = t.ReconciledCount,
-                    techRevenue = t.TechId.HasValue
-                        ? techRevenueByUser.FirstOrDefault(d => d.TechnicianId == t.TechId.Value)?.Total ?? 0m
-                        : 0m,
-                    revenue = t.TechId.HasValue
-                        ? techRevenueByUser.FirstOrDefault(d => d.TechnicianId == t.TechId.Value)?.Total ?? 0m
-                        : 0m,
-                    expense = 0m
+                    // حقول محاسبية — نفس صيغة صفوف المشغلين
+                    pageDeduction = t.PageDeduction,
+                    maintenanceFee = t.TotalMaintenanceFee,
+                    manualDiscount = t.TotalManualDiscount,
+                    companyDiscountProfit = t.TotalCompanyDiscountProfit,
+                    techRevenue = techExtraRevenue,
+                    revenue = t.TotalMaintenanceFee + t.TotalCompanyDiscountProfit + techExtraRevenue,
+                    expense = t.TotalManualDiscount
                 };
             }).OrderByDescending(x => x.totalAmount).ToList();
 
