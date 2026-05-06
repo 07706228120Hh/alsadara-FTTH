@@ -1883,13 +1883,32 @@ public class InternalDataController : ControllerBase
             log.ActivatedBy = pab.GetString();
         if (request.TryGetProperty("PlanPrice", out var ppr) && ppr.ValueKind == JsonValueKind.Number)
         {
-            log.PlanPrice = ppr.GetDecimal();
-            // تحديث BasePrice أيضاً ليطابق المستقطع الجديد
-            log.BasePrice = ppr.GetDecimal();
-            log.CompanyDiscount = 0;
+            var newPrice = ppr.GetDecimal();
+            // فقط عند تغيير المستقطع فعلاً نعيد ضبط BasePrice و CompanyDiscount
+            if (newPrice != log.PlanPrice)
+            {
+                log.PlanPrice = newPrice;
+                log.BasePrice = newPrice;
+                log.CompanyDiscount = 0;
+            }
         }
         if (request.TryGetProperty("CollectionType", out var pct) && pct.ValueKind == JsonValueKind.String)
+        {
             log.CollectionType = pct.GetString();
+            // مزامنة PaymentMethod تلقائياً عند تغيير CollectionType (إذا لم يُرسل صراحةً)
+            if (!request.TryGetProperty("PaymentMethod", out _))
+            {
+                log.PaymentMethod = pct.GetString() switch
+                {
+                    "cash" => "نقد",
+                    "credit" => "آجل",
+                    "master" => "ماستر",
+                    "technician" => "فني",
+                    "agent" => "وكيل",
+                    _ => pct.GetString()
+                };
+            }
+        }
         if (request.TryGetProperty("TechnicianName", out var ptn) && ptn.ValueKind == JsonValueKind.String)
             log.TechnicianName = ptn.GetString();
         if (request.TryGetProperty("PaymentMethod", out var ppm) && ppm.ValueKind == JsonValueKind.String)
@@ -1902,6 +1921,28 @@ public class InternalDataController : ControllerBase
             log.PhoneNumber = ppn.GetString();
         if (request.TryGetProperty("CommitmentPeriod", out var pcp) && pcp.ValueKind == JsonValueKind.Number)
             log.CommitmentPeriod = pcp.GetInt32();
+        // حقول الموقع (إثراء من FTTH API)
+        if (request.TryGetProperty("ZoneId", out var pzi) && pzi.ValueKind == JsonValueKind.String)
+            log.ZoneId = pzi.GetString();
+        if (request.TryGetProperty("ZoneName", out var pzn) && pzn.ValueKind == JsonValueKind.String)
+            log.ZoneName = pzn.GetString();
+        if (request.TryGetProperty("FbgInfo", out var pfb) && pfb.ValueKind == JsonValueKind.String)
+            log.FbgInfo = pfb.GetString();
+        if (request.TryGetProperty("FatInfo", out var pfa) && pfa.ValueKind == JsonValueKind.String)
+            log.FatInfo = pfa.GetString();
+        if (request.TryGetProperty("FdtInfo", out var pfd) && pfd.ValueKind == JsonValueKind.String)
+            log.FdtInfo = pfd.GetString();
+        if (request.TryGetProperty("SubscriptionId", out var psi) && psi.ValueKind == JsonValueKind.String)
+            log.SubscriptionId = psi.GetString();
+        // حقول الفترة والرصيد
+        if (request.TryGetProperty("StartDate", out var psd) && psd.ValueKind == JsonValueKind.String)
+            log.StartDate = psd.GetString();
+        if (request.TryGetProperty("EndDate", out var ped) && ped.ValueKind == JsonValueKind.String)
+            log.EndDate = ped.GetString();
+        if (request.TryGetProperty("CurrentStatus", out var pcs) && pcs.ValueKind == JsonValueKind.String)
+            log.CurrentStatus = pcs.GetString();
+        if (request.TryGetProperty("WalletBalanceAfter", out var pwba) && pwba.ValueKind == JsonValueKind.Number)
+            log.WalletBalanceAfter = pwba.GetDecimal();
 
         // ═══ تحديث الفني/الوكيل المرتبط + تعديل القيد المحاسبي ═══
         Guid? newLinkedTechnicianId = null;
@@ -1962,7 +2003,73 @@ public class InternalDataController : ControllerBase
         _unitOfWork.SubscriptionLogs.Update(log);
         await _unitOfWork.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "تم تحديث السجل بنجاح", journalUpdated = technicianChanged || agentChanged });
+        // ═══ تعديل أسطر القيد المحاسبي مباشرة ليطابق المبالغ الجديدة ═══
+        bool journalAmountsUpdated = false;
+        if (log.JournalEntryId.HasValue && log.CompanyId.HasValue)
+        {
+            try
+            {
+                var entry = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
+                if (entry != null && entry.Status != JournalEntryStatus.Voided)
+                {
+                    var lines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                        .IgnoreQueryFilters()
+                        .Where(jl => jl.JournalEntryId == entry.Id && !jl.IsDeleted).ToListAsync();
+
+                    var bp = log.BasePrice ?? log.PlanPrice ?? 0;
+                    var cd = log.CompanyDiscount ?? 0;
+                    var md = log.ManualDiscount ?? 0;
+                    var mf = log.MaintenanceFee ?? 0;
+                    var sde = log.SystemDiscountEnabled;
+                    var pd = bp > 0 ? bp - cd : (log.PlanPrice ?? 0);
+                    var cdp = sde ? 0 : cd;
+                    var rev = mf + cdp;
+                    var total = pd + rev - md;
+
+                    foreach (var line in lines)
+                    {
+                        var code = await _unitOfWork.Accounts.AsQueryable()
+                            .Where(a => a.Id == line.AccountId).Select(a => a.Code).FirstOrDefaultAsync();
+
+                        decimal nd = line.DebitAmount, nc = line.CreditAmount;
+                        if (code == "11102") { nd = 0; nc = pd; }
+                        else if (code == "4110") { nd = 0; nc = mf; }
+                        else if (code == "4120") { nd = 0; nc = cdp; }
+                        else if (code == "5110") { nd = md; nc = 0; }
+                        else if (line.DebitAmount > 0) { nd = total; nc = 0; }
+
+                        if (line.DebitAmount != nd || line.CreditAmount != nc)
+                        {
+                            var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                            if (acct != null)
+                            {
+                                if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                                    acct.CurrentBalance += (nd - nc) - (line.DebitAmount - line.CreditAmount);
+                                else
+                                    acct.CurrentBalance += (nc - nd) - (line.CreditAmount - line.DebitAmount);
+                                _unitOfWork.Accounts.Update(acct);
+                            }
+                            line.DebitAmount = nd; line.CreditAmount = nc;
+                            _unitOfWork.JournalEntryLines.Update(line);
+                            journalAmountsUpdated = true;
+                        }
+                    }
+                    if (journalAmountsUpdated)
+                    {
+                        entry.TotalDebit = lines.Sum(l => l.DebitAmount);
+                        entry.TotalCredit = lines.Sum(l => l.CreditAmount);
+                        _unitOfWork.JournalEntries.Update(entry);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "فشل تحديث القيد المحاسبي للسجل {LogId}", id);
+            }
+        }
+
+        return Ok(new { success = true, message = "تم تحديث السجل بنجاح", journalUpdated = technicianChanged || agentChanged || journalAmountsUpdated });
     }
 
     /// <summary>
@@ -2163,6 +2270,64 @@ public class InternalDataController : ControllerBase
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
         return Ok(log);
+    }
+
+    /// <summary>
+    /// كشف وإصلاح السجلات التي PaymentMethod لا يطابق CollectionType
+    /// GET → عرض فقط، POST → إصلاح تلقائي
+    /// </summary>
+    [HttpGet("subscriptionlogs/fix-payment-method-mismatch")]
+    [AllowAnonymous]
+    public async Task<IActionResult> FixPaymentMethodMismatch([FromQuery] bool dryRun = true)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var collToPayment = new Dictionary<string, string>
+        {
+            ["cash"] = "نقد", ["credit"] = "آجل", ["master"] = "ماستر",
+            ["technician"] = "فني", ["agent"] = "وكيل"
+        };
+
+        var logs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.CollectionType != null && l.PaymentMethod != null)
+            .Select(l => new { l.Id, l.CustomerName, l.CollectionType, l.PaymentMethod, l.ActivationDate })
+            .ToListAsync();
+
+        var mismatched = logs.Where(l =>
+        {
+            var ct = l.CollectionType?.ToLower() ?? "";
+            return collToPayment.ContainsKey(ct) && l.PaymentMethod != collToPayment[ct];
+        }).Select(l => new
+        {
+            l.Id, l.CustomerName, l.CollectionType, l.PaymentMethod,
+            expectedPaymentMethod = collToPayment.GetValueOrDefault(l.CollectionType?.ToLower() ?? "", l.CollectionType ?? ""),
+            activationDate = l.ActivationDate
+        }).OrderByDescending(l => l.activationDate).ToList();
+
+        if (!dryRun && mismatched.Any())
+        {
+            foreach (var m in mismatched)
+            {
+                var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(m.Id);
+                if (log != null)
+                {
+                    log.PaymentMethod = m.expectedPaymentMethod;
+                    _unitOfWork.SubscriptionLogs.Update(log);
+                }
+            }
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        return Ok(new
+        {
+            success = true,
+            dryRun,
+            totalChecked = logs.Count,
+            mismatchCount = mismatched.Count,
+            mismatched = mismatched.Take(200),
+            message = dryRun ? "معاينة فقط — أضف ?dryRun=false للإصلاح" : $"تم إصلاح {mismatched.Count} سجل"
+        });
     }
 
     /// <summary>

@@ -21,7 +21,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   bool _isLoading = true;
   String? _errorMessage;
   List<Map<String, dynamic>> _allAccounts = [];
+  List<Map<String, dynamic>> _allAccountsRaw = []; // كل الحسابات بما فيها الأب
   String _searchQuery = '';
+
+  // ─── فلاتر البحث المتقدم ───
+  String? _selectedAccountType; // Assets, Liabilities, etc.
+  String? _selectedParentId; // فلتر حسب المجموعة الأب
+  String _balanceFilter = 'all'; // all, debit, credit, zero
+  bool _showFilters = true; // إظهار/إخفاء لوحة الفلاتر
 
   // ─── كشف الحساب المحدد ───
   Map<String, dynamic>? _selectedAccount;
@@ -34,14 +41,33 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   DateTime? _fromDate;
   DateTime? _toDate;
 
+  // ─── فلتر وترتيب كشف الحساب ───
+  String _stmtTypeFilter = 'all'; // all, receipt, payment (قبض/صرف)
+  String? _stmtSortColumn; // 'date', 'type'
+  bool _stmtSortAsc = true;
+
   final _dateFmt = DateFormat('yyyy-MM-dd');
   final _displayDateFmt = DateFormat('yyyy/MM/dd');
   final _searchController = TextEditingController();
+  final _parentSearchController = TextEditingController();
+  final _parentFocusNode = FocusNode();
+  final _parentLayerLink = LayerLink();
+  OverlayEntry? _parentOverlay;
+  final _stmtScrollController = ScrollController();
 
   @override
   void dispose() {
     _searchController.dispose();
+    _removeParentOverlay();
+    _parentSearchController.dispose();
+    _parentFocusNode.dispose();
+    _stmtScrollController.dispose();
     super.dispose();
+  }
+
+  void _removeParentOverlay() {
+    _parentOverlay?.remove();
+    _parentOverlay = null;
   }
 
   @override
@@ -62,10 +88,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       if (!mounted) return;
       if (result['success'] == true) {
         final raw = (result['data'] as List?) ?? [];
-        // فقط الحسابات الفرعية (leaf)
-        _allAccounts = raw
-            .where((a) => a['IsLeaf'] == true)
+        _allAccountsRaw = raw
             .map<Map<String, dynamic>>((a) => Map<String, dynamic>.from(a))
+            .toList();
+        // فقط الحسابات الفرعية (leaf)
+        _allAccounts = _allAccountsRaw
+            .where((a) => a['IsLeaf'] == true)
             .toList();
         _allAccounts.sort((a, b) => (a['Code']?.toString() ?? '')
             .compareTo(b['Code']?.toString() ?? ''));
@@ -87,27 +115,78 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     }
   }
 
+  /// الحسابات الأب (غير leaf) للفلتر حسب المجموعة
+  List<Map<String, dynamic>> get _parentAccounts {
+    return _allAccountsRaw
+        .where((a) => a['IsLeaf'] != true)
+        .toList()
+      ..sort((a, b) => (a['Code']?.toString() ?? '').compareTo(b['Code']?.toString() ?? ''));
+  }
+
+  /// هل يوجد فلتر نشط؟
+  bool get _hasActiveFilter =>
+      _searchQuery.isNotEmpty ||
+      _selectedAccountType != null ||
+      _selectedParentId != null ||
+      _balanceFilter != 'all';
+
   List<Map<String, dynamic>> get _filteredAccounts {
-    if (_searchQuery.isEmpty) return _allAccounts;
-    final q = _searchQuery.toLowerCase();
-    return _allAccounts.where((a) {
-      final name = (a['Name']?.toString() ?? '').toLowerCase();
-      final code = (a['Code']?.toString() ?? '').toLowerCase();
-      return name.contains(q) || code.contains(q);
-    }).toList();
+    var list = _allAccounts.toList();
+
+    // فلتر نوع الحساب
+    if (_selectedAccountType != null) {
+      list = list.where((a) => a['AccountType']?.toString() == _selectedAccountType).toList();
+    }
+
+    // فلتر المجموعة الأب
+    if (_selectedParentId != null) {
+      list = list.where((a) => a['ParentAccountId']?.toString() == _selectedParentId).toList();
+    }
+
+    // فلتر الرصيد
+    if (_balanceFilter == 'debit') {
+      list = list.where((a) {
+        final b = ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
+        return b > 0;
+      }).toList();
+    } else if (_balanceFilter == 'credit') {
+      list = list.where((a) {
+        final b = ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
+        return b < 0;
+      }).toList();
+    } else if (_balanceFilter == 'zero') {
+      list = list.where((a) {
+        final b = ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
+        return b == 0;
+      }).toList();
+    }
+
+    // فلتر البحث النصي
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      list = list.where((a) {
+        final name = (a['Name']?.toString() ?? '').toLowerCase();
+        final code = (a['Code']?.toString() ?? '').toLowerCase();
+        return name.contains(q) || code.contains(q);
+      }).toList();
+    }
+
+    return list;
   }
 
   Future<void> _loadStatement(Map<String, dynamic> account,
       {bool resetDates = true}) async {
     final accountId = account['Id']?.toString();
     if (accountId == null) return;
+    // إذا التواريخ محددة من لوحة الفلاتر لا تعيد تصفيرها
+    final keepDates = _fromDate != null || _toDate != null;
     setState(() {
       _selectedAccount = account;
       _isLoadingStatement = true;
       _statementLines = [];
       _statementSummary = {};
       _statementAccount = {};
-      if (resetDates) {
+      if (resetDates && !keepDates) {
         _fromDate = null;
         _toDate = null;
       }
@@ -133,6 +212,44 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     if (_selectedAccount != null) {
       _loadStatement(_selectedAccount!, resetDates: false);
     }
+  }
+
+  /// حركات الكشف مع الفلترة والترتيب
+  List<dynamic> get _processedStatementLines {
+    var lines = _statementLines.toList();
+
+    // فلتر النوع
+    if (_stmtTypeFilter != 'all') {
+      lines = lines.where((line) {
+        final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();
+        final credit = ((line['CreditAmount'] ?? 0) as num).toDouble();
+        final label = _txLabel(debit, credit);
+        if (_stmtTypeFilter == 'receipt') return label == 'قبض';
+        if (_stmtTypeFilter == 'payment') return label == 'صرف';
+        return true;
+      }).toList();
+    }
+
+    // ترتيب
+    if (_stmtSortColumn != null) {
+      lines.sort((a, b) {
+        int cmp = 0;
+        if (_stmtSortColumn == 'date') {
+          final dA = a['EntryDate']?.toString() ?? '';
+          final dB = b['EntryDate']?.toString() ?? '';
+          cmp = dA.compareTo(dB);
+        } else if (_stmtSortColumn == 'type') {
+          final dA = ((a['DebitAmount'] ?? 0) as num).toDouble();
+          final cA = ((a['CreditAmount'] ?? 0) as num).toDouble();
+          final dB = ((b['DebitAmount'] ?? 0) as num).toDouble();
+          final cB = ((b['CreditAmount'] ?? 0) as num).toDouble();
+          cmp = _txLabel(dA, cA).compareTo(_txLabel(dB, cB));
+        }
+        return _stmtSortAsc ? cmp : -cmp;
+      });
+    }
+
+    return lines;
   }
 
   Future<void> _pickDate(bool isFrom) async {
@@ -216,10 +333,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                         _buildDateFilter(),
                         _buildStatementSummaryBar(),
                         Expanded(child: _buildStatementTable()),
-                      ] else if (_searchQuery.isNotEmpty) ...[
-                        Expanded(child: _buildAccountList()),
                       ] else ...[
-                        Expanded(child: _buildSearchPrompt()),
+                        if (_showFilters) _buildAdvancedFilters(),
+                        if (_hasActiveFilter) ...[
+                          _buildFilterSummary(),
+                          Expanded(child: _buildAccountList()),
+                        ] else ...[
+                          Expanded(child: _buildSearchPrompt()),
+                        ],
                       ],
                     ],
                   ),
@@ -380,18 +501,526 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           fillColor: AccountingTheme.bgCard,
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AccountingTheme.borderColor)),
+              borderSide: BorderSide(color: Colors.black87, width: 1.5)),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AccountingTheme.borderColor)),
+              borderSide: BorderSide(color: Colors.black87, width: 1.5)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AccountingTheme.neonBlue)),
+              borderSide: BorderSide(color: Colors.black, width: 2)),
           contentPadding: EdgeInsets.symmetric(
               horizontal: isMob ? 12 : ar.spaceXL, vertical: 10),
         ),
       ),
     );
+  }
+
+  // ═══════════════════════════════════════════
+  // لوحة الفلاتر المتقدمة
+  // ═══════════════════════════════════════════
+  Widget _buildAdvancedFilters() {
+    final ar = context.accR;
+    final isMob = ar.isMobile;
+    final hPad = isMob ? 10.0 : ar.spaceXL;
+
+    return Container(
+      margin: EdgeInsets.fromLTRB(hPad, 4, hPad, 4),
+      padding: EdgeInsets.all(isMob ? 10 : 14),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black87, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ─── صف 1: نوع الحساب ───
+          Row(
+            children: [
+              Icon(Icons.category_rounded, size: isMob ? 14 : 16, color: AccountingTheme.textSecondary),
+              SizedBox(width: isMob ? 4 : 6),
+              Text('التصنيف:', style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.small, fontWeight: FontWeight.w600, color: AccountingTheme.textSecondary)),
+              SizedBox(width: isMob ? 6 : 10),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _filterChip('الكل', _selectedAccountType == null && _balanceFilter == 'all', () => setState(() { _selectedAccountType = null; _balanceFilter = 'all'; })),
+                      SizedBox(width: isMob ? 4 : 6),
+                      _filterChip('مدين', _balanceFilter == 'debit', () => setState(() => _balanceFilter = _balanceFilter == 'debit' ? 'all' : 'debit'), color: AccountingTheme.danger),
+                      SizedBox(width: isMob ? 4 : 6),
+                      _filterChip('دائن', _balanceFilter == 'credit', () => setState(() => _balanceFilter = _balanceFilter == 'credit' ? 'all' : 'credit'), color: AccountingTheme.success),
+                      SizedBox(width: isMob ? 4 : 6),
+                      Container(width: 1, height: 20, color: AccountingTheme.borderColor),
+                      SizedBox(width: isMob ? 4 : 6),
+                      _filterChip('أصول', _selectedAccountType == 'Assets', () => setState(() => _selectedAccountType = _selectedAccountType == 'Assets' ? null : 'Assets'), color: Colors.blue),
+                      SizedBox(width: isMob ? 4 : 6),
+                      _filterChip('التزامات', _selectedAccountType == 'Liabilities', () => setState(() => _selectedAccountType = _selectedAccountType == 'Liabilities' ? null : 'Liabilities'), color: Colors.orange),
+                      SizedBox(width: isMob ? 4 : 6),
+                      _filterChip('حقوق ملكية', _selectedAccountType == 'Equity', () => setState(() => _selectedAccountType = _selectedAccountType == 'Equity' ? null : 'Equity'), color: Colors.purple),
+                      SizedBox(width: isMob ? 4 : 6),
+                      _filterChip('إيرادات', _selectedAccountType == 'Revenue', () => setState(() => _selectedAccountType = _selectedAccountType == 'Revenue' ? null : 'Revenue'), color: Colors.green),
+                      SizedBox(width: isMob ? 4 : 6),
+                      _filterChip('مصروفات', _selectedAccountType == 'Expenses', () => setState(() => _selectedAccountType = _selectedAccountType == 'Expenses' ? null : 'Expenses'), color: Colors.red),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isMob ? 8 : 10),
+          // ─── صف 2: المجموعة الأب + فلتر الرصيد ───
+          Wrap(
+            spacing: isMob ? 8 : 12,
+            runSpacing: isMob ? 8 : 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // المجموعة الأب
+              _buildParentGroupDropdown(isMob),
+              // فلتر الفترة الزمنية
+              _buildDateRangeFilter(isMob),
+              // زر مسح الكل
+              if (_hasActiveFilter)
+                InkWell(
+                  onTap: () => setState(() {
+                    _selectedAccountType = null;
+                    _selectedParentId = null;
+                    _balanceFilter = 'all';
+                    _fromDate = null;
+                    _toDate = null;
+                    _searchQuery = '';
+                    _searchController.clear();
+                  }),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10, vertical: isMob ? 6 : 7),
+                    decoration: BoxDecoration(
+                      color: AccountingTheme.danger.withAlpha(15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.black87, width: 1.2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.clear_all_rounded, size: isMob ? 14 : 16, color: AccountingTheme.danger),
+                        SizedBox(width: 4),
+                        Text('مسح الكل', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.w600, color: AccountingTheme.danger)),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// chip فلتر
+  Widget _filterChip(String label, bool selected, VoidCallback onTap, {Color? color}) {
+    final isMob = context.accR.isMobile;
+    final chipColor = color ?? AccountingTheme.neonBlue;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10, vertical: isMob ? 4 : 5),
+        decoration: BoxDecoration(
+          color: selected ? chipColor.withAlpha(30) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? chipColor : Colors.black54,
+            width: selected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(label, style: GoogleFonts.cairo(
+          fontSize: isMob ? 10 : 11,
+          fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+          color: selected ? chipColor : AccountingTheme.textSecondary,
+        )),
+      ),
+    );
+  }
+
+  /// حقل بحث وتصفية المجموعة الأب — inline autocomplete
+  Widget _buildParentGroupDropdown(bool isMob) {
+    return CompositedTransformTarget(
+      link: _parentLayerLink,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: isMob ? 200 : 250),
+        height: isMob ? 32 : 34,
+        decoration: BoxDecoration(
+          color: AccountingTheme.bgPrimary,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.black87, width: 1.2),
+        ),
+        child: Row(
+          children: [
+            // حقل الكتابة
+            Expanded(
+              child: TextField(
+                controller: _parentSearchController,
+                focusNode: _parentFocusNode,
+                style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textPrimary),
+                onChanged: (_) => _showParentOverlay(),
+                onTap: () => _showParentOverlay(),
+                decoration: InputDecoration(
+                  hintText: 'المجموعة...',
+                  hintStyle: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textMuted),
+                  prefixIcon: Icon(Icons.folder_outlined, size: isMob ? 14 : 16, color: AccountingTheme.textMuted),
+                  prefixIconConstraints: BoxConstraints(minWidth: isMob ? 28 : 32),
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: isMob ? 6 : 7),
+                  border: InputBorder.none,
+                ),
+              ),
+            ),
+            // زر مسح
+            if (_selectedParentId != null)
+              GestureDetector(
+                onTap: () {
+                  _parentSearchController.clear();
+                  _removeParentOverlay();
+                  setState(() => _selectedParentId = null);
+                },
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(Icons.close, size: isMob ? 13 : 15, color: AccountingTheme.danger),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showParentOverlay() {
+    _removeParentOverlay();
+    final query = _parentSearchController.text.toLowerCase();
+    var parents = _parentAccounts;
+    if (_selectedAccountType != null) {
+      parents = parents.where((a) => a['AccountType']?.toString() == _selectedAccountType).toList();
+    }
+    if (query.isNotEmpty) {
+      parents = parents.where((p) {
+        final name = (p['Name']?.toString() ?? '').toLowerCase();
+        final code = (p['Code']?.toString() ?? '').toLowerCase();
+        return name.contains(query) || code.contains(query);
+      }).toList();
+    }
+
+    final isMob = context.accR.isMobile;
+    final overlay = Overlay.of(context);
+
+    // حساب عرض حقل البحث لمطابقة القائمة المنسدلة
+    double fieldWidth = isMob ? 200 : 250;
+    final renderBox = _parentFocusNode.context?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      fieldWidth = renderBox.size.width;
+    }
+
+    _parentOverlay = OverlayEntry(
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Stack(
+          children: [
+            // طبقة شفافة للإغلاق عند الضغط خارجاً
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => _removeParentOverlay(),
+                behavior: HitTestBehavior.translucent,
+              ),
+            ),
+            // القائمة المنسدلة
+            CompositedTransformFollower(
+              link: _parentLayerLink,
+              showWhenUnlinked: false,
+              offset: Offset(0, isMob ? 34 : 36),
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(8),
+                shadowColor: Colors.black26,
+                child: Container(
+                  width: fieldWidth,
+                  constraints: BoxConstraints(maxHeight: 250),
+                  decoration: BoxDecoration(
+                    color: AccountingTheme.bgCard,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.black87, width: 1.2),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      children: [
+                        // "كل المجموعات"
+                        InkWell(
+                          onTap: () {
+                            _parentSearchController.clear();
+                            _removeParentOverlay();
+                            _parentFocusNode.unfocus();
+                            setState(() => _selectedParentId = null);
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _selectedParentId == null ? AccountingTheme.neonBlue.withAlpha(15) : null,
+                              border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+                            ),
+                            child: Text('كل المجموعات', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600,
+                                color: _selectedParentId == null ? AccountingTheme.neonBlue : AccountingTheme.textPrimary)),
+                          ),
+                        ),
+                        ...parents.map((p) {
+                          final id = p['Id']?.toString();
+                          final isSel = _selectedParentId == id;
+                          return InkWell(
+                            onTap: () {
+                              _parentSearchController.text = '${p['Code']} - ${p['Name']}';
+                              _removeParentOverlay();
+                              _parentFocusNode.unfocus();
+                              setState(() => _selectedParentId = id);
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: isSel ? AccountingTheme.neonBlue.withAlpha(15) : null,
+                                border: Border(bottom: BorderSide(color: AccountingTheme.borderColor.withAlpha(50))),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: isSel ? AccountingTheme.neonBlue.withAlpha(25) : AccountingTheme.bgPrimary,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(p['Code']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: isSel ? AccountingTheme.neonBlue : AccountingTheme.textSecondary)),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(child: Text(p['Name']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11, color: isSel ? AccountingTheme.neonBlue : AccountingTheme.textPrimary), overflow: TextOverflow.ellipsis)),
+                                  if (isSel) Icon(Icons.check_circle, size: 14, color: AccountingTheme.neonBlue),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        if (parents.isEmpty)
+                          Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('لا توجد نتائج', textAlign: TextAlign.center, style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.textMuted)),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    overlay.insert(_parentOverlay!);
+  }
+
+  /// dropdown فلتر الرصيد
+  Widget _buildBalanceFilterDropdown(bool isMob) {
+    return Container(
+      constraints: BoxConstraints(maxWidth: isMob ? 130 : 150),
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgPrimary,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black87, width: 1.2),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _balanceFilter,
+          isExpanded: true,
+          isDense: true,
+          style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textPrimary),
+          icon: Icon(Icons.keyboard_arrow_down, size: isMob ? 16 : 18, color: AccountingTheme.textMuted),
+          items: [
+            DropdownMenuItem(value: 'all', child: Row(children: [
+              Icon(Icons.account_balance_wallet_outlined, size: isMob ? 13 : 15, color: AccountingTheme.textMuted),
+              SizedBox(width: 4),
+              Text('كل الأرصدة', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11)),
+            ])),
+            DropdownMenuItem(value: 'debit', child: Row(children: [
+              Icon(Icons.arrow_upward, size: isMob ? 13 : 15, color: AccountingTheme.danger),
+              SizedBox(width: 4),
+              Text('مدين فقط', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.danger)),
+            ])),
+            DropdownMenuItem(value: 'credit', child: Row(children: [
+              Icon(Icons.arrow_downward, size: isMob ? 13 : 15, color: AccountingTheme.success),
+              SizedBox(width: 4),
+              Text('دائن فقط', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.success)),
+            ])),
+            DropdownMenuItem(value: 'zero', child: Row(children: [
+              Icon(Icons.horizontal_rule, size: isMob ? 13 : 15, color: AccountingTheme.textMuted),
+              SizedBox(width: 4),
+              Text('رصيد صفر', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11)),
+            ])),
+          ],
+          onChanged: (v) => setState(() => _balanceFilter = v ?? 'all'),
+        ),
+      ),
+    );
+  }
+
+  /// فلتر الفترة الزمنية (من - إلى) في لوحة البحث
+  Widget _buildDateRangeFilter(bool isMob) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 6 : 8, vertical: isMob ? 4 : 5),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgPrimary,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black87, width: 1.2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.date_range_rounded, size: isMob ? 14 : 16, color: AccountingTheme.textSecondary),
+          SizedBox(width: 4),
+          InkWell(
+            onTap: () => _pickFilterDate(true),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: isMob ? 6 : 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _fromDate != null ? AccountingTheme.neonBlue.withAlpha(15) : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                _fromDate != null ? _displayDateFmt.format(_fromDate!) : 'من',
+                style: GoogleFonts.cairo(
+                  fontSize: isMob ? 10 : 11,
+                  color: _fromDate != null ? AccountingTheme.neonBlue : AccountingTheme.textMuted,
+                  fontWeight: _fromDate != null ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 2),
+            child: Text('←', style: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.textMuted)),
+          ),
+          InkWell(
+            onTap: () => _pickFilterDate(false),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: isMob ? 6 : 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _toDate != null ? AccountingTheme.neonBlue.withAlpha(15) : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                _toDate != null ? _displayDateFmt.format(_toDate!) : 'إلى',
+                style: GoogleFonts.cairo(
+                  fontSize: isMob ? 10 : 11,
+                  color: _toDate != null ? AccountingTheme.neonBlue : AccountingTheme.textMuted,
+                  fontWeight: _toDate != null ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+          ),
+          if (_fromDate != null || _toDate != null) ...[
+            SizedBox(width: 2),
+            InkWell(
+              onTap: () => setState(() { _fromDate = null; _toDate = null; }),
+              child: Icon(Icons.close, size: isMob ? 12 : 14, color: AccountingTheme.danger),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickFilterDate(bool isFrom) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: (isFrom ? _fromDate : _toDate) ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (ctx, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AccountingTheme.neonBlue,
+              onPrimary: Colors.white,
+              surface: AccountingTheme.bgCard,
+            ),
+          ),
+          child: child!,
+        ),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        if (isFrom) {
+          _fromDate = picked;
+        } else {
+          _toDate = picked;
+        }
+      });
+    }
+  }
+
+  /// شريط ملخص الفلاتر النشطة + عدد النتائج
+  Widget _buildFilterSummary() {
+    final ar = context.accR;
+    final isMob = ar.isMobile;
+    final hPad = isMob ? 10.0 : ar.spaceXL;
+    final count = _filteredAccounts.length;
+
+    return Container(
+      margin: EdgeInsets.fromLTRB(hPad, 2, hPad, 2),
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 12, vertical: isMob ? 4 : 6),
+      decoration: BoxDecoration(
+        color: AccountingTheme.neonBlue.withAlpha(10),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black54, width: 1.0),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.filter_list_rounded, size: isMob ? 14 : 16, color: AccountingTheme.neonBlue),
+          SizedBox(width: 6),
+          Text('نتائج البحث:', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textSecondary)),
+          SizedBox(width: 4),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+            decoration: BoxDecoration(
+              color: AccountingTheme.neonBlue.withAlpha(30),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text('$count حساب', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.bold, color: AccountingTheme.neonBlue)),
+          ),
+          Spacer(),
+          // إجمالي الأرصدة
+          ..._buildTotalBalances(isMob),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildTotalBalances(bool isMob) {
+    final accounts = _filteredAccounts;
+    double totalDebit = 0, totalCredit = 0;
+    for (final a in accounts) {
+      final b = ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
+      if (b > 0) totalDebit += b;
+      if (b < 0) totalCredit += b.abs();
+    }
+    return [
+      if (totalDebit > 0) ...[
+        Text('مدين: ${_fmt(totalDebit)}', style: GoogleFonts.cairo(fontSize: isMob ? 9 : 10, fontWeight: FontWeight.bold, color: AccountingTheme.danger)),
+        SizedBox(width: 8),
+      ],
+      if (totalCredit > 0)
+        Text('دائن: ${_fmt(totalCredit)}', style: GoogleFonts.cairo(fontSize: isMob ? 9 : 10, fontWeight: FontWeight.bold, color: AccountingTheme.success)),
+    ];
   }
 
   /// حالة فارغة - ينتظر المستخدم البحث
@@ -414,7 +1043,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     fontWeight: FontWeight.bold,
                     color: AccountingTheme.textMuted)),
             SizedBox(height: isMob ? 4 : ar.spaceS),
-            Text('اكتب اسم أو كود الحساب في مربع البحث اعلاه',
+            Text('اكتب اسم أو كود الحساب، أو استخدم الفلاتر أعلاه',
                 style: GoogleFonts.cairo(
                     fontSize: isMob ? 11 : ar.body,
                     color: AccountingTheme.textMuted.withAlpha(120))),
@@ -483,6 +1112,21 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 )),
           ),
           Spacer(),
+          if (_selectedAccount == null)
+            IconButton(
+              onPressed: () => setState(() => _showFilters = !_showFilters),
+              icon: Icon(
+                _showFilters ? Icons.filter_list_off : Icons.filter_list,
+                size: isMob ? 18 : ar.iconM,
+              ),
+              tooltip: _showFilters ? 'إخفاء الفلاتر' : 'إظهار الفلاتر',
+              padding: isMob ? EdgeInsets.all(4) : null,
+              constraints: isMob
+                  ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                  : null,
+              style: IconButton.styleFrom(
+                  foregroundColor: _hasActiveFilter ? AccountingTheme.neonBlue : AccountingTheme.textSecondary),
+            ),
           IconButton(
             onPressed: () {
               _loadAccounts();
@@ -522,107 +1166,320 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final items = _filteredAccounts;
     if (items.isEmpty) {
       return Center(
-        child: Text(
-          _searchQuery.isEmpty ? 'لا توجد حسابات' : 'لا توجد نتائج',
-          style: GoogleFonts.cairo(
-              color: AccountingTheme.textMuted,
-              fontSize: context.accR.financialSmall),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off, size: 40, color: AccountingTheme.textMuted.withAlpha(60)),
+            const SizedBox(height: 8),
+            Text('لا توجد نتائج', style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: context.accR.financialSmall)),
+          ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      itemCount: items.length,
-      itemBuilder: (context, i) {
-        final a = items[i];
-        final code = a['Code']?.toString() ?? '';
-        final name = a['Name']?.toString() ?? '';
-        final balance =
-            ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
-        final isSelected =
-            _selectedAccount != null && _selectedAccount!['Id'] == a['Id'];
+    final ar = context.accR;
+    final isMob = ar.isMobile;
+    final hPad = isMob ? 6.0 : ar.spaceXL;
 
-        return InkWell(
-          onTap: () => _loadStatement(a),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: context.accR.spaceM, vertical: context.accR.spaceM),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AccountingTheme.neonBlue.withAlpha(20)
-                  : Colors.transparent,
-              border: Border(
-                right: BorderSide(
-                  color: isSelected
-                      ? AccountingTheme.neonBlue
-                      : Colors.transparent,
-                  width: 3,
+    // ─── الموبايل: بطاقات ───
+    if (isMob) {
+      return ListView.builder(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        itemCount: items.length,
+        itemBuilder: (context, i) => _buildAccountCard(items[i], i),
+      );
+    }
+
+    // ─── ديسكتوب: جدول احترافي ───
+    return Padding(
+      padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AccountingTheme.bgCard,
+          borderRadius: BorderRadius.circular(ar.cardRadius),
+          border: Border.all(color: Colors.black87, width: 1.5),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(ar.cardRadius),
+          child: Column(
+            children: [
+              // رأس الجدول
+              _buildAccountTableHeader(),
+              // صفوف الحسابات
+              Expanded(
+                child: ListView.builder(
+                  itemCount: items.length,
+                  itemBuilder: (context, i) => _buildAccountTableRow(items[i], i),
                 ),
-                bottom: BorderSide(
-                    color: AccountingTheme.borderColor.withAlpha(80)),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// رأس الجدول
+  /// فاصل عمودي للجدول
+  Widget _vDivider({double height = 28, Color? color}) {
+    return Container(width: 1, height: height, color: color ?? AccountingTheme.borderColor.withAlpha(120));
+  }
+
+  Widget _buildAccountTableHeader() {
+    final ar = context.accR;
+    final s = GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white);
+    final div = Container(width: 1, height: 28, color: Colors.white.withAlpha(80));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+      decoration: BoxDecoration(color: AccountingTheme.bgSidebar),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            _hCell('#', 40, s),
+            div,
+            _hCellExpanded('اسم الحساب', s),
+            div,
+            _hCell('التصنيف', 85, s),
+            div,
+            _hCell('المدين', 110, s),
+            div,
+            _hCell('الدائن', 110, s),
+            div,
+            _hCell('الصافي', 130, s),
+            div,
+            _hCell('الحالة', 55, s),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _hCell(String text, double w, TextStyle s) => SizedBox(width: w, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6), child: Text(text, style: s, textAlign: TextAlign.center)));
+  Widget _hCellExpanded(String text, TextStyle s) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10), child: Text(text, style: s)));
+
+  /// صف في جدول الحسابات — مع hover + خطوط فاصلة
+  Widget _buildAccountTableRow(Map<String, dynamic> a, int index) {
+    final ar = context.accR;
+    final name = a['Name']?.toString() ?? '';
+    final type = a['AccountType']?.toString() ?? '';
+    final balance = ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
+    final debitTotal = ((a['TotalDebit'] ?? (balance > 0 ? balance : 0)) as num).toDouble();
+    final creditTotal = ((a['TotalCredit'] ?? (balance < 0 ? balance.abs() : 0)) as num).toDouble();
+    final isActive = a['IsActive'] ?? true;
+    final bgColor = index.isEven ? Colors.white : const Color(0xFFF5F5F5);
+    const divColor = Color(0xFFAAAAAA);
+
+    return Material(
+      color: bgColor,
+      child: InkWell(
+        onTap: () => _loadStatement(a),
+        hoverColor: const Color(0xFFD6EAFF),
+        splashColor: AccountingTheme.neonBlue.withAlpha(40),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFAAAAAA))),
+          ),
+          child: IntrinsicHeight(
             child: Row(
               children: [
-                // كود الحساب
-                Container(
-                  width: 48,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AccountingTheme.neonBlue.withAlpha(30)
-                        : AccountingTheme.bgPrimary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    code,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.cairo(
-                      fontSize: context.accR.small,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected
-                          ? AccountingTheme.neonBlue
-                          : AccountingTheme.textSecondary,
-                    ),
-                  ),
+                // #
+                SizedBox(
+                  width: 40,
+                  child: Center(child: Text('${index + 1}', style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textMuted))),
                 ),
-                SizedBox(width: context.accR.spaceS),
+                _vDivider(height: double.infinity, color: divColor),
                 // اسم الحساب
                 Expanded(
-                  child: Text(
-                    name,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
-                      fontSize: context.accR.small,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected
-                          ? AccountingTheme.neonBlue
-                          : AccountingTheme.textPrimary,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                    child: Text(name, overflow: TextOverflow.ellipsis, style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.w600, color: AccountingTheme.textPrimary)),
+                  ),
+                ),
+                _vDivider(height: double.infinity, color: divColor),
+                // التصنيف
+                SizedBox(
+                  width: 85,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _typeColor(type).withAlpha(15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(_translateType(type), style: GoogleFonts.cairo(fontSize: ar.small - 1, fontWeight: FontWeight.w600, color: _typeColor(type))),
                     ),
                   ),
                 ),
-                // الرصيد
-                Text(
-                  _fmt(balance.abs()),
-                  style: GoogleFonts.cairo(
-                    fontSize: context.accR.small,
-                    fontWeight: FontWeight.bold,
-                    color: balance == 0
-                        ? AccountingTheme.textMuted
-                        : (balance > 0
-                            ? AccountingTheme.danger
-                            : AccountingTheme.success),
+                _vDivider(height: double.infinity, color: divColor),
+                // المدين
+                SizedBox(
+                  width: 110,
+                  child: Center(
+                    child: Text(debitTotal > 0 ? _fmt(debitTotal) : '-',
+                        style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: debitTotal > 0 ? AccountingTheme.danger : AccountingTheme.textMuted)),
+                  ),
+                ),
+                _vDivider(height: double.infinity, color: divColor),
+                // الدائن
+                SizedBox(
+                  width: 110,
+                  child: Center(
+                    child: Text(creditTotal > 0 ? _fmt(creditTotal) : '-',
+                        style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: creditTotal > 0 ? AccountingTheme.success : AccountingTheme.textMuted)),
+                  ),
+                ),
+                _vDivider(height: double.infinity, color: divColor),
+                // الصافي
+                SizedBox(
+                  width: 130,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success)).withAlpha(12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        balance == 0 ? '0' : '${_fmt(balance.abs())} ${balance > 0 ? 'مدين' : 'دائن'}',
+                        style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold,
+                            color: balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success)),
+                      ),
+                    ),
+                  ),
+                ),
+                _vDivider(height: double.infinity, color: divColor),
+                // الحالة
+                SizedBox(
+                  width: 55,
+                  child: Center(
+                    child: Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isActive == true ? AccountingTheme.success : AccountingTheme.danger,
+                        boxShadow: [BoxShadow(color: (isActive == true ? AccountingTheme.success : AccountingTheme.danger).withAlpha(80), blurRadius: 4)],
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
+  }
+
+  /// بطاقة حساب للموبايل
+  Widget _buildAccountCard(Map<String, dynamic> a, int index) {
+    final code = a['Code']?.toString() ?? '';
+    final name = a['Name']?.toString() ?? '';
+    final type = a['AccountType']?.toString() ?? '';
+    final balance = ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
+    final debitTotal = ((a['TotalDebit'] ?? (balance > 0 ? balance : 0)) as num).toDouble();
+    final creditTotal = ((a['TotalCredit'] ?? (balance < 0 ? balance.abs() : 0)) as num).toDouble();
+
+    return InkWell(
+      onTap: () => _loadStatement(a),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AccountingTheme.bgCard,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.black87, width: 1.2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // صف أول: رقم + كود + تصنيف
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: AccountingTheme.neonBlue.withAlpha(20), borderRadius: BorderRadius.circular(6)),
+                  child: Text(code, style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: AccountingTheme.neonBlue)),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(color: _typeColor(type).withAlpha(15), borderRadius: BorderRadius.circular(4)),
+                  child: Text(_translateType(type), style: GoogleFonts.cairo(fontSize: 9, fontWeight: FontWeight.w600, color: _typeColor(type))),
+                ),
+                const Spacer(),
+                Text('#${index + 1}', style: GoogleFonts.cairo(fontSize: 9, color: AccountingTheme.textMuted)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // اسم الحساب
+            Text(name, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: AccountingTheme.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 8),
+            // صف ثاني: مدين + دائن + صافي
+            Row(
+              children: [
+                Expanded(child: _mobileAccountCell('المدين', debitTotal, AccountingTheme.danger)),
+                const SizedBox(width: 4),
+                Expanded(child: _mobileAccountCell('الدائن', creditTotal, AccountingTheme.success)),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success)).withAlpha(12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.black87, width: 1.0),
+                    ),
+                    child: Column(
+                      children: [
+                        Text('الصافي', style: GoogleFonts.cairo(fontSize: 8, color: AccountingTheme.textMuted)),
+                        Text(balance == 0 ? '0' : _fmt(balance.abs()),
+                            style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold,
+                                color: balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success))),
+                        if (balance != 0)
+                          Text(balance > 0 ? 'مدين' : 'دائن',
+                              style: GoogleFonts.cairo(fontSize: 8, fontWeight: FontWeight.w600,
+                                  color: balance > 0 ? AccountingTheme.danger : AccountingTheme.success)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileAccountCell(String label, double value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: value > 0 ? color.withAlpha(10) : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.black87, width: 1.0),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: GoogleFonts.cairo(fontSize: 8, color: color.withAlpha(150))),
+          Text(value > 0 ? _fmt(value) : '-',
+              style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: value > 0 ? color : AccountingTheme.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  /// لون التصنيف
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'Assets': return Colors.blue;
+      case 'Liabilities': return Colors.orange;
+      case 'Equity': return Colors.purple;
+      case 'Revenue': return Colors.green;
+      case 'Expenses': return Colors.red;
+      default: return AccountingTheme.textMuted;
+    }
   }
 
   // ─── فلتر التاريخ ───
@@ -1014,65 +1871,312 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       );
     }
 
+    final lines = _processedStatementLines;
+
     // على الهاتف: بطاقات بدل جدول
     if (isMob) {
-      return ListView.builder(
-        padding: EdgeInsets.all(8),
-        itemCount: _statementLines.length,
-        itemBuilder: (_, i) => _buildMobileStatementCard(i),
+      return Column(
+        children: [
+          _buildStmtFilterBar(true),
+          Expanded(
+            child: lines.isEmpty
+                ? Center(child: Text('لا توجد نتائج', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)))
+                : ListView.builder(
+                    padding: EdgeInsets.all(8),
+                    itemCount: lines.length,
+                    itemBuilder: (_, i) => _buildMobileStatementCard(i, lines),
+                  ),
+          ),
+        ],
       );
     }
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(ar.spaceXL),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-              minWidth: MediaQuery.of(context).size.width - ar.spaceXL * 2),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AccountingTheme.bgCard,
-              borderRadius: BorderRadius.circular(ar.cardRadius),
-              border: Border.all(color: Colors.black, width: 1.2),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(ar.cardRadius),
-              child: Table(
-                columnWidths: {
-                  0: const FixedColumnWidth(50), // #
-                  1: const FixedColumnWidth(75), // النوع
-                  2: const FixedColumnWidth(110), // التاريخ
-                  3: const FlexColumnWidth(), // البيان
-                  4: const FixedColumnWidth(120), // مدين
-                  5: const FixedColumnWidth(120), // دائن
-                  6: const FixedColumnWidth(130), // الرصيد
-                },
-                border: TableBorder(
-                  horizontalInside: BorderSide(
-                      color: AccountingTheme.borderColor.withAlpha(80)),
-                ),
-                children: [
-                  // رأس الجدول
-                  TableRow(
-                    decoration: BoxDecoration(
-                      color: AccountingTheme.bgSidebar,
-                    ),
-                    children: [
-                      _th('#'),
-                      _th('النوع'),
-                      _th('التاريخ'),
-                      _th('البيان'),
-                      _th('مدين'),
-                      _th('دائن'),
-                      _th('الرصيد'),
-                    ],
+    // ─── ديسكتوب: جدول بـ hover وخطوط فاصلة ───
+    final hPad = ar.spaceXL;
+    return Column(
+      children: [
+        _buildStmtFilterBar(false),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 8),
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AccountingTheme.bgCard,
+                    borderRadius: BorderRadius.circular(ar.cardRadius),
+                    border: Border.all(color: Colors.black87, width: 1.5),
                   ),
-                  // الصفوف
-                  for (int i = 0; i < _statementLines.length; i++)
-                    _buildTableRow(i, _statementLines[i], _calcRunning(i)),
-                ],
-              ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(ar.cardRadius),
+                    child: Column(
+                      children: [
+                        _buildStmtTableHeader(),
+                        Expanded(
+                          child: lines.isEmpty
+                              ? Center(child: Text('لا توجد نتائج', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)))
+                              : ScrollbarTheme(
+                                  data: ScrollbarThemeData(
+                                    thumbColor: WidgetStateProperty.all(Colors.black38),
+                                    trackColor: WidgetStateProperty.all(Colors.black.withAlpha(15)),
+                                    trackBorderColor: WidgetStateProperty.all(Colors.black12),
+                                    thickness: WidgetStateProperty.all(8),
+                                    radius: const Radius.circular(4),
+                                  ),
+                                  child: Scrollbar(
+                                    controller: _stmtScrollController,
+                                    thumbVisibility: true,
+                                    trackVisibility: true,
+                                    child: ListView.builder(
+                                      controller: _stmtScrollController,
+                                      itemCount: lines.length,
+                                      itemBuilder: (_, i) {
+                                        final line = lines[i];
+                                        final origIdx = _statementLines.indexOf(line);
+                                        final running = origIdx >= 0 ? _calcRunning(origIdx) : 0.0;
+                                        return _buildStmtTableRow(i, line, running);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // أزرار التنقل
+                if (lines.length > 5)
+                  Positioned(
+                    left: 8,
+                    bottom: 12,
+                    child: Column(
+                      children: [
+                        _scrollNavButton(Icons.keyboard_double_arrow_up, 'الأعلى', () {
+                          _stmtScrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                        }),
+                        const SizedBox(height: 6),
+                        _scrollNavButton(Icons.keyboard_double_arrow_down, 'الأسفل', () {
+                          _stmtScrollController.animateTo(
+                            _stmtScrollController.position.maxScrollExtent,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _scrollNavButton(IconData icon, String tooltip, VoidCallback onTap) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black26,
+        shape: const CircleBorder(side: BorderSide(color: Color(0xFFAAAAAA))),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          hoverColor: const Color(0xFFD6EAFF),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, size: 18, color: AccountingTheme.textSecondary),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// شريط فلتر القبض/الصرف
+  Widget _buildStmtFilterBar(bool isMob) {
+    final hPad = isMob ? 8.0 : context.accR.spaceXL;
+    return Container(
+      padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 4),
+      child: Row(
+        children: [
+          Icon(Icons.filter_alt_outlined, size: isMob ? 14 : 16, color: AccountingTheme.textSecondary),
+          SizedBox(width: 6),
+          _stmtFilterChip('الكل', _stmtTypeFilter == 'all', () => setState(() => _stmtTypeFilter = 'all')),
+          SizedBox(width: isMob ? 4 : 6),
+          _stmtFilterChip('قبض', _stmtTypeFilter == 'receipt', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'receipt' ? 'all' : 'receipt'), color: AccountingTheme.success),
+          SizedBox(width: isMob ? 4 : 6),
+          _stmtFilterChip('صرف', _stmtTypeFilter == 'payment', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'payment' ? 'all' : 'payment'), color: AccountingTheme.danger),
+          Spacer(),
+          if (_stmtTypeFilter != 'all')
+            Text('${_processedStatementLines.length} من ${_statementLines.length}',
+                style: GoogleFonts.cairo(fontSize: isMob ? 9 : 10, color: AccountingTheme.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  Widget _stmtFilterChip(String label, bool selected, VoidCallback onTap, {Color? color}) {
+    final isMob = context.accR.isMobile;
+    final c = color ?? AccountingTheme.neonBlue;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10, vertical: isMob ? 3 : 4),
+        decoration: BoxDecoration(
+          color: selected ? c.withAlpha(25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: selected ? c : Colors.black54, width: selected ? 1.5 : 1),
+        ),
+        child: Text(label, style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: selected ? FontWeight.bold : FontWeight.w500, color: selected ? c : AccountingTheme.textSecondary)),
+      ),
+    );
+  }
+
+  /// رأس جدول الحركات — مع أزرار ترتيب
+  Widget _buildStmtTableHeader() {
+    final ar = context.accR;
+    final s = GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white);
+    const divColor = Color(0x55FFFFFF);
+    const div = SizedBox(width: 1);
+
+    Widget sortableHeader(String label, String col, double width) {
+      final isActive = _stmtSortColumn == col;
+      return InkWell(
+        onTap: () => setState(() {
+          if (_stmtSortColumn == col) {
+            _stmtSortAsc = !_stmtSortAsc;
+          } else {
+            _stmtSortColumn = col;
+            _stmtSortAsc = true;
+          }
+        }),
+        child: SizedBox(
+          width: width,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: s),
+                SizedBox(width: 3),
+                Icon(
+                  isActive ? (_stmtSortAsc ? Icons.arrow_upward : Icons.arrow_downward) : Icons.unfold_more,
+                  size: 13,
+                  color: isActive ? Colors.white : Colors.white.withAlpha(120),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(color: AccountingTheme.bgSidebar),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            SizedBox(width: 42, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('#', style: s, textAlign: TextAlign.center))),
+            Container(width: 1, color: divColor),
+            sortableHeader('النوع', 'type', 75),
+            Container(width: 1, color: divColor),
+            sortableHeader('التاريخ', 'date', 110),
+            Container(width: 1, color: divColor),
+            Expanded(child: Padding(padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8), child: Text('البيان', style: s))),
+            Container(width: 1, color: divColor),
+            SizedBox(width: 110, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('مدين', style: s, textAlign: TextAlign.center))),
+            Container(width: 1, color: divColor),
+            SizedBox(width: 110, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('دائن', style: s, textAlign: TextAlign.center))),
+            Container(width: 1, color: divColor),
+            SizedBox(width: 130, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('الرصيد', style: s, textAlign: TextAlign.center))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// صف حركة بـ hover + خطوط فاصلة
+  Widget _buildStmtTableRow(int index, dynamic line, double running) {
+    final ar = context.accR;
+    final dateStr = line['EntryDate']?.toString() ?? '';
+    final desc = (line['Description']?.toString().isNotEmpty == true ? line['Description'] : line['EntryDescription'])?.toString() ?? '';
+    final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();
+    final credit = ((line['CreditAmount'] ?? 0) as num).toDouble();
+
+    String formattedDate = '';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      formattedDate = _displayDateFmt.format(dt);
+    } catch (_) {
+      formattedDate = dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;
+    }
+
+    final bgColor = index.isEven ? Colors.white : const Color(0xFFF5F5F5);
+    const divColor = Color(0xFFAAAAAA);
+
+    return Material(
+      color: bgColor,
+      child: InkWell(
+        onTap: () => _showTransactionDetail(line, index),
+        hoverColor: const Color(0xFFD6EAFF),
+        splashColor: AccountingTheme.neonBlue.withAlpha(40),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFAAAAAA))),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                // #
+                SizedBox(width: 42, child: Center(child: Text('${index + 1}', style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textMuted)))),
+                _vDivider(height: double.infinity, color: divColor),
+                // النوع
+                SizedBox(
+                  width: 75,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _txColor(debit, credit).withAlpha(25),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: _txColor(debit, credit).withAlpha(120)),
+                      ),
+                      child: Text(_txLabel(debit, credit),
+                          style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w700, color: _txColor(debit, credit))),
+                    ),
+                  ),
+                ),
+                _vDivider(height: double.infinity, color: divColor),
+                // التاريخ
+                SizedBox(width: 110, child: Center(child: Text(formattedDate, style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textPrimary)))),
+                _vDivider(height: double.infinity, color: divColor),
+                // البيان
+                Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Text(desc, style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textPrimary), overflow: TextOverflow.ellipsis))),
+                _vDivider(height: double.infinity, color: divColor),
+                // مدين
+                SizedBox(width: 110, child: Center(child: Text(debit > 0 ? _fmt(debit) : '-',
+                    style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: debit > 0 ? AccountingTheme.danger : AccountingTheme.textMuted)))),
+                _vDivider(height: double.infinity, color: divColor),
+                // دائن
+                SizedBox(width: 110, child: Center(child: Text(credit > 0 ? _fmt(credit) : '-',
+                    style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: credit > 0 ? AccountingTheme.success : AccountingTheme.textMuted)))),
+                _vDivider(height: double.infinity, color: divColor),
+                // الرصيد
+                SizedBox(
+                  width: 130,
+                  child: Center(
+                    child: Text(
+                      '${_fmt(running.abs())} ${running > 0 ? 'مدين' : (running < 0 ? 'دائن' : '')}',
+                      style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold,
+                          color: running == 0 ? AccountingTheme.textMuted : (running > 0 ? AccountingTheme.danger : AccountingTheme.success)),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -1081,8 +2185,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   }
 
   /// بطاقة حركة للهاتف
-  Widget _buildMobileStatementCard(int index) {
-    final line = _statementLines[index];
+  Widget _buildMobileStatementCard(int index, [List<dynamic>? sourceLines]) {
+    final src = sourceLines ?? _statementLines;
+    final line = src[index];
     final entryNum = line['EntryNumber']?.toString() ?? '';
     final dateStr = line['EntryDate']?.toString() ?? '';
     final desc = (line['Description']?.toString().isNotEmpty == true
@@ -1092,7 +2197,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         '';
     final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();
     final credit = ((line['CreditAmount'] ?? 0) as num).toDouble();
-    final running = _calcRunning(index);
+    final origIdx = _statementLines.indexOf(line);
+    final running = origIdx >= 0 ? _calcRunning(origIdx) : 0.0;
 
     String formattedDate = '';
     try {
@@ -1768,7 +2874,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   String _translateType(String type) {
     const map = {
       'Assets': 'أصول',
-      'Liabilities': 'خصوم',
+      'Liabilities': 'التزامات',
       'Equity': 'حقوق ملكية',
       'Revenue': 'إيرادات',
       'Expenses': 'مصروفات',

@@ -1343,7 +1343,23 @@ public class FtthAccountingController : ControllerBase
             // التحصيل والربط
             _logger.LogInformation("📋 Update {Id}: CollType={CT}, HasTech={HT}, TechId={TI}, HasAgent={HA}, AgentId={AI}",
                 id, request.CollectionType, request.HasLinkedTechnicianId, request.LinkedTechnicianId, request.HasLinkedAgentId, request.LinkedAgentId);
-            if (request.CollectionType != null) log.CollectionType = request.CollectionType;
+            if (request.CollectionType != null)
+            {
+                log.CollectionType = request.CollectionType;
+                // مزامنة PaymentMethod تلقائياً عند تغيير CollectionType (إذا لم يُرسل صراحةً)
+                if (request.PaymentMethod == null)
+                {
+                    log.PaymentMethod = request.CollectionType switch
+                    {
+                        "cash" => "نقد",
+                        "credit" => "آجل",
+                        "master" => "ماستر",
+                        "technician" => "فني",
+                        "agent" => "وكيل",
+                        _ => request.CollectionType
+                    };
+                }
+            }
             if (request.HasLinkedTechnicianId) log.LinkedTechnicianId = request.LinkedTechnicianId;
             if (request.HasLinkedAgentId) log.LinkedAgentId = request.LinkedAgentId;
             if (request.TechnicianName != null) log.TechnicianName = request.TechnicianName;
@@ -2330,6 +2346,10 @@ public class FtthAccountingController : ControllerBase
                 log.BasePrice = item.FtthAmount + (log.CompanyDiscount ?? 0);
                 log.UpdatedAt = DateTime.UtcNow;
                 _unitOfWork.SubscriptionLogs.Update(log);
+                await _unitOfWork.SaveChangesAsync();
+
+                // تعديل القيد المحاسبي مباشرة
+                await UpdateJournalEntryAmounts(log);
                 updated++;
             }
             catch { failed++; }
@@ -2486,58 +2506,50 @@ public class FtthAccountingController : ControllerBase
                     _unitOfWork.SubscriptionLogs.Update(log);
                     updated++;
 
-                    // إلغاء القيد القديم إن وُجد
+                    await _unitOfWork.SaveChangesAsync();
+
+                    // تعديل القيد الموجود مباشرة أو إنشاء جديد إذا لم يكن موجوداً
                     if (log.JournalEntryId.HasValue)
                     {
-                        var oldJe = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
-                        if (oldJe != null && oldJe.Status != JournalEntryStatus.Voided)
-                        {
-                            oldJe.Status = JournalEntryStatus.Voided;
-                            oldJe.Notes = (oldJe.Notes ?? "") + " | ملغي — إعادة حساب الإيرادات";
-                            _unitOfWork.JournalEntries.Update(oldJe);
-                            accountingUpdated++;
-                        }
+                        var updated2 = await UpdateJournalEntryAmounts(log);
+                        if (updated2) accountingUpdated++;
                     }
-
-                    // إنشاء قيد محاسبي جديد بالأرقام الصحيحة
-                    // المبلغ المحصّل = المستقطع + أجور الصيانة (خصم الشركة مفعّل = ليس إيراد)
-                    var sde = log.SystemDiscountEnabled;
-                    // الإجمالي = المستقطع + إيرادات - مصاريف
-                    var recalcPD = autoBasePrice > 0 ? autoBasePrice - autoCompanyDiscount : planPrice;
-                    var recalcRevenue = autoMaintenanceFee + (sde ? 0 : autoCompanyDiscount);
-                    var totalCollected = recalcPD + recalcRevenue - (log.ManualDiscount ?? 0);
-                    var collectionType = log.CollectionType ?? "cash";
-
-                    var accountingDto = new FtthLogWithAccountingDto(
-                        log.CustomerId, log.CustomerName, null,
-                        log.SubscriptionId, log.PlanName, totalCollected,
-                        null, null, null,
-                        log.DeviceUsername, log.OperationType, log.ActivatedBy,
-                        log.ActivationDate, null, null,
-                        log.ZoneId, log.ZoneName, null, null, null,
-                        null, log.WalletBalanceAfter,
-                        null, null,
-                        null, log.PaymentMethod, null, null,
-                        log.UserId, log.CompanyId, false, false,
-                        null, log.StartDate, log.EndDate,
-                        log.TechnicianName, null,
-                        collectionType, log.FtthTransactionId, null,
-                        null, log.LinkedTechnicianId,
-                        autoBasePrice,
-                        autoCompanyDiscount,
-                        log.ManualDiscount ?? 0,
-                        autoMaintenanceFee,
-                        sde);                                      // يحافظ على قيمة SystemDiscountEnabled الحالية
-
-                    var jeId = await CreateAccountingEntry(log, accountingDto);
-                    if (jeId.HasValue)
+                    else
                     {
-                        log.JournalEntryId = jeId;
-                        _unitOfWork.SubscriptionLogs.Update(log);
-                        accountingCreated++;
-                    }
+                        // إنشاء قيد جديد فقط للعمليات بدون قيد
+                        var sde = log.SystemDiscountEnabled;
+                        var recalcPD = autoBasePrice > 0 ? autoBasePrice - autoCompanyDiscount : planPrice;
+                        var recalcRevenue = autoMaintenanceFee + (sde ? 0 : autoCompanyDiscount);
+                        var totalCollected = recalcPD + recalcRevenue - (log.ManualDiscount ?? 0);
+                        var collectionType = log.CollectionType ?? "cash";
 
-                    await _unitOfWork.SaveChangesAsync();
+                        var accountingDto = new FtthLogWithAccountingDto(
+                            log.CustomerId, log.CustomerName, null,
+                            log.SubscriptionId, log.PlanName, totalCollected,
+                            null, null, null,
+                            log.DeviceUsername, log.OperationType, log.ActivatedBy,
+                            log.ActivationDate, null, null,
+                            log.ZoneId, log.ZoneName, null, null, null,
+                            null, log.WalletBalanceAfter,
+                            null, null,
+                            null, log.PaymentMethod, null, null,
+                            log.UserId, log.CompanyId, false, false,
+                            null, log.StartDate, log.EndDate,
+                            log.TechnicianName, null,
+                            collectionType, log.FtthTransactionId, null,
+                            null, log.LinkedTechnicianId,
+                            autoBasePrice, autoCompanyDiscount,
+                            log.ManualDiscount ?? 0, autoMaintenanceFee, sde);
+
+                        var jeId = await CreateAccountingEntry(log, accountingDto);
+                        if (jeId.HasValue)
+                        {
+                            log.JournalEntryId = jeId;
+                            _unitOfWork.SubscriptionLogs.Update(log);
+                            accountingCreated++;
+                        }
+                        await _unitOfWork.SaveChangesAsync();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -2564,6 +2576,113 @@ public class FtthAccountingController : ControllerBase
             _logger.LogError(ex, "خطأ في إعادة حساب إيرادات المزامنة");
             return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
         }
+    }
+
+    // ==================== 9.45 تعديل أسطر القيد الموجود مباشرة ====================
+
+    /// <summary>
+    /// تعديل أسطر القيد المحاسبي الموجود ليطابق مبالغ العملية — بدون إلغاء أو إنشاء جديد
+    /// القاعدة: المستقطع (ثابت) → دائن صفحة | إيرادات → دائن صيانة + دائن خصم | مصاريف → مدين مصاريف | الإجمالي → مدين تحصيل
+    /// </summary>
+    private async Task<bool> UpdateJournalEntryAmounts(SubscriptionLog log)
+    {
+        if (!log.JournalEntryId.HasValue || !log.CompanyId.HasValue) return false;
+
+        var entry = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
+        if (entry == null || entry.Status == JournalEntryStatus.Voided) return false;
+
+        var lines = await _unitOfWork.JournalEntryLines.AsQueryable()
+            .IgnoreQueryFilters()
+            .Where(jl => jl.JournalEntryId == entry.Id && !jl.IsDeleted)
+            .ToListAsync();
+        if (!lines.Any()) return false;
+
+        // حساب المبالغ الصحيحة من العملية
+        var basePrice = log.BasePrice ?? log.PlanPrice ?? 0;
+        var companyDiscount = log.CompanyDiscount ?? 0;
+        var manualDiscount = log.ManualDiscount ?? 0;
+        var maintenanceFee = log.MaintenanceFee ?? 0;
+        var sde = log.SystemDiscountEnabled;
+
+        var pageDeduction = basePrice > 0 ? basePrice - companyDiscount : (log.PlanPrice ?? 0);
+        var companyDiscountProfit = sde ? 0 : companyDiscount;
+        var revenue = maintenanceFee + companyDiscountProfit;
+        var totalCollected = pageDeduction + revenue - manualDiscount;
+
+        // جلب الحسابات
+        var companyId = log.CompanyId.Value;
+        var accounts = await _unitOfWork.Accounts.AsQueryable()
+            .Where(a => a.CompanyId == companyId && new[] { "11102", "4110", "4120", "5110" }.Contains(a.Code))
+            .ToDictionaryAsync(a => a.Code, a => a.Id);
+
+        bool changed = false;
+
+        foreach (var line in lines)
+        {
+            var acctCode = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.Id == line.AccountId)
+                .Select(a => a.Code)
+                .FirstOrDefaultAsync();
+
+            decimal newDebit = line.DebitAmount, newCredit = line.CreditAmount;
+
+            if (acctCode == "11102") // رصيد الصفحة — دائن = المستقطع
+            {
+                newDebit = 0; newCredit = pageDeduction;
+            }
+            else if (acctCode == "4110") // إيراد صيانة — دائن = أجور الصيانة
+            {
+                newDebit = 0; newCredit = maintenanceFee;
+            }
+            else if (acctCode == "4120") // إيراد خصم الشركة — دائن = خصم الشركة (إذا غير مفعّل)
+            {
+                newDebit = 0; newCredit = companyDiscountProfit;
+            }
+            else if (acctCode == "5110") // مصاريف عروض — مدين = الخصم اليدوي
+            {
+                newDebit = manualDiscount; newCredit = 0;
+            }
+            else if (line.DebitAmount > 0) // حساب التحصيل — مدين = الإجمالي
+            {
+                newDebit = totalCollected; newCredit = 0;
+            }
+
+            if (line.DebitAmount != newDebit || line.CreditAmount != newCredit)
+            {
+                // عكس الرصيد القديم
+                var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                if (acct != null)
+                {
+                    if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                        acct.CurrentBalance -= (line.DebitAmount - line.CreditAmount);
+                    else
+                        acct.CurrentBalance -= (line.CreditAmount - line.DebitAmount);
+
+                    // تطبيق الرصيد الجديد
+                    if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                        acct.CurrentBalance += (newDebit - newCredit);
+                    else
+                        acct.CurrentBalance += (newCredit - newDebit);
+
+                    _unitOfWork.Accounts.Update(acct);
+                }
+
+                line.DebitAmount = newDebit;
+                line.CreditAmount = newCredit;
+                _unitOfWork.JournalEntryLines.Update(line);
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            entry.TotalDebit = lines.Sum(l => l.DebitAmount);
+            entry.TotalCredit = lines.Sum(l => l.CreditAmount);
+            _unitOfWork.JournalEntries.Update(entry);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        return changed;
     }
 
     // ==================== 9.5 دمج العمليات المكررة ====================

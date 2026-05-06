@@ -1633,85 +1633,40 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           titleSpacing: 0,
           title: Row(
             children: [
-              // قائمة التاريخ المنسدلة
-              PopupMenuButton<String>(
-                tooltip: 'فلتر التاريخ',
-                offset: const Offset(0, 44),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                onSelected: (value) {
-                  if (value == 'مخصص') {
-                    _showCustomDatePicker();
-                  } else {
-                    _applyDateFilter(value);
+              // أزرار التاريخ السريعة
+              ...[
+                _dateChip('اليوم', Icons.today),
+                _dateChip('أمس', Icons.history),
+                _dateChipAction('يوم', Icons.calendar_today, () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _fromDate ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now().add(const Duration(days: 1)),
+                    locale: const Locale('ar'),
+                  );
+                  if (picked != null && mounted) {
+                    setState(() {
+                      _fromDate = DateTime(picked.year, picked.month, picked.day);
+                      _toDate = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
+                      _dateLabel = DateFormat('MM/dd').format(picked);
+                    });
+                    _comparisonRows.clear();
+                    _refreshAll();
                   }
-                },
-                itemBuilder: (ctx) => [
-                  for (final label in ['اليوم', 'أمس', 'اليوم + أمس', 'آخر 7 أيام', 'هذا الشهر', 'الكل'])
-                    PopupMenuItem<String>(
-                      value: label,
-                      child: Row(
-                        children: [
-                          if (_dateLabel == label)
-                            Icon(Icons.check, size: 16, color: AccountingTheme.neonBlue)
-                          else
-                            const SizedBox(width: 16),
-                          const SizedBox(width: 8),
-                          Text(label, style: GoogleFonts.cairo(
-                              fontSize: context.accR.small,
-                              fontWeight: _dateLabel == label ? FontWeight.w700 : FontWeight.w500)),
-                        ],
-                      ),
-                    ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem<String>(
-                    value: 'مخصص',
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_month, size: 16, color: Colors.grey.shade600),
-                        const SizedBox(width: 8),
-                        Text('مخصص', style: GoogleFonts.cairo(fontSize: context.accR.small)),
-                      ],
-                    ),
-                  ),
-                ],
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: context.accR.spaceS,
-                      vertical: context.accR.spaceXS),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.date_range,
-                          size: context.accR.iconS, color: Colors.white70),
-                      if (!isMobile) ...[
-                        SizedBox(width: context.accR.spaceXS),
-                        Text(
-                          _dateLabel,
-                          style: GoogleFonts.cairo(
-                            fontSize: context.accR.small,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (_fromDate != null && _toDate != null) ...[
-                          SizedBox(width: context.accR.spaceXS),
-                          Text(
-                            '${DateFormat('MM/dd').format(_fromDate!)} - ${DateFormat('MM/dd').format(_toDate!)}',
-                            style: TextStyle(
-                                fontSize: context.accR.caption,
-                                color: Colors.white54),
-                          ),
-                        ],
-                      ],
-                    ],
+                }),
+                _dateChipAction('تخصيص', Icons.date_range, _showCustomDatePicker),
+                _dateChip('الكل', Icons.all_inclusive),
+              ],
+              // عرض التاريخ المحدد
+              if (_fromDate != null && _toDate != null && !isMobile)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text(
+                    '${DateFormat('MM/dd').format(_fromDate!)} - ${DateFormat('MM/dd').format(_toDate!)}',
+                    style: TextStyle(fontSize: 10, color: Colors.white54),
                   ),
                 ),
-              ),
               if (!isMobile) ...[
                 const Spacer(),
                 // التبويبات في الوسط
@@ -4837,7 +4792,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final cashAmount = (op['cashAmount'] ?? 0).toDouble();
     final amountController = TextEditingController();
     final notesController = TextEditingController();
-    DateTime selectedDate = DateTime.now();
+    // استخدام تاريخ الفلتر المختار بدلاً من اليوم
+    DateTime selectedDate = _toDate != null
+        ? DateTime(_toDate!.year, _toDate!.month, _toDate!.day)
+        : DateTime.now();
 
     final result = await showDialog<bool>(
       context: context,
@@ -4980,7 +4938,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final remaining = totalAmount - delivered;
     final amountController = TextEditingController();
     final notesController = TextEditingController();
-    DateTime selectedDate = _fromDate ?? DateTime.now();
+    DateTime selectedDate = _toDate != null
+        ? DateTime(_toDate!.year, _toDate!.month, _toDate!.day)
+        : DateTime.now();
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -6737,7 +6697,29 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               ),
                             ),
                           ]);
-                    }).toList(),
+                    }).toList()
+                    ..add(DataRow(
+                      color: WidgetStateProperty.all(Colors.grey.shade200),
+                      cells: [
+                        DataCell(Center(child: Text(''))),
+                        DataCell(Center(child: Text('المجموع', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.purchaseOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.renewOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.changeOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.scheduleOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.commissionOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.reversalOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.walletOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.otherOps)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
+                        DataCell(Center(child: Text('${sorted.fold<int>(0, (s, o) => s + o.totalCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(sorted.fold<double>(0, (s, o) => s + o.calcPurchaseAmount())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(sorted.fold<double>(0, (s, o) => s + o.calcRenewChangeAmount())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(sorted.fold<double>(0, (s, o) => s + o.calcTotalDiscount())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.orange.shade700)))),
+                        DataCell(Container(color: Colors.green.shade50, child: Center(child: Text(_currencyFormat.format(sorted.fold<double>(0, (s, o) => s + o.calcPurchaseAmount() + o.calcRenewChangeAmount() + o.calcTotalDiscount())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.deepOrange.shade700))))),
+                        DataCell(Center(child: Text(_currencyFormat.format(sorted.fold<double>(0, (s, o) => s + o.positiveAmount)), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.green.shade700)))),
+                        DataCell(Center(child: Text(''))),
+                      ],
+                    )),
                   ),
                 ),
               );
@@ -8442,7 +8424,33 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           DataCell(Center(child: _buildMatchBadge(percent))),
                         ],
                       );
-                    }).toList(),
+                    }).toList()
+                    ..add(DataRow(
+                      color: WidgetStateProperty.all(Colors.grey.shade200),
+                      cells: [
+                        DataCell(Center(child: Text(''))),
+                        DataCell(Center(child: Text('المجموع', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.oursCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(_comparisonRows.fold<double>(0, (s, r) => s + r.oursAmount)), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.ftthCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.teal.shade700)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(_comparisonRows.fold<double>(0, (s, r) => s + r.ftthAmount)), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.teal.shade700)))),
+                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.ftthTransactions.length)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade700)))),
+                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.wrongTransactions.length)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.orange.shade700)))),
+                        DataCell(Center(child: () {
+                          final totalDiff = _comparisonRows.fold<double>(0, (s, r) => s + r.wrongTransactions.fold<double>(0, (s2, w) => s2 + (w.ftthAmount - w.oursAmount)));
+                          return Text(totalDiff.abs() < 1 ? '0' : '${totalDiff > 0 ? '+' : ''}${_currencyFormat.format(totalDiff)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: totalDiff.abs() < 1 ? Colors.green.shade700 : Colors.red.shade700));
+                        }())),
+                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.matchedCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.green.shade700)))),
+                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.oursOnlyCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.blue.shade700)))),
+                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.ftthOnlyCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade700)))),
+                        DataCell(Center(child: () {
+                          final totalAll = _comparisonRows.fold<int>(0, (s, r) => s + r.matchedCount + r.oursOnlyCount + r.ftthOnlyCount);
+                          final totalMatched = _comparisonRows.fold<int>(0, (s, r) => s + r.matchedCount);
+                          final pct = totalAll > 0 ? (totalMatched / totalAll * 100).toStringAsFixed(0) : '0';
+                          return _buildMatchBadge(pct);
+                        }())),
+                      ],
+                    )),
                   ),
                 ),
               );
@@ -8836,6 +8844,58 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     _refreshAll();
   }
 
+  Widget _dateChip(String label, IconData icon) {
+    final isActive = _dateLabel == label;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: InkWell(
+        onTap: () => _applyDateFilter(label),
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white.withOpacity(0.25) : Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(6),
+            border: isActive ? Border.all(color: Colors.white54, width: 1) : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: isActive ? Colors.white : Colors.white60),
+              const SizedBox(width: 4),
+              Text(label, style: GoogleFonts.cairo(fontSize: 11, fontWeight: isActive ? FontWeight.w700 : FontWeight.w500, color: isActive ? Colors.white : Colors.white70)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dateChipAction(String label, IconData icon, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: Colors.white60),
+              const SizedBox(width: 4),
+              Text(label, style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white70)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showCustomDatePicker() async {
     final now = DateTime.now();
     final initialRange = (_fromDate != null && _toDate != null)
@@ -8911,6 +8971,9 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
   // تحديد العمليات الناقصة للمزامنة
   final Set<int> _selectedMissing = {};
   bool _isSyncing = false;
+  bool _isEnriching = false;
+  int _enrichedCount = 0;
+  int _enrichTotal = 0;
 
   @override
   void initState() {
@@ -8980,6 +9043,10 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
             'CompanyDiscount': companyDiscount, 'companyDiscount': companyDiscount,
             'SystemDiscountEnabled': sysDiscount, 'systemDiscountEnabled': sysDiscount,
             'IsReconciled': item['IsReconciled'] == true, 'isReconciled': item['IsReconciled'] == true,
+            'ZoneId': item['ZoneId'] ?? '', 'zoneId': item['ZoneId'] ?? '',
+            'FbgInfo': item['FbgInfo'] ?? '', 'fbgInfo': item['FbgInfo'] ?? '',
+            'FatInfo': item['FatInfo'] ?? '', 'fatInfo': item['FatInfo'] ?? '',
+            'FdtInfo': item['FdtInfo'] ?? '', 'fdtInfo': item['FdtInfo'] ?? '',
           };
         }).toList();
         if (mounted) setState(() { _oursTxs = txList; _oursLoading = false; });
@@ -9135,14 +9202,219 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     return tx[key] ?? tx[key[0].toUpperCase() + key.substring(1)] ?? tx[key.toLowerCase()];
   }
 
+  /// إثراء السجلات الناقصة بجلب البيانات من FTTH API عبر customerId + subscriptionId
+  Future<void> _enrichIncompleteLogs(List<List<dynamic>> rawData) async {
+    // جمع السجلات التي عندنا لكن فيها نقص (بدون هاتف أو منطقة أو FBG)
+    final toEnrich = <Map<String, dynamic>>[];
+    for (final d in rawData) {
+      if (d[15] == null) continue; // لا يوجد سجل عندنا
+      final tx = d[15] as Map<String, dynamic>;
+      final phone = (_f(tx, 'PhoneNumber') ?? '').toString().trim();
+      final customerId = (_readField(tx, 'CustomerId') ?? _readField(tx, 'customerId') ?? '').toString().trim();
+      final subId = (_readField(tx, 'SubscriptionId') ?? _readField(tx, 'subscriptionId') ?? '').toString().trim();
+      // نحتاج customerId أو subscriptionId للبحث
+      if (customerId.isEmpty && subId.isEmpty) continue;
+      // نقص = بدون هاتف أو المنطقة أو FBG أو FAT (الحقول الأساسية فقط)
+      final zone = (_readField(tx, 'ZoneId') ?? _readField(tx, 'zoneId') ?? '').toString().trim();
+      final fbg = (_readField(tx, 'FbgInfo') ?? _readField(tx, 'fbgInfo') ?? '').toString().trim();
+      final fat = (_readField(tx, 'FatInfo') ?? _readField(tx, 'fatInfo') ?? '').toString().trim();
+      if (phone.isEmpty || zone.isEmpty || fbg.isEmpty || fat.isEmpty) {
+        toEnrich.add(tx);
+      }
+    }
+    if (toEnrich.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('لا توجد سجلات ناقصة تحتاج إثراء', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.orange.shade700,
+        ));
+      }
+      return;
+    }
+
+    setState(() { _isEnriching = true; _enrichedCount = 0; _enrichTotal = toEnrich.length; });
+
+    int success = 0;
+    for (final tx in toEnrich) {
+      if (!mounted) break;
+      final logId = (_readField(tx, 'id') ?? _readField(tx, 'Id'))?.toString();
+      final customerId = (_readField(tx, 'CustomerId') ?? _readField(tx, 'customerId') ?? '').toString().trim();
+      var subId = (_readField(tx, 'SubscriptionId') ?? _readField(tx, 'subscriptionId') ?? '').toString().trim();
+      if (logId == null) continue;
+
+      try {
+        String phone = '';
+        String zoneId = '';
+        String zoneName = '';
+        String fbg = '';
+        String fat = '';
+        String fdt = '';
+
+        // 1. جلب بيانات العميل (الهاتف)
+        if (customerId.isNotEmpty) {
+          final custRes = await AuthService.instance.authenticatedRequest(
+              'GET', 'https://admin.ftth.iq/api/customers/$customerId');
+          if (custRes.statusCode == 200) {
+            final custData = jsonDecode(custRes.body);
+            final model = custData is Map ? (custData['model'] ?? custData) : custData;
+            if (model is Map) {
+              phone = (model['primaryContact']?['mobile'] ?? model['phone'] ?? model['phoneNumber'] ?? '').toString().trim();
+            }
+          }
+        }
+
+        // 2. جلب subscriptionId إذا فارغ — من قائمة اشتراكات العميل
+        if (subId.isEmpty && customerId.isNotEmpty) {
+          final subsRes = await AuthService.instance.authenticatedRequest(
+              'GET', 'https://admin.ftth.iq/api/customers/subscriptions?customerId=$customerId');
+          if (subsRes.statusCode == 200) {
+            final subsData = jsonDecode(subsRes.body);
+            final items = subsData['items'] as List? ?? [];
+            if (items.isNotEmpty) {
+              subId = (items.first['id'] ?? items.first['self']?['id'] ?? '').toString();
+            }
+          }
+        }
+
+        // 3. جلب تفاصيل الاشتراك (المنطقة + الفترة) + تفاصيل الجهاز (FBG/FAT) — نفس طريقة user_details_page
+        String startDate = '';
+        String endDate = '';
+        String currentStatus = '';
+        double walletBalanceAfter = 0;
+
+        if (subId.isNotEmpty) {
+          // 3a. GET /api/subscriptions/{id} → المنطقة + الفترة + الحالة
+          final subRes = await AuthService.instance.authenticatedRequest(
+              'GET', 'https://admin.ftth.iq/api/subscriptions/$subId');
+          if (subRes.statusCode == 200) {
+            final subData = jsonDecode(subRes.body);
+            if (subData is Map) {
+              final zone = subData['zone'];
+              if (zone is Map) {
+                zoneId = (zone['id'] ?? zone['displayValue'] ?? '').toString();
+                zoneName = (zone['displayValue'] ?? '').toString();
+              }
+              // الفترة
+              startDate = (subData['startedAt'] ?? subData['startDate'] ?? '').toString();
+              endDate = (subData['expires'] ?? subData['endDate'] ?? '').toString();
+              // الحالة
+              final statusObj = subData['status'];
+              currentStatus = (statusObj is Map ? statusObj['displayValue'] : statusObj ?? '').toString();
+            }
+          }
+
+          // 3b. GET /api/subscriptions/{id}/device → FBG + FAT + FDT
+          final devRes = await AuthService.instance.authenticatedRequest(
+              'GET', 'https://admin.ftth.iq/api/subscriptions/$subId/device');
+          if (devRes.statusCode == 200) {
+            final devData = jsonDecode(devRes.body);
+            Map<String, dynamic>? dev;
+            if (devData is Map) {
+              final m = Map<String, dynamic>.from(devData);
+              dev = m.containsKey('model') && m['model'] is Map
+                  ? Map<String, dynamic>.from(m['model'])
+                  : m;
+            }
+            if (dev != null) {
+              final dd = dev['deviceDetails'] is Map ? dev['deviceDetails'] as Map : dev;
+              final fbgObj = dd['fbg'];
+              final fatObj = dd['fat'];
+              final fdtObj = dd['fdt'];
+              fbg = (fbgObj is Map ? fbgObj['displayValue'] : fbgObj ?? '').toString();
+              fat = (fatObj is Map ? fatObj['displayValue'] : fatObj ?? '').toString();
+              fdt = (fdtObj is Map ? fdtObj['displayValue'] : fdtObj ?? '').toString();
+              if (fbg.isEmpty && fdt.isNotEmpty) {
+                final m = RegExp(r'FBG[\w\d-]+').firstMatch(fdt);
+                if (m != null) fbg = m.group(0) ?? '';
+              }
+            }
+          }
+        }
+
+        // 3c. GET /api/customers/{id}/wallets/balance → الرصيد بعد
+        if (customerId.isNotEmpty) {
+          try {
+            final balRes = await AuthService.instance.authenticatedRequest(
+                'GET', 'https://admin.ftth.iq/api/customers/$customerId/wallets/balance');
+            if (balRes.statusCode == 200) {
+              final balData = jsonDecode(balRes.body);
+              final model = balData is Map ? (balData['model'] ?? balData) : balData;
+              if (model is Map && model['balance'] != null) {
+                walletBalanceAfter = double.tryParse(model['balance'].toString()) ?? 0;
+              }
+            }
+          } catch (_) {}
+        }
+
+        // 4. تحديث السجل في الخادم
+        final updateBody = <String, dynamic>{};
+        if (phone.isNotEmpty) updateBody['PhoneNumber'] = phone;
+        if (zoneId.isNotEmpty) updateBody['ZoneId'] = zoneId;
+        if (zoneName.isNotEmpty) updateBody['ZoneName'] = zoneName;
+        if (fbg.isNotEmpty) updateBody['FbgInfo'] = fbg;
+        if (fat.isNotEmpty) updateBody['FatInfo'] = fat;
+        if (fdt.isNotEmpty) updateBody['FdtInfo'] = fdt;
+        if (startDate.isNotEmpty) updateBody['StartDate'] = startDate;
+        if (endDate.isNotEmpty) updateBody['EndDate'] = endDate;
+        if (currentStatus.isNotEmpty) updateBody['CurrentStatus'] = currentStatus;
+        // حساب فترة الالتزام بالأشهر من الفرق بين البداية والنهاية
+        if (startDate.isNotEmpty && endDate.isNotEmpty) {
+          final s = DateTime.tryParse(startDate);
+          final e = DateTime.tryParse(endDate);
+          if (s != null && e != null) {
+            final months = ((e.difference(s).inDays) / 30).round();
+            if (months > 0) updateBody['CommitmentPeriod'] = months;
+          }
+        }
+        if (walletBalanceAfter > 0) updateBody['WalletBalanceAfter'] = walletBalanceAfter;
+        // حفظ subscriptionId إذا اكتشفناه من القائمة
+        final origSubId = (_readField(tx, 'SubscriptionId') ?? _readField(tx, 'subscriptionId') ?? '').toString().trim();
+        if (subId.isNotEmpty && subId != origSubId) updateBody['SubscriptionId'] = subId;
+
+        if (updateBody.isNotEmpty) {
+          await http.put(
+            Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+            headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
+            body: jsonEncode(updateBody),
+          );
+          success++;
+        }
+      } catch (e) {
+        debugPrint('⚠️ enrichment error for log $logId: $e');
+      }
+      if (mounted) setState(() => _enrichedCount++);
+    }
+
+    if (mounted) {
+      setState(() => _isEnriching = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('تم إثراء $success من ${toEnrich.length} سجل', style: GoogleFonts.cairo()),
+        backgroundColor: success > 0 ? Colors.green.shade700 : Colors.orange.shade700,
+        duration: const Duration(seconds: 3),
+      ));
+      setState(() => _oursLoading = true);
+      _loadOurData();
+    }
+  }
+
   void _openEditDialog(Map<String, dynamic> oursTx) {
     final logId = (_readField(oursTx, 'id') ?? _readField(oursTx, 'Id'))?.toString();
     if (logId == null || logId.isEmpty) return;
 
-    final pdCtrl = TextEditingController(text: (_sn(_f(oursTx, 'pageDeduction'))).toStringAsFixed(0));
-    final revCtrl = TextEditingController(text: (_sn(_f(oursTx, 'revenue'))).toStringAsFixed(0));
-    final expCtrl = TextEditingController(text: (_sn(_f(oursTx, 'expense'))).toStringAsFixed(0));
-    final phoneCtrl = TextEditingController(text: (_f(oursTx, 'phoneNumber') ?? '').toString());
+    // حفظ القيم الأصلية لمقارنتها عند الحفظ (لا نرسل إلا ما تغيّر فعلاً)
+    final origPD = (_sn(_f(oursTx, 'pageDeduction'))).toDouble();
+    final origRev = (_sn(_f(oursTx, 'revenue'))).toDouble();
+    final origExp = (_sn(_f(oursTx, 'expense'))).toDouble();
+    final origPhone = (_f(oursTx, 'phoneNumber') ?? '').toString();
+    final origCollType = (_f(oursTx, 'collectionType') ?? '').toString();
+    final origCommitment = ((_f(oursTx, 'commitmentPeriod') ?? 0) is num
+        ? (_f(oursTx, 'commitmentPeriod') as num).toInt()
+        : int.tryParse((_f(oursTx, 'commitmentPeriod') ?? 0).toString()) ?? 0);
+
+    final pdCtrl = TextEditingController(text: origPD.toStringAsFixed(0));
+    final revCtrl = TextEditingController(text: origRev.toStringAsFixed(0));
+    final expCtrl = TextEditingController(text: origExp.toStringAsFixed(0));
+    final phoneCtrl = TextEditingController(text: origPhone);
     var collType = (_f(oursTx, 'collectionType') ?? '').toString();
     if (!['cash', 'credit', 'agent', 'master', 'technician'].contains(collType)) collType = 'cash';
     final commitRaw = (_f(oursTx, 'commitmentPeriod') ?? 0);
@@ -9301,14 +9573,29 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                       final sysEnabled = _f(oursTx, 'systemDiscountEnabled') == true;
                       final maintenanceFee = newRev - (sysEnabled ? 0 : compDiscount);
 
-                      final body = jsonEncode({
-                        'PlanPrice': newPD,
-                        'CollectionType': collType,
-                        'ManualDiscount': newExp,
-                        'MaintenanceFee': maintenanceFee > 0 ? maintenanceFee : 0,
-                        'PhoneNumber': phoneCtrl.text.trim(),
-                        'CommitmentPeriod': commitment,
-                      });
+                      // إرسال الحقول المتغيّرة فقط — لمنع تصفير BasePrice/CompanyDiscount في Backend
+                      final bodyMap = <String, dynamic>{};
+                      if (newPD != origPD) bodyMap['PlanPrice'] = newPD;
+                      if (collType != origCollType) {
+                        bodyMap['CollectionType'] = collType;
+                        bodyMap['PaymentMethod'] = const {'cash': 'نقد', 'credit': 'آجل', 'master': 'ماستر', 'technician': 'فني', 'agent': 'وكيل'}[collType] ?? collType;
+                      }
+                      if (newExp != origExp) bodyMap['ManualDiscount'] = newExp;
+                      if (newRev != origRev) bodyMap['MaintenanceFee'] = maintenanceFee > 0 ? maintenanceFee : 0;
+                      if (phoneCtrl.text.trim() != origPhone) bodyMap['PhoneNumber'] = phoneCtrl.text.trim();
+                      if (commitment != origCommitment) bodyMap['CommitmentPeriod'] = commitment;
+
+                      if (bodyMap.isEmpty) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text('لا توجد تغييرات', style: GoogleFonts.cairo()),
+                            backgroundColor: Colors.orange.shade700,
+                            duration: const Duration(seconds: 2),
+                          ));
+                        }
+                        return;
+                      }
+                      final body = jsonEncode(bodyMap);
                       final res = await http.put(
                         Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
                         headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
@@ -9784,6 +10071,22 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       ),
                     ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _isEnriching ? null : () => _enrichIncompleteLogs(rawData),
+                    icon: _isEnriching
+                        ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.auto_awesome, size: 16),
+                    label: Text(
+                      _isEnriching ? 'إثراء $_enrichedCount/$_enrichTotal...' : 'إكمال البيانات الناقصة',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () => _exportToExcel(rawData, fmt),
@@ -11217,6 +11520,41 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     super.dispose();
   }
 
+  /// حساب فترة الالتزام: إذا موجودة من API نأخذها، وإلا نحسبها من StartDate/EndDate
+  String _resolveCommitment(dynamic item) {
+    final existing = item['CommitmentPeriod'];
+    final val = (existing is int) ? existing : int.tryParse(existing?.toString() ?? '') ?? 0;
+    if (val > 0) return val.toString();
+    // حساب من الفرق بين التاريخين
+    final startStr = item['StartDate']?.toString() ?? '';
+    final endStr = item['EndDate']?.toString() ?? '';
+    if (startStr.isEmpty || endStr.isEmpty) return '';
+    final s = DateTime.tryParse(startStr);
+    final e = DateTime.tryParse(endStr);
+    if (s == null || e == null) return '';
+    final months = ((e.difference(s).inDays) / 30).round();
+    if (months <= 0) return '';
+    // حفظ تلقائي في الخلفية
+    final logId = item['Id']?.toString() ?? '';
+    if (logId.isNotEmpty) {
+      _autoSaveCommitment(logId, months);
+    }
+    return months.toString();
+  }
+
+  /// حفظ فترة الالتزام المحسوبة تلقائياً في الخادم
+  final Set<String> _commitmentSaved = {};
+  void _autoSaveCommitment(String logId, int months) {
+    if (_commitmentSaved.contains(logId)) return;
+    _commitmentSaved.add(logId);
+    // حفظ بالخلفية بدون انتظار
+    http.put(
+      Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+      headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
+      body: jsonEncode({'CommitmentPeriod': months}),
+    ).ignore();
+  }
+
   /// تحويل تاريخ UTC إلى التوقيت المحلي (العراق +3)
   static String _toLocalDate(String? isoDate) {
     if (isoDate == null || isoDate.isEmpty) return '';
@@ -11330,7 +11668,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'واتساب':          item['IsWhatsAppSent'] == true,
           'مطابقة_raw':      item['IsReconciled'] == true,
           'محاسبة_raw':      item['JournalEntryId'] != null,
-          'الالتزام':        item['CommitmentPeriod']?.toString() ?? '',
+          'الالتزام':        _resolveCommitment(item),
           'الدفع':           item['PaymentMethod']?.toString() ?? item['PaymentStatus']?.toString() ?? '',
           'الجهاز':          item['DeviceUsername']?.toString() ?? '',
           'ملاحظات':         item['SubscriptionNotes']?.toString() ?? '',
@@ -11404,12 +11742,16 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   /// تطبيق الفلاتر التلقائية (مشغل / تحصيل / نوع عملية)
   void _applyAutoFilters() {
     bool changed = false;
-    // فلتر المشغل
+    // فلتر المشغل — مطابقة بالاسم الإنجليزي (ftthUsername) + الاسم العربي (operatorName)
     if (widget.filterOperatorFtthUsername != null && widget.filterOperatorFtthUsername!.isNotEmpty) {
       final ftthUser = widget.filterOperatorFtthUsername!.toLowerCase();
+      final arName = (widget.filterOperatorName ?? '').toLowerCase();
       final matchingValues = _records
           .map((r) => r['المُفعِّل']?.toString() ?? '')
-          .where((v) => v.toLowerCase() == ftthUser)
+          .where((v) {
+            final vLow = v.toLowerCase();
+            return vLow == ftthUser || (arName.isNotEmpty && vLow == arName);
+          })
           .toSet();
       if (matchingValues.isNotEmpty) {
         _colFilters['المُفعِّل'] = matchingValues;
@@ -12464,90 +12806,85 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       flex: flex,
       child: Container(
         decoration: baseDeco,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // منطقة الفرز (الضغط على النص)
-            Expanded(
-              child: InkWell(
-                onTap: () => _onSortCol(key),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        alignment: Alignment.center,
+        child: InkWell(
+          onTap: () => _onSortCol(key),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.cairo(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: hasFilter
+                            ? Colors.amber.shade300
+                            : Colors.white,
+                      ),
+                    ),
+                  ),
+                  if (isSorted) ...[
+                    const SizedBox(width: 1),
+                    Icon(
+                      _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
+                      size: 9,
+                      color: Colors.white70,
+                    ),
+                  ],
+                ],
+              ),
+              // أيقونة الفلتر — في الزاوية، لا تأخذ مساحة
+              Positioned(
+                left: 0,
+                top: 0,
+                child: InkWell(
+                  onTap: () => _showFilterDialog(key, label),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Flexible(
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: hasFilter
-                                ? Colors.amber.shade300
-                                : Colors.white,
+                      Icon(
+                        hasFilter ? Icons.filter_alt : Icons.filter_list,
+                        size: 11,
+                        color: hasFilter
+                            ? Colors.amber.shade300
+                            : Colors.white24,
+                      ),
+                      if (filterCount > 1)
+                        Positioned(
+                          top: -4,
+                          left: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade700,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '$filterCount',
+                              style: const TextStyle(
+                                  fontSize: 7,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
-                      ),
-                      if (isSorted) ...[
-                        const SizedBox(width: 1),
-                        Icon(
-                          _sortAsc
-                              ? Icons.arrow_upward
-                              : Icons.arrow_downward,
-                          size: 9,
-                          color: Colors.white70,
-                        ),
-                      ],
                     ],
                   ),
                 ),
               ),
-            ),
-            // زر الفلتر
-            InkWell(
-              onTap: () => _showFilterDialog(key, label),
-              borderRadius: BorderRadius.circular(4),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Icon(
-                      hasFilter ? Icons.filter_alt : Icons.filter_list,
-                      size: 13,
-                      color: hasFilter
-                          ? Colors.amber.shade300
-                          : Colors.white38,
-                    ),
-                    if (filterCount > 1)
-                      Positioned(
-                        top: -4,
-                        left: -4,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade700,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '$filterCount',
-                            style: const TextStyle(
-                                fontSize: 7,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 2),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -12561,18 +12898,22 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // رأس الجدول — داكن مثل كشف حساب
+          // رأس الجدول — داكن مثل كشف حساب + padding للسكرولبار
           Container(
             decoration: const BoxDecoration(
               color: Color(0xFF2C3E50),
             ),
+            padding: const EdgeInsets.only(right: 14), // عرض الـ scrollbar
             child: Row(children: _visibleCols.map(_buildHeaderCell).toList()),
           ),
           // الصفوف
           Expanded(
-            child: ListView.builder(
-              itemCount: _filtered.length,
-              itemBuilder: (ctx, i) => _buildRow(ctx, _filtered[i], i),
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: ListView.builder(
+                itemCount: _filtered.length,
+                itemBuilder: (ctx, i) => _buildRow(ctx, _filtered[i], i),
+              ),
             ),
           ),
         ],
@@ -12893,7 +13234,10 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                               DropdownMenuItem(value: 'technician', child: Text('فني')),
                             ],
                             onChanged: (v) =>
-                                setState(() => _editCollType = v ?? _editCollType),
+                                setState(() {
+                                  _editCollType = v ?? _editCollType;
+                                  _editPaymentMethod = const {'cash': 'نقد', 'credit': 'آجل', 'master': 'ماستر', 'technician': 'فني', 'agent': 'وكيل'}[_editCollType] ?? _editCollType;
+                                }),
                           );
                         },
                       )

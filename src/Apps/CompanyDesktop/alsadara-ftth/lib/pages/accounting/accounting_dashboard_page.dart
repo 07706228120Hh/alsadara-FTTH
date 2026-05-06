@@ -1,8 +1,14 @@
 ﻿import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/auth_service.dart';
+import '../../services/dual_auth_service.dart';
+import '../../services/auth/session_manager.dart';
+import '../../services/ftth/ftth_cache_service.dart';
 import '../../utils/responsive_helper.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
@@ -59,6 +65,11 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   Timer? _autoCollapseTimer;
   Timer? _autoRefreshTimer;
   StreamSubscription<String>? _eventSubscription;
+
+  // ─── رصيد المحفظة FTTH ───
+  double? _ftthWalletBalance;
+  bool _showFtthWallet = true;
+  static const _walletVisibilityKey = 'acc_dash_show_ftth_wallet';
 
   // ── خلفية ثابتة (رموز عائمة بمواضع ثابتة) ──
   final List<_FloatingShape> _shapes = [];
@@ -132,6 +143,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
     super.initState();
     _initShapes();
     _loadDashboard();
+    _loadFtthWallet();
+    _loadWalletVisibility();
     // تحديث تلقائي كل دقيقتين
     _autoRefreshTimer = Timer.periodic(const Duration(minutes: 2), (_) {
       if (mounted && !_isLoading) _loadDashboard(silent: true);
@@ -163,6 +176,67 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
       }
       _originalErrorHandler?.call(details);
     };
+  }
+
+  Future<void> _loadWalletVisibility() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() => _showFtthWallet = prefs.getBool(_walletVisibilityKey) ?? true);
+    }
+  }
+
+  Future<void> _toggleWalletVisibility() async {
+    final newVal = !_showFtthWallet;
+    setState(() => _showFtthWallet = newVal);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_walletVisibilityKey, newVal);
+  }
+
+  Future<void> _loadFtthWallet() async {
+    try {
+      // 1) كاش سريع
+      final cached = await FtthCacheService.loadWallet();
+      if (cached != null && mounted) {
+        setState(() => _ftthWalletBalance = ((cached['balance'] ?? 0) as num).toDouble());
+      }
+
+      // 2) الحصول على partnerId من عدة مصادر
+      String? pid;
+      final user = await FtthCacheService.loadCurrentUser();
+      pid = user?['self']?['id']?.toString();
+      // fallback: من SessionManager (JWT)
+      pid ??= SessionManager.instance.context?.accountId;
+
+      // fallback: تسجيل دخول صامت لـ FTTH
+      if (pid == null) {
+        final loginResult = await DualAuthService.instance.silentFtthLogin();
+        if (loginResult.success) {
+          final freshUser = await FtthCacheService.loadCurrentUser();
+          pid = freshUser?['self']?['id']?.toString();
+        }
+      }
+
+      if (pid == null || !mounted) return;
+
+      // 3) جلب الرصيد من السيرفر
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://api.ftth.iq/api/partners/$pid/wallets/balance',
+      );
+      if (response.statusCode == 200 && mounted) {
+        final model = (jsonDecode(response.body)['model'] ?? {}) as Map<String, dynamic>;
+        setState(() => _ftthWalletBalance = ((model['balance'] ?? 0) as num).toDouble());
+        FtthCacheService.saveWallet(model);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _refreshAll() async {
+    AccountingCacheService.invalidateAll();
+    await Future.wait([
+      _loadDashboard(),
+      _loadFtthWallet(),
+    ]);
   }
 
   Future<void> _loadDashboard({bool silent = false}) async {
@@ -879,9 +953,23 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                   color: Colors.white)),
           const Spacer(),
           IconButton(
-            onPressed: _loadDashboard,
+            onPressed: _toggleWalletVisibility,
+            icon: Icon(
+              _showFtthWallet ? Icons.wallet : Icons.wallet_outlined,
+              size: isMob ? 18 : ar.iconM,
+            ),
+            tooltip: _showFtthWallet ? 'إخفاء رصيد المحفظة' : 'إظهار رصيد المحفظة',
+            padding: isMob ? EdgeInsets.all(4) : null,
+            constraints: isMob
+                ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                : null,
+            style: IconButton.styleFrom(
+                foregroundColor: _showFtthWallet ? const Color(0xFF00ACC1) : Colors.white70),
+          ),
+          IconButton(
+            onPressed: _refreshAll,
             icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
-            tooltip: 'تحديث',
+            tooltip: 'تحديث الكل',
             padding: isMob ? EdgeInsets.all(4) : null,
             constraints: isMob
                 ? const BoxConstraints(minWidth: 32, minHeight: 32)
@@ -1081,6 +1169,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         icon: Icons.account_balance_wallet,
         color: const Color(0xFF3498DB),
       ),
+      if (_showFtthWallet)
+        _SummaryItem(
+          title: 'رصيد المحفظة FTTH',
+          value: _ftthWalletBalance != null ? _formatCurrency(_ftthWalletBalance) : 'جاري التحميل...',
+          icon: Icons.wallet,
+          color: const Color(0xFF00ACC1),
+        ),
       _SummaryItem(
         title: 'المصاريف',
         value: _formatCurrency(accountBalances['TotalExpenses']),
