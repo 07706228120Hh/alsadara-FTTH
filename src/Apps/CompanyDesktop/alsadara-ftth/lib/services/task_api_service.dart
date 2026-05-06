@@ -105,6 +105,9 @@ class TaskApiService {
     String? department,
     String? technician,
     String? createdByName,
+    String? search,
+    DateTime? fromDate,
+    DateTime? toDate,
   }) async {
     String query = '/servicerequests?page=$page&pageSize=$pageSize';
     if (status != null) query += '&status=$status';
@@ -116,6 +119,12 @@ class TaskApiService {
       query += '&technician=${Uri.encodeComponent(technician)}';
     if (createdByName != null)
       query += '&createdByName=${Uri.encodeComponent(createdByName)}';
+    if (search != null && search.isNotEmpty)
+      query += '&search=${Uri.encodeComponent(search)}';
+    if (fromDate != null)
+      query += '&fromDate=${fromDate.toIso8601String().split('T')[0]}';
+    if (toDate != null)
+      query += '&toDate=${toDate.toIso8601String().split('T')[0]}';
     final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }

@@ -46,9 +46,17 @@ public class ServiceRequestsController : ControllerBase
         [FromQuery] string? customerPhone = null,
         [FromQuery] string? taskType = null,
         [FromQuery] string? createdByName = null,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
     {
         var query = _unitOfWork.ServiceRequests.AsQueryable();
+
+        // فلتر التاريخ: من - إلى (حسب تاريخ الإنشاء)
+        if (fromDate.HasValue)
+            query = query.Where(r => r.CreatedAt >= fromDate.Value.Date);
+        if (toDate.HasValue)
+            query = query.Where(r => r.CreatedAt < toDate.Value.Date.AddDays(1));
 
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<ServiceRequestStatus>(status, true, out var statusEnum))
             query = query.Where(r => r.Status == statusEnum);
