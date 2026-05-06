@@ -12739,8 +12739,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
 
     final baseDeco = BoxDecoration(
       border: Border(
-        bottom: BorderSide(color: Colors.grey.shade400, width: 0.5),
-        left: BorderSide(color: Colors.grey.shade500.withValues(alpha: 0.4)),
+        bottom: BorderSide(color: Colors.white30, width: 0.5),
+        left: BorderSide(color: Colors.white30),
       ),
     );
 
@@ -13289,6 +13289,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               txt(3, displayStart),
             if (!_hiddenCols.contains('تاريخ الانتهاء'))
               txt(3, displayEnd),
+            // الحالة الحالية
+            if (!_hiddenCols.contains('الحالة الحالية'))
+              txt(2, r['الحالة الحالية']?.toString() ?? ''),
             if (!_hiddenCols.contains('الرصيد قبل'))
               txt(2, r['الرصيد قبل']?.toString() ?? ''),
             if (!_hiddenCols.contains('الرصيد بعد'))
