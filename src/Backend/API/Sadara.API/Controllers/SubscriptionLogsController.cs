@@ -401,13 +401,37 @@ public class SubscriptionLogsController : ControllerBase
             }
         }
 
+        // حذف القيد المحاسبي المرتبط (void + soft delete)
+        if (log.JournalEntryId.HasValue)
+        {
+            var je = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
+            if (je != null && je.Status != JournalEntryStatus.Voided)
+            {
+                je.Status = JournalEntryStatus.Voided;
+                je.IsDeleted = true;
+                je.DeletedAt = DateTime.UtcNow;
+                _unitOfWork.JournalEntries.Update(je);
+
+                // حذف سطور القيد
+                var jeLines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => l.JournalEntryId == je.Id && !l.IsDeleted)
+                    .ToListAsync();
+                foreach (var line in jeLines)
+                {
+                    line.IsDeleted = true;
+                    line.DeletedAt = DateTime.UtcNow;
+                    _unitOfWork.JournalEntryLines.Update(line);
+                }
+            }
+        }
+
         log.IsDeleted = true;
         log.DeletedAt = DateTime.UtcNow;
         _unitOfWork.SubscriptionLogs.Update(log);
         await _unitOfWork.SaveChangesAsync();
 
-        _logger.LogInformation("تم حذف سجل الاشتراك {LogId} مع عكس الأرصدة", id);
-        return Ok(new { success = true, message = "تم حذف السجل وعكس الأرصدة بنجاح" });
+        _logger.LogInformation("تم حذف سجل الاشتراك {LogId} مع القيد المحاسبي وعكس الأرصدة", id);
+        return Ok(new { success = true, message = "تم حذف السجل والقيد المحاسبي وعكس الأرصدة بنجاح" });
     }
 
     /// <summary>

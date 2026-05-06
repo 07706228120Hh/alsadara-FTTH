@@ -2344,10 +2344,79 @@ public class InternalDataController : ControllerBase
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
-        _unitOfWork.SubscriptionLogs.Delete(log);
+        // عكس رصيد الفني إذا كان مرتبطاً
+        if (log.LinkedTechnicianId.HasValue && log.PlanPrice.HasValue)
+        {
+            var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+            if (tech != null)
+            {
+                tech.TechTotalCharges -= log.PlanPrice.Value;
+                tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
+                _unitOfWork.Users.Update(tech);
+
+                var techTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                    .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                if (techTx != null)
+                {
+                    techTx.IsDeleted = true;
+                    techTx.DeletedAt = DateTime.UtcNow;
+                    _unitOfWork.TechnicianTransactions.Update(techTx);
+                }
+            }
+        }
+
+        // عكس رصيد الوكيل إذا كان مرتبطاً
+        if (log.LinkedAgentId.HasValue && log.PlanPrice.HasValue)
+        {
+            var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+            if (agent != null)
+            {
+                agent.TotalCharges -= log.PlanPrice.Value;
+                agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                _unitOfWork.Agents.Update(agent);
+
+                var agentTx = await _unitOfWork.AgentTransactions.AsQueryable()
+                    .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                if (agentTx != null)
+                {
+                    agentTx.IsDeleted = true;
+                    agentTx.DeletedAt = DateTime.UtcNow;
+                    _unitOfWork.AgentTransactions.Update(agentTx);
+                }
+            }
+        }
+
+        // حذف القيد المحاسبي المرتبط
+        if (log.JournalEntryId.HasValue)
+        {
+            var je = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
+            if (je != null)
+            {
+                je.Status = JournalEntryStatus.Voided;
+                je.IsDeleted = true;
+                je.DeletedAt = DateTime.UtcNow;
+                _unitOfWork.JournalEntries.Update(je);
+
+                var jeLines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => l.JournalEntryId == je.Id && !l.IsDeleted)
+                    .ToListAsync();
+                foreach (var line in jeLines)
+                {
+                    line.IsDeleted = true;
+                    line.DeletedAt = DateTime.UtcNow;
+                    _unitOfWork.JournalEntryLines.Update(line);
+                }
+            }
+        }
+
+        // soft delete السجل
+        log.IsDeleted = true;
+        log.DeletedAt = DateTime.UtcNow;
+        _unitOfWork.SubscriptionLogs.Update(log);
         await _unitOfWork.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "تم حذف السجل بنجاح" });
+        _logger.LogInformation("تم حذف سجل الاشتراك {LogId} مع القيد المحاسبي وعكس الأرصدة", id);
+        return Ok(new { success = true, message = "تم حذف السجل والقيد المحاسبي وعكس الأرصدة بنجاح" });
     }
 
     /// <summary>

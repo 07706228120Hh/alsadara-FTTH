@@ -9397,6 +9397,61 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     }
   }
 
+  Future<void> _deleteOursOnlyRecord(Map<String, dynamic> oursTx) async {
+    final logId = (_readField(oursTx, 'id') ?? _readField(oursTx, 'Id'))?.toString();
+    if (logId == null || logId.isEmpty) return;
+    final customerName = (_readField(oursTx, 'customerName') ?? '').toString();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تأكيد الحذف', style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+          content: Text(
+            'حذف عملية "$customerName"؟\nسيتم حذف السجل والقيد المحاسبي وعكس الأرصدة.\nلا يمكن التراجع.',
+            style: GoogleFonts.cairo(),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('حذف', style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final res = await http.delete(
+        Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+        headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'},
+      );
+      if (!mounted) return;
+      if (res.statusCode == 200 || res.statusCode == 204) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('تم حذف العملية بنجاح', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.green.shade700,
+        ));
+        setState(() => _oursLoading = true);
+        _loadOurData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('فشل الحذف: ${res.statusCode}', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.red.shade700,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('خطأ في الاتصال', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.red.shade700,
+        ));
+      }
+    }
+  }
+
   void _openEditDialog(Map<String, dynamic> oursTx) {
     final logId = (_readField(oursTx, 'id') ?? _readField(oursTx, 'Id'))?.toString();
     if (logId == null || logId.isEmpty) return;
@@ -10476,10 +10531,18 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           DataCell(cl(d[6].toString().isNotEmpty ? d[6] : '-', color: d[6].toString().isEmpty ? Colors.grey : null)),
           DataCell(cl(d.length > 18 && d[18].toString().isNotEmpty ? d[18].toString() : '-', color: d.length > 18 && d[18].toString().isNotEmpty ? null : Colors.grey)),
           DataCell(d.length > 15 && d[15] != null
-              ? Center(child: TextButton(
-                  onPressed: () => _openEditDialog(d[15] as Map<String, dynamic>),
-                  child: Text('تعديل', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                ))
+              ? Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  TextButton(
+                    onPressed: () => _openEditDialog(d[15] as Map<String, dynamic>),
+                    child: Text('تعديل', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                  ),
+                  if (status == 'oursOnly')
+                    TextButton(
+                      onPressed: () => _deleteOursOnlyRecord(d[15] as Map<String, dynamic>),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
+                      child: Text('حذف', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                    ),
+                ]))
               : const SizedBox()),
         ],
       );
