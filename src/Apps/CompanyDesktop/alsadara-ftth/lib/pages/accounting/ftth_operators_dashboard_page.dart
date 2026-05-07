@@ -12934,32 +12934,56 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     );
   }
 
+  // عرض الجدول الأدنى: مجموع (flex * 28) لكل عمود مرئي
+  double get _tableMinWidth {
+    final total = _visibleCols.fold<int>(0, (s, c) => s + (c[2] as int));
+    return total * 28.0;
+  }
+
   Widget _buildTable() {
     return Card(
       elevation: 2,
       margin: EdgeInsets.symmetric(horizontal: context.accR.spaceS),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.accR.cardRadius)),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          // رأس الجدول — داكن مثل كشف حساب
-          Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF2C3E50),
-            ),
-            child: Row(children: _visibleCols.map(_buildHeaderCell).toList()),
-          ),
-          // الصفوف
-          Expanded(
-            child: Scrollbar(
-              thumbVisibility: true,
-              child: ListView.builder(
-                itemCount: _filtered.length,
-                itemBuilder: (ctx, i) => _buildRow(ctx, _filtered[i], i),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final needsScroll = constraints.maxWidth < _tableMinWidth;
+          final tableWidth = needsScroll ? _tableMinWidth : constraints.maxWidth;
+
+          Widget buildContent() => Column(
+            children: [
+              Container(
+                width: tableWidth,
+                decoration: const BoxDecoration(color: Color(0xFF2C3E50)),
+                child: Row(children: _visibleCols.map(_buildHeaderCell).toList()),
               ),
+              Expanded(
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: ListView.builder(
+                    itemCount: _filtered.length,
+                    itemBuilder: (ctx, i) => SizedBox(
+                      width: tableWidth,
+                      child: _buildRow(ctx, _filtered[i], i),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+
+          if (!needsScroll) return buildContent();
+
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: tableWidth,
+              height: constraints.maxHeight,
+              child: buildContent(),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
