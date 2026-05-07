@@ -568,19 +568,20 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         boxShadow: [BoxShadow(color: colors[0].withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: ar.iconM),
           SizedBox(width: ar.spaceS),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w500)),
-              Text('${_currencyFormat.format(amount)} د.ع',
-                  style: GoogleFonts.cairo(fontSize: ar.small, color: Colors.white, fontWeight: FontWeight.bold)),
-              Text('$count عملية', style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.7))),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                Text('${_currencyFormat.format(amount)} د.ع',
+                    style: GoogleFonts.cairo(fontSize: ar.small, color: Colors.white, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                Text('$count عملية', style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.8)), overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
         ],
       ),
