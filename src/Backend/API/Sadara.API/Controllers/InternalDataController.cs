@@ -2386,21 +2386,37 @@ public class InternalDataController : ControllerBase
             }
         }
 
-        // حذف القيد المحاسبي المرتبط
+        // حذف القيد المحاسبي المرتبط + عكس أرصدة الحسابات
         if (log.JournalEntryId.HasValue)
         {
-            var je = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
+            var je = await _unitOfWork.JournalEntries.AsQueryable()
+                .Include(j => j.Lines)
+                .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value);
             if (je != null)
             {
+                // عكس CurrentBalance لكل حساب (نفس منطق AccountingController.VoidJournalEntry)
+                if (je.Status == JournalEntryStatus.Posted)
+                {
+                    foreach (var line in je.Lines.Where(l => !l.IsDeleted))
+                    {
+                        var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                        if (account != null)
+                        {
+                            if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                                account.CurrentBalance -= line.DebitAmount - line.CreditAmount;
+                            else
+                                account.CurrentBalance -= line.CreditAmount - line.DebitAmount;
+                            _unitOfWork.Accounts.Update(account);
+                        }
+                    }
+                }
+
                 je.Status = JournalEntryStatus.Voided;
                 je.IsDeleted = true;
                 je.DeletedAt = DateTime.UtcNow;
                 _unitOfWork.JournalEntries.Update(je);
 
-                var jeLines = await _unitOfWork.JournalEntryLines.AsQueryable()
-                    .Where(l => l.JournalEntryId == je.Id && !l.IsDeleted)
-                    .ToListAsync();
-                foreach (var line in jeLines)
+                foreach (var line in je.Lines.Where(l => !l.IsDeleted))
                 {
                     line.IsDeleted = true;
                     line.DeletedAt = DateTime.UtcNow;
@@ -2417,6 +2433,106 @@ public class InternalDataController : ControllerBase
 
         _logger.LogInformation("تم حذف سجل الاشتراك {LogId} مع القيد المحاسبي وعكس الأرصدة", id);
         return Ok(new { success = true, message = "تم حذف السجل والقيد المحاسبي وعكس الأرصدة بنجاح" });
+    }
+
+    /// <summary>
+    /// إصلاح فرق الأرصدة: إنشاء قيود مفقودة + تعديل رصيد حساب 11102 للعمليات المحذوفة
+    /// </summary>
+    [HttpPost("subscriptionlogs/fix-balance-discrepancy")]
+    [AllowAnonymous]
+    public async Task<IActionResult> FixBalanceDiscrepancy()
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var results = new List<string>();
+
+        // ═══ الجزء 1: إنشاء القيود المفقودة (JournalEntryId == null) ═══
+        var orphanLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => !l.IsDeleted && l.JournalEntryId == null
+                && l.CompanyId.HasValue && l.UserId.HasValue
+                && l.PlanPrice.HasValue && l.PlanPrice > 0
+                && l.CollectionType != null)
+            .ToListAsync();
+
+        int jeCreated = 0;
+        foreach (var log in orphanLogs)
+        {
+            try
+            {
+                var jeId = await CreateAccountingEntryForLog(log);
+                if (jeId.HasValue)
+                {
+                    log.JournalEntryId = jeId;
+                    _unitOfWork.SubscriptionLogs.Update(log);
+                    await _unitOfWork.SaveChangesAsync();
+                    jeCreated++;
+                    results.Add($"✅ Log {log.Id} ({log.CustomerName}): قيد محاسبي أُنشئ — {log.PlanPrice} د.ع");
+                }
+                else
+                {
+                    results.Add($"⚠️ Log {log.Id} ({log.CustomerName}): فشل إنشاء القيد");
+                }
+            }
+            catch (Exception ex)
+            {
+                results.Add($"❌ Log {log.Id} ({log.CustomerName}): {ex.Message}");
+            }
+        }
+
+        // ═══ الجزء 2: تعديل رصيد 11102 للعمليات المحذوفة التي لم تُعكس أرصدتها ═══
+        // جلب السجلات المحذوفة التي لها JournalEntryId (تم إلغاء القيد لكن CurrentBalance لم يُعكس)
+        var deletedWithJE = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.IsDeleted && l.JournalEntryId.HasValue && l.CompanyId.HasValue)
+            .ToListAsync();
+
+        int balanceFixed = 0;
+        foreach (var log in deletedWithJE)
+        {
+            var je = await _unitOfWork.JournalEntries.AsQueryable()
+                .Include(j => j.Lines)
+                .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId!.Value);
+
+            if (je == null || je.Status != JournalEntryStatus.Voided) continue;
+
+            // تحقق: هل الأسطر محذوفة لكن الأرصدة لم تُعكس؟
+            // نفحص إذا كان القيد أُلغي بدون عكس (الأسطر محذوفة + القيد Voided)
+            var deletedLines = je.Lines.Where(l => l.IsDeleted).ToList();
+            if (!deletedLines.Any()) continue;
+
+            // نعكس الأرصدة الآن
+            bool anyFixed = false;
+            foreach (var line in deletedLines)
+            {
+                var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                if (account == null) continue;
+
+                if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                    account.CurrentBalance -= line.DebitAmount - line.CreditAmount;
+                else
+                    account.CurrentBalance -= line.CreditAmount - line.DebitAmount;
+
+                _unitOfWork.Accounts.Update(account);
+                anyFixed = true;
+            }
+
+            if (anyFixed)
+            {
+                await _unitOfWork.SaveChangesAsync();
+                balanceFixed++;
+                results.Add($"✅ Deleted Log {log.Id} ({log.CustomerName}): أرصدة القيد المُلغى عُكست — {log.PlanPrice} د.ع");
+            }
+        }
+
+        return Ok(new
+        {
+            success = true,
+            message = $"تم إنشاء {jeCreated} قيد مفقود + عكس أرصدة {balanceFixed} قيد محذوف",
+            orphanLogsFound = orphanLogs.Count,
+            journalEntriesCreated = jeCreated,
+            deletedLogsFixed = balanceFixed,
+            details = results
+        });
     }
 
     /// <summary>
