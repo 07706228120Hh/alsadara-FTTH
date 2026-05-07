@@ -2438,7 +2438,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     final descCtrl = TextEditingController(text: entry['Description'] ?? '');
     final notesCtrl = TextEditingController(text: entry['Notes'] ?? '');
-    DateTime entryDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? '') ?? DateTime.now();
+    DateTime entryDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+    TimeOfDay entryTime = TimeOfDay(hour: entryDate.hour, minute: entryDate.minute);
 
     final lines = <Map<String, dynamic>>[];
     for (final l in ((entry['Lines'] as List?) ?? [])) {
@@ -2547,13 +2548,30 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                             Expanded(child: InkWell(
                               onTap: effectiveReadOnly ? null : () async {
                                 final picked = await showDatePicker(context: ctx, initialDate: entryDate, firstDate: DateTime(2020), lastDate: DateTime(2030));
-                                if (picked != null) setDState(() => entryDate = picked);
+                                if (picked != null) setDState(() => entryDate = DateTime(picked.year, picked.month, picked.day, entryTime.hour, entryTime.minute));
                               },
                               child: InputDecorator(
                                 decoration: InputDecoration(labelText: 'التاريخ', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
                                     suffixIcon: const Icon(Icons.calendar_today, size: 16),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                                 child: Text('${entryDate.year}/${entryDate.month.toString().padLeft(2, '0')}/${entryDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontSize: 13)),
+                              ),
+                            )),
+                            const SizedBox(width: 8),
+                            SizedBox(width: 90, child: InkWell(
+                              onTap: effectiveReadOnly ? null : () async {
+                                final picked = await showTimePicker(context: ctx, initialTime: entryTime);
+                                if (picked != null) setDState(() {
+                                  entryTime = picked;
+                                  entryDate = DateTime(entryDate.year, entryDate.month, entryDate.day, picked.hour, picked.minute);
+                                });
+                              },
+                              child: InputDecorator(
+                                decoration: InputDecoration(labelText: 'الوقت', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                                    suffixIcon: const Icon(Icons.access_time, size: 16),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
+                                child: Text('${entryTime.hour.toString().padLeft(2, '0')}:${entryTime.minute.toString().padLeft(2, '0')}',
                                     style: const TextStyle(fontSize: 13)),
                               ),
                             )),

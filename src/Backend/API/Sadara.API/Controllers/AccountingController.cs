@@ -3076,11 +3076,9 @@ public class AccountingController : ControllerBase
             entry.Notes = dto.Notes ?? entry.Notes;
             if (dto.EntryDate.HasValue)
             {
-                // حفظ التاريخ المختار مع وقت التعديل الفعلي (بتوقيت بغداد UTC+3)
+                // حفظ التاريخ والوقت كما أرسلهما المستخدم (تحويل بغداد → UTC)
                 var d = dto.EntryDate.Value;
-                var nowBaghdad = DateTime.UtcNow.AddHours(3);
-                entry.EntryDate = DateTime.SpecifyKind(
-                    d.Date.Add(nowBaghdad.TimeOfDay).AddHours(-3), DateTimeKind.Utc);
+                entry.EntryDate = DateTime.SpecifyKind(d.AddHours(-3), DateTimeKind.Utc);
             }
 
             // تحديث السطور إذا وُجدت

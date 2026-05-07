@@ -1864,7 +1864,8 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
 
     final descCtrl = TextEditingController(text: entry['Description'] ?? '');
     final notesCtrl = TextEditingController(text: entry['Notes'] ?? '');
-    DateTime entryDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? '') ?? DateTime.now();
+    DateTime entryDate = DateTime.tryParse(entry['EntryDate']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+    TimeOfDay entryTime = TimeOfDay(hour: entryDate.hour, minute: entryDate.minute);
 
     // تحضير أسطر القيد
     final lines = <Map<String, dynamic>>[];
@@ -2028,7 +2029,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                         lastDate: DateTime(2030),
                                       );
                                       if (picked != null) {
-                                        setDState(() => entryDate = picked);
+                                        setDState(() => entryDate = DateTime(picked.year, picked.month, picked.day, entryTime.hour, entryTime.minute));
                                       }
                                     },
                                     child: InputDecorator(
@@ -2051,6 +2052,33 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                     ),
                                   ),
                                 ),
+                                if (!effectiveReadOnly) ...[
+                                  const SizedBox(width: 8),
+                                  SizedBox(width: 90, child: InkWell(
+                                    onTap: () async {
+                                      final picked = await showTimePicker(context: ctx, initialTime: entryTime);
+                                      if (picked != null) setDState(() {
+                                        entryTime = picked;
+                                        entryDate = DateTime(entryDate.year, entryDate.month, entryDate.day, picked.hour, picked.minute);
+                                      });
+                                    },
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'الوقت',
+                                        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+                                        filled: true,
+                                        fillColor: AccountingTheme.bgCardHover,
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                        suffixIcon: Icon(Icons.access_time, size: 16, color: AccountingTheme.textMuted),
+                                        isDense: true,
+                                      ),
+                                      child: Text(
+                                        '${entryTime.hour.toString().padLeft(2, '0')}:${entryTime.minute.toString().padLeft(2, '0')}',
+                                        style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 13),
+                                      ),
+                                    ),
+                                  )),
+                                ],
                               ],
                             ),
                             const SizedBox(height: 12),
