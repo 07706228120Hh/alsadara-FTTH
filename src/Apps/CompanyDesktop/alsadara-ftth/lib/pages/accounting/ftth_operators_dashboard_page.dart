@@ -11338,6 +11338,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   List<Map<String, dynamic>> _records = [];
   List<Map<String, dynamic>> _filtered = [];
   final _searchCtrl = TextEditingController();
+  final _tableScrollCtrl = ScrollController();
   final _fmt = NumberFormat('#,###', 'ar');
   final _dateFmt = DateFormat('yyyy/MM/dd');
 
@@ -11592,6 +11593,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _tableScrollCtrl.dispose();
     _editOperatorCtrl.dispose();
     _editPriceCtrl.dispose();
     _editRevenueCtrl.dispose();
@@ -12961,8 +12963,11 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               ),
               Expanded(
                 child: Scrollbar(
+                  controller: _tableScrollCtrl,
                   thumbVisibility: true,
+                  interactive: true,
                   child: ListView.builder(
+                    controller: _tableScrollCtrl,
                     itemCount: _filtered.length,
                     itemBuilder: (ctx, i) => SizedBox(
                       width: tableWidth,
