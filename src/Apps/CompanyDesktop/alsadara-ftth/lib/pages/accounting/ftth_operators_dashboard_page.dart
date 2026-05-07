@@ -11798,18 +11798,33 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   void _applyAutoFilters() {
     bool changed = false;
     // فلتر المشغل — مطابقة بالاسم الإنجليزي (ftthUsername) + الاسم العربي (operatorName)
+    // يبحث في عمود "المُفعِّل" + عمود "الفني" لتغطية كل الحالات
     if (widget.filterOperatorFtthUsername != null && widget.filterOperatorFtthUsername!.isNotEmpty) {
       final ftthUser = widget.filterOperatorFtthUsername!.toLowerCase();
       final arName = (widget.filterOperatorName ?? '').toLowerCase();
-      final matchingValues = _records
+
+      bool nameMatches(String v) {
+        final vLow = v.toLowerCase();
+        return vLow == ftthUser || (arName.isNotEmpty && (vLow == arName || vLow.contains(arName) || arName.contains(vLow)));
+      }
+
+      // فلتر المُفعِّل
+      final matchOperator = _records
           .map((r) => r['المُفعِّل']?.toString() ?? '')
-          .where((v) {
-            final vLow = v.toLowerCase();
-            return vLow == ftthUser || (arName.isNotEmpty && vLow == arName);
-          })
+          .where((v) => v.isNotEmpty && nameMatches(v))
           .toSet();
-      if (matchingValues.isNotEmpty) {
-        _colFilters['المُفعِّل'] = matchingValues;
+      // فلتر الفني
+      final matchTech = _records
+          .map((r) => r['الفني']?.toString() ?? '')
+          .where((v) => v.isNotEmpty && nameMatches(v))
+          .toSet();
+
+      if (matchOperator.isNotEmpty) {
+        _colFilters['المُفعِّل'] = matchOperator;
+        changed = true;
+      } else if (matchTech.isNotEmpty) {
+        // إذا لم يُوجد كمُفعِّل، فلتر كفني
+        _colFilters['الفني'] = matchTech;
         changed = true;
       }
     }
