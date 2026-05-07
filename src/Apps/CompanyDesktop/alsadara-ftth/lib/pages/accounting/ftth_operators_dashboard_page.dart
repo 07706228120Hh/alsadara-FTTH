@@ -18,7 +18,6 @@ import '../../services/plan_pricing_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../permissions/permission_manager.dart';
 import '../../theme/accounting_responsive.dart';
-import 'client_accounts_page.dart';
 import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
 
@@ -4417,34 +4416,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     return sorted;
   }
 
-  /// فتح كشف حساب الصندوق (للمشغل) أو الذمم (للفني)
+  /// فتح كشف حساب المشغل — يفتح صفحة العمليات مع فلتر المشغل
   void _openAccountStatement(Map<String, dynamic> op) {
-    final userId = op['userId']?.toString();
-    if (userId == null || userId.isEmpty) return;
-    final isTech = op['isTechnician'] == true;
-
-    // البحث عن accountId المناسب من الحسابات المحملة
-    // المشغل → صندوق (1110xx)، الفني → ذمة (1140xx)
-    final prefix = isTech ? '1140' : '1110';
-    AccountingService.instance.getAccounts(companyId: _companyId).then((result) {
-      if (result['success'] != true || !mounted) return;
-      final accounts = (result['data'] as List?) ?? [];
-      final match = accounts.where((a) =>
-          (a['Code']?.toString() ?? '').startsWith(prefix) &&
-          a['Description']?.toString() == userId &&
-          a['IsLeaf'] == true).firstOrNull;
-      if (match != null) {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => ClientAccountsPage(
-            companyId: _companyId,
-            initialAccountId: match['Id']?.toString(),
-          ),
-        ));
-      } else {
-        // إذا لم يُوجد حساب، افتح صفحة عمليات المشغل
-        _openOperatorAccount(op);
-      }
-    });
+    _openOperatorAccount(op);
   }
 
   void _openOperatorAccount(Map<String, dynamic> op, {String? collectionType, String? operationType}) {
