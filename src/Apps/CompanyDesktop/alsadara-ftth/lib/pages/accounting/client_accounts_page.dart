@@ -47,7 +47,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   bool _stmtSortAsc = true;
 
   final _dateFmt = DateFormat('yyyy-MM-dd');
-  final _displayDateFmt = DateFormat('yyyy/MM/dd');
+  final _displayDateFmt = DateFormat('HH:mm yyyy/MM/dd');
   final _searchController = TextEditingController();
   final _parentSearchController = TextEditingController();
   final _parentFocusNode = FocusNode();
