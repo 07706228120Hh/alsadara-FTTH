@@ -18,6 +18,7 @@ import '../../services/plan_pricing_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../permissions/permission_manager.dart';
 import '../../theme/accounting_responsive.dart';
+import 'client_accounts_page.dart';
 import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
 
@@ -4416,9 +4417,33 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     return sorted;
   }
 
-  /// فتح كشف حساب المشغل — يفتح صفحة العمليات مع فلتر المشغل
+  /// فتح كشف حساب الصندوق (للمشغل) أو الذمم (للفني)
   void _openAccountStatement(Map<String, dynamic> op) {
-    _openOperatorAccount(op);
+    final userId = op['userId']?.toString();
+    if (userId == null || userId.isEmpty) return;
+    final isTech = op['isTechnician'] == true;
+
+    // المشغل → صندوق (1110xx)، الفني → ذمة (1140xx)
+    final prefix = isTech ? '1140' : '1110';
+    AccountingService.instance.getAccounts(companyId: _companyId).then((result) {
+      if (result['success'] != true || !mounted) return;
+      final accounts = (result['data'] as List?) ?? [];
+      final match = accounts.where((a) =>
+          (a['Code']?.toString() ?? '').startsWith(prefix) &&
+          a['Description']?.toString() == userId &&
+          a['IsLeaf'] == true).firstOrNull;
+      if (match != null) {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ClientAccountsPage(
+            companyId: _companyId,
+            initialAccountId: match['Id']?.toString(),
+          ),
+        ));
+      } else {
+        // إذا لم يُوجد حساب، افتح صفحة عمليات المشغل
+        _openOperatorAccount(op);
+      }
+    });
   }
 
   void _openOperatorAccount(Map<String, dynamic> op, {String? collectionType, String? operationType}) {
@@ -9623,28 +9648,16 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                       final sysEnabled = _f(oursTx, 'systemDiscountEnabled') == true;
                       final maintenanceFee = newRev - (sysEnabled ? 0 : compDiscount);
 
-                      // إرسال الحقول المتغيّرة فقط — لمنع تصفير BasePrice/CompanyDiscount في Backend
-                      final bodyMap = <String, dynamic>{};
-                      if (newPD != origPD) bodyMap['PlanPrice'] = newPD;
-                      if (collType != origCollType) {
-                        bodyMap['CollectionType'] = collType;
-                        bodyMap['PaymentMethod'] = const {'cash': 'نقد', 'credit': 'آجل', 'master': 'ماستر', 'technician': 'فني', 'agent': 'وكيل'}[collType] ?? collType;
-                      }
-                      if (newExp != origExp) bodyMap['ManualDiscount'] = newExp;
-                      if (newRev != origRev) bodyMap['MaintenanceFee'] = maintenanceFee > 0 ? maintenanceFee : 0;
-                      if (newPhone != origPhone) bodyMap['PhoneNumber'] = newPhone;
-                      if (commitment != origCommitment) bodyMap['CommitmentPeriod'] = commitment;
-
-                      if (bodyMap.isEmpty) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text('لا توجد تغييرات', style: GoogleFonts.cairo()),
-                            backgroundColor: Colors.orange.shade700,
-                            duration: const Duration(seconds: 2),
-                          ));
-                        }
-                        return;
-                      }
+                      // إرسال كل الحقول — PlanPrice فقط إذا تغيّر (لحماية BasePrice/CompanyDiscount)
+                      final bodyMap = <String, dynamic>{
+                        'CollectionType': collType,
+                        'PaymentMethod': const {'cash': 'نقد', 'credit': 'آجل', 'master': 'ماستر', 'technician': 'فني', 'agent': 'وكيل'}[collType] ?? collType,
+                        'ManualDiscount': newExp,
+                        'MaintenanceFee': maintenanceFee > 0 ? maintenanceFee : 0,
+                        'PhoneNumber': newPhone,
+                        'CommitmentPeriod': commitment,
+                      };
+                      if ((newPD - origPD).abs() > 0.5) bodyMap['PlanPrice'] = newPD;
                       final body = jsonEncode(bodyMap);
                       final res = await http.put(
                         Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
@@ -11832,8 +11845,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
             vLow == arName || vLow.contains(arName) || arName.contains(vLow);
       }
 
-      if (widget.filterIsTechnician && widget.filterCollectionType == 'technician') {
-        // فلتر عمود "الفني" فقط عند الضغط على خلية الفني (collectionType=technician)
+      if (widget.filterIsTechnician) {
+        // الفني ما عنده ftthUsername — اسمه يظهر في عمود "الفني" فقط
         final matchTech = _records
             .map((r) => r['الفني']?.toString() ?? '')
             .where((v) => v.isNotEmpty && nameMatches(v))
@@ -11843,7 +11856,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           changed = true;
         }
       } else {
-        // مشغل → فلتر عمود "المُفعِّل"
+        // المشغل — اسمه/username في عمود "المُفعِّل"
         final matchOperator = _records
             .map((r) => r['المُفعِّل']?.toString() ?? '')
             .where((v) => v.isNotEmpty && nameMatches(v))
@@ -12216,37 +12229,26 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       // حساب MaintenanceFee من Revenue
       final maintenanceFee = newRevenue - (_editSysDiscountEnabled ? 0 : _editCompanyDiscount);
 
-      // إرسال الحقول المتغيّرة فقط — لمنع تصفير BasePrice/CompanyDiscount في Backend
-      final bodyMap = <String, dynamic>{};
-      if (_editOperatorCtrl.text.trim() != _origOperator) bodyMap['ActivatedBy'] = _editOperatorCtrl.text.trim();
-      if (newPD != _origPD) bodyMap['PlanPrice'] = newPD;
-      if (_editCollType != _origCollType) {
-        bodyMap['CollectionType'] = _editCollType;
-        bodyMap['PaymentMethod'] = _editPaymentMethod;
-      }
-      if (techName != _origTechnician) bodyMap['TechnicianName'] = techName;
-      if (agentName != _origAgent) bodyMap['AgentName'] = agentName;
-      if (newExpense != _origExpense) bodyMap['ManualDiscount'] = newExpense;
-      if (newRevenue != _origRevenue) bodyMap['MaintenanceFee'] = maintenanceFee > 0 ? maintenanceFee : 0;
-
-      if (bodyMap.isEmpty) {
-        setState(() { _isSaving = false; _editingId = null; });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('لا توجد تغييرات', style: GoogleFonts.cairo()),
-            backgroundColor: Colors.orange.shade700,
-            duration: const Duration(seconds: 2),
-          ));
-        }
-        return;
-      }
+      // إرسال كل الحقول — لكن PlanPrice فقط إذا تغيّر فعلاً
+      // (لأن Backend يصفّر BasePrice/CompanyDiscount عند تغيير PlanPrice)
+      final bodyMap = <String, dynamic>{
+        'ActivatedBy': _editOperatorCtrl.text.trim(),
+        'CollectionType': _editCollType,
+        'TechnicianName': techName,
+        'AgentName': agentName,
+        'PaymentMethod': _editPaymentMethod,
+        'ManualDiscount': newExpense,
+        'MaintenanceFee': maintenanceFee > 0 ? maintenanceFee : 0,
+      };
+      // PlanPrice — فقط إذا تغيّر فعلاً (لحماية BasePrice/CompanyDiscount)
+      if ((newPD - _origPD).abs() > 0.5) bodyMap['PlanPrice'] = newPD;
 
       // إرسال LinkedTechnicianId إذا تغيّر الفني
-      if (techName != _origTechnician && techName.isNotEmpty && _staffTechIdMap.containsKey(techName)) {
+      if (techName.isNotEmpty && _staffTechIdMap.containsKey(techName)) {
         bodyMap['LinkedTechnicianId'] = _staffTechIdMap[techName];
       }
       // إرسال LinkedAgentId إذا تغيّر الوكيل
-      if (agentName != _origAgent && agentName.isNotEmpty && _staffAgentIdMap.containsKey(agentName)) {
+      if (agentName.isNotEmpty && _staffAgentIdMap.containsKey(agentName)) {
         bodyMap['LinkedAgentId'] = _staffAgentIdMap[agentName];
       }
       final body = jsonEncode(bodyMap);
