@@ -13370,21 +13370,21 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               txt(2, r['fdt']?.toString() ?? ''),
             // طباعة
             if (!_hiddenCols.contains('طباعة'))
-              cell(1, Icon(Icons.print, size: 14,
+              cell(2, Icon(Icons.print, size: 14,
                   color: isPrinted ? Colors.green.shade600 : Colors.grey.shade300)),
             // واتساب
             if (!_hiddenCols.contains('واتساب_col'))
-              cell(1, Icon(Icons.check_circle, size: 14,
+              cell(2, Icon(Icons.check_circle, size: 14,
                   color: isWa ? Colors.green.shade600 : Colors.grey.shade300)),
             // مطابقة
             if (!_hiddenCols.contains('مطابقة'))
-              cell(1, Icon(
+              cell(2, Icon(
                   r['مطابقة_raw'] == true ? Icons.check_circle : Icons.cancel_outlined,
                   size: 14,
                   color: r['مطابقة_raw'] == true ? Colors.green.shade600 : Colors.grey.shade300)),
             // محاسبة
             if (!_hiddenCols.contains('محاسبة'))
-              cell(1, Icon(
+              cell(2, Icon(
                   r['محاسبة_raw'] == true ? Icons.check_circle : Icons.remove_circle_outline,
                   size: 14,
                   color: r['محاسبة_raw'] == true ? Colors.green.shade600 : Colors.grey.shade300)),
