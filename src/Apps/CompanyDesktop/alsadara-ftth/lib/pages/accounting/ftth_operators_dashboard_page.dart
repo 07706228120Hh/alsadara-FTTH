@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:excel/excel.dart' as xl;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -12975,12 +12976,21 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
 
           if (!needsScroll) return buildContent();
 
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              height: constraints.maxHeight,
-              child: buildContent(),
+          return ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              dragDevices: {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+                PointerDeviceKind.trackpad,
+              },
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: tableWidth,
+                height: constraints.maxHeight,
+                child: buildContent(),
+              ),
             ),
           );
         },
