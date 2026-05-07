@@ -12443,7 +12443,6 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               boxShadow: [BoxShadow(color: (c['colors'] as List<Color>)[0].withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 2))],
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(c['icon'] as IconData, color: Colors.white.withValues(alpha: 0.8), size: ar.iconM),
                 SizedBox(width: ar.spaceS),
@@ -12452,10 +12451,10 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(c['title'] as String, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w500)),
+                      Text(c['title'] as String, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
                       Text('${_fmt.format(c['amount'] as double)} د.ع',
-                          style: GoogleFonts.cairo(fontSize: ar.small, color: Colors.white, fontWeight: FontWeight.bold)),
-                      Text('${c['count']} عملية', style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.7))),
+                          style: GoogleFonts.cairo(fontSize: ar.small, color: Colors.white, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                      Text('${c['count']} عملية', style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.8)), overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
