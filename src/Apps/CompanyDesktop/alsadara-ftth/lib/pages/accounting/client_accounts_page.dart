@@ -2455,16 +2455,6 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     bool accountsLoaded = false;
     bool isSaving = false;
 
-    void disposeDialogControllers() {
-      descCtrl.dispose();
-      notesCtrl.dispose();
-      for (final l in lines) {
-        (l['debitCtrl'] as TextEditingController).dispose();
-        (l['creditCtrl'] as TextEditingController).dispose();
-        (l['descCtrl'] as TextEditingController).dispose();
-      }
-    }
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2536,7 +2526,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 style: GoogleFonts.cairo(color: status == 'Posted' ? AccountingTheme.success : AccountingTheme.warning, fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 8),
-                          IconButton(onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); }, icon: const Icon(Icons.close, size: 20)),
+                          IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, size: 20)),
                         ],
                       ),
                     ),
@@ -2682,7 +2672,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                       padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
                       decoration: const BoxDecoration(border: Border(top: BorderSide(color: AccountingTheme.borderColor))),
                       child: Row(children: [
-                        TextButton(onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); }, child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted))),
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted))),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: isSaving || !isBalanced ? null : () async {
@@ -2713,7 +2703,6 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                             setDState(() => isSaving = false);
                             if (result['success'] == true) {
                               Navigator.pop(ctx);
-                              disposeDialogControllers();
                               if (_selectedAccount != null) _loadStatement(_selectedAccount!, resetDates: false);
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث القيد بنجاح'), backgroundColor: AccountingTheme.success));
                             } else {

@@ -9486,13 +9486,6 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     if (![0, 1, 2, 3, 6, 12].contains(commitment)) commitment = 0;
     final fmt = NumberFormat('#,###', 'ar');
 
-    void disposeDialogControllers() {
-      pdCtrl.dispose();
-      revCtrl.dispose();
-      expCtrl.dispose();
-      phoneCtrl.dispose();
-    }
-
     try {
     showDialog(
       context: context,
@@ -9628,7 +9621,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
               actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               actions: [
                 TextButton(
-                  onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); },
+                  onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600)),
                 ),
                 ElevatedButton.icon(
@@ -9641,7 +9634,6 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                     final newExp = double.tryParse(expCtrl.text.trim()) ?? 0;
                     final newPhone = phoneCtrl.text.trim();
                     Navigator.pop(ctx);
-                    disposeDialogControllers();
                     try {
                       // حساب MaintenanceFee من Revenue
                       final compDiscount = (_sn(_f(oursTx, 'companyDiscount'))).toDouble();
